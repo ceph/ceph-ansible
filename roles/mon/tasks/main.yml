@@ -1,0 +1,36 @@
+---
+## Deploy Ceph monitor(s)
+#
+
+- name: Create monitor initial keyring
+  command: ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} --create-keyring --name=mon. --add-key={{ monitor_secret }} --cap mon 'allow *' creates=/var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
+
+- name: Set initial monitor key permissions
+  file: path=/var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} mode=0600 owner=root group=root
+
+- name: Create monitor directory
+  action: file path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }} state=directory owner=root group=root mode=0644
+
+- name: Ceph monitor mkfs
+  command: ceph-mon --mkfs -i {{ ansible_hostname }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} creates=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/keyring
+
+- name: Start and add that the monitor service to the init sequence
+  service: name=ceph state=started enabled=yes args=mon
+
+# Wait for mon discovery and quorum resolution
+# the admin key is not instantanely created so we have to wait a bit
+#
+
+- name: If client.admin key exists
+  command: stat /etc/ceph/ceph.client.admin.keyring
+  register: result
+  until: result.rc == 0
+  changed_when: False
+
+- name: Copy keys to the ansible server
+  fetch: src={{ item }} dest=fetch/
+  when: ansible_hostname == hostvars[groups['mons'][0]]['ansible_hostname'] and cephx
+  with_items:
+    - /etc/ceph/ceph.client.admin.keyring # just in case another application needs it
+    - /var/lib/ceph/bootstrap-osd/ceph.keyring # this handles the non-colocation case
+    - /var/lib/ceph/bootstrap-mds/ceph.keyring

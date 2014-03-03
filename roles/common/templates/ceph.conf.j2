@@ -1,0 +1,58 @@
+# {{ ansible_managed }}
+
+[global]
+{% if cephx %}
+  auth cluster required = cephx
+  auth service required = cephx
+  auth client required = cephx
+{% else %}
+  auth cluster required = none
+  auth service required = none
+  auth client required = none
+  auth supported = none
+{% endif %}
+  fsid = {{ fsid }}
+  mon_initial_members = {{ hostvars[groups['mons'][0]]['ansible_hostname'] }}
+{% if pool_default_pg_num is defined %}
+  osd pool default pg num = {{ pool_default_pg_num }}
+{% endif %}
+{% if pool_default_pgp_num is defined %}
+  osd pool default pgp num = {{ pool_default_pgp_num }}
+{% endif %}
+{% if pool_default_size is defined %}
+  osd pool default size = {{ pool_default_size }}
+{% endif %}
+{% if pool_default_min_size is defined %}
+  osd pool default min size = {{ pool_default_min_size }}
+{% endif %}
+{% if pool_default_crush_rule is defined %}
+  osd pool default crush rule = {{ pool_default_crush_rule }}
+{% endif %}
+
+[mon]
+{% for host in groups['mons'] %}
+  [mon.{{ hostvars[host]['ansible_hostname'] }}]
+    host = {{ hostvars[host]['ansible_hostname'] }}
+    mon addr = {{ hostvars[host]['ansible_eth1']['ipv4']['address'] }}
+{% endfor %}
+
+[osd]
+{% if osd_mkfs_type is defined %}
+  osd mkfs type = {{ osd_mkfs_type }}
+{% endif %}
+{% if osd_mkfs_type == "ext4" %}
+  filestore xattr use omap = true
+{% endif %}
+  osd journal size = {{ journal_size }}
+{% if cluster_network is defined %}
+  cluster_network = {{ cluster_network }}
+{% endif %}
+{% if public_network is defined %}
+  public_network = {{ public_network }}
+{% endif %}
+
+[mds]
+{% for host in groups['mdss'] %}
+  [mds.{{ hostvars[host]['ansible_hostname'] }}]
+    host = {{ hostvars[host]['ansible_hostname'] }}
+{% endfor %}
