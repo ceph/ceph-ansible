@@ -1,0 +1,28 @@
+---
+## Common to all the ceph nodes
+#
+
+- name: Install dependancies
+  apt: pkg={{ item }} state=installed update_cache=yes # we update the cache just in case...
+  with_items:
+    - python-pycurl
+    - ntp
+
+- name: Install the ceph key
+  apt_key: url={{ apt_key }} state=present
+
+- name: Add ceph repository
+  apt_repository: repo='deb http://ceph.com/debian-{{ ceph_release }}/ {{ ansible_lsb.codename }} main' state=present
+
+- name: Install ceph
+  apt: pkg={{ item }} state=latest
+  with_items:
+    - ceph
+    - ceph-common    #|
+    - ceph-fs-common #|--> yes, they are already all dependancies from 'ceph'
+    - ceph-fuse      #|--> however while proceding to rolling upgrades and the 'ceph' package upgrade
+    - ceph-mds       #|--> they don't get update so we need to force them
+    - libcephfs1     #|
+
+- name: Generate ceph configuration file
+  template: src=roles/common/templates/ceph.conf.j2 dest=/etc/ceph/ceph.conf owner=root group=root mode=0644

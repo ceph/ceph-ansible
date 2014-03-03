@@ -1,0 +1,46 @@
+---
+# This playbook does a rolling update for all the Ceph services
+# Change the value of serial: to adjust the number of server to be updated.
+#
+# The four roles that apply to the ceph hosts will be applied: common,
+# mon, osd and mds. So any changes to configuration, package updates, etc,
+# will be applied as part of the rolling update process.
+#
+
+# /!\ DO NOT FORGET TO CHANGE THE RELEASE VERSION FIRST! /!\
+
+- hosts: all
+  sudo: True
+  roles:
+  - common
+
+- hosts: mons
+  serial: 1
+  sudo: True
+  roles:
+  - mon
+  post_tasks:
+  - name: restart monitor(s)
+    service: name=ceph state=restarted args=mon
+
+- hosts: osds
+  serial: 1
+  sudo: True
+  roles:
+  - osd
+  post_tasks:
+  - name: restart object storage daemon(s)
+    command: service ceph-osd-all restart
+    when: ansible_distribution == "Ubuntu"
+  - name: restart object storage daemon(s)
+    service: name=ceph state=restarted args=osd
+    when: ansible_distribution == "Debian"
+
+- hosts: mdss
+  serial: 1
+  sudo: True
+  roles:
+  - mds
+  post_tasks:
+  - name: restart metadata server(s)
+    service: name=ceph state=restarted args=mds
