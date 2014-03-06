@@ -21,7 +21,7 @@
 #
 
 - name: If partition named 'ceph' exists
-  shell: parted {{ item }} print | egrep -sq '^ 1.*ceph'
+  shell: parted --script {{ item }} print | egrep -sq '^ 1.*ceph'
   ignore_errors: True
   with_items: devices
   register: parted
@@ -43,6 +43,7 @@
 - name: Prepare OSD disk(s)
   command: ceph-disk prepare {{ item.1 }} {{ journal_device }}
   when: item.0.rc != 0
+  ignore_errors: True
   with_together:
     - parted.results
     - devices
@@ -56,6 +57,7 @@
 
 - name: Activate OSD(s)
   command: ceph-disk activate {{ item }}1
+  ignore_errors: True
   with_items: devices
   changed_when: False
 
