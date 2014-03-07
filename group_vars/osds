@@ -7,12 +7,45 @@
 # Ansible will just skip them. Newly added disk will be
 # automatically configured during the next run.
 #
-devices:
-  - /dev/sdc
-  - /dev/sdd
 
-# Use 'None' to undefined the variable.
-# Using 'None' will colocate both journal and data on the same disk
+
+# !! WARNING !!
+#
+# /!\ ENABLE ONLY ONE SCENARIO AT A TIME /!\
+#
+# !! WARNING !!
+
+
+# Declare devices
+# All the scenarii inherit from the following device declaration
+#
+devices: [ 'sdd', 'sde', 'sdf', 'sdg']
+
+
+# I. First scenario: journal and osd_data on the same device
+# Use 'true' to enable this scenario
+# This will collocate both journal and data on the same disk
 # creating a partition at the beginning of the device
 #
-journal_device: /dev/sdb
+journal_collocation: true
+
+
+# II. Second scenario: single journal device for N OSDs
+# Use 'true' to enable this scenario
+#
+raw_journal: false
+raw_journal_device: /dev/sdb
+
+
+# III. Third scenario: N journal devices for N OSDs
+# Use 'true' to enable this scenario
+#
+# In the following example:
+# * sdd and sde will get sdb as a journal
+# * sdf and sdg will get sdc as a journal
+# While starting you have 2 options:
+# 1. Pre-allocate all the devices
+# 2. Progressively add new devices
+
+raw_multi_journal: false
+raw_journal_devices:  [ 'sdb', 'sdb', 'sdc', 'sdc' ]

@@ -36,13 +36,33 @@
 # if you have 64 disks with 4TB each, this will take a while
 # since Ansible will sequential process the loop
 
+# Scenario 1 without dedicated journal
 - name: Prepare OSD disk(s)
-  command: ceph-disk prepare {{ item.1 }} {{ journal_device }}
-  when: item.0.rc != 0
+  command: ceph-disk prepare {{ item.1 }}
+  when: item.0.rc != 0 and journal_collocation
   ignore_errors: True
   with_together:
     - parted.results
     - devices
+
+# Scenario 2 with dedicated journal
+- name: Prepare OSD disk(s)
+  command: ceph-disk prepare {{ item.1 }} {{ journal_device }}
+  when: item.0.rc != 0 and raw_journal
+  ignore_errors: True
+  with_together:
+    - parted.results
+    - devices
+
+# Scenario 3
+- name: Prepare OSD disk(s)
+  command: ceph-disk prepare /dev/{{ item.1 }} /dev/{{ item.2 }}
+  when: item.0.rc != 0 and raw_multi_journal
+  ignore_errors: True
+  with_together:
+    - parted.results
+    - devices
+    - raw_journal_devices
 
 # Activate means:
 # - mount the volume in a temp location
