@@ -1,0 +1,33 @@
+---
+## Common to all the Ceph RedHat nodes
+#
+
+- name: Fail on unsupported system
+  fail: msg="System not supported {{ ansible_system }}"
+  when: ansible_system not in ['Linux']
+
+- name: Fail on unsupported architecture
+  fail: msg="Architeture not supported {{ ansible_architectore }}"
+  when: ansible_architecture not in ['x86_64']
+
+- name: Fail on unsupported distribution
+  fail: msg="Distribution not supported {{ ansible_os_family }}"
+  when: ansible_os_family not in ['Debian', 'RedHat']
+
+- name: Install dependancies
+  yum: name={{ item }} state=installed
+  with_items:
+    - python-pycurl
+    - ntp
+
+- name: Install the Ceph key
+  rpm_key: key={{ apt_key }} state=present
+
+- name: Add Ceph repository
+  command: rpm -U http://ceph.com/rpm-{{ ceph_release }}/{{ redhat_distro }}/noarch/ceph-release-1-0.el6.noarch.rpm creates=/etc/yum.repos.d/ceph.repo
+
+- name: Install Ceph
+  yum: name=ceph state=latest
+
+- name: Generate Ceph configuration file
+  template: src=roles/common/templates/ceph.conf.j2 dest=/etc/ceph/ceph.conf owner=root group=root mode=0644
