@@ -20,9 +20,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       osd.vm.hostname = "ceph-osd#{i}"
       osd.vm.network :private_network, ip: "192.168.0.10#{i}"
       osd.vm.network :private_network, ip: "192.168.0.20#{i}"
-      (0..2).each do |d|
+      (0..5).each do |d|
         osd.vm.provider :virtualbox do |vb|
-          vb.customize [ "createhd", "--filename", "disk-#{i}-#{d}", "--size", "5000" ]
+          vb.customize [ "createhd", "--filename", "disk-#{i}-#{d}", "--size", "1000" ]
           vb.customize [ "storageattach", :id, "--storagectl", "SATA Controller", "--port", 3+d, "--device", 0, "--type", "hdd", "--medium", "disk-#{i}-#{d}.vdi" ]
         end
       end
