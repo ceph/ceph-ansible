@@ -1,0 +1,70 @@
+---
+## Deploy RADOS Gateway
+#
+
+- name: Copy RGW bootstrap key
+  copy: src=fetch/{{ hostvars[groups['mons'][0]]['ansible_hostname'] }}/etc/ceph/keyring.radosgw.gateway dest=/etc/ceph/keyring.radosgw.gateway owner=root group=root mode=600
+  when: cephx
+
+- name: Set RGW bootstrap key permissions
+  file: path=/etc/ceph/keyring.radosgw.gateway mode=0644 owner=root group=root
+  when: cephx
+
+- name: Add Ceph extra
+  template: src=ceph-extra.repo dest=/etc/yum.repos.d owner=root group=root
+
+- name: Add special fastcgi repository key
+  rpm_key: key=http://dag.wieers.com/rpm/packages/RPM-GPG-KEY.dag.txt
+
+- name: Add special fastcgi repository
+  command: rpm -ivh http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
+
+- name: Install Apache, fastcgi, and Rados Gateway
+  yum: name={{ item }} state=present
+  with_items:
+    - httpd
+    - mod_fastcgi
+    - mod_fcgid
+    - ceph-radosgw
+
+## Prepare Apache
+#
+
+- name: Install Rados Gateway vhost
+  template: src=rgw.conf dest=/etc/httpd/conf.d/rgw.conf owner=root group=root
+
+## Prepare RGW
+#
+
+- name: Create RGW directory
+  file: path=/var/lib/ceph/radosgw/{{ ansible_hostname }} state=directory owner=root group=root mode=0644
+
+- name: Install s3gw.fcgi script
+  copy: src=s3gw.fcgi dest=/var/www/s3gw.fcgi mode=0555 owner=root group=root
+
+- name: Disable default site
+  shell: sed -i "s/^[^+#]/#/g" /etc/httpd/conf.d/welcome.conf
+  changed_when: False
+  notify:
+    - restart apache2
+
+## If we don't perform this check Ansible will start multiple instance of radosgw
+- name: Check if RGW is started
+  command: /etc/init.d/ceph-radosgw status
+  register: rgwstatus
+  ignore_errors: True
+
+- name: Start RGW
+  command: /etc/init.d/ceph-radosgw start
+  when: rgwstatus.rc != 0
+
+- name: Create a user in radosgw
+  command: radosgw-admin --name client.radosgw.gateway user create --uid=johndoe --display-name="John Doe" --email=john@example.com
+
+- name: Create a swift subuser
+  command: radosgw-admin --name client.radosgw.gateway subuser create --uid=johndoe --subuser=johndoe:swift --access=full
+  ignore_errors: True
+
+- name: Create a swift subuser key
+  command: radosgw-admin --name client.radosgw.gateway key create --subuser=johndoe:swift --key-type=swift
+  ignore_errors: True

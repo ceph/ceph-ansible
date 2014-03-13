@@ -8,6 +8,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "precise64"
   config.vm.box_url = "http://files.vagrantup.com/precise64.box"
 
+  config.vm.define :rgw do |rgw|
+    rgw.vm.network :private_network, ip: "192.168.0.2"
+    rgw.vm.host_name = "ceph-rgw"
+  end
+
   (0..2).each do |i|
     config.vm.define "mon#{i}" do |mon|
       mon.vm.hostname = "ceph-mon#{i}"

@@ -27,6 +27,11 @@
   until: result.rc == 0
   changed_when: False
 
+- name: Create RGW keyring
+  command: ceph auth get-or-create client.radosgw.gateway osd 'allow rwx' mon 'allow rw' -o /etc/ceph/keyring.radosgw.gateway creates=/etc/ceph/keyring.radosgw.gateway
+  when: cephx and radosgw
+  changed_when: False
+
 - name: Copy keys to the ansible server
   fetch: src={{ item }} dest=fetch/
   when: ansible_fqdn == hostvars[groups['mons'][0]]['ansible_fqdn'] and cephx
@@ -34,3 +39,4 @@
     - /etc/ceph/ceph.client.admin.keyring # just in case another application needs it
     - /var/lib/ceph/bootstrap-osd/ceph.keyring # this handles the non-colocation case
     - /var/lib/ceph/bootstrap-mds/ceph.keyring
+    - /etc/ceph/keyring.radosgw.gateway
