@@ -5,33 +5,31 @@ Ansible playbook for Ceph!
 
 ## What does it do?
 
+General support for:
+
+* Monitors
+* OSDs
+* MDSs
+* RGW
+
+More details:
+
 * Authentication (cephx), this can be disabled.
 * Supports cluster public and private network.
 * Monitors deployment. You can easily start with one monitor and then progressively add new nodes. So can deploy one monitor for testing purpose. For production, I recommend to a
 * Object Storage Daemons. Like the monitors you can start with a certain amount of nodes and then grow this number. The playbook either supports a dedicated device for storing th
 * Metadata daemons.
 * Collocation. The playbook supports collocating Monitors, OSDs and MDSs on the same machine.
-* The playbook was validated on both Debian Wheezy and Ubuntu 12.04 LTS.
+* The playbook was validated on Debian Wheezy, Ubuntu 12.04 LTS and CentOS 6.4.
 * Tested on Ceph Dumpling and Emperor.
 * A rolling upgrade playbook was written, an upgrade from Dumpling to Emperor was performed and worked.
 
 
 ## Setup with Vagrant
 
-First modify the `rc` file we your home directory:
+First source the `rc` file:
 
-    export ANSIBLE_CONFIG=<whatever_path>/.ansible.cfg
-
-Do the same for the `.ansible.cfg` file:
-
-    [defaults]
-    host_key_checking = False
-    remote_user = vagrant
-    hostfile = <whatever_path>/hosts
-    log_path = <whatever_path>/ansible.log
-    ansible_managed = Ansible managed: modified on %Y-%m-%d %H:%M:%S by {uid}
-    private_key_file = ~/.vagrant.d/insecure_private_key
-    error_on_undefined_vars = False
+    $ source rc
 
 Edit your `/etc/hosts` file with:
 
@@ -42,8 +40,9 @@ Edit your `/etc/hosts` file with:
     127.0.0.1   ceph-osd0
     127.0.0.1   ceph-osd1
     127.0.0.1   ceph-osd2
+    127.0.0.1   ceph-rgw
 
-**Now since we use Vagrant and port forwarding, don't forget to grab the SSH local port of your VMs.**
+**Now since we use Vagrant and port forwarding, don't forget to collect the SSH local port of your VMs.**
 Then edit your `hosts` file accordingly.
 
 Ok let's get serious now.
@@ -89,12 +88,17 @@ ceph-osd1 | success >> {
     "changed": false,
     "ping": "pong"
 }
+
+ceph-rgw | success >> {
+    "changed": false,
+    "ping": "pong"
+}
 ```
 
 Ready to deploy? Let's go!
 
 ```bash
-$ ansible-playbook -f 6 -v site.yml
+$ ansible-playbook -f 7 -v site.yml
 ...
 ...
  ____________
@@ -113,6 +117,7 @@ ceph-mon2                  : ok=13   changed=9    unreachable=0    failed=0
 ceph-osd0                  : ok=19   changed=12   unreachable=0    failed=0
 ceph-osd1                  : ok=19   changed=12   unreachable=0    failed=0
 ceph-osd2                  : ok=19   changed=12   unreachable=0    failed=0
+ceph-rgw                  : ok=27   changed=6   unreachable=0    failed=0
 ```
 
 Check the status:
