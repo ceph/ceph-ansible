@@ -11,12 +11,18 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.define :rgw do |rgw|
     rgw.vm.network :private_network, ip: "192.168.0.2"
     rgw.vm.host_name = "ceph-rgw"
+    rgw.vm.provider :virtualbox do |vb|
+      vb.customize ["modifyvm", :id, "--memory", "192"]
+    end
   end
 
   (0..2).each do |i|
     config.vm.define "mon#{i}" do |mon|
       mon.vm.hostname = "ceph-mon#{i}"
       mon.vm.network :private_network, ip: "192.168.0.1#{i}"
+      mon.vm.provider :virtualbox do |vb|
+        vb.customize ["modifyvm", :id, "--memory", "192"]
+      end
     end
   end
 
@@ -29,6 +35,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         osd.vm.provider :virtualbox do |vb|
           vb.customize [ "createhd", "--filename", "disk-#{i}-#{d}", "--size", "1000" ]
           vb.customize [ "storageattach", :id, "--storagectl", "SATA Controller", "--port", 3+d, "--device", 0, "--type", "hdd", "--medium", "disk-#{i}-#{d}.vdi" ]
+          vb.customize ["modifyvm", :id, "--memory", "192"]
         end
       end
     end
