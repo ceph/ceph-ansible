@@ -1,0 +1,15 @@
+---
+- apt_repository: repo=ppa:vbernat/haproxy-1.5 state=present
+
+- apt: name={{ item }} state=present
+  with_items:
+   - haproxy
+   - socat
+
+- copy: src=precise/haproxy dest=/etc/default/haproxy
+  notify: restart haproxy
+
+- template: src=precise/haproxy.cfg dest=/etc/haproxy/haproxy.cfg backup=yes
+  notify: restart haproxy
+
+- service: name=haproxy state=started enabled=yes
