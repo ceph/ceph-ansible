@@ -95,6 +95,15 @@ ceph-rgw | success >> {
 }
 ```
 
+** DON'T FORGET TO GENERATE A FSID FOR THE CLUSTER AND A KEY FOR THE MONITOR**
+
+For this go to `group_vars/all` and `group_vars/mons` and append the fsid and key.
+
+These are **ONLY** examples, **DON'T USE THEM IN PRODUCTION**:
+
+* fsid: 4a158d27-f750-41d5-9e7f-26ce4c9d2d45
+* monitor: AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==
+
 Ready to deploy? Let's go!
 
 ```bash
