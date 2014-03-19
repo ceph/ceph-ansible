@@ -95,7 +95,7 @@ ceph-rgw | success >> {
 }
 ```
 
-** DON'T FORGET TO GENERATE A FSID FOR THE CLUSTER AND A KEY FOR THE MONITOR**
+**DON'T FORGET TO GENERATE A FSID FOR THE CLUSTER AND A KEY FOR THE MONITOR**
 
 For this go to `group_vars/all` and `group_vars/mons` and append the fsid and key.
 
