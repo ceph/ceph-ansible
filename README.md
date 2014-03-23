@@ -126,7 +126,7 @@ ceph-mon2                  : ok=13   changed=9    unreachable=0    failed=0
 ceph-osd0                  : ok=19   changed=12   unreachable=0    failed=0
 ceph-osd1                  : ok=19   changed=12   unreachable=0    failed=0
 ceph-osd2                  : ok=19   changed=12   unreachable=0    failed=0
-ceph-rgw                  : ok=27   changed=6   unreachable=0    failed=0
+ceph-rgw                   : ok=23   changed=16   unreachable=0    failed=0
 ```
 
 Check the status:
