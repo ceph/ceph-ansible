@@ -1,0 +1,30 @@
+---
+# This playbook was made to automate Ceph servers maintenance
+# Typical use case: hardware change
+# By running this playbook you will set the 'noout' flag on your
+# cluster, which means that OSD **can't** be marked as out
+# of the CRUSH map, but they will be marked as down.
+# Basically we tell the cluster to don't move any data since
+# the operation won't last for too long.
+
+- hosts: <your_host>
+  gather_facts: False
+
+  tasks:
+
+  - name: Set the noout flag
+    command: ceph osd set noout
+    delegate_to: <your_monitor>
+
+  - name: Turn off the server
+    command: poweroff
+
+  - name: Wait for the server to go down
+    local_action: wait_for host=<your_host> port=22 state=stopped
+
+  - name: Wait for the server to come up
+    local_action: wait_for host=<your_host port=22 delay=10 timeout=3600
+
+  - name: Unset the noout flag
+    command: ceph osd unset noout
+    delegate_to: <your_monitor>
