@@ -29,6 +29,8 @@
 {% endif %}
 
 [mon]
+  mon osd down out interval = {{ mon_osd_down_out_interval }}
+  mon osd mon down reporters = {{ mon_osd_mon_down_reporters }}
 {% for host in groups['mons'] %}
   {% if hostvars[host]['ansible_hostname'] is defined %}
   [mon.{{ hostvars[host]['ansible_hostname'] }}]
@@ -51,7 +53,15 @@
 {% if public_network is defined %}
   public_network = {{ public_network }}
 {% endif %}
-
+  osd mon heartbeat interval = {{ osd_mon_heartbeat_interval }}
+  # Performance tuning
+  filestore merge threshold = {{ filestore_merge_threshold }}
+  filestore split multiple = {{ filestore_split_multiple }}
+  osd op threads = {{ osd_op_threads }}
+  # Recovery tuning
+  osd recovery max active = {{ osd_recovery_max_active }}
+  osd max backfills = {{ osd_max_backfills }}
+  osd recovery op priority = {{ osd_recovery_op_priority }}
 {% if mds %}
 [mds]
 {% for host in groups['mdss'] %}
