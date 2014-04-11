@@ -1,20 +1,26 @@
 ---
 # Variables here are applicable to all host groups NOT roles
 
-# Setup options
+## Setup options
+#
 distro_release: "{{ facter_lsbdistcodename }}"
 apt_key: http://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
 ceph_release: emperor
 redhat_distro: el6 # supported distros are el6, rhel6, f18, f19, opensuse12.2, sles11
 
-# Ceph options
+## Ceph options
+#
 cephx: true
 fsid: # /!\ GENERATE ONE WITH 'uuidgen -r' /!\
 
-# Monitors options
+## Monitor options
+#
 monitor_interface: eth1
+mon_osd_down_out_interval: 600
+mon_osd_mon_down_reporters: 7 # number of OSDs per host + 1
 
-# MDS options
+## MDS options
+#
 mds: true # disable mds configuration in ceph.conf
 
 # Rados Gateway options
@@ -23,7 +29,8 @@ redhat_distro_ceph_extra: centos6.4 # supported distros are centos6.3, centos6.4
 radosgw_interface: eth1 # the public interface which the radosgw talks to the world with, this variable is used in the haproxy role, this does not need to be set if haproxy is not used.
 #radosgw_dns_name: your.subdomain.tld # subdomains used by radosgw. See http://ceph.com/docs/master/radosgw/config/#enabling-subdomain-s3-calls
 
-# OSD options
+## OSD options
+#
 journal_size: 100
 pool_default_pg_num: 128
 pool_default_pgp_num: 128
@@ -31,3 +38,12 @@ pool_default_size: 2
 cluster_network: 192.168.0.0/24
 public_network: 192.168.0.0/24
 osd_mkfs_type: xfs
+osd_mon_heartbeat_interval: 30
+# Performance tuning
+filestore_merge_threshold: 40
+filestore_split_multiple: 8
+osd_op_threads: 8
+# Recovery tuning
+osd_recovery_max_active: 5
+osd_max_backfills: 2
+osd_recovery_op_priority: 2
