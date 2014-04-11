@@ -1,0 +1,30 @@
+---
+# This playbook purges Ceph
+# It removes: packages, configuration files and ALL THE DATA
+
+---
+
+- hosts:
+  - mons
+  - osds
+
+  tasks:
+
+  - name: Purge Ceph
+    command: ceph-deploy purge {{ ansible_hostname }}
+    delegate_to: 127.0.0.1
+
+  - name: Remove OSD data
+    shell: rm -rf /var/lib/ceph/osd/*/*
+    ignore_errors: true
+
+  - name: Purge remaining data
+    command: ceph-deploy purgedata {{ ansible_hostname }}
+    delegate_to: 127.0.0.1
+
+  - name: Purge partitions
+    shell: parted -s {{ item[0] }} rm {{ item[1] }}
+    with_nested:
+      - devices
+      - ['1', '2']
+    ignore_errors: true
