@@ -16,8 +16,8 @@ More details:
 
 * Authentication (cephx), this can be disabled.
 * Supports cluster public and private network.
-* Monitors deployment. You can easily start with one monitor and then progressively add new nodes. So can deploy one monitor for testing purpose. For production, I recommend to a
-* Object Storage Daemons. Like the monitors you can start with a certain amount of nodes and then grow this number. The playbook either supports a dedicated device for storing th
+* Monitors deployment. You can easily start with one monitor and then progressively add new nodes. So can deploy one monitor for testing purpose. For production, I recommend to always use an odd number of monitors, 3 tends to be the standard.
+* Object Storage Daemons. Like the monitors you can start with a certain amount of nodes and then grow this number. The playbook either supports a dedicated device for storing the journal or both journal and OSD data on the same device (using a tiny partition at the beginning of the device).
 * Metadata daemons.
 * Collocation. The playbook supports collocating Monitors, OSDs and MDSs on the same machine.
 * The playbook was validated on Debian Wheezy, Ubuntu 12.04 LTS and CentOS 6.4.
