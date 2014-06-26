@@ -11,8 +11,11 @@
   when: ansible_os_family == 'RedHat'
 
 - name: Copy OSD bootstrap key
-  copy: src=fetch/{{ fsid }}/var/lib/ceph/bootstrap-osd/ceph.keyring dest=/var/lib/ceph/bootstrap-osd/ceph.keyring owner=root group=root mode=600
+  copy: src=fetch/{{ fsid }}/{{ item }} dest={{ item }} owner=root group=root mode=600
   when: cephx
+  with_items:
+    - /var/lib/ceph/bootstrap-osd/ceph.keyring
+    - /etc/ceph/ceph.client.admin.keyring
 
 # NOTE (leseb): current behavior of ceph-disk is to fail when the device is mounted "stderr: ceph-disk: Error: Device is mounted: /dev/sdb1"
 # the return code is 1, which makes sense, however ideally if ceph-disk will detect a ceph partition
