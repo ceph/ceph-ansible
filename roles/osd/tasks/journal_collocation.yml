@@ -21,6 +21,13 @@
 # I believe it's safer
 #
 
+- name: Check if device is a partition or a disk
+  shell: echo '{{ item }}' | egrep '/dev/[a-z]{3}[0-9]$'
+  ignore_errors: true
+  with_items: devices
+  register: ispartition
+  changed_when: False
+
 - name: If partition named 'ceph' exists
   shell: parted --script {{ item }} print | egrep -sq '^ 1.*ceph'
   ignore_errors: True
@@ -29,9 +36,9 @@
   changed_when: False
 
 # Prepare means
-# - create GPT partition
+# - create GPT partition for a disk, or a loop label for a partition
 # - mark the partition with the ceph type uuid
-# - create a file system
+# - create a XFS file system
 # - mark the fs as ready for ceph consumption
 # - entire data disk is used (one big partition)
 # - a new partition is added to the journal disk (so it can be easily shared)
@@ -41,12 +48,16 @@
 # if you have 64 disks with 4TB each, this will take a while
 # since Ansible will sequential process the loop
 
+# NOTE (alahouze): if the device is a partition, the parted command below has
+# failed, this is why we check if the device is a partition too.
+
 - name: Prepare OSD disk(s)
-  command: ceph-disk prepare {{ item.1 }}
-  when: item.0.rc != 0 and journal_collocation
+  command: ceph-disk prepare {{ item.2 }}
+  when: (item.0.rc != 0 or item.1.rc != 0) and journal_collocation
   ignore_errors: True
   with_together:
     - parted.results
+    - ispartition.results
     - devices
 
 # Activate means:
@@ -56,9 +67,27 @@
 # - start ceph-osd
 #
 
-- name: Activate OSD(s)
-  command: ceph-disk activate {{ item }}1
-  with_items: devices
+# This task if for disk device only because of the explicit use of the first
+# partition.
+
+- name: Activate OSD(s) when device is a disk
+  command: ceph-disk activate {{ item.2 }}1
+  with_together:
+    - parted.results
+    - ispartition.results
+    - devices
+  when: item.0.rc == 0 and item.1.rc != 0
+  ignore_errors: True
+  changed_when: False
+
+# This task is for partitions because we don't explicitly use a partition.
+
+- name: Activate OSD(s) when device is a partition
+  command: ceph-disk activate {{ item.1 }}
+  with_together:
+    - ispartition.results
+    - devices
+  when: item.0.rc == 0
   ignore_errors: True
   changed_when: False
 
