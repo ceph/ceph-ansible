@@ -1,0 +1,90 @@
+# {{ ansible_managed }}
+
+[global]
+{% if cephx %}
+  auth cluster required = cephx
+  auth service required = cephx
+  auth client required = cephx
+{% else %}
+  auth cluster required = none
+  auth service required = none
+  auth client required = none
+  auth supported = none
+{% endif %}
+  fsid = {{ fsid }}
+{% if pool_default_pg_num is defined %}
+  osd pool default pg num = {{ pool_default_pg_num }}
+{% endif %}
+{% if pool_default_pgp_num is defined %}
+  osd pool default pgp num = {{ pool_default_pgp_num }}
+{% endif %}
+{% if pool_default_size is defined %}
+  osd pool default size = {{ pool_default_size }}
+{% endif %}
+{% if pool_default_min_size is defined %}
+  osd pool default min size = {{ pool_default_min_size }}
+{% endif %}
+{% if pool_default_crush_rule is defined %}
+  osd pool default crush rule = {{ pool_default_crush_rule }}
+{% endif %}
+{% if common_single_host_mode is defined %}
+  osd crush chooseleaf type = 0
+{% endif %}
+
+[mon]
+  mon osd down out interval = {{ mon_osd_down_out_interval }}
+  mon osd min down reporters = {{ mon_osd_min_down_reporters }}
+{% for host in groups['mons'] %}
+  {% if hostvars[host]['ansible_hostname'] is defined %}
+  [mon.{{ hostvars[host]['ansible_hostname'] }}]
+    host = {{ hostvars[host]['ansible_hostname'] }}
+    mon addr = {{ hostvars[host]['ansible_' + monitor_interface ]['ipv4']['address'] }}
+  {% endif %}
+{% endfor %}
+
+[osd]
+{% if osd_mkfs_type is defined %}
+  osd mkfs type = {{ osd_mkfs_type }}
+{% endif %}
+  osd journal size = {{ journal_size }}
+{% if cluster_network is defined %}
+  cluster_network = {{ cluster_network }}
+{% endif %}
+{% if public_network is defined %}
+  public_network = {{ public_network }}
+{% endif %}
+  osd mon heartbeat interval = {{ osd_mon_heartbeat_interval }}
+  # Performance tuning
+  filestore merge threshold = {{ filestore_merge_threshold }}
+  filestore split multiple = {{ filestore_split_multiple }}
+  osd op threads = {{ osd_op_threads }}
+  # Recovery tuning
+  osd recovery max active = {{ osd_recovery_max_active }}
+  osd max backfills = {{ osd_max_backfills }}
+  osd recovery op priority = {{ osd_recovery_op_priority }}
+{% if mds %}
+[mds]
+{% for host in groups['mdss'] %}
+  {% if hostvars[host]['ansible_hostname'] is defined %}
+  [mds.{{ hostvars[host]['ansible_hostname'] }}]
+    host = {{ hostvars[host]['ansible_hostname'] }}
+  {% endif %}
+{% endfor %}
+{% endif %}
+
+{% if radosgw %}
+{% for host in groups['rgws'] %}
+{% if hostvars[host]['ansible_hostname'] is defined %}
+[client.radosgw.gateway]
+  {% if radosgw_dns_name is defined %}
+    rgw dns name = {{ radosgw_dns_name }}
+  {% endif %}
+  host = {{ hostvars[host]['ansible_hostname'] }}
+  keyring = /etc/ceph/keyring.radosgw.gateway
+  rgw socket path = /tmp/radosgw.sock
+  log file = /var/log/ceph/radosgw.log
+  rgw data = /var/lib/ceph/radosgw/{{ hostvars[host]['ansible_hostname'] }}
+  rgw print continue = false
+{% endif %}
+{% endfor %}
+{% endif %}
