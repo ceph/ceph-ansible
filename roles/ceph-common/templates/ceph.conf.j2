@@ -1,3 +1,4 @@
+#jinja2:lstrip_blocks:True
 # {{ ansible_managed }}
 
 [global]
@@ -30,15 +31,71 @@
 {% if common_single_host_mode is defined %}
   osd crush chooseleaf type = 0
 {% endif %}
+{% if public_network is defined and public_network | is_ipv6 %}
+  ms_bind_ipv6 = true
+{% endif %}
 
 [mon]
   mon osd down out interval = {{ mon_osd_down_out_interval }}
   mon osd min down reporters = {{ mon_osd_min_down_reporters }}
 {% for host in groups['mons'] %}
   {% if hostvars[host]['ansible_hostname'] is defined %}
+
   [mon.{{ hostvars[host]['ansible_hostname'] }}]
     host = {{ hostvars[host]['ansible_hostname'] }}
-    mon addr = {{ hostvars[host]['ansible_' + monitor_interface ]['ipv4']['address'] }}
+    {% if monitor_interface is defined %}
+      {# 'monitor_interface' is defined, we try to get the interface address #}
+      {% if public_network is defined and public_network | is_ipv6 %}
+        {% set address = hostvars[host]['ansible_' + monitor_interface ]['ipv6'][0]['address'] %}
+    # Address found using 'monitor_interface' variable for IPv6 public network.
+    mon addr = [{{ address }}]
+      {% else %}
+        {% set address = hostvars[host]['ansible_' + monitor_interface ]['ipv4']['address'] %}
+    # Address found using 'monitor_interface' variable for IPv4 public network.
+    mon addr = {{ address }}
+      {% endif %}
+    {% elif public_network is defined %}
+      {# 'monitor_interface' is not defined, we will try to found one matching public_network in the host interfaces. #}
+      {% for interface in hostvars[host]['ansible_interfaces'] %}
+        {% set iface_details = hostvars[host]['ansible_' + interface] %}
+        {# Once 'mon_addr' is defined, we don't need to find the address. And we'll do it only on active interfaces. #}
+        {% if mon_addr is not defined and iface_details['active'] %}
+          {# We try to get IP address from the interface within the 'public_network'. #}
+          {% if public_network | is_ipv6 and iface_details['ipv6'] is defined %}
+            {% set address = iface_details['ipv6'][0]['address'] %}
+            {% if address | in_network(public_network) %}
+              {% set mon_addr = address %}
+    # Address found using {{ interface }} interface for IPv6 public network.
+    mon addr = [{{ address }}]
+            {% endif %}
+          {% elif public_network | is_ipv4 and iface_details['ipv4'] is defined %}
+            {% set address = iface_details['ipv4']['address'] %}
+            {% if address | in_network(public_network) %}
+              {% set mon_addr = address %}
+    # Address found using {{ interface }} interface for IPv4 public network.
+    mon addr = {{ address }}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+        {% if loop.last %}
+          {# Last loop and we have not found any address, we will use the default interface one. #}
+          {% if mon_addr is not defined %}
+            {% if public_network | is_ipv6 %}
+    # Using default IPv6 for address because no interfaces match 'public_network'.
+    mon addr = {{ hostvars[host]['ansible_default_ipv6']['address'] }}
+            {% else %}
+    # Using default IPv4 for address because no interfaces match 'public_network'.
+    mon addr = {{ hostvars[host]['ansible_default_ipv4']['address'] }}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    {% else %}
+    {# No monitor_address not public_network is defined, we use the default IPv4 address. #}
+    {# We should never go here because public_network is defined in defaults. #}
+    # Using default IPv4 for address because 'monitor_interface' and 'public_network' are not defined..
+    mon addr = {{ hostvars[host]['ansible_default_ipv4']['address'] }}
+    {% endif %}
   {% endif %}
 {% endfor %}
 
@@ -48,10 +105,18 @@
 {% endif %}
   osd journal size = {{ journal_size }}
 {% if cluster_network is defined %}
+  {% if cluster_network | is_ipv6 %}
+  cluster_network = [{{ cluster_network | address }}]/{{ cluster_network | mask }}
+  {% else %}
   cluster_network = {{ cluster_network }}
+  {% endif %}
 {% endif %}
 {% if public_network is defined %}
+  {% if public_network | is_ipv6 %}
+  public_network = [{{ public_network | address }}]/{{ public_network | mask }}
+  {% else %}
   public_network = {{ public_network }}
+  {% endif %}
 {% endif %}
   osd mon heartbeat interval = {{ osd_mon_heartbeat_interval }}
   # Performance tuning
@@ -63,6 +128,7 @@
   osd max backfills = {{ osd_max_backfills }}
   osd recovery op priority = {{ osd_recovery_op_priority }}
 {% if mds %}
+
 [mds]
 {% for host in groups['mdss'] %}
   {% if hostvars[host]['ansible_hostname'] is defined %}
@@ -71,13 +137,13 @@
   {% endif %}
 {% endfor %}
 {% endif %}
-
 {% if radosgw %}
 {% for host in groups['rgws'] %}
 {% if hostvars[host]['ansible_hostname'] is defined %}
+
 [client.radosgw.gateway]
   {% if radosgw_dns_name is defined %}
-    rgw dns name = {{ radosgw_dns_name }}
+  rgw dns name = {{ radosgw_dns_name }}
   {% endif %}
   host = {{ hostvars[host]['ansible_hostname'] }}
   keyring = /etc/ceph/keyring.radosgw.gateway
