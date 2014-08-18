@@ -27,16 +27,24 @@ ansible_provision = Proc.new do |ansible|
   ansible.limit = 'all'
 end
 
-Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  config.vm.box = "precise64"
-  config.vm.box_url = "http://files.vagrantup.com/precise64.box"
+def create_vmdk(name, size)
+  dir = Pathname.new(__FILE__).expand_path.dirname
+  path = File.join(dir, '.vagrant', name + '.vmdk')
+  %x(vmware-vdiskmanager -c -s #{size} -t 0 -a scsi #{path} 2>&1 > /dev/null) unless File.exist?(path)
+  return path
+end
 
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "hashicorp/precise64"
 
   config.vm.define :rgw do |rgw|
     rgw.vm.network :private_network, ip: "192.168.0.2"
     rgw.vm.host_name = "ceph-rgw"
     rgw.vm.provider :virtualbox do |vb|
       vb.customize ["modifyvm", :id, "--memory", "192"]
+    end
+    rgw.vm.provider :vmware_fusion do |v|
+      v.vmx['memsize'] = '192'
     end
   end
 
@@ -47,6 +55,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mon.vm.provider :virtualbox do |vb|
         vb.customize ["modifyvm", :id, "--memory", "192"]
       end
+      mon.vm.provider :vmware_fusion do |v|
+        v.vmx['memsize'] = '192'
+      end
     end
   end
 
@@ -55,12 +66,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       osd.vm.hostname = "ceph-osd#{i}"
       osd.vm.network :private_network, ip: "192.168.0.10#{i}"
       osd.vm.network :private_network, ip: "192.168.0.20#{i}"
-      (0..5).each do |d|
-        osd.vm.provider :virtualbox do |vb|
+      osd.vm.provider :virtualbox do |vb|
+        (0..5).each do |d|
           vb.customize [ "createhd", "--filename", "disk-#{i}-#{d}", "--size", "1000" ]
           vb.customize [ "storageattach", :id, "--storagectl", "SATA Controller", "--port", 3+d, "--device", 0, "--type", "hdd", "--medium", "disk-#{i}-#{d}.vdi" ]
-          vb.customize ["modifyvm", :id, "--memory", "192"]
         end
+        vb.customize ["modifyvm", :id, "--memory", "192"]
+      end
+      osd.vm.provider :vmware_fusion do |v|
+        (0..5).each do |d|
+          v.vmx["scsi0:#{d+1}.present"] = 'TRUE'
+          v.vmx["scsi0:#{d+1}.fileName"] = create_vmdk("disk-#{i}-#{d}", '1000MB')
+        end
+        v.vmx['memsize'] = '192'
       end
 
       # Run the provisioner after the last machine comes up
