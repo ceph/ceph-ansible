@@ -20,6 +20,11 @@
 - name: Add Ceph extra
   apt_repository: repo='deb http://ceph.com/packages/ceph-extras/debian {{ ansible_lsb.codename }} main' state=present
 
+# TODO: Try to determine which Debian mirror is already in use on the target machine, then just append non-free
+- name: Add Debian non-free to be able to get the non-free fastcgi module
+  apt_repository: repo='deb http://mirrorservice.org/sites/ftp.debian.org/debian/ {{ ansible_lsb.codename }} non-free' state=present
+  when: ansible_distribution == "Debian"
+
 - name: Install Apache, fastcgi and Rados Gateway
   apt: pkg={{ item }} state=present
   with_items:
