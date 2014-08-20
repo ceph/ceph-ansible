@@ -37,5 +37,11 @@
     - ceph-mds       #|--> they don't get update so we need to force them
     - libcephfs1     #|
 
-- name: Generate ceph configuration file
+- name: Check for a Ceph socket
+  shell: stat /var/run/ceph/*.asok > /dev/null 2>&1
+  ignore_errors: true
+  register: socket
+
+- name: Generate Ceph configuration file
   template: src=ceph.conf.j2 dest=/etc/ceph/ceph.conf owner=root group=root mode=0644
+  notify: restart ceph
