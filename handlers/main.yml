@@ -2,3 +2,11 @@
 
 - name: "update apt cache"
   action: apt update-cache=yes
+
+- name: "restart ceph"
+  shell: service ceph restart ; service ceph-osd-all restart
+  when: socket.rc == 0 and ansible_distribution == 'Ubuntu'
+
+- name: "restart ceph"
+  command: service ceph restart
+  when: socket.rc == 0 and ansible_distribution == 'Debian' or ansible_os_family == 'RedHat'
