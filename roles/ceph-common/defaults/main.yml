@@ -14,20 +14,21 @@ redhat_distro: el6 # supported distros are el6, rhel6, f18, f19, opensuse12.2, s
 ## Ceph options
 #
 cephx: true
+cephx_require_signatures: true
+cephx_cluster_require_signatures: true
+cephx_service_require_signatures: false
+disable_in_memory_logs: true
+
 ## Monitor options
 #
 monitor_interface: eth1
 mon_osd_down_out_interval: 600
 mon_osd_min_down_reporters: 7 # number of OSDs per host + 1
-
-## MDS options
-#
-mds: true # disable mds configuration in ceph.conf
-
-# Rados Gateway options
-#
-radosgw: true # referenced in mon role too.
-#radosgw_dns_name: your.subdomain.tld # subdomains used by radosgw. See http://ceph.com/docs/master/radosgw/config/#enabling-subdomain-s3-calls
+mon_clock_drift_allowed: .15
+mon_clock_drift_warn_backoff: 30
+mon_osd_full_ratio: .95
+mon_osd_nearfull_ratio: .85
+mon_osd_report_timeout: 300
 
 ## OSD options
 #
@@ -38,15 +39,31 @@ pool_default_size: 2
 cluster_network: 192.168.0.0/24
 public_network: 192.168.0.0/24
 osd_mkfs_type: xfs
+osd_mkfs_options_xfs: -f -i size=2048
+osd_mount_options_xfs: noatime
 osd_mon_heartbeat_interval: 30
+# Object backend
+osd_objectstore: filestore
 # Performance tuning
 filestore_merge_threshold: 40
 filestore_split_multiple: 8
 osd_op_threads: 8
+filestore_op_threads: 8
+filestore_max_sync_interval: 5
+osd_max_scrubs: 1
 # Recovery tuning
 osd_recovery_max_active: 5
 osd_max_backfills: 2
 osd_recovery_op_priority: 2
+
+## MDS options
+#
+mds: true # disable mds configuration in ceph.conf
+
+# Rados Gateway options
+#
+radosgw: true # referenced in monitor role too.
+#radosgw_dns_name: your.subdomain.tld # subdomains used by radosgw. See http://ceph.com/docs/master/radosgw/config/#enabling-subdomain-s3-calls
 
 ## Testing mode
 # enable this mode _only_ when you have a single node
