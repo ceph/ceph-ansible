@@ -44,7 +44,13 @@
 
 - name: Generate Ceph configuration file
   template: src=ceph.conf.j2 dest=/etc/ceph/ceph.conf owner=root group=root mode=0644
-  notify: restart ceph
+  notify: restart ceph ubuntu
+  when: ansible_distribution == 'Ubuntu'
+
+- name: Generate Ceph configuration file
+  template: src=ceph.conf.j2 dest=/etc/ceph/ceph.conf owner=root group=root mode=0644
+  notify: restart ceph debian redhat
+  when: ansible_distribution == 'Debian' or ansible_os_family == 'RedHat'
 
 - name: Disable OSD directory parsing by updatedb
   command: updatedb -e /var/lib/ceph
