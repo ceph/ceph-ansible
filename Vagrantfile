@@ -38,7 +38,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "hashicorp/precise64"
 
   config.vm.define :rgw do |rgw|
-    rgw.vm.network :private_network, ip: "192.168.0.2"
+    rgw.vm.network :private_network, ip: "192.168.42.2"
     rgw.vm.host_name = "ceph-rgw"
     rgw.vm.provider :virtualbox do |vb|
       vb.customize ["modifyvm", :id, "--memory", "192"]
@@ -51,7 +51,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NMONS-1).each do |i|
     config.vm.define "mon#{i}" do |mon|
       mon.vm.hostname = "ceph-mon#{i}"
-      mon.vm.network :private_network, ip: "192.168.0.1#{i}"
+      mon.vm.network :private_network, ip: "192.168.42.1#{i}"
       mon.vm.provider :virtualbox do |vb|
         vb.customize ["modifyvm", :id, "--memory", "192"]
       end
@@ -64,8 +64,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NOSDS-1).each do |i|
     config.vm.define "osd#{i}" do |osd|
       osd.vm.hostname = "ceph-osd#{i}"
-      osd.vm.network :private_network, ip: "192.168.0.10#{i}"
-      osd.vm.network :private_network, ip: "192.168.0.20#{i}"
+      osd.vm.network :private_network, ip: "192.168.42.10#{i}"
+      osd.vm.network :private_network, ip: "192.168.42.20#{i}"
       osd.vm.provider :virtualbox do |vb|
         (0..1).each do |d|
           vb.customize [ "createhd", "--filename", "disk-#{i}-#{d}", "--size", "11000" ]
