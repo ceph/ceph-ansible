@@ -67,16 +67,16 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       osd.vm.network :private_network, ip: "192.168.0.10#{i}"
       osd.vm.network :private_network, ip: "192.168.0.20#{i}"
       osd.vm.provider :virtualbox do |vb|
-        (0..5).each do |d|
-          vb.customize [ "createhd", "--filename", "disk-#{i}-#{d}", "--size", "1000" ]
+        (0..1).each do |d|
+          vb.customize [ "createhd", "--filename", "disk-#{i}-#{d}", "--size", "11000" ]
           vb.customize [ "storageattach", :id, "--storagectl", "SATA Controller", "--port", 3+d, "--device", 0, "--type", "hdd", "--medium", "disk-#{i}-#{d}.vdi" ]
         end
         vb.customize ["modifyvm", :id, "--memory", "192"]
       end
       osd.vm.provider :vmware_fusion do |v|
-        (0..5).each do |d|
+        (0..1).each do |d|
           v.vmx["scsi0:#{d+1}.present"] = 'TRUE'
-          v.vmx["scsi0:#{d+1}.fileName"] = create_vmdk("disk-#{i}-#{d}", '1000MB')
+          v.vmx["scsi0:#{d+1}.fileName"] = create_vmdk("disk-#{i}-#{d}", '11000MB')
         end
         v.vmx['memsize'] = '192'
       end
