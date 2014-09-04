@@ -22,19 +22,19 @@
     - hdparm
 
 - name: Install the Ceph stable repository key
-  rpm_key: key=cephstable.asc state=present
+  rpm_key: key={{ ceph_key }} state=present
   when: ceph_stable
 
 - name: Install the Ceph developement repository key
-  rpm_key: key=cephdev.asc state=present
+  rpm_key: key={{ ceph_key }} state=present
   when: ceph_dev
 
 - name: Add Ceph stable repository
-  command: rpm -U http://ceph.com/rpm-{{ ceph_stable_release }}/{{ redhat_distro }}/noarch/ceph-release-1-0.el6.noarch.rpm creates=/etc/yum.repos.d/cephstable.repo
+  command: rpm -U http://ceph.com/rpm-{{ ceph_stable_release }}/{{ redhat_distro }}/noarch/ceph-release-1-0.el6.noarch.rpm creates=/etc/yum.repos.d/ceph.repo
   when: ceph_stable
 
 - name: Add Ceph development repository
-  command: rpm -U http://gitbuilder.ceph.com/ceph-rpm-{{ ansible_lsb.codename }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.el6.noarch.rpm {{ ansible_lsb.codename }} main creates=/etc/yum.repos.d/cephdev.repo
+  command: rpm -U http://gitbuilder.ceph.com/ceph-rpm-{{ ceph_dev_redhat_distro }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro }}.noarch.rpm creates=/etc/yum.repos.d/ceph.repo
   when: ceph_dev
 
 - name: Install Ceph
@@ -51,3 +51,4 @@
 
 - name: Disable OSD directory parsing by updatedb
   command: updatedb -e /var/lib/ceph
+  ignore_errors: true
