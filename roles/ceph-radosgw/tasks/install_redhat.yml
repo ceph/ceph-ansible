@@ -2,16 +2,12 @@
 ## Deploy RADOS Gateway
 #
 
-- name: Copy RGW bootstrap key
-  copy: src=fetch/{{ fsid }}/etc/ceph/keyring.radosgw.gateway dest=/etc/ceph/keyring.radosgw.gateway owner=root group=root mode=600
-  when: cephx
-
-- name: Set RGW bootstrap key permissions
-  file: path=/etc/ceph/keyring.radosgw.gateway mode=0644 owner=root group=root
-  when: cephx
-
 - name: Add Ceph extra
-  template: src=ceph-extra.repo dest=/etc/yum.repos.d owner=root group=root
+  template: >
+    src=ceph-extra.repo 
+    dest=/etc/yum.repos.d 
+    owner=root 
+    group=root
 
 - name: Add special fastcgi repository key
   rpm_key: key=http://dag.wieers.com/rpm/packages/RPM-GPG-KEY.dag.txt
@@ -19,8 +15,10 @@
 - name: Add special fastcgi repository
   command: rpm -ivh http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
 
-- name: Install Apache, fastcgi, and Rados Gateway
-  yum: name={{ item }} state=present
+- name: "Install Apache, fastcgi, and Rados Gateway"
+  yum: >
+    name={{ item }}
+    state=present
   with_items:
     - httpd
     - mod_fastcgi
@@ -31,16 +29,30 @@
 #
 
 - name: Install Rados Gateway vhost
-  template: src=rgw.conf dest=/etc/httpd/conf.d/rgw.conf owner=root group=root
+  template: >
+    src=rgw.conf
+    dest=/etc/httpd/conf.d/rgw.conf
+    owner=root
+    group=root
 
 ## Prepare RGW
 #
 
 - name: Create RGW directory
-  file: path=/var/lib/ceph/radosgw/{{ ansible_fqdn }} state=directory owner=root group=root mode=0644
+  file: >
+    path=/var/lib/ceph/radosgw/{{ ansible_fqdn }}
+    state=directory
+    owner=root
+    group=root
+    mode=0644
 
 - name: Install s3gw.fcgi script
-  copy: src=s3gw.fcgi dest=/var/www/s3gw.fcgi mode=0555 owner=root group=root
+  copy: >
+    src=s3gw.fcgi
+    dest=/var/www/s3gw.fcgi
+    mode=0555
+    owner=root
+    group=root
 
 - name: Disable default site
   shell: sed -i "s/^[^+#]/#/g" /etc/httpd/conf.d/welcome.conf

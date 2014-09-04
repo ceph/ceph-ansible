@@ -1,12 +1,29 @@
 ---
 ## Deploy Ceph Oject Storage Daemon(s)
-#
+
+- name: Install dependencies
+  apt: >
+    pkg=parted 
+    state=present
+  when: ansible_os_family == 'Debian'
+
+- name: Install dependencies
+  yum: >
+    name=parted 
+    state=present
+  when: ansible_os_family == 'RedHat'
+
+- name: Copy OSD bootstrap key
+  copy: >
+    src=fetch/{{ fsid }}/var/lib/ceph/bootstrap-osd/ceph.keyring 
+    dest=/var/lib/ceph/bootstrap-osd/ceph.keyring 
+    owner=root 
+    group=root 
+    mode=600
+  when: cephx
 
 - include: journal_collocation.yml
   when: journal_collocation
-
-- include: raw_journal.yml
-  when: raw_journal
 
 - include: raw_multi_journal.yml
   when: raw_multi_journal

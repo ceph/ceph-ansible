@@ -1,0 +1,47 @@
+---
+- name: Install dependencies
+  apt: > 
+    pkg={{ item }} 
+    state=present 
+    update_cache=yes 
+    cache_valid_time=3600
+  with_items:
+    - python-pycurl
+    - ntp
+    - hdparm
+
+- name: Install the Ceph repository stable key
+  apt_key: > 
+    data="{{ lookup('file', 'cephstable.asc') }}"
+    state=present
+  when: ceph_stable
+
+- name: Install the Ceph developement repository key
+  apt_key: > 
+    data="{{ lookup('file', 'cephdev.asc') }}"
+    state=present
+  when: ceph_dev
+
+- name: Add Ceph stable repository
+  apt_repository: > 
+    repo="deb http://ceph.com/debian-{{ ceph_stable_release }}/ {{ ansible_lsb.codename }} main"
+    state=present
+  when: ceph_stable
+
+- name: Add Ceph development repository
+  apt_repository: >
+    repo="deb http://gitbuilder.ceph.com/ceph-deb-{{ ansible_lsb.codename }}-x86_64-basic/ref/{{ ceph_dev_branch }} {{ ansible_lsb.codename }} main"
+    state=present
+  when: ceph_dev
+
+- name: Install Ceph
+  apt: >
+    pkg={{ item }}
+    state=latest
+  with_items:
+    - ceph
+    - ceph-common    #|
+    - ceph-fs-common #|--> yes, they are already all dependencies from 'ceph'
+    - ceph-fuse      #|--> however while proceding to rolling upgrades and the 'ceph' package upgrade
+    - ceph-mds       #|--> they don't get update so we need to force them
+    - libcephfs1     #|
