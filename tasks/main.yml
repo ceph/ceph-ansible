@@ -1,8 +1,36 @@
 ---
-## Check OS family
-#
+- name: Fail on unsupported system
+  fail: "msg=System not supported {{ ansible_system }}"
+  when: "ansible_system not in ['Linux']"
 
-- include: RedHat.yml
+- name: Fail on unsupported architecture
+  fail: "msg=Architecture not supported {{ ansible_architecture }}"
+  when: "ansible_architecture not in ['x86_64']"
+
+- name: Fail on unsupported distribution
+  fail: "msg=Distribution not supported {{ ansible_os_family }}"
+  when: "ansible_os_family not in ['Debian', 'RedHat']"
+
+- include: install_on_redhat.yml
   when: ansible_os_family == 'RedHat'
-- include: Debian.yml
+- include: install_on_debian.yml
   when: ansible_os_family == 'Debian'
+
+- name: Check for a Ceph socket
+  shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
+  ignore_errors: true
+  register: socket
+
+- name: Generate Ceph configuration file
+  template: >
+    src=ceph.conf.j2 
+    dest=/etc/ceph/ceph.conf 
+    owner=root 
+    group=root 
+    mode=0644
+  notify:
+    - restart ceph
+    - restart ceph-osd-all on ubuntu
+
+- name: Disable OSD directory parsing by updatedb
+  command: updatedb -e /var/lib/ceph
