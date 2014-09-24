@@ -52,6 +52,16 @@
   ignore_errors: true
   register: socket
 
+- name: Generate cluster UUID 
+  shell: uuidgen | tee /etc/ceph_cluster_uuid.conf creates=/etc/ceph_cluster_uuid.conf
+  connection: local
+  register: cluster_uuid
+
+- name: Read cluster UUID if its already exists
+  shell: cat /etc/ceph_cluster_uuid.conf removes=/etc/ceph_cluster_uuid.conf
+  connection: local
+  register: cluster_uuid
+
 - name: Generate Ceph configuration file
   template: src=ceph.conf.j2 dest=/etc/ceph/ceph.conf owner=root group=root mode=0644
   notify: restart ceph ubuntu
