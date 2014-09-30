@@ -19,6 +19,7 @@ if [[ -x $(which lsb_release 2>/dev/null) ]]; then
     mkdir /etc/ansible
   elif [[ "Ubuntu" =~ $os_VENDOR ]]; then
     apt-get install -y ansible
+  fi
 elif [[ -r /etc/redhat-release ]]; then
   yum install -y ansible
 fi
