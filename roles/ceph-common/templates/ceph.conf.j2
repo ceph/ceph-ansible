@@ -12,8 +12,7 @@
     {% elif value is mapping -%}
       [{{ option }}]
     {% endif %}
-
-    {% if disable_in_memory_logs and option == 'global'%}
+    {% if disable_in_memory_logs is defined  and option == 'global'%}
       {% for option, value in debug_off.iteritems() %}
         {{ option }} = {{ value }}
       {% endfor %}
@@ -27,10 +26,10 @@
 
     {% for suboption, subvalue in value.iteritems() -%}
       {% if suboption == 'storage_public_interface' -%}
-        public network = {{ hostvars[inventory_hostname]['ansible_'+ceph_config.global.storage_public_interface]['ipv4']['network'] }}/24
+        public network = {{ hostvars[inventory_hostname]['ansible_'+final_ceph_config.global.storage_public_interface]['ipv4']['network'] }}/24
       {% endif %}
       {% if suboption == 'storage_cluster_interface' -%}
-        cluster network = {{ hostvars[inventory_hostname]['ansible_'+ceph_config.global.storage_cluster_interface]['ipv4']['network'] }}/24
+        cluster network = {{ hostvars[inventory_hostname]['ansible_'+final_ceph_config.global.storage_cluster_interface]['ipv4']['network'] }}/24
       {% endif %}
       {% if subvalue is not mapping -%}
           {{ suboption }} = {{ subvalue | lower }}
@@ -39,25 +38,26 @@
 
   {% endfor %}
 {% endif %}
-
-
+                                                        
+                                                       
 {% if groups['mons'] is defined %}
   {%- for host in groups['mons'] -%}
     {% if hostvars[host]['ansible_hostname'] is defined %}
-    [mon.{{ hostvars[host]['ansible_hostname'] }}]
+      [mon.{{ hostvars[host]['ansible_hostname'] }}]
       host = {{ hostvars[host]['ansible_hostname'] }}
       mon addr = {{ hostvars[host]['ansible_' + monitor_interface ]['ipv4']['address'] }}
     {% endif %}
   {% endfor %}
 {% endif %}
-
-
+                                                                                    
+                                                                               
 {% if groups['mds'] is defined %}
 [mds]
-{% for host in groups['mdss'] %}
-  {% if hostvars[host]['ansible_hostname'] is defined %}
-  [mds.{{ hostvars[host]['ansible_hostname'] }}]
-    host = {{ hostvars[host]['ansible_hostname'] }}
-  {% endif %}
-{% endfor %}
+  {% for host in groups['mdss'] %}
+    {% if hostvars[host]['ansible_hostname'] is defined %}
+      [mds.{{ hostvars[host]['ansible_hostname'] }}]
+      host = {{ hostvars[host]['ansible_hostname'] }}
+    {% endif %}
+  {% endfor %}
 {% endif %}
+
