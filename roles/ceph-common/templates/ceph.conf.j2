@@ -2,41 +2,42 @@
 # {{ ansible_managed }}
 
 {% if final_ceph_config is defined %}
-{% for option, value in final_ceph_config.iteritems() %}
-  {% if value is not mapping -%}
-    {% if value is string -%}
-      {{ option }} = {{ value }}
-    {% elif value is number -%}
-      {{ option }} = {{ value | lower }}
+  {% for option, value in final_ceph_config.iteritems() %}
+    {% if value is not mapping -%}
+      {% if value is string -%}
+        {{ option }} = {{ value }}
+      {% elif value is number -%}
+        {{ option }} = {{ value | lower }}
+      {% endif %}
+    {% elif value is mapping -%}
+      [{{ option }}]
     {% endif %}
-  {% elif value is mapping -%}
-    [{{ option }}]
-    {% endif %}
+
     {% if disable_in_memory_logs and option == 'global'%}
       {% for option, value in debug_off.iteritems() %}
         {{ option }} = {{ value }}
       {% endfor %}
     {% endif %}
+
     {% if common_single_host_mode is defined and option == 'global' %}
       {% for option, value in single_host_options.iteritems() %}
         {{ option }} = {{ value }}
       {% endfor %}
     {% endif %}
+
     {% for suboption, subvalue in value.iteritems() -%}
       {% if suboption == 'storage_public_interface' -%}
         public network = {{ hostvars[inventory_hostname]['ansible_'+ceph_config.global.storage_public_interface]['ipv4']['network'] }}/24
-      {% elif suboption == 'storage_cluster_interface' -%}
+      {% endif %}
+      {% if suboption == 'storage_cluster_interface' -%}
         cluster network = {{ hostvars[inventory_hostname]['ansible_'+ceph_config.global.storage_cluster_interface]['ipv4']['network'] }}/24
-      {% elif subvalue is not mapping -%}
-        {% if subvalue is string -%}
-          {{ suboption }} = {{ subvalue }}
-        {% elif subvalue is number -%}
+      {% endif %}
+      {% if subvalue is not mapping -%}
           {{ suboption }} = {{ subvalue | lower }}
-        {% endif %}
       {% endif %}
     {% endfor %}
-  {% endif %}
-{% endfor %}
+
+  {% endfor %}
 {% endif %}
 
 
@@ -51,7 +52,7 @@
 {% endif %}
 
 
-{% if mds %}
+{% if groups['mds'] is defined %}
 [mds]
 {% for host in groups['mdss'] %}
   {% if hostvars[host]['ansible_hostname'] is defined %}
