@@ -1,39 +1,7 @@
 ---
 ## SCENARIO 1: JOURNAL AND OSD_DATA ON THE SAME DEVICE
-#
 
-- name: Install dependencies
-  apt: pkg=parted state=present
-  when: ansible_os_family == 'Debian'
-
-- name: Install dependencies
-  yum: name=parted state=present
-  when: ansible_os_family == 'RedHat'
-
-- name: Copy OSD bootstrap key
-  copy: src=fetch/{{ fsid }}/var/lib/ceph/bootstrap-osd/ceph.keyring dest=/var/lib/ceph/bootstrap-osd/ceph.keyring owner=root group=root mode=600
-  when: cephx
-
-# NOTE (leseb): current behavior of ceph-disk is to fail when the device is mounted "stderr: ceph-disk: Error: Device is mounted: /dev/sdb1"
-# the return code is 1, which makes sense, however ideally if ceph-disk will detect a ceph partition
-# it should exist we rc=0 and don't do anything unless we do something like --force
-# As as a final word, I prefer to keep the partition check instead of running ceph-disk prepare with "ignore_errors: True"
-# I believe it's safer
-#
-
-- name: Check if the device is a partition or a disk
-  shell: echo '{{ item }}' | egrep '/dev/(([a-z]{3,4}[0-9]$)|(cciss/c[0-9]{1}d[0-9]{1}p[0-9]$))'
-  ignore_errors: true
-  with_items: devices
-  register: ispartition
-  changed_when: False
-
-- name: If partition named 'ceph' exists
-  shell: parted --script {{ item }} print | egrep -sq '^ 1.*ceph'
-  ignore_errors: True
-  with_items: devices
-  register: parted
-  changed_when: False
+- include: check_devices.yml
 
 # Prepare means
 # - create GPT partition for a disk, or a loop label for a partition
@@ -52,7 +20,7 @@
 # failed, this is why we check if the device is a partition too.
 
 - name: Prepare OSD disk(s)
-  command: ceph-disk prepare {{ item.2 }}
+  command: "ceph-disk prepare {{ item.2 }}"
   when: (item.0.rc != 0 or item.1.rc != 0) and journal_collocation
   ignore_errors: True
   with_together:
@@ -60,36 +28,4 @@
     - ispartition.results
     - devices
 
-# Activate means:
-# - mount the volume in a temp location
-# - allocate an osd id (if needed)
-# - remount in the correct location /var/lib/ceph/osd/$cluster-$id
-# - start ceph-osd
-#
-
-# This task is for disk devices only because of the explicit use of the first
-# partition.
-
-- name: Activate OSD(s) when device is a disk
-  command: ceph-disk activate {{ item.2 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
-  with_together:
-    - parted.results
-    - ispartition.results
-    - devices
-  when: item.0.rc == 0 and item.1.rc != 0
-  ignore_errors: True
-  changed_when: False
-
-# This task is for partitions because we don't explicitly use a partition.
-
-- name: Activate OSD(s) when device is a partition
-  command: ceph-disk activate {{ item.1 }}
-  with_together:
-    - ispartition.results
-    - devices
-  when: item.0.rc == 0
-  ignore_errors: True
-  changed_when: False
-
-- name: Start and add that the OSD service to the init sequence
-  service: name=ceph state=started enabled=yes args=osd
+- include: activate_osds.yml
