@@ -1,0 +1,38 @@
+---
+# Activate means:
+# - mount the volume in a temp location
+# - allocate an osd id (if needed)
+# - remount in the correct location /var/lib/ceph/osd/$cluster-$id
+# - start ceph-osd
+#
+
+# This task is for disk devices only because of the explicit use of the first
+# partition.
+
+- name: Activate OSD(s) when device is a disk
+  command: |
+    ceph-disk activate {{ item.2 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
+  with_together:
+    - parted.results
+    - ispartition.results
+    - devices
+  when: item.0.rc == 0 and item.1.rc != 0
+  ignore_errors: True
+  changed_when: False
+
+# This task is for partitions because we don't explicitly use a partition.
+
+- name: Activate OSD(s) when device is a partition
+  command: "ceph-disk activate {{ item.1 }}"
+  with_together:
+    - ispartition.results
+    - devices
+  when: item.0.rc == 0
+  ignore_errors: True
+  changed_when: False
+
+- name: Start and add that the OSD service to the init sequence
+  service: >
+    name=ceph
+    state=started
+    enabled=yes
