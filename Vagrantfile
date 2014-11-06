@@ -30,7 +30,7 @@ def create_vmdk(name, size)
   dir = Pathname.new(__FILE__).expand_path.dirname
   path = File.join(dir, '.vagrant', name + '.vmdk')
   if !File.exist?(path) then system("vmware-vdiskmanager -c -s #{size} -t 0 -a scsi #{path} \
-                                    2>&1 > /dev/null")
+                                     2>&1 > /dev/null")
 end
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
