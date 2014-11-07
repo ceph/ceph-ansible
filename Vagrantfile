@@ -30,7 +30,8 @@ end
 def create_vmdk(name, size)
   dir = Pathname.new(__FILE__).expand_path.dirname
   path = File.join(dir, '.vagrant', name + '.vmdk')
-  `vmware-vdiskmanager -c -s #{size} -t 0 -a scsi #{path} 2>&1 > /dev/null` unless File.exist?(path)
+  if !File.exist?(path) then system("vmware-vdiskmanager -c -s #{size} -t 0 -a scsi #{path} \
+                                     2>&1 > /dev/null")
 end
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
@@ -69,15 +70,23 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       osd.vm.network :private_network, ip: "192.168.42.20#{i}"
       osd.vm.provider :virtualbox do |vb|
         (0..1).each do |d|
-          vb.customize ['createhd', '--filename', "disk-#{i}-#{d}", '--size', '11000']
-          vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 3 + d, '--device', 0, '--type', 'hdd', '--medium', "disk-#{i}-#{d}.vdi"]
+          vb.customize ['createhd',
+                        '--filename', "disk-#{i}-#{d}",
+                        '--size', '11000']
+          vb.customize ['storageattach', :id,
+                        '--storagectl', 'SATA Controller',
+                        '--port', 3 + d,
+                        '--device', 0,
+                        '--type', 'hdd',
+                        '--medium', "disk-#{i}-#{d}.vdi"]
         end
         vb.customize ['modifyvm', :id, '--memory', '192']
       end
       osd.vm.provider :vmware_fusion do |v|
         (0..1).each do |d|
           v.vmx["scsi0:#{d + 1}.present"] = 'TRUE'
-          v.vmx["scsi0:#{d + 1}.fileName"] = create_vmdk("disk-#{i}-#{d}", '11000MB')
+          v.vmx["scsi0:#{d + 1}.fileName"] =
+            create_vmdk("disk-#{i}-#{d}", '11000MB')
         end
         v.vmx['memsize'] = '192'
       end
