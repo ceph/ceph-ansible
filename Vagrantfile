@@ -5,7 +5,9 @@ VAGRANTFILE_API_VERSION = '2'
 
 NMONS = 3
 NOSDS = 3
+NMDSS = 0
 NRGWS = 0
+SUBNET = '192.168.42'
 
 ansible_provision = proc do |ansible|
   ansible.playbook = 'site.yml'
@@ -15,8 +17,8 @@ ansible_provision = proc do |ansible|
   ansible.groups = {
     'mons' => (0..NMONS - 1).map { |j| "mon#{j}" },
     'osds' => (0..NOSDS - 1).map { |j| "osd#{j}" },
-    'mdss' => [],
-    'rgws' => ['rgw']
+    'mdss' => (0..NMDSS - 1).map { |j| "mds#{j}" },
+    'rgws' => (0..NRGWS - 1).map { |j| "rgw#{j}" }
   }
 
   # In a production deployment, these should be secret
@@ -30,16 +32,30 @@ end
 def create_vmdk(name, size)
   dir = Pathname.new(__FILE__).expand_path.dirname
   path = File.join(dir, '.vagrant', name + '.vmdk')
-  `vmware-vdiskmanager -c -s #{size} -t 0 -a scsi #{path} 2>&1 > /dev/null` unless File.exist?(path)
+  `vmware-vdiskmanager -c -s #{size} -t 0 -a scsi #{path} \
+   2>&1 > /dev/null` unless File.exist?(path)
 end
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = 'hashicorp/precise64'
 
   (0..NRGWS - 1).each do |i|
-    config.vm.define :rgw do |rgw|
-      rgw.vm.network :private_network, ip: '192.168.42.2'
-      rgw.vm.host_name = 'ceph-rgw'
+    config.vm.define "rgw#{i}" do |rgw|
+      rgw.vm.hostname = "ceph-rgw#{i}"
+      rgw.vm.network :private_network, ip: "#{SUBNET}.4#{i}"
+      rgw.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--memory', '192']
+      end
+      rgw.vm.provider :vmware_fusion do |v|
+        v.vmx['memsize'] = '192'
+      end
+    end
+  end
+
+  (0..NMDSS - 1).each do |i|
+    config.vm.define "mds#{i}" do |rgw|
+      rgw.vm.hostname = "ceph-mds#{i}"
+      rgw.vm.network :private_network, ip: "#{SUBNET}.7#{i}"
       rgw.vm.provider :virtualbox do |vb|
         vb.customize ['modifyvm', :id, '--memory', '192']
       end
@@ -52,7 +68,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NMONS - 1).each do |i|
     config.vm.define "mon#{i}" do |mon|
       mon.vm.hostname = "ceph-mon#{i}"
-      mon.vm.network :private_network, ip: "192.168.42.1#{i}"
+      mon.vm.network :private_network, ip: "#{SUBNET}.1#{i}"
       mon.vm.provider :virtualbox do |vb|
         vb.customize ['modifyvm', :id, '--memory', '192']
       end
@@ -65,19 +81,27 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NOSDS - 1).each do |i|
     config.vm.define "osd#{i}" do |osd|
       osd.vm.hostname = "ceph-osd#{i}"
-      osd.vm.network :private_network, ip: "192.168.42.10#{i}"
-      osd.vm.network :private_network, ip: "192.168.42.20#{i}"
+      osd.vm.network :private_network, ip: "#{SUBNET}.10#{i}"
+      osd.vm.network :private_network, ip: "#{SUBNET}.20#{i}"
       osd.vm.provider :virtualbox do |vb|
         (0..1).each do |d|
-          vb.customize ['createhd', '--filename', "disk-#{i}-#{d}", '--size', '11000']
-          vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 3 + d, '--device', 0, '--type', 'hdd', '--medium', "disk-#{i}-#{d}.vdi"]
+          vb.customize ['createhd',
+                        '--filename', "disk-#{i}-#{d}",
+                        '--size', '11000']
+          vb.customize ['storageattach', :id,
+                        '--storagectl', 'SATA Controller',
+                        '--port', 3 + d,
+                        '--device', 0,
+                        '--type', 'hdd',
+                        '--medium', "disk-#{i}-#{d}.vdi"]
         end
         vb.customize ['modifyvm', :id, '--memory', '192']
       end
       osd.vm.provider :vmware_fusion do |v|
         (0..1).each do |d|
           v.vmx["scsi0:#{d + 1}.present"] = 'TRUE'
-          v.vmx["scsi0:#{d + 1}.fileName"] = create_vmdk("disk-#{i}-#{d}", '11000MB')
+          v.vmx["scsi0:#{d + 1}.fileName"] =
+            create_vmdk("disk-#{i}-#{d}", '11000MB')
         end
         v.vmx['memsize'] = '192'
       end

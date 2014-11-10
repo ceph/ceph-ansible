@@ -3,11 +3,9 @@
 
 # Wait for mon discovery and quorum resolution
 # the admin key is not instantanely created so we have to wait a bit
-- name: If client.admin key exists
-  command: stat /etc/ceph/ceph.client.admin.keyring
-  register: result
-  until: result.rc == 0
-  changed_when: False
+
+- name: wait for client.admin key exists
+  wait_for: path=/etc/ceph/ceph.client.admin.keyring
 
 - name: Create RGW keyring
   command: ceph auth get-or-create client.radosgw.gateway osd 'allow rwx' mon 'allow rw' -o /etc/ceph/keyring.radosgw.gateway creates=/etc/ceph/keyring.radosgw.gateway
