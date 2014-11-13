@@ -22,6 +22,14 @@
   ignore_errors: true
   register: socket
 
+- name: Generate cluster UUID
+  shell: "uuidgen | tee /etc/ceph/ceph_cluster_uuid.conf" creates=/etc/ceph/ceph_cluster_uuid.conf
+  register: cluster_uuid
+
+- name: Read cluster UUID if it already exists
+  command: cat /etc/ceph/ceph_cluster_uuid.conf removes=/etc/ceph/ceph_cluster_uuid.conf
+  register: cluster_uuid
+
 - name: Generate Ceph configuration file
   template: >
     src=ceph.conf.j2
@@ -38,4 +46,8 @@
   ignore_errors: true
 
 - name: Increase PID max value to a very large value
-  sysctl: name="kernel.pid_max" value=4194303 state=present sysctl_file=/etc/sysctl.conf
+  sysctl: >
+    name="kernel.pid_max"
+    value=4194303
+    state=present
+    sysctl_file=/etc/sysctl.conf
