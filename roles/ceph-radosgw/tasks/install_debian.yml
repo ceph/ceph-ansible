@@ -6,11 +6,20 @@
   apt_repository: >
     repo="deb http://ceph.com/packages/ceph-extras/debian {{ ansible_lsb.codename }} main"
     state=present
+  when: ansible_lsb.codename in ['natty', 'oneiric', 'precise', 'quantal', 'raring', 'sid', 'squeeze', 'wheezy']
 
+# Needed for Ubuntu 14.04 to have access to libapache2-mod-fastcgi
+- name: Enable multiverse repo for fastcgi package access
+  command: "apt-add-repository multiverse"
+  when: ansible_lsb.codename in ['trusty']
+
+# update_cache needed for step above
 - name: "Install Apache, fastcgi and Rados Gateway"
   apt: >
     pkg={{ item }}
     state=present
+    update_cache=yes
+    cache_valid_time=3600
   with_items:
     - apache2
     - libapache2-mod-fastcgi
@@ -50,7 +59,8 @@
   command: "{{ item }}"
   with_items:
     - a2ensite rgw.conf
-    - a2dissite default
+    - a2dissite *default
+  ignore_errors: True
   notify:
     - restart apache2
 
