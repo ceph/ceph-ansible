@@ -18,10 +18,16 @@
 
 # NOTE (alahouze): if the device is a partition, the parted command below has
 # failed, this is why we check if the device is a partition too.
+- name: Automatic prepare OSD disk(s) without partitions
+  command: ceph-disk prepare "/dev/{{ item.key }}"
+  when: ansible_devices is defined and item.value.removable == "0" and item.value.partitions|count == 0 and journal_collocation and osd_auto_discovery
+  ignore_errors: True
+  with_dict: ansible_devices
+  register: prepared_osds
 
-- name: Prepare OSD disk(s)
+- name: Manually Prepare OSD disk(s)
   command: "ceph-disk prepare {{ item.2 }}"
-  when: (item.0.rc != 0 or item.1.rc != 0) and journal_collocation
+  when: (item.0.rc != 0 or item.1.rc != 0) and journal_collocation and not osd_auto_discovery
   ignore_errors: True
   with_together:
     - parted.results
