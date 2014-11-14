@@ -1,24 +1,13 @@
 ---
-- name: Create monitor secret
-  shell: ceph-authtool --gen-print-key | tee /etc/ceph/ceph_monitor_secret.conf creates=/etc/ceph/ceph_monitor_secret.conf
-  register: monitor_secret
-
-- name: Read monitor secret if it already exists
-  command: cat /etc/ceph/ceph_monitor_secret.conf removes=/etc/ceph/ceph_monitor_secret.conf
-  register: monitor_secret
-
 - name: Create monitor initial keyring
-  command: "ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} --create-keyring --name=mon. --add-key={{ monitor_secret.stdout }} --cap mon 'allow *' creates=/var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}"
+  command: "ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} --create-keyring --name=mon. --add-key={{ monitor_secret }} --cap mon 'allow *' creates=/var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}"
 
 - name: Set initial monitor key permissions
   file: >
-    path={{ item }}
-    mode=0400
+    path=/var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
+    mode=0600
     owner=root
     group=root
-  with_items:
-    - /etc/ceph/ceph_monitor_secret.conf
-    - /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
 
 - name: Create monitor directory
   file: >
