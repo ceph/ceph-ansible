@@ -8,18 +8,77 @@
     state=present
   when: ansible_lsb.codename in ['natty', 'oneiric', 'precise', 'quantal', 'raring', 'sid', 'squeeze', 'wheezy']
 
-# Needed for Ubuntu 14.04 to have access to libapache2-mod-fastcgi
-- name: Enable multiverse repo for fastcgi package access
-  command: "apt-add-repository multiverse"
-  when: ansible_lsb.codename in ['trusty']
+# Needed for Ubuntu 12.04 to have access to libapache2-mod-fastcgi if 100-continue isn't being used
+- name: Enable multiverse repo for Precise
+  command: "sed -i '/^# deb .* multiverse$/ s/^# //' /etc/apt/sources.list"
+  when: ansible_lsb.codename in ['precise'] and not http_100_continue
 
-# update_cache needed for step above
+# Disable the repo when we are using the Ceph repo for 100-continue packages
+- name: Disable multiverse repo for Precise
+  command: "sed -i '/^deb .* multiverse$/ s/^/# /' /etc/apt/sources.list"
+  when: ansible_lsb.codename in ['precise'] and http_100_continue
+
+# Needed for Ubuntu 14.04 to have access to libapache2-mod-fastcgi if 100-continue isn't being used
+- name: Enable multiverse repo for Trusty
+  command: "apt-add-repository multiverse"
+  when: ansible_lsb.codename in ['trusty'] and not http_100_continue
+
+# Disable the repo when we are using the Ceph repo for 100-continue packages
+- name: Disable multiverse repo for Trusty
+  command: "apt-add-repository -r multiverse"
+  when: ansible_lsb.codename in ['trusty'] and http_100_continue
+
+# If using 100-continue, add Ceph dev key
+- name: Install the Ceph development repository key
+  apt_key: >
+    data="{{ lookup('file', 'cephdev.asc') }}"
+    state=present
+  when: http_100_continue
+
+# If using 100-continue, add Ceph sources and update
+- name: Add Ceph Apache and FastCGI sources
+  apt_repository: >
+    repo="{{ item }}"
+    state=present
+  with_items:
+    - deb http://gitbuilder.ceph.com/apache2-deb-{{ ansible_lsb.codename }}-x86_64-basic/ref/master {{ ansible_lsb.codename }} main
+    - deb http://gitbuilder.ceph.com/libapache-mod-fastcgi-deb-{{ ansible_lsb.codename }}-x86_64-basic/ref/master {{ ansible_lsb.codename }} main
+  register: purge_default_apache
+  when: http_100_continue
+
+# Else remove them to ensure you use the default packages
+- name: Remove Ceph Apache and FastCGI sources
+  apt_repository: >
+    repo="{{ item }}"
+    state=absent
+  with_items:
+    - deb http://gitbuilder.ceph.com/apache2-deb-{{ ansible_lsb.codename }}-x86_64-basic/ref/master {{ ansible_lsb.codename }} main
+    - deb http://gitbuilder.ceph.com/libapache-mod-fastcgi-deb-{{ ansible_lsb.codename }}-x86_64-basic/ref/master {{ ansible_lsb.codename }} main
+  register: purge_ceph_apache
+  when: not http_100_continue
+
+# Purge Ceph Apache and FastCGI packages if needed
+- name: "Purge Ceph Apache and FastCGI packages"
+  apt: >
+    pkg="{{ item }}"
+    state=absent
+    purge=yes
+  with_items:
+    - apache2
+    - apache2-bin
+    - apache2-data
+    - apache2-mpm-worker
+    - apache2-utils
+    - apache2.2-bin
+    - apache2.2-common
+    - libapache2-mod-fastcgi
+  when: purge_default_apache.changed or purge_ceph_apache.changed
+
 - name: "Install Apache, fastcgi and Rados Gateway"
   apt: >
     pkg={{ item }}
     state=present
     update_cache=yes
-    cache_valid_time=3600
   with_items:
     - apache2
     - libapache2-mod-fastcgi
