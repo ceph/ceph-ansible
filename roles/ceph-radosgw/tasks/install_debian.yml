@@ -10,12 +10,24 @@
 
 # Needed for Ubuntu 12.04 to have access to libapache2-mod-fastcgi if 100-continue isn't being used
 - name: Enable multiverse repo for Precise
-  shell: "sed -i '/^# deb .* multiverse$/ s/^# //' /etc/apt/sources.list"
+  apt_repository: >
+    repo="{{ item }}"
+    state=present
+  with_items:
+    - deb http://archive.ubuntu.com/ubuntu {{ ansible_lsb.codename }} multiverse
+    - deb http://archive.ubuntu.com/ubuntu {{ ansible_lsb.codename }}-updates multiverse
+    - deb http://security.ubuntu.com/ubuntu {{ ansible_lsb.codename }}-security multiverse
   when: ansible_lsb.codename in ['precise'] and not http_100_continue
 
 # Disable the repo when we are using the Ceph repo for 100-continue packages
 - name: Disable multiverse repo for Precise
-  shell: "sed -i '/^deb .* multiverse$/ s/^/# /' /etc/apt/sources.list"
+  apt_repository: >
+    repo="{{ item }}"
+    state=absent
+  with_items:
+    - deb http://archive.ubuntu.com/ubuntu {{ ansible_lsb.codename }} multiverse
+    - deb http://archive.ubuntu.com/ubuntu {{ ansible_lsb.codename }}-updates multiverse
+    - deb http://security.ubuntu.com/ubuntu {{ ansible_lsb.codename }}-security multiverse
   when: ansible_lsb.codename in ['precise'] and http_100_continue
 
 # Needed for Ubuntu 14.04 to have access to libapache2-mod-fastcgi if 100-continue isn't being used
