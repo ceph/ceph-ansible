@@ -3,11 +3,12 @@
 
 VAGRANTFILE_API_VERSION = '2'
 
-NMONS = 3
-NOSDS = 3
-NMDSS = 0
-NRGWS = 0
-SUBNET = '192.168.42'
+NMONS   = 3
+NOSDS   = 3
+NMDSS   = 0
+NRGWS   = 0
+CLIENTS = 0
+SUBNET  = '192.168.42'
 
 ansible_provision = proc do |ansible|
   ansible.playbook = 'site.yml'
@@ -38,6 +39,19 @@ end
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = 'hashicorp/precise64'
+
+  (0..CLIENTS - 1).each do |i|
+    config.vm.define "client#{i}" do |client|
+      client.vm.hostname = "ceph-client#{i}"
+      client.vm.network :private_network, ip: "#{SUBNET}.4#{i}"
+      client.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--memory', '192']
+      end
+      client.vm.provider :vmware_fusion do |v|
+        v.vmx['memsize'] = '192'
+      end
+    end
+  end
 
   (0..NRGWS - 1).each do |i|
     config.vm.define "rgw#{i}" do |rgw|
