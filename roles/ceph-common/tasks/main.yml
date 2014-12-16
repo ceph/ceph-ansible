@@ -11,6 +11,14 @@
   fail: "msg=Distribution not supported {{ ansible_os_family }}"
   when: "ansible_os_family not in ['Debian', 'RedHat']"
 
+- name: Fail on wrong distribution with wrong repo
+  fail: "msg=Inktank Ceph Enterprise can not be installed on {{ ansible_os_family }}, Red Hat Enterprise Linux 7 only"
+  when: ansible_os_family == 'Debian' and ceph_stable_ice
+
+- name: Fail on wrong distribution with wrong repo
+  fail: "msg=Inktank Ceph Enterprise can not be installed on {{ ansible_os_family }}i {{ ansible_distribution_major_version }}, Red Hat Enterprise Linux 7 only"
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version != '7' and ceph_stable_ice
+
 - include: install_on_redhat.yml
   when: ansible_os_family == 'RedHat'
 

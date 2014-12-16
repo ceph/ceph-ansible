@@ -28,8 +28,46 @@
   command: "rpm -U http://gitbuilder.ceph.com/ceph-rpm-{{ ceph_dev_redhat_distro }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro }}.noarch.rpm creates=/etc/yum.repos.d/ceph.repo"
   when: ceph_dev
 
+- name: Create package directory
+  file: >
+    path=/tmp/ice_repo
+    state=directory
+    owner=root
+    group=root
+    mode=0644
+  when: ceph_stable_ice
+
+- name: Get ICE packages
+  get_url: >
+    url_username={{ ceph_stable_ice_user }}
+    url_password={{ ceph_stable_ice_password }}
+    url=https://download.inktank.com/enterprise/{{ ceph_stable_ice_version }}/ICE-{{ ceph_stable_ice_version }}-rhel7.tar.gz
+    dest=/tmp/ice_repo/ICE-{{ ceph_stable_ice_version }}-rhel7.tar.gz
+  when: ceph_stable_ice
+
+- name: Stat extracted repo files
+  stat: >
+    path=/tmp/ice_repo/repodata/repomd.xml
+  register: repo_exist
+
+- name: Extract packages
+  shell: cd /tmp/ice_repo && tar -xzf ICE-{{ ceph_stable_ice_version }}-rhel7.tar.gz
+  when: ceph_stable_ice and repo_exist.stat.exists == False
+
+- name: Move the extracted packages
+  shell: mv /tmp/ice_repo/ceph/*/* /tmp/ice_repo
+  when: ceph_stable_ice and repo_exist.stat.exists == False
+
+- name: Create repository
+  template: >
+    src=ice.repo.j2
+    dest=/etc/yum.repos.d/ice.repo
+    owner=root
+    group=root
+    mode=0644
+  when: ceph_stable_ice
+
 - name: Install Ceph
   yum: >
     name=ceph
     state=latest
-
