@@ -22,6 +22,12 @@
     state=present
   when: ceph_dev
 
+- name: Install Intank Ceph Enterprise repository key
+  apt_key: >
+    data="{{ lookup('file', 'cephstableice.asc') }}"
+    state=present
+  when: ceph_stable_ice
+
 - name: Add Ceph stable repository
   apt_repository: >
     repo="deb http://ceph.com/debian-{{ ceph_stable_release }}/ {{ ansible_lsb.codename }} main"
@@ -33,6 +39,12 @@
     repo="deb http://gitbuilder.ceph.com/ceph-deb-{{ ansible_lsb.codename }}-x86_64-basic/ref/{{ ceph_dev_branch }} {{ ansible_lsb.codename }} main"
     state=present
   when: ceph_dev
+
+- name: Add Inktank Ceph Enterprise repository
+  apt_repository: >
+    repo="deb file://{{ ceph_stable_ice_temp_path }} {{ ansible_lsb.codename }} main"
+    state=present
+  when: ceph_stable_ice
 
 - name: Install Ceph
   apt: >
