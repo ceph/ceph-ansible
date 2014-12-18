@@ -11,14 +11,6 @@
   fail: "msg=Distribution not supported {{ ansible_os_family }}"
   when: "ansible_os_family not in ['Debian', 'RedHat']"
 
-- name: Fail on wrong distribution with wrong repo
-  fail: "msg=Inktank Ceph Enterprise can not be installed on {{ ansible_os_family }}, Red Hat Enterprise Linux 7 only"
-  when: ansible_os_family == 'Debian' and ceph_stable_ice
-
-- name: Fail on wrong distribution with wrong repo
-  fail: "msg=Inktank Ceph Enterprise can not be installed on {{ ansible_os_family }}i {{ ansible_distribution_major_version }}, Red Hat Enterprise Linux 7 only"
-  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version != '7' and ceph_stable_ice
-
 - include: install_on_redhat.yml
   when: ansible_os_family == 'RedHat'
 
@@ -63,3 +55,34 @@
     value=4194303
     state=present
     sysctl_file=/etc/sysctl.conf
+
+- name: Create package directory
+  file: >
+    path={{ ceph_stable_ice_temp_path }}
+    state=directory
+    owner=root
+    group=root
+    mode=0644
+  when: ceph_stable_ice
+
+- name: Get ICE packages
+  get_url: >
+    url_username={{ ceph_stable_ice_user }}
+    url_password={{ ceph_stable_ice_password }}
+    url=https://download.inktank.com/enterprise/{{ ceph_stable_ice_version }}/ICE-{{ ceph_stable_ice_version }}-{{ ceph_stable_ice_distro }}.tar.gz
+    dest={{ ceph_stable_ice_temp_path }}/ICE-{{ ceph_stable_ice_version }}-{{ ceph_stable_ice_distro }}.tar.gz
+  when: ceph_stable_ice
+
+- name: Stat extracted repo files
+  stat: >
+    path={{ ceph_stable_ice_temp_path }}/ice_setup.py
+  register: repo_exist
+  when: ceph_stable_ice
+
+- name: Extract packages
+  shell: "cd {{ ceph_stable_ice_temp_path }} && tar -xzf ICE-{{ ceph_stable_ice_version }}-{{ ceph_stable_ice_distro }}.tar.gz"
+  when: ceph_stable_ice and repo_exist.stat.exists == False
+
+- name: Move the extracted packages
+  shell: "mv {{ ceph_stable_ice_temp_path }}/ceph/*/* {{ ceph_stable_ice_temp_path }}"
+  when: ceph_stable_ice and repo_exist.stat.exists == False
