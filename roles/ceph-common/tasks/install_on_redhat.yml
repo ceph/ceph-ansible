@@ -22,7 +22,7 @@
 
 - name: Install Inktank Ceph Enterprise repository key
   rpm_key: >
-    key=file://{{ ceph_stable_ice_temp_path }}/*/release.asc
+    key=file://{{ ceph_stable_ice_temp_path }}/release.asc
     state=present
   when: ceph_stable_ice
 
@@ -47,3 +47,11 @@
   yum: >
     name=ceph
     state=latest
+
+- name: Install Inktank Ceph Enterprise RBD Kernel modules
+  yum: >
+    name={{ item }}
+  with_items:
+    - {{ ceph_stable_ice_temp_path }}/kmod-libceph-{{ ceph_stable_ice_kmod }}.rpm
+    - {{ ceph_stable_ice_temp_path }}/kmod-rbd-{{ ceph_stable_ice_kmod }}.rpm
+  when: ceph_stable_ice

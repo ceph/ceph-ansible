@@ -69,9 +69,20 @@
   get_url: >
     url_username={{ ceph_stable_ice_user }}
     url_password={{ ceph_stable_ice_password }}
-    url=https://download.inktank.com/enterprise/{{ ceph_stable_ice_version }}/ICE-{{ ceph_stable_ice_version }}-{{ ceph_stable_ice_distro }}.tar.gz
+    url={{ ceph_stable_ice_url }}/{{ ceph_stable_ice_version }}/ICE-{{ ceph_stable_ice_version }}-{{ ceph_stable_ice_distro }}.tar.gz
     dest={{ ceph_stable_ice_temp_path }}/ICE-{{ ceph_stable_ice_version }}-{{ ceph_stable_ice_distro }}.tar.gz
   when: ceph_stable_ice
+
+- name: Get ICE Kernel Modules
+  get_url: >
+    url_username={{ ceph_stable_ice_user }}
+    url_password={{ ceph_stable_ice_password }}
+    url={{ ceph_stable_ice_url }}/{{ ceph_stable_ice_kmod_version }}/{{ item }}
+    dest={{ ceph_stable_ice_temp_path }}
+  with_items:
+    - kmod-libceph-{{ ceph_stable_ice_kmod }}.rpm
+    - kmod-rbd-{{ ceph_stable_ice_kmod }}.rpm
+  when: ceph_stable_ice and ansible_os_family == 'RedHat'
 
 - name: Stat extracted repo files
   stat: >
