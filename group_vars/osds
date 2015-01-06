@@ -5,6 +5,11 @@
 # Dummy variable to avoid error because ansible does not recognize the file as a good configuration file when no variable in it.
 dummy:
 
+## Ceph options
+#
+
+#cephx: true
+
 # Devices to be used as OSDs
 # You can pre-provision disks that are not present yet.
 # Ansible will just skip them. Newly added disk will be
@@ -18,26 +23,40 @@ dummy:
 #
 # !! WARNING !!
 
+# USE WITH CAUTION
+# Erase partitions structure and layout of the given devices below prior to prepare them
+#zap_devices: false
 
 # Declare devices
 # All the scenarii inherit from the following device declaration
 #
-#devices: [ '/dev/sdb', '/dev/sdc', '/dev/sdd', '/dev/sde']
+#devices:
+#  - /dev/sdb
+#  - /dev/sdc
+#  - /dev/sdd
+#  - /dev/sde
 
+# Device discovery is based on the Ansible fact 'ansible_devices'
+# which reports all the devices on a system. If chosen all the disks
+# found will be passed to ceph-disk. You should not be worried on using
+# this option since ceph-disk has a built-in check which looks for empty devices.
+# Thus devices with existing partition tables will not be used.
+# This mode prevents you from filling out the 'devices' variable above.
+#
+#osd_auto_discovery: false
 
 # I. First scenario: journal and osd_data on the same device
 # Use 'true' to enable this scenario
 # This will collocate both journal and data on the same disk
 # creating a partition at the beginning of the device
-#
+
 #journal_collocation: true
 
 
 # II. Second scenario: single journal device for N OSDs
 # Use 'true' to enable this scenario
-#
-#raw_journal: false
-#raw_journal_device: /dev/sdb
+
+# deprecated, please use scenario III with a single raw_journal_device
 
 
 # III. Third scenario: N journal devices for N OSDs
@@ -51,11 +70,19 @@ dummy:
 # 2. Progressively add new devices
 
 #raw_multi_journal: false
-#raw_journal_devices:  [ '/dev/sdb', '/dev/sdb', '/dev/sdc', '/dev/sdc' ]
-
+#raw_journal_devices:
+#  - /dev/sdb
+#  - /dev/sdb
+#  - /dev/sdc
+#  - /dev/sdc
+#
 
 # IV. Fourth scenario: use directory instead of disk for OSDs
 # Use 'true' to enable this scenario
 
 #osd_directory: false
-#osd_directories: [ '/var/lib/ceph/osd/mydir1', '/var/lib/ceph/osd/mydir2', '/var/lib/ceph/osd/mydir3', '/var/lib/ceph/osd/mydir4']
+#osd_directories:
+#  - /var/lib/ceph/osd/mydir1
+#  - /var/lib/ceph/osd/mydir2
+#  - /var/lib/ceph/osd/mydir3
+#  - /var/lib/ceph/osd/mydir4
