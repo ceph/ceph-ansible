@@ -11,40 +11,6 @@
   fail: "msg=Distribution not supported {{ ansible_os_family }}"
   when: "ansible_os_family not in ['Debian', 'RedHat']"
 
-- include: install_on_redhat.yml
-  when: ansible_os_family == 'RedHat'
-
-- include: install_on_debian.yml
-  when: ansible_os_family == 'Debian'
-
-- name: Check for a Ceph socket
-  shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
-  ignore_errors: true
-  register: socket
-
-- name: Generate cluster UUID
-  shell: uuidgen | tee fetch/ceph_cluster_uuid.conf creates=fetch/ceph_cluster_uuid.conf
-  connection: local
-  sudo: false
-  register: cluster_uuid
-
-- name: Read cluster UUID if it already exists
-  command: cat fetch/ceph_cluster_uuid.conf removes=fetch/ceph_cluster_uuid.conf
-  connection: local
-  sudo: false
-  register: cluster_uuid
-
-- name: Generate Ceph configuration file
-  template: >
-    src=ceph.conf.j2
-    dest=/etc/ceph/ceph.conf
-    owner=root
-    group=root
-    mode=0644
-  notify:
-    - restart ceph
-    - restart ceph-osd-all on ubuntu
-
 - name: Disable OSD directory parsing by updatedb
   command: updatedb -e /var/lib/ceph
   ignore_errors: true
@@ -104,3 +70,37 @@
 - name: Move the extracted packages
   shell: "mv {{ ceph_stable_ice_temp_path }}/ceph/*/* {{ ceph_stable_ice_temp_path }}"
   when: ceph_stable_ice and repo_exist.stat.exists == False
+
+- include: install_on_redhat.yml
+  when: ansible_os_family == 'RedHat'
+
+- include: install_on_debian.yml
+  when: ansible_os_family == 'Debian'
+
+- name: Check for a Ceph socket
+  shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
+  ignore_errors: true
+  register: socket
+
+- name: Generate cluster UUID
+  shell: uuidgen | tee fetch/ceph_cluster_uuid.conf creates=fetch/ceph_cluster_uuid.conf
+  connection: local
+  sudo: false
+  register: cluster_uuid
+
+- name: Read cluster UUID if it already exists
+  command: cat fetch/ceph_cluster_uuid.conf removes=fetch/ceph_cluster_uuid.conf
+  connection: local
+  sudo: false
+  register: cluster_uuid
+
+- name: Generate Ceph configuration file
+  template: >
+    src=ceph.conf.j2
+    dest=/etc/ceph/ceph.conf
+    owner=root
+    group=root
+    mode=0644
+  notify:
+    - restart ceph
+    - restart ceph-osd-all on ubuntu
