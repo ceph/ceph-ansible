@@ -1,75 +1,10 @@
 ---
-- name: Fail on unsupported system
-  fail: "msg=System not supported {{ ansible_system }}"
-  when: "ansible_system not in ['Linux']"
+- include: os_check.yml
 
-- name: Fail on unsupported architecture
-  fail: "msg=Architecture not supported {{ ansible_architecture }}"
-  when: "ansible_architecture not in ['x86_64']"
+- include: os_tuning.yml
 
-- name: Fail on unsupported distribution
-  fail: "msg=Distribution not supported {{ ansible_os_family }}"
-  when: "ansible_os_family not in ['Debian', 'RedHat']"
-
-- name: Disable OSD directory parsing by updatedb
-  command: updatedb -e /var/lib/ceph
-  ignore_errors: true
-
-- name: Increase PID max value to a very large value
-  sysctl: >
-    name="kernel.pid_max"
-    value=4194303
-    state=present
-    sysctl_file=/etc/sysctl.conf
-
-- name:  Increase the maximum number of open files
-  sysctl: >
-    name="fs.file-max"
-    value=13211539
-    state=present
-    sysctl_file=/etc/sysctl.conf
-
-- name: Create package directory
-  file: >
-    path={{ ceph_stable_ice_temp_path }}
-    state=directory
-    owner=root
-    group=root
-    mode=0644
+- include: prerequisite_ice.yml
   when: ceph_stable_ice
-
-- name: Get ICE packages
-  get_url: >
-    url_username={{ ceph_stable_ice_user }}
-    url_password={{ ceph_stable_ice_password }}
-    url={{ ceph_stable_ice_url }}/{{ ceph_stable_ice_version }}/ICE-{{ ceph_stable_ice_version }}-{{ ceph_stable_ice_distro }}.tar.gz
-    dest={{ ceph_stable_ice_temp_path }}/ICE-{{ ceph_stable_ice_version }}-{{ ceph_stable_ice_distro }}.tar.gz
-  when: ceph_stable_ice
-
-- name: Get ICE Kernel Modules
-  get_url: >
-    url_username={{ ceph_stable_ice_user }}
-    url_password={{ ceph_stable_ice_password }}
-    url={{ ceph_stable_ice_url }}/{{ ceph_stable_ice_kmod_version }}/{{ item }}
-    dest={{ ceph_stable_ice_temp_path }}
-  with_items:
-    - kmod-libceph-{{ ceph_stable_ice_kmod }}.rpm
-    - kmod-rbd-{{ ceph_stable_ice_kmod }}.rpm
-  when: ceph_stable_ice and ansible_os_family == 'RedHat'
-
-- name: Stat extracted repo files
-  stat: >
-    path={{ ceph_stable_ice_temp_path }}/ice_setup.py
-  register: repo_exist
-  when: ceph_stable_ice
-
-- name: Extract packages
-  shell: "cd {{ ceph_stable_ice_temp_path }} && tar -xzf ICE-{{ ceph_stable_ice_version }}-{{ ceph_stable_ice_distro }}.tar.gz"
-  when: ceph_stable_ice and repo_exist.stat.exists == False
-
-- name: Move the extracted packages
-  shell: "mv {{ ceph_stable_ice_temp_path }}/ceph/*/* {{ ceph_stable_ice_temp_path }}"
-  when: ceph_stable_ice and repo_exist.stat.exists == False
 
 - include: install_on_redhat.yml
   when: ansible_os_family == 'RedHat'
