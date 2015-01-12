@@ -1,0 +1,48 @@
+---
+- name: Get OSD path
+  shell: "df | grep {{ item }} | awk '{print $6}'"
+  with_items: devices
+  register: osd_path
+  ignore_errors: true
+
+- name: Get OSD id
+  command: cat {{ item.stdout }}/whoami
+  register: osd_id
+  with_items: osd_path.results
+  ignore_errors: true
+
+- name: Create a Ceph fragment and assemble directory
+  file: >
+    path={{ item }}
+    state=directory
+    owner=root
+    group=root
+    mode=0644
+  with_items:
+    - /etc/ceph/ceph.d/
+    - /etc/ceph/ceph.d/osd_fragments
+
+- name: Create the OSD fragment
+  template: >
+    src=osd.conf.j2
+    dest=/etc/ceph/ceph.d/osd_fragments/osd.{{ item.stdout }}.conf
+  with_items: osd_id.results
+
+- name: Copy ceph.conf for assembling
+  command: cp /etc/ceph/ceph.conf /etc/ceph/ceph.d/
+
+- name: Assemble OSD sections
+  assemble: >
+    src=/etc/ceph/ceph.d/osd_fragments/
+    dest=/etc/ceph/ceph.d/osd.conf
+    owner=root
+    group=root
+    mode=0644
+
+- name: Assemble Ceph conf and OSD fragments
+  assemble: >
+    src=/etc/ceph/ceph.d/
+    dest=/etc/ceph/ceph.conf
+    owner=root
+    group=root
+    mode=0644
