@@ -3,16 +3,10 @@
   command: updatedb -e /var/lib/ceph
   ignore_errors: true
 
-- name: Increase PID max value to a very large value
+- name: Apply OS tuning
   sysctl: >
-    name="kernel.pid_max"
-    value={{ os_tuning_pid_max }}
+    name={{ item.name }}
+    value={{ item.value }}
     state=present
     sysctl_file=/etc/sysctl.conf
-
-- name:  Increase the maximum number of open files
-  sysctl: >
-    name="fs.file-max"
-    value={{ os_tuning_file_max }}
-    state=present
-    sysctl_file=/etc/sysctl.conf
+  with_items: os_tuning_params
