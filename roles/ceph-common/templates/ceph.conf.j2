@@ -56,6 +56,9 @@
   debug_paxos = 0/0
   debug_rgw = 0/0
 {% endif %}
+{% if enable_debug_global %}
+  debug ms = {{ debug_global_level }}
+{% endif %}
 
 [client]
   rbd cache = true
@@ -65,6 +68,11 @@
 [mon]
   mon osd down out interval = {{ mon_osd_down_out_interval }}
   mon osd min down reporters = {{ mon_osd_min_down_reporters }}
+{% if enable_debug_mon %}
+  debug mon = {{ debug_mon_level }}
+  debug paxos = {{ debug_mon_level }}
+  debug auth = {{ debug_mon_level }}
+{% endif %}
 {% for host in groups['mons'] %}
   {% if hostvars[host]['ansible_hostname'] is defined %}
   [mon.{{ hostvars[host]['ansible_hostname'] }}]
@@ -100,9 +108,21 @@
   osd recovery threads = {{ osd_recovery_threads }}
   osd objectstore = {{ osd_objectstore }}
   osd crush update on start = {{ osd_crush_update_on_start }}
+{% if enable_debug_osd %}
+  debug osd = {{ debug_osd_level }}
+  debug filestore = {{ debug_osd_level }}
+  debug journal = {{ debug_osd_level }}
+  debug monc = {{ debug_osd_level }}
+{% endif %}
 
 {% if mds %}
 [mds]
+{% if enable_debug_mds %}
+  debug mds = {{ debug_mds_level }}
+  debug mds balancer = {{ debug_mds_level }}
+  debug mds log = {{ debug_mds_level }}
+  debug mds migrator = {{ debug_mds_level }}
+{% endif %}
 {% for host in groups['mdss'] %}
   {% if hostvars[host]['ansible_hostname'] is defined %}
   [mds.{{ hostvars[host]['ansible_hostname'] }}]
