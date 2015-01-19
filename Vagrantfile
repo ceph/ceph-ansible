@@ -103,8 +103,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
           vb.customize ['createhd',
                         '--filename', "disk-#{i}-#{d}",
                         '--size', '11000']
+          # Controller names are dependent on the VM being built.
+          # It is set when the base box is made in our case ubuntu/trusty64.
+          # Be careful while changing the box.
           vb.customize ['storageattach', :id,
-                        '--storagectl', 'SATA Controller',
+                        '--storagectl', 'SATAController',
                         '--port', 3 + d,
                         '--device', 0,
                         '--type', 'hdd',
