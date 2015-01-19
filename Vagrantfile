@@ -38,7 +38,7 @@ def create_vmdk(name, size)
 end
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  config.vm.box = 'hashicorp/precise64'
+  config.vm.box = 'ubuntu/trusty64'
   config.ssh.insert_key = false # workaround for https://github.com/mitchellh/vagrant/issues/5048
 
   (0..CLIENTS - 1).each do |i|
