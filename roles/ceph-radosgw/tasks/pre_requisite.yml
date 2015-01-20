@@ -1,0 +1,25 @@
+---
+- name: Copy RGW bootstrap key
+  copy: >
+    src=fetch/{{ fsid }}/etc/ceph/radosgw.{{ ansible_hostname }}.keyring
+    dest=/etc/ceph/radosgw.{{ ansible_hostname }}.keyring
+    owner=root
+    group=root
+    mode=600
+  when: cephx
+
+- name: Set RGW bootstrap key permissions
+  file: >
+    path=/etc/ceph/radosgw.{{ ansible_hostname }}.keyring
+    mode=0600
+    owner=root
+    group=root
+  when: cephx
+
+- name: Create RGW directory
+  file: >
+    path=/var/lib/ceph/radosgw/{{ ansible_fqdn }}
+    state=directory
+    owner=root
+    group=root
+    mode=0644

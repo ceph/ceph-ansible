@@ -1,31 +1,7 @@
 ---
-- name: Copy RGW bootstrap key
-  copy: >
-    src=fetch/{{ fsid }}/etc/ceph/radosgw.{{ ansible_hostname }}.keyring
-    dest=/etc/ceph/radosgw.{{ ansible_hostname }}.keyring
-    owner=root
-    group=root
-    mode=600
-  when: cephx
 
-- name: Set RGW bootstrap key permissions
-  file: >
-    path=/etc/ceph/radosgw.{{ ansible_hostname }}.keyring
-    mode=0600
-    owner=root
-    group=root
-  when: cephx
-
-- name: Create RGW directory
-  file: >
-    path=/var/lib/ceph/radosgw/{{ ansible_fqdn }}
-    state=directory
-    owner=root
-    group=root
-    mode=0644
-
-## Check OS family
-#
+- include: pre_requisite.yml
+  when: not ceph_containerized_deployment
 
 - include: install_redhat.yml
   when: ansible_os_family == 'RedHat' and radosgw_frontend == 'apache'
@@ -38,20 +14,15 @@
     pkg=radosgw
     state=present
     update_cache=yes
-  when: ansible_os_family == 'Debian'
+  when: ansible_os_family == 'Debian' and not ceph_containerized_deployment
 
 - name: "Install Rados Gateway"
   yum: >
     name=ceph-radosgw
     state=present
-  when: ansible_os_family == 'RedHat'
+  when: ansible_os_family == 'RedHat' and not ceph_containerized_deployment
 
-## If we don't perform this check Ansible will start multiple instance of radosgw
-- name: Check if RGW is started
-  command: /etc/init.d/radosgw status
-  register: rgwstatus
-  ignore_errors: True
+- include: start_radosgw.yml
 
-- name: Start RGW
-  command: /etc/init.d/radosgw start
-  when: rgwstatus.rc != 0
+- include: docker.yml
+  when: ceph_containerized_deployment

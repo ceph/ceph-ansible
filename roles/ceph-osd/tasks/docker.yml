@@ -1,0 +1,29 @@
+---
+- name: Fetch Ceph config and keys
+  copy: >
+    src=fetch/docker_mon_files/{{ item }}
+    dest=/etc/ceph/
+    owner=root
+    group=root
+    mode=600
+  with_items:
+    - /etc/ceph/ceph.client.admin.keyring
+    - /etc/ceph/ceph.conf
+    - /etc/ceph/monmap
+    - /etc/ceph/ceph.mon.keyring
+
+- name: Run the Ceph OSD docker image
+  docker: >
+    image="{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
+    name=ceph-{{ ansible_hostname }}
+    net=host
+    state=running
+    env="OSD_NAME=ceph-{{ ansible_hostname }}"
+    volumes="/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
+
+- name: Ensure ceph_osd service is running
+  docker: >
+    image="{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
+    name="ceph-{{ ansible_hostname }}"
+    detach=yes
+    state=running
