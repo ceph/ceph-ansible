@@ -1,139 +1,47 @@
-#jinja2: trim_blocks: "true", lstrip_blocks: "true"
+#jinja2: lstrip_blocks: True
 # {{ ansible_managed }}
 
-[global]
-{% if cephx %}
-  auth cluster required = cephx
-  auth service required = cephx
-  auth client required = cephx
-  cephx require signatures = {{ cephx_require_signatures }} # Kernel RBD does NOT support signatures!
-  cephx cluster require signatures = {{ cephx_cluster_require_signatures }}
-  cephx service require signatures = {{ cephx_service_require_signatures }}
-{% else %}
-  auth cluster required = none
-  auth service required = none
-  auth client required = none
-  auth supported = none
-{% endif %}
-  fsid = {{ fsid }}
-  max open files = {{ max_open_files }}
-  osd pool default pg num = {{ pool_default_pg_num }}
-  osd pool default pgp num = {{ pool_default_pgp_num }}
-  osd pool default size = {{ pool_default_size }}
-  osd pool default min size = {{ pool_default_min_size }}
-  osd pool default crush rule = {{ pool_default_crush_rule }}
-{% if common_single_host_mode is defined %}
-  osd crush chooseleaf type = 0
-{% endif %}
-{% if disable_in_memory_logs %}
-  # Disable in-memory logs
-  debug_lockdep = 0/0
-  debug_context = 0/0
-  debug_crush = 0/0
-  debug_buffer = 0/0
-  debug_timer = 0/0
-  debug_filer = 0/0
-  debug_objecter = 0/0
-  debug_rados = 0/0
-  debug_rbd = 0/0
-  debug_journaler = 0/0
-  debug_objectcatcher = 0/0
-  debug_client = 0/0
-  debug_osd = 0/0
-  debug_optracker = 0/0
-  debug_objclass = 0/0
-  debug_filestore = 0/0
-  debug_journal = 0/0
-  debug_ms = 0/0
-  debug_monc = 0/0
-  debug_tp = 0/0
-  debug_auth = 0/0
-  debug_finisher = 0/0
-  debug_heartbeatmap = 0/0
-  debug_perfcounter = 0/0
-  debug_asok = 0/0
-  debug_throttle = 0/0
-  debug_mon = 0/0
-  debug_paxos = 0/0
-  debug_rgw = 0/0
-{% endif %}
-{% if enable_debug_global %}
-  debug ms = {{ debug_global_level }}
-{% endif %}
-
-[client]
-  rbd cache = true
-  rbd cache writethrough until flush = true
-  admin socket = /var/run/ceph/$cluster-$type.$id.$pid.$cctid.asok # must be writable by QEMU and allowed by SELinux or AppArmor
-  log file = {{ rbd_client_log_file }} # must be writable by QEMU and allowed by SELinux or AppArmor
-
-[mon]
-  mon osd down out interval = {{ mon_osd_down_out_interval }}
-  mon osd min down reporters = {{ mon_osd_min_down_reporters }}
-{% if enable_debug_mon %}
-  debug mon = {{ debug_mon_level }}
-  debug paxos = {{ debug_mon_level }}
-  debug auth = {{ debug_mon_level }}
-{% endif %}
-{% for host in groups['mons'] %}
-  {% if hostvars[host]['ansible_hostname'] is defined %}
+{% if final_ceph_config is defined %}
+  {# Create the section #}
+  {% for option, value in final_ceph_config.iteritems() %}
+    {% if value is not mapping -%}
+      {% if value is string -%}
+        {{ option }} = {{ value }}
+      {% elif value is number -%}
+        {{ option }} = {{ value | lower }}
+      {% endif %}
+    {% elif value is mapping -%}
+      [{{ option }}]
+    {% endif %}
+    {# Fill the section with options #}
+    {% for suboption, subvalue in value.iteritems() -%}
+      {% if subvalue is not mapping -%}
+        {{ suboption }} = {{ subvalue | lower }}
+      {% endif %}
+    {% endfor %}
+      {% if option == "mon": %}
+{% if groups['mons'] is defined %}
+{%- for host in groups['mons'] -%}
+{% if hostvars[host]['ansible_hostname'] is defined %}
   [mon.{{ hostvars[host]['ansible_hostname'] }}]
     host = {{ hostvars[host]['ansible_hostname'] }}
-    mon addr = {{ hostvars[host]['ansible_' + monitor_interface]['ipv4']['address'] }}
-  {% endif %}
+    mon addr = {{ hostvars[host]['ansible_' + monitor_interface ]['ipv4']['address'] }}
+{% endif %}
 {% endfor %}
-
-[osd]
-  osd mkfs type = {{ osd_mkfs_type }}
-  osd mkfs options xfs = {{ osd_mkfs_options_xfs }}
-  osd mount options xfs = {{ osd_mount_options_xfs }}
-  osd journal size = {{ journal_size }}
-{% if cluster_network is defined %}
-  cluster_network = {{ cluster_network }}
 {% endif %}
-{% if public_network is defined %}
-  public_network = {{ public_network }}
-{% endif %}
-  osd mon heartbeat interval = {{ osd_mon_heartbeat_interval }}
-  # Performance tuning
-  filestore merge threshold = {{ filestore_merge_threshold }}
-  filestore split multiple = {{ filestore_split_multiple }}
-  osd op threads = {{ osd_op_threads }}
-  filestore op threads = {{ filestore_op_threads }}
-  filestore max sync interval = {{ filestore_max_sync_interval }}
-  osd max scrubs = {{ osd_max_scrubs }}
-  # Recovery tuning
-  osd recovery max active = {{ osd_recovery_max_active }}
-  osd max backfills = {{ osd_max_backfills }}
-  osd recovery op priority = {{ osd_recovery_op_priority }}
-  osd recovery max chunk = {{ osd_recovery_max_chunk }}
-  osd recovery threads = {{ osd_recovery_threads }}
-  osd objectstore = {{ osd_objectstore }}
-  osd crush update on start = {{ osd_crush_update_on_start }}
-{% if enable_debug_osd %}
-  debug osd = {{ debug_osd_level }}
-  debug filestore = {{ debug_osd_level }}
-  debug journal = {{ debug_osd_level }}
-  debug monc = {{ debug_osd_level }}
-{% endif %}
-
-{% if mds %}
-[mds]
-{% if enable_debug_mds %}
-  debug mds = {{ debug_mds_level }}
-  debug mds balancer = {{ debug_mds_level }}
-  debug mds log = {{ debug_mds_level }}
-  debug mds migrator = {{ debug_mds_level }}
-{% endif %}
+      {% endif %}
+      {% if option == "mds": %}
+{% if groups['mdss'] is defined %}
 {% for host in groups['mdss'] %}
-  {% if hostvars[host]['ansible_hostname'] is defined %}
+{% if hostvars[host]['ansible_hostname'] is defined %}
   [mds.{{ hostvars[host]['ansible_hostname'] }}]
     host = {{ hostvars[host]['ansible_hostname'] }}
-  {% endif %}
+{% endif %}
 {% endfor %}
 {% endif %}
-
-{% if radosgw %}
+      {% endif %}
+      {% if option == "rgw": %}
+{% if groups['rgws'] is defined %}
 {% for host in groups['rgws'] %}
 {% if hostvars[host]['ansible_hostname'] is defined %}
 [client.radosgw.{{ hostvars[host]['ansible_hostname'] }}]
@@ -146,18 +54,7 @@
   log file = /var/log/ceph/radosgw-{{ hostvars[host]['ansible_hostname'] }}.log
   rgw data = /var/lib/ceph/radosgw/ceph-radosgw.{{ hostvars[host]['ansible_hostname'] }}
   rgw print continue = false
-  {% if radosgw_frontend  == 'civetweb' %}
-  rgw frontends = civetweb port={{ radosgw_civetweb_port }}
-  {% endif %}
 {% endif %}
 {% endfor %}
 {% endif %}
-
-{% if restapi %}
-[client.restapi]
-  public addr = {{ hostvars[inventory_hostname]['ansible_' + restapi_interface]['ipv4']['address'] }}:{{ restapi_port }}
-  restapi base url = {{ restapi_base_url }}
-  restapi log level = {{ restapi_log_level }}
-  keyring = /var/lib/ceph/restapi/ceph-restapi/keyring
-  log file = /var/log/ceph/ceph-restapi.log
 {% endif %}

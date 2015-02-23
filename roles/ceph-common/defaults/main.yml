@@ -13,7 +13,7 @@
 # COMMUNITY VERSION
 ceph_stable: true # use ceph stable branch
 ceph_stable_key: https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
-ceph_stable_release: hammer # ceph stable release
+ceph_stable_release: giant # ceph stable release
 
 # This option is needed for _both_ stable and dev version, so please always fill the right version
 # # for supported distros, see http://ceph.com/rpm-{{ ceph_stable_release }}/
@@ -50,96 +50,89 @@ ceph_dev_redhat_distro: centos7
 ## Ceph options
 #
 fsid: "{{ cluster_uuid.stdout }}"
-cephx: true
-cephx_require_signatures: true # Kernel RBD does NOT support signatures for Kernels < 3.18!
-cephx_cluster_require_signatures: true
-cephx_service_require_signatures: false
-max_open_files: 131072
+monitor_interface: eth1
 
-# Logging
-disable_in_memory_logs: true # set this to false while enabling the options below
-rbd_client_log_file: /var/log/qemu/qemu-guest-$pid.log # must be writable by QEMU and allowed by SELinux or AppArmor
-
-# Debug logs
-enable_debug_global: false
-debug_global_level: 20
-enable_debug_mon: false
-debug_mon_level: 20
-enable_debug_osd: false
-debug_osd_level: 20
-enable_debug_mds: false
-debug_mds_level: 20
-
-## Monitor options
-#
-monitor_interface: interface
-mon_osd_down_out_interval: 600
-mon_osd_min_down_reporters: 7 # number of OSDs per host + 1
-mon_clock_drift_allowed: .15
-mon_clock_drift_warn_backoff: 30
-mon_osd_full_ratio: .95
-mon_osd_nearfull_ratio: .85
-mon_osd_report_timeout: 300
-
-## OSD options
-#
-journal_size: 0
-pool_default_pg_num: 128
-pool_default_pgp_num: 128
-pool_default_size: 2
-pool_default_min_size: 1
-cluster_network: 0.0.0.0/0
-public_network: 0.0.0.0/0
-osd_mkfs_type: xfs
-osd_mkfs_options_xfs: -f -i size=2048
-osd_mount_options_xfs: noatime,largeio,inode64,swalloc
-osd_mon_heartbeat_interval: 30
-
-# CRUSH
-pool_default_crush_rule: 0
-osd_crush_update_on_start: "true"
-
-# Object backend
-osd_objectstore: filestore
-
-# Performance tuning
-filestore_merge_threshold: 40
-filestore_split_multiple: 8
-osd_op_threads: 8
-filestore_op_threads: 8
-filestore_max_sync_interval: 5
-osd_max_scrubs: 1
-
-# Recovery tuning
-osd_recovery_max_active: 5
-osd_max_backfills: 2
-osd_recovery_op_priority: 2
-osd_recovery_max_chunk: 1048576
-osd_recovery_threads: 1
-
-## MDS options
-#
-mds: false # disable mds configuration in ceph.conf
-
-## Rados Gateway options
-#
-radosgw: false # referenced in monitor role too.
-#radosgw_dns_name: your.subdomain.tld # subdomains used by radosgw. See http://ceph.com/docs/master/radosgw/config/#enabling-subdomain-s3-calls
-radosgw_frontend: civetweb # supported options are 'apache' or 'civetweb', also edit roles/ceph-radosgw/defaults/main.yml
-radosgw_civetweb_port: 80
-
-## REST API options
-#
-restapi: false # disable restapi configuration in ceph.conf
-restapi_interface: eth1
-restapi_port: 5000
-restapi_base_url: /api/v0.1
-restapi_log_level: warning # available level are: critical, error, warning, info, debug
-
-## Testing mode
-# enable this mode _only_ when you have a single node
-# if you don't want it keep the option commented
-#common_single_host_mode: true
+basic_ceph_config:
+  global:
+    fsid: "{{ fsid }}"
+    auth cluster required: "cephx"
+    auth service required: "cephx"
+    auth client required: "cephx"
+    cephx require signatures: true # Kernel RBD does NOT support signatures!
+    cephx cluster require signatures: true
+    cephx service require signatures: true
+    max open files: 131072
+    osd pool default pg num: 128
+    osd pool default pgp num: 128
+    osd pool default size: 2
+    osd pool default min size: 1
+    osd pool default crush rule: 0
+    osd crush chooseleaf type: 1 # Useful in AIO mode
+    debug_lockdep: 0/0
+    debug_context: 0/0
+    debug_crush: 0/0
+    debug_buffer: 0/0
+    debug_timer: 0/0
+    debug_filer: 0/0
+    debug_objecter: 0/0
+    debug_rados: 0/0
+    debug_rbd: 0/0
+    debug_journaler: 0/0
+    debug_objectcatcher: 0/0
+    debug_client: 0/0
+    debug_osd: 0/0
+    debug_optracker: 0/0
+    debug_objclass: 0/0
+    debug_filestore: 0/0
+    debug_journal: 0/0
+    debug_ms: 0/0
+    debug_monc: 0/0
+    debug_tp: 0/0
+    debug_auth: 0/0
+    debug_finisher: 0/0
+    debug_heartbeatmap: 0/0
+    debug_perfcounter: 0/0
+    debug_asok: 0/0
+    debug_throttle: 0/0
+    debug_mon: 0/0
+    debug_paxos: 0/0
+    debug_rgw: 0/0
+  mon:
+    mon osd down out interval: 600
+    mon osd min down reporters: 7 # number of OSDs per host + 1
+  osd:
+    cluster network: 192.168.42.0/24
+    public network: 192.168.42.0/24
+    filestore op threads: 3
+    osd journal size: 100
+    osd journal aio: true
+    osd mkfs type: xfs # only xfs supported by this version of config
+    osd mkfs options xfs: "-f -i size=2048 -K"
+    osd mount options xfs: "rw,noexec,nodev,noatime,nodiratime,barrier=0"
+    osd mon heartbeat interval: 30
+    filestore merge threshold: 40
+    filestore split multiple: 8
+    osd op threads: 8
+    filestore op threads: 8
+    filestore max sync interval: 5
+    osd max scrubs: 1
+    osd recovery max active: 5
+    osd max backfills: 2
+    osd recovery op priority: 2
+    osd recovery max chunk: 1048576
+    osd recovery threads: 1
+    osd crush update on start: false
+  client:
+    rbd cache: true
+    rbd cache writethrough until flush: true
+    admin socket: /var/run/ceph/$cluster-$type.$id.$pid.$cctid.asok
+    log file: /var/log/qemu/qemu-guest-$pid.log
+  mds:
+    pouet: pouet
+    foo: bar
+  rgw:
+    radosgw_frontend: civetweb
+    radosgw_civetweb_port: 80
 
 
 #############
