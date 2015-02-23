@@ -1,60 +1,121 @@
-#jinja2: lstrip_blocks: True
-# {{ ansible_managed }}
+#jinja2: lstrip_blocks: "true"
 
-{% if final_ceph_config is defined %}
+{%- if final_ceph_config is defined -%}
   {# Create the section #}
-  {% for option, value in final_ceph_config.iteritems() %}
+  {% for option, value in final_ceph_config.iteritems() | sort -%}
     {% if value is not mapping -%}
       {% if value is string -%}
         {{ option }} = {{ value }}
-      {% elif value is number -%}
+      {% endif %}
+      {% if value is number -%}
         {{ option }} = {{ value | lower }}
       {% endif %}
-    {% elif value is mapping -%}
-      [{{ option }}]
     {% endif %}
-    {# Fill the section with options #}
-    {% for suboption, subvalue in value.iteritems() -%}
-      {% if subvalue is not mapping -%}
-        {{ suboption }} = {{ subvalue | lower }}
-      {% endif %}
-    {% endfor %}
-      {% if option == "mon": %}
-{% if groups['mons'] is defined %}
-{%- for host in groups['mons'] -%}
-{% if hostvars[host]['ansible_hostname'] is defined %}
+  {% endfor %}
+
+  {% for option, value in final_ceph_config.iteritems() -%}
+    {%- if value is mapping and option == "global": -%}
+      {# Fill the section with global #}
+[{{ option }}]
+        {% for suboption, subvalue in value.iteritems() | sort -%}
+          {% if subvalue is not mapping -%}
+            {{ suboption }} = {{ subvalue | lower }}
+          {% endif %}
+        {% endfor %}
+    {% endif %}
+  {% endfor %}
+
+  {% for option, value in final_ceph_config.iteritems() -%}
+      {% if value is mapping and option == "mon": -%}
+        {# Fill the section with mons #}
+        {% if groups['mons'] is defined -%}
+        [{{ option }}]
+          {% for suboption, subvalue in value.iteritems() | sort -%}
+            {% if subvalue is not mapping -%}
+              {{ suboption }} = {{ subvalue | lower }}
+            {% endif %}
+          {% endfor %}
+        {% for host in groups['mons'] -%}
+          {%- if hostvars[host]['ansible_hostname'] is defined -%}
   [mon.{{ hostvars[host]['ansible_hostname'] }}]
-    host = {{ hostvars[host]['ansible_hostname'] }}
-    mon addr = {{ hostvars[host]['ansible_' + monitor_interface ]['ipv4']['address'] }}
-{% endif %}
-{% endfor %}
-{% endif %}
-      {% endif %}
-      {% if option == "mds": %}
-{% if groups['mdss'] is defined %}
-{% for host in groups['mdss'] %}
-{% if hostvars[host]['ansible_hostname'] is defined %}
-  [mds.{{ hostvars[host]['ansible_hostname'] }}]
-    host = {{ hostvars[host]['ansible_hostname'] }}
-{% endif %}
-{% endfor %}
-{% endif %}
-      {% endif %}
-      {% if option == "rgw": %}
-{% if groups['rgws'] is defined %}
-{% for host in groups['rgws'] %}
-{% if hostvars[host]['ansible_hostname'] is defined %}
-[client.radosgw.{{ hostvars[host]['ansible_hostname'] }}]
-  {% if radosgw_dns_name is defined %}
-    rgw dns name = {{ radosgw_dns_name }}
-  {% endif %}
   host = {{ hostvars[host]['ansible_hostname'] }}
-  keyring = /var/lib/ceph/radosgw/ceph-radosgw.{{ hostvars[host]['ansible_hostname'] }}/keyring
-  rgw socket path = /tmp/radosgw-{{ hostvars[host]['ansible_hostname'] }}.sock
-  log file = /var/log/ceph/radosgw-{{ hostvars[host]['ansible_hostname'] }}.log
-  rgw data = /var/lib/ceph/radosgw/ceph-radosgw.{{ hostvars[host]['ansible_hostname'] }}
-  rgw print continue = false
-{% endif %}
-{% endfor %}
-{% endif %}
+  mon addr = {{ hostvars[host]['ansible_' + monitor_interface ]['ipv4']['address'] }}
+          {% endif -%}
+        {% endfor -%}
+        {% endif -%}
+      {% endif %}
+  {% endfor %}
+
+  {% for option, value in final_ceph_config.iteritems() -%}
+    {% if value is mapping and option == "osd": -%}
+        [{{ option }}]
+        {# Fill the section with osds #}
+          {% for suboption, subvalue in value.iteritems() | sort -%}
+            {% if subvalue is not mapping -%}
+              {{ suboption }} = {{ subvalue | lower }}
+            {% endif %}
+          {% endfor %}
+    {% endif %}
+  {% endfor %}
+
+  {%- for option, value in final_ceph_config.iteritems() -%}
+    {% if value is mapping and option == "client": -%}
+
+      [{{ option }}]
+        {# Fill the section with client #}
+        {% for suboption, subvalue in value.iteritems() | sort -%}
+          {% if subvalue is not mapping -%}
+            {{ suboption }} = {{ subvalue | lower }}
+          {% endif %}
+        {% endfor %}
+    {% endif %}
+  {% endfor %}
+
+  {% for option, value in final_ceph_config.iteritems() -%}
+    {% if value is mapping and option == "mds": -%}
+        {% if groups['mdss'] is defined -%}
+        [{{ option }}]
+        {# Fill the section with mds #}
+          {% for suboption, subvalue in value.iteritems() | sort -%}
+            {% if subvalue is not mapping -%}
+              {{ suboption }} = {{ subvalue | lower }}
+            {% endif %}
+          {% endfor %}
+          {% for host in groups['mdss'] -%}
+            {% if hostvars[host]['ansible_hostname'] is defined -%}
+            [mds.{{ hostvars[host]['ansible_hostname'] }}]
+            host = {{ hostvars[host]['ansible_hostname'] }}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+    {% endif %}
+  {% endfor %}
+
+  {% for option, value in final_ceph_config.iteritems() -%}
+     {% if value is mapping and option == "rgw": -%}
+        [{{ option }}]
+        {# Fill the section with rgw #}
+        {% for suboption, subvalue in value.iteritems() | sort -%}
+          {% if subvalue is not mapping -%}
+            {{ suboption }} = {{ subvalue | lower }}
+          {% endif %}
+        {% endfor %}
+        {%- if groups['rgws'] is defined -%}
+          {% for host in groups['rgws'] -%}
+            {% if hostvars[host]['ansible_hostname'] is defined -%}
+            [client.radosgw.{{ hostvars[host]['ansible_hostname'] }}]
+              {% if radosgw_dns_name is defined -%}
+                rgw dns name = {{ radosgw_dns_name }}
+              {% endif %}
+            host = {{ hostvars[host]['ansible_hostname'] }}
+            keyring = /etc/ceph/radosgw.{{ hostvars[host]['ansible_hostname'] }}.keyring
+            rgw socket path = /tmp/radosgw-{{ hostvars[host]['ansible_hostname'] }}.sock
+            log file = /var/log/ceph/radosgw-{{ hostvars[host]['ansible_hostname'] }}.log
+            rgw data = /var/lib/ceph/radosgw/{{ hostvars[host]['ansible_hostname'] }}
+            rgw print continue = false
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endif %}
+  {% endfor %}
 {% endif %}
