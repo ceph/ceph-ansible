@@ -1,0 +1,66 @@
+---
+
+# This repice can be used to split this repo and keep the part updated!
+# Use it like this:
+#
+# ansible-playbook -i dummy-ansible-hosts contrib/splitup.yml \
+#   --tags split --extra-vars github=mhubig/ansible
+#
+# ansible-playbook -i dummy-ansible-hosts contrib/splitup.yml \
+#   --tags update --extra-vars github=mhubig/ansible
+
+- name: This recipe split the roles into repos and keeps them updated.
+  hosts: localhost
+  connection: local
+  gather_facts: False
+
+  vars:
+    github: False
+    roles:
+      - ceph-common
+      - ceph-mon
+      - ceph-osd
+      - ceph-mds
+      - ceph-radosgw
+      - haproxy
+
+  tasks:
+
+    - name: check for github prefix option on commandline
+      tags: split
+      fail: >
+        msg='github prefix missing! e.g: (--extra-vars github=mhubig/ansible).'
+      when: github == False
+
+    - name: split the repo in seperate branches
+      tags: split
+      command: >
+        git subtree split --prefix=roles/{{ item }} -b {{ item }} --squash
+        chdir=../
+      with_items: roles
+
+    - name: adds remote github repos for the splits
+      tags: split
+      command: >
+        git remote add {{ item }} git@github.com:{{ github }}-{{ item }}.git
+        chdir=../
+      with_items: roles
+
+    - name: adds upstream remote
+      tags: update
+      command: >
+        git remote add upstream git@github.com:ceph/ceph-ansible.git
+      ignore_errors: yes
+
+    - name: pulles the newest changes from upstream
+      tags: update
+      command: >
+        git pull upstream master:master
+
+    - name: update the split repos from master
+      tags: update
+      command: >
+        git subtree push --prefix=roles/{{ item }} {{ item }} master
+        chdir=../
+      with_items: roles
+
