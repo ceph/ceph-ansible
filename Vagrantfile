@@ -1,14 +1,18 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+require 'yaml'
 VAGRANTFILE_API_VERSION = '2'
 
-NMONS   = 3
-NOSDS   = 3
-NMDSS   = 0
-NRGWS   = 0
-CLIENTS = 0
-SUBNET  = '192.168.42'
+config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
+settings=YAML.load_file(config_file)
+
+NMONS   = settings['mon_vms']
+NOSDS   = settings['osd_vms']
+NMDSS   = settings['mds_vms']
+NRGWS   = settings['rgw_vms']
+CLIENTS = settings['client_vms']
+SUBNET  = settings['subnet']
 
 ansible_provision = proc do |ansible|
   ansible.playbook = 'site.yml'
