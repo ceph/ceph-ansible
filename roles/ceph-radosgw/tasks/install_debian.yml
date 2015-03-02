@@ -86,7 +86,7 @@
     - libapache2-mod-fastcgi
   when: purge_default_apache.changed or purge_ceph_apache.changed
 
-- name: "Install Apache, fastcgi and Rados Gateway"
+- name: "Install Apache and fastcgi"
   apt: >
     pkg={{ item }}
     state=present
@@ -94,7 +94,6 @@
   with_items:
     - apache2
     - libapache2-mod-fastcgi
-    - radosgw
 
 ## Prepare Apache
 #
@@ -118,14 +117,6 @@
 ## Prepare RGW
 #
 
-- name: Create RGW directory
-  file: >
-    path=/var/lib/ceph/radosgw/{{ ansible_fqdn }}
-    state=directory
-    owner=root
-    group=root
-    mode=0644
-
 - name: Enable Rados Gateway vhost and disable default site
   command: "{{ item }}"
   with_items:
@@ -142,13 +133,3 @@
     mode=0555
     owner=root
     group=root
-
-## If we don't perform this check Ansible will start multiple instance of radosgw
-- name: Check if RGW is started
-  command: /etc/init.d/radosgw status
-  register: rgwstatus
-  ignore_errors: True
-
-- name: Start RGW
-  command: /etc/init.d/radosgw start
-  when: rgwstatus.rc != 0
