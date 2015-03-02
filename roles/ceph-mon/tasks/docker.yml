@@ -1,0 +1,83 @@
+---
+- name: ensure dockerfile directories exist
+  file: >
+    path: "{{ item }}"
+    owner: "{{ ansible_ssh_user }}"
+    state: directory
+  with_items:
+    - "{{ ansible_env.PWD }}/.ansible_cache"
+    - "{{ ansible_env.PWD }}/.ansible_cache/docker"
+
+- name: synchronize role to remote cache for Dockerfile build
+  synchronize: >
+    src: ../
+    dest: "{{ ansible_env.PWD }}/.ansible_cache/docker/ceph_mon"
+    archive: no
+    checksum: yes
+    recursive: yes
+
+- name: ensure docker image configuration directory exists
+  file: >
+    path: "{{ item }}"
+    owner: "{{ ansible_ssh_user }}"
+    state: directory
+  with_items:
+    - "{{ ansible_env.PWD }}/.ansible_cache/docker/ceph_mon/provisioning/group_vars"
+
+- name: update configuration used to build docker image from template
+  template: >
+    src: ansible_cache/docker/ceph_mon/provisioning/group_vars/all.yml
+    owner: "{{ ansible_ssh_user }}"
+    dest: "{{ ansible_env.PWD }}/.ansible_cache/docker/ceph_mon/provisioning/group_vars/all.yml"
+
+- name: ensure ceph_mon docker image has been built
+  docker_image: >
+    name: "{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
+    path: "{{ ansible_env.PWD }}/.ansible_cache/docker/ceph_mon"
+    state: present
+
+- name: ensure ceph_mon data container exists
+  docker: >
+    image: "{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
+    name: "{{ ceph_mon_docker_containername }}_data"
+    command: >
+      ansible-playbook
+        -i inventories/local.ini provisioning/configure.yml -e '{
+          "openstack_log_verbose" : "{{ openstack_log_verbose }}",
+          "openstack_log_debug" : "{{ openstack_log_debug }}",
+          "openstack_identity_admin_token" :
+            "{{ openstack_identity_admin_token }}",
+          "openstack_mysql_host" : "{{ openstack_mysql_host }}",
+          "openstack_mysql_port" : "{{ openstack_mysql_port }}",
+          "openstack_mysql_ceph_mon_password" :
+            "{{ openstack_mysql_ceph_mon_password }}" }'
+    detach: no
+    state: present
+
+- name: wait until configuration is completed
+  command: docker wait "{{ ceph_mon_docker_containername }}_data"
+  register: docker_wait
+  changed_when: false
+
+- name: collect configuration log
+  command: docker logs "{{ ceph_mon_docker_containername }}_data"
+  register: configure_log
+  changed_when: false
+
+- name: display configuration log
+  debug:
+    msg: "{{ configure_log.stdout_lines }}"
+
+- name: fail on configuration failure
+  assert:
+    that: docker_wait.stdout == "0"
+
+- name: ensure ceph_mon service is running
+  docker: >
+    image: "{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
+    name: "{{ ceph_mon_docker_containername }}_server"
+    volumes_from: "{{ ceph_mon_docker_containername }}_data"
+    ports:
+      - 6789:6789
+    detach: yes
+    state: running
