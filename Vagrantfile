@@ -27,17 +27,24 @@ ansible_provision = proc do |ansible|
   }
 
   # In a production deployment, these should be secret
-  if NRGWS != '0'
+  if NMDSS != '0' && NRGWS != '0'
     ansible.extra_vars = {
       fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
       monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
       radosgw: 'true',
+      mds: 'true',
     }
   elsif NMDSS != '0'
     ansible.extra_vars = {
       fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
       monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
       mds: 'true',
+    }
+  elsif NRGWS != '0'
+    ansible.extra_vars = {
+      fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
+      monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
+      radosgw: 'true',
     }
   else
     ansible.extra_vars = {
