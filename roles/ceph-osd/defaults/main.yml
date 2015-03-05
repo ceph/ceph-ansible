@@ -7,18 +7,21 @@
 ####################
 
 # The following options will build a ceph.conf with OSD sections
-# Example:
+#
+# The default options are useful when you colocate SSD and SATA disk on the same machine
+# This will generate:
 # [osd.X]
-# osd crush location = "root=location"
+# osd crush location = "root=ssd host={{ ansible_hostname }}-ssd'"
+# [osd.X]
+# osd crush location = "root=ssd host={{ ansible_hostname }}-sata'"
 #
-# This works with your inventory file
-# To match the following 'osd_crush_location' option the inventory must look like:
-#
-# [osds]
-# osd0 ceph_crush_root=foo ceph_crush_rack=bar
+# You can pass what ever option you want, you can also imagine something like this
+# osd_crush_location: "'root=dc rack=foo host={{ ansible_hostname }}'"
 
 crush_location: false
-osd_crush_location: "'root={{ ceph_crush_root }} rack={{ ceph_crush_rack }} host={{ ansible_hostname }}'"
+osd_crush_location:
+  - "'root=ssd host={{ ansible_hostname }}-ssd'"
+  - "'root=sata host={{ ansible_hostname }}-sata'"
 
 ##############
 # CEPH OPTIONS
@@ -51,8 +54,6 @@ zap_devices: false
 devices:
   - /dev/sdb
   - /dev/sdc
-  - /dev/sdd
-  - /dev/sde
 
 # Device discovery is based on the Ansible fact 'ansible_devices'
 # which reports all the devices on a system. If chosen all the disks
