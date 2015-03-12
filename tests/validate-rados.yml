@@ -1,0 +1,32 @@
+---
+# This playbook tests a Ceph object storage daemon
+
+- hosts:
+  - 127.0.0.1
+  roles: ceph-common
+  sudo: True
+
+  vars:
+    foo: bar
+
+  tasks:
+
+  - name: Fetch ceph.conf and admin keyring
+    fetch: >
+      src=/etc/ceph/ceph.client.admin.keyring
+      dest=/etc/ceph/ceph.client.admin.keyring
+      fail_on_missing=yes
+
+  - name: Create working directory
+    command: mktemp
+    register: tmp_work_dir
+
+  - name: Create a file
+    command: dd if=/dev/zero of={{ tmp_work_dir.stdout }}/foobar count=1 bs=1M
+
+  - name: Create an object
+    command: rados -p rbd put foobar.object {{ tmp_work_dir.stdout }}/foobar
+    delegate_to: foobar
+
+  - name: Get an object
+    command: rados -p rbd get foobar.object {{ tmp_work_dir.stdout }}/foobar.file
