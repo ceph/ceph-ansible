@@ -1,6 +1,10 @@
 ---
 # You can override vars by using host or group vars
 
+###########
+# GENERAL #
+###########
+
 # ACTIVATE BOTH FSID AND MONITOR_SECRET VARIABLES FOR NON-VAGRANT DEPLOYMENT
 fsid: "{{ cluster_uuid.stdout }}"
 # monitor_secret:
@@ -10,9 +14,10 @@ cephx: true
 # referenced in common role too.
 radosgw: false
 
-###########
-# OPENSTACK
-###########
+
+#############
+# OPENSTACK #
+#############
 
 openstack_config: false
 openstack_glance_pool: images
@@ -24,3 +29,13 @@ openstack_keys:
   - { name: client.glance, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_glance_pool }}'" }
   - { name: client.cinder, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_pool }}, allow rwx pool={{ openstack_nova_pool }}, allow rx pool={{ openstack_glance_pool }}'"  }
   - { name: client.cinder-backup, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_backup_pool }}'" }
+
+
+##########
+# DOCKER #
+##########
+
+ceph_containerized_deployment: false
+ceph_mon_docker_interface: eth0
+ceph_mon_docker_username: ceph
+ceph_mon_docker_imagename: "mon:latest"

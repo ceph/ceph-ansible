@@ -3,6 +3,12 @@ ceph-ansible
 
 Ansible playbook for Ceph!
 
+Clone me:
+
+```bash
+git clone https://github.com/ceph/ceph-ansible.git
+```
+
 ## What does it do?
 
 General support for:

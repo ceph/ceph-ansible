@@ -1,0 +1,42 @@
+---
+- name: Try to fetch Ceph config and keys
+  copy: >
+    src=fetch/docker_mon_files/{{ item }}
+    dest=/etc/ceph/
+    owner=root
+    group=root
+    mode=600
+  with_items:
+    - /etc/ceph/ceph.client.admin.keyring
+    - /etc/ceph/ceph.conf
+    - /etc/ceph/monmap
+    - /etc/ceph/ceph.mon.keyring
+  ignore_errors: true
+
+- name: Run the Ceph Monitor docker image
+  docker: >
+    image="{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
+    name=ceph-{{ ansible_hostname }}
+    net=host
+    state=running
+    env="MON_NAME=ceph-{{ ansible_hostname }},MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }}"
+    volumes="/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
+
+- name: Ensure ceph_mon service is running
+  docker: >
+    image="{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
+    name="ceph-{{ ansible_hostname }}"
+    ports=6789:6789
+    detach=yes
+    state=running
+
+- name: Collect Ceph files to the Ansible server
+  fetch: >
+    src={{ item }}
+    dest=fetch/docker_mon_files/{{ item }}
+    flat=yes
+  with_items:
+    - /etc/ceph/ceph.client.admin.keyring
+    - /etc/ceph/ceph.conf
+    - /etc/ceph/monmap
+    - /etc/ceph/ceph.mon.keyring
