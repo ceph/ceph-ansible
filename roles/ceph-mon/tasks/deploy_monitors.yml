@@ -1,6 +1,8 @@
 ---
 - name: Create monitor initial keyring
-  command: "ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} --create-keyring --name=mon. --add-key={{ monitor_secret | mandatory }} --cap mon 'allow *' creates=/var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}"
+  command: >
+    ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} --create-keyring --name=mon. --add-key={{ monitor_secret | mandatory }} --cap mon 'allow *'
+    creates=/var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
 
 - name: Set initial monitor key permissions
   file: >
@@ -18,7 +20,9 @@
     mode=0644
 
 - name: Ceph monitor mkfs
-  command: "ceph-mon --mkfs -i {{ ansible_hostname }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} creates=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/keyring"
+  command: >
+    ceph-mon --mkfs -i {{ ansible_hostname }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
+    creates=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/keyring
 
 - name: Start and add that the monitor service to the init sequence
   service: >

@@ -6,7 +6,9 @@
   wait_for: path=/etc/ceph/ceph.client.admin.keyring
 
 - name: Create RGW keyring
-  command: ceph auth get-or-create client.radosgw.{{ hostvars[item]['ansible_hostname'] }} osd 'allow rwx' mon 'allow rw' -o /etc/ceph/radosgw.{{ hostvars[item]['ansible_hostname'] }}.keyring creates=/etc/ceph/radosgw.{{ hostvars[item]['ansible_hostname'] }}.keyring
+  command: >
+    ceph auth get-or-create client.radosgw.{{ hostvars[item]['ansible_hostname'] }} osd 'allow rwx' mon 'allow rw' -o /etc/ceph/radosgw.{{ hostvars[item]['ansible_hostname'] }}.keyring
+    creates=/etc/ceph/radosgw.{{ hostvars[item]['ansible_hostname'] }}.keyring
   when: cephx and radosgw
   with_items: groups.rgws
   changed_when: False
