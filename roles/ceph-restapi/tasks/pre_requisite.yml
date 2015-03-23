@@ -1,0 +1,25 @@
+---
+- name: Create Ceph REST API directory
+  file: >
+    path=/var/lib/ceph/restapi/ceph-restapi
+    state=directory
+    owner=root
+    group=root
+    mode=0644
+
+- name: Copy Ceph REST API keyring
+  copy: >
+    src=fetch/{{ fsid }}/etc/ceph/ceph.client.restapi.keyring
+    dest=/var/lib/ceph/restapi/ceph-restapi/keyring
+    owner=root
+    group=root
+    mode=600
+  when: cephx
+
+- name: Activate Ceph REST API with upstart
+  file: >
+    path=/var/lib/ceph/restapi/ceph-restapi/done
+    state=touch
+    owner=root
+    group=root
+    mode=0644

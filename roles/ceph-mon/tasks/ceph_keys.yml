@@ -13,6 +13,13 @@
   with_items: groups.rgws
   changed_when: False
 
+- name: Create Ceph REST API keyring
+  command: >
+    ceph auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/ceph.client.restapi.keyring
+    creates=/etc/ceph/ceph.client.restapi.keyring
+  when: cephx and restapi
+  changed_when: False
+
 - include: openstack_config.yml
   when: openstack_config and cephx
 
@@ -20,6 +27,15 @@
   shell: ls -1 /etc/ceph/*.keyring
   register: ceph_keys
   when: cephx
+
+- name: Set keys permissions
+  file: >
+    path={{ item }}
+    mode=0600
+    owner=root
+    group=root
+  with_items:
+    - "{{ ceph_keys.stdout_lines }}"
 
 - name: Copy keys to the ansible server
   fetch: >

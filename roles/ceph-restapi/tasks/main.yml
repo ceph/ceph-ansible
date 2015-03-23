@@ -1,0 +1,11 @@
+---
+- include: pre_requisite.yml
+
+- name: Check if Ceph REST API is already started
+  shell: "ps aux|grep [c]eph-rest-api"
+  register: restapi_status
+  ignore_errors: True
+
+- name: Start Ceph REST API
+  shell: "nohup ceph-rest-api -n client.restapi &"
+  when: restapi_status.rc != 0
