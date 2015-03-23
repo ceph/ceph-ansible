@@ -4,7 +4,12 @@
   command: /etc/init.d/radosgw status
   register: rgwstatus
   ignore_errors: True
+  when: ansible_distribution != "Ubuntu"
+
+- name: Start RGW
+  service: name=radosgw-all state=started
+  when: ansible_distribution == "Ubuntu"
 
 - name: Start RGW
   command: /etc/init.d/radosgw start
-  when: rgwstatus.rc != 0
+  when: rgwstatus.rc != 0 and ansible_distribution != "Ubuntu"
