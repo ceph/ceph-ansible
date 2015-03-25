@@ -1,0 +1,249 @@
+---
+# This playbook was meant to upgrade a node from Ubuntu to RHEL.
+# We are performing a set of actions prior to reboot the node.
+# The node reboots via PXE and gets its new operating system.
+# This playbook only works for monitors and OSDs.
+
+- hosts: mons
+  serial: 1
+  sudo: True
+
+  vars:
+    backup_dir: /tmp/
+
+  pre_tasks:
+    - name: Compress the store as much as possible
+      command: ceph tell mon.{{ ansible_hostname }} compact
+
+    - name: Check if sysvinit
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/sysvinit
+      register: sysvinit
+
+    - name: Check if upstart
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/upstart
+      register: upstart
+
+    - name: Restart the Monitor after compaction (Upstart)
+      service: name=ceph-mon-all state=restarted
+      when: upstart.stat.exists == True
+
+    - name: Restart the Monitor after compaction (Sysvinit)
+      service: name=ceph state=restarted args=mon
+      when: sysvinit.stat.exists == True
+
+    - name: Wait for the monitor to be up again
+      local_action: >
+        wait_for
+        host={{ ansible_ssh_host | default(inventory_hostname) }}
+        port=6789
+        timeout=10
+
+    - name: Stop the monitor (Upstart)
+      service: name=ceph-mon-all state=started
+      when: upstart.stat.exists == True
+
+    - name: Stop the monitor (Sysvinit)
+      service: name=ceph state=started args=mon
+      when: sysvinit.stat.exists == True
+
+    - name: Wait for the monitor to be down
+      local_action: >
+        wait_for
+        host={{ ansible_ssh_host | default(inventory_hostname) }}
+        port=6789
+        timeout=10
+        state=stopped
+
+    - name: Create a backup directory
+      file: >
+        path={{ backup_dir }}/monitors-backups
+        state=directory
+        owner=root
+        group=root
+        mode=0644
+      delegate_to: "{{ item }}"
+      with_items: groups.backup[0]
+
+    - name: Archive monitor stores
+      shell: >
+        tar -cpvzf - --one-file-system . /etc/ceph/ceph.conf | cat > {{ ansible_hostname }}.tar
+        chdir=/var/lib/ceph/
+        creates={{ ansible_hostname }}.tar
+
+    - name: Scp the Monitor store
+      fetch: >
+        src=/var/lib/ceph/{{ ansible_hostname }}.tar
+        dest={{ backup_dir }}/monitors-backups/{{ ansible_hostname }}.tar
+        flat=yes
+
+  tasks:
+    - name: Reboot the server
+      command: reboot
+
+    - name: Wait for the server to come up
+      local_action: >
+        wait_for
+        port=22
+        delay=10
+        timeout=3600
+
+    - name: Wait a bit more to be sure that the server is ready
+      pause: seconds=20
+
+    - name: Check if sysvinit
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/sysvinit
+      register: sysvinit
+
+    - name: Check if upstart
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/upstart
+      register: upstart
+
+    - name: Make sure the monitor is stopped (Upstart)
+      service: name=ceph-mon-all state=started
+      when: upstart.stat.exists == True
+
+    - name: Make sure the monitor is stopped (Sysvinit)
+      service: name=ceph state=started args=mon
+      when: sysvinit.stat.exists == True
+
+    - name: Scp back monitor store
+      copy: >
+        src={{ backup_dir }}/monitors-backups/{{ ansible_hostname }}.tar
+        dest=/var/lib/ceph/{{ ansible_hostname }}.tar
+
+    - name: Untar the monitor store
+      shell: >
+        tar -xzvf {{ ansible_hostname }}.tar --overwrite --overwrite-dir
+        chdir=/var/lib/ceph/
+        creates=etc/ceph/ceph.conf
+
+    - name: Configure RHEL7 for sysvinit
+      shell: find -L /var/lib/ceph/mon/ -mindepth 1 -maxdepth 1 -regextype posix-egrep -regex '.*/[A-Za-z0-9]+-[A-Za-z0-9._-]+' -exec touch {}/sysvinit \; -exec rm {}/upstart \;
+
+    - name: Start the monitor
+      service: >
+        name=ceph
+        state=started
+        pattern=/usr/bin/ceph-mon
+        args=mon
+
+    - name: Wait for the Monitor to be up again
+      local_action: >
+        wait_for
+        host={{ ansible_ssh_host | default(inventory_hostname) }}
+        port=6789
+        timeout=10
+
+    - name: Waiting for a quorum...
+      shell: >
+        ceph -s | grep monmap | sed 's/.*quorum//' | egrep -q {{ ansible_hostname }}
+      register: result
+      until: result.rc == 0
+      retries: 5
+      delay: 10
+      delegate_to: "{{ item }}"
+      with_items: groups.backup[0]
+
+- hosts: osds
+  serial: 1
+  sudo: True
+
+  vars:
+    backup_dir: /tmp/
+
+  pre_tasks:
+    - name: Set the noout flag
+      command: ceph osd set noout
+      delegate_to: "{{ item }}"
+      with_items: groups.mons[0]
+
+  tasks:
+    - name: Archive ceph configs
+      shell: >
+        tar -cpvzf - --one-file-system . /etc/ceph/ceph.conf | cat > {{ ansible_hostname }}.tar
+        chdir=/var/lib/ceph/
+        creates={{ ansible_hostname }}.tar
+
+    - name: Create backup directory
+      file: >
+        path={{ backup_dir }}/osds-backups
+        state=directory
+        owner=root
+        group=root
+        mode=0644
+      delegate_to: "{{ item }}"
+      with_items: groups.backup[0]
+
+    - name: Scp OSDs dirs and configs
+      fetch: >
+        src=/var/lib/ceph/{{ ansible_hostname }}.tar
+        dest={{ backup_dir }}/osds-backups/
+        flat=yes
+
+    - name: Reboot the server
+      command: reboot
+
+    - name: Wait for the server to come up
+      local_action: >
+        wait_for
+        port=22
+        delay=10
+        timeout=3600
+
+    - name: Wait a bit to be sure that the server is ready for scp
+      pause: seconds=20
+
+    - name: Scp back OSDs dirs and configs
+      copy: >
+        src={{ backup_dir }}/osds-backups/{{ ansible_hostname }}.tar
+        dest=/var/lib/ceph/{{ ansible_hostname }}.tar
+
+    - name: Untar the OSD config
+      shell: >
+        tar -xzvf {{ ansible_hostname }}.tar --overwrite --overwrite-dir
+        chdir=/var/lib/ceph/
+        creates=etc/ceph/ceph.conf
+
+    - name: Configure RHEL with sysvinit
+      shell: find -L /var/lib/ceph/osd/ -mindepth 1 -maxdepth 1 -regextype posix-egrep -regex '.*/[A-Za-z0-9]+-[A-Za-z0-9._-]+' -exec touch {}/sysvinit \; -exec rm {}/upstart \;
+
+    - name: Copy ceph.conf
+      command: >
+        cp etc/ceph/ceph.conf /etc/ceph/ceph.conf
+        chdir=/var/lib/ceph/
+
+    - name: Start all the OSDs
+      service: >
+        name=ceph
+        state=started
+        pattern=/usr/bin/ceph-osd
+        args=osd
+
+    - name: Wait for the OSDs to be up again
+      local_action: >
+        wait_for
+        host={{ ansible_ssh_host | default(inventory_hostname) }}
+        port={{ item }}
+        timeout=10
+      with_items:
+        - 6800
+
+    - name: Waiting for clean PGs...
+      shell: >
+        test "$(ceph pg stat | sed 's/^.*pgs://' | sed 's/active+clean.*//' |sed 's/ //')" -eq "$(ceph pg stat | sed 's/pgs.*//' | sed 's/^.*://' | sed 's/ //')" && ceph -s | egrep -q "HEALTH_OK|HEALTH_WARN"
+      register: result
+      until: result.rc == 0
+      retries: 10
+      delay: 10
+      delegate_to: "{{ item }}"
+      with_items: groups.backup[0]
+
+#  post_tasks:
+    - name: Unset the noout flag
+      command: ceph osd unset noout
+      delegate_to: "{{ item }}"
+      with_items: groups.mons[0]
