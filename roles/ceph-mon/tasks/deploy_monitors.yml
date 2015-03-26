@@ -23,14 +23,3 @@
   command: >
     ceph-mon --mkfs -i {{ ansible_hostname }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
     creates=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/keyring
-
-- name: Start and add that the monitor service to the init sequence
-  service: >
-    name=ceph
-    state=started
-    enabled=yes
-    args=mon
-
-- name: Get Ceph monitor version
-  shell: ceph daemon mon."{{ ansible_hostname }}" version | cut -d '"' -f 4 | cut -f 1,2 -d '.'
-  register: ceph_version

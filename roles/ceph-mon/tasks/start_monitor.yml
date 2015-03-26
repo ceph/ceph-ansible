@@ -1,0 +1,44 @@
+---
+- name: Activate monitor with upstart
+  file: >
+    path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/{{ item }}
+    state=touch
+    owner=root
+    group=root
+    mode=0600
+  with_items:
+    - done
+    - upstart
+  when: ansible_distribution == "Ubuntu"
+
+- name: Activate monitor with sysvinit
+  file: >
+    path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/{{ item }}
+    state=touch
+    owner=root
+    group=root
+    mode=0600
+  with_items:
+    - done
+    - sysvinit
+  when: ansible_distribution != "Ubuntu"
+
+- name: Start and add that the monitor service to the init sequence (Ubuntu)
+  service: >
+    name=ceph-mon
+    state=started
+    enabled=yes
+    args="id={{ ansible_hostname }}"
+  when: ansible_distribution == "Ubuntu"
+
+- name: Start and add that the monitor service to the init sequence
+  service: >
+    name=ceph
+    state=started
+    enabled=yes
+    args=mon
+  when: ansible_distribution != "Ubuntu"
+
+- name: Get Ceph monitor version
+  shell: ceph daemon mon."{{ ansible_hostname }}" version | cut -d '"' -f 4 | cut -f 1,2 -d '.'
+  register: ceph_version
