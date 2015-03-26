@@ -1,0 +1,176 @@
+---
+# This playbook does a rolling update for all the Ceph services
+# Change the value of serial: to adjust the number of server to be updated.
+#
+# The four roles that apply to the ceph hosts will be applied: ceph-common,
+# ceph-mon, ceph-osd and ceph-mds. So any changes to configuration, package updates, etc,
+# will be applied as part of the rolling update process.
+#
+
+# /!\ DO NOT FORGET TO CHANGE THE RELEASE VERSION FIRST! /!\
+
+- hosts: mons
+  serial: 1
+  sudo: True
+
+  pre_tasks:
+    - name: Compress the store as much as possible
+      command: ceph tell mon.{{ ansible_hostname }} compact
+
+  roles:
+    - ceph-common
+    - ceph-mon
+
+  post_tasks:
+    - name: Check if sysvinit
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/sysvinit
+      register: monsysvinit
+
+    - name: Check if upstart
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/upstart
+      register: monupstart
+
+    - name: Restart the monitor after compaction (Upstart)
+      service: >
+        name=ceph-mon
+        state=restarted
+        args=id={{ ansible_hostname }}
+      when: monupstart.stat.exists == True
+
+    - name: Restart the monitor after compaction (Sysvinit)
+      service: >
+        name=ceph
+        state=restarted
+        args=mon
+      when: monsysvinit.stat.exists == True
+
+    - name: restart monitor(s)
+      service: >
+        name=ceph
+        state=restarted
+        args=mon
+
+    - name: Waiting for the monitor to join the quorum...
+      shell: >
+        ceph -s | grep monmap | sed 's/.*quorum//' | egrep -q {{ ansible_hostname }}
+      register: result
+      until: result.rc == 0
+      retries: 5
+      delay: 10
+      delegate_to: 127.0.0.1
+
+
+- hosts: osds
+  serial: 1
+  sudo: True
+
+  pre_tasks:
+    - name: Set the noout flag
+      command: ceph osd set noout
+      delegate_to: "{{ item }}"
+      with_items: groups.mons[0]
+
+  roles:
+    - ceph-common
+    - ceph-osd
+
+  post_tasks:
+    - name: Check if sysvinit
+      shell: stat /var/lib/ceph/osd/ceph-*/sysvinit
+      register: osdsysvinit
+      ignore_errors: True
+
+    - name: Check if upstart
+      shell: stat /var/lib/ceph/osd/ceph-*/upstart
+      register: osdupstart
+      ignore_errors: True
+
+    - name: Gracefully stop the OSDs (Upstart)
+      service: >
+        name=ceph-osd-all
+        state=restarted
+      when: osdupstart.rc == 0
+
+    - name: Gracefully stop the OSDs (Sysvinit)
+      service: >
+        name=ceph
+        state=restarted
+        args=mon
+      when: osdsysvinit.rc == 0 and
+
+    - name: Waiting for clean PGs...
+      shell: >
+        test "$(ceph pg stat | sed 's/^.*pgs://' | sed 's/active+clean.*//' |sed 's/ //')" -eq "$(ceph pg stat | sed 's/pgs.*//' | sed 's/^.*://' | sed 's/ //')" && ceph health | egrep -q "HEALTH_OK|HEALTH_WARN"
+      register: result
+      until: result.rc == 0
+      retries: 10
+      delay: 10
+      delegate_to: 127.0.0.1
+
+    - name: Unset the noout flag
+      command: ceph osd unset noout
+      delegate_to: "{{ item }}"
+      with_items: groups.mons[0]
+
+
+- hosts: mdss
+  serial: 1
+  sudo: True
+
+  roles:
+    - ceph-common
+    - ceph-mds
+
+  post_tasks:
+    - name: Check if sysvinit
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/sysvinit
+      register: mdssysvinit
+
+    - name: Check if upstart
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/upstart
+      register: mdsupstart
+
+    - name: Restart the metadata server (Upstart)
+      service: >
+        name=ceph-mds
+        state=restarted
+        args=id={{ ansible_hostname }}
+      when: mdsupstart.stat.exists == True
+
+    - name: Restart the metadata server (Sysvinit)
+      service: >
+        name=ceph
+        state=restarted
+        args=mds
+      when: mdssysvinit.stat.exists == True
+
+
+- hosts: rgws
+  serial: 1
+  sudo: True
+
+  roles:
+    - ceph-common
+    - ceph-radosgw
+
+  post_tasks:
+    - name: restart rados gateway server(s)
+      service: >
+        name={{ item }}
+        state=restarted
+      with_items:
+        - radosgw
+      when: radosgw_frontend == 'civetweb'
+
+    - name: restart rados gateway server(s)
+      service: >
+        name={{ item }}
+        state=restarted
+      with_items:
+        - apache2
+        - radosgw
+      when: radosgw_frontend == 'apache'
