@@ -4,10 +4,10 @@
   when: not ceph_containerized_deployment
 
 - include: install_redhat.yml
-  when: ansible_os_family == 'RedHat' and radosgw_frontend == 'apache'
+  when: ansible_os_family == 'RedHat' and radosgw_frontend == 'apache' and not ceph_containerized_deployment
 
 - include: install_debian.yml
-  when: ansible_os_family == 'Debian' and radosgw_frontend == 'apache'
+  when: ansible_os_family == 'Debian' and radosgw_frontend == 'apache' and not ceph_containerized_deployment
 
 - name: "Install Rados Gateway"
   apt: >
@@ -23,6 +23,7 @@
   when: ansible_os_family == 'RedHat' and not ceph_containerized_deployment
 
 - include: start_radosgw.yml
+  when: not ceph_containerized_deployment
 
 - include: docker.yml
   when: ceph_containerized_deployment

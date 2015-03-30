@@ -18,8 +18,12 @@
 
 - name: Activate RGW with upstart
   file: >
-    path=/var/lib/ceph/radosgw/ceph-radosgw.{{ ansible_fqdn }}/done
+    path=/var/lib/ceph/radosgw/ceph-radosgw.{{ ansible_fqdn }}/{{ item }}
     state=touch
     owner=root
     group=root
     mode=0644
+  with_items:
+    - done
+    - upstart
+  when: ansible_distribution == "Ubuntu"
