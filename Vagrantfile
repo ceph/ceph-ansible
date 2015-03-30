@@ -13,6 +13,7 @@ NMDSS   = settings['mds_vms']
 NRGWS   = settings['rgw_vms']
 CLIENTS = settings['client_vms']
 SUBNET  = settings['subnet']
+BOX     = settings['vagrant_box']
 
 ansible_provision = proc do |ansible|
   ansible.playbook = 'site.yml'
@@ -63,7 +64,7 @@ def create_vmdk(name, size)
 end
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  config.vm.box = 'ubuntu/trusty64'
+  config.vm.box = BOX
   config.ssh.insert_key = false # workaround for https://github.com/mitchellh/vagrant/issues/5048
 
   (0..CLIENTS - 1).each do |i|
