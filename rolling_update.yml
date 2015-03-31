@@ -54,7 +54,7 @@
 
     - name: Waiting for the monitor to join the quorum...
       shell: >
-        ceph -s | grep monmap | sed 's/.*quorum//' | egrep -q {{ ansible_hostname }}
+        ceph -s | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
       register: result
       until: result.rc == 0
       retries: 5
@@ -102,7 +102,7 @@
 
     - name: Waiting for clean PGs...
       shell: >
-        test "$(ceph pg stat | sed 's/^.*pgs://' | sed 's/active+clean.*//' |sed 's/ //')" -eq "$(ceph pg stat | sed 's/pgs.*//' | sed 's/^.*://' | sed 's/ //')" && ceph health | egrep -q "HEALTH_OK|HEALTH_WARN"
+        test "$(ceph pg stat | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(ceph pg stat | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health | egrep -sq "HEALTH_OK|HEALTH_WARN"
       register: result
       until: result.rc == 0
       retries: 10
