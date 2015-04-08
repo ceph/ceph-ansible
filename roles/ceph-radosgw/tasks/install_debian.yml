@@ -34,11 +34,13 @@
 - name: Enable multiverse repo for Trusty
   command: "apt-add-repository multiverse"
   when: ansible_lsb.codename in ['trusty'] and not http_100_continue
+  changed_when: False
 
 # Disable the repo when we are using the Ceph repo for 100-continue packages
 - name: Disable multiverse repo for Trusty
   command: "apt-add-repository -r multiverse"
   when: ansible_lsb.codename in ['trusty'] and http_100_continue
+  changed_when: False
 
 # If using 100-continue, add Ceph dev key
 - name: Install the Ceph development repository key
@@ -110,6 +112,7 @@
   with_items:
     - a2enmod rewrite
     - a2enmod fastcgi
+  changed_when: False
 
 - name: Install Rados Gateway vhost
   template: >
@@ -129,6 +132,7 @@
   ignore_errors: True
   notify:
     - restart apache2
+  changed_when: False
 
 - name: Install s3gw.fcgi script
   template: >
