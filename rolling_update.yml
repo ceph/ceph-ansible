@@ -59,7 +59,7 @@
       until: result.rc == 0
       retries: 5
       delay: 10
-      delegate_to: 127.0.0.1
+      delegate_to: "{{ groups.mons[0] }}"
 
 
 - hosts: osds
@@ -69,8 +69,7 @@
   pre_tasks:
     - name: Set the noout flag
       command: ceph osd set noout
-      delegate_to: "{{ item }}"
-      with_items: groups.mons[0]
+      delegate_to: "{{ groups.mons[0] }}"
 
   roles:
     - ceph-common
@@ -107,12 +106,11 @@
       until: result.rc == 0
       retries: 10
       delay: 10
-      delegate_to: 127.0.0.1
+      delegate_to: "{{ groups.mons[0] }}"
 
     - name: Unset the noout flag
       command: ceph osd unset noout
-      delegate_to: "{{ item }}"
-      with_items: groups.mons[0]
+      delegate_to: "{{ groups.mons[0] }}"
 
 
 - hosts: mdss
