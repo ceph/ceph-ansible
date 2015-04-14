@@ -21,10 +21,11 @@ ansible_provision = proc do |ansible|
   # these aren't supported by Vagrant, see
   # https://github.com/mitchellh/vagrant/issues/3539
   ansible.groups = {
-    'mons' => (0..NMONS - 1).map { |j| "mon#{j}" },
-    'osds' => (0..NOSDS - 1).map { |j| "osd#{j}" },
-    'mdss' => (0..NMDSS - 1).map { |j| "mds#{j}" },
-    'rgws' => (0..NRGWS - 1).map { |j| "rgw#{j}" }
+    'mons'    => (0..NMONS - 1).map { |j| "mon#{j}" },
+    'osds'    => (0..NOSDS - 1).map { |j| "osd#{j}" },
+    'mdss'    => (0..NMDSS - 1).map { |j| "mds#{j}" },
+    'rgws'    => (0..NRGWS - 1).map { |j| "rgw#{j}" },
+    'clients' => (0..CLIENTS - 1).map { |j| "client#{j}" }
   }
 
   # In a production deployment, these should be secret
