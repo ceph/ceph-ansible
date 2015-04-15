@@ -67,8 +67,12 @@
   sudo: True
 
   pre_tasks:
-    - name: Set the noout flag
-      command: ceph osd set noout
+    - name: Set OSD flags
+      command: ceph osd set {{ item }}
+      with_items:
+        - noout
+        - noscrub
+        - nodeep-scrub
       delegate_to: "{{ item }}"
       with_items: groups.mons[0]
 
@@ -109,8 +113,12 @@
       delay: 10
       delegate_to: 127.0.0.1
 
-    - name: Unset the noout flag
-      command: ceph osd unset noout
+    - name: Unset OSD flags
+      command: ceph osd unset {{ item }}
+      with_items:
+        - noout
+        - noscrub
+        - nodeep-scrub
       delegate_to: "{{ item }}"
       with_items: groups.mons[0]
 
