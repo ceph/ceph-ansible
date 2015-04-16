@@ -29,18 +29,18 @@
   when: ceph_stable_ice
 
 - name: Add Ceph stable repository
-  command: >
-    rpm -U http://ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
-    creates=/etc/yum.repos.d/ceph.repo
+  yum: name=http://ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
+  register: repo_result
   when: ceph_stable
-  changed_when: False
+  failed_when: repo_result.rc > 1
+  changed_when: repo_result.rc == 0
 
 - name: Add Ceph development repository
-  command: >
-    rpm -U http://gitbuilder.ceph.com/ceph-rpm-{{ ceph_dev_redhat_distro }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro }}.noarch.rpm
-    creates=/etc/yum.repos.d/ceph.repo
+  yum: name=http://gitbuilder.ceph.com/ceph-rpm-{{ ceph_dev_redhat_distro }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro }}.noarch.rpm
+  register: repo_result
   when: ceph_dev
-  changed_when: False
+  failed_when: repo_result.rc > 1
+  changed_when: repo_result.rc == 0
 
 - name: Add Inktank Ceph Enterprise repository
   template: >
