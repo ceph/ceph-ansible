@@ -56,6 +56,11 @@
         state=restarted
         args=mon
 
+    - name: select a running monitor
+      set_fact: mon_host={{ item }}
+      with_items: groups.mons
+      when: item != inventory_hostname
+
     - name: Waiting for the monitor to join the quorum...
       shell: >
         ceph -s | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
@@ -63,7 +68,7 @@
       until: result.rc == 0
       retries: 5
       delay: 10
-      delegate_to: "{{ groups.mons[0] }}"
+      delegate_to: "{{ mon_host }}"
 
 
 - hosts: osds
