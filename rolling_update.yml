@@ -9,6 +9,10 @@
 
 # /!\ DO NOT FORGET TO CHANGE THE RELEASE VERSION FIRST! /!\
 
+- hosts: all
+  tasks:
+    - debug: msg="gather facts on all hosts for following reference"
+
 - hosts: mons
   serial: 1
   sudo: True
@@ -52,6 +56,11 @@
         state=restarted
         args=mon
 
+    - name: select a running monitor
+      set_fact: mon_host={{ item }}
+      with_items: groups.mons
+      when: item != inventory_hostname
+
     - name: Waiting for the monitor to join the quorum...
       shell: >
         ceph -s | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
@@ -59,7 +68,7 @@
       until: result.rc == 0
       retries: 5
       delay: 10
-      delegate_to: 127.0.0.1
+      delegate_to: "{{ mon_host }}"
 
 
 - hosts: osds
@@ -69,8 +78,7 @@
   pre_tasks:
     - name: Set the noout flag
       command: ceph osd set noout
-      delegate_to: "{{ item }}"
-      with_items: groups.mons[0]
+      delegate_to: "{{ groups.mons[0] }}"
 
   roles:
     - ceph-common
@@ -97,8 +105,8 @@
       service: >
         name=ceph
         state=restarted
-        args=mon
-      when: osdsysvinit.rc == 0 and
+        args=osd
+      when: osdsysvinit.rc == 0
 
     - name: Waiting for clean PGs...
       shell: >
@@ -107,12 +115,11 @@
       until: result.rc == 0
       retries: 10
       delay: 10
-      delegate_to: 127.0.0.1
+      delegate_to: "{{ groups.mons[0] }}"
 
     - name: Unset the noout flag
       command: ceph osd unset noout
-      delegate_to: "{{ item }}"
-      with_items: groups.mons[0]
+      delegate_to: "{{ groups.mons[0] }}"
 
 
 - hosts: mdss
