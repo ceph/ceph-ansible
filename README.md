@@ -7,6 +7,7 @@ Clone me:
 
 ```bash
 git clone https://github.com/ceph/ceph-ansible.git
+cp vagrant_variables.yml.sample vagrant_variables.yml
 ```
 
 ## What does it do?
