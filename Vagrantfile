@@ -14,6 +14,7 @@ NRGWS   = settings['rgw_vms']
 CLIENTS = settings['client_vms']
 SUBNET  = settings['subnet']
 BOX     = settings['vagrant_box']
+MEMORY     = settings['memory']
 
 ansible_provision = proc do |ansible|
   ansible.playbook = 'site.yml'
@@ -73,10 +74,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       client.vm.hostname = "ceph-client#{i}"
       client.vm.network :private_network, ip: "#{SUBNET}.4#{i}"
       client.vm.provider :virtualbox do |vb|
-        vb.customize ['modifyvm', :id, '--memory', '192']
+        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
       client.vm.provider :vmware_fusion do |v|
-        v.vmx['memsize'] = '192'
+        v.vmx['memsize'] = "#{MEMORY}"
       end
     end
   end
@@ -86,10 +87,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       rgw.vm.hostname = "ceph-rgw#{i}"
       rgw.vm.network :private_network, ip: "#{SUBNET}.4#{i}"
       rgw.vm.provider :virtualbox do |vb|
-        vb.customize ['modifyvm', :id, '--memory', '192']
+        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
       rgw.vm.provider :vmware_fusion do |v|
-        v.vmx['memsize'] = '192'
+        v.vmx['memsize'] = "#{MEMORY}"
       end
     end
   end
@@ -99,10 +100,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       rgw.vm.hostname = "ceph-mds#{i}"
       rgw.vm.network :private_network, ip: "#{SUBNET}.7#{i}"
       rgw.vm.provider :virtualbox do |vb|
-        vb.customize ['modifyvm', :id, '--memory', '192']
+        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
       rgw.vm.provider :vmware_fusion do |v|
-        v.vmx['memsize'] = '192'
+        v.vmx['memsize'] = "#{MEMORY}"
       end
     end
   end
@@ -112,10 +113,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mon.vm.hostname = "ceph-mon#{i}"
       mon.vm.network :private_network, ip: "#{SUBNET}.1#{i}"
       mon.vm.provider :virtualbox do |vb|
-        vb.customize ['modifyvm', :id, '--memory', '192']
+        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
       mon.vm.provider :vmware_fusion do |v|
-        v.vmx['memsize'] = '192'
+        v.vmx['memsize'] = "#{MEMORY}"
       end
     end
   end
@@ -140,7 +141,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                         '--type', 'hdd',
                         '--medium', "disk-#{i}-#{d}.vdi"]
         end
-        vb.customize ['modifyvm', :id, '--memory', '192']
+        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
       osd.vm.provider :vmware_fusion do |v|
         (0..1).each do |d|
@@ -148,7 +149,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
           v.vmx["scsi0:#{d + 1}.fileName"] =
             create_vmdk("disk-#{i}-#{d}", '11000MB')
         end
-        v.vmx['memsize'] = '192'
+        v.vmx['memsize'] = "#{MEMORY}"
       end
 
       # Run the provisioner after the last machine comes up
