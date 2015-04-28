@@ -13,6 +13,12 @@
   ignore_errors: true
   changed_when: False
 
+- name: check if the disk is a SSD or HDD
+  command: cat /sys/block/{{ item | basename }}/queue/rotational
+  register: isrotational
+  when: crush_location_ssd_hdd
+  changed_when: False
+
 - name: Create a Ceph fragment and assemble directory
   file: >
     path={{ item }}

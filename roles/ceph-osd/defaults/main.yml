@@ -20,6 +20,36 @@
 crush_location: false
 osd_crush_location: "'root={{ ceph_crush_root }} rack={{ ceph_crush_rack }} host={{ ansible_hostname }}'"
 
+############################
+# OSD CRUSH LOCATION SSD/HDD
+############################
+
+# This scenario can be enabled if you use SSD and HDD on the same node
+# Ansible can detect the disk type and set the CRUSH location accordingly
+#
+# The following options will build a ceph.conf with OSD sections
+# Example:
+# [osd.X]
+# osd crush location = "root=location"
+#
+# This works with your inventory file
+# To match the following 'osd_crush_location' option the inventory must look like:
+#
+# [osds]
+# osd0 ceph_crush_root=foo ceph_crush_rack=bar
+#
+# This is just an example so don't hesitate to add more hierarchy options
+# Another example with a datacenter and a room
+#
+# Set your inventory file this:
+# [osds]
+# osd0 ceph_crush_root=foo ceph_crush_datacenter=dc ceph_crush_room=room
+
+crush_location_ssd_hdd: false
+osd_crush_location_ssd_hdd:
+  - "'root=ssd datacenter={{ ceph_crush_datacenter }} room={{ ceph_crush_datacenter }} host={{ ansible_hostname }}-ssd'"
+  - "'root=hdd datacenter={{ ceph_crush_datacenter }} room={{ ceph_crush_datacenter }} host={{ ansible_hostname }}-hdd'"
+
 ##############
 # CEPH OPTIONS
 ##############
