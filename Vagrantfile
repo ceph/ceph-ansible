@@ -30,23 +30,35 @@ ansible_provision = proc do |ansible|
   }
 
   # In a production deployment, these should be secret
-  if NMDSS != '0' && NRGWS != '0'
+  if NMDSS != 0 && NRGWS != 0
     ansible.extra_vars = {
       fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
       monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
+      journal_size: 100,
+      monitor_interface: 'eth1',
+      cluster_network: "#{SUBNET}.0/24",
+      public_network: "#{SUBNET}.0/24",
       radosgw: 'true',
       mds: 'true',
     }
-  elsif NMDSS != '0'
+  elsif NMDSS != 0
     ansible.extra_vars = {
       fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
       monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
+      journal_size: 100,
+      monitor_interface: 'eth1',
+      cluster_network: "#{SUBNET}.0/24",
+      public_network: "#{SUBNET}.0/24",
       mds: 'true',
     }
-  elsif NRGWS != '0'
+  elsif NRGWS != 0
     ansible.extra_vars = {
       fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
       monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
+      journal_size: 100,
+      monitor_interface: 'eth1',
+      cluster_network: "#{SUBNET}.0/24",
+      public_network: "#{SUBNET}.0/24",
       radosgw: 'true',
     }
   else
@@ -54,6 +66,9 @@ ansible_provision = proc do |ansible|
       fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
       monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
       journal_size: 100,
+      monitor_interface: 'eth1',
+      cluster_network: "#{SUBNET}.0/24",
+      public_network: "#{SUBNET}.0/24",
     }
   end
   ansible.limit = 'all'
