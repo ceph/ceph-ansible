@@ -53,6 +53,7 @@ ansible_provision = proc do |ansible|
     ansible.extra_vars = {
       fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
       monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
+      journal_size: 100,
     }
   end
   ansible.limit = 'all'
