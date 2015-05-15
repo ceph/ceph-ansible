@@ -4,8 +4,7 @@
 # NOTE (leseb): we do not check the filesystem underneath the directory
 # so it is really up to you to configure this properly.
 # Declaring more than one directory on the same filesystem will confuse Ceph.
-
-- name: Create OSD directories
+- name: create OSD directories
   file: >
     path={{ item }}
     state=directory
@@ -13,38 +12,21 @@
     group=root
   with_items: osd_directories
 
-# Prepare means
-# - create GPT partition
-# - mark the partition with the ceph type uuid
-# - create a file system
-# - mark the fs as ready for ceph consumption
-# - entire data disk is used (one big partition)
-# - a new partition is added to the journal disk (so it can be easily shared)
-#
-
 # NOTE (leseb): the prepare process must be parallelized somehow...
 # if you have 64 disks with 4TB each, this will take a while
 # since Ansible will sequential process the loop
-
-- name: Prepare OSD disk(s)
+- name: prepare OSD disk(s)
   command: "ceph-disk prepare {{ item }}"
   when: osd_directory
   with_items: osd_directories
   changed_when: False
 
-# Activate means:
-# - mount the volume in a temp location
-# - allocate an osd id (if needed)
-# - remount in the correct location /var/lib/ceph/osd/$cluster-$id
-# - start ceph-osd
-#
-
-- name: Activate OSD(s)
+- name: activate OSD(s)
   command: "ceph-disk activate {{ item }}"
   with_items: osd_directories
   changed_when: False
 
-- name: Start and add that the OSD service to the init sequence
+- name: start and add that the OSD service to the init sequence
   service: >
     name=ceph
     state=started

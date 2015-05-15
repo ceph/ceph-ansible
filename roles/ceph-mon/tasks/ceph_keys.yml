@@ -1,11 +1,10 @@
 ---
-# Wait for mon discovery and quorum resolution
+# NOTE (leseb): wait for mon discovery and quorum resolution
 # the admin key is not instantanely created so we have to wait a bit
-
 - name: wait for client.admin key exists
   wait_for: path=/etc/ceph/ceph.client.admin.keyring
 
-- name: Create RGW keyring
+- name: create RGW keyring
   command: >
     ceph auth get-or-create client.radosgw.{{ hostvars[item]['ansible_hostname'] }} osd 'allow rwx' mon 'allow rw' -o /etc/ceph/ceph.client.radosgw.{{ hostvars[item]['ansible_hostname'] }}.keyring
     creates=/etc/ceph/ceph.client.radosgw.{{ hostvars[item]['ansible_hostname'] }}.keyring
@@ -13,7 +12,7 @@
   with_items: groups.rgws
   changed_when: False
 
-- name: Create Ceph REST API keyring
+- name: create Ceph REST API keyring
   command: >
     ceph auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/ceph.client.restapi.keyring
     creates=/etc/ceph/ceph.client.restapi.keyring
@@ -23,13 +22,13 @@
 - include: openstack_config.yml
   when: openstack_config and cephx
 
-- name: Find Ceph keys
+- name: find Ceph keys
   shell: ls -1 /etc/ceph/*.keyring
   register: ceph_keys
   when: cephx
   changed_when: False
 
-- name: Set keys permissions
+- name: set keys permissions
   file: >
     path={{ item }}
     mode=0600
@@ -38,7 +37,7 @@
   with_items:
     - "{{ ceph_keys.stdout_lines }}"
 
-- name: Copy keys to the ansible server
+- name: copy keys to the ansible server
   fetch: >
     src={{ item }}
     dest=fetch/{{ fsid }}/{{ item }}
@@ -49,7 +48,7 @@
     - /var/lib/ceph/bootstrap-osd/ceph.keyring
     - /var/lib/ceph/bootstrap-mds/ceph.keyring
 
-- name: Drop in a motd script to report status when logging in
+- name: drop in a motd script to report status when logging in
   copy: >
     src=precise/92-ceph
     dest=/etc/update-motd.d/92-ceph

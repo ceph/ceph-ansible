@@ -1,22 +1,19 @@
 ---
-## Deploy RADOS Gateway
-#
-
-- name: Add Ceph extra
+- name: add Ceph extra
   template: >
     src=ceph-extra.repo
     dest=/etc/yum.repos.d
     owner=root
     group=root
 
-- name: Add special fastcgi repository key
+- name: add special fastcgi repository key
   rpm_key: key=http://dag.wieers.com/rpm/packages/RPM-GPG-KEY.dag.txt
 
-- name: Add special fastcgi repository
+- name: add special fastcgi repository
   command: rpm -ivh http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
   changed_when: False
 
-- name: "Install Apache and fastcgi"
+- name: install Apache and fastcgi
   yum: >
     name={{ item }}
     state=present
@@ -25,20 +22,14 @@
     - mod_fastcgi
     - mod_fcgid
 
-## Prepare Apache
-#
-
-- name: Install Rados Gateway vhost
+- name: install Rados Gateway vhost
   template: >
     src=rgw.conf
     dest=/etc/httpd/conf.d/rgw.conf
     owner=root
     group=root
 
-## Prepare RGW
-#
-
-- name: Install s3gw.fcgi script
+- name: install s3gw.fcgi script
   template: >
     src=s3gw.fcgi.j2
     dest=/var/www/s3gw.fcgi
@@ -46,7 +37,7 @@
     owner=root
     group=root
 
-- name: Disable default site
+- name: disable default site
   shell: sed -i "s/^[^+#]/#/g" /etc/httpd/conf.d/welcome.conf
   changed_when: False
   notify:
