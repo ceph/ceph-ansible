@@ -12,13 +12,13 @@
 - include: install_on_debian.yml
   when: ansible_os_family == 'Debian'
 
-- name: Check for a Ceph socket
+- name: check for a Ceph socket
   shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
   ignore_errors: true
   register: socket
   changed_when: False
 
-- name: Generate cluster UUID
+- name: generate cluster UUID
   shell: >
     uuidgen | tee fetch/ceph_cluster_uuid.conf
     creates=fetch/ceph_cluster_uuid.conf
@@ -26,7 +26,7 @@
   sudo: false
   register: cluster_uuid
 
-- name: Read cluster UUID if it already exists
+- name: read cluster UUID if it already exists
   command: >
     cat fetch/ceph_cluster_uuid.conf
     removes=fetch/ceph_cluster_uuid.conf
@@ -37,7 +37,7 @@
 
 - include: check-mandatory-vars.yml
 
-- name: Generate Ceph configuration file
+- name: generate Ceph configuration file
   template: >
     src=ceph.conf.j2
     dest=/etc/ceph/ceph.conf

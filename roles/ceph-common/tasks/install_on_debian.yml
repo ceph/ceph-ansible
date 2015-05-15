@@ -1,5 +1,5 @@
 ---
-- name: Install dependencies
+- name: install dependencies
   apt: >
     pkg={{ item }}
     state=present
@@ -10,43 +10,43 @@
     - ntp
     - hdparm
 
-- name: Install the Ceph repository stable key
+- name: install the Ceph repository stable key
   apt_key: >
     data="{{ lookup('file', 'cephstable.asc') }}"
     state=present
   when: ceph_stable
 
-- name: Install the Ceph development repository key
+- name: install the Ceph development repository key
   apt_key: >
     data="{{ lookup('file', 'cephdev.asc') }}"
     state=present
   when: ceph_dev
 
-- name: Install Intank Ceph Enterprise repository key
+- name: install Intank Ceph Enterprise repository key
   apt_key: >
     data="{{ lookup('file', 'cephstableice.asc') }}"
     state=present
   when: ceph_stable_ice
 
-- name: Add Ceph stable repository
+- name: add Ceph stable repository
   apt_repository: >
     repo="deb http://ceph.com/debian-{{ ceph_stable_release }}/ {{ ansible_lsb.codename }} main"
     state=present
   when: ceph_stable
 
-- name: Add Ceph development repository
+- name: add Ceph development repository
   apt_repository: >
     repo="deb http://gitbuilder.ceph.com/ceph-deb-{{ ansible_lsb.codename }}-x86_64-basic/ref/{{ ceph_dev_branch }} {{ ansible_lsb.codename }} main"
     state=present
   when: ceph_dev
 
-- name: Add Inktank Ceph Enterprise repository
+- name: add Inktank Ceph Enterprise repository
   apt_repository: >
     repo="deb file://{{ ceph_stable_ice_temp_path }} {{ ansible_lsb.codename }} main"
     state=present
   when: ceph_stable_ice
 
-- name: Install Ceph
+- name: install Ceph
   apt: >
     pkg={{ item }}
     state=latest

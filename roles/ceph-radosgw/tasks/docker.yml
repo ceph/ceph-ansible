@@ -1,5 +1,5 @@
 ---
-- name: Fetch Ceph config and keys
+- name: fetch Ceph config and keys
   copy: >
     src=fetch/docker_mon_files/{{ item }}
     dest=/etc/ceph/
@@ -12,7 +12,7 @@
     - /etc/ceph/monmap
     - /etc/ceph/ceph.mon.keyring
 
-- name: Run the Ceph Monitor docker image
+- name: run the Ceph Monitor docker image
   docker: >
     image="{{ ceph_rgw_docker_username }}/{{ ceph_rgw_docker_imagename }}"
     name=ceph-rgw-{{ ansible_hostname }}
@@ -21,7 +21,7 @@
     env="RGW_NAME=ceph-rgw-{{ ansible_hostname }}, RGW_CIVETWEB_PORT={{ ceph_rgw_civetweb_port }}"
     volumes="/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
 
-- name: Ensure ceph_rgw service is running
+- name: ensure ceph_rgw service is running
   docker: >
     image="{{ ceph_rgw_docker_username }}/{{ ceph_rgw_docker_imagename }}"
     name="ceph-{{ ansible_hostname }}"

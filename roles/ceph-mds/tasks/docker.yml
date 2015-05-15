@@ -1,5 +1,5 @@
 ---
-- name: Fetch Ceph config and keys
+- name: fetch Ceph config and keys
   copy: >
     src=fetch/docker_mon_files/{{ item }}
     dest=/etc/ceph/
@@ -12,7 +12,7 @@
     - /etc/ceph/monmap
     - /etc/ceph/ceph.mon.keyring
 
-- name: Run the Ceph Medata docker image
+- name: run the Ceph Medata docker image
   docker: >
     image="{{ ceph_mds_docker_username }}/{{ ceph_mds_docker_imagename }}"
     name=ceph-mds-{{ ansible_hostname }}
@@ -21,7 +21,7 @@
     env="MDS_NAME=ceph-mds-{{ ansible_hostname }}, MDS_CIVETWEB_PORT={{ ceph_mds_civetweb_port }}"
     volumes="/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
 
-- name: Ensure ceph_mds service is running
+- name: ensure ceph_mds service is running
   docker: >
     image="{{ ceph_mds_docker_username }}/{{ ceph_mds_docker_imagename }}"
     name="ceph-{{ ansible_hostname }}"

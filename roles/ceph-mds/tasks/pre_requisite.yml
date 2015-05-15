@@ -1,7 +1,7 @@
 ---
 # Deploy Ceph metadata server(s)
 
-- name: Copy MDS bootstrap key
+- name: copy MDS bootstrap key
   copy: >
     src=fetch/{{ fsid }}/var/lib/ceph/bootstrap-mds/ceph.keyring
     dest=/var/lib/ceph/bootstrap-mds/ceph.keyring
@@ -10,7 +10,7 @@
     mode=600
   when: cephx
 
-- name: Create MDS directory
+- name: create MDS directory
   file: >
     path=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}
     state=directory
@@ -19,14 +19,14 @@
     mode=0644
   when: cephx
 
-- name: Create MDS keyring
+- name: create MDS keyring
   command: >
     ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.{{ ansible_hostname }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
     creates=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
   when: cephx
   changed_when: False
 
-- name: Set MDS key permissions
+- name: set MDS key permissions
   file: >
     path=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
     mode=0600
@@ -34,7 +34,7 @@
     group=root
   when: cephx
 
-- name: Activate metadata server with upstart
+- name: activate metadata server with upstart
   file: >
     path=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
     state=touch
@@ -46,7 +46,7 @@
     - upstart
   when: ansible_distribution == "Ubuntu"
 
-- name: Activate metadata server with sysvinit
+- name: activate metadata server with sysvinit
   file: >
     path=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
     state=touch
@@ -58,7 +58,7 @@
     - sysvinit
   when: ansible_distribution != "Ubuntu"
 
-- name: Start and add that the metadata service to the init sequence (Ubuntu)
+- name: start and add that the metadata service to the init sequence (Ubuntu)
   service: >
     name=ceph-mds
     state=started
@@ -66,7 +66,7 @@
     args="id={{ ansible_hostname }}"
   when: ansible_distribution == "Ubuntu"
 
-- name: Start and add that the metadata service to the init sequence
+- name: start and add that the metadata service to the init sequence
   service: >
     name=ceph
     state=started

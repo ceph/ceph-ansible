@@ -1,5 +1,5 @@
 ---
-- name: Install dependencies
+- name: install dependencies
   yum: >
     name={{ item }}
     state=present
@@ -10,39 +10,39 @@
     - yum-plugin-priorities.noarch
     - epel-release
 
-- name: Install the Ceph stable repository key
+- name: install the Ceph stable repository key
   rpm_key: >
     key={{ ceph_stable_key }}
     state=present
   when: ceph_stable
 
-- name: Install the Ceph development repository key
+- name: install the Ceph development repository key
   rpm_key: >
     key={{ ceph_dev_key }}
     state=present
   when: ceph_dev
 
-- name: Install Inktank Ceph Enterprise repository key
+- name: install Inktank Ceph Enterprise repository key
   rpm_key: >
     key={{ ceph_stable_ice_temp_path }}/release.asc
     state=present
   when: ceph_stable_ice
 
-- name: Add Ceph stable repository
+- name: add Ceph stable repository
   yum: name=http://ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
   register: repo_result
   when: ceph_stable
   failed_when: repo_result.rc > 1
   changed_when: repo_result.rc == 0
 
-- name: Add Ceph development repository
+- name: add Ceph development repository
   yum: name=http://gitbuilder.ceph.com/ceph-rpm-{{ ceph_dev_redhat_distro }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro }}.noarch.rpm
   register: repo_result
   when: ceph_dev
   failed_when: repo_result.rc > 1
   changed_when: repo_result.rc == 0
 
-- name: Add Inktank Ceph Enterprise repository
+- name: add Inktank Ceph Enterprise repository
   template: >
     src=redhat_ice_repo.j2
     dest=/etc/yum.repos.d/ice.repo
@@ -51,12 +51,12 @@
     mode=0644
   when: ceph_stable_ice
 
-- name: Install Ceph
+- name: install Ceph
   yum: >
     name=ceph
     state=latest
 
-- name: Install Inktank Ceph Enterprise RBD Kernel modules
+- name: install Inktank Ceph Enterprise RBD Kernel modules
   yum: >
     name={{ item }}
   with_items:

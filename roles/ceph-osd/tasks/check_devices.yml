@@ -4,14 +4,14 @@
 # it should exist we rc=0 and don't do anything unless we do something like --force
 # As as a final word, I prefer to keep the partition check instead of running ceph-disk prepare with "ignore_errors: True"
 # I believe it's safer
-- name: Check if the device is a partition or a disk
+- name: check if the device is a partition or a disk
   shell: "echo '{{ item }}' | egrep '/dev/(([a-z]{3,4}[0-9]$)|(cciss/c[0-9]{1}d[0-9]{1}p[0-9]$))'"
   ignore_errors: true
   with_items: devices
   register: ispartition
   changed_when: False
 
-- name: If partition named 'ceph' exists
+- name: if partition named 'ceph' exists
   shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"
   ignore_errors: True
   with_items: devices
