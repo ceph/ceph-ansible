@@ -63,3 +63,15 @@
     - "{{ ceph_stable_ice_temp_path }}/kmod-libceph-{{ ceph_stable_ice_kmod }}.rpm"
     - "{{ ceph_stable_ice_temp_path }}/kmod-rbd-{{ ceph_stable_ice_kmod }}.rpm"
   when: ceph_stable_ice
+
+- name: configure rbd clients directories
+  file: >
+    path={{ item }}
+    state=directory
+    owner=qemu
+    group=libvirtd
+    mode=0755
+  with_items:
+   - rbd_client_log_path
+   - rbd_client_admin_socket_path
+  when: rbd_client_directories
