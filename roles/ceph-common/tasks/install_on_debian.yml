@@ -57,3 +57,15 @@
     - ceph-fuse      #|--> however while proceding to rolling upgrades and the 'ceph' package upgrade
     - ceph-mds       #|--> they don't get update so we need to force them
     - libcephfs1     #|
+
+- name: configure rbd clients directories
+  file: >
+    path={{ item }}
+    state=directory
+    owner=libvirt-qemu
+    group=kvm
+    mode=0755
+  with_items:
+   - rbd_client_log_path
+   - rbd_client_admin_socket_path
+  when: rbd_client_directories
