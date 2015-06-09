@@ -1,4 +1,6 @@
 #!/bin/bash
+#
+# THIS SCRIPT INSTALLS ANSIBLE
 
 if [[ $EUID -ne 0 ]]; then
     echo "You are NOT running this script as root."
