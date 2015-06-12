@@ -1,24 +1,42 @@
 ---
-- name: create RGW directory
+- name: create RGW directories
   file: >
-    path=/var/lib/ceph/radosgw/ceph-radosgw.{{ ansible_hostname }}
+    path={{ item }}
     state=directory
     owner=root
     group=root
     mode=0644
+  with_items:
+    - /var/lib/ceph/bootstrap-rgw
+    - /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}
 
 - name: copy RGW bootstrap key
   copy: >
-    src=fetch/{{ fsid }}/etc/ceph/ceph.client.radosgw.{{ ansible_hostname }}.keyring
-    dest=/var/lib/ceph/radosgw/ceph-radosgw.{{ ansible_hostname }}/keyring
+    src=fetch/{{ fsid }}/var/lib/ceph/bootstrap-rgw/ceph.keyring
+    dest=/var/lib/ceph/bootstrap-rgw/ceph.keyring
     owner=root
     group=root
     mode=600
   when: cephx
 
+- name: create RGW keyring
+  command: >
+    ceph --cluster ceph --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/ceph.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
+    creates=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
+  when: cephx
+  changed_when: False
+
+- name: set RGW key permissions
+  file: >
+    path=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
+    mode=0600
+    owner=root
+    group=root
+  when: cephx
+
 - name: activate RGW with upstart
   file: >
-    path=/var/lib/ceph/radosgw/ceph-radosgw.{{ ansible_hostname }}/{{ item }}
+    path=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/{{ item }}
     state=touch
     owner=root
     group=root
