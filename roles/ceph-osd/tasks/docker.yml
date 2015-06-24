@@ -1,29 +1,49 @@
 ---
-- name: fetch Ceph config and keys
+- name: set config and keys paths
+  set_fact:
+    ceph_config_keys:
+      - /etc/ceph/ceph.client.admin.keyring
+      - /etc/ceph/ceph.conf
+      - /etc/ceph/monmap
+      - /etc/ceph/ceph.mon.keyring
+      - /var/lib/ceph/bootstrap-osd/ceph.keyring
+
+- name: install docker-py
+  pip: name=docker-py version=1.1.0 # https://github.com/ansible/ansible-modules-core/issues/1227
+
+- name: stat for Ceph config and keys
+  stat: >
+    path={{ item }}
+  with_items: ceph_config_keys
+  register: statconfig
+  ignore_errors: True
+
+- name: try to fetch Ceph config and keys
   copy: >
-    src=fetch/docker_mon_files/{{ item }}
+    src=fetch/docker_mon_files/"{{ item }}"
     dest=/etc/ceph/
     owner=root
     group=root
     mode=600
-  with_items:
-    - /etc/ceph/ceph.client.admin.keyring
-    - /etc/ceph/ceph.conf
-    - /etc/ceph/monmap
-    - /etc/ceph/ceph.mon.keyring
+  with_together:
+    - ceph_config_keys
+    - statconfig.results
+  when: item.1.stat.exists == False
 
 - name: run the Ceph OSD docker image
   docker: >
     image="{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
-    name=ceph-{{ ansible_hostname }}
+    name={{ ansible_hostname }}-osd-{{ item | regex_replace('/', '') }}
     net=host
     state=running
-    env="OSD_NAME=ceph-{{ ansible_hostname }}"
-    volumes="/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
+    privileged=yes
+    env="CEPH_DAEMON=OSD_CEPH_DISK,OSD_DEVICE={{ item }}"
+    volumes="/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev/:/dev/"
+  with_items: ceph_osd_docker_devices
 
 - name: ensure ceph_osd service is running
   docker: >
     image="{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
-    name="ceph-{{ ansible_hostname }}"
-    detach=yes
-    state=running
+    name={{ ansible_hostname }}-osd-{{ item | regex_replace('/', '') }}
+    state=started
+  with_items: ceph_osd_docker_devices
