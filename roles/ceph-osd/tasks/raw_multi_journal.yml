@@ -12,7 +12,9 @@
 # failed, this is why we check if the device is a partition too.
 - name: prepare OSD disk(s)
   command: "ceph-disk prepare {{ item.2 }} {{ item.3 }}"
-  when: (item.0.rc != 0 or item.1.rc != 0) and raw_multi_journal
+  when: item.0.rc != 0 and
+        item.1.rc != 0 and
+        raw_multi_journal
   ignore_errors: True
   with_together:
     - parted.results
