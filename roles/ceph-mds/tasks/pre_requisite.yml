@@ -23,8 +23,8 @@
   command: >
     ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.{{ ansible_hostname }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
     creates=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
+  changed_when: false
   when: cephx
-  changed_when: False
 
 - name: set MDS key permissions
   file: >
@@ -44,6 +44,7 @@
   with_items:
     - done
     - upstart
+  changed_when: false
   when: ansible_distribution == "Ubuntu"
 
 - name: activate metadata server with sysvinit
@@ -56,6 +57,7 @@
   with_items:
     - done
     - sysvinit
+  changed_when: false
   when: ansible_distribution != "Ubuntu"
 
 - name: start and add that the metadata service to the init sequence (Ubuntu)
@@ -64,6 +66,7 @@
     state=started
     enabled=yes
     args="id={{ ansible_hostname }}"
+  changed_when: false
   when: ansible_distribution == "Ubuntu"
 
 - name: start and add that the metadata service to the init sequence
@@ -72,4 +75,5 @@
     state=started
     enabled=yes
     args=mds
+  changed_when: false
   when: ansible_distribution != "Ubuntu"

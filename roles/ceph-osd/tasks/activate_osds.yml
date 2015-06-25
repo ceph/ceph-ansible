@@ -8,9 +8,11 @@
     - parted.results
     - ispartition.results
     - devices
-  when: item.0.rc == 0 and item.1.rc != 0
-  ignore_errors: True
-  changed_when: False
+  changed_when: false
+  ignore_errors: true
+  when:
+    item.0.rc == 0 and
+    item.1.rc != 0
 
 # NOTE (leseb): this task is for partitions because we don't explicitly use a partition.
 - name: activate OSD(s) when device is a partition
@@ -18,9 +20,9 @@
   with_together:
     - ispartition.results
     - devices
+  changed_when: false
+  ignore_errors: true
   when: item.0.rc == 0
-  ignore_errors: True
-  changed_when: False
 
 - include: osd_fragment.yml
   when: crush_location
