@@ -19,7 +19,11 @@
 
 - name: manually Prepare OSD disk(s)
   command: "ceph-disk prepare {{ item.2 }}"
-  when: (item.0.rc != 0 or item.1.rc != 0) and journal_collocation and not osd_auto_discovery
+  when:
+    item.0.rc != 0 and
+    item.1.rc != 0 and
+    journal_collocation and not
+    osd_auto_discovery
   ignore_errors: True
   with_together:
     - parted.results
