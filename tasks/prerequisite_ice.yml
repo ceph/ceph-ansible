@@ -25,7 +25,9 @@
   with_items:
     - kmod-libceph-{{ ceph_stable_ice_kmod }}.rpm
     - kmod-rbd-{{ ceph_stable_ice_kmod }}.rpm
-  when: ceph_stable_ice and ansible_os_family == 'RedHat'
+  when:
+    ceph_stable_ice and
+    ansible_os_family == 'RedHat'
 
 - name: stat extracted ICE repo files
   stat: >
@@ -37,10 +39,14 @@
   shell: >
     tar -xzf ICE-{{ ceph_stable_ice_version }}-{{ ceph_stable_ice_distro }}.tar.gz
     chdir={{ ceph_stable_ice_temp_path }}
-  when: ceph_stable_ice and repo_exist.stat.exists == False
-  changed_when: False
+  changed_when: false
+  when:
+    ceph_stable_ice and
+    repo_exist.stat.exists == False
 
 - name: move ICE extracted packages
   shell: "mv {{ ceph_stable_ice_temp_path }}/ceph/*/* {{ ceph_stable_ice_temp_path }}"
-  when: ceph_stable_ice and repo_exist.stat.exists == False
-  changed_when: False
+  changed_when: false
+  when:
+    ceph_stable_ice and
+    repo_exist.stat.exists == False
