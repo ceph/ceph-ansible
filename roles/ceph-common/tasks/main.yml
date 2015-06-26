@@ -14,26 +14,26 @@
 
 - name: check for a Ceph socket
   shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
+  changed_when: false
   ignore_errors: true
   register: socket
-  changed_when: False
 
 - name: generate cluster UUID
   shell: >
     uuidgen | tee fetch/ceph_cluster_uuid.conf
     creates=fetch/ceph_cluster_uuid.conf
   connection: local
-  sudo: false
   register: cluster_uuid
+  sudo: false
 
 - name: read cluster UUID if it already exists
   command: >
     cat fetch/ceph_cluster_uuid.conf
     removes=fetch/ceph_cluster_uuid.conf
   connection: local
-  sudo: false
+  changed_when: false
   register: cluster_uuid
-  changed_when: False
+  sudo: false
 
 - include: check-mandatory-vars.yml
 

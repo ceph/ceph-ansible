@@ -4,12 +4,16 @@
 # ensures that the device will get successfully prepared.
 - name: erasing partitions and labels from OSD disk(s)
   command: ceph-disk zap {{ item }}
-  when: zap_devices and (journal_collocation or raw_multi_journal)
   with_items: devices
-  changed_when: False
+  changed_when: false
+  when:
+    zap_devices and
+    (journal_collocation or raw_multi_journal)
 
 - name: erasing partitions and labels from the journal device(s)
   command: ceph-disk zap {{ item }}
-  when: zap_devices and raw_multi_journal
   with_items: raw_journal_devices
-  changed_when: False
+  changed_when: false
+  when:
+    zap_devices and
+    raw_multi_journal
