@@ -1,12 +1,9 @@
 ---
 - include: pre_requisite.yml
+  when: not ceph_containerized_deployment
 
-- name: check if Ceph REST API is already started
-  shell: "pgrep ceph-rest-api"
-  ignore_errors: true
-  register: restapi_status
+- include: start_restapi.yml
+  when: not ceph_containerized_deployment
 
-- name: start Ceph REST API
-  shell: "nohup ceph-rest-api &"
-  changed_when: false
-  when: restapi_status.rc != 0
+- include: docker.yml
+  when: ceph_containerized_deployment
