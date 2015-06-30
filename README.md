@@ -87,5 +87,7 @@ monitor. If using these playbooks in production, you must generate your own `fsi
 in `group_vars/all` and `monitor_secret` in `group_vars/mons`. Those files contain
 information about how to generate appropriate values for these variables.
 
+## Vagrant Demo
 
+[![Ceph-ansible Vagrant Demo](http://img.youtube.com/vi/E8-96NamLDo/0.jpg)](https://youtu.be/E8-96NamLDo "Deploy Ceph with Ansible (Vagrant demo)")
 
