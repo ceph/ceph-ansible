@@ -10,3 +10,9 @@
 - name: fail on unsupported distribution
   fail: "msg=Distribution not supported {{ ansible_os_family }}"
   when: "ansible_os_family not in ['Debian', 'RedHat']"
+
+- name: fail on unsupported distribution for red hat storage
+  fail: "msg=Distribution not supported {{ ansible_distribution_version }} by Red Hat Storage, only RHEL 7.1"
+  when:
+    ceph_stable_rh_storage and
+    {{ ansible_distribution_version | version_compare('7.1', '<') }}
