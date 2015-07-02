@@ -124,7 +124,7 @@
   osd scrub chunk max = {{ osd_scrub_chunk_max }}
   osd deep scrub stride = {{ osd_deep_scrub_stride }}
 
-{% if mds %}
+{% if groups[mds_group_name] is defined %}
 [mds]
 {% if enable_debug_mds %}
   debug mds = {{ debug_mds_level }}
@@ -140,7 +140,7 @@
 {% endfor %}
 {% endif %}
 
-{% if radosgw %}
+{% if groups[mds_group_name] is defined %}
 {% for host in groups[rgw_group_name] %}
 {% if hostvars[host]['ansible_hostname'] is defined %}
 [client.rgw.{{ hostvars[host]['ansible_hostname'] }}]
@@ -169,7 +169,7 @@
 {% endfor %}
 {% endif %}
 
-{% if restapi %}
+{% if groups[restapi_group_name] is defined %}
 [client.restapi]
   public addr = {{ hostvars[inventory_hostname]['ansible_' + restapi_interface]['ipv4']['address'] }}:{{ restapi_port }}
   restapi base url = {{ restapi_base_url }}
