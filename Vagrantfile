@@ -7,13 +7,13 @@ VAGRANTFILE_API_VERSION = '2'
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
 settings=YAML.load_file(config_file)
 
-NMONS   = settings['mon_vms']
-NOSDS   = settings['osd_vms']
-NMDSS   = settings['mds_vms']
-NRGWS   = settings['rgw_vms']
-CLIENTS = settings['client_vms']
-SUBNET  = settings['subnet']
-BOX     = settings['vagrant_box']
+NMONS      = settings['mon_vms']
+NOSDS      = settings['osd_vms']
+NMDSS      = settings['mds_vms']
+NRGWS      = settings['rgw_vms']
+CLIENTS    = settings['client_vms']
+SUBNET     = settings['subnet']
+BOX        = settings['vagrant_box']
 MEMORY     = settings['memory']
 
 ansible_provision = proc do |ansible|
@@ -22,55 +22,23 @@ ansible_provision = proc do |ansible|
   # these aren't supported by Vagrant, see
   # https://github.com/mitchellh/vagrant/issues/3539
   ansible.groups = {
-    'mons'    => (0..NMONS - 1).map { |j| "mon#{j}" },
-    'osds'    => (0..NOSDS - 1).map { |j| "osd#{j}" },
-    'mdss'    => (0..NMDSS - 1).map { |j| "mds#{j}" },
-    'rgws'    => (0..NRGWS - 1).map { |j| "rgw#{j}" },
-    'clients' => (0..CLIENTS - 1).map { |j| "client#{j}" }
+    'mons'        => (0..NMONS - 1).map { |j| "mon#{j}" },
+    'restapis'    => (0..NMONS - 1).map { |j| "mon#{j}" },
+    'osds'        => (0..NOSDS - 1).map { |j| "osd#{j}" },
+    'mdss'        => (0..NMDSS - 1).map { |j| "mds#{j}" },
+    'rgws'        => (0..NRGWS - 1).map { |j| "rgw#{j}" },
+    'clients'     => (0..CLIENTS - 1).map { |j| "client#{j}" }
   }
 
   # In a production deployment, these should be secret
-  if NMDSS != 0 && NRGWS != 0
-    ansible.extra_vars = {
-      fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
-      monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
-      journal_size: 100,
-      monitor_interface: 'eth1',
-      cluster_network: "#{SUBNET}.0/24",
-      public_network: "#{SUBNET}.0/24",
-      radosgw: 'true',
-      mds: 'true',
-    }
-  elsif NMDSS != 0
-    ansible.extra_vars = {
-      fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
-      monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
-      journal_size: 100,
-      monitor_interface: 'eth1',
-      cluster_network: "#{SUBNET}.0/24",
-      public_network: "#{SUBNET}.0/24",
-      mds: 'true',
-    }
-  elsif NRGWS != 0
-    ansible.extra_vars = {
-      fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
-      monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
-      journal_size: 100,
-      monitor_interface: 'eth1',
-      cluster_network: "#{SUBNET}.0/24",
-      public_network: "#{SUBNET}.0/24",
-      radosgw: 'true',
-    }
-  else
-    ansible.extra_vars = {
-      fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
-      monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
-      journal_size: 100,
-      monitor_interface: 'eth1',
-      cluster_network: "#{SUBNET}.0/24",
-      public_network: "#{SUBNET}.0/24",
-    }
-  end
+  ansible.extra_vars = {
+    fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
+    monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
+    journal_size: 100,
+    monitor_interface: 'eth1',
+    cluster_network: "#{SUBNET}.0/24",
+    public_network: "#{SUBNET}.0/24",
+  }
   ansible.limit = 'all'
 end
 
