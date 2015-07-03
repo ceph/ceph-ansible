@@ -30,9 +30,11 @@
 
 - name: install red hat storage repository key
   rpm_key: >
-    key={{ ceph_stable_rh_storage_mount_path }}/RPM-GPG-KEY-redhat-release
+    key={{ ceph_stable_rh_storage_repository_path }}/RPM-GPG-KEY-redhat-release
     state=present
-  when: ceph_stable_rh_storage
+  when:
+    ceph_stable_rh_storage and
+    ceph_stable_rh_storage_iso_install
 
 - name: add Ceph stable repository
   yum: name=http://ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
@@ -60,7 +62,9 @@
     owner=root
     group=root
     mode=0644
-  when: ceph_stable_rh_storage
+  when:
+    ceph_stable_rh_storage and
+    ceph_stable_rh_storage_iso_install
 
 - name: install Ceph
   yum: >
