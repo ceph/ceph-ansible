@@ -40,6 +40,7 @@ ansible_provision = proc do |ansible|
     monitor_interface: 'eth1',
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
+    devices: "[ '/dev/sdb', '/dev/sdc' ]",
   }
   ansible.limit = 'all'
 end
