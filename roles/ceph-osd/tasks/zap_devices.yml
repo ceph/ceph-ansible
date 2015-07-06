@@ -3,17 +3,27 @@
 # in ceph-disk failing to prepare OSD. Thus zapping them prior to prepare the OSD
 # ensures that the device will get successfully prepared.
 - name: erasing partitions and labels from OSD disk(s)
-  command: ceph-disk zap {{ item }}
-  with_items: devices
+  command: ceph-disk zap {{ item.2 }}
   changed_when: false
+  with_together:
+    - parted.results
+    - ispartition.results
+    - devices
   when:
+    item.0.rc != 0 and
+    item.1.rc != 0 and
     zap_devices and
     (journal_collocation or raw_multi_journal)
 
 - name: erasing partitions and labels from the journal device(s)
-  command: ceph-disk zap {{ item }}
-  with_items: raw_journal_devices
+  command: ceph-disk zap {{ item.2 }}
   changed_when: false
+  with_together:
+    - parted.results
+    - ispartition.results
+    - raw_journal_devices
   when:
+    item.0.rc != 0 and
+    item.1.rc != 0 and
     zap_devices and
     raw_multi_journal
