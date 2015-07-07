@@ -1,12 +1,12 @@
 ---
-- name: add Ceph extra
+- name: add ceph extra
   apt_repository: >
     repo="deb http://ceph.com/packages/ceph-extras/debian {{ ansible_lsb.codename }} main"
     state=present
   when: ansible_lsb.codename in ['natty', 'oneiric', 'precise', 'quantal', 'raring', 'sid', 'squeeze', 'wheezy']
 
 # NOTE (leseb): needed for Ubuntu 12.04 to have access to libapache2-mod-fastcgi if 100-continue isn't being used
-- name: enable multiverse repo for Precise
+- name: enable multiverse repo for precise
   apt_repository: >
     repo="{{ item }}"
     state=present
@@ -19,7 +19,7 @@
     http_100_continue
 
 # NOTE (leseb): disable the repo when we are using the Ceph repo for 100-continue packages
-- name: disable multiverse repo for Precise
+- name: disable multiverse repo for precise
   apt_repository: >
     repo="{{ item }}"
     state=absent
@@ -32,7 +32,7 @@
     http_100_continue
 
 # NOTE (leseb): needed for Ubuntu 14.04 to have access to libapache2-mod-fastcgi if 100-continue isn't being used
-- name: enable multiverse repo for Trusty
+- name: enable multiverse repo for trusty
   command: "apt-add-repository multiverse"
   changed_when: false
   when:
@@ -40,7 +40,7 @@
     http_100_continue
 
 # NOTE (leseb): disable the repo when we are using the Ceph repo for 100-continue packages
-- name: disable multiverse repo for Trusty
+- name: disable multiverse repo for trusty
   command: "apt-add-repository -r multiverse"
   changed_when: false
   when:
@@ -48,14 +48,14 @@
     http_100_continue
 
 # NOTE (leseb): if using 100-continue, add Ceph dev key
-- name: install the Ceph development repository key
+- name: install the ceph development repository key
   apt_key: >
     data="{{ lookup('file', 'cephdev.asc') }}"
     state=present
   when: http_100_continue
 
 # NOTE (leseb): if using 100-continue, add Ceph sources and update
-- name: add Ceph Apache and FastCGI sources
+- name: add ceph apache and fastcgi sources
   apt_repository: >
     repo="{{ item }}"
     state=present
@@ -66,7 +66,7 @@
   when: http_100_continue
 
 # NOTE (leseb): else remove them to ensure you use the default packages
-- name: remove Ceph Apache and FastCGI sources
+- name: remove ceph apache and fastcgi sources
   apt_repository: >
     repo="{{ item }}"
     state=absent
@@ -77,7 +77,7 @@
   when: not http_100_continue
 
 # NOTE (leseb): purge Ceph Apache and FastCGI packages if needed
-- name: purge Ceph Apache and FastCGI packages
+- name: purge ceph apache and fastcgi packages
   apt: >
     pkg="{{ item }}"
     state=absent
@@ -95,7 +95,7 @@
     purge_default_apache.changed or
     purge_ceph_apache.changed
 
-- name: install Apache and fastcgi
+- name: install apache and fastcgi
   apt: >
     pkg={{ item }}
     state=present
@@ -118,14 +118,14 @@
     - a2enmod fastcgi
   changed_when: false
 
-- name: install Rados Gateway vhost
+- name: install rados gateway vhost
   template: >
     src=rgw.conf
     dest=/etc/apache2/sites-available/rgw.conf
     owner=root
     group=root
 
-- name: enable Rados Gateway vhost and disable default site
+- name: enable rados gateway vhost and disable default site
   command: "{{ item }}"
   with_items:
     - a2ensite rgw.conf
