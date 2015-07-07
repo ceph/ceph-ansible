@@ -1,23 +1,27 @@
 ---
-- name: check if RGW is started
+- name: check if rgw is started
   command: /etc/init.d/radosgw status
   register: rgwstatus
   ignore_errors: true
 
-- name: start RGW
+- name: start rgw
   command: /etc/init.d/radosgw start
   when:
     rgwstatus.rc != 0 and
     ansible_distribution != "Ubuntu" and
     ansible_os_family != 'RedHat'
 
-- name: start RGW
+- name: start rgw
   service: >
     name=radosgw-all
     state=started
   when: ansible_distribution == "Ubuntu"
 
-- name: start RGW
+- name: activate rgw service
+  command: systemctl enable ceph-radosgw.service
+  when: ansible_os_family == 'RedHat'
+
+- name: start rgw
   service: >
     name=ceph-radosgw
     state=started

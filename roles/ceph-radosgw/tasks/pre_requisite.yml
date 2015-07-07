@@ -1,5 +1,5 @@
 ---
-- name: create RGW directories
+- name: create rgw directories
   file: >
     path={{ item }}
     state=directory
@@ -10,7 +10,7 @@
     - /var/lib/ceph/bootstrap-rgw
     - /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}
 
-- name: copy RGW bootstrap key
+- name: copy rgw bootstrap key
   copy: >
     src=fetch/{{ fsid }}/var/lib/ceph/bootstrap-rgw/ceph.keyring
     dest=/var/lib/ceph/bootstrap-rgw/ceph.keyring
@@ -19,14 +19,14 @@
     mode=600
   when: cephx
 
-- name: create RGW keyring
+- name: create rgw keyring
   command: >
     ceph --cluster ceph --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/ceph.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
     creates=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
   changed_when: false
   when: cephx
 
-- name: set RGW key permissions
+- name: set rgw key permissions
   file: >
     path=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
     mode=0600
@@ -34,7 +34,7 @@
     group=root
   when: cephx
 
-- name: activate RGW with upstart
+- name: activate rgw with upstart
   file: >
     path=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/{{ item }}
     state=touch
@@ -46,3 +46,17 @@
     - upstart
   changed_when: false
   when: ansible_distribution == "Ubuntu"
+
+- name: activate rgw with sysvinit
+  file: >
+    path=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/{{ item }}
+    state=touch
+    owner=root
+    group=root
+    mode=0644
+  with_items:
+    - done
+    - sysvinit
+  changed_when: false
+  when: ansible_distribution != "Ubuntu"
+
