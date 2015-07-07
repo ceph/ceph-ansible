@@ -1,5 +1,5 @@
 ---
-- name: create rgw directories
+- name: create rados gateway directories
   file: >
     path={{ item }}
     state=directory
@@ -10,7 +10,7 @@
     - /var/lib/ceph/bootstrap-rgw
     - /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}
 
-- name: copy rgw bootstrap key
+- name: copy rados gateway bootstrap key
   copy: >
     src=fetch/{{ fsid }}/var/lib/ceph/bootstrap-rgw/ceph.keyring
     dest=/var/lib/ceph/bootstrap-rgw/ceph.keyring
@@ -19,14 +19,14 @@
     mode=600
   when: cephx
 
-- name: create rgw keyring
+- name: create rados gateway keyring
   command: >
     ceph --cluster ceph --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/ceph.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
     creates=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
   changed_when: false
   when: cephx
 
-- name: set rgw key permissions
+- name: set rados gateway key permissions
   file: >
     path=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
     mode=0600
@@ -34,7 +34,7 @@
     group=root
   when: cephx
 
-- name: activate rgw with upstart
+- name: activate rados gateway with upstart
   file: >
     path=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/{{ item }}
     state=touch
@@ -47,7 +47,7 @@
   changed_when: false
   when: ansible_distribution == "Ubuntu"
 
-- name: activate rgw with sysvinit
+- name: activate rados gateway with sysvinit
   file: >
     path=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/{{ item }}
     state=touch
@@ -60,3 +60,11 @@
   changed_when: false
   when: ansible_distribution != "Ubuntu"
 
+- name: generate rados gateway sudoers file
+  template: >
+    src=ceph.j2
+    dest=/etc/sudoers.d/ceph
+    owner=root
+    group=root
+    mode=0400
+  when: ansible_distribution != "Ubuntu"
