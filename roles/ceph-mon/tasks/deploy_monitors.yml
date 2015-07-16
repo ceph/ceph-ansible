@@ -1,7 +1,22 @@
 ---
+- name: generate monitor initial keyring
+  local_action: >
+    shell python -c "import os ; import struct ; import time; import base64 ; key = os.urandom(16) ; header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ; print base64.b64encode(header + key)' > fetch/ceph_mon_key.con"
+    creates=fetch/ceph_mon_key.conf
+  register: ceph_mon_key
+  sudo: false
+
+- name: read monitor initial keyring if it already exists
+  local_action: >
+    command cat fetch/ceph_mon_key.conf
+    removes=fetch/ceph_mon_key.conf
+  changed_when: false
+  register: ceph_mon_key
+  sudo: false
+
 - name: create monitor initial keyring
   command: >
-    ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} --create-keyring --name=mon. --add-key={{ monitor_secret | mandatory }} --cap mon 'allow *'
+    ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} --create-keyring --name=mon. --add-key={{ monitor_secret }} --cap mon 'allow *'
     creates=/var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
 
 - name: set initial monitor key permissions
