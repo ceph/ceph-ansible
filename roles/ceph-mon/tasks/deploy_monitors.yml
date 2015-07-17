@@ -1,17 +1,17 @@
 ---
 - name: generate monitor initial keyring
   local_action: >
-    shell python -c "import os ; import struct ; import time; import base64 ; key = os.urandom(16) ; header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ; print base64.b64encode(header + key)' > fetch/ceph_mon_key.con"
-    creates=fetch/ceph_mon_key.conf
-  register: ceph_mon_key
+    shell python -c "import os ; import struct ; import time; import base64 ; key = os.urandom(16) ; header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ; print base64.b64encode(header + key)' > fetch/monitor_keyring.conf"
+    creates=fetch/monitor_keyring.conf
+  register: monitor_keyring
   sudo: false
 
 - name: read monitor initial keyring if it already exists
   local_action: >
-    command cat fetch/ceph_mon_key.conf
-    removes=fetch/ceph_mon_key.conf
+    command cat fetch/monitor_keyring.conf
+    removes=fetch/monitor_keyring.conf
   changed_when: false
-  register: ceph_mon_key
+  register: monitor_keyring
   sudo: false
 
 - name: create monitor initial keyring
