@@ -1,31 +1,31 @@
 ---
-- include: os_check.yml
+- include: ./checks/check_system.yml
 
-- include: check_mandatory_vars.yml
+- include: ./checks/check_mandatory_vars.yml
 
-- include: os_tuning.yml
+- include: ./misc/system_tuning.yml
   when: osd_group_name in group_names
 
-- include: prerequisite_ice.yml
+- include: ./pre_requisites/prerequisite_ice.yml
   when: ceph_stable_ice
 
-- include: prerequisite_rh_storage_iso_install.yml
+- include: ./pre_requisites/prerequisite_rh_storage_iso_install.yml
   when:
     ceph_stable_rh_storage and
     ceph_stable_rh_storage_iso_install
 
-- include: prerequisite_rh_storage_cdn_install.yml
+- include: ./pre_requisites/prerequisite_rh_storage_cdn_install.yml
   when:
     ceph_stable_rh_storage and
     ceph_stable_rh_storage_cdn_install
 
-- include: install_on_redhat.yml
+- include: ./installs/install_on_redhat.yml
   when: ansible_os_family == 'RedHat'
 
-- include: install_on_debian.yml
+- include: ./installs/install_on_debian.yml
   when: ansible_os_family == 'Debian'
 
-- name: check for a Ceph socket
+- name: check for a ceph socket
   shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
   changed_when: false
   ignore_errors: true
@@ -37,14 +37,14 @@
   ignore_errors: true
   register: socketrgw
 
-- name: generate cluster UUID
+- name: generate cluster uuid
   local_action: shell uuidgen | tee fetch/ceph_cluster_uuid.conf
     creates=fetch/ceph_cluster_uuid.conf
   register: cluster_uuid
   sudo: false
   when: fsid != '4a158d27-f750-41d5-9e7f-26ce4c9d2d45'
 
-- name: read cluster UUID if it already exists
+- name: read cluster uuid if it already exists
   local_action: command cat fetch/ceph_cluster_uuid.conf
     removes=fetch/ceph_cluster_uuid.conf
   changed_when: false
@@ -52,7 +52,7 @@
   sudo: false
   when: fsid != '4a158d27-f750-41d5-9e7f-26ce4c9d2d45'
 
-- name: generate Ceph configuration file
+- name: generate ceph configuration file
   template: >
     src=ceph.conf.j2
     dest=/etc/ceph/ceph.conf
