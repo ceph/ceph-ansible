@@ -12,14 +12,14 @@
     name=docker-py
     version=1.1.0 # https://github.com/ansible/ansible-modules-core/issues/1227
 
-- name: stat for Ceph config and keys
+- name: stat for ceph config and keys
   stat: >
     path={{ item }}
   with_items: ceph_config_keys
   ignore_errors: true
   register: statconfig
 
-- name: try to fetch Ceph config and keys
+- name: try to fetch ceph config and keys
   copy: >
     src=fetch/docker_mon_files/"{{ item }}"
     dest=/etc/ceph/
@@ -31,7 +31,7 @@
     - statconfig.results
   when: item.1.stat.exists == False
 
-- name: run the Ceph Monitor docker image
+- name: run the ceph Monitor docker image
   docker: >
     image="{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
     name=ceph-{{ ansible_hostname }}
@@ -48,7 +48,7 @@
     detach=yes
     state=running
 
-- name: collect Ceph files to the Ansible server
+- name: collect ceph files to the ansible server
   fetch: >
     src={{ item }}
     dest=fetch/docker_mon_files/{{ item }}

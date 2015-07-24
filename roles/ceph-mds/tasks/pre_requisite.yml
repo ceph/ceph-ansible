@@ -1,7 +1,7 @@
 ---
 # Deploy Ceph metadata server(s)
 
-- name: copy MDS bootstrap key
+- name: copy mds bootstrap key
   copy: >
     src=fetch/{{ fsid }}/var/lib/ceph/bootstrap-mds/ceph.keyring
     dest=/var/lib/ceph/bootstrap-mds/ceph.keyring
@@ -10,7 +10,7 @@
     mode=600
   when: cephx
 
-- name: create MDS directory
+- name: create mds directory
   file: >
     path=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}
     state=directory
@@ -19,14 +19,14 @@
     mode=0644
   when: cephx
 
-- name: create MDS keyring
+- name: create mds keyring
   command: >
     ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.{{ ansible_hostname }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
     creates=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
   changed_when: false
   when: cephx
 
-- name: set MDS key permissions
+- name: set mds key permissions
   file: >
     path=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
     mode=0600
@@ -60,7 +60,7 @@
   changed_when: false
   when: ansible_distribution != "Ubuntu"
 
-- name: start and add that the metadata service to the init sequence (Ubuntu)
+- name: start and add that the metadata service to the init sequence (ubuntu)
   service: >
     name=ceph-mds
     state=started
