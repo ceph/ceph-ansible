@@ -15,21 +15,20 @@
   gather_facts: False
 
   vars:
-    github: False
+    github: ceph/ansible
     roles:
       - ceph-common
       - ceph-mon
       - ceph-osd
       - ceph-mds
-      - ceph-radosgw
-      - haproxy
+      - ceph-rgw
 
   tasks:
 
     - name: check for github prefix option on commandline
       tags: split
       fail: >
-        msg='github prefix missing! e.g: (--extra-vars github=mhubig/ansible).'
+        msg='github prefix missing! e.g: (--extra-vars github=ceph/ansible).'
       when: github == False
 
     - name: split the repo in seperate branches
@@ -63,4 +62,3 @@
         git subtree push --prefix=roles/{{ item }} {{ item }} master
         chdir=../
       with_items: roles
-
