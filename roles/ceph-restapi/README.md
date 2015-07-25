@@ -28,6 +28,11 @@ The role `leseb.ceph-common` must be installed.
      - { role: leseb.ceph-restapi }
 ```
 
+# Contribution
+
+**THIS REPOSITORY DOES NOT ACCEPT PULL REQUESTS**
+**PULL REQUESTS MUST GO THROUGH [CEPH-ANSIBLE](https://github.com/ceph/ceph-ansible)**
+
 # License
 
 Apache
