@@ -1,0 +1,26 @@
+---
+- name: set config and keys paths
+  set_fact:
+    ceph_config_keys:
+      - /etc/ceph/ceph.conf
+      - /var/lib/ceph/bootstrap-rgw/ceph.keyring
+
+- name: stat for ceph config and keys
+  local_action: stat path={{ item }}
+  with_items: ceph_config_keys
+  changed_when: false
+  sudo: false
+  ignore_errors: true
+  register: statconfig
+
+- name: try to fetch ceph config and keys
+  copy: >
+    src=fetch/docker_mon_files/{{ item.0 }}
+    dest={{ item.0 }}
+    owner=root
+    group=root
+    mode=644
+  with_together:
+    - ceph_config_keys
+    - statconfig.results
+  when: item.1.stat.exists == true
