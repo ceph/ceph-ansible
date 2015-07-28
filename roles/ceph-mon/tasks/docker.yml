@@ -6,59 +6,60 @@
       - /etc/ceph/ceph.conf
       - /etc/ceph/monmap
       - /etc/ceph/ceph.mon.keyring
+      - /var/lib/ceph/bootstrap-osd/ceph.keyring
+      - /var/lib/ceph/bootstrap-rgw/ceph.keyring
+      - /var/lib/ceph/bootstrap-mds/ceph.keyring
 
-# NOTE (leseb): force version 1.1.0 because https://github.com/ansible/ansible-modules-core/issues/1227
+- name: create bootstrap directories
+  file: >
+    path=/var/lib/ceph/bootstrap-{{ item }}
+    state=directory
+  with_items:
+    - osd
+    - mds
+    - rgw
+
+# NOTE (leseb): for version 1.1.0 because https://github.com/ansible/ansible-modules-core/issues/1227
 - name: install docker-py
   pip: >
     name=docker-py
     version=1.1.0
 
 - name: stat for ceph config and keys
-  stat: >
-    path={{ item }}
+  local_action: stat path={{ item }}
   with_items: ceph_config_keys
+  changed_when: false
+  sudo: false
   ignore_errors: true
   register: statconfig
 
 - name: try to fetch ceph config and keys
   copy: >
-    src=fetch/docker_mon_files/"{{ item }}"
-    dest=/etc/ceph/
+    src=fetch/docker_mon_files/{{ item.0 }}
+    dest={{ item.0 }}
     owner=root
     group=root
-    mode=600
+    mode=644
   with_together:
     - ceph_config_keys
     - statconfig.results
   when: item.1.stat.exists == true
 
-- name: run the ceph Monitor docker image
+- name: run the ceph monitor docker image
   docker: >
     image="{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
-    name=ceph-{{ ansible_hostname }}
-    net=host
-    state=running
-    env="MON_NAME=ceph-{{ ansible_hostname }},MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON, CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }}"
+    name="{{ ansible_hostname }}"
+    net="host"
+    state="running"
+    env="MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},{{ ceph_mon_extra_envs }}"
     volumes="/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
 
-- name: ensure ceph_mon service is running
-  docker: >
-    image="{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
-    name="ceph-{{ ansible_hostname }}"
-    ports=6789:6789
-    detach=yes
-    state=running
-
-- name: collect ceph files to the ansible server
+- name: push ceph files to the ansible server
   fetch: >
-    src={{ item }}
-    dest=fetch/docker_mon_files/{{ item }}
+    src={{ item.0 }}
+    dest=fetch/docker_mon_files/{{ item.0 }}
     flat=yes
-  with_items:
-    - /etc/ceph/ceph.client.admin.keyring
-    - /etc/ceph/ceph.conf
-    - /etc/ceph/monmap
-    - /etc/ceph/ceph.mon.keyring
-    - /var/lib/ceph/bootstrap-osd/ceph.keyring
-    - /var/lib/ceph/bootstrap-rgw/ceph.keyring
-    - /var/lib/ceph/bootstrap-mds/ceph.keyring
+  with_together:
+    - ceph_config_keys
+    - statconfig.results
+  when: item.1.stat.exists == false
