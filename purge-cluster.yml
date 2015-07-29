@@ -15,12 +15,12 @@
   - name: disk zap
     command: /usr/sbin/sgdisk --zap-all --clear --mbrtogpt -g -- {{ item }}
     with_items: devices
-    failed_when: false
+    ignore_errors: true
 
   - name: disk zap
     command: /usr/sbin/sgdisk --zap-all --clear --mbrtogpt -g -- {{ item }}
     with_items: devices
-    failed_when: false
+    ignore_errors: true
 
   - name: call partprobe
     command: partprobe
@@ -31,7 +31,7 @@
 
   - name: remove osd data
     shell: rm -rf /var/lib/ceph/osd/*/*
-    failed_when: false
+    ignore_errors: true
 
   - name: purge remaining data
     command: ceph-deploy purgedata {{ ansible_fqdn }}
