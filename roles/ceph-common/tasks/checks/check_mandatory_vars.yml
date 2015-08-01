@@ -38,6 +38,14 @@
     not raw_multi_journal and
     not osd_directory
 
+- name: verify only one osd scenario was chosen
+  fail: msg="please select only one osd scenario"
+  when:
+    osd_group_name is defined and
+    ((journal_collocation and raw_multi_journal) or
+    (journal_collocation and osd_directory) or
+    (raw_multi_journal and osd_directory))
+
 - name: verify devices have been provided
   fail: msg="please provide devices to your osd scenario"
   when:
