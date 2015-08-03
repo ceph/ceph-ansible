@@ -25,6 +25,18 @@
 - include: ./installs/install_on_debian.yml
   when: ansible_os_family == 'Debian'
 
+- include: ./installs/install_rgw_on_redhat.yml
+  when:
+    ansible_os_family == 'RedHat' and
+    radosgw_frontend == 'apache' and
+    rgw_group_name in group_names
+
+- include: ./installs/install_rgw_on_debian.yml
+  when:
+    ansible_os_family == 'Debian' and
+    radosgw_frontend == 'apache' and
+    rgw_group_name in group_names
+
 - name: check for a ceph socket
   shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
   changed_when: false
@@ -38,7 +50,7 @@
   register: socketrgw
 
 - name: create a local fetch directory if it doesn't exist
-  local_action: file path=fetch state=directory 
+  local_action: file path=fetch state=directory
   changed_when: false
   sudo: false
 
