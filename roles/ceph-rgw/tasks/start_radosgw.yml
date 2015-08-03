@@ -2,6 +2,7 @@
 - name: check if rgw is started
   command: /etc/init.d/radosgw status
   register: rgwstatus
+  changed_when: false
   failed_when: false
 
 - name: start rgw
@@ -11,9 +12,15 @@
     ansible_distribution != "Ubuntu" and
     ansible_os_family != 'RedHat'
 
+- name: activate rgw on ubuntu
+  command: initctl emit radosgw cluster=ceph id=rgw.{{ ansible_hostname }}
+  changed_when: false
+  when: ansible_distribution == 'Ubuntu'
+
 - name: start rgw on ubuntu
   service: >
-    name=radosgw-all
+    name=radosgw
+    args=id=rgw.{{ ansible_hostname }}
     state=started
   when: ansible_distribution == 'Ubuntu'
 
