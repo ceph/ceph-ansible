@@ -8,12 +8,12 @@
     mode=0644
   with_items:
     - /var/lib/ceph/bootstrap-rgw
-    - /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}
+    - /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}
 
 - name: copy rados gateway bootstrap key
   copy: >
-    src=fetch/{{ fsid }}/var/lib/ceph/bootstrap-rgw/ceph.keyring
-    dest=/var/lib/ceph/bootstrap-rgw/ceph.keyring
+    src=fetch/{{ fsid }}/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
+    dest=/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
     owner=root
     group=root
     mode=600
@@ -21,14 +21,14 @@
 
 - name: create rados gateway keyring
   command: >
-    ceph --cluster ceph --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/ceph.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
-    creates=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
+    ceph --cluster {{ cluster }} --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
+    creates=/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
   changed_when: false
   when: cephx
 
 - name: set rados gateway key permissions
   file: >
-    path=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
+    path=/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
     mode=0600
     owner=root
     group=root
@@ -36,7 +36,7 @@
 
 - name: activate rados gateway with upstart
   file: >
-    path=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/{{ item }}
+    path=/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/{{ item }}
     state=touch
     owner=root
     group=root
@@ -49,7 +49,7 @@
 
 - name: activate rados gateway with sysvinit
   file: >
-    path=/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/{{ item }}
+    path=/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/{{ item }}
     state=touch
     owner=root
     group=root

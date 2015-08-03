@@ -1,7 +1,7 @@
 ---
 - name: activate monitor with upstart
   file: >
-    path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/{{ item }}
+    path=/var/lib/ceph/mon/{{ cluster }}-{{ ansible_hostname }}/{{ item }}
     state=touch
     owner=root
     group=root
@@ -11,6 +11,11 @@
     - upstart
   when: ansible_distribution == "Ubuntu"
   changed_when: false
+
+- name: activate monitor service
+  command: initctl emit ceph-mon cluster={{ cluster }} id={{ ansible_hostname }}
+  changed_when: false
+  when: ansible_distribution == "Ubuntu"
 
 - name: start and add that the monitor service to the init sequence (ubuntu)
   service: >
@@ -23,18 +28,17 @@
 # NOTE (leseb): somehow the service ansible module is messing things up
 # as a safety measure we run the raw command
 - name: start and add that the monitor service to the init sequence
-  command: service ceph start mon
+  command: service ceph --cluster {{ cluster }} start mon
   changed_when: false
   when: ansible_distribution != "Ubuntu"
 
 - name: collect admin and bootstrap keys
-  command: ceph-create-keys --id {{ ansible_hostname }}
+  command: ceph-create-keys --cluster {{ cluster }} --id {{ ansible_hostname }}
   changed_when: false
   failed_when:  false
-  when: ansible_os_family == 'RedHat'
 
 - name: get ceph monitor version
-  shell: ceph daemon mon."{{ ansible_hostname }}" version | cut -d '"' -f 4 | cut -f 1,2 -d '.'
+  shell: ceph --cluster {{ cluster }} daemon mon."{{ ansible_hostname }}" version | cut -d '"' -f 4 | cut -f 1,2 -d '.'
   changed_when: false
   failed_when: "'No such file or directory' in ceph_version.stderr"
   register: ceph_version
