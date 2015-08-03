@@ -2,35 +2,6 @@
 - include: pre_requisite.yml
   when: not ceph_containerized_deployment
 
-- include: ./installs/install_redhat.yml
-  when:
-    ansible_os_family == 'RedHat' and
-    radosgw_frontend == 'apache' and not
-    ceph_containerized_deployment
-
-- include: ./installs/install_debian.yml
-  when:
-    ansible_os_family == 'Debian' and
-    radosgw_frontend == 'apache' and not
-    ceph_containerized_deployment
-
-- name: install rados gateway
-  apt: >
-    pkg=radosgw
-    state=present
-    update_cache=yes
-  when:
-    ansible_os_family == 'Debian' and not
-    ceph_containerized_deployment
-
-- name: install rados gateway
-  yum: >
-    name=ceph-radosgw
-    state=present
-  when:
-    ansible_os_family == 'RedHat' and not
-    ceph_containerized_deployment
-
 - include: openstack-keystone.yml
   when: radosgw_keystone
 
