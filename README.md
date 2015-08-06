@@ -39,7 +39,7 @@ Have a look at `defaults/main.yml`.
 
 # Dependencies
 
-None.
+None
 
 # Example Playbook
 
