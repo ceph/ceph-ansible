@@ -17,7 +17,7 @@ Have a look at `defaults/main.yml`.
 
 ## Mandatory variables
 
-* Installating source, chose one of these:
+* Install source, choose one of these:
   * `ceph_stable`
   * `ceph_dev`
   * `ceph_stable_ice`
@@ -29,11 +29,13 @@ Have a look at `defaults/main.yml`.
 
 ## Handlers
 
+* update apt cache
 * restart ceph-mon
 * restart ceph-osd
 * restart ceph-mds
 * restart ceph-rgw
 * restart ceph-restapi
+* restart apache2
 
 # Dependencies
 
@@ -50,7 +52,7 @@ None.
 
 # Misc
 
-This role is a **mandatory** dependancy for the following roles:
+This role is a **mandatory** dependency for the following roles:
 
 * ceph-mon
 * ceph-osd
