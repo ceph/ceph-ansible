@@ -1,11 +1,11 @@
-# Ansible role: Ceph common
+# Ansible role: Ceph Common
 
-This role does several things prior to bootstrap your Ceph cluster:
+This role does several things prior to bootstrapping your Ceph cluster:
 
-* Checks the system and validate that Ceph can be installed
+* Checks the system and validates that Ceph can be installed
 * Tunes the operating system if the node is an OSD server
 * Installs Ceph
-* Generates the `ceph.conf`
+* Generates `ceph.conf`
 
 # Requirements
 
@@ -13,30 +13,33 @@ Nothing, it runs out of the box.
 
 # Role variables
 
-Have a look at: `defaults/main.yml`.
+Have a look at `defaults/main.yml`.
 
 ## Mandatory variables
 
-* Installating source, chose one of these:
+* Install source, choose one of these:
   * `ceph_stable`
   * `ceph_dev`
   * `ceph_stable_ice`
   * `ceph_stable_rh_storage`
 * `journal_size`
 * `monitor_interface`
+* `public_network`
 * `cluster_network`
 
 ## Handlers
 
+* update apt cache
 * restart ceph-mon
 * restart ceph-osd
 * restart ceph-mds
 * restart ceph-rgw
 * restart ceph-restapi
+* restart apache2
 
 # Dependencies
 
-None.
+None
 
 # Example Playbook
 
@@ -49,7 +52,7 @@ None.
 
 # Misc
 
-This role is a **mandatory** dependancy for the following roles:
+This role is a **mandatory** dependency for the following roles:
 
 * ceph-mon
 * ceph-osd
@@ -59,8 +62,8 @@ This role is a **mandatory** dependancy for the following roles:
 
 # Contribution
 
-**THIS REPOSITORY DOES NOT ACCEPT PULL REQUESTS**
-**PULL REQUESTS MUST GO THROUGH [CEPH-ANSIBLE](https://github.com/ceph/ceph-ansible)**
+**THIS REPOSITORY DOES NOT ACCEPT PULL REQUESTS**.
+**PULL REQUESTS MUST GO THROUGH [CEPH-ANSIBLE](https://github.com/ceph/ceph-ansible)**.
 
 # License
 
