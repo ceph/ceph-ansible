@@ -284,13 +284,13 @@
       when: migration_completed.stat.exists == False
 
     - name: Check if sysvinit
-      stat: path=/var/lib/ceph/osd/ceph-*/sysvinit
+      shell: stat /var/lib/ceph/osd/ceph-*/sysvinit
       register: osdsysvinit
       failed_when: false
       changed_when: False
 
     - name: Check if upstart
-      stat: path=/var/lib/ceph/osd/ceph-*/upstart
+      shell: stat /var/lib/ceph/osd/ceph-*/upstart
       register: osdupstart
       failed_when: false
       changed_when: False
@@ -329,14 +329,14 @@
       service: >
         name=ceph-osd-all
         state=stopped
-      when: osdupstart.stat.exists and migration_completed.stat.exists == False
+      when: osdupstart.rc == 0 and migration_completed.stat.exists == False
 
     - name: Gracefully stop the OSDs (Sysvinit)
       service: >
         name=ceph
         state=stopped
         args=mon
-      when: osdsysvinit.stat.exists and migration_completed.stat.exists == False
+      when: osdsysvinit.rc == 0 and migration_completed.stat.exists == False
 
     - name: Wait for the OSDs to be down
       local_action: >
