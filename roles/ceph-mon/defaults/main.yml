@@ -36,16 +36,23 @@ secure_cluster_flags:
 #############
 
 openstack_config: false
-openstack_glance_pool: images
-openstack_cinder_pool: volumes
-openstack_nova_pool: vms
-openstack_cinder_backup_pool: backups
+openstack_glance_pool:
+  name: images
+  pg_num: "{{ pool_default_pg_num }}"
+openstack_cinder_pool:
+  name: volumes
+  pg_num: "{{ pool_default_pg_num }}"
+openstack_nova_pool:
+  name: vms
+  pg_num: "{{ pool_default_pg_num }}"
+openstack_cinder_backup_pool:
+  name: backups
+  pg_num: "{{ pool_default_pg_num }}"
 
 openstack_keys:
-  - { name: client.glance, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_glance_pool }}'" }
-  - { name: client.cinder, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_pool }}, allow rwx pool={{ openstack_nova_pool }}, allow rx pool={{ openstack_glance_pool }}'"  }
-  - { name: client.cinder-backup, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_backup_pool }}'" }
-
+  - { name: client.glance, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_glance_pool.name }}'" }
+  - { name: client.cinder, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_pool.name }}, allow rwx pool={{ openstack_nova_pool.name }}, allow rx pool={{ openstack_glance_pool.name }}'"  }
+  - { name: client.cinder-backup, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_backup_pool.name }}'" }
 
 ##########
 # DOCKER #
