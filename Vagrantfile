@@ -15,6 +15,7 @@ CLIENTS    = settings['client_vms']
 SUBNET     = settings['subnet']
 BOX        = settings['vagrant_box']
 MEMORY     = settings['memory']
+STORAGECTL = settings['vagrant_storagectl']
 
 ansible_provision = proc do |ansible|
   ansible.playbook = 'site.yml'
@@ -122,7 +123,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
           # It is set when the base box is made in our case ubuntu/trusty64.
           # Be careful while changing the box.
           vb.customize ['storageattach', :id,
-                        '--storagectl', 'SATAController',
+                        '--storagectl', STORAGECTL,
                         '--port', 3 + d,
                         '--device', 0,
                         '--type', 'hdd',
