@@ -1,16 +1,16 @@
 ---
 - name: generate monitor initial keyring
   local_action: >
-    shell python -c "import os ; import struct ; import time; import base64 ; key = os.urandom(16) ; header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ; print base64.b64encode(header + key)" | tee fetch/monitor_keyring.conf
-    creates=fetch/monitor_keyring.conf
+    shell python -c "import os ; import struct ; import time; import base64 ; key = os.urandom(16) ; header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ; print base64.b64encode(header + key)" | tee {{ fetch_directory }}/monitor_keyring.conf
+    creates={{ fetch_directory }}/monitor_keyring.conf
   register: monitor_keyring
   sudo: false
   when: monitor_secret != 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw=='
 
 - name: read monitor initial keyring if it already exists
   local_action: >
-    command cat fetch/monitor_keyring.conf
-    removes=fetch/monitor_keyring.conf
+    command cat {{ fetch_directory }}/monitor_keyring.conf
+    removes={{ fetch_directory }}/monitor_keyring.conf
   changed_when: false
   register: monitor_keyring
   sudo: false
