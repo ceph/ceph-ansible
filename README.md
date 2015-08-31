@@ -87,6 +87,16 @@ monitor. If using these playbooks in production, you must generate your own `fsi
 in `group_vars/all` and `monitor_secret` in `group_vars/mons`. Those files contain
 information about how to generate appropriate values for these variables.
 
+## Specifying package origin (Debian-based only)
+
+By default, ceph-common installs from Ceph APT repository. However, you
+can set `ceph_origin` to "distro" to install Ceph from your default repository.
+
+
+If you want to use "backports", you can set "true" to `ceph_use_distro_backports`.
+Attention, ceph-common doesn't manage backports repository, you must add it yourself.
+
+
 ## Vagrant Demo
 
 [![Ceph-ansible Vagrant Demo](http://img.youtube.com/vi/E8-96NamLDo/0.jpg)](https://youtu.be/E8-96NamLDo "Deploy Ceph with Ansible (Vagrant demo)")
