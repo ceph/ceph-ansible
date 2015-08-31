@@ -87,11 +87,13 @@ monitor. If using these playbooks in production, you must generate your own `fsi
 in `group_vars/all` and `monitor_secret` in `group_vars/mons`. Those files contain
 information about how to generate appropriate values for these variables.
 
-## Specifying package origin (Debian-based only)
+## Specifying package origin
 
-By default, ceph-common installs from Ceph APT repository. However, you
+By default, ceph-common installs from Ceph repository. However, you
 can set `ceph_origin` to "distro" to install Ceph from your default repository.
 
+
+### For Debian based systems
 
 If you want to use "backports", you can set "true" to `ceph_use_distro_backports`.
 Attention, ceph-common doesn't manage backports repository, you must add it yourself.
