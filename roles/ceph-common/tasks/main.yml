@@ -57,26 +57,26 @@
 
 - name: generate cluster uuid
   local_action: shell uuidgen | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
-    creates={{ fetch_directory }}/ceph_cluster_uuid.conf
+    creates="{{ fetch_directory }}/ceph_cluster_uuid.conf"
   register: cluster_uuid
   sudo: false
   when: fsid != '4a158d27-f750-41d5-9e7f-26ce4c9d2d45'
 
 - name: read cluster uuid if it already exists
   local_action: command cat {{ fetch_directory }}/ceph_cluster_uuid.conf
-    removes={{ fetch_directory }}/ceph_cluster_uuid.conf
+    removes="{{ fetch_directory }}/ceph_cluster_uuid.conf"
   changed_when: false
   register: cluster_uuid
   sudo: false
   when: fsid != '4a158d27-f750-41d5-9e7f-26ce4c9d2d45'
 
 - name: generate ceph configuration file
-  template: >
-    src=ceph.conf.j2
-    dest=/etc/ceph/ceph.conf
-    owner=root
-    group=root
-    mode=0644
+  template:
+    src: ceph.conf.j2
+    dest: /etc/ceph/ceph.conf
+    owner: root
+    group: root
+    mode: 0644
   notify:
     - restart ceph mons
     - restart ceph mons on ubuntu
@@ -89,9 +89,9 @@
     - restart ceph rgws on red hat
 
 - name: create rbd client directory
-  file: >
-    path={{ rbd_client_admin_socket_path }}
-    state=directory
-    owner=root
-    group=root
-    mode=0644
+  file:
+    path: "{{ rbd_client_admin_socket_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0644
