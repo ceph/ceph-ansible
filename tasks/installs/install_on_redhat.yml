@@ -1,8 +1,8 @@
 ---
 - name: install dependencies
-  yum: >
-    name={{ item }}
-    state=present
+  yum:
+    name: "{{ item }}"
+    state: present
   with_items: redhat_package_dependencies
 
 - name: configure ceph yum repository
@@ -10,15 +10,15 @@
   when: ceph_origin == 'upstream'
 
 - name: install ceph
-  yum: >
-    name=ceph
-    state=latest
+  yum:
+    name: ceph
+    state: latest
   when: not ceph_stable_rh_storage
 
 - name: install red hat storage ceph mon
-  yum: >
-    name={{ item }}
-    state=latest
+  yum:
+    name: "{{ item }}"
+    state: latest
   with_items:
     - ceph
     - ceph-mon
@@ -27,9 +27,9 @@
     mon_group_name in group_names
 
 - name: install red hat storage ceph osd
-  yum: >
-    name={{ item }}
-    state=latest
+  yum:
+    name: "{{ item }}"
+    state: latest
   with_items:
     - ceph
     - ceph-osd
@@ -38,27 +38,27 @@
     osd_group_name in group_names
 
 - name: install Inktank Ceph Enterprise RBD Kernel modules
-  yum: >
-    name={{ item }}
+  yum:
+    name: "{{ item }}"
   with_items:
     - "{{ ceph_stable_ice_temp_path }}/kmod-libceph-{{ ceph_stable_ice_kmod }}.rpm"
     - "{{ ceph_stable_ice_temp_path }}/kmod-rbd-{{ ceph_stable_ice_kmod }}.rpm"
   when: ceph_stable_ice
 
 - name: install rados gateway
-  yum: >
-    name=ceph-radosgw
-    state=latest
+  yum:
+    name: ceph-radosgw
+    state: latest
   when:
     rgw_group_name in group_names
 
 - name: configure rbd clients directories
-  file: >
-    path={{ item }}
-    state=directory
-    owner=qemu
-    group=libvirtd
-    mode=0755
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: qemu
+    group: libvirtd
+    mode: 0755
   with_items:
    - rbd_client_log_path
    - rbd_client_admin_socket_path

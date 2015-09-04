@@ -1,10 +1,10 @@
 ---
 - name: install dependencies
-  apt: >
-    pkg={{ item }}
-    state=present
-    update_cache=yes
-    cache_valid_time=3600
+  apt:
+    pkg: "{{ item }}"
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
   with_items: debian_package_dependencies
 
 - name: configure ceph apt repository
@@ -12,10 +12,10 @@
   when: ceph_origin == 'upstream'
 
 - name: install ceph
-  apt: >
-    pkg={{ item }}
-    state=latest
-    default_release={{ ansible_distribution_release }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}
+  apt:
+    pkg: "{{ item }}"
+    state: latest
+    default_release: "{{ ansible_distribution_release }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
   with_items:
     - ceph
     - ceph-common    #|
@@ -25,20 +25,20 @@
     - libcephfs1     #|
 
 - name: install rados gateway
-  apt: >
-    pkg=radosgw
-    state=latest
-    update_cache=yes
+  apt:
+    pkg: radosgw
+    state: latest
+    update_cache: yes
   when:
     rgw_group_name in group_names
 
 - name: configure rbd clients directories
-  file: >
-    path={{ item }}
-    state=directory
-    owner=libvirt-qemu
-    group=kvm
-    mode=0755
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: libvirt-qemu
+    group: kvm
+    mode: 0755
   with_items:
    - rbd_client_log_path
    - rbd_client_admin_socket_path
