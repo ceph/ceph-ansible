@@ -14,20 +14,20 @@
   register: osd_id
 
 - name: create a ceph fragment and assemble directory
-  file: >
-    path={{ item }}
-    state=directory
-    owner=root
-    group=root
-    mode=0644
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0644
   with_items:
     - /etc/ceph/ceph.d/
     - /etc/ceph/ceph.d/osd_fragments
 
 - name: create the osd fragment
-  template: >
-    src=osd.conf.j2
-    dest=/etc/ceph/ceph.d/osd_fragments/osd.{{ item.stdout }}.conf
+  template:
+    src: osd.conf.j2
+    dest: /etc/ceph/ceph.d/osd_fragments/osd.{{ item.stdout }}.conf
   with_items: osd_id.results
 
 - name: copy ceph.conf for assembling
@@ -35,17 +35,17 @@
   changed_when: false
 
 - name: assemble osd sections
-  assemble: >
-    src=/etc/ceph/ceph.d/osd_fragments/
-    dest=/etc/ceph/ceph.d/osd.conf
-    owner=root
-    group=root
-    mode=0644
+  assemble:
+    src: /etc/ceph/ceph.d/osd_fragments/
+    dest: /etc/ceph/ceph.d/osd.conf
+    owner: root
+    group: root
+    mode: 0644
 
 - name: assemble ceph conf and osd fragments
-  assemble: >
-    src=/etc/ceph/ceph.d/
-    dest=/etc/ceph/ceph.conf
-    owner=root
-    group=root
-    mode=0644
+  assemble:
+    src: /etc/ceph/ceph.d/
+    dest: /etc/ceph/ceph.conf
+    owner: root
+    group: root
+    mode: 0644
