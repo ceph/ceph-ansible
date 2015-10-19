@@ -2,45 +2,45 @@
 # Deploy Ceph metadata server(s)
 
 - name: copy mds bootstrap key
-  copy: >
-    src={{ fetch_directory }}/{{ fsid }}/var/lib/ceph/bootstrap-mds/ceph.keyring
-    dest=/var/lib/ceph/bootstrap-mds/ceph.keyring
-    owner=root
-    group=root
-    mode=600
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/bootstrap-mds/ceph.keyring"
+    dest: /var/lib/ceph/bootstrap-mds/ceph.keyring
+    owner: root
+    group: root
+    mode: 600
   when: cephx
 
 - name: create mds directory
-  file: >
-    path=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}
-    state=directory
-    owner=root
-    group=root
-    mode=0644
+  file:
+    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}
+    state: directory
+    owner: root
+    group: root
+    mode: 0644
   when: cephx
 
 - name: create mds keyring
-  command: >
-    ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.{{ ansible_hostname }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
-    creates=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
+  command: ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.{{ ansible_hostname }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
+  args:
+    creates: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
   changed_when: false
   when: cephx
 
 - name: set mds key permissions
-  file: >
-    path=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
-    mode=0600
-    owner=root
-    group=root
+  file:
+    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
+    mode: 0600
+    owner: root
+    group: root
   when: cephx
 
 - name: activate metadata server with upstart
-  file: >
-    path=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
-    state=touch
-    owner=root
-    group=root
-    mode=0600
+  file:
+    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
+    state: touch
+    owner: root
+    group: root
+    mode: 0600
   with_items:
     - done
     - upstart
@@ -48,12 +48,12 @@
   when: ansible_distribution == "Ubuntu"
 
 - name: activate metadata server with sysvinit
-  file: >
-    path=/var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
-    state=touch
-    owner=root
-    group=root
-    mode=0600
+  file:
+    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
+    state: touch
+    owner: root
+    group: root
+    mode: 0600
   with_items:
     - done
     - sysvinit
@@ -61,19 +61,19 @@
   when: ansible_distribution != "Ubuntu"
 
 - name: start and add that the metadata service to the init sequence (ubuntu)
-  service: >
-    name=ceph-mds
-    state=started
-    enabled=yes
-    args="id={{ ansible_hostname }}"
+  service:
+    name: ceph-mds
+    state: started
+    enabled: yes
+    args: "id={{ ansible_hostname }}"
   changed_when: false
   when: ansible_distribution == "Ubuntu"
 
 - name: start and add that the metadata service to the init sequence
-  service: >
-    name=ceph
-    state=started
-    enabled=yes
-    args=mds
+  service:
+    name: ceph
+    state: started
+    enabled: yes
+    args: mds
   changed_when: false
   when: ansible_distribution != "Ubuntu"
