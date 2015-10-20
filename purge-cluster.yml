@@ -6,21 +6,7 @@
   - mons
   - osds
 
-  vars:
-    devices: [ '/dev/sdb', '/dev/sdc', '/dev/sdd', '/dev/sde', '/dev/sdf' ]
-    partitions: [ '1', '2', '3' ]
-
   tasks:
-
-  - name: disk zap
-    command: /usr/sbin/sgdisk --zap-all --clear --mbrtogpt -g -- {{ item }}
-    with_items: devices
-    failed_when: false
-
-  - name: disk zap
-    command: /usr/sbin/sgdisk --zap-all --clear --mbrtogpt -g -- {{ item }}
-    with_items: devices
-    failed_when: false
 
   - name: purge ceph
     command: ceph-deploy purge {{ ansible_fqdn }}
@@ -33,6 +19,25 @@
   - name: purge remaining data
     command: ceph-deploy purgedata {{ ansible_fqdn }}
     delegate_to: 127.0.0.1
+
+- hosts:
+  - osds
+
+  vars:
+    devices: [ '/dev/sdb', '/dev/sdc', '/dev/sdd', '/dev/sde', '/dev/sdf' ]
+    partitions: [ '1', '2', '3' ]
+
+  tasks:
+
+  - name: disk zap
+    command: /usr/sbin/sgdisk --zap-all --clear --mbrtogpt -g -- {{ item }}
+    with_items: devices
+    failed_when: false
+
+  - name: disk zap again
+    command: /usr/sbin/sgdisk --zap-all --clear --mbrtogpt -g -- {{ item }}
+    with_items: devices
+    failed_when: false
 
   - name: call partprobe
     command: partprobe
