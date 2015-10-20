@@ -1,0 +1,43 @@
+---
+# This playbook purges a containerized Ceph cluster
+# It removes: packages, configuration files and ALL THE DATA
+
+- hosts:
+  - mons
+  - osds
+
+  tasks:
+
+  - name: collect ceph containers
+    shell: "docker ps | awk '/ceph.daemon/ {print $10}'"
+    register: containers
+
+  - name: delete ceph containers
+    shell: docker rm -f {{ item }}
+    with_items: containers.stdout_lines
+
+  - name: purge ceph directories
+    shell: rm -rf {{ item }}
+    with_items:
+      - /etc/ceph/*
+      - /var/lib/ceph/*
+    failed_when: false
+
+- hosts:
+  - osds
+
+  vars:
+    devices: [ '/dev/sdb', '/dev/sdc', '/dev/sdd', '/dev/sde', '/dev/sdf' ]
+    partitions: [ '1', '2', '3' ]
+
+  tasks:
+
+  - name: disk zap
+    command: /usr/sbin/sgdisk --zap-all --clear --mbrtogpt -g -- {{ item }}
+    with_items: devices
+    failed_when: false
+
+  - name: disk zap again
+    command: /usr/sbin/sgdisk --zap-all --clear --mbrtogpt -g -- {{ item }}
+    with_items: devices
+    failed_when: false
