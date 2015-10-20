@@ -1,5 +1,5 @@
 ---
-# This playbook purges Ceph
+# This playbook purges a containerized Ceph cluster
 # It removes: packages, configuration files and ALL THE DATA
 
 - hosts:
@@ -8,17 +8,20 @@
 
   tasks:
 
-  - name: purge ceph
-    command: ceph-deploy purge {{ ansible_fqdn }}
-    delegate_to: 127.0.0.1
+  - name: collect ceph containers
+    shell: "docker ps | awk '/ceph.daemon/ {print $10}'"
+    register: containers
 
-  - name: remove osd data
-    shell: rm -rf /var/lib/ceph/osd/*/*
+  - name: delete ceph containers
+    shell: docker rm -f {{ item }}
+    with_items: containers.stdout_lines
+
+  - name: purge ceph directories
+    shell: rm -rf {{ item }}
+    with_items:
+      - /etc/ceph/*
+      - /var/lib/ceph/*
     failed_when: false
-
-  - name: purge remaining data
-    command: ceph-deploy purgedata {{ ansible_fqdn }}
-    delegate_to: 127.0.0.1
 
 - hosts:
   - osds
@@ -38,6 +41,3 @@
     command: /usr/sbin/sgdisk --zap-all --clear --mbrtogpt -g -- {{ item }}
     with_items: devices
     failed_when: false
-
-  - name: call partprobe
-    command: partprobe
