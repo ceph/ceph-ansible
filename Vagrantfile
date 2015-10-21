@@ -7,6 +7,9 @@ VAGRANTFILE_API_VERSION = '2'
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
 settings=YAML.load_file(config_file)
 
+_shellScript = "pull-roles.sh"
+system("sh #{_shellScript}")
+
 NMONS      = settings['mon_vms']
 NOSDS      = settings['osd_vms']
 NMDSS      = settings['mds_vms']
