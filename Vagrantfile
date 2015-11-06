@@ -16,6 +16,7 @@ SUBNET     = settings['subnet']
 BOX        = settings['vagrant_box']
 MEMORY     = settings['memory']
 STORAGECTL = settings['vagrant_storagectl']
+ETH        = settings['eth']
 
 ansible_provision = proc do |ansible|
   ansible.playbook = 'site.yml'
@@ -38,7 +39,7 @@ ansible_provision = proc do |ansible|
     fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
     monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
     journal_size: 100,
-    monitor_interface: 'eth1',
+    monitor_interface: ETH,
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
     devices: "[ '/dev/sdb', '/dev/sdc' ]",
