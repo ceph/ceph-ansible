@@ -1,23 +1,67 @@
 ---
-- name: create rados gateway directories
+- name: create rados gateway directories (for or after infernalis release)
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: ceph
+    group: ceph
+    mode: 0755
+  with_items:
+    - /var/lib/ceph/bootstrap-rgw
+    - /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}
+  when:
+    ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer'
+
+- name: create rados gateway directories (before infernalis release)
   file:
     path: "{{ item }}"
     state: directory
     owner: root
     group: root
-    mode: 0644
+    mode: 0755
   with_items:
     - /var/lib/ceph/bootstrap-rgw
     - /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}
+  when:
+    ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer'
 
-- name: copy rados gateway bootstrap key
+- name: copy rados gateway bootstrap key (for or after infernalis release)
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/bootstrap-rgw/ceph.keyring"
+    dest: /var/lib/ceph/bootstrap-rgw/ceph.keyring
+    owner: ceph
+    group: ceph
+    mode: 0600
+  when:
+    cephx and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
+
+- name: copy rados gateway bootstrap key (before infernalis release)
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/bootstrap-rgw/ceph.keyring"
     dest: /var/lib/ceph/bootstrap-rgw/ceph.keyring
     owner: root
     group: root
-    mode: 600
-  when: cephx
+    mode: 0600
+  when:
+    cephx and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
 - name: create rados gateway keyring
   command: ceph --cluster ceph --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/ceph.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
@@ -26,15 +70,54 @@
   changed_when: false
   when: cephx
 
-- name: set rados gateway key permissions
+- name: set rados gateway key permissions (for or after the infernalis release)
+  file:
+    path: /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
+    mode: 0600
+    owner: ceph
+    group: ceph
+  when:
+    cephx and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
+
+- name: set rados gateway key permissions (before infernalis release)
   file:
     path: /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
     mode: 0600
     owner: root
     group: root
-  when: cephx
+  when:
+    cephx and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
-- name: activate rados gateway with upstart
+- name: activate rados gateway with upstart (for or after infernalis release)
+  file:
+    path: /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/{{ item }}
+    state: touch
+    owner: ceph
+    group: ceph
+    mode: 0644
+  with_items:
+    - done
+    - upstart
+  changed_when: false
+  when:
+    ansible_distribution == "Ubuntu" and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
+
+- name: activate rados gateway with upstart (before infernalis release)
   file:
     path: /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/{{ item }}
     state: touch
@@ -45,9 +128,34 @@
     - done
     - upstart
   changed_when: false
-  when: ansible_distribution == "Ubuntu"
+  when:
+    ansible_distribution == "Ubuntu" and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
-- name: activate rados gateway with sysvinit
+- name: activate rados gateway with sysvinit (for or after infernalis release)
+  file:
+    path: /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/{{ item }}
+    state: touch
+    owner: ceph
+    group: ceph
+    mode: 0644
+  with_items:
+    - done
+    - sysvinit
+  changed_when: false
+  when:
+    ansible_distribution != "Ubuntu" and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
+
+- name: activate rados gateway with sysvinit (before infernalis release)
   file:
     path: /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/{{ item }}
     state: touch
@@ -58,7 +166,13 @@
     - done
     - sysvinit
   changed_when: false
-  when: ansible_distribution != "Ubuntu"
+  when:
+    ansible_distribution != "Ubuntu" and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
 - name: generate rados gateway sudoers file
   template:

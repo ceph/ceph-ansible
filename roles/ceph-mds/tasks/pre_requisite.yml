@@ -1,23 +1,92 @@
 ---
-# Deploy Ceph metadata server(s)
+- name: create bootstrap-mds directory (for or after infernalis release)
+  file:
+    path: /var/lib/ceph/bootstrap-mds/
+    state: directory
+    owner: ceph
+    group: ceph
+    mode: 0755
+  when:
+    ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer'
 
-- name: copy mds bootstrap key
+- name: create bootstrap-mds directory (before infernalis release)
+  file:
+    path: /var/lib/ceph/bootstrap-mds/
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    cephx and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
+
+- name: copy mds bootstrap key (for or after infernalis release)
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/bootstrap-mds/ceph.keyring"
+    dest: /var/lib/ceph/bootstrap-mds/ceph.keyring
+    owner: ceph
+    group: ceph
+    mode: 0600
+  when:
+    cephx and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
+
+- name: copy mds bootstrap key (before infernalis release)
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/bootstrap-mds/ceph.keyring"
     dest: /var/lib/ceph/bootstrap-mds/ceph.keyring
     owner: root
     group: root
-    mode: 600
-  when: cephx
+    mode: 0600
+  when:
+    cephx and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
-- name: create mds directory
+- name: create mds directory (for or after infernalis release)
   file:
     path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}
     state: directory
-    owner: root
-    group: root
-    mode: 0644
-  when: cephx
+    owner: ceph
+    group: ceph
+    mode: 0755
+  when:
+    cephx and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
+
+- name: create mds directory (before infernalis release)
+  file:
+    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}
+    state: directory
+    owner: ceph
+    group: cephh
+    mode: 0755
+  when:
+    cephx and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
 - name: create mds keyring
   command: ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.{{ ansible_hostname }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
@@ -26,39 +95,109 @@
   changed_when: false
   when: cephx
 
-- name: set mds key permissions
+- name: set mds key permissions (for or after infernalis release)
+  file:
+    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
+    mode: 0600
+    owner: ceph
+    group: ceph
+  when:
+    cephx and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
+
+- name: set mds key permissions (before infernalis)
   file:
     path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
     mode: 0600
     owner: root
     group: root
-  when: cephx
+  when:
+    cephx and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
-- name: activate metadata server with upstart
+- name: activate metadata server with upstart (for or after infernalis release)
   file:
     path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
     state: touch
-    owner: root
-    group: root
+    owner: ceph
+    group: ceph
     mode: 0600
   with_items:
     - done
     - upstart
   changed_when: false
-  when: ansible_distribution == "Ubuntu"
+  when:
+    ansible_distribution == "Ubuntu" and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
 
-- name: activate metadata server with sysvinit
+- name: activate metadata server with upstart (before infernalis release)
   file:
     path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
     state: touch
     owner: root
     group: root
-    mode: 0600
+    mode: 0644
+  with_items:
+    - done
+    - upstart
+  changed_when: false
+  when:
+    ansible_distribution == "Ubuntu" and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
+
+- name: activate metadata server with sysvinit (for or after infernalis release)
+  file:
+    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
+    state: touch
+    owner: ceph
+    group: ceph
+    mode: 0644
   with_items:
     - done
     - sysvinit
   changed_when: false
-  when: ansible_distribution != "Ubuntu"
+  when:
+    ansible_distribution != "Ubuntu" and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
+
+- name: activate metadata server with sysvinit (before infernalis release)
+  file:
+    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
+    state: touch
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - done
+    - sysvinit
+  changed_when: false
+  when:
+    ansible_distribution != "Ubuntu" and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
 - name: start and add that the metadata service to the init sequence (ubuntu)
   service:
