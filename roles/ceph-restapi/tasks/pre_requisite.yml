@@ -1,22 +1,82 @@
 ---
-- name: create ceph rest api directory
+- name: create ceph rest api directory (for or after infernalis release)
+  file:
+    path: /var/lib/ceph/restapi/ceph-restapi
+    state: directory
+    owner: ceph
+    group: ceph
+    mode: 0755
+  when:
+    ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer'
+
+- name: create ceph rest api directory (before infernalis release)
   file:
     path: /var/lib/ceph/restapi/ceph-restapi
     state: directory
     owner: root
     group: root
     mode: 0755
+  when:
+    ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer'
 
-- name: copy ceph rest api keyring
+- name: copy ceph rest api keyring (for or after infernalis release)
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/ceph.client.restapi.keyring"
+    dest: "/var/lib/ceph/restapi/ceph-restapi/keyring"
+    owner: ceph
+    group: ceph
+    mode: 600
+  when:
+    cephx and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
+
+- name: copy ceph rest api keyring (before infernalis release)
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/ceph.client.restapi.keyring"
     dest: "/var/lib/ceph/restapi/ceph-restapi/keyring"
     owner: root
     group: root
     mode: 600
-  when: cephx
+  when:
+    cephx and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
-- name: activate ceph rest api with upstart
+- name: activate ceph rest api with upstart (for or after infernalis release)
+  file:
+    path: /var/lib/ceph/restapi/{{ item }}
+    state: touch
+    owner: ceph
+    group: ceph
+    mode: 0600
+  with_items:
+    - done
+    - upstart
+  changed_when: false
+  when:
+    ansible_distribution == "Ubuntu" and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
+
+- name: activate ceph rest api with upstart (before infernalis release)
   file:
     path: /var/lib/ceph/restapi/{{ item }}
     state: touch
@@ -27,9 +87,33 @@
     - done
     - upstart
   changed_when: false
-  when: ansible_distribution == "Ubuntu"
+  when:
+    ansible_distribution == "Ubuntu" and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
 
-- name: activate ceph rest api with sysvinit
+- name: activate ceph rest api with sysvinit (for or after infernalis release))
+  file:
+    path: /var/lib/ceph/restapi/{{ item }}
+    state: touch
+    owner: ceph
+    group: ceph
+    mode: 0600
+  with_items:
+    - done
+    - sysvinit
+  when:
+    ansible_distribution != "Ubuntu" and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
+
+- name: activate ceph rest api with sysvinit (before infernalis release))
   file:
     path: /var/lib/ceph/restapi/{{ item }}
     state: touch
@@ -39,7 +123,13 @@
   with_items:
     - done
     - sysvinit
-  when: ansible_distribution != "Ubuntu"
+  when:
+    ansible_distribution != "Ubuntu" and
+    (ceph_stable_release != 'dumpling' or
+    ceph_stable_release != 'emperor' or
+    ceph_stable_release != 'firefly' or
+    ceph_stable_release != 'giant' or
+    ceph_stable_release != 'hammer')
 
 # NOTE (leseb): will uncomment this when this https://github.com/ceph/ceph/pull/4144 lands
 #- name: start and add that the Ceph REST API service to the init sequence (Ubuntu)
