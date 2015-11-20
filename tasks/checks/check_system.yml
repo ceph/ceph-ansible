@@ -20,3 +20,14 @@
   when:
     ceph_stable_rh_storage and
     {{ ansible_distribution_version | version_compare('7.1', '<') }}
+
+- name: check ansible version
+  local_action: shell ansible --version | awk '/[0-9].[0-9].[0-9]/ {print $2}'
+  changed_when: false
+  sudo: false
+  register: ansible_version
+
+- name: fail on unsupported ansible version
+  fail:
+    msg: "Ansible version must be >= 1.9, please update!"
+  when: "{{ ansible_version.stdout | version_compare('1.9', '<') }}"
