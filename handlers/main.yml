@@ -8,7 +8,26 @@
   when:
     socket.rc == 0 and
     ansible_distribution != 'Ubuntu' and
-    mon_group_name in group_names
+    mon_group_name in group_names and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
+
+- name: restart ceph mons with systemd
+  service:
+      name: ceph-mon@{{ ansible_hostname }}
+      state: restarted
+  when:
+    socket.rc == 0 and
+    ansible_distribution != 'Ubuntu' and
+    mon_group_name in group_names and not
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
 - name: restart ceph mons on ubuntu
   command: restart ceph-mon-all
@@ -22,7 +41,29 @@
   when:
     socket.rc == 0 and
     ansible_distribution != 'Ubuntu' and
-    osd_group_name in group_names
+    osd_group_name in group_names and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
+
+# This does not just restart OSDs but everything else too. Unfortunately
+# at this time the ansible role does not have an OSD id list to use
+# for restarting them specifically.
+- name: restart ceph osds with systemd
+  service:
+    name: ceph.target
+    state: restarted
+  when:
+    socket.rc == 0 and
+    ansible_distribution != 'Ubuntu' and
+    osd_group_name in group_names and not
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
 - name: restart ceph osds on ubuntu
   command: restart ceph-osd-all
@@ -43,7 +84,27 @@
   when:
     socket.rc == 0 and
     ansible_distribution != 'Ubuntu' and
-    mds_group_name in group_names
+    mds_group_name in group_names and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
+
+
+- name: restart ceph mdss with systemd
+  service:
+      name: ceph-mds@{{ ansible_hostname }}
+      state: restarted
+  when:
+    socket.rc == 0 and
+    ansible_distribution != 'Ubuntu' and
+    mds_group_name in group_names and not
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
 - name: restart ceph rgws on ubuntu
   command: restart ceph-all
@@ -57,14 +118,38 @@
   when:
     socketrgw.rc == 0 and
     ansible_distribution != 'Ubuntu' and
-    rgw_group_name in group_names
+    rgw_group_name in group_names and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
 - name: restart ceph rgws on red hat
   command: /etc/init.d/ceph-radosgw restart
   when:
     socketrgw.rc == 0 and
     ansible_os_family == 'RedHat' and
-    rgw_group_name in group_names
+    rgw_group_name in group_names and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
+
+- name: restart ceph rgws with systemd
+  service:
+    name: ceph-rgw@{{ ansible_hostname }}
+    state: restarted
+  when:
+    socketrgw.rc == 0 and
+    ansible_distribution != 'Ubuntu' and
+    rgw_group_name in group_names and not
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
 - name: restart apache2
   service:
