@@ -29,21 +29,15 @@
     name: ceph-radosgw
     state: started
     enabled: yes
-  when: ansible_os_family == 'RedHat' and
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
+  when:
+    ansible_os_family == 'RedHat' and
+    not is_ceph_infernalis
 
 - name: start rgw on red hat (after infernalis)
   service:
     name: ceph-radosgw@{{ ansible_hostname }}
     state: started
     enabled: yes
-  when: ansible_os_family == 'RedHat' and not
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
+  when:
+    ansible_os_family == 'RedHat' and
+    is_ceph_infernalis
