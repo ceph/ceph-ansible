@@ -6,13 +6,13 @@
     owner: ceph
     group: ceph
     mode: 0600
+  changed_when: false
   with_items:
     - done
     - upstart
-  when: 
-    ansible_distribution == "Ubuntu" and ceph_stable_release not in ceph_stable_releases
-
-  changed_when: false
+  when:
+    ansible_distribution == "Ubuntu" and
+    is_ceph_infernalis
 
 - name: activate monitor with upstart before infernalis release
   file:
@@ -21,13 +21,13 @@
     owner: root
     group: root
     mode: 0600
+  changed_when: false
   with_items:
     - done
     - upstart
   when:
     ansible_distribution == "Ubuntu" and
-    ceph_stable_release in ceph_stable_releases
-  changed_when: false
+    not is_ceph_infernalis
 
 - name: start and add that the monitor service to the init sequence (ubuntu)
   service:
@@ -44,7 +44,7 @@
   changed_when: false
   when:
     ansible_distribution != "Ubuntu" and
-    ceph_stable_release in ceph_stable_releases
+    not is_ceph_infernalis
 
 - name: start and add that the monitor service to the init sequence (for or after infernalis)
   service:
@@ -54,7 +54,7 @@
   changed_when: false
   when:
     ansible_distribution != "Ubuntu" and
-    ceph_stable_release not in ceph_stable_releases
+    is_ceph_infernalis
 
 - name: collect admin and bootstrap keys
   command: ceph-create-keys --id {{ ansible_hostname }}

@@ -29,23 +29,14 @@
     state: started
     enabled: yes
   when:
-    ansible_distribution == "Ubuntu" or
-    (ceph_stable_release == 'dumpling' or
-     ceph_stable_release == 'emperor' or
-     ceph_stable_release == 'firefly' or
-     ceph_stable_release == 'giant' or
-     ceph_stable_release == 'hammer')
+    ansible_distribution != "Ubuntu" and
+    not is_ceph_infernalis
 
-- name: start and add that the osd service(s) to the init sequence (on or after infernalis)
+- name: start and add that the osd service(s) to the init sequence (for or after infernalis)
   service:
     name: ceph.target
     state: started
     enabled: yes
   when:
-    ansible_distribution != "Ubuntu" and not
-    (ceph_stable_release == 'dumpling' or
-     ceph_stable_release == 'emperor' or
-     ceph_stable_release == 'firefly' or
-     ceph_stable_release == 'giant' or
-     ceph_stable_release == 'hammer')
-
+    ansible_distribution != "Ubuntu" and
+    is_ceph_infernalis
