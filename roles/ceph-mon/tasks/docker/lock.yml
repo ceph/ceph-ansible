@@ -1,0 +1,10 @@
+---
+- name: check if a lock exist on the ansible server
+  local_action: stat path=mon_containerized_deployment.lock
+  register: lock
+
+- wait_for: path=/var/lock/file.lock state=absent
+  when: lock.stat.exists == false
+
+- name: if no lock is present, try to acquire one
+  local_action: file path=mon_containerized_deployment.lock state=touch
