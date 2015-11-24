@@ -26,6 +26,6 @@ if [[ -x $(which lsb_release 2>/dev/null) ]]; then
       apt-get install -y ansible
   fi
 elif [[ -r /etc/redhat-release ]]; then
-  yum install -y epel-release
-  yum install -y ansible
+  dnf install -y epel-release
+  dnf install -y ansible
 fi
