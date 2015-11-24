@@ -44,7 +44,27 @@
 - name: start and add that the monitor service to the init sequence
   command: service ceph start mon
   changed_when: false
-  when: ansible_distribution != "Ubuntu"
+  when:
+    ansible_distribution != "Ubuntu" and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
+
+- name: start and add that the monitor service to the init sequence (for or after infernalis)
+  service:
+      name: ceph-mon@{{ ansible_hostname }}
+      state: started
+      enabled: yes
+  changed_when: false
+  when:
+    ansible_distribution != "Ubuntu" and not
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
 
 - name: collect admin and bootstrap keys
   command: ceph-create-keys --id {{ ansible_hostname }}

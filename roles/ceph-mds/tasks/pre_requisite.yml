@@ -208,11 +208,30 @@
   changed_when: false
   when: ansible_distribution == "Ubuntu"
 
-- name: start and add that the metadata service to the init sequence
+- name: start and add that the metadata service to the init sequence (before infernalis)
   service:
     name: ceph
     state: started
     enabled: yes
     args: mds
   changed_when: false
-  when: ansible_distribution != "Ubuntu"
+  when: ansible_distribution != "Ubuntu" and
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
+
+
+- name: start and add that the metadata service to the init sequence (for or after infernalis)
+  service:
+    name: ceph-mds@{{ ansible_hostname }}
+    state: started
+    enabled: yes
+  changed_when: false
+  when: ansible_distribution != "Ubuntu" and not
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
