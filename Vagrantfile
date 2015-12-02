@@ -42,7 +42,7 @@ ansible_provision = proc do |ansible|
     monitor_interface: ETH,
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
-    devices: "[ '/dev/sdb', '/dev/sdc' ]",
+    devices: settings['disks'],
   }
   ansible.limit = 'all'
 end
@@ -58,15 +58,29 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = BOX
   config.ssh.insert_key = false # workaround for https://github.com/mitchellh/vagrant/issues/5048
 
+  # Faster bootup.  Disable if you need this for libvirt
+  config.vm.provider :libvirt do |v,override|
+    override.vm.synced_folder '.', '/home/vagrant/sync', disabled: true
+  end
+
   (0..CLIENTS - 1).each do |i|
     config.vm.define "client#{i}" do |client|
       client.vm.hostname = "ceph-client#{i}"
       client.vm.network :private_network, ip: "#{SUBNET}.4#{i}"
+
+      # Virtualbox
       client.vm.provider :virtualbox do |vb|
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
+
+      # VMware
       client.vm.provider :vmware_fusion do |v|
         v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      # Libvirt
+      client.vm.provider :libvirt do |lv|
+        lv.memory = MEMORY
       end
     end
   end
@@ -75,24 +89,42 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "rgw#{i}" do |rgw|
       rgw.vm.hostname = "ceph-rgw#{i}"
       rgw.vm.network :private_network, ip: "#{SUBNET}.4#{i}"
+
+      # Virtualbox
       rgw.vm.provider :virtualbox do |vb|
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
+
+      # VMware
       rgw.vm.provider :vmware_fusion do |v|
         v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      # Libvirt
+      rgw.vm.provider :libvirt do |lv|
+        lv.memory = MEMORY
       end
     end
   end
 
   (0..NMDSS - 1).each do |i|
-    config.vm.define "mds#{i}" do |rgw|
-      rgw.vm.hostname = "ceph-mds#{i}"
-      rgw.vm.network :private_network, ip: "#{SUBNET}.7#{i}"
-      rgw.vm.provider :virtualbox do |vb|
+    config.vm.define "mds#{i}" do |mds|
+      mds.vm.hostname = "ceph-mds#{i}"
+      mds.vm.network :private_network, ip: "#{SUBNET}.7#{i}"
+
+      # Virtualbox
+      mds.vm.provider :virtualbox do |vb|
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
-      rgw.vm.provider :vmware_fusion do |v|
+
+      # VMware
+      mds.vm.provider :vmware_fusion do |v|
         v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      # Libvirt
+      mds.vm.provider :libvirt do |lv|
+        lv.memory = MEMORY
       end
     end
   end
@@ -101,11 +133,20 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "mon#{i}" do |mon|
       mon.vm.hostname = "ceph-mon#{i}"
       mon.vm.network :private_network, ip: "#{SUBNET}.1#{i}"
+
+      # Virtualbox
       mon.vm.provider :virtualbox do |vb|
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
+
+      # VMware
       mon.vm.provider :vmware_fusion do |v|
         v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      # Libvirt
+      mon.vm.provider :libvirt do |lv|
+        lv.memory = MEMORY
       end
     end
   end
@@ -115,6 +156,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       osd.vm.hostname = "ceph-osd#{i}"
       osd.vm.network :private_network, ip: "#{SUBNET}.10#{i}"
       osd.vm.network :private_network, ip: "#{SUBNET}.20#{i}"
+
+      # Virtualbox
       osd.vm.provider :virtualbox do |vb|
         (0..1).each do |d|
           vb.customize ['createhd',
@@ -132,6 +175,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         end
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
+
+      # VMware
       osd.vm.provider :vmware_fusion do |v|
         (0..1).each do |d|
           v.vmx["scsi0:#{d + 1}.present"] = 'TRUE'
@@ -139,6 +184,15 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             create_vmdk("disk-#{i}-#{d}", '11000MB')
         end
         v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      # Libvirt
+      driverletters = ('b'..'z').to_a
+      osd.vm.provider :libvirt do |lv|
+        (0..1).each do |d|
+          lv.storage :file, :device => "vd#{driverletters[d]}", :path => "disk-#{i}-#{d}.disk", :size => '11G'
+        end
+        lv.memory = MEMORY
       end
 
       # Run the provisioner after the last machine comes up
