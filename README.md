@@ -92,6 +92,34 @@ information about how to generate appropriate values for these variables.
 By default, ceph-common installs from Ceph repository. However, you
 can set `ceph_origin` to "distro" to install Ceph from your default repository.
 
+## Setup for Vagrant using libvirt provider
+
+* Create vagrant_variables.yml
+
+```
+$ cp vagrant_variables.yml.sample vagrant_variables.yml
+```
+
+* Edit `vagrant_variables.yml` and setup the following variables:
+
+```yml
+memory: 1024
+disks: "[ '/dev/vdb', '/dev/vdc' ]"
+vagrant_box: centos/7
+```
+
+* Create site.yml
+
+```
+$ cp site.yml.sample site.yml
+```
+
+* Create VMs
+
+```
+$ sudo vagrant up --no-provision --provider=libvirt
+$ sudo vagrant provision
+```
 
 ### For Debian based systems
 
