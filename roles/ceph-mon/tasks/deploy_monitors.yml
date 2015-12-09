@@ -25,12 +25,7 @@
     mode: 0600
     owner: ceph
     group: ceph
-  when:
-    ceph_stable_release != 'dumpling' and
-    ceph_stable_release != 'emperor' and
-    ceph_stable_release != 'firefly' and
-    ceph_stable_release != 'giant' and
-    ceph_stable_release != 'hammer'
+  when: ceph_stable_release not in ceph_stable_releases
 
 - name: create monitor directory (for or after infernalis release)
   file:
@@ -39,12 +34,7 @@
     owner: ceph
     group: ceph
     mode: 0755
-  when:
-    ceph_stable_release != 'dumpling' and
-    ceph_stable_release != 'emperor' and
-    ceph_stable_release != 'firefly' and
-    ceph_stable_release != 'giant' and
-    ceph_stable_release != 'hammer'
+  when: ceph_stable_release not in ceph_stable_releases
 
 - name: set initial monitor key permissions (before infernalis release)
   file:
@@ -52,12 +42,7 @@
     mode: 0600
     owner: root
     group: root
-  when:
-    ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer'
+  when: ceph_stable_release in ceph_stable_releases
 
 - name: create monitor directory (before infernalis release)
   file:
@@ -66,31 +51,16 @@
     owner: root
     group: root
     mode: 0755
-  when:
-    ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer'
+  when: ceph_stable_release in ceph_stable_releases
 
 - name: ceph monitor mkfs (for or after infernalis release)
   command: ceph-mon --setuser ceph --setgroup ceph --mkfs -i {{ ansible_hostname }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
   args:
     creates: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/keyring
-  when:
-    ceph_stable_release != 'dumpling' and
-    ceph_stable_release != 'emperor' and
-    ceph_stable_release != 'firefly' and
-    ceph_stable_release != 'giant' and
-    ceph_stable_release != 'hammer'
+  when: ceph_stable_release not in ceph_stable_releases
 
 - name: ceph monitor mkfs (before infernalis release)
   command: ceph-mon --mkfs -i {{ ansible_hostname }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
   args:
     creates: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/keyring
-  when:
-    ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer'
+  when: ceph_stable_release in ceph_stable_releases
