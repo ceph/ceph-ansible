@@ -100,10 +100,30 @@
     - restart ceph rgws on red hat
     - restart ceph rgws with systemd
 
-- name: create rbd client directory
+- name: create rbd client directory on other
   file:
     path: "{{ rbd_client_admin_socket_path }}"
     state: directory
     owner: root
     group: root
     mode: 0644
+  when: ansible_os_family != 'RedHat' or
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
+
+- name: create rbd client directory on red hat (for infernalis or after and systemd and ceph user)
+  file:
+    path: "{{ rbd_client_admin_socket_path }}"
+    state: directory
+    owner: ceph
+    group: ceph
+    mode: 0744
+  when: ansible_os_family == 'RedHat' and not
+    (ceph_stable_release == 'dumpling' or
+    ceph_stable_release == 'emperor' or
+    ceph_stable_release == 'firefly' or
+    ceph_stable_release == 'giant' or
+    ceph_stable_release == 'hammer')
