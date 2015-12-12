@@ -9,7 +9,9 @@
   with_items:
     - done
     - upstart
-  when: ansible_distribution == "Ubuntu"
+  when: 
+    ansible_distribution == "Ubuntu" and ceph_stable_release not in ceph_stable_releases
+
   changed_when: false
 
 - name: activate monitor with upstart before infernalis release
@@ -24,11 +26,7 @@
     - upstart
   when:
     ansible_distribution == "Ubuntu" and
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
+    ceph_stable_release in ceph_stable_releases
   changed_when: false
 
 - name: start and add that the monitor service to the init sequence (ubuntu)
@@ -46,11 +44,7 @@
   changed_when: false
   when:
     ansible_distribution != "Ubuntu" and
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
+    ceph_stable_release in ceph_stable_releases
 
 - name: start and add that the monitor service to the init sequence (for or after infernalis)
   service:
@@ -59,12 +53,8 @@
       enabled: yes
   changed_when: false
   when:
-    ansible_distribution != "Ubuntu" and not
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
+    ansible_distribution != "Ubuntu" and
+    ceph_stable_release not in ceph_stable_releases
 
 - name: collect admin and bootstrap keys
   command: ceph-create-keys --id {{ ansible_hostname }}

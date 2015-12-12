@@ -6,12 +6,7 @@
     owner: ceph
     group: ceph
     mode: 0755
-  when:
-    ceph_stable_release != 'dumpling' or
-    ceph_stable_release != 'emperor' or
-    ceph_stable_release != 'firefly' or
-    ceph_stable_release != 'giant' or
-    ceph_stable_release != 'hammer'
+  when: ceph_stable_release not in ceph_stable_releases
 
 - name: create bootstrap-mds directory (before infernalis release)
   file:
@@ -20,13 +15,7 @@
     owner: root
     group: root
     mode: 0755
-  when:
-    cephx and
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
+  when: cephx and ceph_stable_release in ceph_stable_releases
 
 - name: copy mds bootstrap key (for or after infernalis release)
   copy:
@@ -36,12 +25,7 @@
     group: ceph
     mode: 0600
   when:
-    cephx and
-    (ceph_stable_release != 'dumpling' or
-    ceph_stable_release != 'emperor' or
-    ceph_stable_release != 'firefly' or
-    ceph_stable_release != 'giant' or
-    ceph_stable_release != 'hammer')
+    cephx and ceph_stable_release not in ceph_stable_releases
 
 - name: copy mds bootstrap key (before infernalis release)
   copy:
@@ -51,12 +35,7 @@
     group: root
     mode: 0600
   when:
-    cephx and
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
+    cephx and ceph_stable_release in ceph_stable_releases
 
 - name: create mds directory (for or after infernalis release)
   file:
@@ -66,27 +45,17 @@
     group: ceph
     mode: 0755
   when:
-    cephx and
-    (ceph_stable_release != 'dumpling' or
-    ceph_stable_release != 'emperor' or
-    ceph_stable_release != 'firefly' or
-    ceph_stable_release != 'giant' or
-    ceph_stable_release != 'hammer')
+    cephx and ceph_stable_release not in ceph_stable_releases
 
 - name: create mds directory (before infernalis release)
   file:
     path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}
     state: directory
-    owner: ceph
-    group: cephh
+    owner: root
+    group: root
     mode: 0755
   when:
-    cephx and
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
+    cephx and ceph_stable_release in ceph_stable_releases
 
 - name: create mds keyring
   command: ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.{{ ansible_hostname }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
@@ -103,11 +72,7 @@
     group: ceph
   when:
     cephx and
-    (ceph_stable_release != 'dumpling' or
-    ceph_stable_release != 'emperor' or
-    ceph_stable_release != 'firefly' or
-    ceph_stable_release != 'giant' or
-    ceph_stable_release != 'hammer')
+    ceph_stable_release not in ceph_stable_releases
 
 - name: set mds key permissions (before infernalis)
   file:
@@ -116,12 +81,7 @@
     owner: root
     group: root
   when:
-    cephx and
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
+    cephx and ceph_stable_release in ceph_stable_releases
 
 - name: activate metadata server with upstart (for or after infernalis release)
   file:
@@ -136,11 +96,7 @@
   changed_when: false
   when:
     ansible_distribution == "Ubuntu" and
-    (ceph_stable_release != 'dumpling' or
-    ceph_stable_release != 'emperor' or
-    ceph_stable_release != 'firefly' or
-    ceph_stable_release != 'giant' or
-    ceph_stable_release != 'hammer')
+    ceph_stable_release not in ceph_stable_releases
 
 - name: activate metadata server with upstart (before infernalis release)
   file:
@@ -154,12 +110,7 @@
     - upstart
   changed_when: false
   when:
-    ansible_distribution == "Ubuntu" and
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
+    ansible_distribution == "Ubuntu" and ceph_stable_release in ceph_stable_releases
 
 - name: activate metadata server with sysvinit (for or after infernalis release)
   file:
@@ -174,11 +125,7 @@
   changed_when: false
   when:
     ansible_distribution != "Ubuntu" and
-    (ceph_stable_release != 'dumpling' or
-    ceph_stable_release != 'emperor' or
-    ceph_stable_release != 'firefly' or
-    ceph_stable_release != 'giant' or
-    ceph_stable_release != 'hammer')
+    ceph_stable_release not in ceph_stable_releases
 
 - name: activate metadata server with sysvinit (before infernalis release)
   file:
@@ -192,12 +139,7 @@
     - sysvinit
   changed_when: false
   when:
-    ansible_distribution != "Ubuntu" and
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
+    ansible_distribution != "Ubuntu" and ceph_stable_release in ceph_stable_releases
 
 - name: start and add that the metadata service to the init sequence (ubuntu)
   service:
@@ -213,15 +155,9 @@
     name: ceph
     state: started
     enabled: yes
-    args: mds
+    args: mds.{{ ansible_hostname }}
   changed_when: false
-  when: ansible_distribution != "Ubuntu" and
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
-
+  when: ansible_distribution != "Ubuntu" and ceph_stable_release in ceph_stable_releases
 
 - name: start and add that the metadata service to the init sequence (for or after infernalis)
   service:
@@ -229,9 +165,4 @@
     state: started
     enabled: yes
   changed_when: false
-  when: ansible_distribution != "Ubuntu" and not
-    (ceph_stable_release == 'dumpling' or
-    ceph_stable_release == 'emperor' or
-    ceph_stable_release == 'firefly' or
-    ceph_stable_release == 'giant' or
-    ceph_stable_release == 'hammer')
+  when: ansible_distribution != "Ubuntu" and ceph_stable_release not in ceph_stable_releases
