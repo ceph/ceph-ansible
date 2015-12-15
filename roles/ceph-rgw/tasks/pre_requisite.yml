@@ -9,7 +9,7 @@
   with_items:
     - /var/lib/ceph/bootstrap-rgw
     - /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}
-  when: ceph_stable_release not in ceph_stable_releases
+  when: is_ceph_infernalis
 
 - name: create rados gateway directories (before infernalis release)
   file:
@@ -21,7 +21,7 @@
   with_items:
     - /var/lib/ceph/bootstrap-rgw
     - /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}
-  when: ceph_stable_release in ceph_stable_releases
+  when: not is_ceph_infernalis
 
 - name: copy rados gateway bootstrap key (for or after infernalis release)
   copy:
@@ -30,7 +30,9 @@
     owner: ceph
     group: ceph
     mode: 0600
-  when: cephx and ceph_stable_release not in ceph_stable_releases
+  when:
+    cephx and
+    is_ceph_infernalis
 
 - name: copy rados gateway bootstrap key (before infernalis release)
   copy:
@@ -39,7 +41,9 @@
     owner: root
     group: root
     mode: 0600
-  when: cephx and ceph_stable_release in ceph_stable_releases
+  when:
+    cephx and
+    not is_ceph_infernalis
 
 - name: create rados gateway keyring
   command: ceph --cluster ceph --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/ceph.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}/keyring
@@ -54,7 +58,9 @@
     mode: 0600
     owner: ceph
     group: ceph
-  when: cephx and ceph_stable_release not in ceph_stable_releases
+  when:
+    cephx and
+    is_ceph_infernalis
 
 - name: set rados gateway key permissions (before infernalis release)
   file:
@@ -62,7 +68,9 @@
     mode: 0600
     owner: root
     group: root
-  when: cephx and ceph_stable_release in ceph_stable_releases
+  when:
+    cephx and
+    not is_ceph_infernalis
 
 - name: activate rados gateway with upstart (for or after infernalis release)
   file:
@@ -76,7 +84,8 @@
     - upstart
   changed_when: false
   when:
-    ansible_distribution == "Ubuntu" and ceph_stable_release not in ceph_stable_releases
+    ansible_distribution == "Ubuntu" and
+    is_ceph_infernalis
 
 - name: activate rados gateway with upstart (before infernalis release)
   file:
@@ -90,7 +99,8 @@
     - upstart
   changed_when: false
   when:
-    ansible_distribution == "Ubuntu" and ceph_stable_release in ceph_stable_releases
+    ansible_distribution == "Ubuntu" and
+    not is_ceph_infernalis
 
 - name: activate rados gateway with sysvinit (for or after infernalis release)
   file:
@@ -104,7 +114,8 @@
     - sysvinit
   changed_when: false
   when:
-    ansible_distribution != "Ubuntu" and ceph_stable_release not in ceph_stable_releases
+    ansible_distribution != "Ubuntu" and
+    is_ceph_infernalis
 
 - name: activate rados gateway with sysvinit (before infernalis release)
   file:
@@ -118,7 +129,8 @@
     - sysvinit
   changed_when: false
   when:
-    ansible_distribution != "Ubuntu" and ceph_stable_release in ceph_stable_releases
+    ansible_distribution != "Ubuntu" and
+    not is_ceph_infernalis
 
 - name: generate rados gateway sudoers file
   template:

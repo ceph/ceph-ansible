@@ -6,7 +6,7 @@
     owner: ceph
     group: ceph
     mode: 0755
-  when: ceph_stable_release not in ceph_stable_releases
+  when: is_ceph_infernalis
 
 - name: create bootstrap-mds directory (before infernalis release)
   file:
@@ -15,7 +15,7 @@
     owner: root
     group: root
     mode: 0755
-  when: cephx and ceph_stable_release in ceph_stable_releases
+  when: not is_ceph_infernalis
 
 - name: copy mds bootstrap key (for or after infernalis release)
   copy:
@@ -24,8 +24,7 @@
     owner: ceph
     group: ceph
     mode: 0600
-  when:
-    cephx and ceph_stable_release not in ceph_stable_releases
+  when: is_ceph_infernalis
 
 - name: copy mds bootstrap key (before infernalis release)
   copy:
@@ -34,8 +33,7 @@
     owner: root
     group: root
     mode: 0600
-  when:
-    cephx and ceph_stable_release in ceph_stable_releases
+  when: not is_ceph_infernalis
 
 - name: create mds directory (for or after infernalis release)
   file:
@@ -44,8 +42,7 @@
     owner: ceph
     group: ceph
     mode: 0755
-  when:
-    cephx and ceph_stable_release not in ceph_stable_releases
+  when: is_ceph_infernalis
 
 - name: create mds directory (before infernalis release)
   file:
@@ -54,8 +51,7 @@
     owner: root
     group: root
     mode: 0755
-  when:
-    cephx and ceph_stable_release in ceph_stable_releases
+  when: not is_ceph_infernalis
 
 - name: create mds keyring
   command: ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.{{ ansible_hostname }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
@@ -72,7 +68,7 @@
     group: ceph
   when:
     cephx and
-    ceph_stable_release not in ceph_stable_releases
+    is_ceph_infernalis
 
 - name: set mds key permissions (before infernalis)
   file:
@@ -81,7 +77,8 @@
     owner: root
     group: root
   when:
-    cephx and ceph_stable_release in ceph_stable_releases
+    cephx and
+    not is_ceph_infernalis
 
 - name: activate metadata server with upstart (for or after infernalis release)
   file:
@@ -96,7 +93,7 @@
   changed_when: false
   when:
     ansible_distribution == "Ubuntu" and
-    ceph_stable_release not in ceph_stable_releases
+    is_ceph_infernalis
 
 - name: activate metadata server with upstart (before infernalis release)
   file:
@@ -110,7 +107,8 @@
     - upstart
   changed_when: false
   when:
-    ansible_distribution == "Ubuntu" and ceph_stable_release in ceph_stable_releases
+    ansible_distribution == "Ubuntu" and
+    not is_ceph_infernalis
 
 - name: activate metadata server with sysvinit (for or after infernalis release)
   file:
@@ -125,7 +123,7 @@
   changed_when: false
   when:
     ansible_distribution != "Ubuntu" and
-    ceph_stable_release not in ceph_stable_releases
+    is_ceph_infernalis
 
 - name: activate metadata server with sysvinit (before infernalis release)
   file:
@@ -139,7 +137,8 @@
     - sysvinit
   changed_when: false
   when:
-    ansible_distribution != "Ubuntu" and ceph_stable_release in ceph_stable_releases
+    ansible_distribution != "Ubuntu" and
+    not is_ceph_infernalis
 
 - name: start and add that the metadata service to the init sequence (ubuntu)
   service:
@@ -157,7 +156,9 @@
     enabled: yes
     args: mds.{{ ansible_hostname }}
   changed_when: false
-  when: ansible_distribution != "Ubuntu" and ceph_stable_release in ceph_stable_releases
+  when:
+    ansible_distribution != "Ubuntu" and
+    not is_ceph_infernalis
 
 - name: start and add that the metadata service to the init sequence (for or after infernalis)
   service:
@@ -165,4 +166,6 @@
     state: started
     enabled: yes
   changed_when: false
-  when: ansible_distribution != "Ubuntu" and ceph_stable_release not in ceph_stable_releases
+  when:
+    ansible_distribution != "Ubuntu" and
+    is_ceph_infernalis
