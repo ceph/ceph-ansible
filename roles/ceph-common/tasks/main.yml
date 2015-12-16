@@ -100,6 +100,12 @@
     - restart ceph rgws on red hat
     - restart ceph rgws with systemd
 
+# NOTE (leseb): be careful with the following
+# somehow the YAML syntax using "is_ceph_infernalis: {{"
+# does NOT work, so we keep this syntax styling...
+- set_fact:
+    is_ceph_infernalis={{ (ceph_stable and ceph_stable_release not in ceph_stable_releases) or (ceph_stable_rh_storage and (rh_storage_version.stdout | version_compare('0.94', '>'))) }}
+
 - name: create rbd client directory (before infernalis)
   file:
     path: "{{ rbd_client_admin_socket_path }}"
@@ -118,8 +124,3 @@
     mode: 0770
   when: is_ceph_infernalis
 
-# NOTE (leseb): be careful with the following
-# somehow the YAML syntax using "is_ceph_infernalis: {{"
-# does NOT work, so we keep this syntax styling...
-- set_fact:
-    is_ceph_infernalis={{ (ceph_stable and ceph_stable_release not in ceph_stable_releases) or (ceph_stable_rh_storage and (rh_storage_version.stdout | version_compare('0.94', '>'))) }}
