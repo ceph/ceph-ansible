@@ -37,6 +37,12 @@
     radosgw_frontend == 'apache' and
     rgw_group_name in group_names
 
+# NOTE (leseb): be careful with the following
+# somehow the YAML syntax using "is_ceph_infernalis: {{"
+# does NOT work, so we keep this syntax styling...
+- set_fact:
+    is_ceph_infernalis={{ (ceph_stable and ceph_stable_release not in ceph_stable_releases) or (ceph_stable_rh_storage and (rh_storage_version.stdout | version_compare('0.94', '>'))) }}
+
 - name: check for a ceph socket
   shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
   changed_when: false
@@ -102,16 +108,21 @@
     - restart ceph rgws on red hat
     - restart ceph rgws with systemd
 
-- name: create rbd client directory
+- name: create rbd client directory (before infernalis)
   file:
     path: "{{ rbd_client_admin_socket_path }}"
     state: directory
     owner: root
     group: root
     mode: 0644
+  when: not is_ceph_infernalis
 
-# NOTE (leseb): be careful with the following
-# somehow the YAML syntax using "is_ceph_infernalis: {{"
-# does NOT work, so we keep this syntax styling...
-- set_fact:
-    is_ceph_infernalis={{ (ceph_stable and ceph_stable_release not in ceph_stable_releases) or (ceph_stable_rh_storage and (rh_storage_version.stdout | version_compare('0.94', '>'))) }}
+- name: create rbd client directory (for infernalis or after)
+  file:
+    path: "{{ rbd_client_admin_socket_path }}"
+    state: directory
+    owner: ceph
+    group: ceph
+    mode: 0770
+  when: is_ceph_infernalis
+
