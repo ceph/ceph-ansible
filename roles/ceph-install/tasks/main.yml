@@ -1,0 +1,39 @@
+---
+- include: ./checks/check_system.yml
+
+- include: ./checks/check_mandatory_vars.yml
+
+- include: ./misc/system_tuning.yml
+  when: osd_group_name in group_names
+
+- include: ./pre_requisites/prerequisite_ice.yml
+  when: ceph_stable_ice
+
+- include: ./pre_requisites/prerequisite_rh_storage_iso_install.yml
+  when:
+    ceph_stable_rh_storage and
+    ceph_stable_rh_storage_iso_install
+
+- include: ./pre_requisites/prerequisite_rh_storage_cdn_install.yml
+  when:
+    ceph_stable_rh_storage and
+    ceph_stable_rh_storage_cdn_install
+
+- include: ./installs/install_on_redhat.yml
+  when: ansible_os_family == 'RedHat'
+
+- include: ./installs/install_on_debian.yml
+  when: ansible_os_family == 'Debian'
+
+- include: ./installs/install_rgw_on_redhat.yml
+  when:
+    ansible_os_family == 'RedHat' and
+    radosgw_frontend == 'apache' and
+    rgw_group_name in group_names
+
+- include: ./installs/install_rgw_on_debian.yml
+  when:
+    ansible_os_family == 'Debian' and
+    radosgw_frontend == 'apache' and
+    rgw_group_name in group_names
+
