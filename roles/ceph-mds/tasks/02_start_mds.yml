@@ -1,0 +1,90 @@
+---
+- name: activate metadata server with upstart (for or after infernalis release)
+  file:
+    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
+    state: touch
+    owner: ceph
+    group: ceph
+    mode: 0600
+  with_items:
+    - done
+    - upstart
+  changed_when: false
+  when:
+    ansible_distribution == "Ubuntu" and
+    is_ceph_infernalis
+
+- name: activate metadata server with upstart (before infernalis release)
+  file:
+    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
+    state: touch
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - done
+    - upstart
+  changed_when: false
+  when:
+    ansible_distribution == "Ubuntu" and
+    not is_ceph_infernalis
+
+- name: activate metadata server with sysvinit (for or after infernalis release)
+  file:
+    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
+    state: touch
+    owner: ceph
+    group: ceph
+    mode: 0644
+  with_items:
+    - done
+    - sysvinit
+  changed_when: false
+  when:
+    ansible_distribution != "Ubuntu" and
+    is_ceph_infernalis
+
+- name: activate metadata server with sysvinit (before infernalis release)
+  file:
+    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
+    state: touch
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - done
+    - sysvinit
+  changed_when: false
+  when:
+    ansible_distribution != "Ubuntu" and
+    not is_ceph_infernalis
+
+- name: start and add that the metadata service to the init sequence (ubuntu)
+  service:
+    name: ceph-mds
+    state: started
+    enabled: yes
+    args: "id={{ ansible_hostname }}"
+  changed_when: false
+  when: ansible_distribution == "Ubuntu"
+
+- name: start and add that the metadata service to the init sequence (before infernalis)
+  service:
+    name: ceph
+    state: started
+    enabled: yes
+    args: mds.{{ ansible_hostname }}
+  changed_when: false
+  when:
+    ansible_distribution != "Ubuntu" and
+    not is_ceph_infernalis
+
+- name: start and add that the metadata service to the init sequence (for or after infernalis)
+  service:
+    name: ceph-mds@{{ ansible_hostname }}
+    state: started
+    enabled: yes
+  changed_when: false
+  when:
+    ansible_distribution != "Ubuntu" and
+    is_ceph_infernalis

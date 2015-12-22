@@ -1,22 +1,42 @@
 ---
-- include: deploy_monitors.yml
-  when: not mon_containerized_deployment
+- name: am i running in a container
+  stat:
+    path: /.dockerinit
+  register: imacontainer
+  changed_when: False
+  tags: cephmondeploy
 
-- include: start_monitor.yml
+- include: 01_deploy_monitors.yml
   when: not mon_containerized_deployment
+  tags: cephmondeploy
 
-- include: ceph_keys.yml
+- include: 02_start_monitor.yml
   when: not mon_containerized_deployment
+  tags: cephmonstart
 
-- include: create_mds_filesystems.yml
+- name: get ceph monitor version
+  shell: ceph daemon mon."{{ ansible_hostname }}" version | cut -d '"' -f 4 | cut -f 1,2 -d '.'
+  changed_when: false
+  failed_when: "'No such file or directory' in ceph_version.stderr"
+  register: ceph_version
+  when:  imacontainer.stat.exists == False
+  tags: cephmonkeys
+
+- include: 03_ceph_keys.yml
+  when: not mon_containerized_deployment
+  tags: cephmonkeys
+
+- include: 04_create_mds_filesystems.yml
   when:
     not mon_containerized_deployment and
     groups[mds_group_name] is defined
+  tags: cephmonmdsfs
 
-- include: secure_cluster.yml
+- include: 05_secure_cluster.yml
   when:
     secure_cluster and
     not mon_containerized_deployment
+  tags: cephmonsecurecluster
 
-- include: ./docker/main.yml
+- include: ./06_docker/main.yml
   when: mon_containerized_deployment
