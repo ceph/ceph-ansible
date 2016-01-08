@@ -6,7 +6,7 @@
     owner: ceph
     group: ceph
     mode: 0755
-  when: ceph_stable_release not in ceph_stable_releases
+  when: is_ceph_infernalis
 
 - name: create ceph rest api directory (before infernalis release)
   file:
@@ -15,7 +15,7 @@
     owner: root
     group: root
     mode: 0755
-  when: ceph_stable_release in ceph_stable_releases
+  when: not is_ceph_infernalis
 
 - name: copy ceph rest api keyring (for or after infernalis release)
   copy:
@@ -23,9 +23,10 @@
     dest: "/var/lib/ceph/restapi/ceph-restapi/keyring"
     owner: ceph
     group: ceph
-    mode: 600
+    mode: 0600
   when:
-    cephx and ceph_stable_release not in ceph_stable_releases
+    cephx and
+    is_ceph_infernalis
 
 - name: copy ceph rest api keyring (before infernalis release)
   copy:
@@ -35,7 +36,8 @@
     group: root
     mode: 600
   when:
-    cephx and ceph_stable_release in ceph_stable_releases
+    cephx and
+    not is_ceph_infernalis
 
 - name: activate ceph rest api with upstart (for or after infernalis release)
   file:
@@ -49,7 +51,8 @@
     - upstart
   changed_when: false
   when:
-    ansible_distribution == "Ubuntu" and ceph_stable_release not in ceph_stable_releases
+    ansible_distribution == "Ubuntu" and
+    is_ceph_infernalis
 
 - name: activate ceph rest api with upstart (before infernalis release)
   file:
@@ -63,7 +66,8 @@
     - upstart
   changed_when: false
   when:
-    ansible_distribution == "Ubuntu" and ceph_stable_release not in ceph_stable_releases
+    ansible_distribution == "Ubuntu" and
+    not is_ceph_infernalis
 
 - name: activate ceph rest api with sysvinit (for or after infernalis release))
   file:
@@ -76,7 +80,8 @@
     - done
     - sysvinit
   when:
-    ansible_distribution != "Ubuntu" and ceph_stable_release not in ceph_stable_releases
+    ansible_distribution != "Ubuntu" and
+    is_ceph_infernalis
 
 - name: activate ceph rest api with sysvinit (before infernalis release))
   file:
@@ -89,7 +94,8 @@
     - done
     - sysvinit
   when:
-    ansible_distribution != "Ubuntu" and ceph_stable_release not in ceph_stable_releases
+    ansible_distribution != "Ubuntu" and
+    not is_ceph_infernalis
 
 # NOTE (leseb): will uncomment this when this https://github.com/ceph/ceph/pull/4144 lands
 #- name: start and add that the Ceph REST API service to the init sequence (Ubuntu)
