@@ -5,9 +5,9 @@
   failed_when: false
   register: nmapexist
 
-- name: fail if nmap is not present
-  fail:
-      msg: "nmap is needed to make sure ceph ports are not filtered, please install it"
+- name: inform that nmap is not present
+  debug:
+      msg: "nmap is not installed, can not test if ceph ports are allowed :("
   when: nmapexist.rc != 0
 
 - name: check if monitor port is not filtered
@@ -16,7 +16,9 @@
   failed_when: false
   with_items: groups.{{ mon_group_name }}
   register: monportstate
-  when: mon_group_name in group_names
+  when:
+    mon_group_name in group_names and
+    nmapexist.rc == 0
 
 - name: fail if monitor port is filtered
   fail:
@@ -25,7 +27,8 @@
   when:
     item.rc == 0 and
     mon_group_name is defined and
-    mon_group_name in group_names
+    mon_group_name in group_names and
+    nmapexist.rc == 0
 
 - name: check if osd and mds range is not filtered
   local_action: shell nmap -p 6800-7300 {{ item }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} | grep -sqo filtered
@@ -33,7 +36,9 @@
   failed_when: false
   with_items: groups.{{ osd_group_name }}
   register: osdrangestate
-  when: osd_group_name in group_names
+  when:
+    osd_group_name in group_names and
+    nmapexist.rc == 0
 
 - name: fail if osd and mds range is filtered (osd hosts)
   fail:
@@ -42,7 +47,8 @@
   when:
     item.rc == 0 and
     osd_group_name is defined and
-    osd_group_name in group_names
+    osd_group_name in group_names and
+    nmapexist.rc == 0
 
 - name: check if osd and mds range is not filtered
   local_action: shell nmap -p 6800-7300 {{ item }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} | grep -sqo filtered
@@ -50,7 +56,9 @@
   failed_when: false
   with_items: groups.{{ mds_group_name }}
   register: mdsrangestate
-  when: mds_group_name in group_names
+  when:
+    mds_group_name in group_names and
+    nmapexist.rc == 0
 
 - name: fail if osd and mds range is filtered (mds hosts)
   fail:
@@ -59,7 +67,8 @@
   when:
     item.rc == 0 and
     mds_group_name is defined and
-    mds_group_name in group_names
+    mds_group_name in group_names and
+    nmapexist.rc == 0
 
 - name: check if rados gateway port is not filtered
   local_action: shell nmap -p {{ radosgw_civetweb_port }} {{ item }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} | grep -sqo filtered
@@ -67,7 +76,9 @@
   failed_when: false
   with_items: groups.rgws
   register: rgwportstate
-  when: rgw_group_name in group_names
+  when:
+    rgw_group_name in group_names and
+    nmapexist.rc == 0
 
 - name: fail if rados gateway port is filtered
   fail:
@@ -76,4 +87,5 @@
   when:
     item.rc == 0 and
     rgw_group_name is defined and
-    rgw_group_name in group_names
+    rgw_group_name in group_names and
+    nmapexist.rc == 0
