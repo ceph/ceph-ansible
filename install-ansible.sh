@@ -21,11 +21,14 @@ if [[ -x $(which lsb_release 2>/dev/null) ]]; then
     make install
     mkdir /etc/ansible
   elif [[ "Ubuntu" =~ $os_VENDOR ]]; then
-      add-apt-repository ppa:ansible/ansible
-      apt-get update
-      apt-get install -y ansible
+    add-apt-repository ppa:ansible/ansible
+    apt-get update
+    apt-get install -y ansible
+  else [[ "RedHatEnterpriseServer" =~ $os_VENDOR ]]; then
+    rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    yum install -y ansible
   fi
 elif [[ -r /etc/redhat-release ]]; then
-  yum install -y epel-release
+  rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
   yum install -y ansible
 fi
