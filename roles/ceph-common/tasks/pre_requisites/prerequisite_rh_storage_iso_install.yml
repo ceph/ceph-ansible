@@ -24,9 +24,17 @@
   args:
     creates: "{{ ceph_stable_rh_storage_repository_path }}/README"
 
-- name: mount red hat storage iso file
+- name: unmount red hat storage iso file
   mount:
     name: "{{ ceph_stable_rh_storage_mount_path }}"
     src: "{{ ceph_stable_rh_storage_iso_path }}"
     fstype: iso9660
     state: unmounted
+
+- name: create repo file for Ceph
+  template:
+    src: templates/redhat_storage_repo.j2
+    dest: /etc/yum.repos.d/ceph.repo
+    force: yes
+    mode: 644
+
