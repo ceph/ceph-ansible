@@ -32,11 +32,30 @@
     ansible_distribution != "Ubuntu" and
     not is_ceph_infernalis
 
+- name: get osd id (for or after infernalis)
+  shell: "ls /var/lib/ceph/osd/ |grep -oh '[0-9]*'"
+  changed_when: false
+  failed_when: false
+  register: osd_id
+  when:
+    ansible_distribution != "Ubuntu" and
+    is_ceph_infernalis
+
+- name: enable osd service instance(s) (for or after infernalis)
+  file:  src=/usr/lib/systemd/system/ceph-osd@.service dest=/etc/systemd/system/multi-user.target.wants/ceph-osd@{{ item }}.service state=link
+  with_items: osd_id.stdout_lines
+  failed_when: false
+  when:
+    ansible_distribution != "Ubuntu" and
+    is_ceph_infernalis
+
 - name: start and add that the osd service(s) to the init sequence (for or after infernalis)
   service:
-    name: ceph.target
+    name: ceph-osd@{{ item }}
     state: started
     enabled: yes
+  with_items: osd_id.stdout_lines
+  changed_when: false
   when:
     ansible_distribution != "Ubuntu" and
     is_ceph_infernalis
