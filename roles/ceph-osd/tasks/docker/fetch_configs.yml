@@ -5,6 +5,14 @@
       - /etc/ceph/ceph.conf
       - /var/lib/ceph/bootstrap-osd/ceph.keyring
 
+- name: wait for ceph.conf and keys
+  local_action: >
+    wait_for
+    path="{{ playbook_dir }}/{{ fetch_directory }}/docker_mon_files/{{ item.0 }}"
+  become: false
+  with_together:
+      - ceph_config_keys
+
 - name: stat for ceph config and keys
   local_action: stat path={{ fetch_directory }}/docker_mon_files/{{ item }}
   with_items: ceph_config_keys
@@ -13,9 +21,9 @@
   failed_when: false
   register: statconfig
 
-- name: try to fetch ceph config and keys
+- name: try to copy ceph config and keys
   copy:
-    src: "{{ fetch_directory }}/docker_mon_files/{{ item.0 }}"
+    src: "{{ playbook_dir }}/{{ fetch_directory }}/docker_mon_files/{{ item.0 }}"
     dest: "{{ item.0 }}"
     owner: root
     group: root
@@ -23,5 +31,3 @@
   changed_when: false
   with_together:
     - ceph_config_keys
-    - statconfig.results
-  when: item.1.stat.exists == true
