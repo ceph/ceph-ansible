@@ -46,6 +46,17 @@
     ansible_distribution != "Ubuntu" and
     not is_ceph_infernalis
 
+- name: enable systemd unit file for mon instance (for or after infernalis)
+  file:
+    src: /usr/lib/systemd/system/ceph-mon@.service
+    dest: /etc/systemd/system/multi-user.target.wants/ceph-mon@{{ ansible_hostname }}.service
+    state: link
+  changed_when: false
+  failed_when: false
+  when:
+    ansible_distribution != "Ubuntu" and
+    is_ceph_infernalis
+
 - name: start and add that the monitor service to the init sequence (for or after infernalis)
   service:
       name: ceph-mon@{{ ansible_hostname }}
