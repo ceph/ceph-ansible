@@ -1,4 +1,12 @@
 ---
+- name: set config and keys paths
+  set_fact:
+      ceph_bootstrap_config_keys:
+          - /etc/ceph/ceph.conf
+          - /var/lib/ceph/bootstrap-osd/ceph.keyring
+          - /var/lib/ceph/bootstrap-rgw/ceph.keyring
+          - /var/lib/ceph/bootstrap-mds/ceph.keyring
+                                                
 - name: pull ceph daemon image
   shell: "docker pull {{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
 
@@ -11,9 +19,22 @@
     env: "MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},{{ ceph_mon_extra_envs }}"
     volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
 
-- name: fetch ceph.conf from mon
+
+- name: stat for ceph config and keys
+  stat: path="{{ item }}"
+  with_items: ceph_bootstrap_config_keys
+  changed_when: false
+  failed_when: false
+  register: statmonconfig
+
+- name: fetch boostrap keys and conf from mon
   fetch:
-     dest: "{{ playbook_dir }}/{{ fetch_directory }}/{{ fsid}}/etc/ceph/ceph.conf"
-     src: /etc/ceph/ceph.conf
+     dest: "{{ playbook_dir }}/{{ fetch_directory }}/{{ fsid }}/{{ item.0 }}"
+     src: "{{ item.0 }}"
      flat: yes
+  with_together:
+    - ceph_bootstrap_config_keys
+    - statmonconfig.results
+  when: item.1.stat.exists == true
+            
                                     
