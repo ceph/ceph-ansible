@@ -23,43 +23,42 @@
       - ceph-mds
       - ceph-rgw
       - ceph-restapi
+    basedir: "{{ lookup('pipe', 'git rev-parse --show-toplevel') }}"
 
   tasks:
 
     - name: check for github prefix option on commandline
       tags: split
-      fail: >
-        msg='github prefix missing! e.g: (--extra-vars github=ceph/ansible).'
+      fail:
+        msg: 'github prefix missing! e.g: (--extra-vars github=ceph/ansible).'
       when: github == False
 
     - name: split the repo in seperate branches
       tags: split
-      command: >
-        git subtree split --prefix=roles/{{ item }} -b {{ item }} --squash
-        chdir=../
+      command: git subtree split --prefix=roles/{{ item }} -b {{ item }} --squash
+      args:
+        chdir: "{{ basedir }}"
       with_items: roles
 
     - name: adds remote github repos for the splits
       tags: split
-      command: >
-        git remote add {{ item }} git@github.com:{{ github }}-{{ item }}.git
-        chdir=../
+      command: git remote add {{ item }} git@github.com:{{ github }}-{{ item }}.git
+      args:
+        chdir: "{{ basedir }}"
       with_items: roles
 
     - name: adds upstream remote
       tags: update
-      command: >
-        git remote add upstream git@github.com:ceph/ceph-ansible.git
+      command: git remote add upstream git@github.com:ceph/ceph-ansible.git
       failed_when: false
 
     - name: pulles the newest changes from upstream
       tags: update
-      command: >
-        git pull upstream master:master
+      command: git pull upstream master:master
 
     - name: update the split repos from master
       tags: update
-      shell: >
-        git push {{ item }} $(git subtree split --prefix roles/{{ item }} master):master --force
-        chdir=../
+      shell: git push {{ item }} $(git subtree split --prefix roles/{{ item }} master):master --force
+      args:
+        chdir: "{{ basedir }}"
       with_items: roles
