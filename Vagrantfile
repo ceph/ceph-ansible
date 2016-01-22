@@ -43,6 +43,7 @@ ansible_provision = proc do |ansible|
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
     devices: settings['disks'],
+    os_tuning_params: settings['os_tuning_params']
   }
   ansible.limit = 'all'
 end

@@ -7,7 +7,6 @@ Clone me:
 
 ```bash
 git clone https://github.com/ceph/ceph-ansible.git
-cp vagrant_variables.yml.sample vagrant_variables.yml
 ```
 
 ## What does it do?
@@ -32,12 +31,25 @@ More details:
 * A rolling upgrade playbook was written, an upgrade from Dumpling to Emperor was performed and worked.
 
 
-## Setup with Vagrant
+## Setup with Vagrant using virtualbox provider
 
-Run your virtual machines:
+* Create vagrant_variables.yml
 
-```bash
-$ vagrant up --provider=virtualbox
+```
+$ cp vagrant_variables.yml.sample vagrant_variables.yml
+```
+
+* Create site.yml
+
+```
+$ cp site.yml.sample site.yml
+```
+
+* Create VMs
+
+```
+$ vagrant up --no-provision --provider=virtualbox
+$ vagrant provision
 ...
 ...
 ...
