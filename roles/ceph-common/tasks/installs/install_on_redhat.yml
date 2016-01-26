@@ -4,16 +4,22 @@
     name: "{{ item }}"
     state: present
   with_items: redhat_package_dependencies
+  tags:
+    with_pkg
 
 - name: configure ceph yum repository
   include: redhat_ceph_repository.yml
   when: ceph_origin == 'upstream'
+  tags:
+    with_pkg
 
 - name: install ceph
   yum:
     name: ceph
     state: latest
   when: not ceph_stable_rh_storage
+  tags:
+    with_pkg
 
 - name: install red hat storage ceph mon
   yum:
@@ -25,6 +31,8 @@
   when:
     ceph_stable_rh_storage and
     mon_group_name in group_names
+  tags:
+    with_pkg
 
 - name: install red hat storage ceph osd
   yum:
@@ -36,6 +44,8 @@
   when:
     ceph_stable_rh_storage and
     osd_group_name in group_names
+  tags:
+    with_pkg
 
 - name: install Inktank Ceph Enterprise RBD Kernel modules
   yum:
@@ -44,6 +54,8 @@
     - "{{ ceph_stable_ice_temp_path }}/kmod-libceph-{{ ceph_stable_ice_kmod }}.rpm"
     - "{{ ceph_stable_ice_temp_path }}/kmod-rbd-{{ ceph_stable_ice_kmod }}.rpm"
   when: ceph_stable_ice
+  tags:
+    with_pkg
 
 - name: install rados gateway
   yum:
@@ -51,6 +63,8 @@
     state: latest
   when:
     rgw_group_name in group_names
+  tags:
+    with_pkg
 
 - name: configure rbd clients directories
   file:

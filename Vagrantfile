@@ -20,6 +20,9 @@ ETH        = settings['eth']
 
 ansible_provision = proc do |ansible|
   ansible.playbook = 'site.yml'
+  if settings['skip_tags']
+    ansible.skip_tags = settings['skip_tags']
+  end
   # Note: Can't do ranges like mon[0-2] in groups because
   # these aren't supported by Vagrant, see
   # https://github.com/mitchellh/vagrant/issues/3539
