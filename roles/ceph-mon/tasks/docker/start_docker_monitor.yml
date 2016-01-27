@@ -10,6 +10,48 @@
 - name: pull ceph daemon image
   shell: "docker pull {{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
 
+# Use systemd to manage container on Atomic host
+- name: generate systemd unit file
+  sudo: true
+  config_template:
+    src: ceph-mon.service.j2
+    dest: /var/lib/ceph/ceph-mon@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    config_overrides: {}
+    config_type: ini
+
+- name: link systemd unit file for mon instance
+  file:
+    src: /var/lib/ceph/ceph-mon@.service
+    dest: /etc/systemd/system/multi-user.target.wants/ceph-mon@{{ ansible_hostname }}.service
+    state: link
+  when: is_atomic
+
+- name: enable systemd unit file for mon instance
+  shell: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-mon@{{ ansible_hostname }}.service
+  failed_when: false
+  changed_when: false
+  when: is_atomic
+
+- name: reload systemd unit files
+  shell: systemctl daemon-reload
+  when: is_atomic
+
+- name: systemd start mon container
+  service:
+    name: ceph-mon@{{ ansible_hostname }}
+    state: started
+    enabled: yes
+  changed_when: false
+  when: is_atomic
+
+- name: wait for ceph.conf exists
+  wait_for:
+      path: /etc/ceph/ceph.conf
+  when: is_atomic
+
 - name: run the ceph Monitor docker image
   docker:
     image: "{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
@@ -19,7 +61,7 @@
     privileged: "{{ mon_docker_privileged }}"
     env: "MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},{{ ceph_mon_extra_envs }}"
     volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
-
+  when: not is_atomic 
 
 - name: stat for ceph config and keys
   stat: path="{{ item }}"
@@ -37,5 +79,3 @@
     - ceph_bootstrap_config_keys
     - statmonconfig.results
   when: item.1.stat.exists == true
-            
-                                    

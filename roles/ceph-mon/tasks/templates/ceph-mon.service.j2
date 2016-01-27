@@ -1,0 +1,28 @@
+[Unit]
+Description=Ceph Monitor
+After=docker.service
+
+[Service]
+EnvironmentFile=/etc/environment
+ExecStartPre=-/usr/bin/docker kill %p
+ExecStartPre=-/usr/bin/docker rm %p
+ExecStartPre=/usr/bin/mkdir -p /etc/ceph /var/lib/ceph/mon
+ExecStart=/usr/bin/docker run -d --rm --name %p --net=host \
+   -v /var/lib/ceph:/var/lib/ceph \
+   -v /etc/ceph:/etc/ceph \
+   --privileged \
+   -e CEPH_DAEMON=MON \
+   -e MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }} \
+   -e CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }} \
+   -e MON_NAME={{ ansible_hostname }} \
+   --name={{ ansible_hostname }} \
+   {{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}
+ExecStopPost=-/usr/bin/docker stop %p
+ExecStopPost=-/usr/bin/docker rm %p
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target
