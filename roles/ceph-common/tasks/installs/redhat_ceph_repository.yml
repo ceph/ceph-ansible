@@ -29,15 +29,34 @@
   yum:
     name: http://ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
   changed_when: false
-  when: ceph_stable
+  when:
+    ceph_stable and
+    ansible_pkg_mgr == "yum"
+
+- name: add ceph stable repository
+  dnf:
+    name: http://ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
+  changed_when: false
+  when:
+    ceph_stable and
+    ansible_pkg_mgr == "dnf"
 
 - name: add ceph development repository
   yum:
     name: http://gitbuilder.ceph.com/ceph-rpm-{{ ceph_dev_redhat_distro }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro }}.noarch.rpm
   changed_when: false
-  when: ceph_dev
+  when:
+    ceph_dev and
+    ansible_pkg_mgr == "yum"
 
-- name: add inktank ceph enterprise repository
+- name: add ceph development repository
+  dnf:
+    name: http://gitbuilder.ceph.com/ceph-rpm-{{ ceph_dev_redhat_distro }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro }}.noarch.rpm
+  changed_when: false
+  when:
+    ceph_dev and
+    ansible_pkg_mgr == "dnf"
+
   template:
     src: redhat_ice_repo.j2
     dest: /etc/yum.repos.d/ice.repo
