@@ -20,13 +20,13 @@
 - name: install ceph
   yum:
     name: ceph
-    state: latest
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when: not ceph_stable_rh_storage
 
 - name: install red hat storage ceph mon
   yum:
     name: "{{ item }}"
-    state: latest
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   with_items:
     - ceph
     - ceph-mon
@@ -38,7 +38,7 @@
 - name: install red hat storage ceph mon
   dnf:
     name: "{{ item }}"
-    state: latest
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   with_items:
     - ceph
     - ceph-mon
@@ -50,7 +50,7 @@
 - name: install red hat storage ceph osd
   yum:
     name: "{{ item }}"
-    state: latest
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   with_items:
     - ceph
     - ceph-osd
@@ -62,7 +62,7 @@
 - name: install red hat storage ceph osd
   dnf:
     name: "{{ item }}"
-    state: latest
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   with_items:
     - ceph
     - ceph-osd
@@ -94,7 +94,7 @@
 - name: install rados gateway
   yum:
     name: ceph-radosgw
-    state: latest
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     rgw_group_name in group_names and
     ansible_pkg_mgr == "yum"
@@ -102,7 +102,7 @@
 - name: install rados gateway
   dnf:
     name: ceph-radosgw
-    state: latest
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     rgw_group_name in group_names and
     ansible_pkg_mgr == "dnf"
