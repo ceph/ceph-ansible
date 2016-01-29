@@ -4,6 +4,14 @@
     name: "{{ item }}"
     state: present
   with_items: redhat_package_dependencies
+  when: ansible_pkg_mgr == "yum"
+
+- name: install dependencies
+  dnf:
+    name: "{{ item }}"
+    state: present
+  with_items: redhat_package_dependencies
+  when: ansible_pkg_mgr == "dnf"
 
 - name: configure ceph yum repository
   include: redhat_ceph_repository.yml
@@ -24,7 +32,20 @@
     - ceph-mon
   when:
     ceph_stable_rh_storage and
-    mon_group_name in group_names
+    mon_group_name in group_names and
+    ansible_pkg_mgr == "yum"
+
+- name: install red hat storage ceph mon
+  dnf:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - ceph
+    - ceph-mon
+  when:
+    ceph_stable_rh_storage and
+    mon_group_name in group_names and
+    ansible_pkg_mgr == "dnf"
 
 - name: install red hat storage ceph osd
   yum:
@@ -35,7 +56,20 @@
     - ceph-osd
   when:
     ceph_stable_rh_storage and
-    osd_group_name in group_names
+    osd_group_name in group_names and
+    ansible_pkg_mgr == "yum"
+
+- name: install red hat storage ceph osd
+  dnf:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - ceph
+    - ceph-osd
+  when:
+    ceph_stable_rh_storage and
+    osd_group_name in group_names and
+    ansible_pkg_mgr == "dnf"
 
 - name: install Inktank Ceph Enterprise RBD Kernel modules
   yum:
@@ -43,14 +77,35 @@
   with_items:
     - "{{ ceph_stable_ice_temp_path }}/kmod-libceph-{{ ceph_stable_ice_kmod }}.rpm"
     - "{{ ceph_stable_ice_temp_path }}/kmod-rbd-{{ ceph_stable_ice_kmod }}.rpm"
-  when: ceph_stable_ice
+  when:
+    ceph_stable_ice and
+    ansible_pkg_mgr == "yum"
+
+- name: install Inktank Ceph Enterprise RBD Kernel modules
+  dnf:
+    name: "{{ item }}"
+  with_items:
+    - "{{ ceph_stable_ice_temp_path }}/kmod-libceph-{{ ceph_stable_ice_kmod }}.rpm"
+    - "{{ ceph_stable_ice_temp_path }}/kmod-rbd-{{ ceph_stable_ice_kmod }}.rpm"
+  when:
+    ceph_stable_ice and
+    ansible_pkg_mgr == "dnf"
 
 - name: install rados gateway
   yum:
     name: ceph-radosgw
     state: latest
   when:
-    rgw_group_name in group_names
+    rgw_group_name in group_names and
+    ansible_pkg_mgr == "yum"
+
+- name: install rados gateway
+  dnf:
+    name: ceph-radosgw
+    state: latest
+  when:
+    rgw_group_name in group_names and
+    ansible_pkg_mgr == "dnf"
 
 - name: configure rbd clients directories
   file:
