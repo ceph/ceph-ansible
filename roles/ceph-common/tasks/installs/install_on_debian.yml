@@ -14,7 +14,7 @@
 - name: install ceph
   apt:
     pkg: "{{ item }}"
-    state: latest
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
     default_release: "{{ ansible_distribution_release }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
   with_items:
     - ceph
@@ -27,7 +27,7 @@
 - name: install rados gateway
   apt:
     pkg: radosgw
-    state: latest
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
     update_cache: yes
   when:
     rgw_group_name in group_names
