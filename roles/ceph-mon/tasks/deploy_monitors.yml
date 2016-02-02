@@ -17,39 +17,20 @@
   args:
     creates: /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
 
-- name: set initial monitor key permissions (for or after infernalis release)
+- name: set initial monitor key permissions
   file:
     path: /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
-    mode: 0600
-    owner: ceph
-    group: ceph
-  when: is_ceph_infernalis
+    mode: "{{ key_mode }}"
+    owner: "{{ key_owner }}"
+    group: "{{ key_group }}"
 
-- name: set initial monitor key permissions (before infernalis release)
-  file:
-    path: /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
-    mode: 0600
-    owner: root
-    group: root
-  when: not is_ceph_infernalis
-
-- name: create monitor directory (for or after infernalis release)
+- name: create monitor directory
   file:
     path: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}
     state: directory
-    owner: ceph
-    group: ceph
-    mode: 0755
-  when: is_ceph_infernalis
-
-- name: create monitor directory (before infernalis release)
-  file:
-    path: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}
-    state: directory
-    owner: root
-    group: root
-    mode: 0755
-  when: not is_ceph_infernalis
+    owner: "{{ dir_owner }}"
+    group: "{{ dir_group }}"
+    mode: "{{ dir_mode }}"
 
 - name: ceph monitor mkfs (for or after infernalis release)
   command: ceph-mon --setuser ceph --setgroup ceph --mkfs -i {{ ansible_hostname }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
