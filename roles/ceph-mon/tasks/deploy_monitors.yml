@@ -3,14 +3,14 @@
   local_action: shell python -c "import os ; import struct ; import time; import base64 ; key = os.urandom(16) ; header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ; print base64.b64encode(header + key)" | tee {{ fetch_directory }}/monitor_keyring.conf
     creates={{ fetch_directory }}/monitor_keyring.conf
   register: monitor_keyring
-  sudo: false
+  become: false
 
 - name: read monitor initial keyring if it already exists
   local_action: command cat {{ fetch_directory }}/monitor_keyring.conf
     removes={{ fetch_directory }}/monitor_keyring.conf
   changed_when: false
   register: monitor_keyring
-  sudo: false
+  become: false
 
 - name: create monitor initial keyring
   command: ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} --create-keyring --name=mon. --add-key={{ monitor_secret }} --cap mon 'allow *'
