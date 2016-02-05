@@ -1,33 +1,16 @@
 ---
-- name: activate monitor with upstart for or after infernalis release
+- name: activate monitor with upstart
   file:
     path: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/{{ item }}
     state: touch
-    owner: ceph
-    group: ceph
-    mode: 0600
+    owner: "{{ activate_file_owner }}"
+    group: "{{ activate_file_group }}"
+    mode: "{{ activate_file_mode }}"
   changed_when: false
   with_items:
     - done
     - upstart
-  when:
-    ansible_distribution == "Ubuntu" and
-    is_ceph_infernalis
-
-- name: activate monitor with upstart before infernalis release
-  file:
-    path: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/{{ item }}
-    state: touch
-    owner: root
-    group: root
-    mode: 0600
-  changed_when: false
-  with_items:
-    - done
-    - upstart
-  when:
-    ansible_distribution == "Ubuntu" and
-    not is_ceph_infernalis
+  when: ansible_distribution == "Ubuntu"
 
 - name: start and add that the monitor service to the init sequence (ubuntu)
   service:
