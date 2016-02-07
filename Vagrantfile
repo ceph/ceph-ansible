@@ -17,9 +17,15 @@ BOX        = settings['vagrant_box']
 MEMORY     = settings['memory']
 STORAGECTL = settings['vagrant_storagectl']
 ETH        = settings['eth']
+DOCKER     = settings['docker']
 
 ansible_provision = proc do |ansible|
-  ansible.playbook = 'site.yml'
+  if DOCKER then
+    ansible.playbook = 'site-docker.yml'
+  else
+    ansible.playbook = 'site.yml'
+  end
+
   # Note: Can't do ranges like mon[0-2] in groups because
   # these aren't supported by Vagrant, see
   # https://github.com/mitchellh/vagrant/issues/3539
@@ -33,16 +39,31 @@ ansible_provision = proc do |ansible|
   }
 
   # In a production deployment, these should be secret
-  ansible.extra_vars = {
-    ceph_stable: 'true',
-    journal_collocation: 'true',
-    journal_size: 100,
-    monitor_interface: ETH,
-    cluster_network: "#{SUBNET}.0/24",
-    public_network: "#{SUBNET}.0/24",
-    devices: settings['disks'],
-    os_tuning_params: settings['os_tuning_params']
-  }
+  if DOCKER then
+    ansible.extra_vars = {
+      mon_containerized_deployment: 'true',
+      osd_containerized_deployment: 'true',
+      mds_containerized_deployment: 'true',
+      rgw_containerized_deployment: 'true',
+      restapi_containerized_deployment: 'true',
+      ceph_mon_docker_interface: ETH,
+      ceph_mon_docker_subnet: "#{SUBNET}.0/24",
+      ceph_osd_docker_extra_env: "CEPH_DAEMON=OSD_CEPH_DISK,OSD_JOURNAL_SIZE=100",
+      ceph_osd_docker_device: settings['disks'],
+      ceph_rgw_civetweb_port: 8080
+    }
+  else
+    ansible.extra_vars = {
+      ceph_stable: 'true',
+      journal_collocation: 'true',
+      journal_size: 100,
+      monitor_interface: ETH,
+      cluster_network: "#{SUBNET}.0/24",
+      public_network: "#{SUBNET}.0/24",
+      devices: settings['disks'],
+      os_tuning_params: settings['os_tuning_params']
+    }
+  end
   ansible.limit = 'all'
 end
 
