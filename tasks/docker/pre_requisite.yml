@@ -7,24 +7,45 @@
     - /etc/ceph/
     - /var/lib/ceph/bootstrap-rgw
 
-- name: install pip on debian
+ name: install pip and docker on ubuntu
   apt:
-    name: python-pip
+    name: "{{ item }}"
     state: present
-  when: ansible_os_family == 'Debian'
+    update_cache: yes
+  with_items:
+    - python-pip
+    - docker
+    - docker.io
+  when: ansible_distribution == 'Ubuntu'
 
-- name: install pip on redhat
-  yum:
-    name: python-pip
+- name: install pip and docker on debian
+  apt:
+    name: "{{ item }}"
     state: present
+    update_cache: yes
+  with_items:
+    - python-pip
+    - docker-engine
+  when: ansible_distribution == 'Debian'
+
+- name: install pip and docker on redhat
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - python-pip
+    - docker-engine
   when:
     ansible_os_family == 'RedHat' and
     ansible_pkg_mgr == "yum"
 
-- name: install pip on redhat
+- name: install pip and docker on redhat
   dnf:
-    name: python-pip
+    name: "{{ item }}"
     state: present
+  with_items:
+    - python-pip
+    - docker-engine
   when:
     ansible_os_family == 'RedHat' and
     ansible_pkg_mgr == "dnf"
