@@ -14,7 +14,7 @@
   local_action: shell nmap -p 6789 {{ item }} {{ hostvars[item]['ansible_' + monitor_interface]['ipv4']['address'] }} | grep -sqo filtered
   changed_when: false
   failed_when: false
-  with_items: groups.{{ mon_group_name }}
+  with_items: "{{groups[mon_group_name]}}"
   register: monportstate
   when:
     mon_group_name in group_names and
@@ -34,7 +34,7 @@
   local_action: shell nmap -p 6800-7300 {{ item }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} | grep -sqo filtered
   changed_when: false
   failed_when: false
-  with_items: groups.{{ osd_group_name }}
+  with_items: "{{groups[osd_group_name]}}"
   register: osdrangestate
   when:
     osd_group_name in group_names and
@@ -54,7 +54,7 @@
   local_action: shell nmap -p 6800-7300 {{ item }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} | grep -sqo filtered
   changed_when: false
   failed_when: false
-  with_items: groups.{{ mds_group_name }}
+  with_items: "{{groups[mds_group_name]}}"
   register: mdsrangestate
   when:
     mds_group_name in group_names and
@@ -74,7 +74,7 @@
   local_action: shell nmap -p {{ radosgw_civetweb_port }} {{ item }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} | grep -sqo filtered
   changed_when: false
   failed_when: false
-  with_items: groups.rgws
+  with_items: "{{groups[rgw_group_name]}}"
   register: rgwportstate
   when:
     rgw_group_name in group_names and
