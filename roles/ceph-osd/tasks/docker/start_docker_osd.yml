@@ -1,7 +1,7 @@
 ---
 # (rootfs) for reasons I haven't figured out, docker pull and run will fail.
 - name: pull ceph daemon image
-  shell: "docker pull {{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
+  shell: "docker pull {{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
 
 - name: prepare ceph osd disk
   docker:
@@ -16,6 +16,47 @@
   with_items: ceph_osd_docker_devices
   when: ceph_osd_docker_prepare_env is defined
 
+# Use systemd to manage container on Atomic host
+- name: generate systemd unit file
+  sudo: true
+  config_template:
+    src: ceph-osd.service.j2
+    dest: /var/lib/ceph/ceph-osd@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    config_overrides: {}
+    config_type: ini
+  failed_when: false
+
+- name: link systemd unit file for osd instance
+  file:
+    src: /var/lib/ceph/ceph-osd@.service
+    dest: /etc/systemd/system/multi-user.target.wants/ceph-osd@{{ item | basename }}.service
+    state: link
+  with_items: ceph_osd_docker_devices
+  when: is_atomic
+
+- name: enable systemd unit file for osd instance
+  shell: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-osd@{{ item | basename }}.service
+  failed_when: false
+  changed_when: false
+  with_items: ceph_osd_docker_devices
+  when: is_atomic
+
+- name: reload systemd unit files
+  shell: systemctl daemon-reload
+  when: is_atomic
+
+- name: systemd start osd container
+  service:
+    name: ceph-osd@{{ item | basename }}
+    state: started
+    enabled: yes
+  changed_when: false
+  with_items: ceph_osd_docker_devices
+  when: is_atomic
+
 - name: run the ceph osd docker image
   docker:
     image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
@@ -27,3 +68,4 @@
     env: "OSD_DEVICE={{ item }},{{ ceph_osd_docker_extra_env }}"
     volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev/:/dev/"
   with_items: ceph_osd_docker_devices
+  when: not is_atomic
