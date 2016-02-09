@@ -4,10 +4,9 @@ After=docker.service
 
 [Service]
 EnvironmentFile=/etc/environment
-ExecStartPre=-/usr/bin/docker kill %p
-ExecStartPre=-/usr/bin/docker rm %p
+ExecStartPre=-/usr/bin/docker rm %i
 ExecStartPre=/usr/bin/mkdir -p /etc/ceph /var/lib/ceph/mon
-ExecStart=/usr/bin/docker run -d --name %p --net=host \
+ExecStart=/usr/bin/docker run --rm --name %p --net=host \
    -v /var/lib/ceph:/var/lib/ceph \
    -v /etc/ceph:/etc/ceph \
    --privileged \
@@ -16,9 +15,8 @@ ExecStart=/usr/bin/docker run -d --name %p --net=host \
    -e CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }} \
    -e MON_NAME={{ ansible_hostname }} \
    --name={{ ansible_hostname }} \
-   {{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}
-ExecStopPost=-/usr/bin/docker stop %p
-ExecStopPost=-/usr/bin/docker rm %p
+    {{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}
+ExecStopPost=-/usr/bin/docker stop %i
 Restart=always
 RestartSec=10s
 TimeoutStartSec=120
