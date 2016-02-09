@@ -3,6 +3,19 @@
 - name: pull ceph daemon image
   shell: "docker pull {{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
 
+- name: prepare ceph osd disk
+  docker:
+    image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
+    name: "{{ ansible_hostname }}-osd-prepare-{{ item | regex_replace('/', '') }}"
+    net: host
+    pid: host
+    state: running
+    privileged: yes
+    env: "OSD_DEVICE={{ item }},{{ ceph_osd_docker_prepare_env }}"
+    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev/:/dev/"
+  with_items: ceph_osd_docker_devices
+  when: ceph_osd_docker_prepare_env is defined
+
 - name: run the ceph osd docker image
   docker:
     image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
