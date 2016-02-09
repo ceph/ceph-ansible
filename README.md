@@ -9,7 +9,12 @@ This role does several things prior to bootstrapping your Ceph cluster:
 
 # Requirements
 
-Nothing, it runs out of the box.
+Move the `plugins/actions/config_template.py` file to your top level playbook directory.
+Edit your `ansible.cfg` like so:
+
+    action_plugins = plugins/actions
+
+Depending on how you are managing your playbook, the path might be different so edit the file accordingly if necessary.
 
 # Role variables
 
