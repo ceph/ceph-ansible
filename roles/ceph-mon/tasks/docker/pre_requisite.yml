@@ -39,8 +39,18 @@
   tags:
     with_pkg
 
-- name: Pause after docker install before starting (on openstack vms)
-  pause: seconds=3
+# NOTE (jimcurtis): need at least version 1.9.0 of six or we get:
+# re:NameError: global name 'DEFAULT_DOCKER_API_VERSION' is not defined
+
+- name: install six
+  pip:
+    name: six
+    version: 1.9.0
+  tags:
+    with_pkg
+
+- name: pause after docker install before starting (on openstack vms)
+  pause: seconds=5
   when: ceph_docker_on_openstack
   tags:
     with_pkg
@@ -50,13 +60,6 @@
     name: docker
     state: started
     enabled: yes
-  tags:
-    with_pkg
-
-- name: install six
-  pip:
-    name: six
-    version: 1.9.0
   tags:
     with_pkg
 
