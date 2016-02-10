@@ -5,6 +5,13 @@
       - /etc/ceph/ceph.conf
       - /var/lib/ceph/bootstrap-osd/ceph.keyring
 
+- name: wait for ceph.conf and keys
+  local_action: >
+    wait_for
+    path="{{ playbook_dir }}/{{ fetch_directory }}/{{ fsid }}/{{ item.0 }}"
+  with_together:
+      - ceph_config_keys
+
 - name: try to copy ceph config and keys
   copy:
     src: "{{ playbook_dir }}/{{ fetch_directory }}/{{ fsid }}/{{ item.0 }}"
