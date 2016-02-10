@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # (c) 2015, Kevin Carter <kevin.carter@rackspace.com>
 #
 # This file is part of Ansible
