@@ -12,8 +12,8 @@
 - name: prepare osd disk(s)
   command: "ceph-disk prepare {{ item.2 }} {{ item.3 }}"
   with_together:
-    - parted.results
-    - ispartition.results
+    - combined_parted_results.results
+    - combined_ispartition_results.results
     - devices
     - raw_journal_devices
   changed_when: false
@@ -21,6 +21,7 @@
   when:
     item.0.rc != 0 and
     item.1.rc != 0 and
-    raw_multi_journal
+    raw_multi_journal and
+    not osd_auto_discovery
 
 - include: ../activate_osds.yml
