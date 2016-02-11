@@ -108,7 +108,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NRGWS - 1).each do |i|
     config.vm.define "rgw#{i}" do |rgw|
       rgw.vm.hostname = "ceph-rgw#{i}"
-      rgw.vm.network :private_network, ip: "#{SUBNET}.4#{i}"
+      rgw.vm.network :private_network, ip: "#{SUBNET}.5#{i}"
 
       # Virtualbox
       rgw.vm.provider :virtualbox do |vb|
