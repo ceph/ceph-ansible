@@ -1,4 +1,9 @@
 ---
+- name: determine if node is registered with subscription-manager.
+  command: subscription-manager identity
+  register: subscription
+  changed_when: false
+
 - name: install dependencies
   apt:
     pkg: calamari-server
@@ -8,6 +13,8 @@
     - package-install
 
 - name: install dependencies
+  # XXX Determine what RH repository this will belong to so that it can be
+  # properly checked and errored if the repository is not enabled.
   yum:
     name: rhscon-agent
     state: present
