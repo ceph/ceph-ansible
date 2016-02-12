@@ -6,7 +6,6 @@ VAGRANTFILE_API_VERSION = '2'
 
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
 settings=YAML.load_file(config_file)
-system("test -d ./roles || ansible-galaxy install --role-file=ansible-role-requirements.yml --force --roles-path=roles")
 
 
 NMONS      = settings['mon_vms']
