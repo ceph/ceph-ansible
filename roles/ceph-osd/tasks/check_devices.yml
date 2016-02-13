@@ -118,7 +118,7 @@
   when: not osd_auto_discovery
 
 - name: check if a partition named 'ceph' exists (autodiscover disks)
-  shell: "parted --script /dev/{{ item }} print | egrep -sq '^ 1.*ceph'"
+  shell: "parted --script /dev/{{ item.key }} print | egrep -sq '^ 1.*ceph'"
   with_dict: ansible_devices
   changed_when: false
   failed_when: false
@@ -126,7 +126,6 @@
   when:
     ansible_devices is defined and
     item.value.removable == "0" and
-    item.value.partitions|count != 0 and
     osd_auto_discovery
 
 # NOTE (leseb): we must do this because of
