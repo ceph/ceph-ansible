@@ -47,7 +47,7 @@
       state: stopped
       enabled: no
     when:
-      ansible_distribution != 'Ubuntu' and
+      ansible_os_family == 'RedHat' and
       ceph_stable_release == 'infernalis'
 
   - name: stop ceph-osd with systemd
@@ -57,7 +57,7 @@
       enabled: no
     with_items: "{{ osd_ids.stdout_lines }}"
     when:
-      ansible_distribution != 'Ubuntu' and
+      ansible_os_family == 'RedHat' and
       ceph_stable_release == 'infernalis' and
       osd_group_name in group_names
 
@@ -67,7 +67,7 @@
       state: stopped
       enabled: no
     when:
-      ansible_distribution != 'Ubuntu' and
+      ansible_os_family == 'RedHat' and
       ceph_stable_release == 'infernalis' and
       mon_group_name in group_names 
 
@@ -76,7 +76,7 @@
       name: ceph-mds@{{ ansible_hostname }} 
       state: stopped
     when:
-      ansible_distribution != 'Ubuntu' and
+      ansible_os_family == 'RedHat' and
       ceph_stable_release == 'infernalis' and
       mds_group_name in group_names 
 
@@ -84,21 +84,21 @@
   - name: stop ceph osds
     command: service ceph stop osd
     when:
-      ansible_distribution != 'Ubuntu' and
+      ansible_os_family == 'RedHat' and
       osd_group_name in group_names and
       ceph_stable_release != 'infernalis'
 
   - name: stop ceph mons
     command: service ceph stop mon
     when:
-      ansible_distribution != 'Ubuntu' and
+      ansible_os_family == 'RedHat' and
       mon_group_name in group_names and
       ceph_stable_release != 'infernalis'
 
   - name: stop ceph mdss
     command: service ceph stop mds
     when:
-      ansible_distribution != 'Ubuntu' and
+      ansible_os_family == 'RedHat' and
       mds_group_name in group_names and
       ceph_stable_release != 'infernalis'
 
@@ -154,7 +154,16 @@
     with_items:
       - "{{ ceph_packages }}"
     when:
-      ansible_distribution != 'Ubuntu'
+      ansible_pkg_mgr == 'yum'
+
+  - name: purge ceph packages with dnf
+    dnf:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ ceph_packages }}"
+    when:
+      ansible_pkg_mgr == 'dnf'
 
   - name: purge ceph packages with apt
     apt:
@@ -163,7 +172,7 @@
     with_items:
       - "{{ ceph_packages }}"
     when:
-      ansible_distribution == 'Ubuntu'
+      ansible_pkg_mgr == 'apt'
 
   - name: purge remaining ceph packages with yum
     yum:
@@ -172,7 +181,17 @@
     with_items:
       - "{{ ceph_remaining_packages }}"
     when:
-      ansible_distribution != 'Ubuntu' and
+      ansible_pkg_mgr == 'yum' and
+      purge_all_packages == true
+
+  - name: purge remaining ceph packages with dnf
+    dnf:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ ceph_remaining_packages }}"
+    when:
+      ansible_pkg_mgr == 'dnf' and
       purge_all_packages == true
 
   - name: purge remaining ceph packages with apt
@@ -182,7 +201,7 @@
     with_items:
       - "{{ ceph_remaining_packages }}"
     when:
-      ansible_distribution == 'Ubuntu' and
+      ansible_pkg_mgr == 'apt' and
       purge_all_packages == true
 
   - name: remove config
