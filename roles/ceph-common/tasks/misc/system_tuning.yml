@@ -16,6 +16,10 @@
   failed_when: false
   when: disable_swap
 
+- name: calculate vm.min_free_kbytes
+  set_fact:
+    vm_min_free_kbytes: "{{ 4194303 if ansible_memtotal_mb >= 49152 else (ansible_memtotal_mb * 1024 / 100)|int }}"
+
 - name: apply operating system tuning
   sysctl:
     name: "{{ item.name }}"
