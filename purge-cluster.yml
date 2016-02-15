@@ -11,7 +11,7 @@
 
   vars:
 # When set to true both groups of packages are purged.
-# This can couse problem with qemu-kvm
+# This can cause problem with qemu-kvm
     purge_all_packages: true
 
     ceph_packages:
@@ -147,20 +147,42 @@
     when:
      osd_group_name in group_names
 
-  - name: purge ceph packages
-    package:
+  - name: purge ceph packages with yum
+    yum:
       name: "{{ item }}"
       state: absent
     with_items:
       - "{{ ceph_packages }}"
+    when:
+      ansible_distribution != 'Ubuntu'
 
-  - name: purge remaining ceph packages
-    package:
+  - name: purge ceph packages with apt
+    apt:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ ceph_packages }}"
+    when:
+      ansible_distribution == 'Ubuntu'
+
+  - name: purge remaining ceph packages with yum
+    yum:
       name: "{{ item }}"
       state: absent
     with_items:
       - "{{ ceph_remaining_packages }}"
     when:
+      ansible_distribution != 'Ubuntu' and
+      purge_all_packages == true
+
+  - name: purge remaining ceph packages with apt
+    apt:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ ceph_remaining_packages }}"
+    when:
+      ansible_distribution == 'Ubuntu' and
       purge_all_packages == true
 
   - name: remove config
