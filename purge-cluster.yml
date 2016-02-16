@@ -2,42 +2,234 @@
 # This playbook purges Ceph
 # It removes: packages, configuration files and ALL THE DATA
 
-- hosts:
-  - mons
-  - osds
-
-  tasks:
-
-  - name: purge ceph
-    command: ceph-deploy purge {{ ansible_fqdn }}
-    delegate_to: 127.0.0.1
-
-  - name: remove osd data
-    shell: rm -rf /var/lib/ceph/osd/*/*
-    failed_when: false
-
-  - name: purge remaining data
-    command: ceph-deploy purgedata {{ ansible_fqdn }}
-    delegate_to: 127.0.0.1
-
-- hosts:
-  - osds
+- name: stop ceph cluster
+  hosts:
+    - mons
+    - osds
+    - mdss
+  become: yes
 
   vars:
-    devices: [ '/dev/sdb', '/dev/sdc', '/dev/sdd', '/dev/sde', '/dev/sdf' ]
-    partitions: [ '1', '2', '3' ]
+# When set to true both groups of packages are purged.
+# This can cause problem with qemu-kvm
+    purge_all_packages: true
+
+    ceph_packages:
+      - ceph
+      - ceph-common
+      - ceph-fs-common
+      - ceph-fuse
+      - ceph-mds
+      - ceph-release
+
+    ceph_remaining_packages:
+      - libcephfs1
+      - librados2
+      - libradosstriper1
+      - librbd1
+      - python-cephfs
+      - python-rados
+      - python-rbd
+
 
   tasks:
+  - name: get osd numbers
+    shell: ls /var/lib/ceph/osd | cut -d "-" -f 2
+    register: osd_ids
+    changed_when: false
+    when:
+     osd_group_name in group_names
 
-  - name: disk zap
-    command: /usr/sbin/sgdisk --zap-all --clear --mbrtogpt -g -- {{ item }}
-    with_items: devices
+# Infernalis
+  - name: stop ceph.target with systemd
+    service:
+      name: ceph.target
+      state: stopped
+      enabled: no
+    when:
+      ansible_os_family == 'RedHat' and
+      ceph_stable_release == 'infernalis'
+
+  - name: stop ceph-osd with systemd
+    service:
+      name: ceph-osd@{{item}}
+      state: stopped
+      enabled: no
+    with_items: "{{ osd_ids.stdout_lines }}"
+    when:
+      ansible_os_family == 'RedHat' and
+      ceph_stable_release == 'infernalis' and
+      osd_group_name in group_names
+
+  - name: stop ceph mons with systemd
+    service: 
+      name: ceph-mon@{{ ansible_hostname }} 
+      state: stopped
+      enabled: no
+    when:
+      ansible_os_family == 'RedHat' and
+      ceph_stable_release == 'infernalis' and
+      mon_group_name in group_names 
+
+  - name: stop ceph mdss with systemd
+    service: 
+      name: ceph-mds@{{ ansible_hostname }} 
+      state: stopped
+    when:
+      ansible_os_family == 'RedHat' and
+      ceph_stable_release == 'infernalis' and
+      mds_group_name in group_names 
+
+# before infernalis
+  - name: stop ceph osds
+    command: service ceph stop osd
+    when:
+      ansible_os_family == 'RedHat' and
+      osd_group_name in group_names and
+      ceph_stable_release != 'infernalis'
+
+  - name: stop ceph mons
+    command: service ceph stop mon
+    when:
+      ansible_os_family == 'RedHat' and
+      mon_group_name in group_names and
+      ceph_stable_release != 'infernalis'
+
+  - name: stop ceph mdss
+    command: service ceph stop mds
+    when:
+      ansible_os_family == 'RedHat' and
+      mds_group_name in group_names and
+      ceph_stable_release != 'infernalis'
+
+# Ubuntu 14.04
+  - name: stop ceph osds on ubuntu
+    command: stop ceph-osd-all
     failed_when: false
+    when:
+      ansible_distribution == 'Ubuntu' and
+      osd_group_name in group_names
 
-  - name: disk zap again
-    command: /usr/sbin/sgdisk --zap-all --clear --mbrtogpt -g -- {{ item }}
-    with_items: devices
+  - name: stop ceph mons on ubuntu
+    command: stop ceph-mon-all
     failed_when: false
+    when:
+      ansible_distribution == 'Ubuntu' and
+      mon_group_name in group_names
+  
+  - name: stop ceph mdss on ubuntu
+    command: stop ceph-mds-all
+    failed_when: false
+    when:
+      ansible_distribution == 'Ubuntu' and
+      mds_group_name in group_names
 
-  - name: call partprobe
-    command: partprobe
+# rc is 2 if file not found, so no mount point, so no error
+  - name: get osd data mount points
+    shell: ls /var/lib/ceph/osd
+    register: mounted_osd
+    changed_when: false
+    failed_when: mounted_osd.rc != 0 and mounted_osd.rc != 2
+    when:
+     osd_group_name in group_names
+
+  - name: umount osd data partition
+    shell: umount /var/lib/ceph/osd/{{ item }}
+    failed_when: false
+    with_items:
+     - "{{ mounted_osd.stdout_lines }}"
+    when:
+     osd_group_name in group_names
+
+  - name: zap osd disks
+    shell: ceph-disk zap "{{ item }}"
+    with_items: devices
+    when:
+     osd_group_name in group_names
+
+  - name: purge ceph packages with yum
+    yum:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ ceph_packages }}"
+    when:
+      ansible_pkg_mgr == 'yum'
+
+  - name: purge ceph packages with dnf
+    dnf:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ ceph_packages }}"
+    when:
+      ansible_pkg_mgr == 'dnf'
+
+  - name: purge ceph packages with apt
+    apt:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ ceph_packages }}"
+    when:
+      ansible_pkg_mgr == 'apt'
+
+  - name: purge remaining ceph packages with yum
+    yum:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ ceph_remaining_packages }}"
+    when:
+      ansible_pkg_mgr == 'yum' and
+      purge_all_packages == true
+
+  - name: purge remaining ceph packages with dnf
+    dnf:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ ceph_remaining_packages }}"
+    when:
+      ansible_pkg_mgr == 'dnf' and
+      purge_all_packages == true
+
+  - name: purge remaining ceph packages with apt
+    apt:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ ceph_remaining_packages }}"
+    when:
+      ansible_pkg_mgr == 'apt' and
+      purge_all_packages == true
+
+  - name: remove config
+    file:
+     path: /etc/ceph
+     state: absent
+
+  - name: remove data
+    file:
+     path: /var/lib/ceph
+     state: absent
+
+  - name: remove logs
+    file:
+     path: /var/log/ceph
+     state: absent
+
+  - name: remove form SysV
+    shell: "update-rc.d -f ceph remove"
+    when:
+      ansible_distribution == 'Ubuntu'
+
+  - name: remove Upstart nad SysV files
+    shell: "find /etc -name '*ceph*' -delete"
+    when:
+      ansible_distribution == 'Ubuntu'
+
+  - name: remove Upstart and apt logs and cache
+    shell: "find /var -name '*ceph*' -delete"
+    when:
+      ansible_distribution == 'Ubuntu'
