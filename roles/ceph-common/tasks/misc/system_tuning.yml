@@ -16,9 +16,13 @@
   failed_when: false
   when: disable_swap
 
+- name: get default vm.min_free_kbytes
+  command: sysctl -b vm.min_free_kbytes
+  register: default_vm_min_free_kbytes
+
 - name: calculate vm.min_free_kbytes
   set_fact:
-    vm_min_free_kbytes: "{{ 4194303 if ansible_memtotal_mb >= 49152 else (ansible_memtotal_mb * 1024 / 100)|int }}"
+    vm_min_free_kbytes: "{{ 4194303 if ansible_memtotal_mb >= 49152 else default_vm_min_free_kbytes|int }}"
 
 - name: apply operating system tuning
   sysctl:
