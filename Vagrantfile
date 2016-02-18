@@ -193,7 +193,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mds.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
       end
-
       # Parallels
       mds.vm.provider "parallels" do |prl|
         prl.name = "ceph-mds#{i}"
