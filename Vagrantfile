@@ -102,6 +102,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       client.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
       end
+
+      # Parallels
+      client.vm.provider "parallels" do |prl|
+        prl.name = "ceph-client#{i}"
+        prl.memory = "#{MEMORY}"
+      end
     end
   end
 
@@ -123,6 +129,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Libvirt
       rgw.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
+      end
+
+      # Parallels
+      rgw.vm.provider "parallels" do |prl|
+        prl.name = "ceph-rgw#{i}"
+        prl.memory = "#{MEMORY}"
       end
     end
   end
@@ -146,6 +158,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mds.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
       end
+      
+      # Parallels
+      mds.vm.provider "parallels" do |prl|
+        prl.name = "ceph-mds#{i}"
+        prl.memory = "#{MEMORY}"
+      end
     end
   end
 
@@ -167,6 +185,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Libvirt
       mon.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
+      end
+
+      # Parallels
+      mon.vm.provider "parallels" do |prl|
+        prl.name = "ceph-mon#{i}"
+        prl.memory = "#{MEMORY}"
       end
     end
   end
@@ -213,6 +237,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
           lv.storage :file, :device => "vd#{driverletters[d]}", :path => "disk-#{i}-#{d}.disk", :size => '11G'
         end
         lv.memory = MEMORY
+      end
+
+      # Parallels
+      osd.vm.provider "parallels" do |prl|
+        prl.name = "ceph-osd#{i}"
+        prl.memory = "#{MEMORY}"
+        (0..1).each do |d|
+          prl.customize ["set", :id, 
+                         "--device-add", 
+                         "hdd", 
+                         "--iface", 
+                         "sata"]
+        end
       end
 
       # Run the provisioner after the last machine comes up
