@@ -133,6 +133,33 @@ $ sudo vagrant up --no-provision --provider=libvirt
 $ sudo vagrant provision
 ```
 
+## Setup for Vagrant using parallels provider
+
+* Create vagrant_variables.yml
+
+```
+$ cp vagrant_variables.yml.sample vagrant_variables.yml
+```
+
+* Edit `vagrant_variables.yml` and setup the following variables:
+
+```yml
+vagrant_box: parallels/ubuntu-14.04
+```
+
+* Create site.yml
+
+```
+$ cp site.yml.sample site.yml
+```
+
+* Create VMs
+
+```
+$ vagrant up --no-provision --provider=parallels
+$ vagrant provision
+```
+
 ### For Debian based systems
 
 If you want to use "backports", you can set "true" to `ceph_use_distro_backports`.
