@@ -24,6 +24,13 @@
     - ceph-mds       #|--> they don't get update so we need to force them
     - libcephfs1     #|
 
+- name: install ceph-test
+  apt:
+    pkg: ceph-test
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    default_release: "{{ ansible_distribution_release }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
+  when: ceph_test
+
 - name: install rados gateway
   apt:
     pkg: radosgw
