@@ -2,7 +2,6 @@
 # vi: set ft=ruby :
 
 require 'yaml'
-require 'vagrant-openstack-provider'
 VAGRANTFILE_API_VERSION = '2'
 
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
@@ -20,6 +19,7 @@ STORAGECTL = settings['vagrant_storagectl']
 ETH        = settings['eth']
 
 if BOX == 'openstack'
+  require 'vagrant-openstack-provider'
   OSVM = 'true'
   USER = settings['os_ssh_username']
 else
@@ -123,7 +123,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "rgw#{i}" do |rgw|
       rgw.vm.hostname = "ceph-rgw#{i}"
       if !OSVM
-        rgw.vm.network :private_network, ip: "#{SUBNET}.4#{i}"
+        rgw.vm.network :private_network, ip: "#{SUBNET}.5#{i}"
       end
       # Virtualbox
       rgw.vm.provider :virtualbox do |vb|
