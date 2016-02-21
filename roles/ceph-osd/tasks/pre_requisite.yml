@@ -11,46 +11,22 @@
     state: present
   when: ansible_os_family == 'RedHat'
 
-- name: create bootstrap-osd directory (for or after infernalis release)
+- name: create bootstrap-osd directory
   file:
     path: /var/lib/ceph/bootstrap-osd/
     state: directory
-    owner: ceph
-    group: ceph
-    mode: 0755
+    owner: "{{ dir_owner }}"
+    group: "{{ dir_group }}"
+    mode: "{{ dir_mode }}"
   when:
-    cephx and
-    is_ceph_infernalis
+    cephx
 
-- name: create bootstrap-osd directory (before infernalis release)
-  file:
-    path: /var/lib/ceph/bootstrap-osd/
-    state: directory
-    owner: root
-    group: root
-    mode: 0755
-  when:
-   cephx and
-   not is_ceph_infernalis
-
-- name: copy osd bootstrap key (for or after infernalis release)
+- name: copy osd bootstrap key
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/bootstrap-osd/ceph.keyring"
     dest: /var/lib/ceph/bootstrap-osd/ceph.keyring
-    owner: ceph
-    group: ceph
-    mode: 0600
+    owner: "{{ key_owner }}"
+    group: "{{ key_group }}"
+    mode: "{{ key_mode }}"
   when:
-    cephx and
-    is_ceph_infernalis
-
-- name: copy osd bootstrap key (before infernalis release)
-  copy:
-    src: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/bootstrap-osd/ceph.keyring"
-    dest: /var/lib/ceph/bootstrap-osd/ceph.keyring
-    owner: root
-    group: root
-    mode: 600
-  when:
-    cephx and
-    not is_ceph_infernalis
+    cephx
