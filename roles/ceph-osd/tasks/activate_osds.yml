@@ -8,7 +8,9 @@
     - devices
   changed_when: false
   failed_when: false
-  when: item.0.rc != 0
+  when:
+    not item.0.get("skipped") and
+    item.0.get("rc", 0) != 0
 
 # NOTE (leseb): this task is for partitions because we don't explicitly use a partition.
 - name: activate osd(s) when device is a partition
@@ -18,7 +20,9 @@
     - devices
   changed_when: false
   failed_when: false
-  when: item.0.rc == 0
+  when:
+    not item.0.get("skipped") and
+    item.0.get("rc", 0) == 0
 
 - include: osd_fragment.yml
   when: crush_location
