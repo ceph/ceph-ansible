@@ -78,22 +78,24 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     override.vm.synced_folder '.', '/home/vagrant/sync', disabled: true
   end
 
-  # OpenStack VMs
-  config.vm.provider :openstack do |os|
-    config.vm.synced_folder ".", "/home/#{USER}/vagrant", disabled: true
-    config.ssh.username = USER
-    config.ssh.private_key_path = settings['os_ssh_private_key_path']
-    config.ssh.pty = true
-    os.openstack_auth_url = settings['os_openstack_auth_url']
-    os.username = settings['os_username']
-    os.password = settings['os_password']
-    os.tenant_name = settings['os_tenant_name']
-    os.region = settings['os_region']
-    os.flavor = settings['os_flavor']
-    os.image = settings['os_image']
-    os.keypair_name = settings['os_keypair_name']
-    os.security_groups = ['default']
-    config.vm.provision "shell", inline: "true", upload_path: "/home/#{USER}/vagrant-shell"
+  if BOX == 'openstack'
+    # OpenStack VMs
+    config.vm.provider :openstack do |os|
+      config.vm.synced_folder ".", "/home/#{USER}/vagrant", disabled: true
+      config.ssh.username = USER
+      config.ssh.private_key_path = settings['os_ssh_private_key_path']
+      config.ssh.pty = true
+      os.openstack_auth_url = settings['os_openstack_auth_url']
+      os.username = settings['os_username']
+      os.password = settings['os_password']
+      os.tenant_name = settings['os_tenant_name']
+      os.region = settings['os_region']
+      os.flavor = settings['os_flavor']
+      os.image = settings['os_image']
+      os.keypair_name = settings['os_keypair_name']
+      os.security_groups = ['default']
+      config.vm.provision "shell", inline: "true", upload_path: "/home/#{USER}/vagrant-shell"
+    end
   end
 
   (0..CLIENTS - 1).each do |i|
