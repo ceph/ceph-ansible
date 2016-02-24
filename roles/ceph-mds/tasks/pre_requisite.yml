@@ -64,6 +64,17 @@
   changed_when: false
   when: ansible_distribution != "Ubuntu"
 
+- name: enable systemd unit file for mds instance (for or after infernalis)
+  file:
+    src: /usr/lib/systemd/system/ceph-mds@.service
+    dest: /etc/systemd/system/multi-user.target.wants/ceph-mds@{{ ansible_hostname }}.service
+    state: link
+  changed_when: false
+  failed_when: false
+  when:
+    ansible_distribution != "Ubuntu" and
+    is_ceph_infernalis
+
 - name: start and add that the metadata service to the init sequence (ubuntu)
   service:
     name: ceph-mds
