@@ -23,7 +23,7 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when: not ceph_stable_rh_storage
 
-- name: install red hat storage ceph mon
+- name: install distro or red hat storage ceph mon
   yum:
     name: "{{ item }}"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
@@ -31,11 +31,11 @@
     - ceph
     - ceph-mon
   when:
-    ceph_stable_rh_storage and
+    (ceph_origin == "distro" or ceph_stable_rh_storage) and
     mon_group_name in group_names and
     ansible_pkg_mgr == "yum"
 
-- name: install red hat storage ceph mon
+- name: install distro or red hat storage ceph mon
   dnf:
     name: "{{ item }}"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
@@ -43,11 +43,11 @@
     - ceph
     - ceph-mon
   when:
-    ceph_stable_rh_storage and
+    (ceph_origin == "distro" or ceph_stable_rh_storage) and
     mon_group_name in group_names and
     ansible_pkg_mgr == "dnf"
 
-- name: install red hat storage ceph osd
+- name: install distro or red hat storage ceph osd
   yum:
     name: "{{ item }}"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
@@ -55,11 +55,11 @@
     - ceph
     - ceph-osd
   when:
-    ceph_stable_rh_storage and
+    (ceph_origin == "distro" or ceph_stable_rh_storage) and
     osd_group_name in group_names and
     ansible_pkg_mgr == "yum"
 
-- name: install red hat storage ceph osd
+- name: install distro or red hat storage ceph osd
   dnf:
     name: "{{ item }}"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
@@ -67,7 +67,7 @@
     - ceph
     - ceph-osd
   when:
-    ceph_stable_rh_storage and
+    (ceph_origin == "distro" or ceph_stable_rh_storage) and
     osd_group_name in group_names and
     ansible_pkg_mgr == "dnf"
 
