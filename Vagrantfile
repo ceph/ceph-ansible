@@ -18,11 +18,20 @@ MEMORY     = settings['memory']
 STORAGECTL = settings['vagrant_storagectl']
 ETH        = settings['eth']
 
+if BOX == 'openstack'
+  require 'vagrant-openstack-provider'
+  OSVM = 'true'
+  USER = settings['os_ssh_username']
+else
+  OSVM = 'false'
+end
+
 ansible_provision = proc do |ansible|
   ansible.playbook = 'site.yml'
   if settings['skip_tags']
     ansible.skip_tags = settings['skip_tags']
   end
+
   # Note: Can't do ranges like mon[0-2] in groups because
   # these aren't supported by Vagrant, see
   # https://github.com/mitchellh/vagrant/issues/3539
@@ -46,7 +55,9 @@ ansible_provision = proc do |ansible|
     cluster_network: "#{SUBNET}.0/24",
     public_network: "#{SUBNET}.0/24",
     devices: settings['disks'],
-    os_tuning_params: settings['os_tuning_params']
+    ceph_osd_docker_devices: settings['disks'],
+    os_tuning_params: settings['os_tuning_params'],
+    ceph_docker_on_openstack: OSVM
   }
   ansible.limit = 'all'
 end
@@ -67,11 +78,32 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     override.vm.synced_folder '.', '/home/vagrant/sync', disabled: true
   end
 
+  if BOX == 'openstack'
+    # OpenStack VMs
+    config.vm.provider :openstack do |os|
+      config.vm.synced_folder ".", "/home/#{USER}/vagrant", disabled: true
+      config.ssh.username = USER
+      config.ssh.private_key_path = settings['os_ssh_private_key_path']
+      config.ssh.pty = true
+      os.openstack_auth_url = settings['os_openstack_auth_url']
+      os.username = settings['os_username']
+      os.password = settings['os_password']
+      os.tenant_name = settings['os_tenant_name']
+      os.region = settings['os_region']
+      os.flavor = settings['os_flavor']
+      os.image = settings['os_image']
+      os.keypair_name = settings['os_keypair_name']
+      os.security_groups = ['default']
+      config.vm.provision "shell", inline: "true", upload_path: "/home/#{USER}/vagrant-shell"
+    end
+  end
+
   (0..CLIENTS - 1).each do |i|
     config.vm.define "client#{i}" do |client|
       client.vm.hostname = "ceph-client#{i}"
-      client.vm.network :private_network, ip: "#{SUBNET}.4#{i}"
-
+      if !OSVM
+        client.vm.network :private_network, ip: "#{SUBNET}.4#{i}"
+      end
       # Virtualbox
       client.vm.provider :virtualbox do |vb|
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
@@ -92,8 +124,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NRGWS - 1).each do |i|
     config.vm.define "rgw#{i}" do |rgw|
       rgw.vm.hostname = "ceph-rgw#{i}"
-      rgw.vm.network :private_network, ip: "#{SUBNET}.4#{i}"
-
+      if !OSVM
+        rgw.vm.network :private_network, ip: "#{SUBNET}.5#{i}"
+      end
       # Virtualbox
       rgw.vm.provider :virtualbox do |vb|
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
@@ -114,8 +147,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NMDSS - 1).each do |i|
     config.vm.define "mds#{i}" do |mds|
       mds.vm.hostname = "ceph-mds#{i}"
-      mds.vm.network :private_network, ip: "#{SUBNET}.7#{i}"
-
+      if !OSVM
+        mds.vm.network :private_network, ip: "#{SUBNET}.7#{i}"
+      end
       # Virtualbox
       mds.vm.provider :virtualbox do |vb|
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
@@ -136,8 +170,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NMONS - 1).each do |i|
     config.vm.define "mon#{i}" do |mon|
       mon.vm.hostname = "ceph-mon#{i}"
-      mon.vm.network :private_network, ip: "#{SUBNET}.1#{i}"
-
+      if !OSVM
+        mon.vm.network :private_network, ip: "#{SUBNET}.1#{i}"
+      end
       # Virtualbox
       mon.vm.provider :virtualbox do |vb|
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
@@ -158,9 +193,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NOSDS - 1).each do |i|
     config.vm.define "osd#{i}" do |osd|
       osd.vm.hostname = "ceph-osd#{i}"
-      osd.vm.network :private_network, ip: "#{SUBNET}.10#{i}"
-      osd.vm.network :private_network, ip: "#{SUBNET}.20#{i}"
-
+      if !OSVM
+        osd.vm.network :private_network, ip: "#{SUBNET}.10#{i}"
+        osd.vm.network :private_network, ip: "#{SUBNET}.20#{i}"
+      end
       # Virtualbox
       osd.vm.provider :virtualbox do |vb|
         (0..1).each do |d|
