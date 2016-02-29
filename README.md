@@ -166,6 +166,65 @@ If you want to use "backports", you can set "true" to `ceph_use_distro_backports
 Attention, ceph-common doesn't manage backports repository, you must add it yourself.
 
 
+# Want to contribute?
+
+Read this carefully then :).
+The repository centralises all the Ansible roles.
+The roles are all part of the Galaxy.
+We love contribution and we love giving visibility to our contributors, this is why all the **commits must be signed-off**.
+
+## Submit a patch
+
+To start contriuting just do:
+
+```
+$ git checkout -b my-working-branch
+$ # do your changes #
+$ git add -p
+```
+
+One more step, before pushing your code you should run a syntax check:
+
+```
+$ ansible-playbook -i dummy-ansible-hosts test.yml --syntax-check
+```
+
+If your change impacts a variable file in a role such as `roles`ceph-common/defaults/main.yml`, you need to generate a `group_vars` file:
+
+```
+$ ./generate_group_vars_sample.sh
+```
+
+You are finally ready to push your changes on Github:
+
+```
+$ git commit -s
+$ git push origin my-working-branch
+```
+
+Worked on a change and you don't want to resend a commit for a syntax fix?
+
+```
+$ # do your syntax change #
+$ git commit --amend
+$ git push -f origin my-working-branch
+```
+
+# Testing PR
+
+Go on the github interface and submit a PR.
+
+Now we have 2 online CIs:
+
+* Travis, simply does a syntax check
+* Jenkins Ceph: bootstraps one monitor, one OSD, one RGW
+
+If Jenkins detects that your commit broke something it will turn red.
+You can then check the logs of the Jenkins by clicking on "Testing Playbooks" button in your PR and go to "Console Output".
+You can now submit a new commit/change that will update the CI system to run a new play.
+
+It might happen that the CI does not get reloead so you can simply leave a comment on your PR with "test this please" and it will trigger a new CI build.
+
 ## Vagrant Demo
 
 [![Ceph-ansible Vagrant Demo](http://img.youtube.com/vi/E8-96NamLDo/0.jpg)](https://youtu.be/E8-96NamLDo "Deploy Ceph with Ansible (Vagrant demo)")
