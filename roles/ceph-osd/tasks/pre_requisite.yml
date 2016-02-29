@@ -23,10 +23,14 @@
 
 - name: copy osd bootstrap key
   copy:
-    src: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/bootstrap-osd/ceph.keyring"
-    dest: /var/lib/ceph/bootstrap-osd/ceph.keyring
+    src: "{{ fetch_directory }}/{{ fsid }}{{ item.name }}"
+    dest: "{{ item.name }}"
     owner: "{{ key_owner }}"
     group: "{{ key_group }}"
     mode: "{{ key_mode }}"
+  with_items:
+    - { name: /var/lib/ceph/bootstrap-osd/ceph.keyring, copy_key: true }
+    - { name: /etc/ceph/ceph.client.admin.keyring, copy_key: "{{ copy_admin_key }}" }
   when:
-    cephx
+    cephx and
+    item.copy_key|bool
