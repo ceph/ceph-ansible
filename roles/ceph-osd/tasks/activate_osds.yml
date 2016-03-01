@@ -1,6 +1,18 @@
 ---
 # NOTE (leseb) : this task is for disk devices only because of the explicit use of the first
 # partition.
+
+- name: automatically activate osd disk(s) without partitions
+  command: ceph-disk activate "/dev/{{ item.key }}"
+  ignore_errors: true
+  with_dict: ansible_devices
+  when:
+    ansible_devices is defined and
+    item.value.removable == "0" and
+    item.value.partitions|count == 0 and
+    journal_collocation and
+    osd_auto_discovery
+
 - name: activate osd(s) when device is a disk
   command: ceph-disk activate {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
   with_together:
@@ -8,7 +20,10 @@
     - devices
   changed_when: false
   failed_when: false
-  when: item.0.rc != 0
+  when:
+    not item.0.get("skipped") and
+    item.0.get("rc", 0) != 0 and
+    not osd_auto_discovery
 
 # NOTE (leseb): this task is for partitions because we don't explicitly use a partition.
 - name: activate osd(s) when device is a partition
@@ -18,7 +33,10 @@
     - devices
   changed_when: false
   failed_when: false
-  when: item.0.rc == 0
+  when:
+    not item.0.get("skipped") and
+    item.0.get("rc", 0) != 0 and
+    not osd_auto_discovery
 
 - include: osd_fragment.yml
   when: crush_location
