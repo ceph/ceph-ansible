@@ -89,7 +89,11 @@ debug paxos = {{ debug_mon_level }}
 debug auth = {{ debug_mon_level }}
 {% endif %}
 {% for host in groups[mon_group_name] %}
-{% if hostvars[host]['ansible_hostname'] is defined %}
+{% if hostvars[host]['ansible_fqdn'] is defined and mon_use_fqdn %}
+[mon.{{ hostvars[host]['ansible_fqdn'] }}]
+host = {{ hostvars[host]['ansible_fqdn'] }}
+mon addr = {{ hostvars[host]['ansible_' + (hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface) ]['ipv4']['address'] }}
+{% else %}
 [mon.{{ hostvars[host]['ansible_hostname'] }}]
 host = {{ hostvars[host]['ansible_hostname'] }}
 mon addr = {{ hostvars[host]['ansible_' + (hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface) ]['ipv4']['address'] }}
@@ -148,7 +152,10 @@ osd deep scrub stride = {{ osd_deep_scrub_stride }}
 
 {% if groups[mds_group_name] is defined %}
 {% for host in groups[mds_group_name] %}
-{% if hostvars[host]['ansible_hostname'] is defined %}
+{% if hostvars[host]['ansible_fqdn'] is defined and mds_use_fqdn %}
+[mds.{{ hostvars[host]['ansible_fqdn'] }}]
+host = {{ hostvars[host]['ansible_fqdn'] }}
+{% else %}
 [mds.{{ hostvars[host]['ansible_hostname'] }}]
 host = {{ hostvars[host]['ansible_hostname'] }}
 {% endif %}
