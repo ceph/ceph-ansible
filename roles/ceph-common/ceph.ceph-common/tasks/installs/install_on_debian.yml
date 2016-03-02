@@ -1,0 +1,52 @@
+---
+- name: install dependencies
+  apt:
+    pkg: "{{ item }}"
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+  with_items: debian_package_dependencies
+
+- name: configure ceph apt repository
+  include: debian_ceph_repository.yml
+  when: ceph_origin == 'upstream'
+
+- name: install ceph
+  apt:
+    pkg: "{{ item }}"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    default_release: "{{ ansible_distribution_release }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
+  with_items:
+    - ceph
+    - ceph-common    #|
+    - ceph-fs-common #|--> yes, they are already all dependencies from 'ceph'
+    - ceph-fuse      #|--> however while proceding to rolling upgrades and the 'ceph' package upgrade
+    - ceph-mds       #|--> they don't get update so we need to force them
+    - libcephfs1     #|
+
+- name: install ceph-test
+  apt:
+    pkg: ceph-test
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    default_release: "{{ ansible_distribution_release }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
+  when: ceph_test
+
+- name: install rados gateway
+  apt:
+    pkg: radosgw
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    update_cache: yes
+  when:
+    rgw_group_name in group_names
+
+- name: configure rbd clients directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: libvirt-qemu
+    group: kvm
+    mode: 0755
+  with_items:
+   - rbd_client_log_path
+   - rbd_client_admin_socket_path
+  when: rbd_client_directories
