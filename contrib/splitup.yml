@@ -8,6 +8,9 @@
 #
 # ansible-playbook -i dummy-ansible-hosts contrib/splitup.yml \
 #   --tags update --extra-vars github=mhubig/ansible
+#
+# To point to a specific role, ie: ceph-mon just run with "-e roles=ceph-mon"
+#
 
 - name: This recipe split the roles into repos and keeps them updated.
   hosts: localhost
@@ -17,7 +20,6 @@
   vars:
     github: ceph/ansible
     roles:
-      - ceph-common
       - ceph-mon
       - ceph-osd
       - ceph-mds
@@ -40,14 +42,18 @@
       command: git subtree split --prefix=roles/{{ item }} -b {{ item }} --squash
       args:
         chdir: "{{ basedir }}"
-      with_items: roles
+      with_items:
+        - roles
+        - ceph.ceph-common
 
     - name: adds remote github repos for the splits
       tags: split
       command: git remote add {{ item }} git@github.com:{{ github }}-{{ item }}.git
       args:
         chdir: "{{ basedir }}"
-      with_items: roles
+      with_items:
+        - roles
+        - ceph-common
 
     - name: adds upstream remote
       tags: update
@@ -64,3 +70,9 @@
       args:
         chdir: "{{ basedir }}"
       with_items: roles
+
+    - name: update the split repos from master (ceph-common)
+      tags: update
+      shell: git push ceph-common $(git subtree split --prefix roles/ceph.ceph-common master):master --force
+      args:
+        chdir: "{{ basedir }}"
