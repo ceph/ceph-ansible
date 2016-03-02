@@ -13,7 +13,7 @@
   command: ceph-disk prepare "/dev/{{ item.key }}"
   ignore_errors: true
   register: prepared_osds
-  with_dict: ansible_devices
+  with_dict: "{{ansible_devices}}"
   when:
     ansible_devices is defined and
     item.value.removable == "0" and
@@ -25,9 +25,9 @@
   command: "ceph-disk prepare {{ item.2 }}"
   ignore_errors: true
   with_together:
-    - combined_parted_results.results
-    - combined_ispartition_results.results
-    - devices
+    - "{{combined_parted_results.results}}"
+    - "{{combined_ispartition_results.results}}"
+    - "{{devices}}"
   when:
     not item.0.get("skipped") and
     not item.1.get("skipped") and
