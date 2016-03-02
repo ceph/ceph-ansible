@@ -1,0 +1,36 @@
+---
+- name: create red hat storage package directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - "{{ ceph_stable_rh_storage_mount_path }}"
+    - "{{ ceph_stable_rh_storage_repository_path }}"
+
+- name: fetch the red hat storage iso from the ansible server
+  copy:
+    src: "{{ ceph_stable_rh_storage_iso_path }}"
+    dest: "{{ ceph_stable_rh_storage_iso_path }}"
+
+# assumption: ceph_stable_rh_storage_mount_path does not specify directory
+
+- name: mount red hat storage iso file
+  mount:
+    name: "{{ ceph_stable_rh_storage_mount_path }}"
+    src: "{{ ceph_stable_rh_storage_iso_path }}"
+    fstype: iso9660
+    opts: ro,loop,noauto
+    passno: 2
+    state: mounted
+
+- name: copy red hat storage iso content
+  shell: cp -r {{ ceph_stable_rh_storage_mount_path }}/* {{ ceph_stable_rh_storage_repository_path }}
+  args:
+    creates: "{{ ceph_stable_rh_storage_repository_path }}/README"
+
+- name: unmount red hat storage iso file
+  mount:
+    name: "{{ ceph_stable_rh_storage_mount_path }}"
+    src: "{{ ceph_stable_rh_storage_iso_path }}"
+    fstype: iso9660
+    state: unmounted

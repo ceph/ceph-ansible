@@ -1,0 +1,320 @@
+---
+# You can override vars by using host or group vars
+
+###########
+# GENERAL #
+###########
+
+fetch_directory: fetch/
+
+###########
+# INSTALL #
+###########
+
+mon_group_name: mons
+osd_group_name: osds
+rgw_group_name: rgws
+mds_group_name: mdss
+restapi_group_name: restapis
+
+# If check_firewall is true, then ansible will try to determine if the
+# Ceph ports are blocked by a firewall. If the machine running ansible
+# cannot reach the Ceph ports for some other reason, you may need or
+# want to set this to False to skip those checks.
+check_firewall: True
+
+# This variable determines if ceph packages can be updated.  If False, the
+# package resources will use "state=present".  If True, they will use
+# "state=latest".
+upgrade_ceph_packages: False
+
+# /!\ EITHER ACTIVE ceph_stable OR ceph_stable_ice OR ceph_dev /!\
+
+debian_package_dependencies:
+  - python-pycurl
+  - hdparm
+  - ntp
+
+redhat_package_dependencies:
+  - python-pycurl
+  - hdparm
+  - yum-plugin-priorities.noarch
+  - epel-release
+  - ntp
+  - python-setuptools
+
+# Whether or not to install the ceph-test package.
+ceph_test: False
+
+## Configure package origin
+#
+ceph_origin: 'upstream' # or 'distro'
+# 'distro' means that no separate repo file will be added
+# you will get whatever version of Ceph is included in your Linux distro.
+#
+ceph_use_distro_backports: false # DEBIAN ONLY
+
+
+# STABLE
+########
+
+# COMMUNITY VERSION
+ceph_stable: false # use ceph stable branch
+ceph_stable_key: https://download.ceph.com/keys/release.asc
+ceph_stable_release: infernalis # ceph stable release
+ceph_stable_repo: "http://ceph.com/debian-{{ ceph_stable_release }}"
+
+###################
+# Stable Releases #
+###################
+ceph_stable_releases:
+  - dumpling
+  - emperor
+  - firefly
+  - giant
+  - hammer
+
+# Use the option below to specify your applicable package tree, eg. when using non-LTS Ubuntu versions
+# # for a list of available Debian distributions, visit http://ceph.com/debian-{{ ceph_stable_release }}/dists/
+# for more info read: https://github.com/ceph/ceph-ansible/issues/305
+#ceph_stable_distro_source:
+
+# This option is needed for _both_ stable and dev version, so please always fill the right version
+# # for supported distros, see http://ceph.com/rpm-{{ ceph_stable_release }}/
+ceph_stable_redhat_distro: el7
+
+# ENTERPRISE VERSION ICE (old, prior to the 1.3)
+ceph_stable_ice: false # use Inktank Ceph Enterprise
+#ceph_stable_ice_url: https://download.inktank.com/enterprise
+# these two variables are used in `with_items` and starting
+# with ansible 2.0 these need to be defined even if the tasks's
+# `when` clause doesn't evaluate to true
+ceph_stable_ice_temp_path: /opt/ICE/ceph-repo/
+ceph_stable_ice_kmod: 3.10-0.1.20140702gitdc9ac62.el7.x86_64
+#ceph_stable_ice_distro: rhel7 # Please check the download website for the supported versions.
+#ceph_stable_ice_version: 1.2.2
+#ceph_stable_ice_kmod_version: 1.2
+#ceph_stable_ice_user: # htaccess user
+#ceph_stable_ice_password: # htaccess password
+
+# ENTERPRISE VERSION RED HAT STORAGE (from 1.3)
+# This version is only supported on RHEL 7.1
+# As of RHEL 7.1, libceph.ko and rbd.ko are now included in Red Hat's kernel
+# packages natively. The RHEL 7.1 kernel packages are more stable and secure than
+# using these 3rd-party kmods with RHEL 7.0. Please update your systems to RHEL
+# 7.1 or later if you want to use the kernel RBD client.
+#
+# The CephFS kernel client is undergoing rapid development upstream, and we do
+# not recommend running the CephFS kernel module on RHEL 7's 3.10 kernel at this
+# time. Please use ELRepo's latest upstream 4.x kernels if you want to run CephFS
+# on RHEL 7.
+#
+ceph_stable_rh_storage: false
+ceph_stable_rh_storage_cdn_install: false # assumes all the nodes can connect to cdn.redhat.com
+ceph_stable_rh_storage_iso_install: false # usually used when nodes don't have access to cdn.redhat.com
+#ceph_stable_rh_storage_iso_path:
+ceph_stable_rh_storage_mount_path: /tmp/rh-storage-mount
+ceph_stable_rh_storage_repository_path: /tmp/rh-storage-repo # where to copy iso's content
+
+# DEV
+# ###
+
+ceph_dev: false # use ceph development branch
+ceph_dev_key: https://download.ceph.com/keys/autobuild.asc
+ceph_dev_branch: master # development branch you would like to use e.g: master, wip-hack
+
+# supported distros are centos6, centos7, fc17, fc18, fc19, fc20, fedora17, fedora18,
+# fedora19, fedora20, opensuse12, sles0. (see http://gitbuilder.ceph.com/).
+# For rhel, please pay attention to the versions: 'rhel6 3' or 'rhel 4', the fullname is _very_ important.
+ceph_dev_redhat_distro: centos7
+
+
+######################
+# CEPH CONFIGURATION #
+######################
+
+## Ceph options
+#
+# Each cluster requires a unique, consistent filesystem ID. By
+# default, the playbook generates one for you and stores it in a file
+# in `fetch_directory`. If you want to customize how the fsid is
+# generated, you may find it useful to disable fsid generation to
+# avoid cluttering up your ansible repo. If you set `generate_fsid` to
+# false, you *must* generate `fsid` in another way.
+fsid: "{{ cluster_uuid.stdout }}"
+generate_fsid: true
+
+cephx: true
+cephx_require_signatures: true # Kernel RBD does NOT support signatures for Kernels < 3.18!
+cephx_cluster_require_signatures: true
+cephx_service_require_signatures: false
+max_open_files: 131072
+disable_in_memory_logs: true # set this to false while enabling the options below
+
+# Debug logs
+enable_debug_global: false
+debug_global_level: 20
+enable_debug_mon: false
+debug_mon_level: 20
+enable_debug_osd: false
+debug_osd_level: 20
+enable_debug_mds: false
+debug_mds_level: 20
+
+## Client options
+#
+rbd_cache: "true"
+rbd_cache_writethrough_until_flush: "true"
+rbd_concurrent_management_ops: 20
+rbd_client_directories: false # this will create rbd_client_log_path and rbd_client_admin_socket_path directories with proper permissions, this WON'T work if libvirt and kvm are installed
+rbd_client_log_file: /var/log/rbd-clients/qemu-guest-$pid.log # must be writable by QEMU and allowed by SELinux or AppArmor
+rbd_client_log_path: /var/log/rbd-clients/
+rbd_client_admin_socket_path: /var/run/ceph/rbd-clients # must be writable by QEMU and allowed by SELinux or AppArmor
+rbd_default_features: 3
+rbd_default_map_options: rw
+rbd_default_format: 2
+
+## Monitor options
+#
+monitor_interface: interface
+mon_use_fqdn: false # if set to true, the MON name used will be the fqdn in the ceph.conf
+mon_osd_down_out_interval: 600
+mon_osd_min_down_reporters: 7 # number of OSDs per host + 1
+mon_clock_drift_allowed: .15
+mon_clock_drift_warn_backoff: 30
+mon_osd_full_ratio: .95
+mon_osd_nearfull_ratio: .85
+mon_osd_report_timeout: 300
+mon_pg_warn_max_per_osd: 0 # disable complains about low pgs numbers per osd
+mon_osd_allow_primary_affinity: "true"
+mon_pg_warn_max_object_skew: 10 # set to 20 or higher to disable complaints about number of PGs being too low if some pools have very few objects bringing down the average number of objects per pool. This happens when running RadosGW. Ceph default is 10
+
+## OSD options
+#
+journal_size: 0
+pool_default_pg_num: 128
+pool_default_pgp_num: 128
+pool_default_size: 2
+pool_default_min_size: 1
+public_network: 0.0.0.0/0
+cluster_network: "{{ public_network }}"
+osd_mkfs_type: xfs
+osd_mkfs_options_xfs: -f -i size=2048
+osd_mount_options_xfs: noatime,largeio,inode64,swalloc
+osd_mon_heartbeat_interval: 30
+
+# CRUSH
+pool_default_crush_rule: 0
+osd_crush_update_on_start: "true"
+
+# Object backend
+osd_objectstore: filestore
+
+# xattrs. by default, 'filestore xattr use omap' is set to 'true' if
+# 'osd_mkfs_type' is set to 'ext4'; otherwise it isn't set. This can
+# be set to 'true' or 'false' to explicitly override those
+# defaults. Leave it 'null' to use the default for your chosen mkfs
+# type.
+filestore_xattr_use_omap: null
+
+# Performance tuning
+filestore_merge_threshold: 40
+filestore_split_multiple: 8
+osd_op_threads: 8
+filestore_op_threads: 8
+filestore_max_sync_interval: 5
+osd_max_scrubs: 1
+# The OSD scrub window can be configured starting hammer only!
+# Default settings will define a 24h window for the scrubbing operation
+# The window is predefined from 0am midnight to midnight the next day.
+osd_scrub_begin_hour: 0
+osd_scrub_end_hour: 24
+
+# Recovery tuning
+osd_recovery_max_active: 5
+osd_max_backfills: 2
+osd_recovery_op_priority: 2
+osd_recovery_max_chunk: 1048576
+osd_recovery_threads: 1
+
+# Deep scrub
+osd_scrub_sleep: .1
+osd_disk_thread_ioprio_class: idle
+osd_disk_thread_ioprio_priority: 0
+osd_scrub_chunk_max: 5
+osd_deep_scrub_stride: 1048576
+
+## MDS options
+#
+mds_use_fqdn: false # if set to true, the MDS name used will be the fqdn in the ceph.conf
+
+## Rados Gateway options
+#
+#radosgw_dns_name: your.subdomain.tld # subdomains used by radosgw. See http://ceph.com/docs/master/radosgw/config/#enabling-subdomain-s3-calls
+radosgw_frontend: civetweb # supported options are 'apache' or 'civetweb', also edit roles/ceph-rgw/defaults/main.yml
+radosgw_civetweb_port: 8080 # on Infernalis we get: "set_ports_option: cannot bind to 80: 13 (Permission denied)"
+radosgw_keystone: false # activate OpenStack Keystone options full detail here: http://ceph.com/docs/master/radosgw/keystone/
+#radosgw_keystone_url: # url:admin_port ie: http://192.168.0.1:35357
+radosgw_keystone_admin_token: password
+radosgw_keystone_accepted_roles: Member, _member_, admin
+radosgw_keystone_token_cache_size: 10000
+radosgw_keystone_revocation_internal: 900
+radosgw_s3_auth_use_keystone: "true"
+radosgw_nss_db_path: /var/lib/ceph/radosgw/ceph-radosgw.{{ ansible_hostname }}/nss
+# Toggle 100-continue support for Apache and FastCGI
+# WARNING: Changing this value will cause an outage of Apache while it is reinstalled on RGW nodes
+http_100_continue: false
+# Rados Gateway options
+redhat_distro_ceph_extra: centos6.4 # supported distros are centos6.3, centos6.4, centos6, fedora18, fedora19, opensuse12.2, rhel6.3, rhel6.4, rhel6.5, rhel6, sles11sp2
+email_address: foo@bar.com
+
+## REST API options
+#
+restapi_interface: "{{ monitor_interface }}"
+restapi_port: 5000
+restapi_base_url: /api/v0.1
+restapi_log_level: warning # available level are: critical, error, warning, info, debug
+
+## Testing mode
+# enable this mode _only_ when you have a single node
+# if you don't want it keep the option commented
+#common_single_host_mode: true
+
+
+###################
+# CONFIG OVERRIDE #
+###################
+
+# Ceph configuration file override.
+# This allows you to specify more configuration options
+# using an INI style format.
+# The following sections are supported: [global], [mon], [osd], [mds], [rgw]
+#
+# Example:
+# ceph_conf_overrides:
+#   global:
+#     foo: 1234
+#     bar: 5678
+#
+ceph_conf_overrides: {}
+
+
+#############
+# OS TUNING #
+#############
+
+disable_transparent_hugepage: true
+disable_swap: true
+os_tuning_params:
+  - { name: kernel.pid_max, value: 4194303 }
+  - { name: fs.file-max, value: 26234859 }
+  - { name: vm.zone_reclaim_mode, value: 0 }
+  - { name: vm.vfs_cache_pressure, value: 50 }
+  - { name: vm.min_free_kbytes, value: "{{ vm_min_free_kbytes }}" }
+
+
+##########
+# DOCKER #
+##########
+
+docker: false

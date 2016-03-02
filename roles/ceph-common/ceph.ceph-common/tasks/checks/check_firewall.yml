@@ -1,0 +1,102 @@
+---
+- name: check if nmap is installed
+  command: "command -v nmap"
+  changed_when: false
+  failed_when: false
+  register: nmapexist
+  when: check_firewall
+
+- name: inform that nmap is not present
+  debug:
+      msg: "nmap is not installed, can not test if ceph ports are allowed :("
+  when:
+    check_firewall and
+    nmapexist.rc != 0
+
+- name: check if monitor port is not filtered
+  local_action: shell set -o pipefail && nmap -p 6789 {{ item }} {{ hostvars[item]['ansible_' + monitor_interface]['ipv4']['address'] }} | grep -sqo filtered
+  changed_when: false
+  failed_when: false
+  with_items: groups.{{ mon_group_name }}
+  register: monportstate
+  when:
+    check_firewall and
+    mon_group_name in group_names and
+    nmapexist.rc == 0
+
+- name: fail if monitor port is filtered
+  fail:
+      msg: "Please allow port 6789 on your firewall"
+  with_items: monportstate.results
+  when:
+    check_firewall and
+    item.rc == 0 and
+    mon_group_name is defined and
+    mon_group_name in group_names and
+    nmapexist.rc == 0
+
+- name: check if osd and mds range is not filtered
+  local_action: shell set -o pipefail && nmap -p 6800-7300 {{ item }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} | grep -sqo filtered
+  changed_when: false
+  failed_when: false
+  with_items: groups.{{ osd_group_name }}
+  register: osdrangestate
+  when:
+    check_firewall and
+    osd_group_name in group_names and
+    nmapexist.rc == 0
+
+- name: fail if osd and mds range is filtered (osd hosts)
+  fail:
+      msg: "Please allow range from 6800 to 7300 on your firewall"
+  with_items: osdrangestate.results
+  when:
+    check_firewall and
+    item.rc == 0 and
+    osd_group_name is defined and
+    osd_group_name in group_names and
+    nmapexist.rc == 0
+
+- name: check if osd and mds range is not filtered
+  local_action: shell set -o pipefail && nmap -p 6800-7300 {{ item }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} | grep -sqo filtered
+  changed_when: false
+  failed_when: false
+  with_items: groups.{{ mds_group_name }}
+  register: mdsrangestate
+  when:
+    check_firewall and
+    mds_group_name in group_names and
+    nmapexist.rc == 0
+
+- name: fail if osd and mds range is filtered (mds hosts)
+  fail:
+      msg: "Please allow range from 6800 to 7300 on your firewall"
+  with_items: mdsrangestate.results
+  when:
+    check_firewall and
+    item.rc == 0 and
+    mds_group_name is defined and
+    mds_group_name in group_names and
+    nmapexist.rc == 0
+
+- name: check if rados gateway port is not filtered
+  local_action: shell set -o pipefail && nmap -p {{ radosgw_civetweb_port }} {{ item }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} | grep -sqo filtered
+  changed_when: false
+  failed_when: false
+  with_items: groups.rgws
+  register: rgwportstate
+  when:
+    check_firewall and
+    rgw_group_name in group_names and
+    nmapexist.rc == 0
+
+- name: fail if rados gateway port is filtered
+  fail:
+      msg: "Please allow port {{ radosgw_civetweb_port }} on your firewall"
+  with_items: rgwportstate.results
+  when:
+    check_firewall and
+    item.rc == 0 and
+    rgw_group_name is defined and
+    rgw_group_name in group_names and
+    nmapexist.rc == 0

@@ -1,0 +1,56 @@
+---
+- name: add ceph extra
+  template:
+    src: ../../templates/ceph-extra.repo
+    dest: /etc/yum.repos.d
+    owner: root
+    group: root
+
+- name: add special fastcgi repository key
+  rpm_key:
+    key: http://dag.wieers.com/rpm/packages/RPM-GPG-KEY.dag.txt
+
+- name: add special fastcgi repository
+  command: rpm -ivh http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
+  changed_when: false
+
+- name: install apache and fastcgi
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - httpd
+    - mod_fastcgi
+    - mod_fcgid
+  when: ansible_pkg_mgr == "yum"
+
+- name: install apache and fastcgi
+  dnf:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - httpd
+    - mod_fastcgi
+    - mod_fcgid
+  when: ansible_pkg_mgr == "dnf"
+
+- name: install rados gateway vhost
+  template:
+    src: ../../templates/rgw.conf
+    dest: /etc/httpd/conf.d/rgw.conf
+    owner: root
+    group: root
+
+- name: install s3gw.fcgi script
+  template:
+    src: ../../templates/s3gw.fcgi.j2
+    dest: /var/www/s3gw.fcgi
+    mode: 0555
+    owner: root
+    group: root
+
+- name: disable default site
+  shell: sed -i "s/^[^+#]/#/g" /etc/httpd/conf.d/welcome.conf
+  changed_when: false
+  notify:
+    - restart apache2
