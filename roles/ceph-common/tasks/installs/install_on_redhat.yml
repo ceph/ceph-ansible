@@ -71,6 +71,22 @@
     osd_group_name in group_names and
     ansible_pkg_mgr == "dnf"
 
+- name: install ceph-test
+  yum:
+    name: ceph-test
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    ceph_test and
+    ansible_pkg_mgr == "yum"
+
+- name: install ceph-test
+  dnf:
+    name: ceph-test
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    ceph_test and
+    ansible_pkg_mgr == "dnf"
+
 - name: install Inktank Ceph Enterprise RBD Kernel modules
   yum:
     name: "{{ item }}"
