@@ -1,0 +1,206 @@
+#jinja2: trim_blocks: "true", lstrip_blocks: "true"
+# {{ ansible_managed }}
+
+[global]
+{% if cephx %}
+auth cluster required = cephx
+auth service required = cephx
+auth client required = cephx
+cephx require signatures = {{ cephx_require_signatures }} # Kernel RBD does NOT support signatures!
+cephx cluster require signatures = {{ cephx_cluster_require_signatures }}
+cephx service require signatures = {{ cephx_service_require_signatures }}
+{% else %}
+auth cluster required = none
+auth service required = none
+auth client required = none
+auth supported = none
+{% endif %}
+fsid = {{ fsid }}
+max open files = {{ max_open_files }}
+osd pool default pg num = {{ pool_default_pg_num }}
+osd pool default pgp num = {{ pool_default_pgp_num }}
+osd pool default size = {{ pool_default_size }}
+osd pool default min size = {{ pool_default_min_size }}
+osd pool default crush rule = {{ pool_default_crush_rule }}
+{% if common_single_host_mode is defined %}
+osd crush chooseleaf type = 0
+{% endif %}
+{% if disable_in_memory_logs %}
+# Disable in-memory logs
+debug_lockdep = 0/0
+debug_context = 0/0
+debug_crush = 0/0
+debug_buffer = 0/0
+debug_timer = 0/0
+debug_filer = 0/0
+debug_objecter = 0/0
+debug_rados = 0/0
+debug_rbd = 0/0
+debug_journaler = 0/0
+debug_objectcatcher = 0/0
+debug_client = 0/0
+debug_osd = 0/0
+debug_optracker = 0/0
+debug_objclass = 0/0
+debug_filestore = 0/0
+debug_journal = 0/0
+debug_ms = 0/0
+debug_monc = 0/0
+debug_tp = 0/0
+debug_auth = 0/0
+debug_finisher = 0/0
+debug_heartbeatmap = 0/0
+debug_perfcounter = 0/0
+debug_asok = 0/0
+debug_throttle = 0/0
+debug_mon = 0/0
+debug_paxos = 0/0
+debug_rgw = 0/0
+{% endif %}
+{% if enable_debug_global %}
+debug ms = {{ debug_global_level }}
+{% endif %}
+
+[client]
+rbd cache = {{ rbd_cache }}
+rbd cache writethrough until flush = true
+rbd concurrent management ops = {{ rbd_concurrent_management_ops }}
+admin socket = {{ rbd_client_admin_socket_path }}/$cluster-$type.$id.$pid.$cctid.asok # must be writable by QEMU and allowed by SELinux or AppArmor
+log file = {{ rbd_client_log_file }} # must be writable by QEMU and allowed by SELinux or AppArmor
+rbd default map options = {{ rbd_default_map_options }}
+rbd default features = {{ rbd_default_features }} # sum features digits
+rbd default format = {{ rbd_default_format }}
+
+[mon]
+mon osd down out interval = {{ mon_osd_down_out_interval }}
+mon osd min down reporters = {{ mon_osd_min_down_reporters }}
+mon clock drift allowed = {{ mon_clock_drift_allowed }}
+mon clock drift warn backoff = {{ mon_clock_drift_warn_backoff }}
+mon osd full ratio = {{ mon_osd_full_ratio }}
+mon osd nearfull ratio = {{ mon_osd_nearfull_ratio }}
+mon osd report timeout = {{ mon_osd_report_timeout }}
+mon pg warn max per osd = {{ mon_pg_warn_max_per_osd }}
+mon osd allow primary affinity = {{ mon_osd_allow_primary_affinity }}
+mon pg warn max object skew = {{ mon_pg_warn_max_object_skew }}
+
+{% if enable_debug_mon %}
+debug mon = {{ debug_mon_level }}
+debug paxos = {{ debug_mon_level }}
+debug auth = {{ debug_mon_level }}
+{% endif %}
+{% for host in groups[mon_group_name] %}
+{% if hostvars[host]['ansible_fqdn'] is defined and mon_use_fqdn %}
+[mon.{{ hostvars[host]['ansible_fqdn'] }}]
+host = {{ hostvars[host]['ansible_fqdn'] }}
+mon addr = {{ hostvars[host]['ansible_' + (hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface) ]['ipv4']['address'] }}
+{% else %}
+[mon.{{ hostvars[host]['ansible_hostname'] }}]
+host = {{ hostvars[host]['ansible_hostname'] }}
+mon addr = {{ hostvars[host]['ansible_' + (hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface) ]['ipv4']['address'] }}
+{% endif %}
+{% endfor %}
+
+[osd]
+osd mkfs type = {{ osd_mkfs_type }}
+osd mkfs options xfs = {{ osd_mkfs_options_xfs }}
+osd mount options xfs = {{ osd_mount_options_xfs }}
+osd journal size = {{ journal_size }}
+{% if cluster_network is defined %}
+cluster_network = {{ cluster_network }}
+{% endif %}
+{% if public_network is defined %}
+public_network = {{ public_network }}
+{% endif %}
+osd mon heartbeat interval = {{ osd_mon_heartbeat_interval }}
+# Performance tuning
+filestore merge threshold = {{ filestore_merge_threshold }}
+filestore split multiple = {{ filestore_split_multiple }}
+osd op threads = {{ osd_op_threads }}
+filestore op threads = {{ filestore_op_threads }}
+filestore max sync interval = {{ filestore_max_sync_interval }}
+{% if filestore_xattr_use_omap != None %}
+filestore xattr use omap = {{ filestore_xattr_use_omap }}
+{% elif osd_mkfs_type == "ext4" %}
+filestore xattr use omap = true
+{# else, default is false #}
+{% endif %}
+osd max scrubs = {{ osd_max_scrubs }}
+{% if ceph_stable_release not in ['argonaut','bobtail','cuttlefish','dumpling','emperor','firefly','giant'] %}
+osd scrub begin hour = {{ osd_scrub_begin_hour }}
+osd scrub end hour = {{ osd_scrub_end_hour }}
+{% endif %}
+# Recovery tuning
+osd recovery max active = {{ osd_recovery_max_active }}
+osd max backfills = {{ osd_max_backfills }}
+osd recovery op priority = {{ osd_recovery_op_priority }}
+osd recovery max chunk = {{ osd_recovery_max_chunk }}
+osd recovery threads = {{ osd_recovery_threads }}
+osd objectstore = {{ osd_objectstore }}
+osd crush update on start = {{ osd_crush_update_on_start }}
+{% if enable_debug_osd %}
+debug osd = {{ debug_osd_level }}
+debug filestore = {{ debug_osd_level }}
+debug journal = {{ debug_osd_level }}
+debug monc = {{ debug_osd_level }}
+{% endif %}
+# Deep scrub impact
+osd scrub sleep = {{ osd_scrub_sleep }}
+osd disk thread ioprio class = {{ osd_disk_thread_ioprio_class }}
+osd disk thread ioprio priority = {{ osd_disk_thread_ioprio_priority }}
+osd scrub chunk max = {{ osd_scrub_chunk_max }}
+osd deep scrub stride = {{ osd_deep_scrub_stride }}
+
+{% if groups[mds_group_name] is defined %}
+{% for host in groups[mds_group_name] %}
+{% if hostvars[host]['ansible_fqdn'] is defined and mds_use_fqdn %}
+[mds.{{ hostvars[host]['ansible_fqdn'] }}]
+host = {{ hostvars[host]['ansible_fqdn'] }}
+{% else %}
+[mds.{{ hostvars[host]['ansible_hostname'] }}]
+host = {{ hostvars[host]['ansible_hostname'] }}
+{% endif %}
+{% endfor %}
+{% if enable_debug_mds %}
+debug mds = {{ debug_mds_level }}
+debug mds balancer = {{ debug_mds_level }}
+debug mds log = {{ debug_mds_level }}
+debug mds migrator = {{ debug_mds_level }}
+{% endif %}
+{% endif %}
+
+{% if groups[rgw_group_name] is defined %}
+{% for host in groups[rgw_group_name] %}
+{% if hostvars[host]['ansible_hostname'] is defined %}
+[client.rgw.{{ hostvars[host]['ansible_hostname'] }}]
+{% if radosgw_dns_name is defined %}
+rgw dns name = {{ radosgw_dns_name }}
+{% endif %}
+host = {{ hostvars[host]['ansible_hostname'] }}
+keyring = /var/lib/ceph/radosgw/ceph-rgw.{{ hostvars[host]['ansible_hostname'] }}/keyring
+rgw socket path = /tmp/radosgw-{{ hostvars[host]['ansible_hostname'] }}.sock
+log file = /var/log/ceph/radosgw-{{ hostvars[host]['ansible_hostname'] }}.log
+rgw data = /var/lib/ceph/radosgw/ceph-rgw.{{ hostvars[host]['ansible_hostname'] }}
+{% if radosgw_frontend  == 'civetweb' %}
+rgw frontends = civetweb port={{ radosgw_civetweb_port }}
+{% endif %}
+{% if radosgw_keystone %}
+rgw keystone url = {{ radosgw_keystone_url }}
+rgw keystone admin token = {{ radosgw_keystone_admin_token }}
+rgw keystone accepted roles = {{ radosgw_keystone_accepted_roles }}
+rgw keystone token cache size = {{ radosgw_keystone_token_cache_size }}
+rgw keystone revocation interval = {{ radosgw_keystone_revocation_internal }}
+rgw s3 auth use keystone = {{ radosgw_s3_auth_use_keystone }}
+nss db path = {{ radosgw_nss_db_path }}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if groups[restapi_group_name] is defined %}
+[client.restapi]
+public addr = {{ hostvars[inventory_hostname]['ansible_' + restapi_interface]['ipv4']['address'] }}:{{ restapi_port }}
+restapi base url = {{ restapi_base_url }}
+restapi log level = {{ restapi_log_level }}
+keyring = /var/lib/ceph/restapi/ceph-restapi/keyring
+log file = /var/log/ceph/ceph-restapi.log
+{% endif %}

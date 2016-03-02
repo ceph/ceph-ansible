@@ -1,0 +1,29 @@
+---
+- name: fail on unsupported system
+  fail:
+    msg: "System not supported {{ ansible_system }}"
+  when: "'{{ ansible_system }}' not in ['Linux']"
+
+- name: fail on unsupported architecture
+  fail:
+    msg: "Architecture not supported {{ ansible_architecture }}"
+  when: "'{{ ansible_architecture }}' not in ['x86_64']"
+
+- name: fail on unsupported distribution
+  fail:
+    msg: "Distribution not supported {{ ansible_os_family }}"
+  when: "'{{ ansible_os_family }}' not in ['Debian', 'RedHat']"
+
+- name: fail on unsupported distribution for red hat storage
+  fail:
+    msg: "Distribution not supported {{ ansible_distribution_version }} by Red Hat Storage, only RHEL 7.1"
+  when:
+    ceph_stable_rh_storage and
+    {{ ansible_distribution_version | version_compare('7.1', '<') }}
+
+- name: fail on unsupported ansible version
+  fail:
+    msg: "Ansible version must be >= 1.9, please update!"
+  when:
+    ansible_version.major|int == 1 and
+    ansible_version.minor|int < 9

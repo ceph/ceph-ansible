@@ -1,0 +1,40 @@
+---
+
+- name: install the ceph repository stable key
+  apt_key:
+    data: "{{ lookup('file', role_path+'/files/cephstable.asc') }}"
+    state: present
+  when: ceph_stable
+
+- name: install the ceph development repository key
+  apt_key:
+    data: "{{ lookup('file', role_path+'/files/cephdev.asc') }}"
+    state: present
+  when: ceph_dev
+
+- name: install intank ceph enterprise repository key
+  apt_key:
+    data: "{{ lookup('file', role_path+'/files/cephstableice.asc') }}"
+    state: present
+  when: ceph_stable_ice
+
+- name: add ceph stable repository
+  apt_repository:
+    repo: "deb {{ ceph_stable_repo }} {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
+    state: present
+  changed_when: false
+  when: ceph_stable
+
+- name: add ceph development repository
+  apt_repository:
+    repo: "deb http://gitbuilder.ceph.com/ceph-deb-{{ ansible_lsb.codename }}-x86_64-basic/ref/{{ ceph_dev_branch }} {{ ansible_lsb.codename }} main"
+    state: present
+  changed_when: false
+  when: ceph_dev
+
+- name: add inktank ceph enterprise repository
+  apt_repository:
+    repo: "deb file://{{ ceph_stable_ice_temp_path }} {{ ansible_lsb.codename }} main"
+    state: present
+  changed_when: false
+  when: ceph_stable_ice
