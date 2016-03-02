@@ -1,22 +1,22 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
 basedir=$(dirname "$0")
 
 for role in "$basedir"/roles/ceph-*; do
-    rolename=$(basename "$role")
-    if [[ $rolename == "ceph-common" ]]; then
-        output="all.sample"
-    elif [[ $rolename == "ceph-agent" ]]; then
-        output="agent.sample"
-    elif [[ $rolename == "ceph-fetch-keys" ]]; then
-        continue
-    else
-        output="${rolename:5}s.sample"
-    fi
+  rolename=$(basename "$role")
+  if [[ $rolename == "ceph-common" ]]; then
+      output="all.sample"
+  elif [[ $rolename == "ceph-agent" ]]; then
+      output="agent.sample"
+  elif [[ $rolename == "ceph-fetch-keys" ]]; then
+      continue
+  else
+      output="${rolename:5}s.sample"
+  fi
 
-    cat <<EOF > "$basedir"/group_vars/"$output"
+  cat <<EOF > "$basedir"/group_vars/"$output"
 ---
 # Variables here are applicable to all host groups NOT roles
 
@@ -27,12 +27,21 @@ for role in "$basedir"/roles/ceph-*; do
 dummy:
 
 EOF
-    defaults="$role"/defaults/main.yml
-    if [[ ! -f $defaults ]]; then
-        continue
-    fi
+  defaults="$role"/defaults/main.yml
+  if [[ ! -f $defaults ]]; then
+      continue
+  fi
 
+  if [ "$(uname)" == "Darwin" ]; then
+  sed '/^---/d; s/^\([A-Za-z[:space:]]\)/#\1/' \
+        "$defaults" >> "$basedir"/group_vars/"$output"
+    echo >> "$basedir"/group_vars/"$output"
+  elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     sed '/^---/d; s/^\([A-Za-z[:space:]].\+\)/#\1/' \
         "$defaults" >> "$basedir"/group_vars/"$output"
     echo >> "$basedir"/group_vars/"$output"
+  else
+    echo "Unsupported platform"
+    exit 1
+  fi
 done
