@@ -4,14 +4,27 @@
     name: "{{ item }}"
     state: present
   with_items: redhat_package_dependencies
-  when: ansible_pkg_mgr == "yum"
+  when:
+    ansible_distribution == "RedHat" and
+    ansible_pkg_mgr == "yum"
+
+- name: install dependencies
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items: centos_package_dependencies
+  when:
+    ansible_distribution == "CentOS" and
+    ansible_pkg_mgr == "yum"
 
 - name: install dependencies
   dnf:
     name: "{{ item }}"
     state: present
-  with_items: redhat_package_dependencies
-  when: ansible_pkg_mgr == "dnf"
+  with_items: centos_package_dependencies
+  when:
+    ansible_distribution == "CentOS" and
+    ansible_pkg_mgr == "dnf"
 
 - name: configure ceph yum repository
   include: redhat_ceph_repository.yml
