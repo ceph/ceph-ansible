@@ -93,7 +93,7 @@ debug auth = {{ debug_mon_level }}
 [mon.{{ hostvars[host]['ansible_fqdn'] }}]
 host = {{ hostvars[host]['ansible_fqdn'] }}
 mon addr = {{ hostvars[host]['ansible_' + (hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface) ]['ipv4']['address'] }}
-{% else %}
+{% elif hostvars[host]['ansible_hostname'] is defined %}
 [mon.{{ hostvars[host]['ansible_hostname'] }}]
 host = {{ hostvars[host]['ansible_hostname'] }}
 mon addr = {{ hostvars[host]['ansible_' + (hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface) ]['ipv4']['address'] }}
@@ -155,17 +155,17 @@ osd deep scrub stride = {{ osd_deep_scrub_stride }}
 {% if hostvars[host]['ansible_fqdn'] is defined and mds_use_fqdn %}
 [mds.{{ hostvars[host]['ansible_fqdn'] }}]
 host = {{ hostvars[host]['ansible_fqdn'] }}
-{% else %}
+{% elif hostvars[host]['ansible_hostname'] is defined %}
 [mds.{{ hostvars[host]['ansible_hostname'] }}]
 host = {{ hostvars[host]['ansible_hostname'] }}
 {% endif %}
 {% endfor %}
+{% endif %}
 {% if enable_debug_mds %}
 debug mds = {{ debug_mds_level }}
 debug mds balancer = {{ debug_mds_level }}
 debug mds log = {{ debug_mds_level }}
 debug mds migrator = {{ debug_mds_level }}
-{% endif %}
 {% endif %}
 
 {% if groups[rgw_group_name] is defined %}
