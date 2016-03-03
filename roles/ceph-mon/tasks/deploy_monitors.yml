@@ -14,15 +14,23 @@
   become: false
   when: cephx
 
+- set_fact:
+    monitor_name: "{{ ansible_hostname }}"
+  when: not mon_use_fqdn
+
+- set_fact:
+    monitor_name: "{{ ansible_fqdn }}"
+  when: mon_use_fqdn
+
 - name: create monitor initial keyring
-  command: ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} --create-keyring --name=mon. --add-key={{ monitor_secret }} --cap mon 'allow *'
+  command: ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }} --create-keyring --name=mon. --add-key={{ monitor_secret }} --cap mon 'allow *'
   args:
-    creates: /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
+    creates: /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
   when: cephx
 
 - name: set initial monitor key permissions
   file:
-    path: /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
+    path: /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
     mode: "{{ key_mode }}"
     owner: "{{ key_owner }}"
     group: "{{ key_group }}"
@@ -30,40 +38,40 @@
 
 - name: create monitor directory
   file:
-    path: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}
+    path: /var/lib/ceph/mon/ceph-{{ monitor_name }}
     state: directory
     owner: "{{ dir_owner }}"
     group: "{{ dir_group }}"
     mode: "{{ dir_mode }}"
 
 - name: ceph monitor mkfs with keyring (for or after infernalis release)
-  command: ceph-mon --setuser ceph --setgroup ceph --mkfs -i {{ ansible_hostname }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
+  command: ceph-mon --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
   args:
-    creates: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/keyring
+    creates: /var/lib/ceph/mon/ceph-{{ monitor_name }}/keyring
   when:
     cephx and
     is_ceph_infernalis
 
 - name: ceph monitor mkfs without keyring (for or after infernalis release)
-  command: ceph-mon --setuser ceph --setgroup ceph --mkfs -i {{ ansible_hostname }} --fsid {{ fsid }}
+  command: ceph-mon --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }}
   args:
-    creates: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/store.db
+    creates: /var/lib/ceph/mon/ceph-{{ monitor_name }}/store.db
   when:
     not cephx and
     is_ceph_infernalis
 
 - name: ceph monitor mkfs with keyring (before infernalis release)
-  command: ceph-mon --mkfs -i {{ ansible_hostname }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
+  command: ceph-mon --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
   args:
-    creates: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/keyring
+    creates: /var/lib/ceph/mon/ceph-{{ monitor_name }}/keyring
   when:
     cephx and
     not is_ceph_infernalis
 
 - name: ceph monitor mkfs without keyring (before infernalis release)
-  command: ceph-mon --mkfs -i {{ ansible_hostname }} --fsid {{ fsid }}
+  command: ceph-mon --mkfs -i {{ monitor_name }} --fsid {{ fsid }}
   args:
-    creates: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/store.db
+    creates: /var/lib/ceph/mon/ceph-{{ monitor_name }}/store.db
   when:
     not cephx and
     not is_ceph_infernalis

@@ -1,4 +1,12 @@
 ---
+- set_fact:
+    mds_name: "{{ ansible_hostname }}"
+  when: not mds_use_fqdn
+
+- set_fact:
+    mds_name: "{{ ansible_fqdn }}"
+  when: mds_use_fqdn
+
 - name: create bootstrap-mds directory
   file:
     path: /var/lib/ceph/bootstrap-mds/
@@ -23,22 +31,22 @@
 
 - name: create mds directory
   file:
-    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}
+    path: /var/lib/ceph/mds/ceph-{{ mds_name }}
     state: directory
     owner: "{{ dir_owner }}"
     group: "{{ dir_group }}"
     mode: "{{ dir_mode }}"
 
 - name: create mds keyring
-  command: ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.{{ ansible_hostname }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
+  command: ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.{{ mds_name }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/ceph-{{ mds_name }}/keyring
   args:
-    creates: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
+    creates: /var/lib/ceph/mds/ceph-{{ mds_name }}/keyring
   changed_when: false
   when: cephx
 
 - name: set mds key permissions
   file:
-    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
+    path: /var/lib/ceph/mds/ceph-{{ mds_name }}/keyring
     mode: "{{ key_mode }}"
     owner: "{{ key_owner }}"
     group: "{{ key_group }}"
@@ -46,7 +54,7 @@
 
 - name: activate metadata server with upstart
   file:
-    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
+    path: /var/lib/ceph/mds/ceph-{{ mds_name }}/{{ item }}
     state: touch
     owner: "{{ activate_file_owner }}"
     group: "{{ activate_file_group }}"
@@ -59,7 +67,7 @@
 
 - name: activate metadata server with sysvinit
   file:
-    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
+    path: /var/lib/ceph/mds/ceph-{{ mds_name }}/{{ item }}
     state: touch
     owner: "{{ activate_file_owner }}"
     group: "{{ activate_file_group }}"
@@ -73,7 +81,7 @@
 - name: enable systemd unit file for mds instance (for or after infernalis)
   file:
     src: /usr/lib/systemd/system/ceph-mds@.service
-    dest: /etc/systemd/system/multi-user.target.wants/ceph-mds@{{ ansible_hostname }}.service
+    dest: /etc/systemd/system/multi-user.target.wants/ceph-mds@{{ mds_name }}.service
     state: link
   changed_when: false
   failed_when: false
@@ -86,7 +94,7 @@
     name: ceph-mds
     state: started
     enabled: yes
-    args: "id={{ ansible_hostname }}"
+    args: "id={{ mds_name }}"
   changed_when: false
   when: ansible_distribution == "Ubuntu"
 
@@ -95,7 +103,7 @@
     name: ceph
     state: started
     enabled: yes
-    args: mds.{{ ansible_hostname }}
+    args: mds.{{ mds_name }}
   changed_when: false
   when:
     ansible_distribution != "Ubuntu" and
@@ -103,7 +111,7 @@
 
 - name: start and add that the metadata service to the init sequence (for or after infernalis)
   service:
-    name: ceph-mds@{{ ansible_hostname }}
+    name: ceph-mds@{{ mds_name }}
     state: started
     enabled: yes
   changed_when: false
