@@ -16,14 +16,16 @@
 - include: ./pre_requisites/prerequisite_rh_storage_iso_install.yml
   when:
     ceph_stable_rh_storage and
-    ceph_stable_rh_storage_iso_install
+    ceph_stable_rh_storage_iso_install and
+    ansible_os_family == "RedHat"
   tags:
     - package-install
 
 - include: ./pre_requisites/prerequisite_rh_storage_cdn_install.yml
   when:
     ceph_stable_rh_storage and
-    ceph_stable_rh_storage_cdn_install
+    ceph_stable_rh_storage_cdn_install and
+    ansible_os_family == "RedHat"
   tags:
     - package-install
 
@@ -33,7 +35,16 @@
     - package-install
 
 - include: ./installs/install_on_debian.yml
-  when: ansible_os_family == 'Debian'
+  when:
+    ansible_os_family == 'Debian' and
+    not ceph_stable_rh_storage
+  tags:
+    - package-install
+
+- include: ./installs/install_rh_storage_on_debian.yml
+  when:
+    ansible_os_family == 'Debian' and
+    ceph_stable_rh_storage
   tags:
     - package-install
 
@@ -65,6 +76,12 @@
 # does NOT work, so we keep this syntax styling...
 - set_fact:
     is_ceph_infernalis={{ (ceph_stable and ceph_stable_release not in ceph_stable_releases) or (ceph_dev) or (ceph_stable_rh_storage and (rh_storage_version.stdout | version_compare('0.94', '>'))) }}
+
+- set_fact:
+    is_ceph_infernalis=True
+  when:
+    ansible_os_family == 'Debian' and
+    ceph_stable_rh_storage
 
 - set_fact:
     dir_owner: ceph
