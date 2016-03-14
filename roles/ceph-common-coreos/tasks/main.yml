@@ -1,0 +1,16 @@
+---
+- name: check if there is python
+  raw: stat $HOME/.python
+  register: need_python
+  ignore_errors: true
+
+- include: install_pypy.yml
+  when: need_python | failed
+
+- name: check if there is pip
+  raw: stat $HOME/.pip
+  register: need_pip
+  ignore_errors: true
+
+- include: install_pip.yml
+  when: need_pip | failed and need_python | failed
