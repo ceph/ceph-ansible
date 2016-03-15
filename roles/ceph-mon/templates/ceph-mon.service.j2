@@ -3,12 +3,17 @@ Description=Ceph Monitor
 After=docker.service
 
 [Service]
-EnvironmentFile=/etc/environment
+EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/docker rm %i
 ExecStartPre=/usr/bin/mkdir -p /etc/ceph /var/lib/ceph/mon
-ExecStart=/usr/bin/docker run --rm --name %p --net=host \
+ExecStart=/usr/bin/docker run --rm --name %i --net=host \
+   {% if not mon_containerized_deployment_with_kv -%}
    -v /var/lib/ceph:/var/lib/ceph \
    -v /etc/ceph:/etc/ceph \
+   {% else -%}
+   -e KV_TYPE={{kv_type}} \
+   -e KV_IP={{kv_endpoint}}\
+   {% endif -%}
    --privileged \
    -e CEPH_DAEMON=MON \
    -e MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }} \
