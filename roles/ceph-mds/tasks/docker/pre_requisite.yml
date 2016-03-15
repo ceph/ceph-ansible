@@ -7,17 +7,48 @@
     - /etc/ceph/
     - /var/lib/ceph/bootstrap-mds
 
-- name: install pip on debian
+- name: install pip and docker on ubuntu
   apt:
-    name: pip
+    name: "{{ item }}"
     state: present
-  when: ansible_os_family == 'Debian'
+    update_cache: yes
+  with_items:
+    - python-pip
+    - docker
+    - docker.io
+  when: ansible_distribution == 'Ubuntu'
 
-- name: install pip on redhat
-  yum:
-    name: python-pip
+- name: install pip and docker on debian
+  apt:
+    name: "{{ item }}"
     state: present
-  when: ansible_os_family == 'RedHat'
+    update_cache: yes
+  with_items:
+    - python-pip
+    - docker-engine
+  when: ansible_distribution == 'Debian'
+
+- name: install pip and docker on redhat
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - python-pip
+    - docker-engine
+  when:
+    ansible_os_family == 'RedHat' and
+    ansible_pkg_mgr == "yum"
+
+- name: install pip and docker on redhat
+  dnf:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - python-pip
+    - docker-engine
+  when:
+    ansible_os_family == 'RedHat' and
+    ansible_pkg_mgr == "dnf"
 
 # NOTE (jimcurtis): need at least version 1.9.0 of six or we get:
 # re:NameError: global name 'DEFAULT_DOCKER_API_VERSION' is not defined

@@ -1,0 +1,34 @@
+---
+- name: add the red hat storage apt-key
+  apt_key:
+    url: "https://www.redhat.com/security/fd431d51.txt"
+    state: present
+
+- name: install dependencies
+  apt:
+    pkg: "{{ item }}"
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+  with_items: debian_package_dependencies
+
+- name: install red hat storage ceph mon
+  apt:
+    name: ceph-mon
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    mon_group_name in group_names
+
+- name: install red hat storage ceph osd
+  apt:
+    name: ceph-osd
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    osd_group_name in group_names
+
+- name: install ceph-test
+  apt:
+    name: ceph-test
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    ceph_test

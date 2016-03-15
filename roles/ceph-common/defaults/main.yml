@@ -7,20 +7,6 @@
 
 fetch_directory: fetch/
 
-###############
-# PERMISSIONS #
-###############
-
-# Permissions for /etc/ceph configuration directory
-conf_directory_owner: root
-conf_directory_group: root
-conf_directory_mode: 644
-
-# Permissions for /etc/ceph/ceph.conf configuration file
-conf_file_owner: root
-conf_file_group: root
-conf_file_mode: 644
-
 ###########
 # INSTALL #
 ###########
@@ -31,6 +17,17 @@ rgw_group_name: rgws
 mds_group_name: mdss
 restapi_group_name: restapis
 
+# If check_firewall is true, then ansible will try to determine if the
+# Ceph ports are blocked by a firewall. If the machine running ansible
+# cannot reach the Ceph ports for some other reason, you may need or
+# want to set this to False to skip those checks.
+check_firewall: True
+
+# This variable determines if ceph packages can be updated.  If False, the
+# package resources will use "state=present".  If True, they will use
+# "state=latest".
+upgrade_ceph_packages: False
+
 # /!\ EITHER ACTIVE ceph_stable OR ceph_stable_ice OR ceph_dev /!\
 
 debian_package_dependencies:
@@ -38,13 +35,22 @@ debian_package_dependencies:
   - hdparm
   - ntp
 
-redhat_package_dependencies:
+centos_package_dependencies:
   - python-pycurl
   - hdparm
   - yum-plugin-priorities.noarch
   - epel-release
   - ntp
   - python-setuptools
+
+redhat_package_dependencies:
+  - python-pycurl
+  - hdparm
+  - ntp
+  - python-setuptools
+
+# Whether or not to install the ceph-test package.
+ceph_test: False
 
 ## Configure package origin
 #
@@ -86,8 +92,11 @@ ceph_stable_redhat_distro: el7
 # ENTERPRISE VERSION ICE (old, prior to the 1.3)
 ceph_stable_ice: false # use Inktank Ceph Enterprise
 #ceph_stable_ice_url: https://download.inktank.com/enterprise
-#ceph_stable_ice_temp_path: /opt/ICE/ceph-repo/
-#ceph_stable_ice_kmod: 3.10-0.1.20140702gitdc9ac62.el7.x86_64
+# these two variables are used in `with_items` and starting
+# with ansible 2.0 these need to be defined even if the tasks's
+# `when` clause doesn't evaluate to true
+ceph_stable_ice_temp_path: /opt/ICE/ceph-repo/
+ceph_stable_ice_kmod: 3.10-0.1.20140702gitdc9ac62.el7.x86_64
 #ceph_stable_ice_distro: rhel7 # Please check the download website for the supported versions.
 #ceph_stable_ice_version: 1.2.2
 #ceph_stable_ice_kmod_version: 1.2
@@ -132,7 +141,15 @@ ceph_dev_redhat_distro: centos7
 
 ## Ceph options
 #
+# Each cluster requires a unique, consistent filesystem ID. By
+# default, the playbook generates one for you and stores it in a file
+# in `fetch_directory`. If you want to customize how the fsid is
+# generated, you may find it useful to disable fsid generation to
+# avoid cluttering up your ansible repo. If you set `generate_fsid` to
+# false, you *must* generate `fsid` in another way.
 fsid: "{{ cluster_uuid.stdout }}"
+generate_fsid: true
+
 cephx: true
 cephx_require_signatures: true # Kernel RBD does NOT support signatures for Kernels < 3.18!
 cephx_cluster_require_signatures: true
@@ -166,6 +183,7 @@ rbd_default_format: 2
 ## Monitor options
 #
 monitor_interface: interface
+mon_use_fqdn: false # if set to true, the MON name used will be the fqdn in the ceph.conf
 mon_osd_down_out_interval: 600
 mon_osd_min_down_reporters: 7 # number of OSDs per host + 1
 mon_clock_drift_allowed: .15
@@ -198,6 +216,13 @@ osd_crush_update_on_start: "true"
 # Object backend
 osd_objectstore: filestore
 
+# xattrs. by default, 'filestore xattr use omap' is set to 'true' if
+# 'osd_mkfs_type' is set to 'ext4'; otherwise it isn't set. This can
+# be set to 'true' or 'false' to explicitly override those
+# defaults. Leave it 'null' to use the default for your chosen mkfs
+# type.
+filestore_xattr_use_omap: null
+
 # Performance tuning
 filestore_merge_threshold: 40
 filestore_split_multiple: 8
@@ -224,6 +249,10 @@ osd_disk_thread_ioprio_class: idle
 osd_disk_thread_ioprio_priority: 0
 osd_scrub_chunk_max: 5
 osd_deep_scrub_stride: 1048576
+
+## MDS options
+#
+mds_use_fqdn: false # if set to true, the MDS name used will be the fqdn in the ceph.conf
 
 ## Rados Gateway options
 #
@@ -287,7 +316,7 @@ os_tuning_params:
   - { name: fs.file-max, value: 26234859 }
   - { name: vm.zone_reclaim_mode, value: 0 }
   - { name: vm.vfs_cache_pressure, value: 50 }
-  - { name: vm.min_free_kbytes, value: 4194303 }
+  - { name: vm.min_free_kbytes, value: "{{ vm_min_free_kbytes }}" }
 
 
 ##########

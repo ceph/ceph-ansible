@@ -21,16 +21,18 @@
     journal_collocation and
     osd_auto_discovery
 
-- name: manually Prepare osd disk(s)
+- name: manually prepare osd disk(s)
   command: "ceph-disk prepare {{ item.2 }}"
   ignore_errors: true
   with_together:
-    - parted.results
-    - ispartition.results
+    - combined_parted_results.results
+    - combined_ispartition_results.results
     - devices
   when:
-    item.0.rc != 0 and
-    item.1.rc != 0 and
+    not item.0.get("skipped") and
+    not item.1.get("skipped") and
+    item.0.get("rc", 0) != 0 and
+    item.1.get("rc", 0) != 0 and
     journal_collocation and not
     osd_auto_discovery
 

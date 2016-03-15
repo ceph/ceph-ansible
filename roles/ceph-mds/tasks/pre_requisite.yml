@@ -1,151 +1,100 @@
 ---
-- name: create bootstrap-mds directory (for or after infernalis release)
+- set_fact:
+    mds_name: "{{ ansible_hostname }}"
+  when: not mds_use_fqdn
+
+- set_fact:
+    mds_name: "{{ ansible_fqdn }}"
+  when: mds_use_fqdn
+
+- name: create bootstrap-mds directory
   file:
     path: /var/lib/ceph/bootstrap-mds/
     state: directory
-    owner: ceph
-    group: ceph
-    mode: 0755
-  when: is_ceph_infernalis
+    owner: "{{ dir_owner }}"
+    group: "{{ dir_group }}"
+    mode: "{{ dir_mode }}"
 
-- name: create bootstrap-mds directory (before infernalis release)
-  file:
-    path: /var/lib/ceph/bootstrap-mds/
-    state: directory
-    owner: root
-    group: root
-    mode: 0755
-  when: not is_ceph_infernalis
-
-- name: copy mds bootstrap key (for or after infernalis release)
+- name: copy mds bootstrap key
   copy:
-    src: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/bootstrap-mds/ceph.keyring"
-    dest: /var/lib/ceph/bootstrap-mds/ceph.keyring
-    owner: ceph
-    group: ceph
-    mode: 0600
-  when: is_ceph_infernalis
+    src: "{{ fetch_directory }}/{{ fsid }}{{ item.name }}"
+    dest: "{{ item.name }}"
+    owner: "{{ key_owner }}"
+    group: "{{ key_group }}"
+    mode: "{{ key_mode }}"
+  with_items:
+    - { name: /var/lib/ceph/bootstrap-mds/ceph.keyring, copy_key: true }
+    - { name: /etc/ceph/ceph.client.admin.keyring, copy_key: "{{ copy_admin_key }}" }
+  when:
+    cephx and
+    item.copy_key|bool
 
-- name: copy mds bootstrap key (before infernalis release)
-  copy:
-    src: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/bootstrap-mds/ceph.keyring"
-    dest: /var/lib/ceph/bootstrap-mds/ceph.keyring
-    owner: root
-    group: root
-    mode: 0600
-  when: not is_ceph_infernalis
-
-- name: create mds directory (for or after infernalis release)
+- name: create mds directory
   file:
-    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}
+    path: /var/lib/ceph/mds/ceph-{{ mds_name }}
     state: directory
-    owner: ceph
-    group: ceph
-    mode: 0755
-  when: is_ceph_infernalis
-
-- name: create mds directory (before infernalis release)
-  file:
-    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}
-    state: directory
-    owner: root
-    group: root
-    mode: 0755
-  when: not is_ceph_infernalis
+    owner: "{{ dir_owner }}"
+    group: "{{ dir_group }}"
+    mode: "{{ dir_mode }}"
 
 - name: create mds keyring
-  command: ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.{{ ansible_hostname }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
+  command: ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.{{ mds_name }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/ceph-{{ mds_name }}/keyring
   args:
-    creates: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
+    creates: /var/lib/ceph/mds/ceph-{{ mds_name }}/keyring
   changed_when: false
   when: cephx
 
-- name: set mds key permissions (for or after infernalis release)
+- name: set mds key permissions
   file:
-    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
-    mode: 0600
-    owner: ceph
-    group: ceph
-  when:
-    cephx and
-    is_ceph_infernalis
+    path: /var/lib/ceph/mds/ceph-{{ mds_name }}/keyring
+    mode: "{{ key_mode }}"
+    owner: "{{ key_owner }}"
+    group: "{{ key_group }}"
+  when: cephx
 
-- name: set mds key permissions (before infernalis)
+- name: activate metadata server with upstart
   file:
-    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/keyring
-    mode: 0600
-    owner: root
-    group: root
-  when:
-    cephx and
-    not is_ceph_infernalis
-
-- name: activate metadata server with upstart (for or after infernalis release)
-  file:
-    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
+    path: /var/lib/ceph/mds/ceph-{{ mds_name }}/{{ item }}
     state: touch
-    owner: ceph
-    group: ceph
-    mode: 0600
+    owner: "{{ activate_file_owner }}"
+    group: "{{ activate_file_group }}"
+    mode: "{{ activate_file_mode }}"
   with_items:
     - done
     - upstart
   changed_when: false
-  when:
-    ansible_distribution == "Ubuntu" and
-    is_ceph_infernalis
+  when: ansible_distribution == "Ubuntu"
 
-- name: activate metadata server with upstart (before infernalis release)
+- name: activate metadata server with sysvinit
   file:
-    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
+    path: /var/lib/ceph/mds/ceph-{{ mds_name }}/{{ item }}
     state: touch
-    owner: root
-    group: root
-    mode: 0644
-  with_items:
-    - done
-    - upstart
-  changed_when: false
-  when:
-    ansible_distribution == "Ubuntu" and
-    not is_ceph_infernalis
-
-- name: activate metadata server with sysvinit (for or after infernalis release)
-  file:
-    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
-    state: touch
-    owner: ceph
-    group: ceph
-    mode: 0644
+    owner: "{{ activate_file_owner }}"
+    group: "{{ activate_file_group }}"
+    mode: "{{ activate_file_mode }}"
   with_items:
     - done
     - sysvinit
   changed_when: false
+  when: ansible_distribution != "Ubuntu"
+
+- name: enable systemd unit file for mds instance (for or after infernalis)
+  file:
+    src: /usr/lib/systemd/system/ceph-mds@.service
+    dest: /etc/systemd/system/multi-user.target.wants/ceph-mds@{{ mds_name }}.service
+    state: link
+  changed_when: false
+  failed_when: false
   when:
     ansible_distribution != "Ubuntu" and
     is_ceph_infernalis
-
-- name: activate metadata server with sysvinit (before infernalis release)
-  file:
-    path: /var/lib/ceph/mds/ceph-{{ ansible_hostname }}/{{ item }}
-    state: touch
-    owner: root
-    group: root
-    mode: 0644
-  with_items:
-    - done
-    - sysvinit
-  changed_when: false
-  when:
-    ansible_distribution != "Ubuntu" and
-    not is_ceph_infernalis
 
 - name: start and add that the metadata service to the init sequence (ubuntu)
   service:
     name: ceph-mds
     state: started
     enabled: yes
-    args: "id={{ ansible_hostname }}"
+    args: "id={{ mds_name }}"
   changed_when: false
   when: ansible_distribution == "Ubuntu"
 
@@ -154,7 +103,7 @@
     name: ceph
     state: started
     enabled: yes
-    args: mds.{{ ansible_hostname }}
+    args: mds.{{ mds_name }}
   changed_when: false
   when:
     ansible_distribution != "Ubuntu" and
@@ -162,7 +111,7 @@
 
 - name: start and add that the metadata service to the init sequence (for or after infernalis)
   service:
-    name: ceph-mds@{{ ansible_hostname }}
+    name: ceph-mds@{{ mds_name }}
     state: started
     enabled: yes
   changed_when: false

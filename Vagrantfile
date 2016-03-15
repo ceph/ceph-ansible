@@ -17,19 +17,24 @@ BOX        = settings['vagrant_box']
 MEMORY     = settings['memory']
 STORAGECTL = settings['vagrant_storagectl']
 ETH        = settings['eth']
+DOCKER     = settings['docker']
 
 if BOX == 'openstack'
   require 'vagrant-openstack-provider'
-  OSVM = 'true'
+  OSVM = true
   USER = settings['os_ssh_username']
 else
-  OSVM = 'false'
+  OSVM = false
 end
 
 ansible_provision = proc do |ansible|
-  ansible.playbook = 'site.yml'
-  if settings['skip_tags']
-    ansible.skip_tags = settings['skip_tags']
+  if DOCKER then
+    ansible.playbook = 'site-docker.yml'
+    if settings['skip_tags']
+      ansible.skip_tags = settings['skip_tags']
+    end
+  else
+    ansible.playbook = 'site.yml'
   end
 
   # Note: Can't do ranges like mon[0-2] in groups because
@@ -45,20 +50,31 @@ ansible_provision = proc do |ansible|
   }
 
   # In a production deployment, these should be secret
-  ansible.extra_vars = {
-    ceph_stable: 'true',
-    journal_collocation: 'true',
-    fsid: '4a158d27-f750-41d5-9e7f-26ce4c9d2d45',
-    monitor_secret: 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw==',
-    journal_size: 100,
-    monitor_interface: ETH,
-    cluster_network: "#{SUBNET}.0/24",
-    public_network: "#{SUBNET}.0/24",
-    devices: settings['disks'],
-    ceph_osd_docker_devices: settings['disks'],
-    os_tuning_params: settings['os_tuning_params'],
-    ceph_docker_on_openstack: OSVM
-  }
+  if DOCKER then
+    ansible.extra_vars = {
+      mon_containerized_deployment: 'true',
+      osd_containerized_deployment: 'true',
+      mds_containerized_deployment: 'true',
+      rgw_containerized_deployment: 'true',
+      restapi_containerized_deployment: 'true',
+      ceph_mon_docker_interface: ETH,
+      ceph_mon_docker_subnet: "#{SUBNET}.0/24",
+      ceph_osd_docker_extra_env: "CEPH_DAEMON=OSD_CEPH_DISK,OSD_JOURNAL_SIZE=100",
+      ceph_osd_docker_devices: settings['disks'],
+      ceph_rgw_civetweb_port: 8080
+    }
+  else
+    ansible.extra_vars = {
+      "ceph_#{settings['ceph_install_source']}"=> 'true',
+      journal_collocation: 'true',
+      journal_size: 100,
+      monitor_interface: ETH,
+      cluster_network: "#{SUBNET}.0/24",
+      public_network: "#{SUBNET}.0/24",
+      devices: settings['disks'],
+      os_tuning_params: settings['os_tuning_params']
+    }
+  end
   ansible.limit = 'all'
 end
 
@@ -118,6 +134,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       client.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
       end
+
+      # Parallels
+      client.vm.provider "parallels" do |prl|
+        prl.name = "ceph-client#{i}"
+        prl.memory = "#{MEMORY}"
+      end
     end
   end
 
@@ -127,6 +149,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       if !OSVM
         rgw.vm.network :private_network, ip: "#{SUBNET}.5#{i}"
       end
+
       # Virtualbox
       rgw.vm.provider :virtualbox do |vb|
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
@@ -140,6 +163,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Libvirt
       rgw.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
+      end
+
+      # Parallels
+      rgw.vm.provider "parallels" do |prl|
+        prl.name = "ceph-rgw#{i}"
+        prl.memory = "#{MEMORY}"
       end
     end
   end
@@ -164,6 +193,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mds.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
       end
+
+      # Parallels
+      mds.vm.provider "parallels" do |prl|
+        prl.name = "ceph-mds#{i}"
+        prl.memory = "#{MEMORY}"
+      end
     end
   end
 
@@ -187,6 +222,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mon.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
       end
+
+      # Parallels
+      mon.vm.provider "parallels" do |prl|
+        prl.name = "ceph-mon#{i}"
+        prl.memory = "#{MEMORY}"
+      end
     end
   end
 
@@ -202,7 +243,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         (0..1).each do |d|
           vb.customize ['createhd',
                         '--filename', "disk-#{i}-#{d}",
-                        '--size', '11000']
+                        '--size', '11000'] unless File.exist?("disk-#{i}-#{d}.vdi")
           # Controller names are dependent on the VM being built.
           # It is set when the base box is made in our case ubuntu/trusty64.
           # Be careful while changing the box.
@@ -233,6 +274,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
           lv.storage :file, :device => "vd#{driverletters[d]}", :path => "disk-#{i}-#{d}.disk", :size => '11G'
         end
         lv.memory = MEMORY
+      end
+
+      # Parallels
+      osd.vm.provider "parallels" do |prl|
+        prl.name = "ceph-osd#{i}"
+        prl.memory = "#{MEMORY}"
+        (0..1).each do |d|
+          prl.customize ["set", :id,
+                         "--device-add",
+                         "hdd",
+                         "--iface",
+                         "sata"]
+        end
       end
 
       # Run the provisioner after the last machine comes up

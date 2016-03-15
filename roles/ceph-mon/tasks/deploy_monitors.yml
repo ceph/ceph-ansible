@@ -3,64 +3,75 @@
   local_action: shell python -c "import os ; import struct ; import time; import base64 ; key = os.urandom(16) ; header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ; print base64.b64encode(header + key)" | tee {{ fetch_directory }}/monitor_keyring.conf
     creates={{ fetch_directory }}/monitor_keyring.conf
   register: monitor_keyring
-  sudo: false
-  when: monitor_secret != 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw=='
+  become: false
+  when: cephx
 
 - name: read monitor initial keyring if it already exists
   local_action: command cat {{ fetch_directory }}/monitor_keyring.conf
     removes={{ fetch_directory }}/monitor_keyring.conf
   changed_when: false
   register: monitor_keyring
-  sudo: false
-  when: monitor_secret != 'AQAWqilTCDh7CBAAawXt6kyTgLFCxSvJhTEmuw=='
+  become: false
+  when: cephx
+
+- set_fact:
+    monitor_name: "{{ ansible_hostname }}"
+  when: not mon_use_fqdn
+
+- set_fact:
+    monitor_name: "{{ ansible_fqdn }}"
+  when: mon_use_fqdn
 
 - name: create monitor initial keyring
-  command: ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }} --create-keyring --name=mon. --add-key={{ monitor_secret }} --cap mon 'allow *'
+  command: ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }} --create-keyring --name=mon. --add-key={{ monitor_secret }} --cap mon 'allow *'
   args:
-    creates: /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
+    creates: /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
+  when: cephx
 
-- name: set initial monitor key permissions (for or after infernalis release)
+- name: set initial monitor key permissions
   file:
-    path: /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
-    mode: 0600
-    owner: ceph
-    group: ceph
-  when: is_ceph_infernalis
+    path: /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
+    mode: "{{ key_mode }}"
+    owner: "{{ key_owner }}"
+    group: "{{ key_group }}"
+  when: cephx
 
-- name: set initial monitor key permissions (before infernalis release)
+- name: create monitor directory
   file:
-    path: /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
-    mode: 0600
-    owner: root
-    group: root
-  when: not is_ceph_infernalis
-
-- name: create monitor directory (for or after infernalis release)
-  file:
-    path: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}
+    path: /var/lib/ceph/mon/ceph-{{ monitor_name }}
     state: directory
-    owner: ceph
-    group: ceph
-    mode: 0755
-  when: is_ceph_infernalis
+    owner: "{{ dir_owner }}"
+    group: "{{ dir_group }}"
+    mode: "{{ dir_mode }}"
 
-- name: create monitor directory (before infernalis release)
-  file:
-    path: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}
-    state: directory
-    owner: root
-    group: root
-    mode: 0755
-  when: not is_ceph_infernalis
-
-- name: ceph monitor mkfs (for or after infernalis release)
-  command: ceph-mon --setuser ceph --setgroup ceph --mkfs -i {{ ansible_hostname }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
+- name: ceph monitor mkfs with keyring (for or after infernalis release)
+  command: ceph-mon --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
   args:
-    creates: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/keyring
-  when: is_ceph_infernalis
+    creates: /var/lib/ceph/mon/ceph-{{ monitor_name }}/keyring
+  when:
+    cephx and
+    is_ceph_infernalis
 
-- name: ceph monitor mkfs (before infernalis release)
-  command: ceph-mon --mkfs -i {{ ansible_hostname }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ ansible_hostname }}
+- name: ceph monitor mkfs without keyring (for or after infernalis release)
+  command: ceph-mon --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }}
   args:
-    creates: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/keyring
-  when: not is_ceph_infernalis
+    creates: /var/lib/ceph/mon/ceph-{{ monitor_name }}/store.db
+  when:
+    not cephx and
+    is_ceph_infernalis
+
+- name: ceph monitor mkfs with keyring (before infernalis release)
+  command: ceph-mon --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
+  args:
+    creates: /var/lib/ceph/mon/ceph-{{ monitor_name }}/keyring
+  when:
+    cephx and
+    not is_ceph_infernalis
+
+- name: ceph monitor mkfs without keyring (before infernalis release)
+  command: ceph-mon --mkfs -i {{ monitor_name }} --fsid {{ fsid }}
+  args:
+    creates: /var/lib/ceph/mon/ceph-{{ monitor_name }}/store.db
+  when:
+    not cephx and
+    not is_ceph_infernalis

@@ -10,40 +10,126 @@
 
 - include: ./pre_requisites/prerequisite_ice.yml
   when: ceph_stable_ice
+  tags:
+    - package-install
 
 - include: ./pre_requisites/prerequisite_rh_storage_iso_install.yml
   when:
     ceph_stable_rh_storage and
-    ceph_stable_rh_storage_iso_install
+    ceph_stable_rh_storage_iso_install and
+    ansible_os_family == "RedHat"
+  tags:
+    - package-install
 
 - include: ./pre_requisites/prerequisite_rh_storage_cdn_install.yml
   when:
     ceph_stable_rh_storage and
-    ceph_stable_rh_storage_cdn_install
+    ceph_stable_rh_storage_cdn_install and
+    ansible_os_family == "RedHat"
+  tags:
+    - package-install
 
 - include: ./installs/install_on_redhat.yml
   when: ansible_os_family == 'RedHat'
+  tags:
+    - package-install
 
 - include: ./installs/install_on_debian.yml
-  when: ansible_os_family == 'Debian'
+  when:
+    ansible_os_family == 'Debian' and
+    not ceph_stable_rh_storage
+  tags:
+    - package-install
+
+- include: ./installs/install_rh_storage_on_debian.yml
+  when:
+    ansible_os_family == 'Debian' and
+    ceph_stable_rh_storage
+  tags:
+    - package-install
 
 - include: ./installs/install_rgw_on_redhat.yml
   when:
     ansible_os_family == 'RedHat' and
     radosgw_frontend == 'apache' and
     rgw_group_name in group_names
+  tags:
+    - package-install
 
 - include: ./installs/install_rgw_on_debian.yml
   when:
     ansible_os_family == 'Debian' and
     radosgw_frontend == 'apache' and
     rgw_group_name in group_names
+  tags:
+    - package-install
+
+- name: get ceph rhcs version
+  shell: rpm -q --qf "%{version}\n" ceph-common | cut -f1,2 -d '.'
+  changed_when: false
+  failed_when: false
+  register: rh_storage_version
+  when: ceph_stable_rh_storage
 
 # NOTE (leseb): be careful with the following
 # somehow the YAML syntax using "is_ceph_infernalis: {{"
 # does NOT work, so we keep this syntax styling...
 - set_fact:
-    is_ceph_infernalis={{ (ceph_stable and ceph_stable_release not in ceph_stable_releases) or (ceph_stable_rh_storage and (rh_storage_version.stdout | version_compare('0.94', '>'))) }}
+    is_ceph_infernalis={{ (ceph_stable and ceph_stable_release not in ceph_stable_releases) or (ceph_dev) or (ceph_stable_rh_storage and (rh_storage_version.stdout | version_compare('0.94', '>'))) }}
+
+- set_fact:
+    is_ceph_infernalis=True
+  when:
+    ansible_os_family == 'Debian' and
+    ceph_stable_rh_storage
+
+- set_fact:
+    dir_owner: ceph
+    dir_group: ceph
+    dir_mode: "0755"
+  when: is_ceph_infernalis
+
+- set_fact:
+    dir_owner: root
+    dir_group: root
+    dir_mode: "0755"
+  when: not is_ceph_infernalis
+
+- set_fact:
+    key_owner: root
+    key_group: root
+    key_mode: "0600"
+  when: not is_ceph_infernalis
+
+- set_fact:
+    key_owner: ceph
+    key_group: ceph
+    key_mode: "0600"
+  when: is_ceph_infernalis
+
+- set_fact:
+    activate_file_owner: ceph
+    activate_file_group: ceph
+    activate_file_mode: "0644"
+  when: is_ceph_infernalis
+
+- set_fact:
+    activate_file_owner: root
+    activate_file_group: root
+    activate_file_mode: "0644"
+  when: not is_ceph_infernalis
+
+- set_fact:
+    rbd_client_dir_owner: root
+    rbd_client_dir_group: root
+    rbd_client_dir_mode: "1777"
+  when: not is_ceph_infernalis
+
+- set_fact:
+    rbd_client_dir_owner: ceph
+    rbd_client_dir_group: ceph
+    rbd_client_dir_mode: "0770"
+  when: is_ceph_infernalis
 
 - name: check for a ceph socket
   shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
@@ -60,39 +146,43 @@
 - name: create a local fetch directory if it does not exist
   local_action: file path={{ fetch_directory }} state=directory
   changed_when: false
-  sudo: false
+  become: false
   run_once: true
+  when:
+    cephx or
+    generate_fsid
 
 - name: generate cluster uuid
-  local_action: shell uuidgen | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
+  local_action: shell python -c 'import uuid; print str(uuid.uuid4())' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
     creates="{{ fetch_directory }}/ceph_cluster_uuid.conf"
   register: cluster_uuid
-  sudo: false
-  when: fsid != '4a158d27-f750-41d5-9e7f-26ce4c9d2d45'
+  become: false
+  when: generate_fsid
 
 - name: read cluster uuid if it already exists
   local_action: command cat {{ fetch_directory }}/ceph_cluster_uuid.conf
     removes="{{ fetch_directory }}/ceph_cluster_uuid.conf"
   changed_when: false
   register: cluster_uuid
-  sudo: false
-  when: fsid != '4a158d27-f750-41d5-9e7f-26ce4c9d2d45'
+  become: false
+  when: generate_fsid
 
 - name: create ceph conf directory
   file:
     path: /etc/ceph
     state: directory
-    owner: "{{ conf_directory_owner }}"
-    group: "{{ conf_directory_group }}"
-    mode: "{{ conf_directory_mode }}"
+    owner: "{{ dir_owner }}"
+    group: "{{ dir_group }}"
+    mode: "{{ dir_mode }}"
 
 - name: generate ceph configuration file
-  config_template:
+  action: config_template
+  args:
     src: ceph.conf.j2
     dest: /etc/ceph/ceph.conf
-    owner: "{{ conf_file_owner }}"
-    group: "{{ conf_file_group }}"
-    mode: "{{ conf_file_mode }}"
+    owner: "{{ dir_owner }}"
+    group: "{{ dir_group }}"
+    mode: "{{ activate_file_mode }}"
     config_overrides: "{{ ceph_conf_overrides }}"
     config_type: ini
   notify:
@@ -110,21 +200,10 @@
     - restart ceph rgws on red hat
     - restart ceph rgws with systemd
 
-- name: create rbd client directory (before infernalis)
+- name: create rbd client directory
   file:
     path: "{{ rbd_client_admin_socket_path }}"
     state: directory
-    owner: root
-    group: root
-    mode: 0644
-  when: not is_ceph_infernalis
-
-- name: create rbd client directory (for infernalis or after)
-  file:
-    path: "{{ rbd_client_admin_socket_path }}"
-    state: directory
-    owner: ceph
-    group: ceph
-    mode: 0770
-  when: is_ceph_infernalis
-
+    owner: "{{ rbd_client_dir_owner }}"
+    group: "{{ rbd_client_dir_group }}"
+    mode: "{{ rbd_client_dir_mode }}"

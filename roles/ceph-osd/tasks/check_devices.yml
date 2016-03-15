@@ -11,11 +11,29 @@
 # for SSD journals.
 
 - name: check if the device is a partition
-  shell: "echo '{{ item }}' | egrep '/dev/(sd[a-z]{1,2}|hd[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p)[0-9]{1,2}$'"
+  shell: "echo '{{ item }}' | egrep '/dev/({h,s,v}d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p)[0-9]{1,2}$'"
   with_items: devices
   changed_when: false
   failed_when: false
   register: ispartition
+  when: not osd_auto_discovery
+
+- name: check if the device is a partition (autodiscover disks)
+  shell: "echo '/dev/{{ item.key }}' | egrep '/dev/({h,s,v}d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p)[0-9]{1,2}$'"
+  with_dict: ansible_devices
+  changed_when: false
+  failed_when: false
+  register: ispartition_autodiscover
+  when:
+    ansible_devices is defined and
+    item.value.removable == "0" and
+    osd_auto_discovery
+
+# NOTE (leseb): we must do this because of
+# https://github.com/ansible/ansible/issues/4297
+- name: combine ispartition results
+  set_fact:
+    combined_ispartition_results: "{{ ispartition if not osd_auto_discovery else ispartition_autodiscover }}"
 
 - name: check the partition status of the osd disks
   shell: "parted --script {{ item }} print > /dev/null 2>&1"
@@ -25,7 +43,28 @@
   register: osd_partition_status
   when:
     journal_collocation or
-    raw_multi_journal
+    raw_multi_journal and not
+    osd_auto_discovery
+
+- name: check the partition status of the osd disks (autodiscover disks)
+  shell: "parted --script /dev/{{ item.key }} print > /dev/null 2>&1"
+  with_dict: ansible_devices
+  changed_when: false
+  failed_when: false
+  register: osd_partition_status_autodiscover
+  when:
+    journal_collocation or
+    raw_multi_journal and
+    ansible_devices is defined and
+    item.value.removable == "0" and
+    item.value.partitions|count == 0 and
+    osd_auto_discovery
+
+# NOTE (leseb): we must do this because of
+# https://github.com/ansible/ansible/issues/4297
+- name: combine osd_partition_status results
+  set_fact:
+    combined_osd_partition_status_results: "{{ osd_partition_status if not osd_auto_discovery else osd_partition_status_autodiscover }}"
 
 - name: check the partition status of the journal devices
   shell: "parted --script {{ item }} print > /dev/null 2>&1"
@@ -38,10 +77,27 @@
 - name: fix partitions gpt header or labels of the osd disks
   shell: sgdisk --zap-all --clear --mbrtogpt -g -- {{ item.1 }}
   with_together:
-    - osd_partition_status.results
+    - combined_osd_partition_status_results.results
     - devices
   changed_when: false
-  when: (journal_collocation or raw_multi_journal) and item.0.rc != 0
+  when:
+    (journal_collocation or raw_multi_journal) and not
+    osd_auto_discovery and
+    item.0.rc != 0
+
+- name: fix partitions gpt header or labels of the osd disks (autodiscover disks)
+  shell: sgdisk --zap-all --clear --mbrtogpt -g -- "/dev/{{ item.1.key }}"
+  with_together:
+    - combined_osd_partition_status_results.results
+    - ansible_devices
+  changed_when: false
+  when:
+    journal_collocation and
+    osd_auto_discovery and
+    ansible_devices is defined and
+    item.value.removable == "0" and
+    item.value.partitions|count == 0 and
+    item.0.rc != 0
 
 - name: fix partitions gpt header or labels of the journal devices
   shell: sgdisk --zap-all --clear --mbrtogpt -g -- {{ item.1 }}
@@ -49,11 +105,31 @@
     - journal_partition_status.results
     - raw_journal_devices
   changed_when: false
-  when: raw_multi_journal and item.0.rc != 0
+  when:
+    raw_multi_journal and
+    item.0.rc != 0
 
-- name: if partition named 'ceph' exists
+- name: check if a partition named 'ceph' exists
   shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"
   with_items: devices
   changed_when: false
   failed_when: false
   register: parted
+  when: not osd_auto_discovery
+
+- name: check if a partition named 'ceph' exists (autodiscover disks)
+  shell: "parted --script /dev/{{ item.key }} print | egrep -sq '^ 1.*ceph'"
+  with_dict: ansible_devices
+  changed_when: false
+  failed_when: false
+  register: parted_autodiscover
+  when:
+    ansible_devices is defined and
+    item.value.removable == "0" and
+    osd_auto_discovery
+
+# NOTE (leseb): we must do this because of
+# https://github.com/ansible/ansible/issues/4297
+- name: combine parted results
+  set_fact:
+    combined_parted_results: "{{ parted if not osd_auto_discovery else parted_autodiscover }}"

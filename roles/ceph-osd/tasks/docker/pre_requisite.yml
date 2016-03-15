@@ -7,11 +7,26 @@
     - /etc/ceph/
     - /var/lib/ceph/bootstrap-osd
 
-- name: install pip on debian
+- name: install pip and docker on ubuntu
   apt:
-    name: pip
+    name: "{{ item }}"
     state: present
-  when: ansible_os_family == 'Debian'
+    update_cache: yes
+  with_items:
+    - python-pip
+    - docker
+    - docker.io
+  when: ansible_distribution == 'Ubuntu'
+
+- name: install pip and docker on debian
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - python-pip
+    - docker-engine
+  when: ansible_distribution == 'Debian'
 
 - name: install epel-release on redhat
   yum:
@@ -21,11 +36,29 @@
   tags:
     with_pkg
 
-- name: install pip on redhat
+- name: install pip and docker on redhat
   yum:
-    name: python-pip
+    name: "{{ item }}"
     state: present
-  when: ansible_os_family == 'RedHat'
+  with_items:
+    - python-pip
+    - docker-engine
+  when:
+    ansible_os_family == 'RedHat' and
+    ansible_pkg_mgr == "yum"
+  tags:
+    with_pkg
+
+- name: install pip and docker on redhat
+  dnf:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - python-pip
+    - docker-engine
+  when:
+    ansible_os_family == 'RedHat' and
+    ansible_pkg_mgr == "dnf"
   tags:
     with_pkg
 
@@ -57,6 +90,8 @@
     name: docker
     state: started
     enabled: yes
+  tags:
+    with_pkg
 
 # NOTE (leseb): for version 1.1.0 because https://github.com/ansible/ansible-modules-core/issues/1227
 - name: install docker-py
@@ -65,3 +100,4 @@
     version: 1.1.0
   tags:
     with_pkg
+

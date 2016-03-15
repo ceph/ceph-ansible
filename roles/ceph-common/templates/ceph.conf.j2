@@ -89,7 +89,11 @@ debug paxos = {{ debug_mon_level }}
 debug auth = {{ debug_mon_level }}
 {% endif %}
 {% for host in groups[mon_group_name] %}
-{% if hostvars[host]['ansible_hostname'] is defined %}
+{% if hostvars[host]['ansible_fqdn'] is defined and mon_use_fqdn %}
+[mon.{{ hostvars[host]['ansible_fqdn'] }}]
+host = {{ hostvars[host]['ansible_fqdn'] }}
+mon addr = {{ hostvars[host]['ansible_' + (hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface) ]['ipv4']['address'] }}
+{% elif hostvars[host]['ansible_hostname'] is defined %}
 [mon.{{ hostvars[host]['ansible_hostname'] }}]
 host = {{ hostvars[host]['ansible_hostname'] }}
 mon addr = {{ hostvars[host]['ansible_' + (hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface) ]['ipv4']['address'] }}
@@ -114,6 +118,12 @@ filestore split multiple = {{ filestore_split_multiple }}
 osd op threads = {{ osd_op_threads }}
 filestore op threads = {{ filestore_op_threads }}
 filestore max sync interval = {{ filestore_max_sync_interval }}
+{% if filestore_xattr_use_omap != None %}
+filestore xattr use omap = {{ filestore_xattr_use_omap }}
+{% elif osd_mkfs_type == "ext4" %}
+filestore xattr use omap = true
+{# else, default is false #}
+{% endif %}
 osd max scrubs = {{ osd_max_scrubs }}
 {% if ceph_stable_release not in ['argonaut','bobtail','cuttlefish','dumpling','emperor','firefly','giant'] %}
 osd scrub begin hour = {{ osd_scrub_begin_hour }}
@@ -142,17 +152,20 @@ osd deep scrub stride = {{ osd_deep_scrub_stride }}
 
 {% if groups[mds_group_name] is defined %}
 {% for host in groups[mds_group_name] %}
-{% if hostvars[host]['ansible_hostname'] is defined %}
+{% if hostvars[host]['ansible_fqdn'] is defined and mds_use_fqdn %}
+[mds.{{ hostvars[host]['ansible_fqdn'] }}]
+host = {{ hostvars[host]['ansible_fqdn'] }}
+{% elif hostvars[host]['ansible_hostname'] is defined %}
 [mds.{{ hostvars[host]['ansible_hostname'] }}]
 host = {{ hostvars[host]['ansible_hostname'] }}
 {% endif %}
 {% endfor %}
+{% endif %}
 {% if enable_debug_mds %}
 debug mds = {{ debug_mds_level }}
 debug mds balancer = {{ debug_mds_level }}
 debug mds log = {{ debug_mds_level }}
 debug mds migrator = {{ debug_mds_level }}
-{% endif %}
 {% endif %}
 
 {% if groups[rgw_group_name] is defined %}

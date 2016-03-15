@@ -31,6 +31,26 @@ More details:
 * A rolling upgrade playbook was written, an upgrade from Dumpling to Emperor was performed and worked.
 
 
+## Configuring Ceph
+
+The supported method for defining your ceph.conf is to use the `ceph_conf_overrides` variable. This allows you to specify configuration options using
+an INI format. This variable can be used to override sections already defined in ceph.conf (see: `roles/ceph-common/templates/ceph.conf.j2`) or to provide
+new configuration options. The following sections in ceph.conf are supported: [global], [mon], [osd], [mds] and [rgw].
+
+An example:
+
+```
+ceph_conf_overrides:
+   global:
+     foo: 1234
+     bar: 5678
+   osd:
+     osd mkfs type: ext4
+```
+
+**Note:** we will no longer accept pull requests that modify the ceph.conf template unless it helps the deployment. For simple configuration tweaks
+please use the `ceph_conf_overrides` variable.
+
 ## Setup with Vagrant using virtualbox provider
 
 * Create vagrant_variables.yml
@@ -133,6 +153,33 @@ $ sudo vagrant up --no-provision --provider=libvirt
 $ sudo vagrant provision
 ```
 
+## Setup for Vagrant using parallels provider
+
+* Create vagrant_variables.yml
+
+```
+$ cp vagrant_variables.yml.sample vagrant_variables.yml
+```
+
+* Edit `vagrant_variables.yml` and setup the following variables:
+
+```yml
+vagrant_box: parallels/ubuntu-14.04
+```
+
+* Create site.yml
+
+```
+$ cp site.yml.sample site.yml
+```
+
+* Create VMs
+
+```
+$ vagrant up --no-provision --provider=parallels
+$ vagrant provision
+```
+
 ### For Debian based systems
 
 If you want to use "backports", you can set "true" to `ceph_use_distro_backports`.
@@ -189,6 +236,65 @@ When you are done, use `vagrant destroy` to get rid of the VMs.  You should
 also remove the associated entries in .ssh/known_hosts so that if the IP 
 addresses get reused by future Open Stack Cloud instances there will not be
 old known_hosts entries.
+
+# Want to contribute?
+
+Read this carefully then :).
+The repository centralises all the Ansible roles.
+The roles are all part of the Galaxy.
+We love contribution and we love giving visibility to our contributors, this is why all the **commits must be signed-off**.
+
+## Submit a patch
+
+To start contriuting just do:
+
+```
+$ git checkout -b my-working-branch
+$ # do your changes #
+$ git add -p
+```
+
+One more step, before pushing your code you should run a syntax check:
+
+```
+$ ansible-playbook -i dummy-ansible-hosts test.yml --syntax-check
+```
+
+If your change impacts a variable file in a role such as `roles`ceph-common/defaults/main.yml`, you need to generate a `group_vars` file:
+
+```
+$ ./generate_group_vars_sample.sh
+```
+
+You are finally ready to push your changes on Github:
+
+```
+$ git commit -s
+$ git push origin my-working-branch
+```
+
+Worked on a change and you don't want to resend a commit for a syntax fix?
+
+```
+$ # do your syntax change #
+$ git commit --amend
+$ git push -f origin my-working-branch
+```
+
+# Testing PR
+
+Go on the github interface and submit a PR.
+
+Now we have 2 online CIs:
+
+* Travis, simply does a syntax check
+* Jenkins Ceph: bootstraps one monitor, one OSD, one RGW
+
+If Jenkins detects that your commit broke something it will turn red.
+You can then check the logs of the Jenkins by clicking on "Testing Playbooks" button in your PR and go to "Console Output".
+You can now submit a new commit/change that will update the CI system to run a new play.
+
+It might happen that the CI does not get reloead so you can simply leave a comment on your PR with "test this please" and it will trigger a new CI build.
 
 ## Vagrant Demo
 

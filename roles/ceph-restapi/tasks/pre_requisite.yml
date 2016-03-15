@@ -1,101 +1,45 @@
 ---
-- name: create ceph rest api directory (for or after infernalis release)
+- name: create ceph rest api directory
   file:
     path: /var/lib/ceph/restapi/ceph-restapi
     state: directory
-    owner: ceph
-    group: ceph
-    mode: 0755
-  when: is_ceph_infernalis
+    owner: "{{ dir_owner }}"
+    group: "{{ dir_group }}"
+    mode: "{{ dir_mode }}"
 
-- name: create ceph rest api directory (before infernalis release)
-  file:
-    path: /var/lib/ceph/restapi/ceph-restapi
-    state: directory
-    owner: root
-    group: root
-    mode: 0755
-  when: not is_ceph_infernalis
-
-- name: copy ceph rest api keyring (for or after infernalis release)
+- name: copy ceph rest api keyring
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/ceph.client.restapi.keyring"
     dest: "/var/lib/ceph/restapi/ceph-restapi/keyring"
-    owner: ceph
-    group: ceph
-    mode: 0600
-  when:
-    cephx and
-    is_ceph_infernalis
+    owner: "{{ key_owner }}"
+    group: "{{ key_group }}"
+    mode: "{{ key_mode }}"
+  when: cephx
 
-- name: copy ceph rest api keyring (before infernalis release)
-  copy:
-    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/ceph.client.restapi.keyring"
-    dest: "/var/lib/ceph/restapi/ceph-restapi/keyring"
-    owner: root
-    group: root
-    mode: 600
-  when:
-    cephx and
-    not is_ceph_infernalis
-
-- name: activate ceph rest api with upstart (for or after infernalis release)
+- name: activate ceph rest api with upstart
   file:
     path: /var/lib/ceph/restapi/{{ item }}
     state: touch
-    owner: ceph
-    group: ceph
-    mode: 0600
+    owner: "{{ activate_file_owner }}"
+    group: "{{ activate_file_group }}"
+    mode: "{{ activate_file_mode }}"
   with_items:
     - done
     - upstart
   changed_when: false
-  when:
-    ansible_distribution == "Ubuntu" and
-    is_ceph_infernalis
+  when: ansible_distribution == "Ubuntu"
 
-- name: activate ceph rest api with upstart (before infernalis release)
+- name: activate ceph rest api with sysvinit
   file:
     path: /var/lib/ceph/restapi/{{ item }}
     state: touch
-    owner: root
-    group: root
-    mode: 0600
-  with_items:
-    - done
-    - upstart
-  changed_when: false
-  when:
-    ansible_distribution == "Ubuntu" and
-    not is_ceph_infernalis
-
-- name: activate ceph rest api with sysvinit (for or after infernalis release))
-  file:
-    path: /var/lib/ceph/restapi/{{ item }}
-    state: touch
-    owner: ceph
-    group: ceph
-    mode: 0600
+    owner: "{{ activate_file_owner }}"
+    group: "{{ activate_file_group }}"
+    mode: "{{ activate_file_mode }}"
   with_items:
     - done
     - sysvinit
-  when:
-    ansible_distribution != "Ubuntu" and
-    is_ceph_infernalis
-
-- name: activate ceph rest api with sysvinit (before infernalis release))
-  file:
-    path: /var/lib/ceph/restapi/{{ item }}
-    state: touch
-    owner: root
-    group: root
-    mode: 0600
-  with_items:
-    - done
-    - sysvinit
-  when:
-    ansible_distribution != "Ubuntu" and
-    not is_ceph_infernalis
+  when: ansible_distribution != "Ubuntu"
 
 # NOTE (leseb): will uncomment this when this https://github.com/ceph/ceph/pull/4144 lands
 #- name: start and add that the Ceph REST API service to the init sequence (Ubuntu)

@@ -9,10 +9,10 @@
       - /var/lib/ceph/bootstrap-mds/ceph.keyring
 
 - name: stat for ceph config and keys
-  local_action: stat path={{ item }}
+  local_action: stat path={{ fetch_directory }}/docker_mon_files/{{ item }}
   with_items: ceph_config_keys
   changed_when: false
-  sudo: false
+  become: false
   failed_when: false
   register: statconfig
 
@@ -22,7 +22,7 @@
     dest: "{{ item.0 }}"
     owner: root
     group: root
-    mode: 644
+    mode: 0644
   changed_when: false
   with_together:
     - ceph_config_keys
