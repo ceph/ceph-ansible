@@ -31,6 +31,26 @@ More details:
 * A rolling upgrade playbook was written, an upgrade from Dumpling to Emperor was performed and worked.
 
 
+## Configuring Ceph
+
+The supported method for defining your ceph.conf is to use the `ceph_conf_overrides` variable. This allows you to specify configuration options using
+an INI format. This variable can be used to override sections already defined in ceph.conf (see: `roles/ceph-common/templates/ceph.conf.j2`) or to provide
+new configuration options. The following sections in ceph.conf are supported: [global], [mon], [osd], [mds] and [rgw].
+
+An example:
+
+```
+ceph_conf_overrides:
+   global:
+     foo: 1234
+     bar: 5678
+   osd:
+     osd mkfs type: ext4
+```
+
+**Note:** we will no longer accept pull requests that modify the ceph.conf template unless it helps the deployment. For simple configuration tweaks
+please use the `ceph_conf_overrides` variable.
+
 ## Setup with Vagrant using virtualbox provider
 
 * Create vagrant_variables.yml
