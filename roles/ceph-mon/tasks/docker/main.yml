@@ -14,15 +14,21 @@
       is_atomic='{{ stat_ostree.stat.exists }}'
                                   
 - include: checks.yml
-  when: ceph_health.rc != 0
+  when: ceph_health.rc != 0 and not mon_containerized_deployment_with_kv
 
 - include: pre_requisite.yml
+
 - include: selinux.yml
   when: ansible_os_family == 'RedHat'
 
 # let the first mon create configs and keyrings
 - include: create_configs.yml
   when: inventory_hostname == groups.mons[0]
+
 - include: fetch_configs.yml
+  when: not mon_containerized_deployment_with_kv
+
 - include: start_docker_monitor.yml
+
 - include: ../ceph_keys.yml
+  when: not mon_containerized_deployment_with_kv

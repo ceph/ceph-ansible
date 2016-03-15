@@ -6,11 +6,33 @@
           - /var/lib/ceph/bootstrap-osd/ceph.keyring
           - /var/lib/ceph/bootstrap-rgw/ceph.keyring
           - /var/lib/ceph/bootstrap-mds/ceph.keyring
-                                                
+  when: not mon_containerized_deployment_with_kv
+
 - name: pull ceph daemon image
   shell: "docker pull {{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
 
-# Use systemd to manage container on Atomic host
+- name: populate kv_store
+  docker:
+    name: populate-kv-store
+    image: ceph/daemon
+    command: populate_kvstore
+    net: host
+    env:
+      KV_TYPE: "{{kv_type}}"
+      KV_IP: "{{kv_endpoint}}"
+      KV_PORT: "{{kv_port}}"
+    volumes:
+      - /etc/ceph/ceph.conf:/etc/ceph/ceph.defaults
+  run_once: true
+  when: inventory_hostname == groups.mons[0] and mon_containerized_deployment_with_kv
+
+- name: delete populate-kv-store docker
+  docker:
+    name: populate-kv-store
+    state: absent
+    image: ceph/daemon
+
+# Use systemd to manage container on Atomic host and CoreOS
 - name: generate systemd unit file
   sudo: true
   template:
@@ -19,23 +41,23 @@
     owner: "root"
     group: "root"
     mode: "0644"
-  
+
 - name: link systemd unit file for mon instance
   file:
     src: /var/lib/ceph/ceph-mon@.service
     dest: /etc/systemd/system/multi-user.target.wants/ceph-mon@{{ ansible_hostname }}.service
     state: link
-  when: is_atomic
+  when: is_atomic or ansible_os_family == 'CoreOS'
 
 - name: enable systemd unit file for mon instance
   shell: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-mon@{{ ansible_hostname }}.service
   failed_when: false
   changed_when: false
-  when: is_atomic
+  when: is_atomic or ansible_os_family == 'CoreOS'
 
 - name: reload systemd unit files
   shell: systemctl daemon-reload
-  when: is_atomic
+  when: is_atomic or ansible_os_family == 'CoreOS'
 
 - name: systemd start mon container
   service:
@@ -43,7 +65,7 @@
     state: started
     enabled: yes
   changed_when: false
-  when: is_atomic
+  when: is_atomic or ansible_os_family == 'CoreOS'
 
 - name: wait for ceph.conf exists
   wait_for:
@@ -59,7 +81,7 @@
     privileged: "{{ mon_docker_privileged }}"
     env: "MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},{{ ceph_mon_extra_envs }}"
     volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
-  when: not is_atomic 
+  when: not is_atomic and ansible_os_family != 'CoreOS'
 
 - name: stat for ceph config and keys
   stat: path="{{ item }}"
@@ -67,6 +89,7 @@
   changed_when: false
   failed_when: false
   register: statmonconfig
+  when: not mon_containerized_deployment_with_kv
 
 - name: fetch boostrap keys and conf from mon
   fetch:
@@ -76,5 +99,5 @@
   with_together:
     - ceph_bootstrap_config_keys
     - statmonconfig.results
-  when: item.1.stat.exists == true
+  when: not mon_containerized_deployment_with_kv and item.1.stat.exists == true
         and inventory_hostname == groups.mons[0]
