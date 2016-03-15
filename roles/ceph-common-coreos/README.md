@@ -41,4 +41,4 @@ Apache
 
 # Author Information
 
-This role was created by Alfredo Deza.
+This role was created by Piotr Prokop.
