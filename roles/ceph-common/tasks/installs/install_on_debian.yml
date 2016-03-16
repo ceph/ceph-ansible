@@ -21,8 +21,7 @@
     - ceph-common    #|
     - ceph-fs-common #|--> yes, they are already all dependencies from 'ceph'
     - ceph-fuse      #|--> however while proceding to rolling upgrades and the 'ceph' package upgrade
-    - ceph-mds       #|--> they don't get update so we need to force them
-    - libcephfs1     #|
+    - libcephfs1     #|--> they don't get update so we need to force them
 
 - name: install ceph-test
   apt:
@@ -38,6 +37,14 @@
     update_cache: yes
   when:
     rgw_group_name in group_names
+
+- name: install ceph mds
+  apt:
+    pkg: ceph-mds
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    default_release: "{{ ansible_distribution_release }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
+  when:
+    mds_group_name in group_names
 
 - name: configure rbd clients directories
   file:
