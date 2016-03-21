@@ -11,7 +11,21 @@
 - name: pull ceph daemon image
   shell: "docker pull {{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
 
-- name: populate kv_store
+- name: populate kv_store with default ceph.conf
+  docker:
+    name: populate-kv-store
+    image: ceph/daemon
+    command: populate_kvstore
+    net: host
+    env:
+      KV_TYPE: "{{kv_type}}"
+      KV_IP: "{{kv_endpoint}}"
+      KV_PORT: "{{kv_port}}"
+  run_once: true
+  when: inventory_hostname == groups.mons[0] and mon_containerized_deployment_with_kv
+        and mon_containerized_default_ceph_conf_with_kv
+
+- name: populate kv_store with custom ceph.conf
   docker:
     name: populate-kv-store
     image: ceph/daemon
@@ -25,6 +39,7 @@
       - /etc/ceph/ceph.conf:/etc/ceph/ceph.defaults
   run_once: true
   when: inventory_hostname == groups.mons[0] and mon_containerized_deployment_with_kv
+        and not mon_containerized_default_ceph_conf_with_kv
 
 - name: delete populate-kv-store docker
   docker:
