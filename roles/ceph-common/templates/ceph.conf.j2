@@ -15,7 +15,7 @@ auth service required = none
 auth client required = none
 auth supported = none
 {% endif %}
-fsid = {{ fsid }}
+{% if not mon_containerized_deployment_with_kv %}fsid = {{ fsid }}{% endif %}
 max open files = {{ max_open_files }}
 osd pool default pg num = {{ pool_default_pg_num }}
 osd pool default pgp num = {{ pool_default_pgp_num }}
@@ -88,6 +88,7 @@ debug mon = {{ debug_mon_level }}
 debug paxos = {{ debug_mon_level }}
 debug auth = {{ debug_mon_level }}
 {% endif %}
+{% if not mon_containerized_deployment_with_kv %}
 {% for host in groups[mon_group_name] %}
 {% if hostvars[host]['ansible_hostname'] is defined %}
 [mon.{{ hostvars[host]['ansible_hostname'] }}]
@@ -95,6 +96,7 @@ host = {{ hostvars[host]['ansible_hostname'] }}
 mon addr = {{ hostvars[host]['ansible_' + (hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface) ]['ipv4']['address'] }}
 {% endif %}
 {% endfor %}
+{% endif %}
 
 [osd]
 osd mkfs type = {{ osd_mkfs_type }}
