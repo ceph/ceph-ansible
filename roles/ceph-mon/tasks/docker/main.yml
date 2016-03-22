@@ -12,7 +12,7 @@
 - name: set fact for using Atomic host
   set_fact:
       is_atomic='{{ stat_ostree.stat.exists }}'
-                                  
+
 - include: checks.yml
   when: ceph_health.rc != 0 and not mon_containerized_deployment_with_kv
 
@@ -23,12 +23,24 @@
 
 # let the first mon create configs and keyrings
 - include: create_configs.yml
-  when: inventory_hostname == groups.mons[0] and not mon_containerized_default_ceph_conf_with_kv
+  when: inventory_hostname == groups.mons[0] and mon_containerized_default_ceph_conf_with_kv
 
 - include: fetch_configs.yml
   when: not mon_containerized_deployment_with_kv
 
 - include: start_docker_monitor.yml
 
-- include: ../ceph_keys.yml
+- include: copy_configs.yml
   when: not mon_containerized_deployment_with_kv
+
+- name: create ceph rest api keyring when mon is containerized
+  command: docker exec {{ ansible_hostname }} ceph auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/ceph.client.restapi.keyring
+  args:
+     creates: /etc/ceph/ceph.client.restapi.keyring
+  changed_when: false
+  when:
+    cephx and
+    mon_containerized_deployment and
+    groups[restapi_group_name] is defined and
+    inventory_hostname == groups.mons|last and
+    not mon_containerized_deployment_with_kv
