@@ -11,10 +11,13 @@
 
   become: yes
 
-  roles:
-    - ceph-common
-
   vars:
+    osd_group_name: osds
+    mon_group_name: mons
+    rgw_group_name: rgws
+    mds_group_name: mdss
+    process_success: 0  # process exit status for success
+
 # When set to true both groups of packages are purged.
 # This can cause problem with qemu-kvm
     purge_all_packages: true
@@ -41,11 +44,30 @@
       - python-rbd
 
 
+  handlers:
+  - name: restart machine
+    shell: sleep 2 && shutdown -r now "Ansible updates triggered"
+    async: 1
+    poll: 0
+    ignore_errors: true
+
+  - name: wait for server to boot
+    local_action: wait_for port=22 host={{ inventory_hostname }} state=started delay=10 timeout=400
+
+  - name: remove data
+    file:
+     path: /var/lib/ceph
+     state: absent
+
   tasks:
   - name: get osd numbers
     shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi"
     register: osd_ids
     changed_when: false
+
+  - name: are we using systemd
+    shell: "if [ -d /usr/lib/systemd ] ; then find /usr/lib/systemd/system -name 'ceph*' | wc -l ; else echo 0 ; fi"
+    register: systemd_unit_files
 
 # Infernalis
   - name: stop ceph.target with systemd
@@ -55,7 +77,7 @@
       enabled: no
     when:
       ansible_os_family == 'RedHat' and
-      ceph_stable_release == 'infernalis'
+      systemd_unit_files.stdout != "0"
 
   - name: stop ceph-osd with systemd
     service:
@@ -65,7 +87,7 @@
     with_items: "{{ osd_ids.stdout_lines }}"
     when:
       ansible_os_family == 'RedHat' and
-      ceph_stable_release == 'infernalis' and
+      systemd_unit_files.stdout != "0" and
       osd_group_name in group_names
 
   - name: stop ceph mons with systemd
@@ -75,8 +97,8 @@
       enabled: no
     when:
       ansible_os_family == 'RedHat' and
-      ceph_stable_release == 'infernalis' and
-      mon_group_name in group_names 
+      systemd_unit_files.stdout != "0" and
+      mon_group_name in group_names
 
   - name: stop ceph mdss with systemd
     service: 
@@ -84,8 +106,8 @@
       state: stopped
     when:
       ansible_os_family == 'RedHat' and
-      ceph_stable_release == 'infernalis' and
-      mds_group_name in group_names 
+      systemd_unit_files.stdout != "0" and
+      mds_group_name in group_names
 
 # before infernalis
   - name: stop ceph osds
@@ -93,21 +115,21 @@
     when:
       ansible_os_family == 'RedHat' and
       osd_group_name in group_names and
-      ceph_stable_release != 'infernalis'
+      systemd_unit_files.stdout == "0"
 
   - name: stop ceph mons
     command: service ceph stop mon
     when:
       ansible_os_family == 'RedHat' and
       mon_group_name in group_names and
-      ceph_stable_release != 'infernalis'
+      systemd_unit_files.stdout == "0"
 
   - name: stop ceph mdss
     command: service ceph stop mds
     when:
       ansible_os_family == 'RedHat' and
       mds_group_name in group_names and
-      ceph_stable_release != 'infernalis'
+      systemd_unit_files.stdout == "0"
 
 # Ubuntu 14.04
   - name: stop ceph osds on ubuntu
@@ -131,22 +153,44 @@
       ansible_distribution == 'Ubuntu' and
       mds_group_name in group_names
 
-# rc is 2 if file not found, so no mount point, so no error
+  - name: check for anything running ceph
+    shell: "ps awux | grep -v grep | grep -q -- ceph-"
+    register: check_for_running_ceph
+    failed_when: check_for_running_ceph.rc == 0
+
   - name: get osd data mount points
-    shell: ls /var/lib/ceph/osd
+    shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
     register: mounted_osd
     changed_when: false
-    failed_when: mounted_osd.rc != 0 and mounted_osd.rc != 2
+
+  - name: drop all cache
+    shell: "sync && sleep 1 && echo 3 > /proc/sys/vm/drop_caches"
     when:
-     osd_group_name in group_names
+      osd_group_name in group_names
 
   - name: umount osd data partition
-    shell: umount /var/lib/ceph/osd/{{ item }}
-    failed_when: false
+    shell: umount {{ item }}
     with_items:
      - "{{ mounted_osd.stdout_lines }}"
     when:
      osd_group_name in group_names
+
+  - name: remove osd mountpoint tree
+    shell: rm -rf /var/lib/ceph/osd
+    register: remove_osd_mountpoints
+    failed_when: false
+    when:
+      osd_group_name in group_names
+
+  - name: is reboot needed
+    local_action: shell echo requesting reboot
+    notify:
+      - restart machine
+      - wait for server to boot
+      - remove data
+    when: 
+      osd_group_name in group_names and 
+      remove_osd_mountpoints.rc != 0
 
   - name: zap osd disks
     shell: ceph-disk zap "{{ item }}"
@@ -224,17 +268,12 @@
      path: /etc/ceph
      state: absent
 
-  - name: remove data
-    file:
-     path: /var/lib/ceph
-     state: absent
-
   - name: remove logs
     file:
      path: /var/log/ceph
      state: absent
 
-  - name: remove form SysV
+  - name: remove from SysV
     shell: "update-rc.d -f ceph remove"
     when:
       ansible_distribution == 'Ubuntu'
@@ -248,3 +287,9 @@
     shell: "find /var -name '*ceph*' -delete"
     when:
       ansible_distribution == 'Ubuntu'
+
+  - name: request data removal
+    local_action: shell echo requesting data removal
+    notify:
+      - remove data
+
