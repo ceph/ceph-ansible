@@ -24,7 +24,7 @@ has to be used with pypy in version 2.4 and below due to some dependency issues.
 ```
 - hosts: servers
   remote_user: core
-  sudo: True
+  become: True
   gather_facts: false
   roles:
      - { role: ceph-common-coreos }
