@@ -5,6 +5,14 @@
   changed_when: false
   failed_when: false
 
+- name: check if it is Atomic host
+  stat: path=/run/ostree-booted
+  register: stat_ostree
+
+- name: set fact for using Atomic host
+  set_fact:
+      is_atomic='{{ stat_ostree.stat.exists }}'
+                                  
 - include: checks.yml
   when: ceph_health.rc != 0
 
@@ -12,6 +20,9 @@
 - include: selinux.yml
   when: ansible_os_family == 'RedHat'
 
+# let the first mon create configs and keyrings
+- include: create_configs.yml
+  when: inventory_hostname == groups.mons[0]
 - include: fetch_configs.yml
 - include: start_docker_monitor.yml
-- include: copy_configs.yml
+- include: ../ceph_keys.yml

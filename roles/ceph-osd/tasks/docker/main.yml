@@ -8,6 +8,14 @@
 - include: checks.yml
   when: ceph_health.rc != 0
 
+- name: check if it is Atomic host
+  stat: path=/run/ostree-booted
+  register: stat_ostree
+
+- name: set fact for using Atomic host
+  set_fact:
+      is_atomic='{{ stat_ostree.stat.exists }}'
+
 - include: pre_requisite.yml
 - include: selinux.yml
   when: ansible_os_family == 'RedHat'

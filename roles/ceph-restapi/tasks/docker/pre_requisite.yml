@@ -1,4 +1,12 @@
 ---
+- name: create osd bootstrap directory
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - /etc/ceph/
+    - /var/lib/ceph/bootstrap-osd
+
 - name: install pip and docker on ubuntu
   apt:
     name: "{{ item }}"
@@ -20,6 +28,14 @@
     - docker-engine
   when: ansible_distribution == 'Debian'
 
+- name: install epel-release on redhat
+  yum:
+    name: epel-release
+    state: present
+  when: ansible_os_family == 'RedHat'
+  tags:
+    with_pkg
+
 - name: install pip and docker on redhat
   yum:
     name: "{{ item }}"
@@ -30,6 +46,8 @@
   when:
     ansible_os_family == 'RedHat' and
     ansible_pkg_mgr == "yum"
+  tags:
+    with_pkg
 
 - name: install pip and docker on redhat
   dnf:
@@ -41,9 +59,45 @@
   when:
     ansible_os_family == 'RedHat' and
     ansible_pkg_mgr == "dnf"
+  tags:
+    with_pkg
+
+- name: install docker on redhat
+  yum:
+    name: docker-io
+    state: present
+  when: ansible_os_family == 'RedHat'
+  tags:
+    with_pkg
+
+# NOTE (jimcurtis): need at least version 1.9.0 of six or we get:
+# re:NameError: global name 'DEFAULT_DOCKER_API_VERSION' is not defined
+- name: install six
+  pip:
+    name: six
+    version: 1.9.0
+  tags:
+    with_pkg
+
+- name: pause after docker install before starting (on openstack vms)
+  pause: seconds=5
+  when: ceph_docker_on_openstack
+  tags:
+    with_pkg
+
+- name: start docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  tags:
+    with_pkg
 
 # NOTE (leseb): for version 1.1.0 because https://github.com/ansible/ansible-modules-core/issues/1227
 - name: install docker-py
   pip:
     name: docker-py
     version: 1.1.0
+  tags:
+    with_pkg
+

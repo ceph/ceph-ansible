@@ -1,0 +1,25 @@
+[Unit]
+Description=Ceph OSD
+After=docker.service
+
+[Service]
+EnvironmentFile=/etc/environment
+ExecStartPre=-/usr/bin/docker stop {{ ansible_hostname }}-osd-dev%i
+ExecStartPre=-/usr/bin/docker rm {{ ansible_hostname }}-osd-dev%i
+ExecStart=/usr/bin/docker run --rm --net=host --pid=host\
+   -v /var/lib/ceph:/var/lib/ceph \
+   -v /etc/ceph:/etc/ceph \
+   -v /dev:/dev \
+   --privileged \
+   -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE \
+   -e OSD_DEVICE=/dev/%i \
+   --name={{ ansible_hostname }}-osd-dev%i \
+   {{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}
+ExecStop=-/usr/bin/docker stop {{ ansible_hostname }}-osd-dev%i
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target
