@@ -9,7 +9,9 @@
   when: osd_group_name in group_names
 
 - include: ./pre_requisites/prerequisite_ice.yml
-  when: ceph_stable_ice
+  when:
+    ceph_stable_ice and
+    not purge_cluster
   tags:
     - package-install
 
@@ -17,7 +19,8 @@
   when:
     ceph_stable_rh_storage and
     ceph_stable_rh_storage_iso_install and
-    ansible_os_family == "RedHat"
+    ansible_os_family == "RedHat" and
+    not purge_cluster
   tags:
     - package-install
 
@@ -25,26 +28,31 @@
   when:
     ceph_stable_rh_storage and
     ceph_stable_rh_storage_cdn_install and
-    ansible_os_family == "RedHat"
+    ansible_os_family == "RedHat" and
+    not purge_cluster
   tags:
     - package-install
 
 - include: ./installs/install_on_redhat.yml
-  when: ansible_os_family == 'RedHat'
+  when:
+    ansible_os_family == 'RedHat' and
+    not purge_cluster
   tags:
     - package-install
 
 - include: ./installs/install_on_debian.yml
   when:
     ansible_os_family == 'Debian' and
-    not ceph_stable_rh_storage
+    not ceph_stable_rh_storage and
+    not purge_cluster
   tags:
     - package-install
 
 - include: ./installs/install_rh_storage_on_debian.yml
   when:
     ansible_os_family == 'Debian' and
-    ceph_stable_rh_storage
+    ceph_stable_rh_storage and
+    not purge_cluster
   tags:
     - package-install
 
@@ -52,7 +60,8 @@
   when:
     ansible_os_family == 'RedHat' and
     radosgw_frontend == 'apache' and
-    rgw_group_name in group_names
+    rgw_group_name in group_names and
+    not purge_cluster
   tags:
     - package-install
 
@@ -60,7 +69,8 @@
   when:
     ansible_os_family == 'Debian' and
     radosgw_frontend == 'apache' and
-    rgw_group_name in group_names
+    rgw_group_name in group_names and
+    not purge_cluster
   tags:
     - package-install
 
