@@ -90,8 +90,8 @@
       osd_group_name in group_names
 
   - name: stop ceph mons with systemd
-    service: 
-      name: ceph-mon@{{ ansible_hostname }} 
+    service:
+      name: ceph-mon@{{ ansible_hostname }}
       state: stopped
       enabled: no
     when:
@@ -100,8 +100,8 @@
       mon_group_name in group_names
 
   - name: stop ceph mdss with systemd
-    service: 
-      name: ceph-mds@{{ ansible_hostname }} 
+    service:
+      name: ceph-mds@{{ ansible_hostname }}
       state: stopped
     when:
       ansible_os_family == 'RedHat' and
@@ -132,19 +132,20 @@
 
 # Ubuntu 14.04
   - name: stop ceph osds on ubuntu
-    command: stop ceph-osd-all
+    command: stop ceph-osd id={{ item }}
     failed_when: false
     when:
       ansible_distribution == 'Ubuntu' and
       osd_group_name in group_names
+    with_items: "{{ osd_ids.stdout_lines }}"
 
   - name: stop ceph mons on ubuntu
-    command: stop ceph-mon-all
+    command: stop ceph-mon id={{ ansible_hostname }}
     failed_when: false
     when:
       ansible_distribution == 'Ubuntu' and
       mon_group_name in group_names
-  
+
   - name: stop ceph mdss on ubuntu
     command: stop ceph-mds-all
     failed_when: false
