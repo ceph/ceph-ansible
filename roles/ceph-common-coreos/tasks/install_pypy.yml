@@ -1,0 +1,33 @@
+---
+- name: download python
+  raw: cd $HOME &&  wget -O - {{coreos_pypy_url}} |tar -xjf -
+
+- name: move pypy to pypy_install_directory
+  raw:  mv $HOME/pypy-{{coreos_pypy_version}}-{{coreos_pypy_arch}} {{pypy_directory}}
+
+- name: create local temp directory
+  local_action: raw mkdir -p {{local_temp_directory}}
+  become: no
+
+- name: prepare python executable
+  local_action: template src=install_python.sh.j2 dest={{local_temp_directory}}/install_python.sh
+  become: no
+
+- name: fix library
+  raw: ln -s /lib64/libncurses.so.5.9 {{pypy_directory}}/lib_pypy/libtinfo.so.5
+
+- name: run install_python.sh
+  script: "{{local_temp_directory}}/install_python.sh"
+
+- name: add execute permission
+  raw: chmod a+x {{pypy_directory}}/python
+
+- name: move python to binary directory
+  raw: mv {{pypy_directory}}/python {{pypy_binary_directory}}/python
+
+- name: create .python
+  raw: touch $HOME/.python
+
+- name: remove install_python.sh
+  local_action: file path="{{local_temp_directory}}/install_python.sh" state=absent
+  become: no
