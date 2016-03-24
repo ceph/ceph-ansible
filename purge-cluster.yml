@@ -1,6 +1,34 @@
 ---
 # This playbook purges Ceph
 # It removes: packages, configuration files and ALL THE DATA
+#
+# Use it like this:
+# ansible-playbook purge-cluster.yml
+#     Prompts for confirmation to purge, defaults to no and
+#     doesn't purge the cluster. yes purges the cluster.
+#
+# ansible-playbook -e ireallymeanit=yes|no purge-cluster.yml
+#     Overrides the prompt using -e option. Can be used in
+#     automation scripts to avoid interactive prompt.
+
+- name: confirm whether user really meant to purge the cluster
+  hosts: localhost
+
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to purge the cluster?
+      default: 'no'
+      private: no
+
+  tasks:
+  - name: exit playbook, if user didn't mean to purge cluster
+    fail:
+      msg: >
+        "Exiting purge-cluster playbook, cluster was NOT purged.
+         To purge the cluster, either say 'yes' on the prompt or
+         or use `-e ireallymeanit=yes` on the command line when
+         invoking the playbook"
+    when: ireallymeanit != 'yes'
 
 - name: stop ceph cluster
   hosts:
