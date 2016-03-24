@@ -1,7 +1,7 @@
 # Ansible role: Ceph OSD
 
 This role bootstraps Ceph OSD(s).
-It can bootstrap dockerized Ceph OSD(s).
+It can bootstrap dockerized Ceph OSD(s) and dockerized Ceph OSD(s) with kv backend.
 
 # Requirements
 
@@ -27,7 +27,7 @@ Then:
 
 # Dependencies
 
-The role `leseb.ceph-common` must be installed.
+The role `leseb.ceph-common` must be installed. When running on CoreOS the role `ceph-common-coreos` must be installed.
 
 # Example Playbook
 
