@@ -189,14 +189,20 @@
     when:
       osd_group_name in group_names
 
+  - name: remove monitor store and bootstrap keys
+    shell: rm -rf /var/lib/ceph/
+    failed_when: false
+    when:
+      mon_group_name in group_names
+
   - name: is reboot needed
     local_action: shell echo requesting reboot
     notify:
       - restart machine
       - wait for server to boot
       - remove data
-    when: 
-      osd_group_name in group_names and 
+    when:
+      osd_group_name in group_names and
       remove_osd_mountpoints.rc != 0
 
   - name: zap osd disks
@@ -211,7 +217,7 @@
     when:
       osd_group_name in group_names and
       raw_multi_journal and
-      zap_journal_disks 
+      zap_journal_disks
 
   - name: purge ceph packages with yum
     yum:
