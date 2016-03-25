@@ -1,0 +1,30 @@
+---
+- name: download get_pip.py
+  raw: cd $HOME && wget {{pip_url}}
+
+- name: run get-pip.py
+  raw: "{{pypy_binary_directory}}/python $HOME/get-pip.py"
+
+- name: create local temp directory
+  local_action: raw mkdir -p {{local_temp_directory}}
+  become: no
+
+- name: prepare install_pip.sh
+  local_action: template src=install_pip.sh.j2 dest={{local_temp_directory}}/install_pip.sh
+  become: no
+
+- name: run pip.sh
+  script: "{{local_temp_directory}}/install_pip.sh"
+
+- name: add execute permission
+  raw: chmod a+x {{pypy_directory}}/pip
+
+- name: move python to binary directory
+  raw: mv {{pypy_directory}}/pip {{pypy_binary_directory}}/pip
+
+- name: create .pip
+  raw: touch $HOME/.pip
+
+- name: remove pip.sh
+  local_action: file path="{{local_temp_directory}}/pip.sh" state=absent
+  become: no

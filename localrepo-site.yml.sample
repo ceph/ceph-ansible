@@ -1,0 +1,51 @@
+---
+# Sample Playbook for local mirrors.
+# Additional/optiona step to generate repos.d file for local mirrors.
+# Defines deployment design and assigns role to server groups
+
+- hosts: all 
+  max_fail_percentage: 0
+  become: True
+  vars:
+    repolist:
+      - { src: "/<path to repo file>/localmirror_ceph.repo", dest: "/etc/yum.repos.d/ceph.repo" }
+  tasks:
+    - name: Copy User provided repo files to /etc/yum.repos.d/
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: root
+        group: root
+      with_items:
+        - "{{ repolist }}"
+
+- hosts: mons
+  become: True
+  roles:
+  - ceph-mon
+
+- hosts: agents
+  become: True
+  roles:
+  - ceph-agent
+
+- hosts: osds
+  become: True
+  roles:
+  - ceph-osd
+
+- hosts: mdss
+  become: True
+  roles:
+  - ceph-mds
+
+- hosts: rgws
+  become: True
+  roles:
+  - ceph-rgw
+
+- hosts: restapis
+  become: True
+  roles:
+  - ceph-restapi
+

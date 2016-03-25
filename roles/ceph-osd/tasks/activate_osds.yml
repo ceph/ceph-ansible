@@ -35,11 +35,21 @@
   failed_when: false
   when:
     not item.0.get("skipped") and
-    item.0.get("rc", 0) != 0 and
+    item.0.get("rc", 0) == 0 and
     not osd_auto_discovery
 
 - include: osd_fragment.yml
   when: crush_location
+
+- name: set selinux to permissive and make it persistent
+  selinux:
+    policy: targeted
+    state: permissive
+  when:
+    ansible_selinux != false and
+    ansible_selinux['status'] == 'enabled' and
+    ansible_selinux['config_mode'] != 'disabled' and
+    not is_ceph_infernalis
 
 - name: start and add that the osd service(s) to the init sequence (before infernalis)
   service:
