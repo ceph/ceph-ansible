@@ -36,6 +36,7 @@
     msg: "journal_size must be configured. See http://ceph.com/docs/master/rados/configuration/osd-config-ref/"
   when:
     journal_size|int == 0 and
+    osd_objectstore != 'bluestore' and
     osd_group_name in group_names
 
 - name: make sure monitor_interface or monitor_address is configured
@@ -68,7 +69,8 @@
     osd_group_name in group_names and
     not journal_collocation and
     not raw_multi_journal and
-    not osd_directory
+    not osd_directory and
+    not bluestore
 
 - name: verify only one osd scenario was chosen
   fail:
@@ -78,7 +80,10 @@
     osd_group_name in group_names and
     ((journal_collocation and raw_multi_journal) or
     (journal_collocation and osd_directory) or
-    (raw_multi_journal and osd_directory))
+    (raw_multi_journal and osd_directory) or
+    (bluestore and journal_collocation) or
+    (bluestore and raw_multi_journal) or
+    (bluestore and osd_directory))
 
 - name: verify devices have been provided
   fail:
