@@ -143,6 +143,15 @@
       systemd_unit_files.stdout != "0" and
       mds_group_name in group_names
 
+  - name: stop ceph rgws with systemd
+    service:
+      name: ceph-radosgw@rgw.{{ ansible_hostname }}
+      state: stopped
+    when:
+      ansible_os_family == 'RedHat' and
+      systemd_unit_files.stdout != "0" and
+      rgw_group_name in group_names
+
 # before infernalis
   - name: stop ceph osds
     command: service ceph stop osd
@@ -163,6 +172,13 @@
     when:
       ansible_os_family == 'RedHat' and
       mds_group_name in group_names and
+      systemd_unit_files.stdout == "0"
+
+  - name: stop ceph rgws
+    command: service ceph-radosgw stop
+    when:
+      ansible_os_family == 'RedHat' and
+      rgw_group_name in group_names and
       systemd_unit_files.stdout == "0"
 
 # Ubuntu 14.04
@@ -187,6 +203,13 @@
     when:
       ansible_distribution == 'Ubuntu' and
       mds_group_name in group_names
+
+  - name: stop ceph rgws on ubuntu
+    command: stop ceph-radosgw id=rgw.{{ ansible_hostname }}
+    failed_when: false
+    when:
+      ansible_distribution == 'Ubuntu' and
+      rgw_group_name in group_names
 
   - name: check for anything running ceph
     shell: "ps awux | grep -v grep | grep -q -- ceph-"
@@ -334,3 +357,17 @@
     notify:
       - remove data
 
+  - name: purge yum cache
+    command: yum clean all
+    when:
+      ansible_pkg_mgr == 'yum'
+
+  - name: purge dnf cache
+    command: dnf clean all
+    when:
+      ansible_pkg_mgr == 'dnf'
+
+  - name: clean apt
+    shell: apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    when:
+      ansible_pkg_mgr == 'apt'
