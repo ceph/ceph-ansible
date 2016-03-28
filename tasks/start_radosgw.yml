@@ -33,6 +33,17 @@
     ansible_os_family == 'RedHat' and
     not is_ceph_infernalis
 
+- name: enable systemd unit file for rgw instance (for or after infernalis)
+  file:
+    src: /usr/lib/systemd/system/ceph-radosgw@.service
+    dest: /etc/systemd/system/multi-user.target.wants/ceph-radosgw@rgw.{{ ansible_hostname }}.service
+    state: link
+  changed_when: false
+  failed_when: false
+  when:
+    ansible_distribution != "Ubuntu" and
+    is_ceph_infernalis
+
 - name: start rgw on red hat (after infernalis)
   service:
     name: ceph-radosgw@rgw.{{ ansible_hostname }}
