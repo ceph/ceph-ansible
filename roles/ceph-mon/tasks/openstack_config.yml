@@ -1,6 +1,6 @@
 ---
 - name: create openstack pool
-  command: ceph osd pool create {{ item.name }} {{ item.pg_num }}
+  command: ceph --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pg_num }}
   with_items:
     - "{{ openstack_glance_pool }}"
     - "{{ openstack_cinder_pool }}"
@@ -10,9 +10,9 @@
   failed_when: false
 
 - name: create openstack keys
-  command: ceph auth get-or-create {{ item.name }} {{ item.value }} -o /etc/ceph/ceph.{{ item.name }}.keyring
+  command: ceph --cluster {{ cluster }} auth get-or-create {{ item.name }} {{ item.value }} -o /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
   args:
-    creates: /etc/ceph/ceph.{{ item.name }}.keyring
+    creates: /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
   with_items: openstack_keys
   changed_when: false
   when: cephx

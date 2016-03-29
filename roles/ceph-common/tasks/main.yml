@@ -179,7 +179,7 @@
   action: config_template
   args:
     src: ceph.conf.j2
-    dest: /etc/ceph/ceph.conf
+    dest: /etc/ceph/{{ cluster }}.conf
     owner: "{{ dir_owner }}"
     group: "{{ dir_group }}"
     mode: "{{ activate_file_mode }}"
@@ -207,3 +207,19 @@
     owner: "{{ rbd_client_dir_owner }}"
     group: "{{ rbd_client_dir_group }}"
     mode: "{{ rbd_client_dir_mode }}"
+
+- name: configure cluster name
+  lineinfile:
+    dest: /etc/sysconfig/ceph
+    insertafter: EOF
+    line: "CLUSTER={{ cluster }}"
+  when:
+    ansible_os_family == "RedHat"
+
+- name: configure cluster name
+  lineinfile:
+    dest: /etc/default/ceph/ceph
+    insertafter: EOF
+    line: "CLUSTER={{ cluster }}"
+  when:
+    ansible_os_family == "Debian"

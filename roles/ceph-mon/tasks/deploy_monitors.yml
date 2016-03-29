@@ -38,16 +38,16 @@
 
 - name: create monitor directory
   file:
-    path: /var/lib/ceph/mon/ceph-{{ monitor_name }}
+    path: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}
     state: directory
     owner: "{{ dir_owner }}"
     group: "{{ dir_group }}"
     mode: "{{ dir_mode }}"
 
 - name: ceph monitor mkfs with keyring (for or after infernalis release)
-  command: ceph-mon --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
+  command: ceph-mon --cluster {{ cluster }} --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
   args:
-    creates: /var/lib/ceph/mon/ceph-{{ monitor_name }}/keyring
+    creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring
   when:
     cephx and
     is_ceph_infernalis
@@ -55,7 +55,7 @@
 - name: ceph monitor mkfs without keyring (for or after infernalis release)
   command: ceph-mon --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }}
   args:
-    creates: /var/lib/ceph/mon/ceph-{{ monitor_name }}/store.db
+    creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/store.db
   when:
     not cephx and
     is_ceph_infernalis
@@ -63,7 +63,7 @@
 - name: ceph monitor mkfs with keyring (before infernalis release)
   command: ceph-mon --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
   args:
-    creates: /var/lib/ceph/mon/ceph-{{ monitor_name }}/keyring
+    creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring
   when:
     cephx and
     not is_ceph_infernalis
@@ -71,7 +71,7 @@
 - name: ceph monitor mkfs without keyring (before infernalis release)
   command: ceph-mon --mkfs -i {{ monitor_name }} --fsid {{ fsid }}
   args:
-    creates: /var/lib/ceph/mon/ceph-{{ monitor_name }}/store.db
+    creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/store.db
   when:
     not cephx and
     not is_ceph_infernalis

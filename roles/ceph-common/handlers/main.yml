@@ -22,7 +22,7 @@
     is_ceph_infernalis
 
 - name: restart ceph mons on ubuntu
-  command: restart ceph-mon-all
+  command: initctl restart ceph-mon cluster={{ cluster }} id={{ monitor_name }}
   when:
     socket.rc == 0 and
     ansible_distribution == 'Ubuntu' and
@@ -50,14 +50,17 @@
     is_ceph_infernalis
 
 - name: restart ceph osds on ubuntu
-  command: restart ceph-osd-all
+  shell: |
+    for id in $(ls /var/lib/ceph/osd/ |grep -oh '[0-9]*'); do
+      initctl restart ceph-osd cluster={{ cluster }} id=$id
+    done
   when:
     socket.rc == 0 and
     ansible_distribution == 'Ubuntu' and
     osd_group_name in group_names
 
 - name: restart ceph mdss on ubuntu
-  command: restart ceph-mds-all
+  command: initctl restart ceph-mds cluster={{ cluster }} id={{ ansible_hostname }}
   when:
     socket.rc == 0 and
     ansible_distribution == 'Ubuntu' and
@@ -84,7 +87,7 @@
     ceph_stable_release not in ceph_stable_releases
 
 - name: restart ceph rgws on ubuntu
-  command: restart ceph-all
+  command: initctl restart radosgw cluster={{ cluster }} id=rgw.{{ ansible_hostname }}
   when:
     socketrgw.rc == 0 and
     ansible_distribution == 'Ubuntu' and
