@@ -12,16 +12,10 @@
     ansible_distribution != "Ubuntu" and
     ansible_os_family != 'RedHat'
 
-- name: activate rgw on ubuntu
-  command: initctl emit radosgw cluster=ceph id=rgw.{{ ansible_hostname }}
+- name: start and add that the rados gateway service to the init sequence (ubuntu)
+  command: initctl emit radosgw cluster={{ cluster }} id=rgw.{{ ansible_hostname }}
   changed_when: false
-  when: ansible_distribution == 'Ubuntu'
-
-- name: start rgw on ubuntu
-  service:
-    name: radosgw
-    args: id=rgw.{{ ansible_hostname }}
-    state: started
+  failed_when: false
   when: ansible_distribution == 'Ubuntu'
 
 - name: start rgw on red hat (before or on infernalis)

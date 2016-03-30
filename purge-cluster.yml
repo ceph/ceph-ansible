@@ -21,7 +21,7 @@
       private: no
 
   tasks:
-  - name: exit playbook, if user didn't mean to purge cluster
+  - name: exit playbook, if user did not mean to purge cluster
     fail:
       msg: >
         "Exiting purge-cluster playbook, cluster was NOT purged.
@@ -69,6 +69,10 @@
       - python-cephfs
       - python-rados
       - python-rbd
+
+    cluster: ceph # name of the cluster
+    monitor_name: "{{ ansible_hostname }}"
+    mds_name: "{{ ansible_hostname }}"
 
 
   handlers:
@@ -183,7 +187,10 @@
 
 # Ubuntu 14.04
   - name: stop ceph osds on ubuntu
-    command: stop ceph-osd id={{ item }}
+    shell: |
+      for id in $(ls /var/lib/ceph/osd/ |grep -oh '[0-9]*'); do
+        initctl stop ceph-osd cluster={{ cluster }} id=$id
+      done
     failed_when: false
     when:
       ansible_distribution == 'Ubuntu' and
@@ -191,21 +198,21 @@
     with_items: "{{ osd_ids.stdout_lines }}"
 
   - name: stop ceph mons on ubuntu
-    command: stop ceph-mon id={{ ansible_hostname }}
+    command: initctl stop ceph-mon cluster={{ cluster }} id={{ monitor_name }}
     failed_when: false
     when:
       ansible_distribution == 'Ubuntu' and
       mon_group_name in group_names
 
   - name: stop ceph mdss on ubuntu
-    command: stop ceph-mds-all
+    command: initctl stop ceph-mds cluster={{ cluster }} id={{ mds_name }}
     failed_when: false
     when:
       ansible_distribution == 'Ubuntu' and
       mds_group_name in group_names
 
   - name: stop ceph rgws on ubuntu
-    command: stop ceph-radosgw id=rgw.{{ ansible_hostname }}
+    command: initctl stop radosgw cluster={{ cluster }} id={{ ansible_hostname }}
     failed_when: false
     when:
       ansible_distribution == 'Ubuntu' and

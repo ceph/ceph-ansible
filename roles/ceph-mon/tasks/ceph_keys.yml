@@ -3,12 +3,12 @@
 # the admin key is not instantanely created so we have to wait a bit
 - name: wait for client.admin key exists
   wait_for:
-    path: /etc/ceph/ceph.client.admin.keyring
+    path: /etc/ceph/{{ cluster }}.client.admin.keyring
 
 - name: create ceph rest api keyring when mon is not containerized
-  command: ceph auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/ceph.client.restapi.keyring
+  command: ceph --cluster {{ cluster }} auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/{{ cluster }}.client.restapi.keyring
   args:
-    creates: /etc/ceph/ceph.client.restapi.keyring
+    creates: /etc/ceph/{{ cluster }}.client.restapi.keyring
   changed_when: false
   when:
     cephx and
@@ -41,9 +41,9 @@
   run_once: true
   with_items:
     - "{{ ceph_keys.stdout_lines }}"
-    - /var/lib/ceph/bootstrap-osd/ceph.keyring
-    - /var/lib/ceph/bootstrap-rgw/ceph.keyring
-    - /var/lib/ceph/bootstrap-mds/ceph.keyring
+    - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
+    - /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
+    - /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring
   when: cephx
 
 - name: drop in a motd script to report status when logging in
