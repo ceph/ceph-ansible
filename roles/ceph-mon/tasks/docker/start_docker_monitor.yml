@@ -101,8 +101,8 @@
     volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
   when:
     not is_atomic and
-    ansible_os_family != 'CoreOS'
-    and not mon_containerized_deployment_with_kv
+    ansible_os_family != 'CoreOS' and
+    not mon_containerized_deployment_with_kv
 
 - name: run the ceph monitor docker image with kv
   docker:
@@ -114,5 +114,5 @@
     env: "KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},{{ ceph_mon_extra_envs }}"
   when:
     not is_atomic and
-    ansible_os_family != 'CoreOS'
-    and mon_containerized_deployment_with_kv
+    ansible_os_family != 'CoreOS' and
+    mon_containerized_deployment_with_kv
