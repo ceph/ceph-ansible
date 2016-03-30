@@ -24,7 +24,8 @@
     env: "OSD_DEVICE={{ item }},{{ ceph_osd_docker_prepare_env }}"
     volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev/:/dev/"
   with_items: ceph_osd_docker_devices
-  when: ceph_osd_docker_prepare_env is defined and not osd_containerized_deployment_with_kv
+  when: ceph_osd_docker_prepare_env is defined and
+        not osd_containerized_deployment_with_kv
 
 - name: prepare ceph osd disk with kv_store
   docker:
@@ -38,7 +39,8 @@
     env: "OSD_DEVICE={{ item }},KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},{{ ceph_osd_docker_prepare_env }}"
   ignore_errors: true
   with_items: ceph_osd_docker_devices
-  when: ceph_osd_docker_prepare_env is defined and osd_containerized_deployment_with_kv
+  when: ceph_osd_docker_prepare_env is defined and
+        osd_containerized_deployment_with_kv
 
 # Use systemd to manage container on Atomic host
 - name: generate systemd unit file
@@ -57,18 +59,21 @@
     dest: /etc/systemd/system/multi-user.target.wants/ceph-osd@{{ item | basename }}.service
     state: link
   with_items: ceph_osd_docker_devices
-  when: is_atomic or ansible_os_family == 'CoreOS'
+  when: is_atomic or
+        ansible_os_family == 'CoreOS'
 
 - name: enable systemd unit file for osd instance
   shell: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-osd@{{ item | basename }}.service
   failed_when: false
   changed_when: false
   with_items: ceph_osd_docker_devices
-  when: is_atomic or ansible_os_family == 'CoreOS'
+  when: is_atomic or
+        ansible_os_family == 'CoreOS'
 
 - name: reload systemd unit files
   shell: systemctl daemon-reload
-  when: is_atomic or ansible_os_family == 'CoreOS'
+  when: is_atomic or
+        ansible_os_family == 'CoreOS'
 
 - name: systemd start osd container
   service:
@@ -77,7 +82,8 @@
     enabled: yes
   changed_when: false
   with_items: ceph_osd_docker_devices
-  when: is_atomic or ansible_os_family == 'CoreOS'
+  when: is_atomic or
+        ansible_os_family == 'CoreOS'
 
 - name: run the ceph osd docker image
   docker:
@@ -90,8 +96,9 @@
     env: "OSD_DEVICE={{ item }},{{ ceph_osd_docker_extra_env }}"
     volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev/:/dev/"
   with_items: ceph_osd_docker_devices
-  when: not is_atomic and ansible_os_family != 'CoreOS'
-        and not osd_containerized_deployment_with_kv
+  when: not is_atomic and
+        ansible_os_family != 'CoreOS' and
+        not osd_containerized_deployment_with_kv
 
 
 - name: run the ceph osd docker image with kv
@@ -105,5 +112,6 @@
     env: "KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},OSD_DEVICE={{ item }},{{ ceph_osd_docker_extra_env }}"
     volumes: "/dev/:/dev/"
   with_items: ceph_osd_docker_devices
-  when: not is_atomic and ansible_os_family != 'CoreOS'
-        and osd_containerized_deployment_with_kv
+  when: not is_atomic and
+        ansible_os_family != 'CoreOS' and
+        osd_containerized_deployment_with_kv
