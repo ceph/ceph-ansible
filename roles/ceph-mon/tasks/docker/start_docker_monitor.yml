@@ -41,16 +41,20 @@
     name: populate-kv-store
     state: absent
     image: ceph/daemon
+  when: mon_containerized_deployment_with_kv
 
 # Use systemd to manage container on Atomic host and CoreOS
 - name: generate systemd unit file
   become: true
   template:
-    src: ../../templates/ceph-mon.service.j2
+    src: ../templates/ceph-mon.service.j2
     dest: /var/lib/ceph/ceph-mon@.service
     owner: "root"
     group: "root"
     mode: "0644"
+  when:
+    is_atomic or
+    ansible_os_family == 'CoreOS'
 
 - name: link systemd unit file for mon instance
   file:
