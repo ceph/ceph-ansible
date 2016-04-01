@@ -9,6 +9,13 @@
     state: unmounted
   when: ceph_docker_on_openstack
 
+- name: verify if the disk was already prepared
+  shell: "lsblk -o PARTLABEL {{ item }} | grep -sq 'ceph'"
+  failed_when: false
+  changed_when: false
+  with_items: ceph_osd_docker_devices
+  register: osd_prepared
+
 - name: prepare ceph osd disk
   docker:
     image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
@@ -17,12 +24,17 @@
     pid: host
     state: running
     privileged: yes
-    env: "OSD_DEVICE={{ item }},{{ ceph_osd_docker_prepare_env }}"
-    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev/:/dev/"
-  with_items: ceph_osd_docker_devices
+    env: "OSD_DEVICE={{ item.0 }},{{ ceph_osd_docker_prepare_env }}"
+    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,{{ item.0 }}:{{ item.0 }}"
+  with_together:
+    - ceph_osd_docker_devices
+    - osd_prepared.results
   when:
+    item.1.get("rc", 0) != 0 and
     ceph_osd_docker_prepare_env is defined and
-    not osd_containerized_deployment_with_kv
+    not osd_containerized_deployment_with_kv and
+    not is_atomic and
+    not ansible_os_family == 'CoreOS'
 
 - name: prepare ceph osd disk with kv_store
   docker:
@@ -32,12 +44,63 @@
     pid: host
     state: running
     privileged: yes
-    volumes: "/dev/:/dev/"
-    env: "OSD_DEVICE={{ item }},KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},{{ ceph_osd_docker_prepare_env }}"
+    volumes: "{{ item.0 }}:{{ item.0 }}"
+    env: "OSD_DEVICE={{ item.0 }},KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},{{ ceph_osd_docker_prepare_env }}"
   ignore_errors: true
-  with_items: ceph_osd_docker_devices
+  with_together:
+    - ceph_osd_docker_devices
+    - osd_prepared.results
   when:
+    item.1.get("rc", 0) != 0 and
     ceph_osd_docker_prepare_env is defined and
+    osd_containerized_deployment_with_kv and
+    not is_atomic and
+    not ansible_os_family == 'CoreOS'
+
+me: prepare ceph osd disk for container operating systems
+  shell: |
+    docker run -d --net=host \
+    --pid=host \
+    --privileged=true \
+    -v /etc/ceph:/etc/ceph \
+    -v /var/lib/ceph/:/var/lib/ceph/ \
+    -v {{ item.0 }}:{{ item.0 }} \
+    -e OSD_DEVICE="{{ item.0 }}" \
+    -e "{{ ceph_osd_docker_prepare_env }}" \
+    "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}" \
+    osd_ceph_disk_prepare
+  failed_when: false
+  changed_when: false
+  with_together:
+    - ceph_osd_docker_devices
+    - osd_prepared.results
+  when:
+    item.1.get("rc", 0) != 0 and
+    is_atomic or
+    ansible_os_family == 'CoreOS' and
+    not osd_containerized_deployment_with_kv
+
+- name: prepare ceph osd disk for container operating systems with kv_store
+  shell: |
+    docker run -d --net=host \
+    --pid=host \
+    --privileged=true \
+    -e KV_TYPE={{ kv_type }} \
+    -e KV_IP={{ kv_endpoint }} \
+    -v {{ item.0 }}:{{ item.0 }} \
+    -e OSD_DEVICE={{ item.0 }} \
+    -e "{{ ceph_osd_docker_prepare_env }}" \
+    "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}" \
+    osd_ceph_disk_prepare
+  failed_when: false
+  changed_when: false
+  with_together:
+    - ceph_osd_docker_devices
+    - osd_prepared.results
+  when:
+    item.1.get("rc", 0) != 0 and
+    is_atomic or
+    ansible_os_family == 'CoreOS' and
     osd_containerized_deployment_with_kv
 
 # Use systemd to manage container on Atomic host
@@ -50,6 +113,9 @@
     group: "root"
     mode: "0644"
   failed_when: false
+  when:
+    is_atomic or
+    ansible_os_family == 'CoreOS'
 
 - name: link systemd unit file for osd instance
   file:
