@@ -9,10 +9,6 @@
     state: unmounted
   when: ceph_docker_on_openstack
 
-# (rootfs) for reasons I haven't figured out, docker pull and run will fail.
-- name: pull ceph daemon image
-  shell: "docker pull {{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
-
 - name: prepare ceph osd disk
   docker:
     image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
@@ -76,6 +72,8 @@
 
 - name: reload systemd unit files
   shell: systemctl daemon-reload
+  changed_when: false
+  failed_when: false
   when:
     is_atomic or
     ansible_os_family == 'CoreOS'
@@ -106,7 +104,6 @@
     not is_atomic and
     ansible_os_family != 'CoreOS' and
     not osd_containerized_deployment_with_kv
-
 
 - name: run the ceph osd docker image with kv
   docker:

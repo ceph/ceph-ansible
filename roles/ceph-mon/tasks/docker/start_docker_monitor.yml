@@ -1,7 +1,4 @@
 ---
-- name: pull ceph daemon image
-  shell: "docker pull {{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
-
 - name: populate kv_store with default ceph.conf
   docker:
     name: populate-kv-store
@@ -75,6 +72,8 @@
 
 - name: reload systemd unit files
   shell: systemctl daemon-reload
+  changed_when: false
+  failed_when: false
   when:
     is_atomic or
     ansible_os_family == 'CoreOS'
