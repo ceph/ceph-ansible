@@ -64,24 +64,16 @@
   tags:
     - package-install
 
-- name: get ceph rhcs version
-  shell: rpm -q --qf "%{version}\n" ceph-common | cut -f1,2 -d '.'
+- name: get ceph version
+  shell: ceph --version | cut -f3 -d ' '
   changed_when: false
-  failed_when: false
-  register: rh_storage_version
-  when: ceph_stable_rh_storage
+  register: ceph_version
 
-# NOTE (leseb): be careful with the following
-# somehow the YAML syntax using "is_ceph_infernalis: {{"
-# does NOT work, so we keep this syntax styling...
+# NOTE (leseb/jsaintrocc): Your supposed to qoute variables
+# that follow colons to avoid confusion with dicts but this
+# causes issues with the boolean, so we keep this syntax styling...
 - set_fact:
-    is_ceph_infernalis={{ (ceph_stable and ceph_stable_release not in ceph_stable_releases) or (ceph_dev) or (ceph_stable_rh_storage and (rh_storage_version.stdout | version_compare('0.94', '>'))) }}
-
-- set_fact:
-    is_ceph_infernalis=True
-  when:
-    ansible_os_family == 'Debian' and
-    ceph_stable_rh_storage
+    is_ceph_infernalis={{ ceph_version.stdout | version_compare('9.2.0', '>=') }}
 
 - set_fact:
     dir_owner: ceph
