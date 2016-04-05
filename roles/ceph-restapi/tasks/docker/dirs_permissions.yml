@@ -1,0 +1,45 @@
+---
+- name: inspect ceph version
+  shell: "docker inspect --format '{{ index (index .Config.Env) 3 }}' docker.io/{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }} | cut -d '=' -f '2'"
+  changed_when: false
+  failed_when: false
+  run_once: true
+  register: ceph_version
+
+- set_fact:
+    after_hamer=True
+  when:
+    ceph_version not in (firefly or giant or hammer)
+
+- set_fact:
+    after_hamer=False
+  when:
+    ceph_version in (firefly or giant or hammer)
+
+- name: create bootstrap directories (for or before hammer)
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  with_items:
+    - /etc/ceph/
+    - /var/lib/ceph/bootstrap-osd
+    - /var/lib/ceph/bootstrap-mds
+    - /var/lib/ceph/bootstrap-rgw
+  when: not after_hamer
+
+- name: create bootstrap directories (after hammer)
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: ceph
+    group: ceph
+    mode: "0755"
+  with_items:
+    - /etc/ceph/
+    - /var/lib/ceph/bootstrap-osd
+    - /var/lib/ceph/bootstrap-mds
+    - /var/lib/ceph/bootstrap-rgw
+  when: not after_hamer

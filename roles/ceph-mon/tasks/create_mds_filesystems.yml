@@ -4,7 +4,7 @@
 # the role 'ceph-common' doesn't get inherited so the condition can not be evaluate
 # since those check are performed by the ceph-common role
 - name: create filesystem pools
-  command: ceph osd pool create {{ item }} {{ pool_default_pg_num }}
+  command: ceph --cluster {{ cluster }} osd pool create {{ item }} {{ pool_default_pg_num }}
   with_items:
     - cephfs_data
     - cephfs_metadata
@@ -12,6 +12,6 @@
   when: not {{ ceph_version.stdout | version_compare('0.84', '<') }}
 
 - name: create ceph filesystem
-  command: ceph fs new {{ cephfs }} {{ cephfs_metadata }} {{ cephfs_data }}
+  command: ceph --cluster {{ cluster }} fs new {{ cephfs }} {{ cephfs_metadata }} {{ cephfs_data }}
   changed_when: false
   when: not {{ ceph_version.stdout | version_compare('0.84', '<') }}
