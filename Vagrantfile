@@ -67,6 +67,7 @@ ansible_provision = proc do |ansible|
     ansible.extra_vars = {
       "ceph_#{settings['ceph_install_source']}"=> 'true',
       journal_collocation: 'true',
+      pool_default_size: '2',
       journal_size: 100,
       monitor_interface: ETH,
       cluster_network: "#{SUBNET}.0/24",

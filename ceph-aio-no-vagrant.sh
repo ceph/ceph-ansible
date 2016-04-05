@@ -32,6 +32,7 @@ cp group_vars/osds.sample group_vars/osds
 sed -i "s/#osd_auto_discovery: false/osd_auto_discovery: true/" group_vars/osds
 sed -i "s/#journal_collocation: false/journal_collocation: true/" group_vars/osds
 sed -i "s/#ceph_dev: false/ceph_dev: true/" group_vars/all
+sed -i "s/#pool_default_size: 3/pool_default_size: 2/" group_vars/all
 sed -i "s/#monitor_address: 0.0.0.0/monitor_address: ${MON_IP}/" group_vars/all
 sed -i "s/#journal_size: 0/journal_size: 100/" group_vars/all
 sed -i "s|#public_network: 0.0.0.0\/0|public_network: ${SUBNET}|" group_vars/all
