@@ -36,6 +36,13 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when: not ceph_stable_rh_storage
 
+# include Infernalis in the set of releases that do not have
+# a separate ceph-mon package or ceph-osd package
+# Note: Red Hat Ceph Storage is different, DOES separate them even in hammer
+
+- set_fact: > 
+    ceph_stable_rel_pkg="{{ ceph_stable_releases | union([ 'infernalis' ]) }}"
+
 - name: install distro or red hat storage ceph mon
   yum:
     name: "{{ item }}"
@@ -44,11 +51,10 @@
     - ceph
     - ceph-mon
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage) and
+    (ceph_origin == "distro" or ceph_stable_rh_storage or
+     (ceph_stable and ceph_stable_release not in ceph_stable_rel_pkg)) and
     mon_group_name in group_names and
-    ansible_pkg_mgr == "yum" and
-    ceph_stable and
-    ceph_stable_release not in ceph_stable_releases
+    ansible_pkg_mgr == "yum"
 
 - name: install distro or red hat storage ceph mon
   dnf:
@@ -58,11 +64,10 @@
     - ceph
     - ceph-mon
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage) and
+    (ceph_origin == "distro" or ceph_stable_rh_storage or
+     (ceph_stable and ceph_stable_release not in ceph_stable_rel_pkg)) and
     mon_group_name in group_names and
-    ansible_pkg_mgr == "dnf" and
-    ceph_stable and
-    ceph_stable_release not in ceph_stable_releases
+    ansible_pkg_mgr == "dnf"
 
 - name: install distro or red hat storage ceph osd
   yum:
@@ -72,11 +77,10 @@
     - ceph
     - ceph-osd
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage) and
+    (ceph_origin == "distro" or ceph_stable_rh_storage or
+     (ceph_stable and ceph_stable_release not in ceph_stable_rel_pkg)) and
     osd_group_name in group_names and
-    ansible_pkg_mgr == "yum" and
-    ceph_stable and
-    ceph_stable_release not in ceph_stable_releases
+    ansible_pkg_mgr == "yum"
 
 - name: install distro or red hat storage ceph osd
   dnf:
@@ -86,11 +90,10 @@
     - ceph
     - ceph-osd
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage) and
+    (ceph_origin == "distro" or ceph_stable_rh_storage or
+     (ceph_stable and ceph_stable_release not in ceph_stable_rel_pkg)) and
     osd_group_name in group_names and
-    ansible_pkg_mgr == "dnf" and
-    ceph_stable and
-    ceph_stable_release not in ceph_stable_releases
+    ansible_pkg_mgr == "dnf"
 
 - name: install ceph-test
   yum:
