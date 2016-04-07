@@ -120,16 +120,46 @@
   when: not is_ceph_infernalis
 
 - set_fact:
-    rbd_client_dir_owner: root
-    rbd_client_dir_group: root
-    rbd_client_dir_mode: "1777"
-  when: not is_ceph_infernalis
+    rbd_client_directory_owner: root
+  when:
+    not is_ceph_infernalis and
+    (rbd_client_directory_owner is not defined or
+     not rbd_client_directory_owner)
 
 - set_fact:
-    rbd_client_dir_owner: ceph
-    rbd_client_dir_group: ceph
-    rbd_client_dir_mode: "0770"
-  when: is_ceph_infernalis
+    rbd_client_directory_owner: ceph
+  when:
+    is_ceph_infernalis and
+    (rbd_client_directory_owner is not defined or
+     not rbd_client_directory_owner)
+
+- set_fact:
+    rbd_client_directory_group: root
+  when:
+    not is_ceph_infernalis and
+    (rbd_client_directory_group is not defined or
+     not rbd_client_directory_group)
+
+- set_fact:
+    rbd_client_directory_group: ceph
+  when:
+    is_ceph_infernalis and
+    (rbd_client_directory_group is not defined or
+     not rbd_client_directory_group)
+
+- set_fact:
+    rbd_client_directory_mode: "1777"
+  when:
+    not is_ceph_infernalis and
+    (rbd_client_directory_mode is not defined or
+     not rbd_client_directory_mode)
+
+- set_fact:
+    rbd_client_directory_mode: "0770"
+  when:
+    is_ceph_infernalis and
+    (rbd_client_directory_mode is not defined or
+     not rbd_client_directory_mode)
 
 - name: check for a ceph socket
   shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
@@ -202,11 +232,15 @@
 
 - name: create rbd client directory
   file:
-    path: "{{ rbd_client_admin_socket_path }}"
+    path: "{{ item }}"
     state: directory
-    owner: "{{ rbd_client_dir_owner }}"
-    group: "{{ rbd_client_dir_group }}"
-    mode: "{{ rbd_client_dir_mode }}"
+    owner: "{{ rbd_client_directory_owner }}"
+    group: "{{ rbd_client_directory_group }}"
+    mode: "{{ rbd_client_directory_mode }}"
+  with_items:
+    - rbd_client_admin_socket_path
+    - rbd_client_log_path
+  when: rbd_client_directories
 
 - name: configure cluster name
   lineinfile:
