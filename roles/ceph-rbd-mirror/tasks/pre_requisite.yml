@@ -1,0 +1,28 @@
+---
+- name: install dependencies
+  apt:
+    pkg: rbd-mirror
+    state: present
+  when: ansible_os_family == 'Debian'
+  tags:
+    - package-install
+
+- name: install dependencies
+  # XXX Determine what RH repository this will belong to so that it can be
+  # properly checked and errored if the repository is not enabled.
+  yum:
+    name: rbd-mirror
+    state: present
+  when: ansible_os_family == 'RedHat'
+  tags:
+    - package-install
+
+- name: copy ceph admin key
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.client.admin.keyring"
+    dest: "/etc/ceph/{{ cluster }}.client.admin.keyring"
+    owner: "{{ key_owner }}"
+    group: "{{ key_group }}"
+    mode: "{{ key_mode }}"
+  when:
+    cephx
