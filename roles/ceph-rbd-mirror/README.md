@@ -1,4 +1,4 @@
-# Ansible role: Ceph Storage Agent
+# Ansible role: Ceph RBD mirror agent
 
 This role bootstraps the Ceph RBD mirror agent.
 
