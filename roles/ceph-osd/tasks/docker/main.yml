@@ -6,7 +6,9 @@
   failed_when: false
 
 - include: checks.yml
-  when: ceph_health.rc != 0 and not osd_containerized_deployment_with_kv
+  when:
+    ceph_health.rc != 0 and
+    not osd_containerized_deployment_with_kv
 
 - name: check if it is Atomic host
   stat: path=/run/ostree-booted
@@ -18,10 +20,12 @@
 
 - include: pre_requisite.yml
 
-- include: selinux.yml
-  when: ansible_os_family == 'RedHat'
-
 - include: fetch_configs.yml
   when: not osd_containerized_deployment_with_kv
+
+- include: dirs_permissions.yml
+
+- include: selinux.yml
+  when: ansible_os_family == 'RedHat'
 
 - include: start_docker_osd.yml

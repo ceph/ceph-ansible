@@ -1,7 +1,4 @@
 ---
-- name: pull ceph daemon image
-  shell: "docker pull {{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
-
 - name: populate kv_store with default ceph.conf
   docker:
     name: populate-kv-store
@@ -41,16 +38,20 @@
     name: populate-kv-store
     state: absent
     image: ceph/daemon
+  when: mon_containerized_deployment_with_kv
 
 # Use systemd to manage container on Atomic host and CoreOS
 - name: generate systemd unit file
   become: true
   template:
-    src: ../../templates/ceph-mon.service.j2
+    src: ../templates/ceph-mon.service.j2
     dest: /var/lib/ceph/ceph-mon@.service
     owner: "root"
     group: "root"
     mode: "0644"
+  when:
+    is_atomic or
+    ansible_os_family == 'CoreOS'
 
 - name: link systemd unit file for mon instance
   file:
@@ -71,6 +72,8 @@
 
 - name: reload systemd unit files
   shell: systemctl daemon-reload
+  changed_when: false
+  failed_when: false
   when:
     is_atomic or
     ansible_os_family == 'CoreOS'
@@ -101,4 +104,18 @@
     volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
   when:
     not is_atomic and
-    ansible_os_family != 'CoreOS'
+    ansible_os_family != 'CoreOS' and
+    not mon_containerized_deployment_with_kv
+
+- name: run the ceph monitor docker image with kv
+  docker:
+    image: "{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}"
+    name: "{{ ansible_hostname }}"
+    net: "host"
+    state: "running"
+    privileged: "{{ mon_docker_privileged }}"
+    env: "KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},{{ ceph_mon_extra_envs }}"
+  when:
+    not is_atomic and
+    ansible_os_family != 'CoreOS' and
+    mon_containerized_deployment_with_kv

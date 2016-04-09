@@ -1,7 +1,7 @@
 ---
 - name: activate monitor with upstart
   file:
-    path: /var/lib/ceph/mon/ceph-{{ monitor_name }}/{{ item }}
+    path: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/{{ item }}
     state: touch
     owner: "{{ activate_file_owner }}"
     group: "{{ activate_file_group }}"
@@ -13,11 +13,9 @@
   when: ansible_distribution == "Ubuntu"
 
 - name: start and add that the monitor service to the init sequence (ubuntu)
-  service:
-    name: ceph-mon
-    state: started
-    enabled: yes
-    args: "id={{ monitor_name }}"
+  command: initctl emit ceph-mon cluster={{ cluster }} id={{ monitor_name }}
+  changed_when: false
+  failed_when: false
   when: ansible_distribution == "Ubuntu"
 
 # NOTE (leseb): somehow the service ansible module is messing things up
@@ -51,13 +49,13 @@
     is_ceph_infernalis
 
 - name: collect admin and bootstrap keys
-  command: ceph-create-keys --id {{ monitor_name }}
+  command: ceph-create-keys --cluster {{ cluster }} --id {{ monitor_name }}
   changed_when: false
   failed_when:  false
   when: cephx
 
 - name: get ceph monitor version
-  shell: ceph daemon mon."{{ monitor_name }}" version | cut -d '"' -f 4 | cut -f 1,2 -d '.'
+  shell: ceph --cluster {{ cluster }} daemon mon."{{ monitor_name }}" version | cut -d '"' -f 4 | cut -f 1,2 -d '.'
   changed_when: false
   failed_when: "'No such file or directory' in ceph_version.stderr"
   register: ceph_version
