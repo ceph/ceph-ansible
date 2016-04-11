@@ -1,6 +1,6 @@
 ---
 - name: inspect ceph version
-  shell: "docker inspect --format '{{ index (index .Config.Env) 3 }}' docker.io/{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }} | cut -d '=' -f '2'"
+  shell: docker inspect docker.io/ceph/daemon | awk -F '=' '/CEPH_VERSION/ { gsub ("\",", "", $2); print $2 }' | uniq
   changed_when: false
   failed_when: false
   run_once: true
@@ -9,12 +9,7 @@
 - set_fact:
     after_hamer=True
   when:
-    ceph_version not in (firefly or giant or hammer)
-
-- set_fact:
-    after_hamer=False
-  when:
-    ceph_version in (firefly or giant or hammer)
+    ceph_version.stdout not in ['firefly','giant','hammer']
 
 - name: create bootstrap directories (for or before hammer)
   file:

@@ -61,6 +61,7 @@ ansible_provision = proc do |ansible|
       ceph_mon_docker_subnet: "#{SUBNET}.0/24",
       ceph_osd_docker_extra_env: "CEPH_DAEMON=OSD_CEPH_DISK,OSD_JOURNAL_SIZE=100",
       ceph_osd_docker_devices: settings['disks'],
+      ceph_docker_on_openstack: OSVM,
       ceph_rgw_civetweb_port: 8080
     }
   else
