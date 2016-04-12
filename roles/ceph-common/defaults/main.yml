@@ -175,11 +175,41 @@ debug_mds_level: 20
 rbd_cache: "true"
 rbd_cache_writethrough_until_flush: "true"
 rbd_concurrent_management_ops: 20
+
 rbd_client_directories: false # this will create rbd_client_log_path and rbd_client_admin_socket_path directories with proper permissions
-rbd_client_directory_user: qemu
-rbd_client_directory_group: libvirtd
-rbd_client_log_file: /var/log/rbd-clients/qemu-guest-$pid.log # must be writable by QEMU and allowed by SELinux or AppArmor
+
+# Permissions for the rbd_client_log_path and
+# rbd_client_admin_socket_path. Depending on your use case for Ceph
+# you may want to change these values. The default, which is used if
+# any of the variables are unset or set to a false value (like `null`
+# or `false`) is to automatically determine what is appropriate for
+# the Ceph version with non-OpenStack workloads -- ceph:ceph and 0770
+# for infernalis releases, and root:root and 1777 for pre-infernalis
+# releases.
+#
+# For other use cases, including running Ceph with OpenStack, you'll
+# want to set these differently:
+#
+# For OpenStack on RHEL, you'll want:
+#   rbd_client_directory_owner: "qemu"
+#   rbd_client_directory_group: "libvirtd" (or "libvirt", depending on your version of libvirt)
+#   rbd_client_directory_mode: "0755"
+#
+# For OpenStack on Ubuntu or Debian, set:
+#    rbd_client_directory_owner: "libvirt-qemu"
+#    rbd_client_directory_group: "kvm"
+#    rbd_client_directory_mode: "0755"
+#
+# If you set rbd_client_directory_mode, you must use a string (e.g.,
+# 'rbd_client_directory_mode: "0755"', *not*
+# 'rbd_client_directory_mode: 0755', or Ansible will complain: mode
+# must be in octal or symbolic form
+rbd_client_directory_owner: null
+rbd_client_directory_group: null
+rbd_client_directory_mode: null
+
 rbd_client_log_path: /var/log/rbd-clients/
+rbd_client_log_file: "{{ rbd_client_log_path }}/qemu-guest-$pid.log" # must be writable by QEMU and allowed by SELinux or AppArmor
 rbd_client_admin_socket_path: /var/run/ceph/rbd-clients # must be writable by QEMU and allowed by SELinux or AppArmor
 rbd_default_features: 3
 rbd_default_map_options: rw
