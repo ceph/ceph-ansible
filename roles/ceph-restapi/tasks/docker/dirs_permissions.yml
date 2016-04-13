@@ -1,6 +1,6 @@
 ---
 - name: inspect ceph version
-  shell: "docker inspect --format '{{ index (index .Config.Env) 3 }}' docker.io/{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }} | cut -d '=' -f '2'"
+  shell: docker inspect docker.io/"{{ ceph_restapi_docker_username }}"/"{{ ceph_restapi_docker_imagename }}" | awk -F '=' '/CEPH_VERSION/ { gsub ("\",", "", $2); print $2 }' | uniq
   changed_when: false
   failed_when: false
   run_once: true

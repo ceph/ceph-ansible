@@ -50,8 +50,8 @@
 # This can cause problem with qemu-kvm
     purge_all_packages: true
 
-# When set to true and raw _multi_journal is used then journal disk are also zapped
-    zap_journal_disks: true
+# When set to true and raw _multi_journal is used then block devices are also zapped
+    zap_block_devs: true
 
     ceph_packages:
       - ceph
@@ -96,6 +96,7 @@
     fail:
       msg: "OSD automatic discovery was detected, purge cluster does not support this scenario. If you want to purge the cluster, manually provide the list of devices in group_vars/osds using the devices variable."
     when:
+      osd_group_name in group_names and
       devices is not defined and
       osd_auto_discovery
 
@@ -108,7 +109,8 @@
     shell: "if [ -d /usr/lib/systemd ] ; then find /usr/lib/systemd/system -name 'ceph*' | wc -l ; else echo 0 ; fi"
     register: systemd_unit_files
 
-# Infernalis
+# after Hammer release
+
   - name: stop ceph.target with systemd
     service:
       name: ceph.target
@@ -166,34 +168,33 @@
       systemd_unit_files.stdout != "0" and
       rbdmirror_group_name in group_names
 
-# before infernalis
+# before infernalis release, using sysvinit scripts
+# we use this test so we do not have to know which RPM contains the boot script
+# or where it is placed.
+
   - name: stop ceph osds
-    command: service ceph stop osd
+    shell: "service ceph status osd ; if [ $? == 0 ] ; then service ceph stop osd ; else echo ; fi"
     when:
       ansible_os_family == 'RedHat' and
-      osd_group_name in group_names and
-      systemd_unit_files.stdout == "0"
+      osd_group_name in group_names
 
   - name: stop ceph mons
-    command: service ceph stop mon
+    shell: "service ceph status mon ; if [ $? == 0 ] ; then service ceph stop mon ; else echo ; fi"
     when:
       ansible_os_family == 'RedHat' and
-      mon_group_name in group_names and
-      systemd_unit_files.stdout == "0"
+      mon_group_name in group_names
 
   - name: stop ceph mdss
-    command: service ceph stop mds
+    shell: "service ceph status mds ; if [ $? == 0 ] ; then service ceph stop mds ; else echo ; fi"
     when:
       ansible_os_family == 'RedHat' and
-      mds_group_name in group_names and
-      systemd_unit_files.stdout == "0"
+      mds_group_name in group_names
 
   - name: stop ceph rgws
-    command: service ceph-radosgw stop
+    shell: "service ceph-radosgw status ; if [ $? == 0 ] ; then service ceph-radosgw stop ; else echo ; fi"
     when:
       ansible_os_family == 'RedHat' and
-      rgw_group_name in group_names and
-      systemd_unit_files.stdout == "0"
+      rgw_group_name in group_names
 
 # Ubuntu 14.04
   - name: stop ceph osds on ubuntu
@@ -240,6 +241,16 @@
     register: check_for_running_ceph
     failed_when: check_for_running_ceph.rc == 0
 
+  - name: see if ceph-disk-created data partitions are present
+    shell: "ls /dev/disk/by-partlabel | grep -q 'ceph\\\\x20data'"
+    failed_when: false
+    register: ceph_data_partlabels
+
+  - name: see if ceph-disk-created journal partitions are present
+    shell: "ls /dev/disk/by-partlabel | grep -q 'ceph\\\\x20journal'"
+    failed_when: false
+    register: ceph_journal_partlabels
+
   - name: get osd data mount points
     shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
     register: mounted_osd
@@ -280,19 +291,29 @@
       osd_group_name in group_names and
       remove_osd_mountpoints.rc != 0
 
+  - name: see if ceph-disk is installed
+    shell: "which ceph-disk"
+    failed_when: false
+    register: ceph_disk_present
+
   - name: zap osd disks
     shell: ceph-disk zap "{{ item }}"
     with_items: devices
     when:
-     osd_group_name in group_names
+     osd_group_name in group_names and
+     ceph_disk_present.rc == 0 and
+     ceph_data_partlabels.rc == 0 and
+     zap_block_devs
 
   - name: zap journal devices
     shell: ceph-disk zap "{{ item }}"
     with_items: "{{ raw_journal_devices|default([])|unique }}"
     when:
       osd_group_name in group_names and
-      raw_multi_journal and
-      zap_journal_disks
+      ceph_disk_present.rc == 0 and
+      ceph_journal_partlabels.rc == 0 and
+      zap_block_devs and
+      raw_multi_journal
 
   - name: purge ceph packages with yum
     yum:
