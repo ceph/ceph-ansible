@@ -263,7 +263,7 @@ class ActionModule(object):
         if isinstance(value, set):
             config.set(str(section), str(key), value)
         elif isinstance(value, list):
-            config.set(str(section), str(key), ','.join(value))
+            config.set(str(section), str(key), ','.join(str(i) for i in value))
         else:
             config.set(str(section), str(key), str(value))
 

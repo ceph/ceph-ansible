@@ -303,17 +303,8 @@ class ActionModule(ActionBase):
                 except (ConfigParser.DuplicateSectionError, ValueError):
                     pass
                 for key, value in items.items():
-                    if isinstance(value, list):
-                        items = ','.join(_convert_2_string(value))
-                    else:
-                        items = _convert_2_string(value)
                     try:
-                        self._option_write(
-                            config,
-                            str(section),
-                            str(key),
-                            items
-                        )
+                        self._option_write(config, section, key, value)
                     except ConfigParser.NoSectionError as exp:
                         error_msg = str(exp)
                         error_msg += (
@@ -340,11 +331,11 @@ class ActionModule(ActionBase):
         except AttributeError:
             pass
         if isinstance(value, set):
-            config.set(section, key, value)
+            config.set(str(section), str(key), value)
         elif isinstance(value, list):
-            config.set(section, key, ','.join(value))
+            config.set(str(section), str(key), ','.join(str(i) for i in value))
         else:
-            config.set(section, key, value)
+            config.set(str(section), str(key), str(value))
 
     def return_config_overrides_json(self, config_overrides, resultant):
         """Returns config json
