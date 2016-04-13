@@ -65,15 +65,18 @@
     - package-install
 
 - name: get ceph version
-  shell: ceph --version | cut -f3 -d ' '
+  command: ceph --version
   changed_when: false
   register: ceph_version
+
+- set_fact:
+    ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
 
 # NOTE (leseb/jsaintrocc): Your supposed to qoute variables
 # that follow colons to avoid confusion with dicts but this
 # causes issues with the boolean, so we keep this syntax styling...
 - set_fact:
-    is_ceph_infernalis={{ ceph_version.stdout | version_compare('9.2.0', '>=') }}
+    is_ceph_infernalis={{ ceph_version | version_compare('9.2.0', '>=') }}
 
 - set_fact:
     dir_owner: ceph
