@@ -236,10 +236,11 @@
       ansible_distribution == 'Ubuntu' and
       rbdmirror_group_name in group_names
 
-  - name: check for anything running ceph
-    shell: "ps awux | grep -v grep | grep -q -- ceph-"
-    register: check_for_running_ceph
-    failed_when: check_for_running_ceph.rc == 0
+  - name: Kill Ceph processes that are still running
+    shell: "pkill -9 ceph"
+    failed_when: false
+    register: kill_running_ceph_processes
+    changed_when: kill_running_ceph_processes.rc == 0
 
   - name: see if ceph-disk-created data partitions are present
     shell: "ls /dev/disk/by-partlabel | grep -q 'ceph\\\\x20data'"
