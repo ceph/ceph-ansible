@@ -99,7 +99,8 @@ host = {{ hostvars[host]['ansible_fqdn'] }}
 [mon.{{ hostvars[host]['ansible_hostname'] }}]
 host = {{ hostvars[host]['ansible_hostname'] }}
 {% endif %}
-{% if hostvars[host]['monitor_interface'] is defined and hostvars[host]['monitor_interface'] != "interface" %}
+# we need to check if monitor_interface is defined in the inventory per host or if it's set in a group_vars file
+{% if (hostvars[host]['monitor_interface'] is defined and hostvars[host]['monitor_interface'] != "interface") or monitor_interface != "interface" %}
 {% include 'mon_addr_interface.j2' %}
 {% else %}
 {% include 'mon_addr_address.j2' %}
