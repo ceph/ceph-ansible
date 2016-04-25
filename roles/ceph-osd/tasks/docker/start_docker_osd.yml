@@ -12,20 +12,19 @@
 - name: verify if the disk was already prepared
   shell: "lsblk -o PARTLABEL {{ item }} | grep -sq 'ceph'"
   failed_when: false
-  changed_when: false
   with_items: ceph_osd_docker_devices
   register: osd_prepared
 
 - name: prepare ceph osd disk
   docker:
     image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
-    name: "{{ ansible_hostname }}-osd-prepare-{{ item | regex_replace('/', '') }}"
+    name: "{{ ansible_hostname }}-osd-prepare-{{ item.0 | regex_replace('/', '') }}"
     net: host
     pid: host
-    state: running
+    state: started
     privileged: yes
     env: "OSD_DEVICE={{ item.0 }},{{ ceph_osd_docker_prepare_env }}"
-    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,{{ item.0 }}:{{ item.0 }}"
+    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev:/dev"
   with_together:
     - ceph_osd_docker_devices
     - osd_prepared.results
@@ -161,10 +160,10 @@
     name: "{{ ansible_hostname }}-osd-{{ item | regex_replace('/', '') }}"
     net: host
     pid: host
-    state: running
+    state: started
     privileged: yes
     env: "OSD_DEVICE={{ item }},{{ ceph_osd_docker_extra_env }}"
-    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev/:/dev/"
+    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev:/dev"
   with_items: ceph_osd_docker_devices
   when:
     not is_atomic and
