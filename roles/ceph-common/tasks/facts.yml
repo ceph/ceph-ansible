@@ -1,0 +1,36 @@
+---
+
+- name: get ceph version
+  command: ceph --version
+  changed_when: false
+  register: ceph_version
+
+- set_fact:
+    ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
+
+# NOTE (leseb/jsaintrocc): You are supposed to quote variables
+# that follow colons to avoid confusion with dicts but this
+# causes issues with the boolean, so we keep this syntax styling...
+- set_fact:
+    is_after_hammer={{ ceph_version | version_compare('0.95.0', '>') }}
+
+- set_fact:
+    is_after_infernalis={{ ceph_version | version_compare('9.4.0', '>') }}
+
+- set_fact:
+    is_after_jewel={{ ceph_version | version_compare('10.4.0', '>') }}
+
+- set_fact:
+    is_after_kraken={{ ceph_version | version_compare('11.4.0', '>') }}
+
+- set_fact:
+    is_hammer={{ ceph_version | version_compare('0.94.0', '>=') | version_compare('9.0.0', '<') }}
+
+- set_fact:
+    is_infernalis={{ ceph_version | version_compare('9.0.0', '>=') and ceph_version | version_compare('10.0.0', '<') }}
+
+- set_fact:
+    is_jewel={{ ceph_version | version_compare('10.0.0', '>=') and ceph_version | version_compare('11.0.0', '<') }}
+
+- set_fact:
+    is_kraken={{ ceph_version | version_compare('11.0.0', '>=')  and ceph_version | version_compare('12.0.0', '<') }}
