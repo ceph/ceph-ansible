@@ -66,100 +66,81 @@
   tags:
     - package-install
 
-- name: get ceph rhcs version
-  shell: rpm -q --qf "%{version}\n" ceph-common | cut -f1,2 -d '.'
-  changed_when: false
-  failed_when: false
-  register: rh_storage_version
-  when: ceph_stable_rh_storage
-
-# NOTE (leseb): be careful with the following
-# somehow the YAML syntax using "is_ceph_infernalis: {{"
-# does NOT work, so we keep this syntax styling...
-- set_fact:
-    is_ceph_infernalis={{ (ceph_stable and ceph_stable_release not in ceph_stable_releases) or (ceph_dev) or (ceph_stable_rh_storage and (rh_storage_version.stdout | version_compare('0.94', '>'))) }}
-
-- set_fact:
-    is_ceph_infernalis=True
-  when:
-    ansible_os_family == 'Debian' and
-    ceph_stable_rh_storage
-
 - set_fact:
     dir_owner: ceph
     dir_group: ceph
     dir_mode: "0755"
-  when: is_ceph_infernalis
+  when: is_after_hammer
 
 - set_fact:
     dir_owner: root
     dir_group: root
     dir_mode: "0755"
-  when: not is_ceph_infernalis
+  when: is_before_infernalis
 
 - set_fact:
     key_owner: root
     key_group: root
     key_mode: "0600"
-  when: not is_ceph_infernalis
+  when: is_before_infernalis
 
 - set_fact:
     key_owner: ceph
     key_group: ceph
     key_mode: "0600"
-  when: is_ceph_infernalis
+  when: is_after_hammer
 
 - set_fact:
     activate_file_owner: ceph
     activate_file_group: ceph
     activate_file_mode: "0644"
-  when: is_ceph_infernalis
+  when: is_after_hammer
 
 - set_fact:
     activate_file_owner: root
     activate_file_group: root
     activate_file_mode: "0644"
-  when: not is_ceph_infernalis
+  when: is_before_infernalis
 
 - set_fact:
     rbd_client_directory_owner: root
   when:
-    not is_ceph_infernalis and
+    is_before_infernalis and
     (rbd_client_directory_owner is not defined or
      not rbd_client_directory_owner)
 
 - set_fact:
     rbd_client_directory_owner: ceph
   when:
-    is_ceph_infernalis and
+    is_after_hammer and
     (rbd_client_directory_owner is not defined or
      not rbd_client_directory_owner)
 
 - set_fact:
     rbd_client_directory_group: root
   when:
-    not is_ceph_infernalis and
+    is_before_infernalis and
     (rbd_client_directory_group is not defined or
      not rbd_client_directory_group)
 
 - set_fact:
     rbd_client_directory_group: ceph
   when:
-    is_ceph_infernalis and
+    is_after_hammer and
     (rbd_client_directory_group is not defined or
      not rbd_client_directory_group)
 
 - set_fact:
     rbd_client_directory_mode: "1777"
   when:
-    not is_ceph_infernalis and
+    is_before_infernalis and
     (rbd_client_directory_mode is not defined or
      not rbd_client_directory_mode)
 
 - set_fact:
     rbd_client_directory_mode: "0770"
   when:
-    is_ceph_infernalis and
+    is_after_hammer and
     (rbd_client_directory_mode is not defined or
      not rbd_client_directory_mode)
 
