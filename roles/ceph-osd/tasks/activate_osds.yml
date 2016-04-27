@@ -57,7 +57,7 @@
     ansible_selinux != false and
     ansible_selinux['status'] == 'enabled' and
     ansible_selinux['config_mode'] != 'disabled' and
-    not is_ceph_infernalis
+    is_before_infernalis
 
 - name: start and add that the osd service(s) to the init sequence (before infernalis)
   service:
@@ -66,7 +66,7 @@
     enabled: yes
   when:
     ansible_distribution != "Ubuntu" and
-    not is_ceph_infernalis
+    is_before_infernalis
 
 - name: get osd id (for or after infernalis)
   shell: "ls /var/lib/ceph/osd/ |grep -oh '[0-9]*'"
@@ -75,7 +75,7 @@
   register: osd_id
   when:
     ansible_distribution != "Ubuntu" and
-    is_ceph_infernalis
+    is_after_hammer
 
 - name: enable osd service instance(s) (for or after infernalis)
   file:
@@ -86,7 +86,7 @@
   failed_when: false
   when:
     ansible_distribution != "Ubuntu" and
-    is_ceph_infernalis
+    is_after_hammer
 
 - name: start and add that the osd service(s) to the init sequence (for or after infernalis)
   service:
@@ -97,4 +97,4 @@
   changed_when: false
   when:
     ansible_distribution != "Ubuntu" and
-    is_ceph_infernalis
+    is_after_hammer
