@@ -66,95 +66,81 @@
   tags:
     - package-install
 
-- name: get ceph version
-  command: ceph --version
-  changed_when: false
-  register: ceph_version
-
-- set_fact:
-    ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
-
-# NOTE (leseb/jsaintrocc): Your supposed to qoute variables
-# that follow colons to avoid confusion with dicts but this
-# causes issues with the boolean, so we keep this syntax styling...
-- set_fact:
-    is_ceph_infernalis={{ ceph_version | version_compare('9.2.0', '>=') }}
-
 - set_fact:
     dir_owner: ceph
     dir_group: ceph
     dir_mode: "0755"
-  when: is_ceph_infernalis
+  when: is_after_hammer
 
 - set_fact:
     dir_owner: root
     dir_group: root
     dir_mode: "0755"
-  when: not is_ceph_infernalis
+  when: is_before_infernalis
 
 - set_fact:
     key_owner: root
     key_group: root
     key_mode: "0600"
-  when: not is_ceph_infernalis
+  when: is_before_infernalis
 
 - set_fact:
     key_owner: ceph
     key_group: ceph
     key_mode: "0600"
-  when: is_ceph_infernalis
+  when: is_after_hammer
 
 - set_fact:
     activate_file_owner: ceph
     activate_file_group: ceph
     activate_file_mode: "0644"
-  when: is_ceph_infernalis
+  when: is_after_hammer
 
 - set_fact:
     activate_file_owner: root
     activate_file_group: root
     activate_file_mode: "0644"
-  when: not is_ceph_infernalis
+  when: is_before_infernalis
 
 - set_fact:
     rbd_client_directory_owner: root
   when:
-    not is_ceph_infernalis and
+    is_before_infernalis and
     (rbd_client_directory_owner is not defined or
      not rbd_client_directory_owner)
 
 - set_fact:
     rbd_client_directory_owner: ceph
   when:
-    is_ceph_infernalis and
+    is_after_hammer and
     (rbd_client_directory_owner is not defined or
      not rbd_client_directory_owner)
 
 - set_fact:
     rbd_client_directory_group: root
   when:
-    not is_ceph_infernalis and
+    is_before_infernalis and
     (rbd_client_directory_group is not defined or
      not rbd_client_directory_group)
 
 - set_fact:
     rbd_client_directory_group: ceph
   when:
-    is_ceph_infernalis and
+    is_after_hammer and
     (rbd_client_directory_group is not defined or
      not rbd_client_directory_group)
 
 - set_fact:
     rbd_client_directory_mode: "1777"
   when:
-    not is_ceph_infernalis and
+    is_before_infernalis and
     (rbd_client_directory_mode is not defined or
      not rbd_client_directory_mode)
 
 - set_fact:
     rbd_client_directory_mode: "0770"
   when:
-    is_ceph_infernalis and
+    is_after_hammer and
     (rbd_client_directory_mode is not defined or
      not rbd_client_directory_mode)
 
