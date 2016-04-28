@@ -34,15 +34,12 @@
   yum:
     name: ceph
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when: not ceph_stable_rh_storage
+  when: not use_server_package_split
 
 - name: install distro or red hat storage ceph mon
   yum:
-    name: "{{ item }}"
+    name: "ceph-mon"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  with_items:
-    - ceph
-    - ceph-mon
   when:
     (ceph_origin == "distro" or ceph_stable_rh_storage or
      (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
@@ -51,11 +48,8 @@
 
 - name: install distro or red hat storage ceph mon
   dnf:
-    name: "{{ item }}"
+    name: "ceph-mon"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  with_items:
-    - ceph
-    - ceph-mon
   when:
     (ceph_origin == "distro" or ceph_stable_rh_storage or
      (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
@@ -64,11 +58,8 @@
 
 - name: install distro or red hat storage ceph osd
   yum:
-    name: "{{ item }}"
+    name: "ceph-osd"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  with_items:
-    - ceph
-    - ceph-osd
   when:
     (ceph_origin == "distro" or ceph_stable_rh_storage or
      (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
@@ -77,11 +68,8 @@
 
 - name: install distro or red hat storage ceph osd
   dnf:
-    name: "{{ item }}"
+    name: "ceph-osd"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  with_items:
-    - ceph
-    - ceph-osd
   when:
     (ceph_origin == "distro" or ceph_stable_rh_storage or
      (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
