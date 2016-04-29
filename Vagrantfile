@@ -11,6 +11,7 @@ NMONS      = settings['mon_vms']
 NOSDS      = settings['osd_vms']
 NMDSS      = settings['mds_vms']
 NRGWS      = settings['rgw_vms']
+RESTAPI    = settings['restapi']
 CLIENTS    = settings['client_vms']
 SUBNET     = settings['subnet']
 BOX        = settings['vagrant_box']
@@ -42,12 +43,16 @@ ansible_provision = proc do |ansible|
   # https://github.com/mitchellh/vagrant/issues/3539
   ansible.groups = {
     'mons'        => (0..NMONS - 1).map { |j| "mon#{j}" },
-    'restapis'    => (0..NMONS - 1).map { |j| "mon#{j}" },
     'osds'        => (0..NOSDS - 1).map { |j| "osd#{j}" },
     'mdss'        => (0..NMDSS - 1).map { |j| "mds#{j}" },
     'rgws'        => (0..NRGWS - 1).map { |j| "rgw#{j}" },
     'clients'     => (0..CLIENTS - 1).map { |j| "client#{j}" }
   }
+
+  if RESTAPI then
+    ansible.groups['restapis'] = (0..NMONS - 1).map { |j| "mon#{j}" }
+  end
+
 
   # In a production deployment, these should be secret
   if DOCKER then
