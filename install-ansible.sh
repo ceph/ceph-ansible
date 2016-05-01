@@ -25,7 +25,7 @@ if [[ -x $(which lsb_release 2>/dev/null) ]]; then
     add-apt-repository -y ppa:ansible/ansible
     apt-get update
     apt-get install -y ansible
-  elif [[ "RedHatEnterpriseServer" =~ $os_VENDOR ]]; then
+  elif [[ "RedHatEnterpriseServer" =~ $os_VENDOR || "CentOS" =~ $os_VENDOR ]]; then
     rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
     yum install -y ansible
   else
