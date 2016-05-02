@@ -15,7 +15,7 @@
   apt:
     pkg: "{{ item }}"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ansible_distribution_release }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
+    default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
   with_items:
     - ceph
     - ceph-common    #|
@@ -27,7 +27,7 @@
   apt:
     pkg: ceph-test
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ansible_distribution_release }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
+    default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
   when: ceph_test
 
 - name: install rados gateway
@@ -42,6 +42,6 @@
   apt:
     pkg: ceph-mds
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ansible_distribution_release }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
+    default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
   when:
     mds_group_name in group_names
