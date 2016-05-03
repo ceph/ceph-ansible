@@ -8,8 +8,8 @@
   when:
     socket.rc == 0 and
     ansible_distribution != 'Ubuntu' and
-    mon_group_name in group_names and not
-    is_ceph_infernalis
+    mon_group_name in group_names and
+    is_before_infernalis
 
 - name: restart ceph mons with systemd
   service:
@@ -19,7 +19,7 @@
     socket.rc == 0 and
     ansible_distribution != 'Ubuntu' and
     mon_group_name in group_names and
-    is_ceph_infernalis
+    is_after_hammer
 
 - name: restart ceph mons on ubuntu
   command: initctl restart ceph-mon cluster={{ cluster }} id={{ monitor_name }}
@@ -34,7 +34,7 @@
     socket.rc == 0 and
     ansible_distribution != 'Ubuntu' and
     osd_group_name in group_names and
-    not is_ceph_infernalis
+    is_before_infernalis
 
 # This does not just restart OSDs but everything else too. Unfortunately
 # at this time the ansible role does not have an OSD id list to use
@@ -47,7 +47,7 @@
     socket.rc == 0 and
     ansible_distribution != 'Ubuntu' and
     osd_group_name in group_names and
-    is_ceph_infernalis
+    is_after_hammer
 
 - name: restart ceph osds on ubuntu
   shell: |
@@ -99,7 +99,7 @@
     socketrgw.rc == 0 and
     ansible_distribution != 'Ubuntu' and
     rgw_group_name in group_names and
-    not is_ceph_infernalis
+    is_before_infernalis
 
 - name: restart ceph rgws on red hat
   command: /etc/init.d/ceph-radosgw restart
@@ -107,7 +107,7 @@
     socketrgw.rc == 0 and
     ansible_os_family == 'RedHat' and
     rgw_group_name in group_names and
-    not is_ceph_infernalis
+    is_before_infernalis
 
 - name: restart ceph rgws with systemd
   service:
@@ -117,7 +117,7 @@
     socketrgw.rc == 0 and
     ansible_distribution != 'Ubuntu' and
     rgw_group_name in group_names and
-    is_ceph_infernalis
+    is_after_hammer
 
 - name: restart apache2
   service:

@@ -25,7 +25,7 @@
   changed_when: false
   when:
     ansible_distribution != "Ubuntu" and
-    not is_ceph_infernalis
+    is_before_infernalis
 
 - name: enable systemd unit file for mon instance (for or after infernalis)
   file:
@@ -36,7 +36,7 @@
   failed_when: false
   when:
     ansible_distribution != "Ubuntu" and
-    is_ceph_infernalis
+    is_after_hammer
 
 - name: start and add that the monitor service to the init sequence (for or after infernalis)
   service:
@@ -46,7 +46,7 @@
   changed_when: false
   when:
     ansible_distribution != "Ubuntu" and
-    is_ceph_infernalis
+    is_after_hammer
 
 - name: collect admin and bootstrap keys
   command: ceph-create-keys --cluster {{ cluster }} --id {{ monitor_name }}

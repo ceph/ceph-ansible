@@ -1,0 +1,42 @@
+---
+# NOTE (leseb):
+# The playbook aims to make ceph-ansible taking over a cluster
+# that was not configured with it.
+#
+# The procedure comes as fellow:
+#
+# 1. Install Ansible and add your monitors and osds hosts in it. For more detailed information you can read the [Ceph Ansible Wiki](https://github.com/ceph/ceph-ansible/wiki)
+# 2. Set  `generate_fsid: false` in `group_vars`
+# 3. Get your current cluster fsid with `ceph fsid` and set `cluster_fsid` accordingly in `group_vars`
+# 4. Run the playbook called: `take-over-existing-cluster.yml` like this `ansible-playbook take-over-existing-cluster.yml`.
+# 5. Eventually run Ceph Ansible to validate everything by doing: `ansible-playbook site.yml`.
+
+- hosts: all
+  connection: local
+  become: true
+
+  tasks:
+    - include_vars: roles/ceph-common/defaults/main.yml
+    - include_vars: group_vars/all
+
+    - name: get the name of the existing ceph cluster
+      shell: "ls /etc/ceph/*.conf"
+      changed_when: false
+      register: ceph_conf
+
+    - name: stat ceph.conf
+      stat:
+        path: "{{ ceph_conf.stdout }}"
+      register: ceph_conf_stat
+
+    - name: generate ceph configuration file
+      action: config_template
+      args:
+        src: "roles/ceph-common/templates/ceph.conf.j2"
+        dest: {{ ceph_conf.stdout }}
+        owner: "{{ ceph_conf_stat.stat.pw_name }}"
+        group: "{{ ceph_conf_stat.stat.gr_name }}"
+        mode: "{{ ceph_conf_stat.stat.mode }}"
+        config_overrides: "{{ ceph_conf_overrides }}"
+        config_type: ini
+
