@@ -17,7 +17,7 @@
       state: restarted
   when:
     socket.rc == 0 and
-    ansible_distribution != 'Ubuntu' and
+    use_systemd and
     mon_group_name in group_names and
     is_after_hammer
 
@@ -26,6 +26,7 @@
   when:
     socket.rc == 0 and
     ansible_distribution == 'Ubuntu' and
+    not use_systemd and
     mon_group_name in group_names
 
 - name: restart ceph osds
@@ -45,7 +46,7 @@
     state: restarted
   when:
     socket.rc == 0 and
-    ansible_distribution != 'Ubuntu' and
+    use_systemd and
     osd_group_name in group_names and
     is_after_hammer
 
@@ -57,6 +58,7 @@
   when:
     socket.rc == 0 and
     ansible_distribution == 'Ubuntu' and
+    not use_systemd and
     osd_group_name in group_names
 
 - name: restart ceph mdss on ubuntu
@@ -64,6 +66,7 @@
   when:
     socket.rc == 0 and
     ansible_distribution == 'Ubuntu' and
+    not use_systemd and
     mds_group_name in group_names
 
 - name: restart ceph mdss
@@ -71,6 +74,7 @@
   when:
     socket.rc == 0 and
     ansible_distribution != 'Ubuntu' and
+    not use_systemd and
     mds_group_name in group_names and
     ceph_stable and
     ceph_stable_release in ceph_stable_releases
@@ -81,7 +85,7 @@
       state: restarted
   when:
     socket.rc == 0 and
-    ansible_distribution != 'Ubuntu' and
+    use_systemd and
     mds_group_name in group_names and
     ceph_stable and
     ceph_stable_release not in ceph_stable_releases
@@ -91,6 +95,7 @@
   when:
     socketrgw.rc == 0 and
     ansible_distribution == 'Ubuntu' and
+    not use_systemd and
     rgw_group_name in group_names
 
 - name: restart ceph rgws
@@ -115,7 +120,7 @@
     state: restarted
   when:
     socketrgw.rc == 0 and
-    ansible_distribution != 'Ubuntu' and
+    use_systemd and
     rgw_group_name in group_names and
     is_after_hammer
 
