@@ -8,6 +8,15 @@
 - set_fact:
     ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
 
+# NOTE(mattt): On ansible 2.x we can use ansible_service_mgr instead
+- name: check init system
+  slurp:
+    src: /proc/1/comm
+  register: init_system
+
+- set_fact:
+    init_system={{ init_system.content | b64decode }}
+
 # NOTE (leseb/jsaintrocc): You are supposed to quote variables
 # that follow colons to avoid confusion with dicts but this
 # causes issues with the boolean, so we keep this syntax styling...
