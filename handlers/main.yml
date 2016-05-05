@@ -74,10 +74,9 @@
   when:
     socket.rc == 0 and
     ansible_distribution != 'Ubuntu' and
-    not use_systemd and
+    use_systemd and
     mds_group_name in group_names and
-    ceph_stable and
-    ceph_stable_release in ceph_stable_releases
+    is_before_infernalis
 
 - name: restart ceph mdss with systemd
   service:
@@ -87,8 +86,7 @@
     socket.rc == 0 and
     use_systemd and
     mds_group_name in group_names and
-    ceph_stable and
-    ceph_stable_release not in ceph_stable_releases
+    is_after_hammer
 
 - name: restart ceph rgws on ubuntu
   command: initctl restart radosgw cluster={{ cluster }} id=rgw.{{ ansible_hostname }}
