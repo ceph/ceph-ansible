@@ -63,7 +63,7 @@
     - done
     - upstart
   changed_when: false
-  when: ansible_distribution == "Ubuntu"
+  when: not use_systemd
 
 - name: activate metadata server with sysvinit
   file:
@@ -76,7 +76,7 @@
     - done
     - sysvinit
   changed_when: false
-  when: ansible_distribution != "Ubuntu"
+  when: use_systemd
 
 - name: enable systemd unit file for mds instance (for or after infernalis)
   file:
@@ -86,16 +86,16 @@
   changed_when: false
   failed_when: false
   when:
-    ansible_distribution != "Ubuntu" and
+    use_systemd and
     is_after_hammer
 
-- name: start and add that the metadata service to the init sequence (ubuntu)
+- name: start and add that the metadata service to the init sequence (upstart)
   command: initctl emit ceph-mds cluster={{ cluster }} id={{ mds_name }}
   changed_when: false
   failed_when: false
-  when: ansible_distribution == "Ubuntu"
+  when: not use_systemd
 
-- name: start and add that the metadata service to the init sequence (before infernalis)
+- name: start and add that the metadata service to the init sequence (systemd before infernalis)
   service:
     name: ceph
     state: started
@@ -103,15 +103,15 @@
     args: mds.{{ mds_name }}
   changed_when: false
   when:
-    ansible_distribution != "Ubuntu" and
+    use_systemd and
     is_before_infernalis
 
-- name: start and add that the metadata service to the init sequence (for or after infernalis)
+- name: start and add that the metadata service to the init sequence (systemd after hammer)
   service:
     name: ceph-mds@{{ mds_name }}
     state: started
     enabled: yes
   changed_when: false
   when:
-    ansible_distribution != "Ubuntu" and
+    use_systemd and
     is_after_hammer
