@@ -1,0 +1,82 @@
+---
+# Use systemd to manage container on Atomic host and CoreOS
+- name: generate systemd unit file
+  become: true
+  template:
+    src: "{{ playbook_dir }}/roles/ceph-nfs/templates/ceph-nfs.service.j2"
+    dest: /var/lib/nfs/ganesha/ceph-nfs@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  when:
+    is_atomic or
+    ansible_os_family == 'CoreOS'
+
+- name: link systemd unit file for NFS instance
+  file:
+    src: /var/lib/nfs/ganesha/ceph-nfs@.service
+    dest: /etc/systemd/system/multi-user.target.wants/ceph-nfs@{{ ansible_hostname }}.service
+    state: link
+  when:
+    is_atomic or
+    ansible_os_family == 'CoreOS'
+
+- name: enable systemd unit file for NFS instance
+  shell: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-nfs@{{ ansible_hostname }}.service
+  failed_when: false
+  changed_when: false
+  when:
+    is_atomic or
+    ansible_os_family == 'CoreOS'
+
+- name: reload systemd unit files
+  shell: systemctl daemon-reload
+  changed_when: false
+  failed_when: false
+  when:
+    is_atomic or
+    ansible_os_family == 'CoreOS'
+
+- name: systemd start NFS container
+  service:
+    name: ceph-nfs@{{ ansible_hostname }}
+    state: started
+    enabled: yes
+  changed_when: false
+  when:
+    is_atomic or
+    ansible_os_family == 'CoreOS'
+
+- name: wait for ceph.conf exists
+  wait_for:
+      path: /etc/ceph/ceph.conf
+  when: is_atomic
+
+- name: run the ceph NFS docker image
+  docker:
+    image: "{{ ceph_nfs_docker_username }}/{{ ceph_nfs_docker_imagename }}"
+    name: "{{ ansible_hostname }}"
+    net: "host"
+    state: "running"
+    privileged: true
+    ports: "{{ ceph_nfs_port }}:{{ ceph_nfs_port }},111:111"
+    env: "CEPH_DAEMON=NFS,CEPH_PUBLIC_NETWORK={{ ceph_nfs_docker_subnet }},{{ ceph_nfs_extra_envs }}"
+    volumes: "/etc/ceph:/etc/ceph,/etc/ganesha:/etc/ganesha"
+  when:
+    not is_atomic and
+    ansible_os_family != 'CoreOS' and
+    not mon_containerized_deployment_with_kv
+
+- name: run the ceph NFS docker image with kv
+  docker:
+    image: "{{ ceph_nfs_docker_username }}/{{ ceph_nfs_docker_imagename }}"
+    name: "{{ ansible_hostname }}"
+    net: "host"
+    state: "running"
+    privileged: true
+    env: "CEPH_DAEMON=NFS,CEPH_PUBLIC_NETWORK={{ ceph_nfs_docker_subnet }},{{ ceph_nfs_extra_envs }}"
+    volumes: "/etc/ganesha:/etc/ganesha"
+  when:
+    not is_atomic and
+    ansible_os_family != 'CoreOS' and
+    mon_containerized_deployment_with_kv

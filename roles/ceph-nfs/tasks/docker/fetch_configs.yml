@@ -1,0 +1,27 @@
+---
+- name: set config and keys paths
+  set_fact:
+    ceph_config_keys:
+      - /etc/ceph/ceph.conf
+      - /etc/ganesha/ganesha.conf
+
+- name: stat for config and keys
+  local_action: stat path={{ fetch_directory }}/docker_mon_files/{{ item }}
+  with_items: ceph_config_keys
+  changed_when: false
+  become: false
+  failed_when: false
+  register: statconfig
+
+- name: try to fetch config and keys
+  copy:
+    src: "{{ fetch_directory }}/docker_mon_files/{{ item.0 }}"
+    dest: "{{ item.0 }}"
+    owner: root
+    group: root
+    mode: 0644
+  changed_when: false
+  with_together:
+    - ceph_config_keys
+    - statconfig.results
+  when: item.1.stat.exists == true

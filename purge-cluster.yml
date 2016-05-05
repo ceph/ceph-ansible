@@ -36,6 +36,7 @@
     - osds
     - mdss
     - rgws
+    - nfss
 
   become: yes
 
@@ -44,6 +45,7 @@
     mon_group_name: mons
     rgw_group_name: rgws
     mds_group_name: mdss
+    nfs_group_name: nfss
     rbdmirror_group_name: rbdmirrors
 
 # When set to true both groups of packages are purged.
@@ -159,6 +161,15 @@
       systemd_unit_files.stdout != "0" and
       rgw_group_name in group_names
 
+  - name: stop ceph nfss with systemd
+    service:
+      name: nfs-ganesha
+      state: stopped
+    when:
+      ansible_os_family == 'RedHat' and
+      systemd_unit_files.stdout != "0" and
+      nfs_group_name in group_names
+
   - name: stop ceph rbd mirror with systemd
     service:
       name: ceph-rbd-mirror@admin.service
@@ -196,6 +207,12 @@
       ansible_os_family == 'RedHat' and
       rgw_group_name in group_names
 
+  - name: stop ceph nfss
+    shell: "service nfs-ganesha status ; if [ $? == 0 ] ; then service nfs-ganesha stop ; else echo ; fi"
+    when:
+      ansible_os_family == 'RedHat' and
+      nfs_group_name in group_names
+
 # Ubuntu 14.04
   - name: stop ceph osds on ubuntu
     shell: |
@@ -228,6 +245,13 @@
     when:
       ansible_distribution == 'Ubuntu' and
       rgw_group_name in group_names
+
+  - name: stop ceph nfss on ubuntu
+    command: initctl stop nfs-ganesha
+    failed_when: false
+    when:
+      ansible_distribution == 'Ubuntu' and
+      nfs_group_name in group_names
 
   - name: stop ceph rbd mirror on ubuntu
     command: initctl stop ceph-rbd-mirorr cluster={{ cluster }} id=admin

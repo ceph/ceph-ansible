@@ -171,3 +171,19 @@
   when:
     - rgw_group_name in group_names
     - ansible_pkg_mgr == "dnf"
+
+- name: install NFS gateway
+  yum:
+    name: nfs-ganesha-ceph
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - nfs_group_name in group_names
+    - ansible_pkg_mgr == "yum"
+
+- name: install NFS gateway
+  dnf:
+    name: nfs-ganesha-ceph
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - nfs_group_name in group_names
+    - ansible_pkg_mgr == "dnf"

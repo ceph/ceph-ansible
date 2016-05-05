@@ -1,0 +1,25 @@
+---
+- name: set config and keys paths
+  set_fact:
+    ceph_config_keys:
+      - /etc/ceph/ceph.client.admin.keyring
+      - /etc/ceph/ceph.conf
+      - /etc/ceph/monmap
+      - /etc/ceph/ceph.mon.keyring
+      - /etc/ganesha/ganesha.conf
+
+- name: stat for ceph config and keys
+  stat:
+    path: "{{ item }}"
+  with_items: ceph_config_keys
+  changed_when: false
+  failed_when: false
+  register: statleftover
+
+- name: fail if we find existing cluster files
+  fail:
+    msg: "looks like no cluster is running but ceph files are present, please remove them"
+  with_together:
+    - ceph_config_keys
+    - statleftover.results
+  when: item.1.stat.exists == true

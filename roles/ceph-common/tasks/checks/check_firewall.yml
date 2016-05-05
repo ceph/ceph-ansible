@@ -80,3 +80,20 @@
     - rgw_group_name in group_names
     - rgwportstate.rc == 0
     - nmapexist.rc == 0
+
+- name: check if NFS ports are not filtered
+  local_action: shell set -o pipefail && nmap -p 111,2049 {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} | grep -sqo -e filtered -e '0 hosts up'
+  changed_when: false
+  failed_when: false
+  register: nfsportstate
+  when:
+    - nfs_group_name in group_names
+    - nmapexist.rc == 0
+
+- name: fail if NFS ports are filtered
+  fail:
+      msg: "Please allow ports 111 and 2049 on your firewall"
+  when:
+    - nfs_group_name in group_names
+    - nfsportstate.rc == 0
+    - nmapexist.rc == 0

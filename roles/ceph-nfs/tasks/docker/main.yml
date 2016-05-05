@@ -1,0 +1,45 @@
+---
+- name: check if a cluster is already running
+  shell: "docker ps | grep -sq '{{ceph_nfs_docker_username}}/{{ceph_nfs_docker_imagename}}'"
+  register: ceph_health
+  changed_when: false
+  failed_when: false
+
+- name: check if it is Atomic host
+  stat: path=/run/ostree-booted
+  register: stat_ostree
+
+- name: set fact for using Atomic host
+  set_fact:
+      is_atomic: '{{ stat_ostree.stat.exists }}'
+
+- include: checks.yml
+  when:
+    ceph_health.rc != 0 and
+    not mon_containerized_deployment_with_kv
+
+- include: pre_requisite.yml
+
+- include: "{{ playbook_dir }}/roles/ceph-common/tasks/docker/fetch_image.yml"
+  vars:
+    ceph_docker_username: '{{ ceph_nfs_docker_username}}'
+    ceph_docker_imagename: '{{ ceph_nfs_docker_imagename}}'
+
+- include: dirs_permissions.yml
+
+# let the first ganesha create configs and keyrings
+- include: create_configs.yml
+  when:
+    inventory_hostname == groups.nfss[0] and
+    mon_containerized_default_ceph_conf_with_kv
+
+- include: fetch_configs.yml
+  when: not mon_containerized_deployment_with_kv
+
+- include: selinux.yml
+  when: ansible_os_family == 'RedHat'
+
+- include: start_docker_nfs.yml
+
+- include: copy_configs.yml
+  when: not mon_containerized_deployment_with_kv

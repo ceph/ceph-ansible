@@ -1,0 +1,30 @@
+[Unit]
+Description=NFS-Ganesha file server
+Documentation=http://github.com/nfs-ganesha/nfs-ganesha/wiki
+After=docker.service
+
+[Service]
+EnvironmentFile=-/etc/environment
+ExecStartPre=-/usr/bin/docker rm %i
+ExecStartPre=/usr/bin/mkdir -p /etc/ceph /etc/ganesha /var/lib/nfs/ganesha
+ExecStart=/usr/bin/docker run --rm --name %i --net=host \
+   {% if not mon_containerized_deployment_with_kv -%}
+   -v /etc/ceph:/etc/ceph \
+   -v /etc/ganesha:/etc/ganesha \
+   {% else -%}
+   -e KV_TYPE={{kv_type}} \
+   -e KV_IP={{kv_endpoint}}\
+   {% endif -%}
+   --privileged \
+   -e CEPH_DAEMON=NFS \
+   -e CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }} \
+   --name={{ ansible_hostname }} \
+    {{ ceph_nfs_docker_username }}/{{ ceph_nfs_docker_imagename }}
+ExecStopPost=-/usr/bin/docker stop %i
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

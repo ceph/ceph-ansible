@@ -1,0 +1,16 @@
+---
+- name: check if selinux is enabled
+  command: getenforce
+  register: sestatus
+  changed_when: false
+
+- name: set selinux permissions
+  shell: chcon -Rt svirt_sandbox_file_t {{ item }}
+  with_items:
+    - /etc/ceph
+    - /etc/ganesha
+    - /var/lib/ceph
+    - /var/lib/nfs/ganesha
+    - /var/run/ganesha
+  changed_when: false
+  when: sestatus.stdout != 'Disabled'
