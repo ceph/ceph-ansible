@@ -27,6 +27,7 @@ elif [[ "Ubuntu" =~ $os_VENDOR ]]; then
 elif [[ "RedHatEnterpriseServer" =~ $os_VENDOR || "CentOS" =~ $os_VENDOR || -r /etc/redhat-release ]]; then
   rpm -q epel-release-* || rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
   yum install -y ansible
+  yum remove -y $(rpm -q epel-release-*)
 else
   if [[ ! -x $(which lsb_release 2>/dev/null) ]]; then
     echo "lsb_release is not installed"
