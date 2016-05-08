@@ -27,18 +27,15 @@
     ansible_distribution != "Ubuntu" and
     is_before_infernalis
 
-- name: enable systemd unit file for mon instance (for or after infernalis)
-  file:
-    src: /usr/lib/systemd/system/ceph-mon@.service
-    dest: /etc/systemd/system/multi-user.target.wants/ceph-mon@{{ monitor_name }}.service
-    state: link
+- name: start and add that the monitor service to the init sequence (for or after infernalis)
+  command: systemctl enable ceph-mon@{{ monitor_name }}
   changed_when: false
   failed_when: false
   when:
     use_systemd and
     is_after_hammer
 
-- name: start and add that the monitor service to the init sequence (for or after infernalis)
+- name: start the monitor service (for or after infernalis)
   service:
       name: ceph-mon@{{ monitor_name }}
       state: started
