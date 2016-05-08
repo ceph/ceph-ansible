@@ -1,12 +1,4 @@
 ---
-- set_fact:
-    mds_name: "{{ ansible_hostname }}"
-  when: not mds_use_fqdn
-
-- set_fact:
-    mds_name: "{{ ansible_fqdn }}"
-  when: mds_use_fqdn
-
 - name: create bootstrap-mds directory
   file:
     path: /var/lib/ceph/bootstrap-mds/
@@ -76,7 +68,7 @@
     - done
     - sysvinit
   changed_when: false
-  when: use_systemd
+  when: not use_systemd
 
 - name: enable systemd unit file for mds instance (for or after infernalis)
   file:
@@ -103,7 +95,7 @@
     args: mds.{{ mds_name }}
   changed_when: false
   when:
-    use_systemd and
+    not use_systemd and
     is_before_infernalis
 
 - name: start and add that the metadata service to the init sequence (systemd after hammer)
