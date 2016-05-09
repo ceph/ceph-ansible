@@ -5,8 +5,8 @@
     state: present
   with_items: redhat_package_dependencies
   when:
-    ansible_distribution == "RedHat" and
-    ansible_pkg_mgr == "yum"
+    - ansible_distribution == "RedHat"
+    - ansible_pkg_mgr == "yum"
 
 - name: install dependencies
   yum:
@@ -14,8 +14,8 @@
     state: present
   with_items: centos_package_dependencies
   when:
-    ansible_distribution == "CentOS" and
-    ansible_pkg_mgr == "yum"
+    - ansible_distribution == "CentOS"
+    - ansible_pkg_mgr == "yum"
 
 - name: install dependencies
   dnf:
@@ -23,8 +23,8 @@
     state: present
   with_items: centos_package_dependencies
   when:
-    ansible_distribution == "CentOS" and
-    ansible_pkg_mgr == "dnf"
+    - ansible_distribution == "CentOS"
+    - ansible_pkg_mgr == "dnf"
 
 - name: configure ceph yum repository
   include: redhat_ceph_repository.yml
@@ -41,40 +41,48 @@
     name: "ceph-mon"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage or ceph_dev or
-     (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
-    mon_group_name in group_names and
-    ansible_pkg_mgr == "yum"
+    - mon_group_name in group_names
+    - ansible_pkg_mgr == "yum"
+    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+      or ceph_stable_rh_storage
+      or ceph_dev
+      or ceph_origin == "distro"
 
 - name: install distro or red hat storage ceph mon
   dnf:
     name: "ceph-mon"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage or ceph_dev or
-     (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
-    mon_group_name in group_names and
-    ansible_pkg_mgr == "dnf"
+    - mon_group_name in group_names
+    - ansible_pkg_mgr == "dnf"
+    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+      or ceph_origin == "distro"
+      or ceph_stable_rh_storage
+      or ceph_dev
 
 - name: install distro or red hat storage ceph osd
   yum:
     name: "ceph-osd"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage or ceph_dev or
-     (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
-    osd_group_name in group_names and
-    ansible_pkg_mgr == "yum"
+    - osd_group_name in group_names
+    - ansible_pkg_mgr == "yum"
+    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+      or ceph_origin == "distro"
+      or ceph_stable_rh_storage
+      or ceph_dev
 
 - name: install distro or red hat storage ceph osd
   dnf:
     name: "ceph-osd"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage or ceph_dev or
-     (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
-    osd_group_name in group_names and
-    ansible_pkg_mgr == "dnf"
+    - osd_group_name in group_names
+    - ansible_pkg_mgr == "dnf"
+    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+      or ceph_origin == "distro"
+      or ceph_stable_rh_storage
+      or ceph_dev
 
 - name: install distro or red hat storage ceph mds
   yum:
@@ -101,16 +109,16 @@
     name: ceph-test
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    ceph_test and
-    ansible_pkg_mgr == "yum"
+    - ceph_test
+    - ansible_pkg_mgr == "yum"
 
 - name: install ceph-test
   dnf:
     name: ceph-test
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    ceph_test and
-    ansible_pkg_mgr == "dnf"
+    - ceph_test
+    - ansible_pkg_mgr == "dnf"
 
 - name: install Inktank Ceph Enterprise RBD Kernel modules
   yum:
@@ -119,8 +127,8 @@
     - "{{ ceph_stable_ice_temp_path }}/kmod-libceph-{{ ceph_stable_ice_kmod }}.rpm"
     - "{{ ceph_stable_ice_temp_path }}/kmod-rbd-{{ ceph_stable_ice_kmod }}.rpm"
   when:
-    ceph_stable_ice and
-    ansible_pkg_mgr == "yum"
+    - ceph_stable_ice
+    - ansible_pkg_mgr == "yum"
 
 - name: install Inktank Ceph Enterprise RBD Kernel modules
   dnf:
@@ -129,21 +137,21 @@
     - "{{ ceph_stable_ice_temp_path }}/kmod-libceph-{{ ceph_stable_ice_kmod }}.rpm"
     - "{{ ceph_stable_ice_temp_path }}/kmod-rbd-{{ ceph_stable_ice_kmod }}.rpm"
   when:
-    ceph_stable_ice and
-    ansible_pkg_mgr == "dnf"
+    - ceph_stable_ice
+    - ansible_pkg_mgr == "dnf"
 
 - name: install rados gateway
   yum:
     name: ceph-radosgw
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    rgw_group_name in group_names and
-    ansible_pkg_mgr == "yum"
+    - rgw_group_name in group_names
+    - ansible_pkg_mgr == "yum"
 
 - name: install rados gateway
   dnf:
     name: ceph-radosgw
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    rgw_group_name in group_names and
-    ansible_pkg_mgr == "dnf"
+    - rgw_group_name in group_names
+    - ansible_pkg_mgr == "dnf"

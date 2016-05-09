@@ -24,16 +24,16 @@
   command: service ceph start mon
   changed_when: false
   when:
-    ansible_distribution != "Ubuntu" and
-    is_before_infernalis
+    - ansible_distribution != "Ubuntu"
+    - is_before_infernalis
 
 - name: start and add that the monitor service to the init sequence (for or after infernalis)
   command: systemctl enable ceph-mon@{{ monitor_name }}
   changed_when: false
   failed_when: false
   when:
-    use_systemd and
-    is_after_hammer
+    - use_systemd
+    - is_after_hammer
 
 - name: start the monitor service (for or after infernalis)
   service:
@@ -42,8 +42,8 @@
       enabled: yes
   changed_when: false
   when:
-    use_systemd and
-    is_after_hammer
+    - use_systemd
+    - is_after_hammer
 
 - name: collect admin and bootstrap keys
   command: ceph-create-keys --cluster {{ cluster }} --id {{ monitor_name }}

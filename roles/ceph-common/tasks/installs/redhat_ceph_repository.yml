@@ -22,40 +22,40 @@
     key: "{{ ceph_stable_rh_storage_repository_path }}/RPM-GPG-KEY-redhat-release"
     state: present
   when:
-    ceph_stable_rh_storage and
-    ceph_stable_rh_storage_iso_install
+    - ceph_stable_rh_storage
+    - ceph_stable_rh_storage_iso_install
 
 - name: add ceph stable repository
   yum:
     name: http://download.ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
   changed_when: false
   when:
-    ceph_stable and
-    ansible_pkg_mgr == "yum"
+    - ceph_stable
+    - ansible_pkg_mgr == "yum"
 
 - name: add ceph stable repository
   dnf:
     name: http://download.ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
   changed_when: false
   when:
-    ceph_stable and
-    ansible_pkg_mgr == "dnf"
+    - ceph_stable
+    - ansible_pkg_mgr == "dnf"
 
 - name: add ceph development repository
   yum:
     name: http://gitbuilder.ceph.com/ceph-rpm-{{ ceph_dev_redhat_distro }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro }}.noarch.rpm
   changed_when: false
   when:
-    ceph_dev and
-    ansible_pkg_mgr == "yum"
+    - ceph_dev
+    - ansible_pkg_mgr == "yum"
 
 - name: add ceph development repository
   dnf:
     name: http://gitbuilder.ceph.com/ceph-rpm-{{ ceph_dev_redhat_distro }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro }}.noarch.rpm
   changed_when: false
   when:
-    ceph_dev and
-    ansible_pkg_mgr == "dnf"
+    - ceph_dev
+    - ansible_pkg_mgr == "dnf"
 
 - name: add inktank ceph enterprise repository
   template:
@@ -74,5 +74,5 @@
     group: root
     mode: 0644
   when:
-    ceph_stable_rh_storage and
-    ceph_stable_rh_storage_iso_install
+    - ceph_stable_rh_storage
+    - ceph_stable_rh_storage_iso_install

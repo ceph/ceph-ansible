@@ -8,10 +8,10 @@
 - name: start rgw
   command: /etc/init.d/radosgw start
   when:
-    rgwstatus.rc != 0 and
-    ansible_distribution != "Ubuntu" and
-    ansible_os_family != 'RedHat' and
-    not use_systemd
+    - rgwstatus.rc != 0
+    - ansible_distribution != "Ubuntu"
+    - ansible_os_family != 'RedHat'
+    - not use_systemd
 
 - name: start and add that the rados gateway service to the init sequence (ubuntu)
   command: initctl emit radosgw cluster={{ cluster }} id=rgw.{{ ansible_hostname }}
@@ -25,8 +25,8 @@
     state: started
     enabled: yes
   when:
-    ansible_os_family == 'RedHat' and
-    is_before_infernalis
+    - ansible_os_family == 'RedHat'
+    - is_before_infernalis
 
 - name: enable systemd unit file for rgw instance (for or after infernalis)
   file:
@@ -36,8 +36,8 @@
   changed_when: false
   failed_when: false
   when:
-    use_systemd and
-    is_after_hammer
+    - use_systemd
+    - is_after_hammer
 
 - name: start rgw with systemd (for or after infernalis)
   service:
@@ -45,5 +45,5 @@
     state: started
     enabled: yes
   when:
-    use_systemd and
-    is_after_hammer
+    - use_systemd
+    - is_after_hammer

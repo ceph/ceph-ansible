@@ -15,17 +15,17 @@
 
 - include: ./pre_requisites/prerequisite_rh_storage_iso_install.yml
   when:
-    ceph_stable_rh_storage and
-    ceph_stable_rh_storage_iso_install and
-    ansible_os_family == "RedHat"
+    - ceph_stable_rh_storage
+    - ceph_stable_rh_storage_iso_install
+    - ansible_os_family == "RedHat"
   tags:
     - package-install
 
 - include: ./pre_requisites/prerequisite_rh_storage_cdn_install.yml
   when:
-    ceph_stable_rh_storage and
-    ceph_stable_rh_storage_cdn_install and
-    ansible_os_family == "RedHat"
+    - ceph_stable_rh_storage
+    - ceph_stable_rh_storage_cdn_install
+    - ansible_os_family == "RedHat"
   tags:
     - package-install
 
@@ -36,31 +36,31 @@
 
 - include: ./installs/install_on_debian.yml
   when:
-    ansible_os_family == 'Debian' and
-    not ceph_stable_rh_storage
+    - ansible_os_family == 'Debian'
+    - not ceph_stable_rh_storage
   tags:
     - package-install
 
 - include: ./installs/install_rh_storage_on_debian.yml
   when:
-    ansible_os_family == 'Debian' and
-    ceph_stable_rh_storage
+    - ansible_os_family == 'Debian'
+    - ceph_stable_rh_storage
   tags:
     - package-install
 
 - include: ./installs/install_rgw_on_redhat.yml
   when:
-    ansible_os_family == 'RedHat' and
-    radosgw_frontend == 'apache' and
-    rgw_group_name in group_names
+    - ansible_os_family == 'RedHat'
+    - radosgw_frontend == 'apache'
+    - rgw_group_name in group_names
   tags:
     - package-install
 
 - include: ./installs/install_rgw_on_debian.yml
   when:
-    ansible_os_family == 'Debian' and
-    radosgw_frontend == 'apache' and
-    rgw_group_name in group_names
+    - ansible_os_family == 'Debian'
+    - radosgw_frontend == 'apache'
+    - rgw_group_name in group_names
   tags:
     - package-install
 
@@ -105,44 +105,44 @@
 - set_fact:
     rbd_client_directory_owner: root
   when:
-    is_before_infernalis and
-    (rbd_client_directory_owner is not defined or
-     not rbd_client_directory_owner)
+    - is_before_infernalis
+    - rbd_client_directory_owner is not defined
+      or not rbd_client_directory_owner
 
 - set_fact:
     rbd_client_directory_owner: ceph
   when:
-    is_after_hammer and
-    (rbd_client_directory_owner is not defined or
-     not rbd_client_directory_owner)
+    - is_after_hammer
+    - rbd_client_directory_owner is not defined
+      or not rbd_client_directory_owner
 
 - set_fact:
     rbd_client_directory_group: root
   when:
-    is_before_infernalis and
-    (rbd_client_directory_group is not defined or
-     not rbd_client_directory_group)
+    - is_before_infernalis
+    - rbd_client_directory_group is not defined
+      or not rbd_client_directory_group
 
 - set_fact:
     rbd_client_directory_group: ceph
   when:
-    is_after_hammer and
-    (rbd_client_directory_group is not defined or
-     not rbd_client_directory_group)
+    - is_after_hammer
+    - rbd_client_directory_group is not defined
+      or not rbd_client_directory_group
 
 - set_fact:
     rbd_client_directory_mode: "1777"
   when:
-    is_before_infernalis and
-    (rbd_client_directory_mode is not defined or
-     not rbd_client_directory_mode)
+    - is_before_infernalis
+    - rbd_client_directory_mode is not defined
+      or not rbd_client_directory_mode
 
 - set_fact:
     rbd_client_directory_mode: "0770"
   when:
-    is_after_hammer and
-    (rbd_client_directory_mode is not defined or
-     not rbd_client_directory_mode)
+    - is_after_hammer
+    - rbd_client_directory_mode is not defined
+      or not rbd_client_directory_mode
 
 - name: check for a ceph socket
   shell: "stat /var/run/ceph/*.asok > /dev/null 2>&1"
@@ -161,9 +161,7 @@
   changed_when: false
   become: false
   run_once: true
-  when:
-    cephx or
-    generate_fsid
+  when: cephx or generate_fsid
 
 - name: generate cluster uuid
   local_action: shell python -c 'import uuid; print str(uuid.uuid4())' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
@@ -231,8 +229,7 @@
     insertafter: EOF
     create: yes
     line: "CLUSTER={{ cluster }}"
-  when:
-    ansible_os_family == "RedHat"
+  when: ansible_os_family == "RedHat"
 
 - name: configure cluster name
   lineinfile:
@@ -240,5 +237,4 @@
     insertafter: EOF
     create: yes
     line: "CLUSTER={{ cluster }}"
-  when:
-    ansible_os_family == "Debian"
+  when: ansible_os_family == "Debian"

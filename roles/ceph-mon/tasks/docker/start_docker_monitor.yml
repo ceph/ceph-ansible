@@ -11,9 +11,9 @@
       KV_PORT: "{{kv_port}}"
   run_once: true
   when:
-    inventory_hostname == groups.mons[0] and
-    mon_containerized_deployment_with_kv and
-    mon_containerized_default_ceph_conf_with_kv
+    - inventory_hostname == groups.mons[0]
+    - mon_containerized_deployment_with_kv
+    - mon_containerized_default_ceph_conf_with_kv
 
 - name: populate kv_store with custom ceph.conf
   docker:
@@ -29,9 +29,9 @@
       - /etc/ceph/ceph.conf:/etc/ceph/ceph.defaults
   run_once: true
   when:
-    inventory_hostname == groups.mons[0] and
-    mon_containerized_deployment_with_kv and
-    not mon_containerized_default_ceph_conf_with_kv
+    - inventory_hostname == groups.mons[0]
+    - mon_containerized_deployment_with_kv
+    - not mon_containerized_default_ceph_conf_with_kv
 
 - name: delete populate-kv-store docker
   docker:
@@ -49,34 +49,26 @@
     owner: "root"
     group: "root"
     mode: "0644"
-  when:
-    is_atomic or
-    ansible_os_family == 'CoreOS'
+  when: is_atomic or ansible_os_family == 'CoreOS'
 
 - name: link systemd unit file for mon instance
   file:
     src: /var/lib/ceph/ceph-mon@.service
     dest: /etc/systemd/system/multi-user.target.wants/ceph-mon@{{ ansible_hostname }}.service
     state: link
-  when:
-    is_atomic or
-    ansible_os_family == 'CoreOS'
+  when: is_atomic or ansible_os_family == 'CoreOS'
 
 - name: enable systemd unit file for mon instance
   shell: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-mon@{{ ansible_hostname }}.service
   failed_when: false
   changed_when: false
-  when:
-    is_atomic or
-    ansible_os_family == 'CoreOS'
+  when: is_atomic or ansible_os_family == 'CoreOS'
 
 - name: reload systemd unit files
   shell: systemctl daemon-reload
   changed_when: false
   failed_when: false
-  when:
-    is_atomic or
-    ansible_os_family == 'CoreOS'
+  when: is_atomic or ansible_os_family == 'CoreOS'
 
 - name: systemd start mon container
   service:
@@ -84,9 +76,7 @@
     state: started
     enabled: yes
   changed_when: false
-  when:
-    is_atomic or
-    ansible_os_family == 'CoreOS'
+  when: is_atomic or ansible_os_family == 'CoreOS'
 
 - name: wait for ceph.conf exists
   wait_for:
@@ -103,9 +93,9 @@
     env: "MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},{{ ceph_mon_extra_envs }}"
     volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
   when:
-    not is_atomic and
-    ansible_os_family != 'CoreOS' and
-    not mon_containerized_deployment_with_kv
+    - not is_atomic
+    - ansible_os_family != 'CoreOS'
+    - not mon_containerized_deployment_with_kv
 
 - name: run the ceph monitor docker image with kv
   docker:
@@ -116,6 +106,6 @@
     privileged: "{{ mon_docker_privileged }}"
     env: "KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},{{ ceph_mon_extra_envs }}"
   when:
-    not is_atomic and
-    ansible_os_family != 'CoreOS' and
-    mon_containerized_deployment_with_kv
+    - not is_atomic
+    - ansible_os_family != 'CoreOS'
+    - mon_containerized_deployment_with_kv
