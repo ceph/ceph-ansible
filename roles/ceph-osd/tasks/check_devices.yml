@@ -74,8 +74,13 @@
   register: journal_partition_status
   when: raw_multi_journal
 
+# NOTE: The following calls to sgdisk are retried because sgdisk is known to
+# fully wipe a device the first time around. There is no need to halt execution
+# of zapping the whole device so these try again. It is easier to use `||` to
+# keep the current flow of the task.
+# See: https://github.com/ceph/ceph-ansible/issues/759
 - name: fix partitions gpt header or labels of the osd disks
-  shell: sgdisk --zap-all --clear --mbrtogpt -g -- {{ item.1 }}
+  shell: "sgdisk --zap-all --clear --mbrtogpt -g -- {{ item.1 }} || sgdisk --zap-all --clear --mbrtogpt -g -- {{ item.1 }}"
   with_together:
     - combined_osd_partition_status_results.results
     - devices
@@ -86,7 +91,7 @@
     item.0.rc != 0
 
 - name: fix partitions gpt header or labels of the osd disks (autodiscover disks)
-  shell: sgdisk --zap-all --clear --mbrtogpt -g -- "/dev/{{ item.1.key }}"
+  shell: "sgdisk --zap-all --clear --mbrtogpt -g -- '/dev/{{ item.1.key }}' || sgdisk --zap-all --clear --mbrtogpt -g -- '/dev/{{ item.1.key }}'"
   with_together:
     - combined_osd_partition_status_results.results
     - ansible_devices
@@ -100,7 +105,7 @@
     item.0.rc != 0
 
 - name: fix partitions gpt header or labels of the journal devices
-  shell: sgdisk --zap-all --clear --mbrtogpt -g -- {{ item.1 }}
+  shell: "sgdisk --zap-all --clear --mbrtogpt -g -- {{ item.1 }} || shell: sgdisk --zap-all --clear --mbrtogpt -g -- {{ item.1 }}"
   with_together:
     - journal_partition_status.results
     - raw_journal_devices
