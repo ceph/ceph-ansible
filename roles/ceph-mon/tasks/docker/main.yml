@@ -15,8 +15,8 @@
 
 - include: checks.yml
   when:
-    ceph_health.rc != 0 and
-    not mon_containerized_deployment_with_kv
+    - ceph_health.rc != 0
+    - not mon_containerized_deployment_with_kv
 
 - include: pre_requisite.yml
 
@@ -25,8 +25,8 @@
 # let the first mon create configs and keyrings
 - include: create_configs.yml
   when:
-    inventory_hostname == groups.mons[0] and
-    not mon_containerized_default_ceph_conf_with_kv
+    - inventory_hostname == groups.mons[0]
+    - not mon_containerized_default_ceph_conf_with_kv
 
 - include: fetch_configs.yml
   when: not mon_containerized_deployment_with_kv
@@ -45,8 +45,8 @@
      creates: /etc/ceph/ceph.client.restapi.keyring
   changed_when: false
   when:
-    cephx and
-    mon_containerized_deployment and
-    groups[restapi_group_name] is defined and
-    inventory_hostname == groups.mons|last and
-    not mon_containerized_deployment_with_kv
+    - cephx
+    - mon_containerized_deployment
+    - groups[restapi_group_name] is defined
+    - inventory_hostname == groups.mons|last
+    - not mon_containerized_deployment_with_kv

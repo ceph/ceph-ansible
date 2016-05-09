@@ -15,11 +15,11 @@
   register: prepared_osds
   with_dict: ansible_devices
   when:
-    ansible_devices is defined and
-    item.value.removable == "0" and
-    item.value.partitions|count == 0 and
-    journal_collocation and
-    osd_auto_discovery
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.partitions|count == 0
+    - journal_collocation
+    - osd_auto_discovery
 
 - name: manually prepare osd disk(s)
   command: "ceph-disk prepare --cluster {{ cluster }} {{ item.2 }}"
@@ -29,11 +29,11 @@
     - combined_ispartition_results.results
     - devices
   when:
-    not item.0.get("skipped") and
-    not item.1.get("skipped") and
-    item.0.get("rc", 0) != 0 and
-    item.1.get("rc", 0) != 0 and
-    journal_collocation and not
-    osd_auto_discovery
+    - not item.0.get("skipped")
+    - not item.1.get("skipped")
+    - item.0.get("rc", 0) != 0
+    - item.1.get("rc", 0) != 0
+    - journal_collocation
+    - not osd_auto_discovery
 
 - include: ../activate_osds.yml

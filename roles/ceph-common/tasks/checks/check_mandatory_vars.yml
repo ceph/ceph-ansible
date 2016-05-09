@@ -3,8 +3,8 @@
   fail:
     msg: "choose an installation origin"
   when:
-    ceph_origin != 'upstream' and
-    ceph_origin != 'distro'
+    - ceph_origin != 'upstream'
+    - ceph_origin != 'distro'
   tags:
     - package-install
 
@@ -12,12 +12,12 @@
   fail:
     msg: "choose an upstream installation source or read https://github.com/ceph/ceph-ansible/wiki"
   when:
-    ceph_origin == 'upstream' and
-    not ceph_stable and
-    not ceph_dev and
-    not ceph_stable_ice and
-    not ceph_stable_rh_storage and
-    not ceph_stable_uca
+    - ceph_origin == 'upstream'
+    - not ceph_stable
+    - not ceph_dev
+    - not ceph_stable_ice
+    - not ceph_stable_rh_storage
+    - not ceph_stable_uca
   tags:
     - package-install
 
@@ -25,10 +25,10 @@
   fail:
     msg: "choose between ceph_stable_rh_storage_cdn_install and ceph_stable_rh_storage_iso_install"
   when:
-    ceph_stable_rh_storage and
-    not ceph_stable_rh_storage_cdn_install and
-    not ceph_stable_rh_storage_iso_install and
-    ceph_origin == "upstream"
+    - ceph_stable_rh_storage
+    - not ceph_stable_rh_storage_cdn_install
+    - not ceph_stable_rh_storage_iso_install
+    - ceph_origin == "upstream"
   tags:
     - package-install
 
@@ -36,81 +36,81 @@
   fail:
     msg: "journal_size must be configured. See http://ceph.com/docs/master/rados/configuration/osd-config-ref/"
   when:
-    journal_size|int == 0 and
-    osd_objectstore != 'bluestore' and
-    osd_group_name in group_names
+    - journal_size|int == 0
+    - osd_objectstore != 'bluestore'
+    - osd_group_name in group_names
 
 - name: make sure monitor_interface or monitor_address is configured
   fail:
     msg: "monitor_interface or monitor_address must be configured. Interface for the monitor to listen on or IP address of that interface"
   when:
-    monitor_interface == 'interface' and
-    monitor_address == '0.0.0.0' and
-    mon_group_name in group_names
+    - monitor_interface == 'interface'
+    - monitor_address == '0.0.0.0'
+    - mon_group_name in group_names
 
 - name: make sure cluster_network configured
   fail:
     msg: "cluster_network must be configured. Ceph replication network"
   when:
-    cluster_network == '0.0.0.0/0' and
-    osd_group_name in group_names
+    - cluster_network == '0.0.0.0/0'
+    - osd_group_name in group_names
 
 - name: make sure public_network configured
   fail:
     msg: "public_network must be configured. Ceph public network"
   when:
-    public_network == '0.0.0.0/0' and
-    osd_group_name in group_names
+    - public_network == '0.0.0.0/0'
+    - osd_group_name in group_names
 
 - name: make sure an osd scenario was chosen
   fail:
     msg: "please choose an osd scenario"
   when:
-    osd_group_name is defined and
-    osd_group_name in group_names and
-    not journal_collocation and
-    not raw_multi_journal and
-    not osd_directory and
-    not bluestore
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not journal_collocation
+    - not raw_multi_journal
+    - not osd_directory
+    - not bluestore
 
 - name: verify only one osd scenario was chosen
   fail:
     msg: "please select only one osd scenario"
   when:
-    osd_group_name is defined and
-    osd_group_name in group_names and
-    ((journal_collocation and raw_multi_journal) or
-    (journal_collocation and osd_directory) or
-    (raw_multi_journal and osd_directory) or
-    (bluestore and journal_collocation) or
-    (bluestore and raw_multi_journal) or
-    (bluestore and osd_directory))
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - (journal_collocation and raw_multi_journal)
+      or (journal_collocation and osd_directory)
+      or (raw_multi_journal and osd_directory)
+      or (bluestore and journal_collocation)
+      or (bluestore and raw_multi_journal)
+      or (bluestore and osd_directory)
 
 - name: verify devices have been provided
   fail:
     msg: "please provide devices to your osd scenario"
   when:
-    osd_group_name is defined and
-    osd_group_name in group_names and
-    journal_collocation and
-    not osd_auto_discovery and
-    devices is not defined
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - journal_collocation
+    - not osd_auto_discovery
+    - devices is not defined
 
 - name: verify journal devices have been provided
   fail:
     msg: "please provide devices to your osd scenario"
   when:
-    osd_group_name is defined and
-    osd_group_name in group_names and
-    raw_multi_journal and
-    (raw_journal_devices is not defined or
-    devices is not defined)
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - raw_multi_journal
+    - raw_journal_devices is not defined
+      or devices is not defined
 
 - name: verify directories have been provided
   fail:
     msg: "please provide directories to your osd scenario"
   when:
-    osd_group_name is defined and
-    osd_group_name in group_names and
-    osd_directory and
-    osd_directories is not defined
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - osd_directory
+    - osd_directories is not defined

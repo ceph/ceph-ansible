@@ -7,11 +7,11 @@
   ignore_errors: true
   with_dict: ansible_devices
   when:
-    ansible_devices is defined and
-    item.value.removable == "0" and
-    item.value.partitions|count == 0 and
-    journal_collocation and
-    osd_auto_discovery
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.partitions|count == 0
+    - journal_collocation
+    - osd_auto_discovery
 
 - name: activate osd(s) when device is a disk
   command: ceph-disk activate {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
@@ -22,9 +22,9 @@
   failed_when: false
   register: activate_osd_disk
   when:
-    not item.0.get("skipped") and
-    item.0.get("rc", 0) != 0 and
-    not osd_auto_discovery
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
+    - not osd_auto_discovery
 
 - name: fail if ceph-disk cannot create an OSD
   fail:
@@ -42,9 +42,9 @@
   changed_when: false
   failed_when: false
   when:
-    not item.0.get("skipped") and
-    item.0.get("rc", 0) == 0 and
-    not osd_auto_discovery
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) == 0
+    - not osd_auto_discovery
 
 - include: osd_fragment.yml
   when: crush_location
@@ -54,10 +54,10 @@
     policy: targeted
     state: permissive
   when:
-    ansible_selinux != false and
-    ansible_selinux['status'] == 'enabled' and
-    ansible_selinux['config_mode'] != 'disabled' and
-    is_before_infernalis
+    - ansible_selinux != false
+    - ansible_selinux['status'] == 'enabled'
+    - ansible_selinux['config_mode'] != 'disabled'
+    - is_before_infernalis
 
 - name: start and add that the osd service(s) to the init sequence (before infernalis)
   service:
@@ -65,8 +65,8 @@
     state: started
     enabled: yes
   when:
-    ansible_distribution != "Ubuntu" and
-    is_before_infernalis
+    - ansible_distribution != "Ubuntu"
+    - is_before_infernalis
 
 - name: get osd id (for or after infernalis)
   shell: "ls /var/lib/ceph/osd/ | grep '-' | cut -d '-' -f 2"
@@ -74,8 +74,8 @@
   failed_when: false
   register: osd_id
   when:
-    use_systemd and
-    is_after_hammer
+    - use_systemd
+    - is_after_hammer
 
 - name: enable osd service instance(s) (for or after infernalis)
   file:
@@ -85,8 +85,8 @@
   with_items: osd_id.stdout_lines
   failed_when: false
   when:
-    use_systemd and
-    is_after_hammer
+    - use_systemd
+    - is_after_hammer
 
 - name: start and add that the osd service(s) to the init sequence (for or after infernalis)
   service:
@@ -96,5 +96,5 @@
   with_items: osd_id.stdout_lines
   changed_when: false
   when:
-    use_systemd and
-    is_after_hammer
+    - use_systemd
+    - is_after_hammer

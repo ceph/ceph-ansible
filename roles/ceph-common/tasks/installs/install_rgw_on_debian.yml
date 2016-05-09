@@ -15,8 +15,8 @@
     - deb http://archive.ubuntu.com/ubuntu {{ ansible_lsb.codename }}-updates multiverse
     - deb http://security.ubuntu.com/ubuntu {{ ansible_lsb.codename }}-security multiverse
   when:
-    ansible_lsb.codename in ['precise'] and not
-    http_100_continue
+    - ansible_lsb.codename in ['precise']
+    - not http_100_continue
 
 # NOTE (leseb): disable the repo when we are using the Ceph repo for 100-continue packages
 - name: disable multiverse repo for precise
@@ -28,24 +28,24 @@
     - deb http://archive.ubuntu.com/ubuntu {{ ansible_lsb.codename }}-updates multiverse
     - deb http://security.ubuntu.com/ubuntu {{ ansible_lsb.codename }}-security multiverse
   when:
-    ansible_lsb.codename in ['precise'] and
-    http_100_continue
+    - ansible_lsb.codename in ['precise']
+    - http_100_continue
 
 # NOTE (leseb): needed for Ubuntu 14.04 to have access to libapache2-mod-fastcgi if 100-continue isn't being used
 - name: enable multiverse repo for trusty
   command: "apt-add-repository multiverse"
   changed_when: false
   when:
-    ansible_lsb.codename in ['trusty'] and not
-    http_100_continue
+    - ansible_lsb.codename in ['trusty']
+    - not http_100_continue
 
 # NOTE (leseb): disable the repo when we are using the Ceph repo for 100-continue packages
 - name: disable multiverse repo for trusty
   command: "apt-add-repository -r multiverse"
   changed_when: false
   when:
-    ansible_lsb.codename in ['trusty'] and
-    http_100_continue
+    - ansible_lsb.codename in ['trusty']
+    - http_100_continue
 
 # NOTE (leseb): if using 100-continue, add Ceph dev key
 - name: install the ceph development repository key
@@ -91,9 +91,7 @@
     - apache2.2-bin
     - apache2.2-common
     - libapache2-mod-fastcgi
-  when:
-    purge_default_apache.changed or
-    purge_ceph_apache.changed
+  when: purge_default_apache.changed or purge_ceph_apache.changed
 
 - name: install apache and fastcgi
   apt:

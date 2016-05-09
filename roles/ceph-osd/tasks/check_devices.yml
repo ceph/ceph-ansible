@@ -25,9 +25,9 @@
   failed_when: false
   register: ispartition_autodiscover
   when:
-    ansible_devices is defined and
-    item.value.removable == "0" and
-    osd_auto_discovery
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - osd_auto_discovery
 
 # NOTE (leseb): we must do this because of
 # https://github.com/ansible/ansible/issues/4297
@@ -42,9 +42,8 @@
   failed_when: false
   register: osd_partition_status
   when:
-    journal_collocation or
-    raw_multi_journal and not
-    osd_auto_discovery
+    - journal_collocation or raw_multi_journal
+    - not osd_auto_discovery
 
 - name: check the partition status of the osd disks (autodiscover disks)
   shell: "parted --script /dev/{{ item.key }} print > /dev/null 2>&1"
@@ -53,12 +52,11 @@
   failed_when: false
   register: osd_partition_status_autodiscover
   when:
-    journal_collocation or
-    raw_multi_journal and
-    ansible_devices is defined and
-    item.value.removable == "0" and
-    item.value.partitions|count == 0 and
-    osd_auto_discovery
+    - journal_collocation or raw_multi_journal
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.partitions|count == 0
+    - osd_auto_discovery
 
 # NOTE (leseb): we must do this because of
 # https://github.com/ansible/ansible/issues/4297
@@ -86,9 +84,9 @@
     - devices
   changed_when: false
   when:
-    (journal_collocation or raw_multi_journal) and not
-    osd_auto_discovery and
-    item.0.rc != 0
+    - journal_collocation or raw_multi_journal
+    - not osd_auto_discovery
+    - item.0.rc != 0
 
 - name: fix partitions gpt header or labels of the osd disks (autodiscover disks)
   shell: "sgdisk --zap-all --clear --mbrtogpt -g -- '/dev/{{ item.1.key }}' || sgdisk --zap-all --clear --mbrtogpt -g -- '/dev/{{ item.1.key }}'"
@@ -97,12 +95,12 @@
     - ansible_devices
   changed_when: false
   when:
-    journal_collocation and
-    osd_auto_discovery and
-    ansible_devices is defined and
-    item.value.removable == "0" and
-    item.value.partitions|count == 0 and
-    item.0.rc != 0
+    - journal_collocation
+    - osd_auto_discovery
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.partitions|count == 0
+    - item.0.rc != 0
 
 - name: fix partitions gpt header or labels of the journal devices
   shell: "sgdisk --zap-all --clear --mbrtogpt -g -- {{ item.1 }} || shell: sgdisk --zap-all --clear --mbrtogpt -g -- {{ item.1 }}"
@@ -111,8 +109,8 @@
     - raw_journal_devices
   changed_when: false
   when:
-    raw_multi_journal and
-    item.0.rc != 0
+    - raw_multi_journal
+    - item.0.rc != 0
 
 - name: check if a partition named 'ceph' exists
   shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"
@@ -129,9 +127,9 @@
   failed_when: false
   register: parted_autodiscover
   when:
-    ansible_devices is defined and
-    item.value.removable == "0" and
-    osd_auto_discovery
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - osd_auto_discovery
 
 # NOTE (leseb): we must do this because of
 # https://github.com/ansible/ansible/issues/4297
