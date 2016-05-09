@@ -16,7 +16,7 @@ None.
 
 # Dependencies
 
-New CoreOS releases support pypy in version 2.4 and above. Unfortunetly CoreOS stable channel
+New CoreOS releases support pypy in version 2.4 and above. Unfortunately CoreOS stable channel
 has to be used with pypy in version 2.4 and below due to some dependency issues.
 
 # Example Playbook
