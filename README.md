@@ -294,7 +294,7 @@ If Jenkins detects that your commit broke something it will turn red.
 You can then check the logs of the Jenkins by clicking on "Testing Playbooks" button in your PR and go to "Console Output".
 You can now submit a new commit/change that will update the CI system to run a new play.
 
-It might happen that the CI does not get reloead so you can simply leave a comment on your PR with "test this please" and it will trigger a new CI build.
+It might happen that the CI does not get reloaded so you can simply leave a comment on your PR with "test this please" and it will trigger a new CI build.
 
 ## Vagrant Demo
 
