@@ -1,0 +1,14 @@
+---
+- name: create pools
+  command: ceph --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pgs }}
+  with_items: pools
+  changed_when: false
+  failed_when: false
+
+- name: create keys
+  command: ceph --cluster {{ cluster }} auth get-or-create {{ item.name }} {{ item.value }} -o /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
+  args:
+    creates: /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
+  with_items: keys
+  changed_when: false
+  when: cephx
