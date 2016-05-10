@@ -104,6 +104,26 @@
     mds_group_name in group_names and
     ansible_pkg_mgr == "dnf"
 
+- name: install distro or red hat storage ceph base
+  yum:
+    name: "ceph-base"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    (ceph_origin == "distro" or ceph_stable_rh_storage or ceph_dev or
+     (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
+    client_group_name in group_names and
+    ansible_pkg_mgr == "yum"
+
+- name: install distro or red hat storage ceph base
+  dnf:
+    name: "ceph-base"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    (ceph_origin == "distro" or ceph_stable_rh_storage or ceph_dev or
+     (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
+    client_group_name in group_names and
+    ansible_pkg_mgr == "dnf"
+
 - name: install ceph-test
   yum:
     name: ceph-test
