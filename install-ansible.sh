@@ -20,7 +20,7 @@ if [[ "Debian" =~ $os_VENDOR ]]; then
   cd ansible
   make install
   mkdir /etc/ansible
-elif [[ "Ubuntu" =~ $os_VENDOR ]]; then
+elif [[ "Ubuntu" =~ $os_VENDOR || "LinuxMint" =~ $os_VENDOR ]]; then
   add-apt-repository -y ppa:ansible/ansible
   apt-get update
   apt-get install -y ansible
