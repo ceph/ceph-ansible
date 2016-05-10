@@ -51,6 +51,21 @@ ceph_conf_overrides:
 **Note:** we will no longer accept pull requests that modify the ceph.conf template unless it helps the deployment. For simple configuration tweaks
 please use the `ceph_conf_overrides` variable.
 
+## Special notes
+
+If you are looking at deploying a Ceph version older than Jewel.
+It is highly recommended that you apply the following settings to your `group_vars/all` file on the `ceph_conf_overrides` variable:
+
+```
+ceph_conf_overrides:
+  osd:
+    osd recovery max active: 5
+    osd max backfills: 2
+    osd recovery op priority: 2
+    osd recovery threads: 1
+```
+
+
 ## Setup with Vagrant using virtualbox provider
 
 * Create vagrant_variables.yml
