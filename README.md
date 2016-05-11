@@ -65,6 +65,41 @@ ceph_conf_overrides:
     osd recovery threads: 1
 ```
 
+https://github.com/ceph/ceph-ansible/pull/694 removed all the default options that were part of the repo.
+The goal is to keep the default from Ceph.
+Below you will find the configuration that was applied prior to the PR in case you want to keep using them:
+
+Setting | ceph-ansible | ceph
+--- | --- | ---
+cephx require signatures | true | false
+cephx cluster require signatures | true | false
+osd pool default pg num | 128 | 8
+osd pool default pgp num | 128 | 8
+rbd concurrent management ops | 20 | 10
+rbd default map options | rw | ''
+rbd default format | 2 | 1 
+mon osd down out interval | 600 | 300
+mon osd min down reporters | 7 | 1
+mon clock drift allowed | 0.15 | 0.5
+mon clock drift warn backoff | 30 | 5
+mon osd report timeout | 900 | 300 
+mon pg warn max per osd | 0 | 300
+mon osd allow primary affinity | true | false
+filestore merge threshold | 40 | 10
+filestore split multiple | 8 | 2
+osd op threads | 8 | 2
+filestore op threads | 8 | 2
+osd recovery max active | 5 | 15
+osd max backfills | 2 | 10
+osd recovery op priority | 2 | 63
+osd recovery max chunk | 1048576 | 8 << 20
+osd scrub sleep | 0.1 | 0
+osd disk thread ioprio class | idle | ''
+osd disk thread ioprio priority | 0 | -1
+osd deep scrub stride | 1048576 | 524288
+osd scrub chunk max | 5 | 25
+
+If you want to use them, just use the `ceph_conf_overrides` variable as explained above.
 
 ## Setup with Vagrant using virtualbox provider
 
