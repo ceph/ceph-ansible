@@ -296,7 +296,7 @@ We love contribution and we love giving visibility to our contributors, this is 
 
 ## Submit a patch
 
-To start contriuting just do:
+To start contributing just do:
 
 ```
 $ git checkout -b my-working-branch
@@ -310,7 +310,7 @@ One more step, before pushing your code you should run a syntax check:
 $ ansible-playbook -i dummy-ansible-hosts test.yml --syntax-check
 ```
 
-If your change impacts a variable file in a role such as `roles`ceph-common/defaults/main.yml`, you need to generate a `group_vars` file:
+If your change impacts a variable file in a role such as `roles/ceph-common/defaults/main.yml`, you need to generate a `group_vars` file:
 
 ```
 $ ./generate_group_vars_sample.sh
