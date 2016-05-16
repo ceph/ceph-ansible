@@ -77,13 +77,11 @@
     - use_systemd
     - is_after_hammer
 
-- name: enable osd service instance(s) (for or after infernalis)
-  file:
-    src:  /usr/lib/systemd/system/ceph-osd@.service
-    dest: /etc/systemd/system/multi-user.target.wants/ceph-osd@{{ item }}.service
-    state: link
-  with_items: osd_id.stdout_lines
+- name: enable the osd service (for or after infernalis)
+  command: systemctl enable ceph-osd@{{ item }}
+  changed_when: false
   failed_when: false
+  with_items: osd_id.stdout_lines
   when:
     - use_systemd
     - is_after_hammer
