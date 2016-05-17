@@ -174,6 +174,8 @@ information about how to generate appropriate values for these variables.
 By default, ceph-common installs from Ceph repository. However, you
 can set `ceph_origin` to "distro" to install Ceph from your default repository.
 
+Moreover for people looking to install any version of Ceph prior to the Jewel release on a Red Hat based system you would have to set `use_server_package_split: false`.
+
 ## Setup for Vagrant using libvirt provider
 
 * Create vagrant_variables.yml
@@ -274,16 +276,16 @@ $ cp vagrant_variables.yml.openstack vagrant_variables.yml
         be used by the OSD for the /dev/vdb disk
     Set the `os_image` to an image found in the Images list in the Open Stack
         cloud Dashboard (i.e. 'centos-atomic-host').
-    Set the `os_keypair_name` to the keypair name you used when you did the 
+    Set the `os_keypair_name` to the keypair name you used when you did the
         Open Stack registration.
 ```
 $ vagrant up --provider=openstack
 ```
-Once the playbook is finished, you should be able to do `vagrant ssh mon0` or 
-`vagrant ssh osd0` to get to the VMs.  
+Once the playbook is finished, you should be able to do `vagrant ssh mon0` or
+`vagrant ssh osd0` to get to the VMs.
 `sudo docker ps` should show the running containers
-When you are done, use `vagrant destroy` to get rid of the VMs.  You should 
-also remove the associated entries in .ssh/known_hosts so that if the IP 
+When you are done, use `vagrant destroy` to get rid of the VMs.  You should
+also remove the associated entries in .ssh/known_hosts so that if the IP
 addresses get reused by future Open Stack Cloud instances there will not be
 old known_hosts entries.
 
