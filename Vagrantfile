@@ -24,8 +24,11 @@ if BOX == 'openstack'
   require 'vagrant-openstack-provider'
   OSVM = true
   USER = settings['os_ssh_username']
+  OSUSER = settings['os_username']
+  OSPREFIX = "#{OSUSER}-"
 else
   OSVM = false
+  OSPREFIX = ""
 end
 
 ansible_provision = proc do |ansible|
@@ -42,15 +45,15 @@ ansible_provision = proc do |ansible|
   # these aren't supported by Vagrant, see
   # https://github.com/mitchellh/vagrant/issues/3539
   ansible.groups = {
-    'mons'        => (0..NMONS - 1).map { |j| "mon#{j}" },
-    'osds'        => (0..NOSDS - 1).map { |j| "osd#{j}" },
-    'mdss'        => (0..NMDSS - 1).map { |j| "mds#{j}" },
-    'rgws'        => (0..NRGWS - 1).map { |j| "rgw#{j}" },
-    'clients'     => (0..CLIENTS - 1).map { |j| "client#{j}" }
+    'mons'        => (0..NMONS - 1).map { |j| "#{OSPREFIX}mon#{j}" },
+    'osds'        => (0..NOSDS - 1).map { |j| "#{OSPREFIX}osd#{j}" },
+    'mdss'        => (0..NMDSS - 1).map { |j| "#{OSPREFIX}mds#{j}" },
+    'rgws'        => (0..NRGWS - 1).map { |j| "#{OSPREFIX}rgw#{j}" },
+    'clients'     => (0..CLIENTS - 1).map { |j| "#{OSPREFIX}client#{j}" }
   }
 
   if RESTAPI then
-    ansible.groups['restapis'] = (0..NMONS - 1).map { |j| "mon#{j}" }
+    ansible.groups['restapis'] = (0..NMONS - 1).map { |j| "#{OSPREFIX}mon#{j}" }
   end
 
 
@@ -65,6 +68,8 @@ ansible_provision = proc do |ansible|
       ceph_mon_docker_interface: ETH,
       ceph_mon_docker_subnet: "#{SUBNET}.0/24",
       ceph_osd_docker_extra_env: "CEPH_DAEMON=OSD_CEPH_DISK,OSD_JOURNAL_SIZE=100",
+      cluster_network: "#{SUBNET}.0/24",
+      public_network: "#{SUBNET}.0/24",
       ceph_osd_docker_devices: settings['disks'],
       # Note that OSVM is defaulted to false above
       ceph_docker_on_openstack: OSVM,
@@ -123,8 +128,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   (0..CLIENTS - 1).each do |i|
-    config.vm.define "client#{i}" do |client|
-      client.vm.hostname = "ceph-client#{i}"
+    config.vm.define "#{OSPREFIX}client#{i}" do |client|
+      client.vm.hostname = "#{OSPREFIX}ceph-client#{i}"
       if !OSVM
         client.vm.network :private_network, ip: "#{SUBNET}.4#{i}"
       end
@@ -152,8 +157,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   (0..NRGWS - 1).each do |i|
-    config.vm.define "rgw#{i}" do |rgw|
-      rgw.vm.hostname = "ceph-rgw#{i}"
+    config.vm.define "#{OSPREFIX}rgw#{i}" do |rgw|
+      rgw.vm.hostname = "#{OSPREFIX}ceph-rgw#{i}"
       if !OSVM
         rgw.vm.network :private_network, ip: "#{SUBNET}.5#{i}"
       end
@@ -182,8 +187,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   (0..NMDSS - 1).each do |i|
-    config.vm.define "mds#{i}" do |mds|
-      mds.vm.hostname = "ceph-mds#{i}"
+    config.vm.define "#{OSPREFIX}mds#{i}" do |mds|
+      mds.vm.hostname = "#{OSPREFIX}ceph-mds#{i}"
       if !OSVM
         mds.vm.network :private_network, ip: "#{SUBNET}.7#{i}"
       end
@@ -210,8 +215,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   (0..NMONS - 1).each do |i|
-    config.vm.define "mon#{i}" do |mon|
-      mon.vm.hostname = "ceph-mon#{i}"
+    config.vm.define "#{OSPREFIX}mon#{i}" do |mon|
+      mon.vm.hostname = "#{OSPREFIX}ceph-mon#{i}"
       if !OSVM
         mon.vm.network :private_network, ip: "#{SUBNET}.1#{i}"
       end
@@ -239,8 +244,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   (0..NOSDS - 1).each do |i|
-    config.vm.define "osd#{i}" do |osd|
-      osd.vm.hostname = "ceph-osd#{i}"
+    config.vm.define "#{OSPREFIX}osd#{i}" do |osd|
+      osd.vm.hostname = "#{OSPREFIX}ceph-osd#{i}"
       if !OSVM
         osd.vm.network :private_network, ip: "#{SUBNET}.10#{i}"
         osd.vm.network :private_network, ip: "#{SUBNET}.20#{i}"
