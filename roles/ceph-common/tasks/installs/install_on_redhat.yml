@@ -40,7 +40,7 @@
 # a separate ceph-mon package or ceph-osd package
 # Note: Red Hat Ceph Storage is different, DOES separate them even in hammer
 
-- set_fact: > 
+- set_fact: >
     ceph_stable_rel_pkg="{{ ceph_stable_releases | union([ 'infernalis' ]) }}"
 
 - name: install distro or red hat storage ceph mon
@@ -48,7 +48,7 @@
     name: "ceph-mon"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage or
+    (ceph_origin == "distro" or
      (ceph_stable and ceph_stable_release not in ceph_stable_rel_pkg)) and
     mon_group_name in group_names and
     ansible_pkg_mgr == "yum"
@@ -58,17 +58,17 @@
     name: "ceph-mon"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage or
+    (ceph_origin == "distro" or
      (ceph_stable and ceph_stable_release not in ceph_stable_rel_pkg)) and
     mon_group_name in group_names and
-    ansible_pkg_mgr == "dnf"
+    ansible_pkg_mgr == "yum"
 
 - name: install distro or red hat storage ceph osd
   yum:
     name: "ceph-osd"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage or
+    (ceph_origin == "distro" or
      (ceph_stable and ceph_stable_release not in ceph_stable_rel_pkg)) and
     osd_group_name in group_names and
     ansible_pkg_mgr == "yum"
@@ -78,7 +78,7 @@
     name: "ceph-osd"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage or
+    (ceph_origin == "distro" or
      (ceph_stable and ceph_stable_release not in ceph_stable_rel_pkg)) and
     osd_group_name in group_names and
     ansible_pkg_mgr == "dnf"
@@ -88,7 +88,7 @@
     name: "ceph-mds"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage or ceph_dev or
+    (ceph_origin == "distro" or ceph_dev or
      (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
     mds_group_name in group_names and
     ansible_pkg_mgr == "yum"
@@ -98,7 +98,7 @@
     name: "ceph-mds"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_stable_rh_storage or ceph_dev or
+    (ceph_origin == "distro" or ceph_dev or
      (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
     mds_group_name in group_names and
     ansible_pkg_mgr == "dnf"
