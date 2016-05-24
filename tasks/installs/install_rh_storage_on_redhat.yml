@@ -1,0 +1,67 @@
+---
+- name: install red hat storage repository key
+  rpm_key:
+    key: "{{ ceph_stable_rh_storage_repository_path }}/RPM-GPG-KEY-redhat-release"
+    state: present
+  when:
+    - ceph_stable_rh_storage_iso_install
+
+- name: add red hat storage repository
+  template:
+    src: ../../templates/redhat_storage_repo.j2
+    dest: /etc/yum.repos.d/rh_storage.repo
+    owner: root
+    group: root
+    mode: 0644
+  when:
+    - ceph_stable_rh_storage_iso_install
+
+- name: install dependencies
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items: redhat_package_dependencies
+  when:
+    - ansible_pkg_mgr == "yum"
+
+- name: install red hat storage ceph mon
+  yum:
+    name: "ceph-mon"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - mon_group_name in group_names
+
+- name: install red hat storage ceph osd
+  yum:
+    name: "ceph-osd"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - osd_group_name in group_names
+
+- name: install red hat storage ceph mds
+  yum:
+    name: "ceph-mds"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - mds_group_name in group_names
+
+- name: install red hat storage ceph base
+  yum:
+    name: "ceph-base"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - client_group_name in group_names
+
+- name: install ceph-test
+  yum:
+    name: ceph-test
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - ceph_test
+
+- name: install rados gateway
+  yum:
+    name: ceph-radosgw
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - rgw_group_name in group_names
