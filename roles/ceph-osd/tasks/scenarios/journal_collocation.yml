@@ -11,7 +11,6 @@
 # failed, this is why we check if the device is a partition too.
 - name: automatic prepare osd disk(s) without partitions
   command: ceph-disk prepare --cluster "{{ cluster }}" "/dev/{{ item.key }}"
-  ignore_errors: true
   register: prepared_osds
   with_dict: ansible_devices
   when:
@@ -23,7 +22,6 @@
 
 - name: manually prepare osd disk(s)
   command: "ceph-disk prepare --cluster {{ cluster }} {{ item.2 }}"
-  ignore_errors: true
   with_together:
     - combined_parted_results.results
     - combined_ispartition_results.results
