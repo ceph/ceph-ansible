@@ -1,0 +1,28 @@
+[Unit]
+Description=Ceph RGW
+After=docker.service
+
+[Service]
+EnvironmentFile=-/etc/environment
+ExecStartPre=-/usr/bin/docker stop {{ ansible_hostname }}
+ExecStartPre=-/usr/bin/docker rm {{ ansible_hostname }}
+ExecStart=/usr/bin/docker run --rm --net=host \
+   {% if not rgw_containerized_deployment_with_kv -%}
+   -v /var/lib/ceph:/var/lib/ceph \
+   -v /etc/ceph:/etc/ceph \
+   {% else -%}
+   -e KV_TYPE={{kv_type}} \
+   -e KV_IP={{kv_endpoint}} \
+   {% endif -%}
+   --privileged \
+   -e CEPH_DAEMON=RGW \
+   --name={{ ansible_hostname }} \
+   {{ ceph_rgw_docker_username }}/{{ ceph_rgw_docker_imagename }}
+ExecStopPost=-/usr/bin/docker stop {{ ansible_hostname }}
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target
