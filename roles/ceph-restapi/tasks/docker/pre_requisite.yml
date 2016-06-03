@@ -24,19 +24,52 @@
   tags:
     with_pkg
 
-- name: install pip and docker on redhat
+- name: install epel-release on redhat
+  yum:
+    name: epel-release
+    state: present
+  when: ansible_os_family == 'RedHat'
+  tags:
+    with_pkg
+
+- name: install pip on redhat
   yum:
     name: "{{ item }}"
     state: present
   with_items:
     - python-pip
-    - docker-engine
   when:
     - ansible_os_family == 'RedHat'
     - ansible_pkg_mgr == "yum"
   tags:
     with_pkg
 
+- name: install docker-engine on redhat
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - docker-engine
+  when:
+    - ansible_os_family == 'RedHat'
+    - ansible_pkg_mgr == "yum"
+  tags:
+    with_pkg
+  failed_when: false
+
+# for CentOS
+- name: install docker on redhat
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - docker
+  when:
+    - ansible_os_family == 'RedHat'
+    - ansible_pkg_mgr == "yum"
+  tags:
+    with_pkg
+  failed_when: false
 - name: install pip and docker on redhat
   dnf:
     name: "{{ item }}"
@@ -47,14 +80,6 @@
   when:
     - ansible_os_family == 'RedHat'
     - ansible_pkg_mgr == "dnf"
-  tags:
-    with_pkg
-
-- name: install epel-release on redhat
-  yum:
-    name: epel-release
-    state: present
-  when: ansible_os_family == 'RedHat'
   tags:
     with_pkg
 
