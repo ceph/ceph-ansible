@@ -17,8 +17,6 @@
     - devices
     - raw_journal_devices
   changed_when: false
-  ignore_errors: true
-  register: prepare_osd_disk
   when:
     - not item.0.get("skipped")
     - not item.1.get("skipped")
@@ -26,14 +24,5 @@
     - item.1.get("rc", 0) != 0
     - raw_multi_journal
     - not osd_auto_discovery
-
-- name: fail if ceph-disk cannot prepare an OSD
-  fail:
-    msg: "ceph-disk failed to prepare an OSD"
-  when:
-    - " 'ceph-disk: Error:' in item.get('stderr', '') "
-    - " 'Failed to add' in item.get('stderr', '') "
-    - item.get("rc") != 0
-  with_items: "{{prepare_osd_disk.results}}"
 
 - include: ../activate_osds.yml
