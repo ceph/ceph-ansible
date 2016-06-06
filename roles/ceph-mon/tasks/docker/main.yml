@@ -1,6 +1,6 @@
 ---
 - name: check if a cluster is already running
-  shell: "docker ps | grep -sq 'ceph/daemon'"
+  shell: "docker ps | grep -sq '{{ceph_mon_docker_username}}/{{ceph_mon_docker_imagename}}'"
   register: ceph_health
   changed_when: false
   failed_when: false
@@ -19,6 +19,11 @@
     - not mon_containerized_deployment_with_kv
 
 - include: pre_requisite.yml
+
+- include: "{{ playbook_dir }}/roles/ceph-common/tasks/docker/fetch_image.yml"
+  vars:
+    ceph_docker_username: '{{ ceph_mon_docker_username}}'
+    ceph_docker_imagename: '{{ ceph_mon_docker_imagename}}'
 
 - include: dirs_permissions.yml
 
