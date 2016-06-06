@@ -14,7 +14,7 @@
     - nmapexist.rc != 0
 
 - name: check if monitor port is not filtered
-  local_action: shell set -o pipefail && nmap -p 6789 {{ item }} {{ hostvars[item]['ansible_' + monitor_interface]['ipv4']['address'] }} | grep -sqo filtered
+  local_action: shell set -o pipefail && nmap -p 6789 {{ item }} {{ hostvars[item]['ansible_' + monitor_interface]['ipv4']['address'] if hostvars[item]['ansible_' + monitor_interface] is defined else hostvars[item][monitor_address] }} | grep -sqo filtered
   changed_when: false
   failed_when: false
   with_items: "{{ groups[mon_group_name] }}"
