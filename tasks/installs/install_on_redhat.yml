@@ -39,13 +39,67 @@
   include: redhat_ceph_repository.yml
   when: ceph_origin == 'upstream'
 
+- name: make sure /tmp exists
+  file:
+    path: /tmp
+    state: directory
+  when:
+    - ceph_origin == 'local'
+    - use_installer
+
+- name: use mktemp to create name for rundep
+  command: "mktemp /tmp/rundep.XXXXXXXX"
+  register: rundep_location
+  when:
+    - ceph_origin == 'local'
+    - use_installer
+
+- name: copy rundep
+  copy:
+    src: "{{ansible_dir}}/rundep"
+    dest: "{{ item }}"
+  with_items: rundep_location.stdout_lines
+  when:
+    - ceph_origin == 'local'
+    - use_installer
+
+- name: install ceph dependencies
+  script: "{{ ansible_dir }}/rundep_installer.sh {{ item }}"
+  become: true
+  with_items: rundep_location.stdout_lines
+  when:
+    - ceph_origin == 'local'
+    - use_installer
+
 - name: install ceph
   yum:
     name: ceph
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when: not use_server_package_split
+  when:
+    - not use_server_package_split
+    - ansible_pkg_mgr == "yum"
+    - ceph_origin != 'local'
 
-- name: install distro or red hat storage ceph mon
+- name: synchronize ceph install
+  synchronize:
+    src: "{{ceph_installation_dir}}/"
+    dest: "/"
+  when:
+    - ceph_origin == 'local'
+
+- name: create user group ceph
+  group:
+    name: 'ceph'
+  when:
+    - ceph_origin == 'local'
+
+- name: create user ceph
+  user:
+    name: 'ceph'
+  when:
+    - ceph_origin == 'local'
+
+- name: install distro or red hat storage ceph mon via yum
   yum:
     name: "ceph-mon"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
@@ -57,7 +111,7 @@
       or ceph_origin == "distro"
       or ceph_custom
 
-- name: install distro or red hat storage ceph mon
+- name: install distro or red hat storage ceph mon via dnf
   dnf:
     name: "ceph-mon"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
@@ -69,7 +123,7 @@
       or ceph_dev
       or ceph_custom
 
-- name: install distro or red hat storage ceph osd
+- name: install distro or red hat storage ceph osd via yum
   yum:
     name: "ceph-osd"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
@@ -81,7 +135,7 @@
       or ceph_dev
       or ceph_custom
 
-- name: install distro or red hat storage ceph osd
+- name: install distro or red hat storage ceph osd via dnf
   dnf:
     name: "ceph-osd"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
@@ -93,7 +147,7 @@
       or ceph_dev
       or ceph_custom
 
-- name: install distro or red hat storage ceph mds
+- name: install distro or red hat storage ceph mds via yum
   yum:
     name: "ceph-mds"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
@@ -105,7 +159,7 @@
       or ceph_dev
       or ceph_custom
 
-- name: install distro or red hat storage ceph mds
+- name: install distro or red hat storage ceph mds via dnf
   dnf:
     name: "ceph-mds"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
@@ -117,7 +171,7 @@
       or ceph_dev
       or ceph_custom
 
-- name: install distro or red hat storage ceph base
+- name: install distro or red hat storage ceph base via yum
   yum:
     name: "ceph-base"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
@@ -129,7 +183,7 @@
       or ceph_dev
       or ceph_custom
 
-- name: install distro or red hat storage ceph base
+- name: install distro or red hat storage ceph base via dnf
   dnf:
     name: "ceph-base"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
