@@ -30,7 +30,19 @@ host = {{ hostvars[host]['ansible_fqdn'] }}
 host = {{ hostvars[host]['ansible_hostname'] }}
 {% endif %}
 # we need to check if monitor_interface is defined in the inventory per host or if it's set in a group_vars file
-{% if (hostvars[host]['monitor_interface'] is defined and hostvars[host]['monitor_interface'] != "interface") or monitor_interface != "interface" %}
+{% if mon_containerized_deployment %}
+{% set interface = ["ansible_",ceph_mon_docker_interface]|join %}
+{% if interface in hostvars[host] and 'ipv4' in hostvars[host][interface] %}
+# user address from interface {{ ceph_mon_docker_interface }}
+mon addr = {{ hostvars[host][interface]['ipv4']['address'] }}
+ {% elif hostvars[host]['monitor_address'] is defined %}
+ # use host monitor address
+mon addr = {{ hostvars[host]['monitor_address'] }}
+ {% elif monitor_address != "0.0.0.0" %}
+ # use group_var monitor address
+mon addr = monitor_address
+{% endif %}
+{% elif (hostvars[host]['monitor_interface'] is defined and hostvars[host]['monitor_interface'] != "interface") or monitor_interface != "interface" %}
 {% include 'mon_addr_interface.j2' %}
 {% else %}
 {% include 'mon_addr_address.j2' %}
