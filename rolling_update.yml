@@ -28,9 +28,30 @@
          invoking the playbook"
     when: ireallymeanit != 'yes'
 
-- hosts: all
+- hosts:
+  - mons
+  - osds
+  - mdss
+  - rgws
+
+  become: True
   tasks:
-    - debug: msg="gather facts on all hosts for following reference"
+    - debug: msg="gather facts on all Ceph hosts for following reference"
+    - name: check if sysvinit
+      stat:
+        path: /etc/rc?.d/S??ceph
+        follow: yes
+      register: is_sysvinit
+
+    - name: check if upstart
+      stat:
+        path: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/upstart
+      register: is_upstart
+
+    - name: check if systemd
+      command: grep -sq systemd /proc/1/comm
+      register: is_systemd
+
 
 - hosts: mons
   serial: 1
@@ -48,46 +69,25 @@
     - ceph-mon
 
   post_tasks:
-    - name: check if sysvinit
-      stat:
-        path: /etc/rc?.d/S??ceph
-        follow: yes
-      register: monsysvinit
-
-    - name: check if upstart
-      stat:
-        path: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/upstart
-      register: monupstart
-
-    - name: check if systemd
-      command: grep -sq systemd /proc/1/comm
-      register: is_systemd
-
-    - name: restart the monitor after compaction (upstart)
+    - name: restart ceph mons with upstart
       service:
         name: ceph-mon
         state: restarted
         args: id={{ ansible_hostname }}
-      when: monupstart.stat.exists == True
+      when: is_upstart.stat.exists == True
 
-    - name: restart the monitor after compaction (sysvinit)
+    - name: restart ceph mons with sysvinit
       service:
         name: ceph
         state: restarted
-      when: monsysvinit.stat.exists == True
+      when: is_sysvinit.stat.exists == True
 
-    - name: restart monitor(s)
+    - name: restart ceph mons with systemd
       service:
-        name: ceph
+        name: ceph-mon@{{ ansible_hostname }}
         state: restarted
-        args: mon
-      when: not ansible_os_family == "RedHat"
-
-    - name: restart monitor(s)
-      service:
-        name: ceph
-        state: restarted
-      when: ansible_os_family == "RedHat"
+        enabled: yes
+      when: is_systemd
 
     - name: select a running monitor
       set_fact: mon_host={{ item }}
@@ -125,27 +125,30 @@
     - ceph-osd
 
   post_tasks:
-    - name: check if sysvinit
-      shell: stat /var/lib/ceph/osd/ceph-*/sysvinit
-      register: osdsysvinit
-      failed_when: false
+    - name: get osd numbers
+      shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi"
+      register: osd_ids
+      changed_when: false
 
-    - name: check if upstart
-      shell: stat /var/lib/ceph/osd/ceph-*/upstart
-      register: osdupstart
-      failed_when: false
-
-    - name: gracefully stop the oss (upstart)
+    - name: restart ceph osds (upstart)
       service:
         name: ceph-osd-all
         state: restarted
-      when: osdupstart.rc == 0
+      when: is_upstart.stat.exists == True
 
-    - name: gracefully stop the osds (sysvinit)
+    - name: restart ceph osds (sysvinit)
       service:
         name: ceph
         state: restarted
-      when: osdsysvinit.rc == 0
+      when: is_sysvinit.stat.exists == True
+
+    - name: restart ceph osds (systemd)
+      service:
+        name: ceph-osd@{{item}}
+        state: restarted
+        enabled: yes
+      with_items: "{{ osd_ids.stdout_lines }}"
+      when: is_systemd
 
     - name: waiting for clean pgs...
       shell: |
@@ -177,30 +180,26 @@
     - ceph-mds
 
   post_tasks:
-    - name: check if sysvinit
-      stat:
-        path: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/sysvinit
-      register: mdssysvinit
-
-    - name: check if upstart
-      stat:
-        path: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/upstart
-      register: mdsupstart
-
-    - name: restart the metadata server (upstart)
+    - name: restart ceph mdss with upstart
       service:
         name: ceph-mds
         state: restarted
         args: id={{ ansible_hostname }}
-      when: mdsupstart.stat.exists == True
+      when: is_upstart.stat.exists == True
 
-    - name: restart the metadata server (sysvinit)
+    - name: restart ceph mdss with sysvinit
       service:
         name: ceph
         state: restarted
         args: mds
-      when: mdssysvinit.stat.exists == True
+      when: is_sysvinit.stat.exists == True
 
+    - name: restart ceph mdss with systemd
+      service:
+        name: ceph-mds@{{ ansible_hostname }}
+        state: restarted
+        enabled: yes
+      when: is_systemd
 
 - hosts: rgws
   serial: 1
@@ -214,19 +213,21 @@
     - ceph-rgw
 
   post_tasks:
-    - name: restart rados gateway server(s)
+    - name: restart ceph rgws with systemd
       service:
-        name: {{ item }}
+        name: ceph-radosgw@rgw.{{ ansible_hostname }}
         state: restarted
-      with_items:
-        - radosgw
-      when: radosgw_frontend == 'civetweb'
+        enabled: yes
+      when: is_systemd
+
+    - name: restart ceph rgws with sysvinit
+      service:
+        name: radosgw
+        state: restarted
+      when: ansible_os_family != 'RedHat'
 
     - name: restart rados gateway server(s)
       service:
-        name: {{ item }}
+        name: ceph-radosgw
         state: restarted
-      with_items:
-        - apache2
-        - radosgw
-      when: radosgw_frontend == 'apache'
+      when: ansible_os_family != 'RedHat'
