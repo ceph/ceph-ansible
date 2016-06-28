@@ -45,21 +45,15 @@
   become: true
   template:
     src: "{{ role_path }}/templates/ceph-mon.service.j2"
-    dest: /var/lib/ceph/ceph-mon@.service
+    dest: /etc/systemd/system/ceph-mon@.service
     owner: "root"
     group: "root"
     mode: "0644"
   when:  ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
 
-- name: link systemd unit file for mon instance
-  file:
-    src: /var/lib/ceph/ceph-mon@.service
-    dest: /etc/systemd/system/multi-user.target.wants/ceph-mon@{{ ansible_hostname }}.service
-    state: link
-  when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
 
 - name: enable systemd unit file for mon instance
-  shell: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-mon@{{ ansible_hostname }}.service
+  shell: systemctl enable ceph-mon@{{ ansible_hostname }}.service
   failed_when: false
   changed_when: false
   when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
