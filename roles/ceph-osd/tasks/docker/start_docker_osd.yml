@@ -41,16 +41,20 @@
     - not osd_containerized_deployment_with_kv
 
 - name: prepare ceph osd disk with kv_store
-  docker:
-    image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}:{{ ceph_osd_docker_image_tag }}"
-    name: "{{ ansible_hostname }}-osd-prepare-{{ item.0 | regex_replace('/', '') }}"
-    net: host
-    pid: host
-    state: running
-    privileged: yes
-    volumes: "{{ item.0 }}:{{ item.0 }}"
-    env: "OSD_DEVICE={{ item.0 }},KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},{{ ceph_osd_docker_prepare_env }}"
-  ignore_errors: true
+  shell: |
+    docker run  --net=host --rm  \
+    --pid=host \
+    --privileged=true \
+    --name="{{ ansible_hostname }}-osd-prepare-{{ item.0 |
+    regex_replace('/', '') }}" \
+    -v /dev:/dev \
+    -e "OSD_DEVICE={{ item.0 }}" \
+    -e "{{ ceph_osd_docker_prepare_env }}" \
+    -e CEPH_DAEMON=osd_ceph_disk_prepare \
+    -e KV_TYPE={{kv_type}} \
+    -e KV_IP={{kv_endpoint}} \
+    -e KV_PORT={{kv_port}} \
+    "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}:{{ ceph_osd_docker_image_tag }}" \
   with_together:
     - ceph_osd_docker_devices
     - osd_prepared.results
@@ -64,23 +68,15 @@
   become: true
   template:
     src: "{{ role_path }}/templates/ceph-osd.service.j2"
-    dest: /var/lib/ceph/ceph-osd@.service
+    dest: /etc/systemd/system/ceph-osd@.service
     owner: "root"
     group: "root"
     mode: "0644"
   failed_when: false
   when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
 
-- name: link systemd unit file for osd instance
-  file:
-    src: /var/lib/ceph/ceph-osd@.service
-    dest: /etc/systemd/system/multi-user.target.wants/ceph-osd@{{ item | basename }}.service
-    state: link
-  with_items: ceph_osd_docker_devices
-  when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
-
 - name: enable systemd unit file for osd instance
-  shell: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-osd@{{ item | basename }}.service
+  shell: systemctl enable ceph-osd@{{ item | basename }}.service
   failed_when: false
   changed_when: false
   with_items: ceph_osd_docker_devices
@@ -117,18 +113,3 @@
     - ansible_os_family != 'CoreOS'
     - not osd_containerized_deployment_with_kv
 
-- name: run the ceph osd docker image with kv
-  docker:
-    image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}"
-    name: "{{ ansible_hostname }}-osd-{{ item | regex_replace('/', '') }}"
-    net: host
-    pid: host
-    state: running
-    privileged: yes
-    env: "KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},OSD_DEVICE={{ item }},{{ ceph_osd_docker_extra_env }}"
-    volumes: "/dev/:/dev/"
-  with_items: ceph_osd_docker_devices
-  when:
-   - ansible_os_family != 'RedHat'
-   - ansible_os_family != 'CoreOS'
-   - osd_containerized_deployment_with_kv
