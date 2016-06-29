@@ -113,3 +113,19 @@
     - ansible_os_family != 'CoreOS'
     - not osd_containerized_deployment_with_kv
 
+- name: run the ceph osd docker image with kv
+  docker:
+    image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}:{{ ceph_osd_docker_tag }}"
+    name: "{{ ansible_hostname }}-osd-{{ item | regex_replace('/', '') }}"
+    net: host
+    pid: host
+    state: running
+    privileged: yes
+    env: "KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},OSD_DEVICE={{ item }},{{ ceph_osd_docker_extra_env }}"
+    volumes: "/dev/:/dev/"
+  with_items: ceph_osd_docker_devices
+  when:
+   - ansible_os_family != 'RedHat'
+   - ansible_os_family != 'CoreOS'
+   - osd_containerized_deployment_with_kv
+ 
