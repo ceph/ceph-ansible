@@ -1,5 +1,5 @@
 ---
-- name: install dependencies
+- name: install redhat dependencies via yum
   yum:
     name: "{{ item }}"
     state: present
@@ -8,7 +8,16 @@
     - ansible_distribution == "RedHat"
     - ansible_pkg_mgr == "yum"
 
-- name: install dependencies
+- name: install redhat dependencies via dnf
+  dnf:
+    name: "{{ item }}"
+    state: present
+  with_items: redhat_package_dependencies
+  when:
+    - ansible_distribution == "RedHat"
+    - ansible_pkg_mgr == "dnf"
+
+- name: install centos dependencies via yum
   yum:
     name: "{{ item }}"
     state: present
@@ -17,7 +26,7 @@
     - ansible_distribution == "CentOS"
     - ansible_pkg_mgr == "yum"
 
-- name: install dependencies
+- name: install centos dependencies via dnf
   dnf:
     name: "{{ item }}"
     state: present
