@@ -1,15 +1,25 @@
 ---
-- name: install dependencies
+- name: install debian dependencies
   apt:
     pkg: parted
     state: present
   when: ansible_os_family == 'Debian'
 
-- name: install dependencies
+- name: install redhat dependencies via yum
   yum:
     name: parted
     state: present
-  when: ansible_os_family == 'RedHat'
+  when:
+    - ansible_os_family == 'RedHat'
+    - ansible_pkg_mgr == "yum"
+
+- name: install redhat rependencies via dnf
+  dnf:
+    name: parted
+    state: present
+  when:
+    - ansible_os_family == 'RedHat'
+    - ansible_pkg_mgr == "dnf"
 
 - name: create bootstrap-osd directory
   file:
