@@ -11,6 +11,7 @@ NMONS      = settings['mon_vms']
 NOSDS      = settings['osd_vms']
 NMDSS      = settings['mds_vms']
 NRGWS      = settings['rgw_vms']
+NNFSS      = settings['nfs_vms']
 RESTAPI    = settings['restapi']
 CLIENTS    = settings['client_vms']
 SUBNET     = settings['subnet']
@@ -50,6 +51,7 @@ ansible_provision = proc do |ansible|
     'osds'        => (0..NOSDS - 1).map { |j| "#{OSPREFIX}osd#{j}" },
     'mdss'        => (0..NMDSS - 1).map { |j| "#{OSPREFIX}mds#{j}" },
     'rgws'        => (0..NRGWS - 1).map { |j| "#{OSPREFIX}rgw#{j}" },
+    'nfss'        => (0..NNFSS - 1).map { |j| "#{OSPREFIX}nfs#{j}" },
     'clients'     => (0..CLIENTS - 1).map { |j| "#{OSPREFIX}client#{j}" }
   }
 
@@ -65,6 +67,7 @@ ansible_provision = proc do |ansible|
       osd_containerized_deployment: 'true',
       mds_containerized_deployment: 'true',
       rgw_containerized_deployment: 'true',
+      nfs_containerized_deployment: 'true',
       restapi_containerized_deployment: 'true',
       ceph_mon_docker_interface: ETH,
       ceph_mon_docker_subnet: "#{SUBNET}.0/24",
@@ -183,6 +186,36 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Parallels
       rgw.vm.provider "parallels" do |prl|
         prl.name = "ceph-rgw#{i}"
+        prl.memory = "#{MEMORY}"
+      end
+    end
+  end
+
+  (0..NNFSS - 1).each do |i|
+    config.vm.define "nfs#{i}" do |nfs|
+      nfs.vm.hostname = "ceph-nfs#{i}"
+      if !OSVM
+        nfs.vm.network :private_network, ip: "#{SUBNET}.6#{i}"
+      end
+
+      # Virtualbox
+      nfs.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
+      end
+
+      # VMware
+      nfs.vm.provider :vmware_fusion do |v|
+        v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      # Libvirt
+      nfs.vm.provider :libvirt do |lv|
+        lv.memory = MEMORY
+      end
+
+      # Parallels
+      nfs.vm.provider "parallels" do |prl|
+        prl.name = "ceph-nfs#{i}"
         prl.memory = "#{MEMORY}"
       end
     end
