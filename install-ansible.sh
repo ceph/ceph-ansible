@@ -5,6 +5,13 @@
 
 set -e
 
+if ansible --version &> /dev/null ; then
+  echo "Ansible is already installed."
+  echo "Doing nothing."
+  echo "Exiting now."
+  exit 1
+fi
+
 if [[ $EUID -ne 0 ]]; then
     echo "You are NOT running this script as root."
     echo "You should."
