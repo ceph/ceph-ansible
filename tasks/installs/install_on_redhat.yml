@@ -55,6 +55,7 @@
     - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
       or ceph_dev
       or ceph_origin == "distro"
+      or ceph_custom
 
 - name: install distro or red hat storage ceph mon
   dnf:
@@ -66,6 +67,7 @@
     - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
       or ceph_origin == "distro"
       or ceph_dev
+      or ceph_custom
 
 - name: install distro or red hat storage ceph osd
   yum:
@@ -77,6 +79,7 @@
     - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
       or ceph_origin == "distro"
       or ceph_dev
+      or ceph_custom
 
 - name: install distro or red hat storage ceph osd
   dnf:
@@ -88,46 +91,55 @@
     - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
       or ceph_origin == "distro"
       or ceph_dev
+      or ceph_custom
 
 - name: install distro or red hat storage ceph mds
   yum:
     name: "ceph-mds"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_dev or
-     (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
-    mds_group_name in group_names and
-    ansible_pkg_mgr == "yum"
+    - mds_group_name in group_names
+    - ansible_pkg_mgr == "yum"
+    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+      or ceph_origin == "distro"
+      or ceph_dev
+      or ceph_custom
 
 - name: install distro or red hat storage ceph mds
   dnf:
     name: "ceph-mds"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_dev or
-     (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
-    mds_group_name in group_names and
-    ansible_pkg_mgr == "dnf"
+    - mds_group_name in group_names
+    - ansible_pkg_mgr == "dnf"
+    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+      or ceph_origin == "distro"
+      or ceph_dev
+      or ceph_custom
 
 - name: install distro or red hat storage ceph base
   yum:
     name: "ceph-base"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_dev or
-     (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
-    client_group_name in group_names and
-    ansible_pkg_mgr == "yum"
+    - client_group_name in group_names
+    - ansible_pkg_mgr == "yum"
+    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+      or ceph_origin == "distro"
+      or ceph_dev
+      or ceph_custom
 
 - name: install distro or red hat storage ceph base
   dnf:
     name: "ceph-base"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    (ceph_origin == "distro" or ceph_dev or
-     (ceph_stable and ceph_stable_release not in ceph_stable_releases)) and
-    client_group_name in group_names and
-    ansible_pkg_mgr == "dnf"
+    - client_group_name in group_names
+    - ansible_pkg_mgr == "dnf"
+    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+      or ceph_origin == "distro"
+      or ceph_dev
+      or ceph_custom
 
 - name: install ceph-test
   yum:
