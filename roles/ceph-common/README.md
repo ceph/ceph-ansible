@@ -27,6 +27,7 @@ Have a look at `defaults/main.yml`.
   * `ceph_dev`
   * `ceph_stable_ice`
   * `ceph_stable_rh_storage`
+  * `ceph_custom`
 * `journal_size`
 * `monitor_interface`
 * `public_network`
