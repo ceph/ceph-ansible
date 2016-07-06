@@ -101,6 +101,11 @@ osd scrub chunk max | 5 | 25
 
 If you want to use them, just use the `ceph_conf_overrides` variable as explained above.
 
+## FAQ
+
+1. I want to have OSD numbers seriallized between hosts, so the first OSD node has osd 1,2,3 and the second has osd 4,5,6 etc. How can I do this?
+Simply add `serial: 1` after the osd section `- hosts: osds` in your `site.yml` file.
+
 ## Setup with Vagrant using virtualbox provider
 
 * Create vagrant_variables.yml
