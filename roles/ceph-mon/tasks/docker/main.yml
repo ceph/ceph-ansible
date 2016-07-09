@@ -1,6 +1,6 @@
 ---
 - name: check if a cluster is already running
-  shell: "docker ps | grep -sq '{{ceph_mon_docker_username}}/{{ceph_mon_docker_imagename}}'"
+  shell: "docker ps | grep -sq '{{ceph_mon_docker_username}}/{{ceph_mon_docker_imagename}}:{{ceph_mon_docker_image_tag}}'"
   register: ceph_health
   changed_when: false
   failed_when: false
@@ -22,8 +22,9 @@
 
 - include: "{{ playbook_dir }}/roles/ceph-common/tasks/docker/fetch_image.yml"
   vars:
-    ceph_docker_username: '{{ ceph_mon_docker_username}}'
-    ceph_docker_imagename: '{{ ceph_mon_docker_imagename}}'
+    ceph_docker_username: "{{ ceph_mon_docker_username }}"
+    ceph_docker_imagename: "{{ ceph_mon_docker_imagename }}"
+    ceph_docker_image_tag: "{{ ceph_mon_docker_image_tag }}"
 
 - include: dirs_permissions.yml
 

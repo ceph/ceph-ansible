@@ -1,26 +1,26 @@
 ---
 # Normal case - pull image from registry
 - name: pull ceph daemon image
-  command: "docker pull {{ ceph_docker_username }}/{{ ceph_docker_imagename }}"
+  command: "docker pull {{ ceph_docker_username }}/{{ ceph_docker_imagename }}:{{ ceph_docker_image_tag }}"
   changed_when: false
   when: ceph_docker_dev_image is undefined or not ceph_docker_dev_image
 
 # Dev case - export local dev image and send it across
 - name: export local ceph dev image
-  local_action: command docker save -o "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}.tar" "{{ ceph_docker_username }}/{{ ceph_docker_imagename }}"
+  local_action: command docker save -o "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar" "{{ ceph_docker_username }}/{{ ceph_docker_imagename }}:{{ ceph_docker_image_tag }}"
   when: ceph_docker_dev_image is defined and ceph_docker_dev_image
   run_once: true
 
 - name: copy ceph dev image file
   copy:
-    src: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}.tar"
-    dest: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}.tar"
+    src: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+    dest: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
   when: ceph_docker_dev_image is defined and ceph_docker_dev_image
 
 - name: load ceph dev image
-  command: "docker load -i /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}.tar"
+  command: "docker load -i /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
   when: ceph_docker_dev_image is defined and ceph_docker_dev_image
 
 - name: remove tmp ceph dev image file
-  command: "rm /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}.tar"
+  command: "rm /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
   when: ceph_docker_dev_image is defined and ceph_docker_dev_image
