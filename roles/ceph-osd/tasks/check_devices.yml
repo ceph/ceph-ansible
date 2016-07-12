@@ -89,7 +89,7 @@
     - item.0.rc != 0
 
 - name: fix partitions gpt header or labels of the osd disks (autodiscover disks)
-  shell: "sgdisk --zap-all --clear --mbrtogpt -g -- '/dev/{{ item.1.key }}' || sgdisk --zap-all --clear --mbrtogpt -g -- '/dev/{{ item.1.key }}'"
+  shell: "sgdisk --zap-all --clear --mbrtogpt -g -- '/dev/{{ item.0.item.key }}' || sgdisk --zap-all --clear --mbrtogpt -g -- '/dev/{{ item.0.item.key }}'"
   with_together:
     - combined_osd_partition_status_results.results
     - ansible_devices
@@ -98,8 +98,8 @@
     - journal_collocation
     - osd_auto_discovery
     - ansible_devices is defined
-    - item.value.removable == "0"
-    - item.value.partitions|count == 0
+    - item.0.item.value.removable == "0"
+    - item.0.item.value.partitions|count == 0
     - item.0.rc != 0
 
 - name: fix partitions gpt header or labels of the journal devices
