@@ -1,4 +1,26 @@
 ---
+- name: create a local fetch directory if it does not exist
+  local_action: file path={{ fetch_directory }} state=directory
+  changed_when: false
+  become: false
+  run_once: true
+  when: cephx or generate_fsid
+
+- name: generate cluster uuid
+  local_action: shell python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
+    creates="{{ fetch_directory }}/ceph_cluster_uuid.conf"
+  register: cluster_uuid
+  become: false
+  when: generate_fsid
+
+- name: read cluster uuid if it already exists
+  local_action: command cat {{ fetch_directory }}/ceph_cluster_uuid.conf
+    removes="{{ fetch_directory }}/ceph_cluster_uuid.conf"
+  changed_when: false
+  register: cluster_uuid
+  become: false
+  when: generate_fsid
+
 - name: generate ceph configuration file
   action: config_template
   args:
