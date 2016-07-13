@@ -5,7 +5,7 @@ After=docker.service
 [Service]
 EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/docker stop {{ ansible_hostname }}-osd-dev%i
-ExecStartPre=-/usr/bin/docker rm {{ ansible_hostname }}-osd-dev%i
+ExecStartPre=-/usr/bin/docker rm -f  {{ ansible_hostname }}-osd-dev%i
 ExecStart=/usr/bin/docker run --rm --net=host --pid=host\
    {% if not osd_containerized_deployment_with_kv -%}
    -v /var/lib/ceph:/var/lib/ceph \
@@ -13,6 +13,7 @@ ExecStart=/usr/bin/docker run --rm --net=host --pid=host\
    {% else -%}
    -e KV_TYPE={{kv_type}} \
    -e KV_IP={{kv_endpoint}} \
+   -e KV_PORT={{kv_port}} \
    {% endif -%}
    -v /dev:/dev \
    --privileged \
