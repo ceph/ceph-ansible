@@ -65,25 +65,35 @@
   fail:
     msg: "please choose an osd scenario"
   when:
-    osd_group_name is defined and
-    osd_group_name in group_names and
-    not journal_collocation and
-    not raw_multi_journal and
-    not osd_directory and
-    not bluestore
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not journal_collocation
+    - not raw_multi_journal
+    - not osd_directory
+    - not bluestore
+    - not dmcrypt_journal_colocation
+    - not dmcrypt_dedicated_journal
 
 - name: verify only one osd scenario was chosen
   fail:
     msg: "please select only one osd scenario"
   when:
-    osd_group_name is defined and
-    osd_group_name in group_names and
-    ((journal_collocation and raw_multi_journal) or
-    (journal_collocation and osd_directory) or
-    (raw_multi_journal and osd_directory) or
-    (bluestore and journal_collocation) or
-    (bluestore and raw_multi_journal) or
-    (bluestore and osd_directory))
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - (journal_collocation and raw_multi_journal)
+      or (journal_collocation and osd_directory)
+      or (journal_collocation and bluestore)
+      or (raw_multi_journal and osd_directory)
+      or (raw_multi_journal and bluestore)
+      or (osd_directory and bluestore)
+      or (dmcrypt_journal_colocation and journal_collocation)
+      or (dmcrypt_journal_colocation and raw_multi_journal)
+      or (dmcrypt_journal_colocation and osd_directory)
+      or (dmcrypt_journal_colocation and bluestore)
+      or (dmcrypt_dedicated_journal and journal_collocation)
+      or (dmcrypt_dedicated_journal and raw_multi_journal)
+      or (dmcrypt_dedicated_journal and osd_directory)
+      or (dmcrypt_dedicated_journal and bluestore)
 
 - name: verify devices have been provided
   fail:
