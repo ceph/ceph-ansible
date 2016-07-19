@@ -7,20 +7,21 @@ VAGRANTFILE_API_VERSION = '2'
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
 settings=YAML.load_file(config_file)
 
-NMONS      = settings['mon_vms']
-NOSDS      = settings['osd_vms']
-NMDSS      = settings['mds_vms']
-NRGWS      = settings['rgw_vms']
-NNFSS      = settings['nfs_vms']
-RESTAPI    = settings['restapi']
-CLIENTS    = settings['client_vms']
-SUBNET     = settings['subnet']
-BOX        = settings['vagrant_box']
-BOX_URL    = settings['vagrant_box_url']
-MEMORY     = settings['memory']
-STORAGECTL = settings['vagrant_storagectl']
-ETH        = settings['eth']
-DOCKER     = settings['docker']
+NMONS          = settings['mon_vms']
+NOSDS          = settings['osd_vms']
+NMDSS          = settings['mds_vms']
+NRGWS          = settings['rgw_vms']
+NNFSS          = settings['nfs_vms']
+RESTAPI        = settings['restapi']
+NRBD_MIRRORS   = settings['rbd_mirror_vms']
+CLIENTS        = settings['client_vms']
+SUBNET         = settings['subnet']
+BOX            = settings['vagrant_box']
+BOX_URL        = settings['vagrant_box_url']
+MEMORY         = settings['memory']
+STORAGECTL     = settings['vagrant_storagectl']
+ETH            = settings['eth']
+DOCKER         = settings['docker']
 
 if BOX == 'openstack'
   require 'vagrant-openstack-provider'
@@ -47,12 +48,13 @@ ansible_provision = proc do |ansible|
   # these aren't supported by Vagrant, see
   # https://github.com/mitchellh/vagrant/issues/3539
   ansible.groups = {
-    'mons'        => (0..NMONS - 1).map { |j| "#{OSPREFIX}mon#{j}" },
-    'osds'        => (0..NOSDS - 1).map { |j| "#{OSPREFIX}osd#{j}" },
-    'mdss'        => (0..NMDSS - 1).map { |j| "#{OSPREFIX}mds#{j}" },
-    'rgws'        => (0..NRGWS - 1).map { |j| "#{OSPREFIX}rgw#{j}" },
-    'nfss'        => (0..NNFSS - 1).map { |j| "#{OSPREFIX}nfs#{j}" },
-    'clients'     => (0..CLIENTS - 1).map { |j| "#{OSPREFIX}client#{j}" }
+    'mons'            => (0..NMONS - 1).map { |j| "#{OSPREFIX}mon#{j}" },
+    'osds'            => (0..NOSDS - 1).map { |j| "#{OSPREFIX}osd#{j}" },
+    'mdss'            => (0..NMDSS - 1).map { |j| "#{OSPREFIX}mds#{j}" },
+    'rgws'            => (0..NRGWS - 1).map { |j| "#{OSPREFIX}rgw#{j}" },
+    'nfss'            => (0..NNFSS - 1).map { |j| "#{OSPREFIX}nfs#{j}" },
+    'rbd_mirrors'     => (0..NRBD_MIRRORS - 1).map { |j| "#{OSPREFIX}rbd_mirror#{j}" },
+    'clients'         => (0..CLIENTS - 1).map { |j| "#{OSPREFIX}client#{j}" }
   }
 
   if RESTAPI then
@@ -69,6 +71,7 @@ ansible_provision = proc do |ansible|
       rgw_containerized_deployment: 'true',
       nfs_containerized_deployment: 'true',
       restapi_containerized_deployment: 'true',
+      rbd_mirror_containerized_deployment: 'true',
       ceph_mon_docker_interface: ETH,
       ceph_mon_docker_subnet: "#{SUBNET}.0/24",
       ceph_osd_docker_extra_env: "CEPH_DAEMON=OSD_CEPH_DISK,OSD_JOURNAL_SIZE=100",
@@ -244,6 +247,34 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Parallels
       mds.vm.provider "parallels" do |prl|
         prl.name = "ceph-mds#{i}"
+        prl.memory = "#{MEMORY}"
+      end
+    end
+  end
+
+  (0..NRBD_MIRRORS - 1).each do |i|
+    config.vm.define "#{OSPREFIX}rbd_mirror#{i}" do |rbd_mirror|
+      rbd_mirror.vm.hostname = "#{OSPREFIX}ceph-rbd-mirror#{i}"
+      if !OSVM
+        rbd_mirror.vm.network :private_network, ip: "#{SUBNET}.8#{i}"
+      end
+      # Virtualbox
+      rbd_mirror.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
+      end
+
+      # VMware
+      rbd_mirror.vm.provider :vmware_fusion do |v|
+        v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      # Libvirt
+      rbd_mirror.vm.provider :libvirt do |lv|
+        lv.memory = MEMORY
+      end
+      # Parallels
+      rbd_mirror.vm.provider "parallels" do |prl|
+        prl.name = "ceph-rbd-mirror#{i}"
         prl.memory = "#{MEMORY}"
       end
     end

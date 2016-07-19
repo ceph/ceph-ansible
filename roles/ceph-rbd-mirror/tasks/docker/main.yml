@@ -1,0 +1,31 @@
+---
+- name: check if a cluster is already running
+  shell: "docker ps | grep -sq 'ceph/daemon'"
+  register: ceph_health
+  changed_when: false
+  failed_when: false
+
+- name: check if it is Atomic host
+  stat: path=/run/ostree-booted
+  register: stat_ostree
+
+- name: set fact for using Atomic host
+  set_fact:
+      is_atomic='{{ stat_ostree.stat.exists }}'
+
+- include: checks.yml
+  when: ceph_health.rc != 0
+
+- include: pre_requisite.yml
+- include: "{{ playbook_dir }}/roles/ceph-common/tasks/docker/fetch_image.yml"
+  vars:
+    ceph_docker_username: "{{ ceph_rbd_mirror_docker_username }}"
+    ceph_docker_imagename: "{{ ceph_rbd_mirror_docker_imagename }}"
+    ceph_docker_image_tag: "{{ ceph_rbd_mirror_docker_image_tag }}"
+- include: dirs_permissions.yml
+- include: fetch_configs.yml
+
+- include: selinux.yml
+  when: ansible_os_family == 'RedHat'
+
+- include: start_docker_rbd_mirror.yml
