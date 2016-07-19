@@ -25,13 +25,45 @@
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0
     - not osd_auto_discovery
+    - raw_multi_journal
+
+- name: automatically activate osd disk(s) without partitions (dmcrypt)
+  command: ceph-disk activate --dmcrypt "/dev/{{ item.key }}"
+  ignore_errors: true
+  with_dict: ansible_devices
+  when:
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.partitions|count == 0
+    - osd_auto_discovery
+    - dmcrypt_journal_colocation
+
+- name: activate osd(s) when device is a disk (dmcrypt)
+  command: ceph-disk activate --dmcrypt {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
+  with_together:
+    - combined_ispartition_results.results
+    - devices
+  changed_when: false
+  failed_when: false
+  register: activate_osd_disk_dmcrypt
+  when:
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
+    - not osd_auto_discovery
+    - dmcrypt_dedicated_journal
+
+# NOTE (leseb): we must do this because of
+# https://github.com/ansible/ansible/issues/4297
+- name: combine ispartition results
+  set_fact:
+    combined_activate_osd_disk_results: "{{ activate_osd_disk if not dmcrypt_journal_colocation else activate_osd_disk_dmcrypt }}"
 
 - name: fail if ceph-disk cannot create an OSD
   fail:
     msg: "ceph-disk failed to create an OSD"
   when:
     " 'ceph-disk: Error: ceph osd create failed' in item.get('stderr', '') "
-  with_items: "{{activate_osd_disk.results}}"
+  with_items: "{{combined_activate_osd_disk_results.results}}"
 
 # NOTE (leseb): this task is for partitions because we don't explicitly use a partition.
 - name: activate osd(s) when device is a partition
