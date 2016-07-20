@@ -9,7 +9,7 @@ if ansible --version &> /dev/null ; then
   echo "Ansible is already installed."
   echo "Doing nothing."
   echo "Exiting now."
-  exit 1
+  exit 0
 fi
 
 if [[ $EUID -ne 0 ]]; then
