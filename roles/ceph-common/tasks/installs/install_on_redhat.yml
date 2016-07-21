@@ -227,18 +227,40 @@
     - rgw_group_name in group_names
     - ansible_pkg_mgr == "dnf"
 
-- name: install NFS gateway
+- name: install nfs ceph gateway
   yum:
     name: nfs-ganesha-ceph
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - nfs_group_name in group_names
     - ansible_pkg_mgr == "yum"
+    - fsal_ceph
 
-- name: install NFS gateway
+- name: install nfs ceph gateway
   dnf:
     name: nfs-ganesha-ceph
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - nfs_group_name in group_names
     - ansible_pkg_mgr == "dnf"
+    - fsal_ceph
+
+- name: install nfs rgw gateway
+  yum:
+    name: "{{ item }}"
+  with_items:
+    - nfs-ganesha-rgw
+    - ceph-radosgw
+  when:
+    - nfs_group_name in group_names
+    - ansible_pkg_mgr == "yum"
+    - fsal_rgw
+
+- name: install nfs rgw gateway
+  dnf:
+    name: "{{ item }}"
+  with_items:
+    - nfs-ganesha-rgw
+    - ceph-radosgw
+  when:
+    - nfs_group_name in group_names
+    - ansible_pkg_mgr == "dnf"
+    - fsal_rgw
