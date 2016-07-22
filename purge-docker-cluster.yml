@@ -7,9 +7,19 @@
   hosts:
     - localhost
 
+  gather_facts: false
+
   vars_prompt:
     - name: ireallymeanit
       prompt: Are you sure you want to purge the cluster?
+      default: 'no'
+      private: no
+
+    - name: remove_packages
+      prompt: >
+        If --skip-tags=with_pkg is not set docker packages
+        and more will be uninstalled from non-atomic hosts.
+        Do you want to continue?
       default: 'no'
       private: no
 
@@ -23,40 +33,32 @@
          invoking the playbook"
     when: ireallymeanit != 'yes'
 
-
-- name: retrieve variables
-
-  hosts:
-    - all
-    - localhost
-
-  tasks:
-    - include_vars: roles/ceph-common/defaults/main.yml
-    - include_vars: roles/ceph-mon/defaults/main.yml
-    - include_vars: roles/ceph-osd/defaults/main.yml
-    - include_vars: roles/ceph-mds/defaults/main.yml
-    - include_vars: roles/ceph-rgw/defaults/main.yml
-    - include_vars: roles/ceph-nfs/defaults/main.yml
-    - include_vars: roles/ceph-restapi/defaults/main.yml
-    - include_vars: group_vars/all
-
-    - name: check if it is Atomic host
-      stat: path=/run/ostree-booted
-      register: stat_ostree
-
-    - name: set fact for using Atomic host
-      set_fact:
-        is_atomic: "{{ stat_ostree.stat.exists }}"
+  - name: exit playbook, if user did not mean to remove packages
+    fail:
+      msg: >
+        "Exiting purge-docker-cluster playbook. No packages were removed.
+         To skip removing packages use --skip-tag=with_pkg. To continue
+         with removing packages, do not specify --skip-tag=with_pkg and
+         either say 'yes' on the prompt or use `-e remove_packages=yes`
+         on the command line when invoking the playbook"
+    when: remove_packages != 'yes'
 
 
 - name: purge ceph mds cluster
 
+  vars:
+    mds_group_name: mdss
+
   hosts:
-    - mdss
+    - "{{ mds_group_name }}"
 
   become: true
 
   tasks:
+  - include_vars: roles/ceph-common/defaults/main.yml
+  - include_vars: roles/ceph-mds/defaults/main.yml
+  - include_vars: group_vars/all
+
   - name: disable ceph mds service
     service:
       name: "ceph-mds@{{ ansible_hostname }}"
@@ -84,14 +86,22 @@
     tags:
       remove_img
 
+
 - name: purge ceph rgw cluster
 
+  vars:
+    rgw_group_name: rgws
+
   hosts:
-    - rgws
+    - "{{ rgw_group_name }}"
 
   become: true
 
   tasks:
+  - include_vars: roles/ceph-common/defaults/main.yml
+  - include_vars: roles/ceph-rgw/defaults/main.yml
+  - include_vars: group_vars/all
+
   - name: disable ceph rgw service
     service:
       name: "ceph-rgw@{{ ansible_hostname }}"
@@ -119,39 +129,22 @@
     tags:
       remove_img
 
-  - name: remove libnss3-tools on redhat
-    yum:
-      name: libnss3-tools
-      state: absent
-    when:
-      ansible_pkg_mgr == "yum" and
-      radosgw_keystone
-
-  - name: remove libnss3-tools on redhat
-    dnf:
-      name: libnss3-tools
-      state: absent
-    when:
-      ansible_pkg_mgr == "dnf" and
-      radosgw_keystone
-
-  - name: install libnss3-tools on debian
-    apt:
-      name: libnss3-tools
-      state: absent
-    when:
-      ansible_pkg_mgr == 'apt' and
-      radosgw_keystone
-
 
 - name: purge ceph nfs cluster
 
+  vars:
+    nfs_group_name: nfss
+
   hosts:
-    - nfss
+    - "{{ nfs_group_name }}"
 
   become: true
 
   tasks:
+  - include_vars: roles/ceph-common/defaults/main.yml
+  - include_vars: roles/ceph-nfs/defaults/main.yml
+  - include_vars: group_vars/all
+
   - name: disable ceph nfs service
     service:
       name: "ceph-nfs@{{ ansible_hostname }}"
@@ -191,12 +184,19 @@
 
 - name: purge ceph osd cluster
 
+  vars:
+    osd_group_name: osds
+
   hosts:
-    - osds
+    - "{{ osd_group_name }}"
 
   become: true
 
   tasks:
+  - include_vars: roles/ceph-common/defaults/main.yml
+  - include_vars: roles/ceph-osd/defaults/main.yml
+  - include_vars: group_vars/all
+
   - name: disable ceph osd service
     service:
       name: "ceph-osd@{{ item | basename }}"
@@ -240,6 +240,26 @@
       state: absent
     with_items: "{{ ceph_osd_docker_devices }}"
 
+  # zap twice
+  - name: zap ceph osd disk
+    docker:
+      image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}:{{ ceph_osd_docker_image_tag }}"
+      name: "{{ ansible_hostname }}-osd-zap-{{ item | regex_replace('/', '') }}"
+      net: host
+      pid: host
+      state: started
+      privileged: yes
+      env: "CEPH_DAEMON=zap_device,OSD_DEVICE={{ item }}"
+      volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev:/dev,/run:/run"
+    with_items: "{{ ceph_osd_docker_devices }}"
+
+  - name: remove ceph osd zap disk container
+    docker:
+      image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}:{{ ceph_osd_docker_image_tag }}"
+      name: "{{ ansible_hostname }}-osd-zap-{{ item | regex_replace('/', '') }}"
+      state: absent
+    with_items: "{{ ceph_osd_docker_devices }}"
+
   - name: remove ceph osd service
     file:
         path: /etc/systemd/system/ceph-osd@.service
@@ -256,12 +276,20 @@
 
 - name: purge ceph mon cluster
 
+  vars:
+    mon_group_name: mons
+
   hosts:
-    - mons
+    - "{{ mon_group_name }}"
 
   become: true
 
   tasks:
+  - include_vars: roles/ceph-common/defaults/main.yml
+  - include_vars: roles/ceph-mon/defaults/main.yml
+  - include_vars: roles/ceph-restapi/defaults/main.yml
+  - include_vars: group_vars/all
+
   - name: disable ceph mon service
     service:
       name: "ceph-mon@{{ ansible_hostname }}"
@@ -298,8 +326,19 @@
 
 - name: remove installed packages
 
+  vars:
+    mon_group_name: mons
+    osd_group_name: osds
+    mds_group_name: mdss
+    rgw_group_name: rgws
+    nfs_group_name: nfss
+
   hosts:
-    - all
+    - "{{ mon_group_name }}"
+    - "{{ osd_group_name }}"
+    - "{{ mds_group_name }}"
+    - "{{ rgw_group_name }}"
+    - "{{ nfs_group_name }}"
 
   become: true
 
@@ -307,6 +346,14 @@
     with_pkg
 
   tasks:
+  - name: check if it is Atomic host
+    stat: path=/run/ostree-booted
+    register: stat_ostree
+
+  - name: set fact for using Atomic host
+    set_fact:
+      is_atomic: "{{ stat_ostree.stat.exists }}"
+
   - name: stop docker service
     service:
       name: docker
@@ -419,8 +466,21 @@
 
 - name: purge ceph directories
 
+  vars:
+    mon_group_name: mons
+    osd_group_name: osds
+    mds_group_name: mdss
+    rgw_group_name: rgws
+    nfs_group_name: nfss
+
   hosts:
-    - all
+    - "{{ mon_group_name }}"
+    - "{{ osd_group_name }}"
+    - "{{ mds_group_name }}"
+    - "{{ rgw_group_name }}"
+    - "{{ nfs_group_name }}"
+
+  gather_facts: false # Already gathered previously
 
   become: true
 
@@ -440,7 +500,12 @@
   hosts:
     - localhost
 
+  gather_facts: false
+
   tasks:
+  - include_vars: roles/ceph-common/defaults/main.yml
+  - include_vars: group_vars/all
+
   - name: purge fetch directory for localhost
     file:
       path: "{{ fetch_directory }}"
