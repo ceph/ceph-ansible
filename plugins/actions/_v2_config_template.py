@@ -277,6 +277,7 @@ class ActionModule(ActionBase):
                 allow_no_value=True,
                 dict_type=MultiKeyDict
             )
+            config.optionxform = str
         except Exception:
             config = ConfigTemplateParser(dict_type=MultiKeyDict)
 
