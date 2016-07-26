@@ -11,12 +11,6 @@
     state: present
   when: ceph_dev
 
-- name: install intank ceph enterprise repository key
-  apt_key:
-    data: "{{ lookup('file', role_path+'/files/cephstableice.asc') }}"
-    state: present
-  when: ceph_stable_ice
-
 - name: add ceph stable repository
   apt_repository:
     repo: "deb {{ ceph_stable_repo }} {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
@@ -30,13 +24,6 @@
     state: present
   changed_when: false
   when: ceph_dev
-
-- name: add inktank ceph enterprise repository
-  apt_repository:
-    repo: "deb file://{{ ceph_stable_ice_temp_path }} {{ ansible_lsb.codename }} main"
-    state: present
-  changed_when: false
-  when: ceph_stable_ice
 
 - name: add ubuntu cloud archive key package
   apt:

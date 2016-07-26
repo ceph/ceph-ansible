@@ -11,12 +11,6 @@
     state: present
   when: ceph_dev
 
-- name: install inktank ceph enterprise repository key
-  rpm_key:
-    key: "{{ ceph_stable_ice_temp_path }}/release.asc"
-    state: present
-  when: ceph_stable_ice
-
 - name: add ceph stable repository
   yum:
     name: http://download.ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
@@ -48,15 +42,6 @@
   when:
     - ceph_dev
     - ansible_pkg_mgr == "dnf"
-
-- name: add inktank ceph enterprise repository
-  template:
-    src: "{{ role_path }}/templates/redhat_ice_repo.j2"
-    dest: /etc/yum.repos.d/ice.repo
-    owner: root
-    group: root
-    mode: 0644
-  when: ceph_stable_ice
 
 - name: add custom repo
   get_url:

@@ -25,7 +25,6 @@ Have a look at `defaults/main.yml`.
 * Install source, choose one of these:
   * `ceph_stable`
   * `ceph_dev`
-  * `ceph_stable_ice`
   * `ceph_stable_rh_storage`
   * `ceph_custom`
 * `journal_size`
