@@ -1,0 +1,26 @@
+---
+- name: restart ceph mons
+  command: service ceph restart mon
+  when:
+    - socket.rc == 0
+    - ansible_distribution != 'Ubuntu'
+    - mon_group_name in group_names
+    - is_before_infernalis
+
+- name: restart ceph mons with systemd
+  service:
+      name: ceph-mon@{{ monitor_name }}
+      state: restarted
+  when:
+    - socket.rc == 0
+    - use_systemd
+    - mon_group_name in group_names
+    - is_after_hammer
+
+- name: restart ceph mons on ubuntu
+  command: initctl restart ceph-mon cluster={{ cluster }} id={{ monitor_name }}
+  when:
+    - socket.rc == 0
+    - ansible_distribution == 'Ubuntu'
+    - not use_systemd
+    - mon_group_name in group_names
