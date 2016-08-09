@@ -20,6 +20,23 @@
 
 - include: pre_requisite.yml
 
+- include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_atomic.yml"
+  when:
+    - is_atomic
+    - ansible_os_family == 'RedHat'
+    - ntp_service_enabled
+
+- include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_redhat.yml"
+  when:
+    - not is_atomic
+    - ansible_os_family == 'RedHat'
+    - ntp_service_enabled
+
+- include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_debian.yml"
+  when:
+    - ansible_os_family == 'Debian'
+    - ntp_service_enabled
+
 - include: "{{ playbook_dir }}/roles/ceph-common/tasks/docker/fetch_image.yml"
   vars:
     ceph_docker_username: "{{ ceph_mon_docker_username }}"
