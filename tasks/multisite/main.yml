@@ -1,0 +1,19 @@
+---
+- include: checks.yml
+
+# Include the tasks depending on the zone type
+- include: master.yml
+  when: "{{ rgw_zonemaster }} is defined and {{ rgw_zonemaster }}"
+
+- include: secondary.yml
+  when: "{{ rgw_zonesecondary }} is defined and {{ rgw_zonesecondary }}"
+
+## This is currently handled in the ceph-common ceph.conf template
+## Probably should do here so we can use a restart handler for the rgw
+#- name: Add zone to RGW stanza in ceph.conf
+#  lineinfile:
+#    dest: /etc/ceph/ceph.conf
+#    regexp: "{{ ansible_host }}"
+#    insertafter: "^[client.rgw.{{ ansible_host }}]"
+#    line: "rgw_zone={{ rgw_zonegroup }}-{{ rgw_zone }}"
+#    state: present
