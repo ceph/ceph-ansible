@@ -1,67 +1,34 @@
 ---
-- name: Check if the realm already exists
-  command: radosgw-admin realm get --rgw-realm={{ rgw_realm }}
-  register: realmcheck
-  failed_when: False
-  changed_when: False
-
-- name: Create the realm
-  command: radosgw-admin realm create --rgw-realm={{ rgw_realm }} --default
-  run_once: true
-  when: ("No such file or directory" in realmcheck.stderr) and rgw_zonemaster
-  notify:
-    - update period
-
 - name: Fetch the realm (Secondary)
   command: radosgw-admin realm pull --url=http://{{ rgw_pullhost }}:8080 --access-key={{ system_access_key }} --secret={{ system_secret_key }}
   run_once: true
-  when: ("No such file or directory" in realmcheck.stderr) and rgw_zonesecondary
+  when: ("No such file or directory" in realmcheck.stderr)
   notify:
     - update period
 
 - name: Fetch the realm (Secondary)
   command: radosgw-admin period pull --url=http://{{ rgw_pullhost }}:8080 --access-key={{ system_access_key }} --secret={{ system_secret_key }}
   run_once: true
-  when: ("No such file or directory" in realmcheck.stderr) and rgw_zonesecondary
+  when: ("No such file or directory" in realmcheck.stderr)
   notify:
     - update period
 
-- name: Check if the zonegroup already exists
-  command: radosgw-admin zonegroup get --rgw-zonegroup={{ rgw_zonegroup }}
-  register: zonegroupcheck
-  failed_when: False
-  changed_when: False
-
-- name: Create the zonegroup 
-  command: radosgw-admin zonegroup create --rgw-zonegroup={{ rgw_zonegroup }} --endpoints=http://{{ ansible_hostname }}:8080 --master --default
+- name: Set default realm
+  command: radosgw-admin realm default --rgw-realm={{ rgw_realm }}
   run_once: true
-  when: ("No such file or directory" in zonegroupcheck.stderr) and rgw_zonemaster
   notify:
-    - update period
+    - update period # Might not need to update period here
 
-- name: Check if the zone already exists
-  command: radosgw-admin zone get --rgw-zone={{ rgw_zone }}
-  register: zonecheck
-  failed_when: False
-  changed_when: False
+- name: Set default zonegroup
+  command: radosgw-admin zonegroup default --rgw-zonegroup={{ rgw_zonegroup }}
+  run_once: true
+  notify:
+    - update period # Might not need to update period here
 
 - name: Create the zone
-  command: radosgw-admin zone create --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --endpoints=http://{{ ansible_hostname }}:8080 --access-key={{ system_access_key }} --secret={{ system_secret_key }} --default --master
+  command: radosgw-admin zone create --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --endpoints=http://{{ ansible_hostname }}:8080 --access-key={{ system_access_key }} --secret={{ system_secret_key }} --default
   run_once: true
-  when: ("No such file or directory" in zonecheck.stderr) and rgw_zonemaster
-  notify:
-    - update period
-
-- name: Check if the system user already exists
-  command: radosgw-admin user info --uid=zone.user
-  register: usercheck
-  failed_when: False
-  changed_when: False
-
-- name: Create the zone user
-  command: radosgw-admin user create --uid=zone.user --display-name="Zone User" --access-key={{ system_access_key }} --secret={{ system_secret_key }} --system
-  run_once: true
-  when: "'could not fetch user info: no user info saved' in usercheck.stderr"
+  when: ("No such file or directory" in zonecheck.stderr)
   notify:
     - update period
 
