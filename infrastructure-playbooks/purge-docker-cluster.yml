@@ -130,6 +130,49 @@
       remove_img
 
 
+- name: purge ceph rbd-mirror cluster
+
+  vars:
+    rbdmirror_group_name: rbd_mirrors
+
+  hosts:
+    - "{{ rbdmirror_group_name }}"
+
+  become: true
+
+  tasks:
+  - include_vars: roles/ceph-common/defaults/main.yml
+  - include_vars: roles/ceph-rbd-mirror/defaults/main.yml
+  - include_vars: group_vars/all
+
+  - name: disable ceph rbd-mirror service
+    service:
+      name: "ceph-rbd-mirror@{{ ansible_hostname }}"
+      state: stopped
+      enabled: no
+    ignore_errors: true
+
+  - name: remove ceph rbd-mirror container
+    docker:
+      image: "{{ ceph_rbd_mirror_docker_username }}/{{ ceph_rbd_mirror_docker_imagename }}:{{ ceph_rbd_mirror_docker_image_tag }}"
+      name: "{{ ansible_hostname }}"
+      state: absent
+    ignore_errors: true
+
+  - name: remove ceph rbd-mirror service
+    file:
+        path: /etc/systemd/system/ceph-rbd-mirror@.service
+        state: absent
+
+  - name: remove ceph rbd-mirror image
+    docker_image:
+      state: absent
+      name: "{{ ceph_rbd_mirror_docker_username }}/{{ ceph_rbd_mirror_docker_imagename }}"
+      tag: "{{ ceph_rbd_mirror_docker_image_tag }}"
+    tags:
+      remove_img
+
+
 - name: purge ceph nfs cluster
 
   vars:
@@ -327,17 +370,19 @@
 - name: remove installed packages
 
   vars:
-    mon_group_name: mons
-    osd_group_name: osds
-    mds_group_name: mdss
-    rgw_group_name: rgws
-    nfs_group_name: nfss
+    mon_group_name:       mons
+    osd_group_name:       osds
+    mds_group_name:       mdss
+    rgw_group_name:       rgws
+    rbdmirror_group_name: rbd_mirrors
+    nfs_group_name:       nfss
 
   hosts:
     - "{{ mon_group_name }}"
     - "{{ osd_group_name }}"
     - "{{ mds_group_name }}"
     - "{{ rgw_group_name }}"
+    - "{{ rbdmirror_group_name }}"
     - "{{ nfs_group_name }}"
 
   become: true
@@ -495,17 +540,19 @@
 - name: purge ceph directories
 
   vars:
-    mon_group_name: mons
-    osd_group_name: osds
-    mds_group_name: mdss
-    rgw_group_name: rgws
-    nfs_group_name: nfss
+    mon_group_name:       mons
+    osd_group_name:       osds
+    mds_group_name:       mdss
+    rgw_group_name:       rgws
+    rbdmirror_group_name: rbd_mirrors
+    nfs_group_name:       nfss
 
   hosts:
     - "{{ mon_group_name }}"
     - "{{ osd_group_name }}"
     - "{{ mds_group_name }}"
     - "{{ rgw_group_name }}"
+    - "{{ rbdmirror_group_name }}"
     - "{{ nfs_group_name }}"
 
   gather_facts: false # Already gathered previously
