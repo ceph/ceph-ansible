@@ -5,15 +5,15 @@
 # intelligent way to determine the location of the key.
 - name: install the rh ceph storage repository key
   apt_key:
-    file: "{{ ceph_stable_rh_storage_repository_path }}/MON/release.asc"
+    file: "{{ ceph_rhcs_repository_path }}/MON/release.asc"
     state: present
   when:
-    - ceph_stable_rh_storage
-    - ceph_stable_rh_storage_iso_install
+    - ceph_rhcs
+    - ceph_rhcs_iso_install
 
 - name: add rh ceph storage repositories
   apt_repository:
-    repo: "deb file://{{ ceph_stable_rh_storage_repository_path }}/{{ item }}/ {{ ansible_lsb.codename }} main"
+    repo: "deb file://{{ ceph_rhcs_repository_path }}/{{ item }}/ {{ ansible_lsb.codename }} main"
     state: present
   changed_when: false
   with_items:
@@ -22,14 +22,14 @@
     - "Tools"
     - "Agent"
   when:
-    - ceph_stable_rh_storage
-    - ceph_stable_rh_storage_iso_install
+    - ceph_rhcs
+    - ceph_rhcs_iso_install
 
 - name: add the red hat storage apt-key
   apt_key:
     data: "{{ lookup('file', role_path+'/files/cephstablerhcs.asc') }}"
     state: present
-  when: not ceph_stable_rh_storage_iso_install
+  when: not ceph_rhcs_iso_install
 
 - name: install dependencies
   apt:
