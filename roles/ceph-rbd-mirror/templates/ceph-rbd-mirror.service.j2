@@ -8,7 +8,6 @@ ExecStartPre=-/usr/bin/docker stop {{ ansible_hostname }}
 ExecStartPre=-/usr/bin/docker rm {{ ansible_hostname }}
 ExecStart=/usr/bin/docker run --rm --net=host \
    {% if not rbd_mirror_containerized_deployment_with_kv -%}
-   -v /var/lib/ceph:/var/lib/ceph \
    -v /etc/ceph:/etc/ceph \
    {% else -%}
    -e KV_TYPE={{kv_type}} \
@@ -18,7 +17,7 @@ ExecStart=/usr/bin/docker run --rm --net=host \
    --privileged \
    -e CEPH_DAEMON=RBD_MIRROR \
    --name={{ ansible_hostname }} \
-   {{ ceph_rbd_mirror_docker_username }}/{{ ceph_rbd_mirror_docker_imagename }}
+   {{ ceph_rbd_mirror_docker_username }}/{{ ceph_rbd_mirror_docker_imagename }}:{{ ceph_rbd_mirror_docker_image_tag }}
 ExecStopPost=-/usr/bin/docker stop {{ ansible_hostname }}
 Restart=always
 RestartSec=10s

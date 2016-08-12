@@ -4,21 +4,14 @@
   become: true
   template:
     src: "{{ role_path }}/templates/ceph-rbd-mirror.service.j2"
-    dest: /var/lib/ceph/ceph-rbd-mirror@.service
+    dest: /etc/systemd/system/ceph-rbd-mirror@.service
     owner: "root"
     group: "root"
     mode: "0644"
   when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
 
-- name: link systemd unit file for rbd mirror instance
-  file:
-    src: /var/lib/ceph/ceph-rbd-mirror@.service
-    dest: /etc/systemd/system/multi-user.target.wants/ceph-rbd-mirror@{{ ansible_hostname }}.service
-    state: link
-  when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
-
 - name: enable systemd unit file for rbd mirror instance
-  command: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-rbd-mirror@{{ ansible_hostname }}.service
+  command: systemctl enable ceph-rbd-mirror@{{ ansible_hostname }}.service
   failed_when: false
   changed_when: false
   when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
@@ -39,9 +32,9 @@
 
 - name: run the ceph rbd mirror docker image
   docker:
-    image: "{{ ceph_rbd_mirror_docker_username }}/{{ ceph_rbd_mirror_docker_imagename }}"
-    name: ceph-{{ ansible_hostname }}-rbd-mirror
+    image: "{{ ceph_rbd_mirror_docker_username }}/{{ ceph_rbd_mirror_docker_imagename }}:{{ ceph_rbd_mirror_docker_image_tag }}"
+    name: "{{ ansible_hostname }}"
     net: host
     state: running
-    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
+    volumes: "/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
   when: ansible_os_family != 'RedHat' and ansible_os_family != 'CoreOS'
