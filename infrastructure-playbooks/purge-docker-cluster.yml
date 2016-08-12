@@ -58,6 +58,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-mds/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/mdss
+    ignore_errors: true
 
   - name: disable ceph mds service
     service:
@@ -75,8 +78,8 @@
 
   - name: remove ceph mds service
     file:
-        path: /etc/systemd/system/ceph-mds@.service
-        state: absent
+      path: /etc/systemd/system/ceph-mds@.service
+      state: absent
 
   - name: remove ceph mds image
     docker_image:
@@ -101,6 +104,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-rgw/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/rgws
+    ignore_errors: true
 
   - name: disable ceph rgw service
     service:
@@ -118,8 +124,8 @@
 
   - name: remove ceph rgw service
     file:
-        path: /etc/systemd/system/ceph-rgw@.service
-        state: absent
+      path: /etc/systemd/system/ceph-rgw@.service
+      state: absent
 
   - name: remove ceph rgw image
     docker_image:
@@ -144,6 +150,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-rbd-mirror/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/rbd-mirrors
+    ignore_errors: true
 
   - name: disable ceph rbd-mirror service
     service:
@@ -161,8 +170,8 @@
 
   - name: remove ceph rbd-mirror service
     file:
-        path: /etc/systemd/system/ceph-rbd-mirror@.service
-        state: absent
+      path: /etc/systemd/system/ceph-rbd-mirror@.service
+      state: absent
 
   - name: remove ceph rbd-mirror image
     docker_image:
@@ -187,6 +196,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-nfs/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/nfss
+    ignore_errors: true
 
   - name: disable ceph nfs service
     service:
@@ -239,6 +251,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-osd/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/osds
+    ignore_errors: true
 
   - name: disable ceph osd service
     service:
@@ -305,8 +320,8 @@
 
   - name: remove ceph osd service
     file:
-        path: /etc/systemd/system/ceph-osd@.service
-        state: absent
+      path: /etc/systemd/system/ceph-osd@.service
+      state: absent
 
   - name: remove ceph osd image
     docker_image:
@@ -332,6 +347,11 @@
   - include_vars: roles/ceph-mon/defaults/main.yml
   - include_vars: roles/ceph-restapi/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/mons
+    ignore_errors: true
+  - include_vars: group_vars/restapis
+    ignore_errors: true
 
   - name: disable ceph mon service
     service:
@@ -352,11 +372,12 @@
       image: "{{ ceph_restapi_docker_username }}/{{ ceph_restapi_docker_imagename }}:{{ ceph_restapi_docker_image_tag }}"
       name: "{{ ansible_hostname }}-ceph-restapi"
       state: absent
+    ignore_errors: true
 
   - name: remove ceph mon service
     file:
-        path: /etc/systemd/system/ceph-mon@.service
-        state: absent
+      path: /etc/systemd/system/ceph-mon@.service
+      state: absent
 
   - name: remove ceph mon image
     docker_image:
@@ -580,6 +601,21 @@
   tasks:
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/mdss
+    ignore_errors: true
+  - include_vars: group_vars/rgws
+    ignore_errors: true
+  - include_vars: group_vars/rbd-mirrors
+    ignore_errors: true
+  - include_vars: group_vars/nfss
+    ignore_errors: true
+  - include_vars: group_vars/osds
+    ignore_errors: true
+  - include_vars: group_vars/mons
+    ignore_errors: true
+  - include_vars: group_vars/restapis
+    ignore_errors: true
 
   - name: purge fetch directory for localhost
     file:
