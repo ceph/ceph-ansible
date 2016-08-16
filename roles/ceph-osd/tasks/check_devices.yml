@@ -12,13 +12,17 @@
 
 - include: ./check_devices_static.yml
   when: not osd_auto_discovery
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./check_devices_auto.yml
   when: osd_auto_discovery
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - name: check the partition status of the journal devices
   shell: "parted --script {{ item }} print > /dev/null 2>&1"
-  with_items: '{{ raw_journal_devices }}'
+  with_items: "{{ raw_journal_devices }}"
   changed_when: false
   failed_when: false
   register: journal_partition_status
@@ -27,8 +31,8 @@
 - name: fix partitions gpt header or labels of the journal devices
   shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }}"
   with_together:
-    - '{{ journal_partition_status.results }}'
-    - '{{ raw_journal_devices }}'
+    - "{{ journal_partition_status.results }}"
+    - "{{ raw_journal_devices }}"
   changed_when: false
   when:
     - raw_multi_journal

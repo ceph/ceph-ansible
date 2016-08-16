@@ -16,8 +16,8 @@
 - name: activate osd(s) when device is a disk
   command: ceph-disk activate {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
   with_together:
-    - combined_ispartition_results.results
-    - devices
+    - "{{ ispartition_results.results }}"
+    - "{{ devices }}"
   changed_when: false
   failed_when: false
   register: activate_osd_disk
@@ -41,8 +41,8 @@
 - name: activate osd(s) when device is a disk (dmcrypt)
   command: ceph-disk activate --dmcrypt {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
   with_together:
-    - combined_ispartition_results.results
-    - devices
+    - "{{ ispartition_results.results }}"
+    - "{{ devices }}"
   changed_when: false
   failed_when: false
   register: activate_osd_disk_dmcrypt
@@ -63,14 +63,14 @@
     msg: "ceph-disk failed to create an OSD"
   when:
     " 'ceph-disk: Error: ceph osd create failed' in item.get('stderr', '') "
-  with_items: "{{combined_activate_osd_disk_results.results}}"
+  with_items: "{{ combined_activate_osd_disk_results.results }}"
 
 # NOTE (leseb): this task is for partitions because we don't explicitly use a partition.
 - name: activate osd(s) when device is a partition
   command: "ceph-disk activate {{ item.1 }}"
   with_together:
-    - combined_ispartition_results.results
-    - devices
+    - "{{ ispartition_results.results }}"
+    - "{{ devices }}"
   changed_when: false
   failed_when: false
   when:
@@ -113,7 +113,7 @@
   command: systemctl enable ceph-osd@{{ item }}
   changed_when: false
   failed_when: false
-  with_items: osd_id.stdout_lines
+  with_items: "{{ osd_id.stdout_lines }}"
   when:
     - use_systemd
     - is_after_hammer
@@ -123,7 +123,7 @@
     name: ceph-osd@{{ item }}
     state: started
     enabled: yes
-  with_items: osd_id.stdout_lines
+  with_items: "{{ osd_id.stdout_lines }}"
   changed_when: false
   when:
     - use_systemd

@@ -1,17 +1,17 @@
 ---
 - name: check if the device is a partition
   shell: "echo '{{ item }}' | egrep '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p)[0-9]{1,2}$'"
-  with_items: '{{ devices }}'
+  with_items: "{{ devices }}"
   changed_when: false
   failed_when: false
-  register: combined_ispartition_results
+  register: ispartition_results
 
 - name: check the partition status of the osd disks
   shell: "parted --script {{ item }} print > /dev/null 2>&1"
-  with_items: '{{ devices }}'
+  with_items: "{{ devices }}"
   changed_when: false
   failed_when: false
-  register: combined_osd_partition_status_results
+  register: osd_partition_status_results
   when:
     - journal_collocation or raw_multi_journal
 
@@ -23,8 +23,8 @@
 - name: fix partitions gpt header or labels of the osd disks
   shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }}"
   with_together:
-    - '{{ combined_osd_partition_status_results.results }}'
-    - '{{ devices }}'
+    - "{{ osd_partition_status_results.results }}"
+    - "{{ devices }}"
   changed_when: false
   when:
     - journal_collocation or raw_multi_journal
@@ -32,7 +32,7 @@
 
 - name: check if a partition named 'ceph' exists
   shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"
-  with_items: '{{ devices }}'
+  with_items: "{{ devices }}"
   changed_when: false
   failed_when: false
-  register: combined_parted_results
+  register: parted_results
