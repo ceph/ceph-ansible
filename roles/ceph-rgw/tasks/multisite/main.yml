@@ -1,19 +1,27 @@
 ---
-- include: checks.yml
+- name: Include multisite checks
+  include: checks.yml
 
 # Include the tasks depending on the zone type
-- include: master.yml
-  when: "{{ rgw_zonemaster }} is defined and {{ rgw_zonemaster }}"
+- name: Include master multisite tasks
+  include: master.yml
+  when: "rgw_zonemaster is defined and rgw_zonemaster"
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
-- include: secondary.yml
-  when: "{{ rgw_zonesecondary }} is defined and {{ rgw_zonesecondary }}"
+- name: Include secondary multisite tasks
+  include: secondary.yml
+  when: "rgw_zonesecondary is defined and rgw_zonesecondary"
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
-## This is currently handled in the ceph-common ceph.conf template
-## Probably should do here so we can use a restart handler for the rgw
-#- name: Add zone to RGW stanza in ceph.conf
-#  lineinfile:
-#    dest: /etc/ceph/ceph.conf
-#    regexp: "{{ ansible_host }}"
-#    insertafter: "^[client.rgw.{{ ansible_host }}]"
-#    line: "rgw_zone={{ rgw_zonegroup }}-{{ rgw_zone }}"
-#    state: present
+# Continue with common tasks
+- name: Add zone to RGW stanza in ceph.conf
+  lineinfile:
+    dest: /etc/ceph/ceph.conf
+    regexp: "{{ ansible_host }}"
+    insertafter: "^[client.rgw.{{ ansible_host }}]"
+    line: "rgw_zone = {{ rgw_zone }}"
+    state: present
+  notify:
+    - restart rgw

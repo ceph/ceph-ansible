@@ -1,13 +1,13 @@
 ---
-- name: Fetch the realm (Secondary)
-  command: radosgw-admin realm pull --url=http://{{ rgw_pullhost }}:8080 --access-key={{ system_access_key }} --secret={{ system_secret_key }}
+- name: Fetch the realm
+  command: radosgw-admin realm pull --url=http://{{ rgw_pullhost }}:{{ radosgw_civetweb_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }}
   run_once: true
   when: ("No such file or directory" in realmcheck.stderr)
   notify:
     - update period
 
-- name: Fetch the realm (Secondary)
-  command: radosgw-admin period pull --url=http://{{ rgw_pullhost }}:8080 --access-key={{ system_access_key }} --secret={{ system_secret_key }}
+- name: Fetch the period
+  command: radosgw-admin period pull --url=http://{{ rgw_pullhost }}:{{ radosgw_civetweb_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }}
   run_once: true
   when: ("No such file or directory" in realmcheck.stderr)
   notify:
@@ -26,16 +26,8 @@
     - update period # Might not need to update period here
 
 - name: Create the zone
-  command: radosgw-admin zone create --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --endpoints=http://{{ ansible_hostname }}:8080 --access-key={{ system_access_key }} --secret={{ system_secret_key }} --default
+  command: radosgw-admin zone create --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --endpoints=http://{{ ansible_hostname }}:{{ radosgw_civetweb_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }} --default
   run_once: true
   when: ("No such file or directory" in zonecheck.stderr)
   notify:
     - update period
-
-#- name: Add zone to RGW stanza in ceph.conf
-#  lineinfile:
-#    dest: /etc/ceph/ceph.conf
-#    regexp: "{{ ansible_host }}"
-#    insertafter: "^[client.rgw.{{ ansible_host }}]"
-#    line: "rgw_zone={{ rgw_zonegroup }}-{{ rgw_zone }}"
-#    state: present

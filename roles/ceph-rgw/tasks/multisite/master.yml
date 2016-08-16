@@ -7,14 +7,14 @@
     - update period
 
 - name: Create the zonegroup 
-  command: radosgw-admin zonegroup create --rgw-zonegroup={{ rgw_zonegroup }} --endpoints=http://{{ ansible_hostname }}:8080 --master --default
+  command: radosgw-admin zonegroup create --rgw-zonegroup={{ rgw_zonegroup }} --endpoints=http://{{ ansible_fqdn }}:{{ radosgw_civetweb_port }} --master --default
   run_once: true
   when: ("No such file or directory" in zonegroupcheck.stderr) and rgw_zonemaster
   notify:
     - update period
 
 - name: Create the zone
-  command: radosgw-admin zone create --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --endpoints=http://{{ ansible_hostname }}:8080 --access-key={{ system_access_key }} --secret={{ system_secret_key }} --default --master
+  command: radosgw-admin zone create --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --endpoints=http://{{ ansible_fqdn }}:{{ radosgw_civetweb_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }} --default --master
   run_once: true
   when: ("No such file or directory" in zonecheck.stderr) and rgw_zonemaster
   notify:
