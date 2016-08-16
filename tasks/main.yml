@@ -1,15 +1,26 @@
 ---
 - include: pre_requisite.yml
   when: not rgw_containerized_deployment
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: openstack-keystone.yml
   when: radosgw_keystone
-
-- include: ./multisite/main.yml
-  when: rgw_zone is defined and rgw_multisite and ( is_jewel or is_after_jewel )
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: start_radosgw.yml
   when: not rgw_containerized_deployment
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
+
+- name: Include rgw multisite playbooks
+  include: multisite/main.yml
+  when: rgw_zone is defined and rgw_multisite and ( is_jewel or is_after_jewel )
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./docker/main.yml
   when: rgw_containerized_deployment
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
