@@ -26,7 +26,7 @@
       KV_IP: "{{kv_endpoint}}"
       KV_PORT: "{{kv_port}}"
     volumes:
-      - /etc/ceph/ceph.conf:/etc/ceph/ceph.defaults
+      - /etc/ceph/{{ cluster }}.conf:/etc/ceph/ceph.defaults
   run_once: true
   when:
     - inventory_hostname == groups.mons[0]
@@ -45,7 +45,7 @@
   become: true
   template:
     src: "{{ role_path }}/templates/ceph-mon.service.j2"
-    dest: /etc/systemd/system/ceph-mon@.service
+    dest: "/etc/systemd/system/ceph-mon-{{ cluster }}@.service"
     owner: "root"
     group: "root"
     mode: "0644"
@@ -53,7 +53,7 @@
 
 
 - name: enable systemd unit file for mon instance
-  shell: systemctl enable ceph-mon@{{ ansible_hostname }}.service
+  shell: systemctl enable ceph-mon-{{ cluster }}@{{ ansible_hostname }}.service
   failed_when: false
   changed_when: false
   when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
@@ -66,7 +66,7 @@
 
 - name: systemd start mon container
   service:
-    name: ceph-mon@{{ ansible_hostname }}
+    name: ceph-mon-{{ cluster }}@{{ ansible_hostname }}
     state: started
     enabled: yes
   changed_when: false
@@ -74,7 +74,7 @@
 
 - name: wait for ceph.conf exists
   wait_for:
-      path: /etc/ceph/ceph.conf
+      path: /etc/ceph/{{ cluster }}.conf
   when: ansible_os_family == 'RedHat'
 
 - name: run the ceph monitor docker image

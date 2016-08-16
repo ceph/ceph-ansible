@@ -1,10 +1,4 @@
 ---
-- name: check if a cluster is already running
-  shell: "docker ps | grep -sq '{{ceph_nfs_docker_username}}/{{ceph_nfs_docker_imagename}}:{{ceph_nfs_docker_image_tag}}'"
-  register: ceph_health
-  changed_when: false
-  failed_when: false
-
 - name: check if it is Atomic host
   stat: path=/run/ostree-booted
   register: stat_ostree
@@ -13,10 +7,9 @@
   set_fact:
       is_atomic: '{{ stat_ostree.stat.exists }}'
 
-- include: checks.yml
+- include: "{{ playbook_dir }}/roles/ceph-common/tasks/docker/checks.yml" 
   when:
-    ceph_health.rc != 0 and
-    not mon_containerized_deployment_with_kv
+    - not mon_containerized_deployment_with_kv
 
 - include: pre_requisite.yml
 
