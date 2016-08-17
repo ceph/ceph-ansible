@@ -41,6 +41,14 @@
     group: "{{ key_group }}"
   when: cephx
 
+- name: ensure ceph-radosgw systemd unit file is present
+  command: chkconfig --add ceph-radosgw
+  args:
+    creates: /var/run/systemd/generator.late/ceph-radosgw.service
+  when:
+    - ansible_os_family == "RedHat"
+    - is_before_infernalis
+
 - name: activate rados gateway with upstart
   file:
     path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/{{ item }}
