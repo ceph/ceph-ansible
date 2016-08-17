@@ -18,6 +18,7 @@ CLIENTS        = settings['client_vms']
 SUBNET         = settings['subnet']
 BOX            = settings['vagrant_box']
 BOX_URL        = settings['vagrant_box_url']
+SYNC_DIR       = settings['vagrant_sync_dir']
 MEMORY         = settings['memory']
 STORAGECTL     = settings['vagrant_storagectl']
 ETH            = settings['eth']
@@ -112,7 +113,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   # Faster bootup.  Disable if you need this for libvirt
   config.vm.provider :libvirt do |v,override|
-    override.vm.synced_folder '.', '/home/vagrant/sync', disabled: true
+    override.vm.synced_folder '.', SYNC_DIR, disabled: true
   end
 
   if BOX == 'openstack'

@@ -1,5 +1,5 @@
 ---
-- name: create NFS gateway directories
+- name: create nfs gateway directories
   file:
     path: "{{ item }}"
     state: directory
@@ -10,7 +10,33 @@
     - /var/lib/nfs/ganesha
     - /var/run/ganesha
 
-- name: start NFS gateway service
+- name: create rgw nfs user
+  command: radosgw-admin user create --uid={{ ceph_nfs_rgw_user }} --display-name="RGW NFS User"
+  register: rgwuser
+  when: fsal_rgw
+
+- name: set access key
+  set_fact:
+    ceph_nfs_rgw_access_key: "{{ (rgwuser.stdout | from_json)['keys'][0]['access_key'] }}"
+  when: fsal_rgw
+
+- name: set secret key
+  set_fact:
+    ceph_nfs_rgw_secret_key: "{{(rgwuser.stdout | from_json)['keys'][0]['secret_key']}}"
+  when: fsal_rgw
+
+- name: generate ganesha configuration file
+  action: config_template
+  args:
+    src: "{{ playbook_dir }}/roles/ceph-common/templates/ganesha.conf.j2"
+    dest: /etc/ganesha/ganesha.conf
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    config_overrides: "{{ ganesha_conf_overrides }}"
+    config_type: ini
+
+- name: start nfs gateway service
   service:
     name: nfs-ganesha
     state: started

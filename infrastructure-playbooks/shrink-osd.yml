@@ -1,0 +1,131 @@
+---
+# This playbook shrinks Ceph OSDs.
+# It can remove any number of OSD(s) from the cluster and ALL THEIR DATA
+#
+# Use it like this:
+# ansible-playbook shrink-osd.yml -e osd_id=0,2,6
+#     Prompts for confirmation to shrink, defaults to no and
+#     doesn't shrink the cluster. yes shrinks the cluster.
+#
+# ansible-playbook -e ireallymeanit=yes|no shrink-osd.yml
+#     Overrides the prompt using -e option. Can be used in
+#     automation scripts to avoid interactive prompt.
+
+
+- name: confirm whether user really meant to remove osd(s) from the cluster
+
+  hosts:
+    - localhost
+
+  gather_facts: false
+  become: true
+
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to shrink the cluster?
+      default: 'no'
+      private: no
+
+  tasks:
+  - include_vars: roles/ceph-common/defaults/main.yml
+  - include_vars: group_vars/all
+
+  - name: exit playbook, if user did not mean to shrink cluster
+    fail:
+      msg: "Exiting shrink-osd playbook, no osd(s) was/were removed..
+         To shrink the cluster, either say 'yes' on the prompt or
+         or use `-e ireallymeanit=yes` on the command line when
+         invoking the playbook"
+    when: ireallymeanit != 'yes'
+
+  - name: exit playbook, if no osd(s) was/were given
+    fail:
+      msg: "osd_ids must be declared
+        Exiting shrink-osd playbook, no OSD()s was/were removed.
+         On the command line when invoking the playbook, you can use
+         -e osd_ids=0,1,2,3 argument."
+    when: osd_ids is not defined
+
+  - name: test if ceph command exist
+    command: command -v ceph
+    changed_when: false
+    failed_when: false
+    register: ceph_command
+
+  - name: exit playbook, if ceph command does not exist
+    debug:
+      msg: "The ceph command is not available, please install it :("
+    run_once: true
+    when:
+      - ceph_command.rc != 0
+
+  - name: exit playbook, if cluster files do not exist
+    stat:
+      path: "{{ item }}"
+    register: ceph_conf_key
+    with_items:
+      - /etc/ceph/{{ cluster }}.conf
+      - /etc/ceph/{{ cluster }}.client.admin.keyring
+    failed_when: false
+
+  - fail:
+      msg: "Ceph's configuration file is not present in /etc/ceph"
+    with_items: "{{ceph_conf_key.results}}"
+    when:
+      -  item.stat.exists == false
+
+  - name: exit playbook, if can not connect to the cluster
+    command: timeout 5 ceph --cluster {{ cluster }} health
+    register: ceph_health
+    until: ceph_health.stdout.find("HEALTH") > -1
+    retries: 5
+    delay: 2
+
+# NOTE (leseb): just in case, the complex filters mechanism below does not work anymore.
+# This will be a quick and easy fix but will require using the shell module.
+#  - name: find the host where the osd(s) is/are running on
+#    shell: |
+#      ceph --cluster {{ cluster }} osd find {{ item }} | grep -Po '(?<="ip": ")[^:]*'
+#    with_items: "{{osd_ids.split(',')}}"
+#    register: osd_hosts
+#
+  - name: find the host where the osd(s) is/are running on
+    command: ceph --cluster {{ cluster }} osd find {{ item }}
+    with_items: "{{osd_ids.split(',')}}"
+    register: osd_hosts
+
+  - set_fact: ip_item="{{(item.stdout | from_json).ip}}"
+    with_items: "{{osd_hosts.results}}"
+    register: ip_result
+
+  - set_fact: ips="{{ ip_result.results | map(attribute='ansible_facts.ip_item') | list }}"
+
+  - set_fact: real_ips="{{ ips | regex_replace(':[0-9][0-9][0-9][0-9]\/[0-9][0-9][0-9][0-9]', '') }}"
+
+  - name: check if ceph admin key exists on the osd nodes
+    stat:
+      path: "/etc/ceph/{{ cluster }}.client.admin.keyring"
+    register: ceph_admin_key
+    with_items: "{{real_ips}}"
+    delegate_to: "{{item}}"
+    failed_when: false
+
+  - fail:
+      msg: "The Ceph admin key is not present on the OSD node, please add it and remove it after the playbook is done."
+    with_items: "{{ceph_admin_key.results}}"
+    when:
+      -  item.stat.exists == false
+
+  - name: deactivating osd(s)
+    command: ceph-disk deactivate --cluster {{ cluster }} --deactivate-by-id {{ item.0 }} --mark-out
+    with_together:
+      - "{{osd_ids.split(',')}}"
+      - "{{real_ips}}"
+    delegate_to: "{{item.1}}"
+
+  - name: destroying osd(s)
+    command: ceph-disk destroy --cluster {{ cluster }} --destroy-by-id {{ item.0 }} --zap
+    with_together:
+      - "{{osd_ids.split(',')}}"
+      - "{{real_ips}}"
+    delegate_to: "{{item.1}}"
