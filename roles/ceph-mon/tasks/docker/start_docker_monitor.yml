@@ -85,7 +85,7 @@
     state: "running"
     privileged: "{{ mon_docker_privileged }}"
     env: "MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},CEPH_FSID={{ fsid }},{{ ceph_mon_extra_envs }}"
-    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph"
+    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
   when:
     - ansible_os_family != 'RedHat'
     - ansible_os_family != 'CoreOS'
@@ -99,6 +99,7 @@
     state: "running"
     privileged: "{{ mon_docker_privileged }}"
     env: "KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},{{ ceph_mon_extra_envs }}"
+    volumes: "/etc/localtime:/etc/localtime:ro"
   when:
     - ansible_os_family != 'RedHat'
     - ansible_os_family != 'CoreOS'

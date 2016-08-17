@@ -261,7 +261,7 @@
       rbdmirror_group_name in group_names
 
   - name: check for anything running ceph
-    shell: "ps awux | grep -v grep | grep -q -- ceph-"
+    shell: "ps awux | grep -- [c]eph-"
     register: check_for_running_ceph
     failed_when: check_for_running_ceph.rc == 0
 
@@ -293,15 +293,18 @@
      osd_group_name in group_names
 
   - name: remove osd mountpoint tree
-    shell: rm -rf /var/lib/ceph/osd
+    file:
+      path: /var/lib/ceph/osd/
+      state: absent
     register: remove_osd_mountpoints
-    failed_when: false
+    ignore_errors: true
     when:
       osd_group_name in group_names
 
   - name: remove monitor store and bootstrap keys
-    shell: rm -rf /var/lib/ceph/
-    failed_when: false
+    file:
+      path: /var/lib/ceph/
+      state: absent
     when:
       mon_group_name in group_names
 
@@ -313,7 +316,7 @@
       - remove data
     when:
       osd_group_name in group_names and
-      remove_osd_mountpoints.rc != 0
+      remove_osd_mountpoints.failed is defined
 
   - name: see if ceph-disk is installed
     shell: "which ceph-disk"
@@ -322,7 +325,7 @@
 
   - name: zap osd disks
     shell: ceph-disk zap "{{ item }}"
-    with_items: devices
+    with_items: "{{ devices | default([]) }}"
     when:
      osd_group_name in group_names and
      ceph_disk_present.rc == 0 and
@@ -423,6 +426,7 @@
 
   - name: request data removal
     local_action: shell echo requesting data removal
+    become: false
     notify:
       - remove data
 

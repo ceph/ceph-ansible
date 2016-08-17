@@ -28,10 +28,11 @@
     -v /etc/ceph:/etc/ceph \
     -v /var/lib/ceph/:/var/lib/ceph/ \
     -v /dev:/dev \
+    -v /etc/localtime:/etc/localtime:ro \
     -e "OSD_DEVICE={{ item.0 }}" \
     -e "{{ ceph_osd_docker_prepare_env }}" \
-    "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}:{{ ceph_osd_docker_image_tag }}" \
-    OSD_CEPH_DISK_PREPARE
+    -e CEPH_DAEMON=osd_ceph_disk_prepare \
+    "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}:{{ ceph_osd_docker_image_tag }}"
   with_together:
     - ceph_osd_docker_devices
     - osd_prepared.results
@@ -48,6 +49,7 @@
     --name="{{ ansible_hostname }}-osd-prepare-{{ item.0 |
     regex_replace('/', '') }}" \
     -v /dev:/dev \
+    -v /etc/localtime:/etc/localtime:ro \
     -e "OSD_DEVICE={{ item.0 }}" \
     -e "{{ ceph_osd_docker_prepare_env }}" \
     -e CEPH_DAEMON=osd_ceph_disk_prepare \
@@ -106,7 +108,7 @@
     state: started
     privileged: yes
     env: "OSD_DEVICE={{ item }},{{ ceph_osd_docker_extra_env }}"
-    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev:/dev,/run:/run"
+    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro,/dev:/dev,/run:/run"
   with_items: ceph_osd_docker_devices
   when:
     - ansible_os_family != 'RedHat'
@@ -122,7 +124,7 @@
     state: running
     privileged: yes
     env: "KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},OSD_DEVICE={{ item }},{{ ceph_osd_docker_extra_env }}"
-    volumes: "/dev/:/dev/"
+    volumes: "/etc/localtime:/etc/localtime:ro,/dev/:/dev/"
   with_items: ceph_osd_docker_devices
   when:
    - ansible_os_family != 'RedHat'
