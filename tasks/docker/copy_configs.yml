@@ -3,12 +3,12 @@
   set_fact:
     rgw_config_keys:
       - "/var/lib/ceph/radosgw/{{ ansible_hostname }}/keyring"
-  when: fsal_rgw
+  when: nfs_obj_gw
 
 - name: wait for rgw keyring
   wait_for: path="/var/lib/ceph/radosgw/{{ ansible_hostname }}/keyring"
   when:
-    - fsal_rgw
+    - nfs_obj_gw
     - inventory_hostname == groups.rgws[0]
 
 - name: stat for config and keys
@@ -19,7 +19,7 @@
   failed_when: false
   register: statconfig
   when:
-    - fsal_rgw
+    - nfs_obj_gw
     - inventory_hostname == groups.rgws[0]
 
 - name: push ceph files to the ansible server
@@ -32,5 +32,5 @@
     - statconfig.results
   when:
     - item.1.stat.exists == false
-    - fsal_rgw
+    - nfs_obj_gw
     - inventory_hostname == groups.rgws[0]
