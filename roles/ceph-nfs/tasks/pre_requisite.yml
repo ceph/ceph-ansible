@@ -13,17 +13,17 @@
 - name: create rgw nfs user
   command: radosgw-admin user create --uid={{ ceph_nfs_rgw_user }} --display-name="RGW NFS User"
   register: rgwuser
-  when: fsal_rgw
+  when: nfs_obj_gw
 
 - name: set access key
   set_fact:
     ceph_nfs_rgw_access_key: "{{ (rgwuser.stdout | from_json)['keys'][0]['access_key'] }}"
-  when: fsal_rgw
+  when: nfs_obj_gw
 
 - name: set secret key
   set_fact:
     ceph_nfs_rgw_secret_key: "{{(rgwuser.stdout | from_json)['keys'][0]['secret_key']}}"
-  when: fsal_rgw
+  when: nfs_obj_gw
 
 - name: generate ganesha configuration file
   action: config_template
