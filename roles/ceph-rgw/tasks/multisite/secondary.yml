@@ -1,0 +1,33 @@
+---
+- name: fetch the realm
+  command: radosgw-admin realm pull --url=http://{{ rgw_pullhost }}:{{ radosgw_civetweb_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }}
+  run_once: true
+  when: ("No such file or directory" in realmcheck.stderr)
+  notify:
+    - update period
+
+- name: fetch the period
+  command: radosgw-admin period pull --url=http://{{ rgw_pullhost }}:{{ radosgw_civetweb_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }}
+  run_once: true
+  when: ("No such file or directory" in realmcheck.stderr)
+  notify:
+    - update period
+
+- name: set default realm
+  command: radosgw-admin realm default --rgw-realm={{ rgw_realm }}
+  run_once: true
+  notify:
+    - update period # Might not need to update period here
+
+- name: set default zonegroup
+  command: radosgw-admin zonegroup default --rgw-zonegroup={{ rgw_zonegroup }}
+  run_once: true
+  notify:
+    - update period # Might not need to update period here
+
+- name: create the zone
+  command: radosgw-admin zone create --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --endpoints=http://{{ ansible_hostname }}:{{ radosgw_civetweb_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }} --default
+  run_once: true
+  when: ("No such file or directory" in zonecheck.stderr)
+  notify:
+    - update period
