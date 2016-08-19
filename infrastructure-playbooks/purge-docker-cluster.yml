@@ -58,6 +58,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-mds/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/mdss
+    ignore_errors: true
 
   - name: disable ceph mds service
     service:
@@ -75,8 +78,8 @@
 
   - name: remove ceph mds service
     file:
-        path: /etc/systemd/system/ceph-mds@.service
-        state: absent
+      path: /etc/systemd/system/ceph-mds@.service
+      state: absent
 
   - name: remove ceph mds image
     docker_image:
@@ -101,6 +104,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-rgw/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/rgws
+    ignore_errors: true
 
   - name: disable ceph rgw service
     service:
@@ -118,14 +124,60 @@
 
   - name: remove ceph rgw service
     file:
-        path: /etc/systemd/system/ceph-rgw@.service
-        state: absent
+      path: /etc/systemd/system/ceph-rgw@.service
+      state: absent
 
   - name: remove ceph rgw image
     docker_image:
       state: absent
       name: "{{ ceph_rgw_docker_username }}/{{ ceph_rgw_docker_imagename }}"
       tag: "{{ ceph_rgw_docker_image_tag }}"
+    tags:
+      remove_img
+
+
+- name: purge ceph rbd-mirror cluster
+
+  vars:
+    rbdmirror_group_name: rbd_mirrors
+
+  hosts:
+    - "{{ rbdmirror_group_name }}"
+
+  become: true
+
+  tasks:
+  - include_vars: roles/ceph-common/defaults/main.yml
+  - include_vars: roles/ceph-rbd-mirror/defaults/main.yml
+  - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/rbd-mirrors
+    ignore_errors: true
+
+  - name: disable ceph rbd-mirror service
+    service:
+      name: "ceph-rbd-mirror@{{ ansible_hostname }}"
+      state: stopped
+      enabled: no
+    ignore_errors: true
+
+  - name: remove ceph rbd-mirror container
+    docker:
+      image: "{{ ceph_rbd_mirror_docker_username }}/{{ ceph_rbd_mirror_docker_imagename }}:{{ ceph_rbd_mirror_docker_image_tag }}"
+      name: "{{ ansible_hostname }}"
+      state: absent
+    ignore_errors: true
+
+  - name: remove ceph rbd-mirror service
+    file:
+      path: /etc/systemd/system/ceph-rbd-mirror@.service
+      state: absent
+
+  - name: remove ceph rbd-mirror image
+    docker_image:
+      state: absent
+      name: "{{ ceph_rbd_mirror_docker_username }}/{{ ceph_rbd_mirror_docker_imagename }}"
+      tag: "{{ ceph_rbd_mirror_docker_image_tag }}"
     tags:
       remove_img
 
@@ -144,6 +196,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-nfs/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/nfss
+    ignore_errors: true
 
   - name: disable ceph nfs service
     service:
@@ -196,6 +251,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-osd/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/osds
+    ignore_errors: true
 
   - name: disable ceph osd service
     service:
@@ -262,8 +320,8 @@
 
   - name: remove ceph osd service
     file:
-        path: /etc/systemd/system/ceph-osd@.service
-        state: absent
+      path: /etc/systemd/system/ceph-osd@.service
+      state: absent
 
   - name: remove ceph osd image
     docker_image:
@@ -289,6 +347,11 @@
   - include_vars: roles/ceph-mon/defaults/main.yml
   - include_vars: roles/ceph-restapi/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/mons
+    ignore_errors: true
+  - include_vars: group_vars/restapis
+    ignore_errors: true
 
   - name: disable ceph mon service
     service:
@@ -309,11 +372,12 @@
       image: "{{ ceph_restapi_docker_username }}/{{ ceph_restapi_docker_imagename }}:{{ ceph_restapi_docker_image_tag }}"
       name: "{{ ansible_hostname }}-ceph-restapi"
       state: absent
+    ignore_errors: true
 
   - name: remove ceph mon service
     file:
-        path: /etc/systemd/system/ceph-mon@.service
-        state: absent
+      path: /etc/systemd/system/ceph-mon@.service
+      state: absent
 
   - name: remove ceph mon image
     docker_image:
@@ -327,17 +391,19 @@
 - name: remove installed packages
 
   vars:
-    mon_group_name: mons
-    osd_group_name: osds
-    mds_group_name: mdss
-    rgw_group_name: rgws
-    nfs_group_name: nfss
+    mon_group_name:       mons
+    osd_group_name:       osds
+    mds_group_name:       mdss
+    rgw_group_name:       rgws
+    rbdmirror_group_name: rbd_mirrors
+    nfs_group_name:       nfss
 
   hosts:
     - "{{ mon_group_name }}"
     - "{{ osd_group_name }}"
     - "{{ mds_group_name }}"
     - "{{ rgw_group_name }}"
+    - "{{ rbdmirror_group_name }}"
     - "{{ nfs_group_name }}"
 
   become: true
@@ -495,17 +561,19 @@
 - name: purge ceph directories
 
   vars:
-    mon_group_name: mons
-    osd_group_name: osds
-    mds_group_name: mdss
-    rgw_group_name: rgws
-    nfs_group_name: nfss
+    mon_group_name:       mons
+    osd_group_name:       osds
+    mds_group_name:       mdss
+    rgw_group_name:       rgws
+    rbdmirror_group_name: rbd_mirrors
+    nfs_group_name:       nfss
 
   hosts:
     - "{{ mon_group_name }}"
     - "{{ osd_group_name }}"
     - "{{ mds_group_name }}"
     - "{{ rgw_group_name }}"
+    - "{{ rbdmirror_group_name }}"
     - "{{ nfs_group_name }}"
 
   gather_facts: false # Already gathered previously
@@ -533,6 +601,21 @@
   tasks:
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: group_vars/all
+    ignore_errors: true
+  - include_vars: group_vars/mdss
+    ignore_errors: true
+  - include_vars: group_vars/rgws
+    ignore_errors: true
+  - include_vars: group_vars/rbd-mirrors
+    ignore_errors: true
+  - include_vars: group_vars/nfss
+    ignore_errors: true
+  - include_vars: group_vars/osds
+    ignore_errors: true
+  - include_vars: group_vars/mons
+    ignore_errors: true
+  - include_vars: group_vars/restapis
+    ignore_errors: true
 
   - name: purge fetch directory for localhost
     file:
