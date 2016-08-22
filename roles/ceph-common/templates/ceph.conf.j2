@@ -16,7 +16,7 @@ max open files = {{ max_open_files }}
 osd crush chooseleaf type = 0
 {% endif %}
 {# NOTE (leseb): the blank lines in-between are needed otherwise we won't get any line break #}
-{% if groups[mon_group_name] is defined %}
+{% if (groups[mon_group_name] is defined) and not single_host %}
 mon_initial_members = {% if groups[mon_group_name] is defined %}{% for host in groups[mon_group_name] %}{% if hostvars[host]['ansible_fqdn'] is defined and mon_use_fqdn %}{{ hostvars[host]['ansible_fqdn'] }}{% if not loop.last %},{% endif %}{% elif hostvars[host]['ansible_hostname'] is defined %}{{ hostvars[host]['ansible_hostname'] }}{% if not loop.last %},{% endif %}{% endif %}{% endfor %}{% endif %}
 {% endif %}
 
@@ -33,7 +33,7 @@ mon host = {% for host in groups[mon_group_name] %}{{ hostvars[host]['ansible_' 
 fsid = {{ fsid }}
 {% if groups[mon_group_name] is defined %}
 {% for host in groups[mon_group_name] %}
-{% if mon_containerized_deployment %}
+{% if mon_containerized_deployment and not single_host %}
 {% set interface = ["ansible_",ceph_mon_docker_interface]|join %}
 mon_host = {{ hostvars[host][interface]['ipv4']['address'] }}
 {% if not loop.last %},{% endif %}

@@ -6,7 +6,7 @@ After=docker.service
 EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/docker rm %i
 ExecStartPre=/usr/bin/mkdir -p /etc/ceph /var/lib/ceph/mon
-ExecStart=/usr/bin/docker run --rm --name %i --net=host \
+ExecStart=/usr/bin/docker run --rm --name %i-{{ cluster }}  \
    {% if not mon_containerized_deployment_with_kv -%}
    -v /var/lib/ceph:/var/lib/ceph \
    -v /etc/ceph:/etc/ceph \
@@ -19,12 +19,15 @@ ExecStart=/usr/bin/docker run --rm --name %i --net=host \
    {% if mon_docker_privileged -%}
    --privileged \
    {% endif -%}
-   {% if mon_docker_net_host -%}
+   {% if single_host -%}
+   --net=ceph-{{ cluster }} \
+   {% else %}
    --net=host \
    {% endif -%}
    -e CEPH_DAEMON=MON \
-   -e MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }} \
+   -e MON_IP={{ monitor_address }} \
    -e CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }} \
+   -e CLUSTER={{ cluster }} \
    -e MON_NAME={{ ansible_hostname }} \
     {{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}:{{ ceph_mon_docker_image_tag }}
 ExecStopPost=-/usr/bin/docker stop %i

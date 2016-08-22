@@ -1,10 +1,4 @@
 ---
-- name: check if a cluster is already running
-  shell: "docker ps | grep -sq '{{ceph_mon_docker_username}}/{{ceph_mon_docker_imagename}}:{{ceph_mon_docker_image_tag}}'"
-  register: ceph_health
-  changed_when: false
-  failed_when: false
-
 - name: check if it is Atomic host
   stat: path=/run/ostree-booted
   register: stat_ostree
@@ -13,9 +7,8 @@
   set_fact:
       is_atomic: '{{ stat_ostree.stat.exists }}'
 
-- include: checks.yml
+- include: "{{ playbook_dir }}/roles/ceph-common/tasks/docker/checks.yml"
   when:
-    - ceph_health.rc != 0
     - not mon_containerized_deployment_with_kv
 
 - include: pre_requisite.yml
@@ -45,6 +38,11 @@
 
 - include: dirs_permissions.yml
 
+- include: create_network.yml
+  run_once: true
+  when:
+    - single_host
+
 # let the first mon create configs and keyrings
 - include: create_configs.yml
   when:
@@ -63,9 +61,9 @@
   when: not mon_containerized_deployment_with_kv
 
 - name: create ceph rest api keyring when mon is containerized
-  command: docker exec {{ ansible_hostname }} ceph auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/ceph.client.restapi.keyring
+  command: docker exec {{ ansible_hostname }} ceph auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/{{ cluster }}.client.restapi.keyring
   args:
-     creates: /etc/ceph/ceph.client.restapi.keyring
+     creates: /etc/ceph/{{ cluster }}.client.restapi.keyring
   changed_when: false
   when:
     - cephx

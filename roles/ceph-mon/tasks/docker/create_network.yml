@@ -1,0 +1,8 @@
+---
+- name: create docker network
+  command: "docker network create --driver bridge --subnet {{cluster_network}} ceph-{{ cluster }}" 
+
+- name: set monitor address
+  set_fact: #monitor takes on the 2nd indexed address in the cluster network
+          monitor_address: "{{cluster_network | ipaddr('net') | ipaddr('2') | ipaddr('address')}}"
+

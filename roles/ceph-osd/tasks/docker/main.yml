@@ -1,14 +1,7 @@
 ---
-- name: check if a cluster is already running
-  shell: "docker ps | grep -sq '{{ceph_osd_docker_username}}/{{ceph_osd_docker_imagename}}:{{ceph_osd_docker_image_tag}}'"
-  register: ceph_health
-  changed_when: false
-  failed_when: false
-
-- include: checks.yml
+- include: "{{ playbook_dir }}/roles/ceph-common/tasks/docker/checks.yml" 
   when:
-    - ceph_health.rc != 0
-    - not osd_containerized_deployment_with_kv
+    - not osd_containerized_deployment_with_kv 
 
 - name: check if it is Atomic host
   stat: path=/run/ostree-booted

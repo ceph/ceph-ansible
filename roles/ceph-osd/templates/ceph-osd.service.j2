@@ -1,12 +1,17 @@
 [Unit]
 Description=Ceph OSD
 After=docker.service
-
 [Service]
 EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/docker stop {{ ansible_hostname }}-osd-dev%i
 ExecStartPre=-/usr/bin/docker rm -f  {{ ansible_hostname }}-osd-dev%i
-ExecStart=/usr/bin/docker run --rm --net=host --pid=host\
+ExecStart=/usr/bin/docker run --rm\
+   {% if single_host %}
+   --net=ceph-{{ cluster }} \
+   (% else %}
+   --net=host \
+   {% endif %}
+   --pid=host \
    {% if not osd_containerized_deployment_with_kv -%}
    -v /var/lib/ceph:/var/lib/ceph \
    -v /etc/ceph:/etc/ceph \
@@ -19,8 +24,9 @@ ExecStart=/usr/bin/docker run --rm --net=host --pid=host\
    -v /dev:/dev \
    --privileged \
    -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE \
+   -e CLUSTER={{ cluster }}\
    -e OSD_DEVICE=/dev/%i \
-   --name={{ ansible_hostname }}-osd-dev%i \
+   --name={{ cluster }}-osd-dev%i \
    {{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}:{{ ceph_osd_docker_image_tag }}
 ExecStop=-/usr/bin/docker stop {{ ansible_hostname }}-osd-dev%i
 Restart=always

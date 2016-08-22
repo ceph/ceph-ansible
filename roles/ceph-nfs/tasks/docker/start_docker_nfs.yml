@@ -4,7 +4,7 @@
   become: true
   template:
     src: "{{ playbook_dir }}/roles/ceph-nfs/templates/ceph-nfs.service.j2"
-    dest: /var/lib/nfs/ganesha/ceph-nfs@.service
+    dest: "/etc/systemd/system/multi-user.target.wants/ceph-nfs-{{ cluster }}@{{ ansible_hostname }}.service"
     owner: "root"
     group: "root"
     mode: "0644"
@@ -12,17 +12,8 @@
     is_atomic or
     ansible_os_family == 'CoreOS'
 
-- name: link systemd unit file for NFS instance
-  file:
-    src: /var/lib/nfs/ganesha/ceph-nfs@.service
-    dest: /etc/systemd/system/multi-user.target.wants/ceph-nfs@{{ ansible_hostname }}.service
-    state: link
-  when:
-    is_atomic or
-    ansible_os_family == 'CoreOS'
-
 - name: enable systemd unit file for NFS instance
-  shell: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-nfs@{{ ansible_hostname }}.service
+  shell: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-nfs-{{ cluster }}@{{ ansible_hostname }}.service
   failed_when: false
   changed_when: false
   when:
@@ -39,7 +30,7 @@
 
 - name: systemd start NFS container
   service:
-    name: ceph-nfs@{{ ansible_hostname }}
+    name: ceph-nfs-{{ cluster }}@{{ ansible_hostname }}
     state: started
     enabled: yes
   changed_when: false
@@ -49,7 +40,7 @@
 
 - name: wait for ceph.conf exists
   wait_for:
-      path: /etc/ceph/ceph.conf
+      path: /etc/ceph/{{ cluster }}.conf
   when: is_atomic
 
 - name: run the ceph NFS docker image

@@ -23,12 +23,13 @@
     docker run --net=host \
     --pid=host \
     --privileged=true \
-    --name="{{ ansible_hostname }}-osd-prepare-{{ item.0 |
+    --name="{{ cluster }}-osd-prepare-{{ item.0 |
     regex_replace('/', '') }}" \
     -v /etc/ceph:/etc/ceph \
     -v /var/lib/ceph/:/var/lib/ceph/ \
     -v /dev:/dev \
     -v /etc/localtime:/etc/localtime:ro \
+    -e "CLUSTER={{ cluster }}" \
     -e "OSD_DEVICE={{ item.0 }}" \
     -e "{{ ceph_osd_docker_prepare_env }}" \
     -e CEPH_DAEMON=osd_ceph_disk_prepare \
@@ -46,12 +47,13 @@
     docker run  --net=host   \
     --pid=host \
     --privileged=true \
-    --name="{{ ansible_hostname }}-osd-prepare-{{ item.0 |
+    --name="{{ cluster }}-osd-prepare-{{ item.0 |
     regex_replace('/', '') }}" \
     -v /dev:/dev \
     -v /etc/localtime:/etc/localtime:ro \
     -e "OSD_DEVICE={{ item.0 }}" \
     -e "{{ ceph_osd_docker_prepare_env }}" \
+    -e "CLUSTER={{ cluster }}" \
     -e CEPH_DAEMON=osd_ceph_disk_prepare \
     -e KV_TYPE={{kv_type}} \
     -e KV_IP={{kv_endpoint}} \
@@ -70,7 +72,7 @@
   become: true
   template:
     src: "{{ role_path }}/templates/ceph-osd.service.j2"
-    dest: /etc/systemd/system/ceph-osd@.service
+    dest: "/etc/systemd/system/ceph-osd-{{ cluster }}@.service"
     owner: "root"
     group: "root"
     mode: "0644"
@@ -78,7 +80,7 @@
   when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
 
 - name: enable systemd unit file for osd instance
-  shell: systemctl enable ceph-osd@{{ item | basename }}.service
+  shell: systemctl enable ceph-osd-{{ cluster }}@{{ item | basename }}.service
   failed_when: false
   changed_when: false
   with_items: ceph_osd_docker_devices
@@ -92,7 +94,7 @@
 
 - name: systemd start osd container
   service:
-    name: ceph-osd@{{ item | basename }}
+    name: ceph-osd-{{ cluster }}@{{ item | basename }}
     state: started
     enabled: yes
   changed_when: false

@@ -23,6 +23,7 @@ MEMORY         = settings['memory']
 STORAGECTL     = settings['vagrant_storagectl']
 ETH            = settings['eth']
 DOCKER         = settings['docker']
+VERBOSE        = settings['verbose']
 
 if BOX == 'openstack'
   require 'vagrant-openstack-provider'
@@ -36,6 +37,10 @@ else
 end
 
 ansible_provision = proc do |ansible|
+  if VERBOSE then
+    ansible.verbose = "vvv"
+  end
+
   if DOCKER then
     ansible.playbook = 'site-docker.yml'
     if settings['skip_tags']
