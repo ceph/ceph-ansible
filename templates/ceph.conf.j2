@@ -32,19 +32,19 @@ mon host = {% for host in groups[mon_group_name] %}{{ hostvars[host]['ansible_' 
 {% if mon_containerized_deployment %}
 fsid = {{ fsid }}
 {% if groups[mon_group_name] is defined %}
-{% for host in groups[mon_group_name] %}
+mon host = {% for host in groups[mon_group_name] -%}
 {% if mon_containerized_deployment %}
 {% set interface = ["ansible_",ceph_mon_docker_interface]|join %}
-mon_host = {{ hostvars[host][interface]['ipv4']['address'] }}
-{% if not loop.last %},{% endif %}
+{{ hostvars[host][interface]['ipv4']['address'] }}
+{%- if not loop.last %},{% endif %}
 {% elif hostvars[host]['monitor_address'] is defined %}
-mon_host = {{ hostvars[host]['monitor_address'] }}
-{% if not loop.last %},{% endif %}
+{{ hostvars[host]['monitor_address'] }}
+{%- if not loop.last %},{% endif %}
 {% elif monitor_address != "0.0.0.0" %}
-mon_host = monitor_address
-{% if not loop.last %},{% endif %}
+monitor_address
+{%- if not loop.last %},{% endif %}
 {% endif %}
-{% endfor %}
+{%- endfor %}
 {% endif %}
 {% endif %}
 
