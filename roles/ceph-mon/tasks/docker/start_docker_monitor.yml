@@ -26,7 +26,7 @@
       KV_IP: "{{kv_endpoint}}"
       KV_PORT: "{{kv_port}}"
     volumes:
-      - /etc/ceph/ceph.conf:/etc/ceph/ceph.defaults
+      - /etc/ceph/"{{ cluster }}".conf:/etc/ceph/ceph.defaults
   run_once: true
   when:
     - inventory_hostname == groups.mons[0]
@@ -74,7 +74,7 @@
 
 - name: wait for ceph.conf exists
   wait_for:
-      path: /etc/ceph/ceph.conf
+      path: "/etc/ceph/{{ cluster }}.conf"
   when: ansible_os_family == 'RedHat'
 
 - name: run the ceph monitor docker image
