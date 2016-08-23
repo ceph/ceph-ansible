@@ -81,7 +81,8 @@ ansible_provision = proc do |ansible|
       ceph_osd_docker_devices: settings['disks'],
       # Note that OSVM is defaulted to false above
       ceph_docker_on_openstack: OSVM,
-      ceph_rgw_civetweb_port: 8080
+      ceph_rgw_civetweb_port: 8080,
+      generate_fsid: 'true'
     }
   else
     ansible.extra_vars = {
