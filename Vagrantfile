@@ -75,14 +75,15 @@ ansible_provision = proc do |ansible|
       rbd_mirror_containerized_deployment: 'true',
       ceph_mon_docker_interface: ETH,
       ceph_mon_docker_subnet: "#{SUBNET}.0/24",
-      ceph_osd_docker_extra_env: "CEPH_DAEMON=OSD_CEPH_DISK,OSD_JOURNAL_SIZE=100",
+      ceph_osd_docker_extra_env: "CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE,OSD_JOURNAL_SIZE=100",
       cluster_network: "#{SUBNET}.0/24",
       public_network: "#{SUBNET}.0/24",
       ceph_osd_docker_devices: settings['disks'],
       # Note that OSVM is defaulted to false above
       ceph_docker_on_openstack: OSVM,
       ceph_rgw_civetweb_port: 8080,
-      generate_fsid: 'true'
+      generate_fsid: 'true',
+      journal_size: 100,
     }
   else
     ansible.extra_vars = {
