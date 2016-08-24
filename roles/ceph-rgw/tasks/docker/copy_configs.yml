@@ -25,12 +25,12 @@
 - name: push ceph files to the ansible server
   fetch:
     src: "{{ item.0 }}"
-    dest: "{{ fetch_directory }}/docker_mon_files/var/lib/ceph/radosgw/keyring"
+    dest: "{{ fetch_directory }}/docker_mon_files/var/lib/ceph/radosgw/{{ ansible_hostname }}/keyring"
     flat: yes
   with_together:
     - rgw_config_keys
     - statconfig.results
   when:
-    - item.1.stat.exists == false
     - nfs_obj_gw
+    - item.1.stat.exists == false
     - inventory_hostname == groups.rgws[0]
