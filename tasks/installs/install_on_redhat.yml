@@ -3,7 +3,7 @@
   yum:
     name: "{{ item }}"
     state: present
-  with_items: redhat_package_dependencies
+  with_items: "{{ redhat_package_dependencies }}"
   when:
     - ansible_distribution == "RedHat"
     - ansible_pkg_mgr == "yum"
@@ -12,7 +12,7 @@
   dnf:
     name: "{{ item }}"
     state: present
-  with_items: redhat_package_dependencies
+  with_items: "{{ redhat_package_dependencies }}"
   when:
     - ansible_distribution == "RedHat"
     - ansible_pkg_mgr == "dnf"
@@ -21,7 +21,7 @@
   yum:
     name: "{{ item }}"
     state: present
-  with_items: centos_package_dependencies
+  with_items: "{{ centos_package_dependencies }}"
   when:
     - ansible_distribution == "CentOS"
     - ansible_pkg_mgr == "yum"
@@ -30,7 +30,7 @@
   dnf:
     name: "{{ item }}"
     state: present
-  with_items: centos_package_dependencies
+  with_items: "{{ centos_package_dependencies }}"
   when:
     - ansible_distribution == "CentOS"
     - ansible_pkg_mgr == "dnf"
@@ -58,7 +58,7 @@
   copy:
     src: "{{ansible_dir}}/rundep"
     dest: "{{ item }}"
-  with_items: rundep_location.stdout_lines
+  with_items: "{{ rundep_location }}.stdout_lines"
   when:
     - ceph_origin == 'local'
     - use_installer
@@ -66,7 +66,7 @@
 - name: install ceph dependencies
   script: "{{ ansible_dir }}/rundep_installer.sh {{ item }}"
   become: true
-  with_items: rundep_location.stdout_lines
+  with_items: "{{ rundep_location }}.stdout_lines"
   when:
     - ceph_origin == 'local'
     - use_installer
@@ -76,7 +76,7 @@
     name: ceph
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    - not use_server_package_split
+    - ceph_release_num.{{ ceph_stable_release}} <= ceph_release_num.infernalis
     - ansible_pkg_mgr == "yum"
     - ceph_origin != 'local'
 
