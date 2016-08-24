@@ -179,8 +179,6 @@ information about how to generate appropriate values for these variables.
 By default, ceph-common installs from Ceph repository. However, you
 can set `ceph_origin` to "distro" to install Ceph from your default repository.
 
-Moreover for people looking to install any version of Ceph prior to the Jewel release on a Red Hat based system you would have to set `use_server_package_split: false`.
-
 ## Setup for Vagrant using libvirt provider
 
 * Create vagrant_variables.yml
