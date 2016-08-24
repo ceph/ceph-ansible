@@ -20,14 +20,26 @@
   when:
     - not use_systemd
 
-# NOTE (leseb): somehow the service ansible module is messing things up
-# as a safety measure we run the raw command
+# legacy ceph system v init scripts require a mon section in order to work
+- name: add mon section into ceph.conf for systemv init scripts
+  ini_file:
+    dest: /etc/ceph/ceph.conf
+    section: mon.{{ ansible_host }}
+    option: host
+    value: "{{ ansible_host }}"
+    state: present
+  when:
+    - ansible_os_family == "RedHat"
+    - ceph_release_num.{{ ceph_stable_release }} < ceph_release_num.infernalis
+ 
+# NOTE (jsaintrocc): can't use service module because we need to use the 
+# legacy systemv init for older ceph releases.  Even when the os supports systemd
 - name: start and add that the monitor service to the init sequence
   command: service ceph start mon
   changed_when: false
   when:
-    - ansible_distribution != "Ubuntu"
-    - is_before_infernalis
+    - ansible_os_family == "RedHat"
+    - ceph_release_num.{{ ceph_stable_release }} < ceph_release_num.infernalis
 
 - name: start and add that the monitor service to the init sequence (for or after infernalis)
   command: systemctl enable ceph-mon@{{ monitor_name }}
