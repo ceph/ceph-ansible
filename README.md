@@ -245,7 +245,7 @@ Attention, ceph-common doesn't manage backports repository, you must add it your
 ### For Atomic systems
 
 If you want to run containerized deployment on Atomic systems (RHEL/CentOS Atomic), please copy
-[vagrant.yml.atomic](vagrant_variables.yml.atomic) to vagrant_variables.yml, and copy [group_vars/all.docker](group_vars/all.docker) to `group_vars/all`.
+[vagrant_variables.yml.atomic](vagrant_variables.yml.atomic) to vagrant_variables.yml, and copy [group_vars/all.docker](group_vars/all.docker) to `group_vars/all`.
 
 Since `centos/atomic-host` VirtualBox box doesn't have spare storage controller to attach more disks, it is likely the first time `vagrant up --provider=virtualbox` runs, it will fail to attach to a storage controller. In such case, run the following command:
 
