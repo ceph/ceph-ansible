@@ -15,6 +15,7 @@ NNFSS          = settings['nfs_vms']
 RESTAPI        = settings['restapi']
 NRBD_MIRRORS   = settings['rbd_mirror_vms']
 CLIENTS        = settings['client_vms']
+NISCSI_GWS     = settings['iscsi_gw_vms']
 SUBNET         = settings['subnet']
 BOX            = settings['vagrant_box']
 BOX_URL        = settings['vagrant_box_url']
@@ -55,7 +56,8 @@ ansible_provision = proc do |ansible|
     'rgws'            => (0..NRGWS - 1).map { |j| "#{OSPREFIX}rgw#{j}" },
     'nfss'            => (0..NNFSS - 1).map { |j| "#{OSPREFIX}nfs#{j}" },
     'rbd_mirrors'     => (0..NRBD_MIRRORS - 1).map { |j| "#{OSPREFIX}rbd_mirror#{j}" },
-    'clients'         => (0..CLIENTS - 1).map { |j| "#{OSPREFIX}client#{j}" }
+    'clients'         => (0..CLIENTS - 1).map { |j| "#{OSPREFIX}client#{j}" },
+    'iscsi_gw'        => (0..NISCSI_GWS - 1).map { |j| "#{OSPREFIX}iscsi_gw#{j}" }
   }
 
   if RESTAPI then
@@ -278,6 +280,34 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Parallels
       rbd_mirror.vm.provider "parallels" do |prl|
         prl.name = "ceph-rbd-mirror#{i}"
+        prl.memory = "#{MEMORY}"
+      end
+    end
+  end
+
+  (0..NISCSI_GWS - 1).each do |i|
+    config.vm.define "#{OSPREFIX}iscsi_gw#{i}" do |iscsi_gw|
+      iscsi_gw.vm.hostname = "#{OSPREFIX}ceph-iscsi-gw#{i}"
+      if !OSVM
+        iscsi_gw.vm.network :private_network, ip: "#{SUBNET}.9#{i}"
+      end
+      # Virtualbox
+      iscsi_gw.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
+      end
+
+      # VMware
+      iscsi_gw.vm.provider :vmware_fusion do |v|
+        v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      # Libvirt
+      iscsi_gw.vm.provider :libvirt do |lv|
+        lv.memory = MEMORY
+      end
+      # Parallels
+      iscsi_gw.vm.provider "parallels" do |prl|
+        prl.name = "ceph-iscsi-gw#{i}"
         prl.memory = "#{MEMORY}"
       end
     end
