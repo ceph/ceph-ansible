@@ -137,6 +137,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       os.keypair_name = settings['os_keypair_name']
       os.security_groups = ['default']
       os.networks = settings['os_networks']
+      os.floating_ip_pool = settings['os_floating_ip_pool']
       config.vm.provision "shell", inline: "true", upload_path: "/home/#{USER}/vagrant-shell"
     end
   end
