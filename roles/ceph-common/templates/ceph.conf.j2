@@ -21,7 +21,9 @@ mon_initial_members = {% if groups[mon_group_name] is defined %}{% for host in g
 {% endif %}
 
 {% if not mon_containerized_deployment and not mon_containerized_deployment_with_kv %}
-{% if groups[mon_group_name] is defined %}
+{% if monitor_address_block is defined %}
+mon host = {% for host in groups[mon_group_name] %}{{ hostvars[host]['ansible_all_ipv4_addresses'] | ipaddr(monitor_address_block) | first }}{% if not loop.last %},{% endif %}{% endfor %}
+{% elif groups[mon_group_name] is defined %}
 mon host = {% for host in groups[mon_group_name] %}{{ hostvars[host]['ansible_' + monitor_interface]['ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}
 {% elif (hostvars[host]['monitor_interface'] is defined and hostvars[host]['monitor_interface'] != "interface") or monitor_interface != "interface" %}
 {% include 'mon_addr_interface.j2' %}
