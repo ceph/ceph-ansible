@@ -308,6 +308,20 @@ restapi_port: 5000
 # if you don't want it keep the option commented
 #common_single_host_mode: true
 
+## Handlers - restarting daemons after a config change
+# if for whatever reasons the content of your ceph configuration changes
+# ceph daemons will be restarted as well. At the moment, we can not detect
+# which config option changed so all the daemons will be restarted. Although
+# this restart will be serialized for each node, in between a health check
+# will be performed so we make sure we don't move to the next node until
+# ceph is not healthy
+# Obviously between the checks (for monitors to be in quorum and for osd's pgs
+# to be clean) we have to wait. These retries and delays can be configurable
+# for both monitors and osds.
+handler_health_mon_check_retries: 5
+handler_health_mon_check_delay: 10
+handler_health_osd_check_retries: 40
+handler_health_osd_check_delay: 30
 
 ###################
 # CONFIG OVERRIDE #
