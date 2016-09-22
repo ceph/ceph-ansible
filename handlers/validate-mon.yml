@@ -1,0 +1,28 @@
+---
+- name: wait for ceph monitor socket
+  wait_for:
+    path: "/var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok"
+
+- name: set mon_host_count
+  set_fact: mon_host_count={{ groups[mon_group_name] | length }}
+
+- name: select a running monitor
+  set_fact: mon_host={{ item }}
+  with_items: "{{ groups[mon_group_name] }}"
+  when:
+    - item != inventory_hostname
+    - mon_host_count | int > 1
+
+- name: select first monitor if only one monitor
+  set_fact: mon_host={{ item }}
+  with_items: "{{ groups[mon_group_name][0] }}"
+  when: mon_host_count | int == 1
+
+- name: waiting for the monitor to join the quorum...
+  shell: |
+    ceph -s  --cluster {{ cluster }} | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
+  register: result
+  until: result.rc == 0
+  retries: "{{ handler_health_mon_check_retries }}"
+  delay: "{{ handler_health_mon_check_delay }}"
+  delegate_to: "{{ mon_host }}"
