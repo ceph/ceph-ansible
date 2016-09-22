@@ -1,0 +1,19 @@
+---
+- name: collect osds
+  shell: |
+    ls /var/lib/ceph/osd/ |grep -oh '[0-9]*'
+  register: osd_ids
+
+- name: wait for ceph osd socket(s)
+  wait_for:
+    path: "/var/run/ceph/{{ cluster }}-osd.{{ item }}.asok"
+  with_items: "{{ osd_ids.stdout_lines }}"
+
+- name: waiting for clean pgs...
+  shell: |
+    test "$(ceph --cluster {{ cluster }} pg stat | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(ceph --cluster {{ cluster }} pg stat | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph --cluster {{ cluster }} health | egrep -sq "HEALTH_OK|HEALTH_WARN"
+  register: result
+  until: result.rc == 0
+  retries: "{{ handler_health_osd_check_retries }}"
+  delay: "{{ handler_health_osd_check_delay }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
