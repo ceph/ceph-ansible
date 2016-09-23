@@ -171,6 +171,30 @@
       or ceph_dev
       or ceph_custom
 
+- name: install distro or red hat storage ceph-fuse via yum
+  yum:
+    name: "ceph-fuse"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - client_group_name in group_names
+    - ansible_pkg_mgr == "yum"
+    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+      or ceph_origin == "distro"
+      or ceph_dev
+      or ceph_custom
+
+- name: install distro or red hat storage ceph-fuse via dnf
+  dnf:
+    name: "ceph-fuse"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - client_group_name in group_names
+    - ansible_pkg_mgr == "dnf"
+    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+      or ceph_origin == "distro"
+      or ceph_dev
+      or ceph_custom
+
 - name: install distro or red hat storage ceph base via yum
   yum:
     name: "ceph-base"
