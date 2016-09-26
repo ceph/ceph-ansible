@@ -1,0 +1,527 @@
+---
+# This playbook switches from non-containerized to containerized Ceph daemons
+
+- name: confirm whether user really meant to switch from non-containerized to containerized ceph daemons
+
+  hosts:
+    - localhost
+
+  gather_facts: false
+
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to switch from non-containerized to containerized ceph daemons?
+      default: 'no'
+      private: no
+
+  tasks:
+  - name: exit playbook, if user did not mean to switch from non-containerized to containerized daemons?
+    fail:
+      msg: >
+        "Exiting switch-from-non-containerized-to-containerized-ceph-daemons.yml playbook,
+         cluster did not switch from non-containerized to containerized ceph daemons.
+         To switch from non-containerized to containerized ceph daemons, either say 'yes' on the prompt or
+         or use `-e ireallymeanit=yes` on the command line when
+         invoking the playbook"
+    when: ireallymeanit != 'yes'
+
+
+- name: make sure docker is present and started
+
+  vars:
+    mon_group_name:       mons
+    osd_group_name:       osds
+    mds_group_name:       mdss
+    rgw_group_name:       rgws
+    rbdmirror_group_name: rbd_mirrors
+    nfs_group_name:       nfss
+
+  hosts:
+    - "{{ mon_group_name }}"
+    - "{{ osd_group_name }}"
+    - "{{ mds_group_name }}"
+    - "{{ rgw_group_name }}"
+    - "{{ rbdmirror_group_name }}"
+    - "{{ nfs_group_name }}"
+
+  become: true
+
+  tasks:
+
+  - name: install docker and dependancies for the docker module
+    package:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - python-docker-py
+      - python-urllib3
+      - docker
+    when: ansible_os_family == 'RedHat'
+
+  - name: install docker-py for the docker module
+    package:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - docker-py
+      - python-urllib3
+      - docker
+    when: ansible_os_family == 'Debian'
+
+  - name: start docker service
+    service:
+      name: docker
+      state: started
+      enabled: yes
+
+  - name: check if selinux is enabled
+    command: getenforce
+    register: sestatus
+    changed_when: false
+    when: ansible_os_family == 'RedHat'
+
+  - name: set selinux permissions
+    command: chcon -Rt svirt_sandbox_file_t "{{ item }}"
+    with_items:
+      - /etc/ceph
+      - /var/lib/ceph
+    changed_when: false
+    when:
+      - sestatus.stdout != 'Disabled'
+      - ansible_os_family == 'RedHat'
+
+- name: switching from non-containerized to containerized ceph mon
+
+  vars:
+    mon_group_name: mons
+
+  hosts:
+    - "{{ mon_group_name }}"
+
+  serial: 1
+  become: true
+
+  tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../roles/ceph-mon/defaults/main.yml
+  - include_vars: ../roles/ceph-restapi/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/mons
+    failed_when: false
+  - include_vars: ../group_vars/restapis
+    failed_when: false
+
+  - name: select a running monitor
+    set_fact: mon_host={{ item }}
+    with_items: groups.mons
+    when: item != inventory_hostname
+
+  - name: get current ceph fsid
+    command: ceph fsid
+    register: ceph_fsid
+    changed_when: false
+    delegate_to: "{{ mon_host }}"
+
+  - name: stop ceph mon bare metal service
+    service:
+      name: "ceph-mon@{{ ansible_hostname }}"
+      state: stopped
+      enabled: no
+
+  # NOTE(leseb): should we also create systemd files
+  # intead of running raw docker commands?
+  # It is probably more elegant but will require a template file...
+  # which would make this single file playbook more complex
+
+  - set_fact:
+      ceph_uid: 64045
+    when: ceph_mon_docker_image_tag | match("latest")
+
+  - set_fact:
+      ceph_uid: 64045
+    when: ceph_mon_docker_image_tag | search("ubuntu")
+
+  - set_fact:
+      ceph_uid: 167
+    when: ceph_mon_docker_image_tag | search("centos")
+
+  - set_fact:
+      ceph_uid: 167
+    when: ceph_mon_docker_image_tag | search("fedora")
+
+  - name: set proper ownership on ceph directories
+    file:
+      path: "{{ item }}"
+      owner: "{{ ceph_uid }}"
+      recurse: yes
+    with_items:
+      - /var/lib/ceph
+      - /etc/ceph
+
+  - name: start ceph mon container image
+    docker:
+      image: "{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}:{{ ceph_mon_docker_image_tag }}"
+      name: "{{ ansible_hostname }}"
+      net: "host"
+      state: "running"
+      privileged: "{{ mon_docker_privileged }}"
+      env: "MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},CEPH_FSID={{ ceph_fsid.stdout }},{{ ceph_mon_extra_envs }}"
+      volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
+
+  - name: waiting for the monitor to join the quorum...
+    shell: |
+      ceph -s  --cluster {{ cluster }} | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
+    register: result
+    until: result.rc == 0
+    retries: 5
+    delay: 10
+    changed_when: false
+    delegate_to: "{{ mon_host }}"
+
+
+- name: switching from non-containerized to containerized ceph osd
+
+  vars:
+    osd_group_name: osds
+
+  hosts:
+    - "{{ osd_group_name }}"
+
+  serial: 1
+  become: true
+
+  tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../roles/ceph-osd/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/osds
+    failed_when: false
+
+  - name: collect osd ids
+    shell: |
+      if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi
+    register: osd_ids
+    changed_when: false
+
+  - name: collect osd devices
+    shell: |
+      blkid | awk '/ceph data/ { sub ("1:", "", $1); print $1 }'
+    register: ceph_osd_docker_devices
+    changed_when: false
+
+  - name: stop ceph osd service
+    service:
+      name: "ceph-osd@{{ item }}"
+      state: stopped
+      enabled: no
+    with_items: "{{ osd_ids.stdout_lines }}"
+
+  - set_fact:
+      ceph_uid: 64045
+    when: ceph_osd_docker_image_tag | match("latest")
+
+  - set_fact:
+      ceph_uid: 64045
+    when: ceph_osd_docker_image_tag | search("ubuntu")
+
+  - set_fact:
+      ceph_uid: 167
+    when: ceph_osd_docker_image_tag | search("centos")
+
+  - set_fact:
+      ceph_uid: 167
+    when: ceph_osd_docker_image_tag | search("fedora")
+
+  - name: set proper ownership on ceph directories
+    file:
+      path: "{{ item }}"
+      owner: "{{ ceph_uid }}"
+      recurse: yes
+    with_items:
+      - /var/lib/ceph
+      - /etc/ceph
+
+  - name: check if containerized osds are already running
+    shell: |
+      docker ps | grep -sq {{ item | regex_replace('/', '') }}
+    changed_when: false
+    with_items: "{{ ceph_osd_docker_devices.stdout_lines }}"
+    register: osd_running
+
+  - name: unmount all the osd directories
+    mount:
+      name: "/var/lib/ceph/osd/{{ cluster }}-{{ item.0 }}"
+      state: unmounted
+      src: "{{ item.1 }}"
+      fstype: xfs
+    with_together:
+      - "{{ osd_ids.stdout_lines }}"
+      - "{{ ceph_osd_docker_devices.stdout_lines }}"
+      - "{{ osd_running.results }}"
+    when: item.2.rc != 0
+
+  - name: start ceph osd container image(s)
+    docker:
+      image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}:{{ ceph_osd_docker_image_tag }}"
+      name: "{{ ansible_hostname }}-osd-{{ item | regex_replace('/', '') }}"
+      net: host
+      pid: host
+      state: started
+      privileged: yes
+      env: "OSD_DEVICE={{ item }},{{ ceph_osd_docker_extra_env }}"
+      volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro,/dev:/dev,/run:/run"
+    with_items: "{{ ceph_osd_docker_devices.stdout_lines }}"
+
+  - name: waiting for clean pgs...
+    shell: |
+      test "$(ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(ceph pg stat --cluster {{ cluster }}  | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
+    register: result
+    until: result.rc == 0
+    retries: 10
+    delay: 10
+    changed_when: false
+    delegate_to: "{{ groups.mons[0] }}"
+
+
+- name: switching from non-containerized to containerized ceph mds
+
+  vars:
+    mds_group_name: mdss
+
+  hosts:
+    - "{{ mds_group_name }}"
+
+  serial: 1
+  become: true
+
+  tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../roles/ceph-mds/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/mdss
+    failed_when: false
+
+  - name: stop ceph mds service
+    service:
+      name: "ceph-mds@{{ ansible_hostname }}"
+      state: stopped
+      enabled: no
+
+  - set_fact:
+      ceph_uid: 64045
+    when: ceph_mds_docker_image_tag | match("latest")
+
+  - set_fact:
+      ceph_uid: 64045
+    when: ceph_mds_docker_image_tag | search("ubuntu")
+
+  - set_fact:
+      ceph_uid: 167
+    when: ceph_mds_docker_image_tag | search("centos")
+
+  - set_fact:
+      ceph_uid: 167
+    when: ceph_mds_docker_image_tag | search("fedora")
+
+  - name: set proper ownership on ceph directories
+    file:
+      path: "{{ item }}"
+      owner: "{{ ceph_uid }}"
+      recurse: yes
+    with_items:
+      - /var/lib/ceph
+      - /etc/ceph
+
+  - name: start ceph metadata container image
+    docker:
+      image: "{{ ceph_mds_docker_username }}/{{ ceph_mds_docker_imagename }}:{{ ceph_mds_docker_image_tag }}"
+      name: ceph-{{ ansible_hostname }}-mds
+      net: host
+      state: running
+      env: "CEPH_DAEMON=MDS,CEPHFS_CREATE=1,{{ ceph_mds_docker_extra_env }}"
+      volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
+
+
+- name: switching from non-containerized to containerized ceph rgw
+
+  vars:
+    rgw_group_name: rgws
+
+  hosts:
+    - "{{ rgw_group_name }}"
+
+  serial: 1
+  become: true
+
+  tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../roles/ceph-rgw/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/rgws
+    failed_when: false
+
+  - name: stop ceph rgw service
+    service:
+      name: "ceph-rgw@{{ ansible_hostname }}"
+      state: stopped
+      enabled: no
+
+  - set_fact:
+      ceph_uid: 64045
+    when: ceph_rgw_docker_image_tag | match("latest")
+
+  - set_fact:
+      ceph_uid: 64045
+    when: ceph_rgw_docker_image_tag | search("ubuntu")
+
+  - set_fact:
+      ceph_uid: 167
+    when: ceph_rgw_docker_image_tag | search("centos")
+
+  - set_fact:
+      ceph_uid: 167
+    when: ceph_rgw_docker_image_tag | search("fedora")
+
+  - name: set proper ownership on ceph directories
+    file:
+      path: "{{ item }}"
+      owner: "{{ ceph_uid }}"
+      recurse: yes
+    with_items:
+      - /var/lib/ceph
+      - /etc/ceph
+
+  - name: start ceph rados gateway container image
+    docker:
+      image: "{{ ceph_rgw_docker_username }}/{{ ceph_rgw_docker_imagename }}:{{ ceph_rgw_docker_image_tag }}"
+      name: ceph-{{ ansible_hostname }}-rgw
+      expose: "{{ ceph_rgw_civetweb_port }}"
+      ports: "{{ ceph_rgw_civetweb_port }}:{{ ceph_rgw_civetweb_port }}"
+      state: running
+      env: "CEPH_DAEMON=RGW,{{ ceph_rgw_docker_extra_env }}"
+      volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
+
+
+- name: switching from non-containerized to containerized ceph rbd-mirror
+
+  vars:
+    rbdmirror_group_name: rbd_mirrors
+
+  hosts:
+    - "{{ rbdmirror_group_name }}"
+
+  serial: 1
+  become: true
+
+  tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../roles/ceph-rbd-mirror/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/rbd-mirrors
+    failed_when: false
+
+  - name: stop ceph rbd mirror service
+    service:
+      name: "ceph-rbd-mirror@{{ ansible_hostname }}"
+      state: stopped
+      enabled: no
+
+  - set_fact:
+      ceph_uid: 64045
+    when: ceph_rbd_mirror_docker_image_tag | match("latest")
+
+  - set_fact:
+      ceph_uid: 64045
+    when: ceph_rbd_mirror_docker_image_tag | search("ubuntu")
+
+  - set_fact:
+      ceph_uid: 167
+    when: ceph_rbd_mirror_docker_image_tag | search("centos")
+
+  - set_fact:
+      ceph_uid: 167
+    when: ceph_rbd_mirror_docker_image_tag | search("fedora")
+
+  - name: set proper ownership on ceph directories
+    file:
+      path: "{{ item }}"
+      owner: "{{ ceph_uid }}"
+      recurse: yes
+    with_items:
+      - /var/lib/ceph
+      - /etc/ceph
+
+  - name: start ceph rbd mirror container image
+    docker:
+      image: "{{ ceph_rbd_mirror_docker_username }}/{{ ceph_rbd_mirror_docker_imagename }}:{{ ceph_rbd_mirror_docker_image_tag }}"
+      name: "{{ ansible_hostname }}"
+      net: host
+      state: running
+      volumes: "/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
+
+
+- name: switching from non-containerized to containerized ceph nfs
+
+  vars:
+    nfs_group_name: nfss
+
+  hosts:
+    - "{{ nfs_group_name }}"
+
+  serial: 1
+  become: true
+
+  tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../roles/ceph-nfs/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/nfss
+    failed_when: false
+
+  - name: stop ceph nfs service
+    service:
+      name: "ceph-nfs@{{ ansible_hostname }}"
+      state: stopped
+      enabled: no
+
+  - set_fact:
+      ceph_uid: 64045
+    when: ceph_nfs_docker_image_tag | match("latest")
+
+  - set_fact:
+      ceph_uid: 64045
+    when: ceph_nfs_docker_image_tag | search("ubuntu")
+
+  - set_fact:
+      ceph_uid: 167
+    when: ceph_nfs_docker_image_tag | search("centos")
+
+  - set_fact:
+      ceph_uid: 167
+    when: ceph_nfs_docker_image_tag | search("fedora")
+
+  - name: set proper ownership on ceph directories
+    file:
+      path: "{{ item }}"
+      owner: "{{ ceph_uid }}"
+      recurse: yes
+    with_items:
+      - /var/lib/ceph
+      - /etc/ceph
+
+  - name: start ceph nfs container image
+    docker:
+      image: "{{ ceph_nfs_docker_username }}/{{ ceph_nfs_docker_imagename }}:{{ ceph_nfs_docker_image_tag }}"
+      name: "{{ ansible_hostname }}"
+      net: "host"
+      state: "running"
+      privileged: true
+      ports: "{{ ceph_nfs_port }}:{{ ceph_nfs_port }},111:111"
+      env: "CEPH_DAEMON=NFS,CEPH_PUBLIC_NETWORK={{ ceph_nfs_docker_subnet }},{{ ceph_nfs_extra_envs }}"
+      volumes: "/etc/ceph:/etc/ceph,/etc/ganesha:/etc/ganesha,/etc/localtime:/etc/localtime:ro"

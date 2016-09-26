@@ -60,10 +60,6 @@
     upgrade_ceph_packages: True
     mon_group_name: mons
 
-  pre_tasks:
-    - name: compress the store as much as possible
-      command: ceph tell mon.{{ ansible_hostname }} compact
-
   roles:
     - ceph-common
     - ceph-mon
@@ -96,7 +92,7 @@
 
     - name: waiting for the monitor to join the quorum...
       shell: |
-        ceph -s | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
+        ceph -s  --cluster {{ cluster }} | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
       register: result
       until: result.rc == 0
       retries: 5
@@ -113,7 +109,7 @@
 
   pre_tasks:
     - name: set osd flags
-      command: ceph osd set {{ item }}
+      command: ceph osd set {{ item }} --cluster {{ cluster }}
       with_items:
         - noout
         - noscrub
@@ -152,7 +148,7 @@
 
     - name: waiting for clean pgs...
       shell: |
-        test "$(ceph pg stat | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(ceph pg stat | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health | egrep -sq "HEALTH_OK|HEALTH_WARN"
+        test "$(ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(ceph pg stat --cluster {{ cluster }}  | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
       register: result
       until: result.rc == 0
       retries: 10
@@ -160,7 +156,7 @@
       delegate_to: "{{ groups.mons[0] }}"
 
     - name: unset osd flags
-      command: ceph osd unset {{ item }}
+      command: ceph osd unset {{ item }} --cluster {{ cluster }}
       with_items:
         - noout
         - noscrub
