@@ -1,0 +1,27 @@
+---
+- name: restart ceph mdss on ubuntu
+  command: initctl restart ceph-mds cluster={{ cluster }} id={{ ansible_hostname }}
+  when:
+    - socket.rc == 0
+    - ansible_distribution == 'Ubuntu'
+    - not use_systemd
+    - mds_group_name in group_names
+
+- name: restart ceph mdss
+  command: service ceph restart mds
+  when:
+    - socket.rc == 0
+    - ansible_distribution != 'Ubuntu'
+    - use_systemd
+    - mds_group_name in group_names
+    - is_before_infernalis
+
+- name: restart ceph mdss with systemd
+  service:
+      name: ceph-mds@{{ mds_name }}
+      state: restarted
+  when:
+    - socket.rc == 0
+    - use_systemd
+    - mds_group_name in group_names
+    - is_after_hammer

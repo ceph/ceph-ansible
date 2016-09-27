@@ -200,6 +200,11 @@
     group: "{{ dir_group }}"
     mode: "{{ dir_mode }}"
 
+# how to manage this during the initial deployment
+# since the file does not exist yet
+- name: copy the current ceph.conf (always)
+  command: "cp /etc/ceph/{{ cluster }}.conf /tmp/{{ cluster }}.conf"
+
 - name: generate ceph configuration file
   action: config_template
   args:
@@ -211,20 +216,7 @@
     config_overrides: "{{ ceph_conf_overrides }}"
     config_type: ini
   notify:
-    - restart ceph mons
-    - restart ceph mons on ubuntu
-    - restart ceph mons with systemd
-    - restart ceph osds
-    - restart ceph osds on ubuntu
-    - restart ceph osds with systemd
-    - restart ceph mdss
-    - restart ceph mdss on ubuntu
-    - restart ceph mdss with systemd
-    - restart ceph rgws
-    - restart ceph rgws on ubuntu
-    - restart ceph rgws on red hat
-    - restart ceph rgws with systemd
-    - restart ceph nfss
+    - check inject or restart
 
 - name: create rbd client directory
   file:

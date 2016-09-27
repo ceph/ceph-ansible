@@ -1,0 +1,32 @@
+---
+- name: restart ceph osds
+  command: service ceph restart osd
+  when:
+    - socket.rc == 0
+    - ansible_distribution != 'Ubuntu'
+    - osd_group_name in group_names
+    - is_before_infernalis
+
+# This does not just restart OSDs but everything else too. Unfortunately
+# at this time the ansible role does not have an OSD id list to use
+# for restarting them specifically.
+- name: restart ceph osds with systemd
+  service:
+    name: ceph.target
+    state: restarted
+  when:
+    - socket.rc == 0
+    - use_systemd
+    - osd_group_name in group_names
+    - is_after_hammer
+
+- name: restart ceph osds on ubuntu
+  shell: |
+    for id in $(ls /var/lib/ceph/osd/ |grep -oh '[0-9]*'); do
+      initctl restart ceph-osd cluster={{ cluster }} id=$id
+    done
+  when:
+    - socket.rc == 0
+    - ansible_distribution == 'Ubuntu'
+    - not use_systemd
+    - osd_group_name in group_names
