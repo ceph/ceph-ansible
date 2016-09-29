@@ -9,7 +9,7 @@ DEBUG = false
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
 settings=YAML.load_file(config_file)
 
-LABEL_PREFIX   = ""
+LABEL_PREFIX   = settings['label_prefix'] ? settings['label_prefix'] : ""
 NMONS          = settings['mon_vms']
 NOSDS          = settings['osd_vms']
 NMDSS          = settings['mds_vms']
