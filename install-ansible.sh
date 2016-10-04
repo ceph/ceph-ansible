@@ -42,6 +42,7 @@ if [[ "Debian" =~ $os_VENDOR ]]; then
   pip install PyYAML jinja2 paramiko
   git clone https://github.com/ansible/ansible.git
   cd ansible
+  git submodule update --init --recursive
   make install
   mkdir /etc/ansible
 elif [[ "Ubuntu" =~ $os_VENDOR || "LinuxMint" =~ $os_VENDOR ]]; then
