@@ -20,14 +20,28 @@
   when:
     - not use_systemd
 
-# NOTE (leseb): somehow the service ansible module is messing things up
-# as a safety measure we run the raw command
+# legacy ceph system v init scripts require a mon section in order to work
+# Not Ubuntu so we can catch old debian systems that don't use systemd or upstart
+- name: add mon section into ceph.conf for systemv init scripts
+  ini_file:
+    dest: /etc/ceph/{{ cluster }}.conf
+    section: mon.{{ ansible_host }}
+    option: host
+    value: "{{ ansible_host }}"
+    state: present
+  when:
+    - ansible_os_family != "Ubuntu"
+    - ceph_release_num.{{ ceph_stable_release }} < ceph_release_num.infernalis
+ 
+# NOTE (jsaintrocc): can't use service module because we need to use the 
+# legacy systemv init for older ceph releases.  Even when the os supports systemd
+# Not Ubuntu so we can catch old debian systems that don't use systemd or upstart
 - name: start and add that the monitor service to the init sequence
   command: service ceph start mon
   changed_when: false
   when:
-    - ansible_distribution != "Ubuntu"
-    - is_before_infernalis
+    - ansible_os_family != "Ubuntu"
+    - ceph_release_num.{{ ceph_stable_release }} < ceph_release_num.infernalis
 
 - name: start and add that the monitor service to the init sequence (for or after infernalis)
   command: systemctl enable ceph-mon@{{ monitor_name }}
@@ -35,7 +49,7 @@
   failed_when: false
   when:
     - use_systemd
-    - is_after_hammer
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
 
 - name: start the monitor service (for or after infernalis)
   service:
@@ -45,7 +59,7 @@
   changed_when: false
   when:
     - use_systemd
-    - is_after_hammer
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
 
 - name: collect admin and bootstrap keys
   command: ceph-create-keys --cluster {{ cluster }} --id {{ monitor_name }}

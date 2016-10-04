@@ -3,11 +3,18 @@
 
 - include: ./checks/check_mandatory_vars.yml
 
+# Set ceph_release
+- include: ./release.yml
+
 - include: ./checks/check_firewall.yml
   when: check_firewall
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./misc/system_tuning.yml
   when: osd_group_name in group_names
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./pre_requisites/prerequisite_rh_storage_iso_install.yml
   when:
@@ -15,6 +22,8 @@
     - ceph_rhcs_iso_install
   tags:
     - package-install
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./pre_requisites/prerequisite_rh_storage_cdn_install.yml
   when:
@@ -23,6 +32,8 @@
     - ansible_os_family == "RedHat"
   tags:
     - package-install
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./installs/install_on_redhat.yml
   when:
@@ -30,6 +41,8 @@
     not ceph_rhcs_iso_install
   tags:
     - package-install
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./installs/install_rh_storage_on_redhat.yml
   when:
@@ -37,6 +50,8 @@
     - ceph_rhcs
   tags:
     - package-install
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./installs/install_on_debian.yml
   when:
@@ -44,6 +59,8 @@
     - not ceph_rhcs
   tags:
     - package-install
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./installs/install_rh_storage_on_debian.yml
   when:
@@ -51,6 +68,8 @@
     - ceph_rhcs
   tags:
     - package-install
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./installs/install_rgw_on_redhat.yml
   when:
@@ -59,6 +78,8 @@
     - rgw_group_name in group_names
   tags:
     - package-install
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./installs/install_rgw_on_debian.yml
   when:
@@ -67,16 +88,22 @@
     - rgw_group_name in group_names
   tags:
     - package-install
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./misc/ntp_redhat.yml
   when:
     - ansible_os_family == 'RedHat'
     - ntp_service_enabled
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: ./misc/ntp_debian.yml
   when:
     - ansible_os_family == 'Debian'
     - ntp_service_enabled
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - include: facts.yml
 
@@ -84,77 +111,77 @@
     dir_owner: ceph
     dir_group: ceph
     dir_mode: "0755"
-  when: is_after_hammer
+  when: ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
 
 - set_fact:
     dir_owner: root
     dir_group: root
     dir_mode: "0755"
-  when: is_before_infernalis
+  when: ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
 
 - set_fact:
     key_owner: root
     key_group: root
     key_mode: "0600"
-  when: is_before_infernalis
+  when: ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
 
 - set_fact:
     key_owner: ceph
     key_group: ceph
     key_mode: "0600"
-  when: is_after_hammer
+  when: ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
 
 - set_fact:
     activate_file_owner: ceph
     activate_file_group: ceph
     activate_file_mode: "0644"
-  when: is_after_hammer
+  when: ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
 
 - set_fact:
     activate_file_owner: root
     activate_file_group: root
     activate_file_mode: "0644"
-  when: is_before_infernalis
+  when: ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
 
 - set_fact:
     rbd_client_directory_owner: root
   when:
-    - is_before_infernalis
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
     - rbd_client_directory_owner is not defined
       or not rbd_client_directory_owner
 
 - set_fact:
     rbd_client_directory_owner: ceph
   when:
-    - is_after_hammer
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
     - rbd_client_directory_owner is not defined
       or not rbd_client_directory_owner
 
 - set_fact:
     rbd_client_directory_group: root
   when:
-    - is_before_infernalis
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
     - rbd_client_directory_group is not defined
       or not rbd_client_directory_group
 
 - set_fact:
     rbd_client_directory_group: ceph
   when:
-    - is_after_hammer
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
     - rbd_client_directory_group is not defined
       or not rbd_client_directory_group
 
 - set_fact:
     rbd_client_directory_mode: "1777"
   when:
-    - is_before_infernalis
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
     - rbd_client_directory_mode is not defined
       or not rbd_client_directory_mode
 
 - set_fact:
     rbd_client_directory_mode: "0770"
   when:
-    - is_after_hammer
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
     - rbd_client_directory_mode is not defined
       or not rbd_client_directory_mode
 

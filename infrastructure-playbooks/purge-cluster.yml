@@ -86,7 +86,8 @@
     ignore_errors: true
 
   - name: wait for server to boot
-    local_action: wait_for port=22 host={{ inventory_hostname }} state=started delay=10 timeout=400
+    become: false
+    local_action: wait_for port=22 host={{ inventory_hostname }} state=started delay=10 timeout=500
 
   - name: remove data
     file:
@@ -310,6 +311,7 @@
 
   - name: is reboot needed
     local_action: shell echo requesting reboot
+    become: false
     notify:
       - restart machine
       - wait for server to boot

@@ -3,7 +3,7 @@
   yum:
     name: "{{ item }}"
     state: present
-  with_items: redhat_package_dependencies
+  with_items: "{{ redhat_package_dependencies }}"
   when:
     - ansible_distribution == "RedHat"
     - ansible_pkg_mgr == "yum"
@@ -12,7 +12,7 @@
   dnf:
     name: "{{ item }}"
     state: present
-  with_items: redhat_package_dependencies
+  with_items: "{{ redhat_package_dependencies }}"
   when:
     - ansible_distribution == "RedHat"
     - ansible_pkg_mgr == "dnf"
@@ -21,7 +21,7 @@
   yum:
     name: "{{ item }}"
     state: present
-  with_items: centos_package_dependencies
+  with_items: "{{ centos_package_dependencies }}"
   when:
     - ansible_distribution == "CentOS"
     - ansible_pkg_mgr == "yum"
@@ -30,7 +30,7 @@
   dnf:
     name: "{{ item }}"
     state: present
-  with_items: centos_package_dependencies
+  with_items: "{{ centos_package_dependencies }}"
   when:
     - ansible_distribution == "CentOS"
     - ansible_pkg_mgr == "dnf"
@@ -58,7 +58,7 @@
   copy:
     src: "{{ansible_dir}}/rundep"
     dest: "{{ item }}"
-  with_items: rundep_location.stdout_lines
+  with_items: "{{ rundep_location }}.stdout_lines"
   when:
     - ceph_origin == 'local'
     - use_installer
@@ -66,7 +66,7 @@
 - name: install ceph dependencies
   script: "{{ ansible_dir }}/rundep_installer.sh {{ item }}"
   become: true
-  with_items: rundep_location.stdout_lines
+  with_items: "{{ rundep_location }}.stdout_lines"
   when:
     - ceph_origin == 'local'
     - use_installer
@@ -76,7 +76,7 @@
     name: ceph
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
-    - not use_server_package_split
+    - ceph_release_num.{{ ceph_release }} <= ceph_release_num.infernalis
     - ansible_pkg_mgr == "yum"
     - ceph_origin != 'local'
 
@@ -106,8 +106,7 @@
   when:
     - mon_group_name in group_names
     - ansible_pkg_mgr == "yum"
-    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
-      or ceph_dev
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_custom
 
@@ -118,9 +117,8 @@
   when:
     - mon_group_name in group_names
     - ansible_pkg_mgr == "dnf"
-    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
-      or ceph_dev
       or ceph_custom
 
 - name: install distro or red hat storage ceph osd via yum
@@ -130,9 +128,8 @@
   when:
     - osd_group_name in group_names
     - ansible_pkg_mgr == "yum"
-    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
-      or ceph_dev
       or ceph_custom
 
 - name: install distro or red hat storage ceph osd via dnf
@@ -142,9 +139,8 @@
   when:
     - osd_group_name in group_names
     - ansible_pkg_mgr == "dnf"
-    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
-      or ceph_dev
       or ceph_custom
 
 - name: install distro or red hat storage ceph mds via yum
@@ -154,9 +150,8 @@
   when:
     - mds_group_name in group_names
     - ansible_pkg_mgr == "yum"
-    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
-      or ceph_dev
       or ceph_custom
 
 - name: install distro or red hat storage ceph mds via dnf
@@ -166,9 +161,8 @@
   when:
     - mds_group_name in group_names
     - ansible_pkg_mgr == "dnf"
-    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
-      or ceph_dev
       or ceph_custom
 
 - name: install distro or red hat storage ceph-fuse via yum
@@ -178,7 +172,7 @@
   when:
     - client_group_name in group_names
     - ansible_pkg_mgr == "yum"
-    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_dev
       or ceph_custom
@@ -190,7 +184,7 @@
   when:
     - client_group_name in group_names
     - ansible_pkg_mgr == "dnf"
-    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_dev
       or ceph_custom
@@ -202,9 +196,8 @@
   when:
     - client_group_name in group_names
     - ansible_pkg_mgr == "yum"
-    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
-      or ceph_dev
       or ceph_custom
 
 - name: install distro or red hat storage ceph base via dnf
@@ -214,9 +207,8 @@
   when:
     - client_group_name in group_names
     - ansible_pkg_mgr == "dnf"
-    - (ceph_stable and ceph_stable_release not in ceph_stable_releases)
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
-      or ceph_dev
       or ceph_custom
 
 - name: install ceph-test
