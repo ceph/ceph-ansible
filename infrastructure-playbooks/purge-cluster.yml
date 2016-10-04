@@ -76,6 +76,7 @@
     cluster: ceph # name of the cluster
     monitor_name: "{{ ansible_hostname }}"
     mds_name: "{{ ansible_hostname }}"
+    osd_auto_discovery: false
 
 
   handlers:
@@ -262,24 +263,36 @@
       rbdmirror_group_name in group_names
 
   - name: check for anything running ceph
-    shell: "ps awux | grep -- [c]eph-"
+    shell: "ps awux | grep -- /usr/bin/[c]eph-"
     register: check_for_running_ceph
     failed_when: check_for_running_ceph.rc == 0
 
   - name: see if ceph-disk-created data partitions are present
-    shell: "ls /dev/disk/by-partlabel | grep -q 'ceph\\\\x20data'"
+    shell: |
+      ls /dev/disk/by-partlabel | grep -q "ceph.*.data"
     failed_when: false
     register: ceph_data_partlabels
 
   - name: see if ceph-disk-created journal partitions are present
-    shell: "ls /dev/disk/by-partlabel | grep -q 'ceph\\\\x20journal'"
+    shell: |
+      ls /dev/disk/by-partlabel | grep -q "ceph.*.journal"
     failed_when: false
     register: ceph_journal_partlabels
+
+  - name: get ceph journal partitions
+    shell: |
+      blkid | awk '/ceph journal/ { sub (":", "", $1); print $1 }'
+    when:
+      - ceph_journal_partlabels.rc == 0
+    failed_when: false
+    register: ceph_journal_partition_to_erase_path
 
   - name: get osd data mount points
     shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
     register: mounted_osd
     changed_when: false
+    when:
+      osd_group_name in group_names
 
   - name: drop all cache
     shell: "sync && sleep 1 && echo 3 > /proc/sys/vm/drop_caches"
@@ -334,15 +347,23 @@
      ceph_data_partlabels.rc == 0 and
      zap_block_devs
 
-  - name: zap journal devices
-    shell: ceph-disk zap "{{ item }}"
-    with_items: "{{ raw_journal_devices|default([])|unique }}"
+  - name: zap ceph journal partitions
+    shell: |
+      # if the disk passed is a raw device AND the boot system disk
+      if echo "{{ item }}" | egrep -sq '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}$' && parted -s $(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}') print | grep -sq boot; then
+        echo "Looks like {{ item }} has a boot partition,"
+        echo "if you want to delete specific partitions point to the partition instead of the raw device"
+        echo "Do not use your system disk!"
+        exit 1
+      fi
+      raw_device=$(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}')
+      partition_nb=$(echo "{{ item }}" | egrep -o '[0-9]{1,2}$')
+      sgdisk --delete $partition_nb $raw_device
+    with_items: "{{ceph_journal_partition_to_erase_path.stdout_lines}}"
     when:
       osd_group_name in group_names and
-      ceph_disk_present.rc == 0 and
       ceph_journal_partlabels.rc == 0 and
-      zap_block_devs and
-      raw_multi_journal
+      zap_block_devs
 
   - name: purge ceph packages with yum
     yum:
