@@ -63,7 +63,7 @@
     msg: "ceph-disk failed to create an OSD"
   when:
     " 'ceph-disk: Error: ceph osd create failed' in item.get('stderr', '') "
-  with_items: "{{ combined_activate_osd_disk_results.results }}"
+  with_items: "{{ (combined_activate_osd_disk_results|default({})).results|default([]) }}"
 
 # NOTE (leseb): this task is for partitions because we don't explicitly use a partition.
 - name: activate osd(s) when device is a partition
@@ -113,7 +113,7 @@
   command: systemctl enable ceph-osd@{{ item }}
   changed_when: false
   failed_when: false
-  with_items: "{{ osd_id.stdout_lines }}"
+  with_items: "{{ (osd_id|default({})).stdout_lines|default([]) }}"
   when:
     - use_systemd
     - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
@@ -123,7 +123,7 @@
     name: ceph-osd@{{ item }}
     state: started
     enabled: yes
-  with_items: "{{ osd_id.stdout_lines }}"
+  with_items: "{{ (osd_id|default({})).stdout_lines|default([]) }}"
   changed_when: false
   when:
     - use_systemd
