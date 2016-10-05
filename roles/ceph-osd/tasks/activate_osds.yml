@@ -3,7 +3,7 @@
 # partition.
 
 - name: automatically activate osd disk(s) without partitions
-  command: ceph-disk activate "/dev/{{ item.key }}"
+  command: ceph-disk activate "/dev/{{ item.key | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1"
   ignore_errors: true
   with_dict: ansible_devices
   when:
@@ -17,7 +17,7 @@
   command: ceph-disk activate {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
   with_together:
     - "{{ ispartition_results.results }}"
-    - "{{ devices }}"
+    - "{{ devices|default([])|unique }}"
   changed_when: false
   failed_when: false
   register: activate_osd_disk
@@ -42,7 +42,7 @@
   command: ceph-disk activate --dmcrypt {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
   with_together:
     - "{{ ispartition_results.results }}"
-    - "{{ devices }}"
+    - "{{ devices|default([])|unique }}"
   changed_when: false
   failed_when: false
   register: activate_osd_disk_dmcrypt
@@ -70,7 +70,7 @@
   command: "ceph-disk activate {{ item.1 }}"
   with_together:
     - "{{ ispartition_results.results }}"
-    - "{{ devices }}"
+    - "{{ devices|default([])|unique }}"
   changed_when: false
   failed_when: false
   when:
