@@ -59,10 +59,8 @@
   vars:
     upgrade_ceph_packages: True
     mon_group_name: mons
-
-  pre_tasks:
-    - name: compress the store as much as possible
-      command: ceph tell mon.{{ ansible_hostname }} compact
+    health_mon_check_retries: 5
+    health_mon_check_delay: 10
 
   roles:
     - ceph-common
@@ -96,11 +94,11 @@
 
     - name: waiting for the monitor to join the quorum...
       shell: |
-        ceph -s | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
+        ceph -s  --cluster {{ cluster }} | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
       register: result
       until: result.rc == 0
-      retries: 5
-      delay: 10
+      retries: "{{ health_mon_check_retries }}"
+      delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
 
 
@@ -110,10 +108,12 @@
   vars:
     upgrade_ceph_packages: True
     osd_group_name: osds
+    health_osd_check_retries: 10
+    health_osd_check_delay: 10
 
   pre_tasks:
     - name: set osd flags
-      command: ceph osd set {{ item }}
+      command: ceph osd set {{ item }} --cluster {{ cluster }}
       with_items:
         - noout
         - noscrub
@@ -152,15 +152,15 @@
 
     - name: waiting for clean pgs...
       shell: |
-        test "$(ceph pg stat | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(ceph pg stat | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health | egrep -sq "HEALTH_OK|HEALTH_WARN"
+        test "$(ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(ceph pg stat --cluster {{ cluster }}  | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
       register: result
       until: result.rc == 0
-      retries: 10
-      delay: 10
+      retries: "{{ health_osd_check_retries }}"
+      delay: "{{ health_osd_check_delay }}"
       delegate_to: "{{ groups.mons[0] }}"
 
     - name: unset osd flags
-      command: ceph osd unset {{ item }}
+      command: ceph osd unset {{ item }} --cluster {{ cluster }}
       with_items:
         - noout
         - noscrub

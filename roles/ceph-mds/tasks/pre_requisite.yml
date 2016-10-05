@@ -76,7 +76,7 @@
   failed_when: false
   when:
     - use_systemd
-    - is_after_hammer
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
 
 - name: start and add that the metadata service to the init sequence (upstart)
   command: initctl emit ceph-mds cluster={{ cluster }} id={{ mds_name }}
@@ -93,7 +93,7 @@
   changed_when: false
   when:
     - not use_systemd
-    - is_before_infernalis
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
 
 - name: start and add that the metadata service to the init sequence (systemd after hammer)
   service:
@@ -103,4 +103,4 @@
   changed_when: false
   when:
     - use_systemd
-    - is_after_hammer
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer

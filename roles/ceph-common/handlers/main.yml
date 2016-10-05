@@ -9,7 +9,7 @@
     - socket.rc == 0
     - ansible_distribution != 'Ubuntu'
     - mon_group_name in group_names
-    - is_before_infernalis
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
 
 - name: restart ceph mons with systemd
   service:
@@ -19,7 +19,7 @@
     - socket.rc == 0
     - use_systemd
     - mon_group_name in group_names
-    - is_after_hammer
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
 
 - name: restart ceph mons on ubuntu
   command: initctl restart ceph-mon cluster={{ cluster }} id={{ monitor_name }}
@@ -35,7 +35,7 @@
     - socket.rc == 0
     - ansible_distribution != 'Ubuntu'
     - osd_group_name in group_names
-    - is_before_infernalis
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
 
 # This does not just restart OSDs but everything else too. Unfortunately
 # at this time the ansible role does not have an OSD id list to use
@@ -48,7 +48,7 @@
     - socket.rc == 0
     - use_systemd
     - osd_group_name in group_names
-    - is_after_hammer
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
 
 - name: restart ceph osds on ubuntu
   shell: |
@@ -76,7 +76,7 @@
     - ansible_distribution != 'Ubuntu'
     - use_systemd
     - mds_group_name in group_names
-    - is_before_infernalis
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
 
 - name: restart ceph mdss with systemd
   service:
@@ -86,7 +86,7 @@
     - socket.rc == 0
     - use_systemd
     - mds_group_name in group_names
-    - is_after_hammer
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
 
 - name: restart ceph rgws on ubuntu
   command: initctl restart radosgw cluster={{ cluster }} id=rgw.{{ ansible_hostname }}
@@ -102,7 +102,7 @@
     - socketrgw.rc == 0
     - ansible_distribution != 'Ubuntu'
     - rgw_group_name in group_names
-    - is_before_infernalis
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
 
 - name: restart ceph rgws on red hat
   command: /etc/init.d/ceph-radosgw restart
@@ -110,7 +110,7 @@
     - socketrgw.rc == 0
     - ansible_os_family == 'RedHat'
     - rgw_group_name in group_names
-    - is_before_infernalis
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
 
 - name: restart ceph rgws with systemd
   service:
@@ -120,7 +120,7 @@
     - socketrgw.rc == 0
     - use_systemd
     - rgw_group_name in group_names
-    - is_after_hammer
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
 
 - name: restart apache2
   service:
