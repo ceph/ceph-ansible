@@ -39,8 +39,21 @@
     default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
   when: mds_group_name in group_names
 
-- name: install NFS gateway
+- name: install jemalloc
   apt:
+    pkg: libjemalloc1
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    update_cache: yes
+  when: nfs_group_name in group_names
+
+- name: install jemalloc
+  apt:
+    pkg: libjemalloc1
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    update_cache: yes
+  when: nfs_group_name in group_names
+
+- name: install NFS gateway  apt:
     pkg: nfs-ganesha
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
     update_cache: yes
