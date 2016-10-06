@@ -13,6 +13,7 @@
 
 - name: confirm whether user really meant to purge the cluster
   hosts: localhost
+  gather_facts: false
 
   vars_prompt:
     - name: ireallymeanit
@@ -30,54 +31,244 @@
          invoking the playbook"
     when: ireallymeanit != 'yes'
 
-- name: stop ceph cluster
-  hosts:
-    - mons
-    - osds
-    - mdss
-    - rgws
-    - nfss
 
-  become: yes
+- name: gather facts and check if using systemd
+
+  vars:
+    mon_group_name:       mons
+    osd_group_name:       osds
+    mds_group_name:       mdss
+    rgw_group_name:       rgws
+    rbdmirror_group_name: rbdmirrors
+    nfs_group_name:       nfss
+
+  hosts:
+    - "{{ mon_group_name }}"
+    - "{{ osd_group_name }}"
+    - "{{ mds_group_name }}"
+    - "{{ rgw_group_name }}"
+    - "{{ rbdmirror_group_name }}"
+    - "{{ nfs_group_name }}"
+
+  become: true
+
+  tasks:
+  - name: are we using systemd
+    shell: "if [ -d /usr/lib/systemd ] ; then find /usr/lib/systemd/system -name 'ceph*' | wc -l ; else echo 0 ; fi"
+    register: systemd_unit_files
+
+
+- name: purge ceph mds cluster
+
+  vars:
+    mds_group_name: mdss
+
+  hosts:
+    - "{{ mds_group_name }}"
+
+  gather_facts: false # Already gathered previously
+
+  become: true
+
+  tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../roles/ceph-mds/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/mdss
+    failed_when: false
+
+  - name: stop ceph.target with systemd
+    service:
+      name: ceph.target
+      state: stopped
+      enabled: no
+    when:
+      ansible_os_family == 'RedHat' and
+      systemd_unit_files.stdout != "0"
+
+  - name: stop ceph mdss with systemd
+    service:
+      name: ceph-mds@{{ ansible_hostname }}
+      state: stopped
+      enabled: no
+    when:
+      ansible_os_family == 'RedHat' and
+      systemd_unit_files.stdout != "0"
+
+  - name: stop ceph mdss
+    shell: "service ceph status mds ; if [ $? == 0 ] ; then service ceph stop mds ; else echo ; fi"
+    when:
+      ansible_os_family == 'RedHat'
+
+# Ubuntu 14.04
+  - name: stop ceph mdss on ubuntu
+    command: initctl stop ceph-mds cluster={{ cluster }} id={{ ansible_hostname }}
+    failed_when: false
+    when:
+      ansible_distribution == 'Ubuntu'
+
+
+- name: purge ceph rgw cluster
+
+  vars:
+    rgw_group_name: rgws
+
+  hosts:
+    - "{{ rgw_group_name }}"
+
+  gather_facts: false # Already gathered previously
+
+  become: true
+
+  tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../roles/ceph-rgw/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/rgws
+    failed_when: false
+
+  - name: stop ceph.target with systemd
+    service:
+      name: ceph.target
+      state: stopped
+      enabled: no
+    when:
+      ansible_os_family == 'RedHat' and
+      systemd_unit_files.stdout != "0"
+
+  - name: stop ceph rgws with systemd
+    service:
+      name: ceph-radosgw@rgw.{{ ansible_hostname }}
+      state: stopped
+      enabled: no
+    when:
+      ansible_os_family == 'RedHat' and
+      systemd_unit_files.stdout != "0"
+
+  - name: stop ceph rgws
+    shell: "service ceph-radosgw status ; if [ $? == 0 ] ; then service ceph-radosgw stop ; else echo ; fi"
+    when:
+      ansible_os_family == 'RedHat'
+
+# Ubuntu 14.04
+  - name: stop ceph rgws on ubuntu
+    command: initctl stop radosgw cluster={{ cluster }} id={{ ansible_hostname }}
+    failed_when: false
+    when:
+      ansible_distribution == 'Ubuntu'
+
+
+- name: purge ceph rbd-mirror cluster
+
+  vars:
+    rbdmirror_group_name: rbdmirrors
+
+  hosts:
+    - "{{ rbdmirror_group_name }}"
+
+  gather_facts: false # Already gathered previously
+
+  become: true
+
+  tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../roles/ceph-rbd-mirror/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/rbd-mirrors
+    failed_when: false
+
+  - name: stop ceph.target with systemd
+    service:
+      name: ceph.target
+      state: stopped
+      enabled: no
+    when:
+      ansible_os_family == 'RedHat' and
+      systemd_unit_files.stdout != "0"
+
+  - name: stop ceph rbd mirror with systemd
+    service:
+      name: ceph-rbd-mirror@admin.service
+      state: stopped
+    when:
+      ansible_os_family == 'RedHat' and
+      systemd_unit_files.stdout != "0"
+
+# Ubuntu 14.04
+  - name: stop ceph rbd mirror on ubuntu
+    command: initctl stop ceph-rbd-mirorr cluster={{ cluster }} id=admin
+    failed_when: false
+    when:
+      ansible_distribution == 'Ubuntu'
+
+
+- name: purge ceph nfs cluster
+
+  vars:
+    nfs_group_name: nfss
+
+  hosts:
+    - "{{ nfs_group_name }}"
+
+  gather_facts: false # Already gathered previously
+
+  become: true
+
+  tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../roles/ceph-nfs/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/nfss
+    failed_when: false
+
+  - name: stop ceph.target with systemd
+    service:
+      name: ceph.target
+      state: stopped
+      enabled: no
+    when:
+      ansible_os_family == 'RedHat' and
+      systemd_unit_files.stdout != "0"
+
+  - name: stop ceph nfss with systemd
+    service:
+      name: nfs-ganesha
+      state: stopped
+    when:
+      ansible_os_family == 'RedHat' and
+      systemd_unit_files.stdout != "0"
+
+  - name: stop ceph nfss
+    shell: "service nfs-ganesha status ; if [ $? == 0 ] ; then service nfs-ganesha stop ; else echo ; fi"
+    when:
+      ansible_os_family == 'RedHat'
+
+# Ubuntu 14.04
+  - name: stop ceph nfss on ubuntu
+    command: initctl stop nfs-ganesha
+    failed_when: false
+    when:
+      ansible_distribution == 'Ubuntu'
+
+
+- name: purge ceph osd cluster
 
   vars:
     osd_group_name: osds
-    mon_group_name: mons
-    rgw_group_name: rgws
-    mds_group_name: mdss
-    nfs_group_name: nfss
-    rbdmirror_group_name: rbdmirrors
-
-# When set to true both groups of packages are purged.
-# This can cause problem with qemu-kvm
-    purge_all_packages: true
 
 # When set to true and raw _multi_journal is used then block devices are also zapped
     zap_block_devs: true
 
-    ceph_packages:
-      - ceph
-      - ceph-common
-      - ceph-fs-common
-      - ceph-fuse
-      - ceph-mds
-      - ceph-release
-      - ceph-radosgw
+  hosts:
+    - "{{ osd_group_name }}"
 
-    ceph_remaining_packages:
-      - libcephfs1
-      - librados2
-      - libradosstriper1
-      - librbd1
-      - python-cephfs
-      - python-rados
-      - python-rbd
+  gather_facts: false # Already gathered previously
 
-    cluster: ceph # name of the cluster
-    monitor_name: "{{ ansible_hostname }}"
-    mds_name: "{{ ansible_hostname }}"
-    osd_auto_discovery: false
-
+  become: true
 
   handlers:
   - name: restart machine
@@ -96,11 +287,17 @@
      state: absent
 
   tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../roles/ceph-osd/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/osds
+    failed_when: false
+
   - name: check for a device list
     fail:
       msg: "OSD automatic discovery was detected, purge cluster does not support this scenario. If you want to purge the cluster, manually provide the list of devices in group_vars/osds using the devices variable."
     when:
-      osd_group_name in group_names and
       devices is not defined and
       osd_auto_discovery
 
@@ -108,12 +305,6 @@
     shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi"
     register: osd_ids
     changed_when: false
-
-  - name: are we using systemd
-    shell: "if [ -d /usr/lib/systemd ] ; then find /usr/lib/systemd/system -name 'ceph*' | wc -l ; else echo 0 ; fi"
-    register: systemd_unit_files
-
-# after Hammer release
 
   - name: stop ceph.target with systemd
     service:
@@ -132,54 +323,7 @@
     with_items: "{{ osd_ids.stdout_lines }}"
     when:
       ansible_os_family == 'RedHat' and
-      systemd_unit_files.stdout != "0" and
-      osd_group_name in group_names
-
-  - name: stop ceph mons with systemd
-    service:
-      name: ceph-mon@{{ ansible_hostname }}
-      state: stopped
-      enabled: no
-    when:
-      ansible_os_family == 'RedHat' and
-      systemd_unit_files.stdout != "0" and
-      mon_group_name in group_names
-
-  - name: stop ceph mdss with systemd
-    service:
-      name: ceph-mds@{{ ansible_hostname }}
-      state: stopped
-    when:
-      ansible_os_family == 'RedHat' and
-      systemd_unit_files.stdout != "0" and
-      mds_group_name in group_names
-
-  - name: stop ceph rgws with systemd
-    service:
-      name: ceph-radosgw@rgw.{{ ansible_hostname }}
-      state: stopped
-    when:
-      ansible_os_family == 'RedHat' and
-      systemd_unit_files.stdout != "0" and
-      rgw_group_name in group_names
-
-  - name: stop ceph nfss with systemd
-    service:
-      name: nfs-ganesha
-      state: stopped
-    when:
-      ansible_os_family == 'RedHat' and
-      systemd_unit_files.stdout != "0" and
-      nfs_group_name in group_names
-
-  - name: stop ceph rbd mirror with systemd
-    service:
-      name: ceph-rbd-mirror@admin.service
-      state: stopped
-    when:
-      ansible_os_family == 'RedHat' and
-      systemd_unit_files.stdout != "0" and
-      rbdmirror_group_name in group_names
+      systemd_unit_files.stdout != "0"
 
 # before infernalis release, using sysvinit scripts
 # we use this test so we do not have to know which RPM contains the boot script
@@ -188,32 +332,7 @@
   - name: stop ceph osds
     shell: "service ceph status osd ; if [ $? == 0 ] ; then service ceph stop osd ; else echo ; fi"
     when:
-      ansible_os_family == 'RedHat' and
-      osd_group_name in group_names
-
-  - name: stop ceph mons
-    shell: "service ceph status mon ; if [ $? == 0 ] ; then service ceph stop mon ; else echo ; fi"
-    when:
-      ansible_os_family == 'RedHat' and
-      mon_group_name in group_names
-
-  - name: stop ceph mdss
-    shell: "service ceph status mds ; if [ $? == 0 ] ; then service ceph stop mds ; else echo ; fi"
-    when:
-      ansible_os_family == 'RedHat' and
-      mds_group_name in group_names
-
-  - name: stop ceph rgws
-    shell: "service ceph-radosgw status ; if [ $? == 0 ] ; then service ceph-radosgw stop ; else echo ; fi"
-    when:
-      ansible_os_family == 'RedHat' and
-      rgw_group_name in group_names
-
-  - name: stop ceph nfss
-    shell: "service nfs-ganesha status ; if [ $? == 0 ] ; then service nfs-ganesha stop ; else echo ; fi"
-    when:
-      ansible_os_family == 'RedHat' and
-      nfs_group_name in group_names
+      ansible_os_family == 'RedHat'
 
 # Ubuntu 14.04
   - name: stop ceph osds on ubuntu
@@ -223,49 +342,8 @@
       done
     failed_when: false
     when:
-      ansible_distribution == 'Ubuntu' and
-      osd_group_name in group_names
+      ansible_distribution == 'Ubuntu'
     with_items: "{{ osd_ids.stdout_lines }}"
-
-  - name: stop ceph mons on ubuntu
-    command: initctl stop ceph-mon cluster={{ cluster }} id={{ monitor_name }}
-    failed_when: false
-    when:
-      ansible_distribution == 'Ubuntu' and
-      mon_group_name in group_names
-
-  - name: stop ceph mdss on ubuntu
-    command: initctl stop ceph-mds cluster={{ cluster }} id={{ mds_name }}
-    failed_when: false
-    when:
-      ansible_distribution == 'Ubuntu' and
-      mds_group_name in group_names
-
-  - name: stop ceph rgws on ubuntu
-    command: initctl stop radosgw cluster={{ cluster }} id={{ ansible_hostname }}
-    failed_when: false
-    when:
-      ansible_distribution == 'Ubuntu' and
-      rgw_group_name in group_names
-
-  - name: stop ceph nfss on ubuntu
-    command: initctl stop nfs-ganesha
-    failed_when: false
-    when:
-      ansible_distribution == 'Ubuntu' and
-      nfs_group_name in group_names
-
-  - name: stop ceph rbd mirror on ubuntu
-    command: initctl stop ceph-rbd-mirorr cluster={{ cluster }} id=admin
-    failed_when: false
-    when:
-      ansible_distribution == 'Ubuntu' and
-      rbdmirror_group_name in group_names
-
-  - name: check for anything running ceph
-    shell: "ps awux | grep -- /usr/bin/[c]eph-"
-    register: check_for_running_ceph
-    failed_when: check_for_running_ceph.rc == 0
 
   - name: see if ceph-disk-created data partitions are present
     shell: |
@@ -291,20 +369,14 @@
     shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
     register: mounted_osd
     changed_when: false
-    when:
-      osd_group_name in group_names
 
   - name: drop all cache
     shell: "sync && sleep 1 && echo 3 > /proc/sys/vm/drop_caches"
-    when:
-      osd_group_name in group_names
 
   - name: umount osd data partition
     shell: umount {{ item }}
     with_items:
      - "{{ mounted_osd.stdout_lines }}"
-    when:
-     osd_group_name in group_names
 
   - name: remove osd mountpoint tree
     file:
@@ -312,15 +384,6 @@
       state: absent
     register: remove_osd_mountpoints
     ignore_errors: true
-    when:
-      osd_group_name in group_names
-
-  - name: remove monitor store and bootstrap keys
-    file:
-      path: /var/lib/ceph/
-      state: absent
-    when:
-      mon_group_name in group_names
 
   - name: is reboot needed
     local_action: shell echo requesting reboot
@@ -330,7 +393,6 @@
       - wait for server to boot
       - remove data
     when:
-      osd_group_name in group_names and
       remove_osd_mountpoints.failed is defined
 
   - name: see if ceph-disk is installed
@@ -342,7 +404,6 @@
     shell: ceph-disk zap "{{ item }}"
     with_items: "{{ devices | default([]) }}"
     when:
-     osd_group_name in group_names and
      ceph_disk_present.rc == 0 and
      ceph_data_partlabels.rc == 0 and
      zap_block_devs
@@ -361,9 +422,122 @@
       sgdisk --delete $partition_nb $raw_device
     with_items: "{{ceph_journal_partition_to_erase_path.stdout_lines}}"
     when:
-      osd_group_name in group_names and
       ceph_journal_partlabels.rc == 0 and
       zap_block_devs
+
+
+- name: purge ceph mon cluster
+
+  vars:
+    mon_group_name: mons
+
+  hosts:
+    - "{{ mon_group_name }}"
+
+  gather_facts: false # Already gathered previously
+
+  become: true
+
+  tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../roles/ceph-mon/defaults/main.yml
+  - include_vars: ../roles/ceph-restapi/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/mons
+    failed_when: false
+  - include_vars: ../group_vars/restapis
+    failed_when: false
+
+  - name: stop ceph.target with systemd
+    service:
+      name: ceph.target
+      state: stopped
+      enabled: no
+    when:
+      ansible_os_family == 'RedHat' and
+      systemd_unit_files.stdout != "0"
+
+  - name: stop ceph mons with systemd
+    service:
+      name: ceph-mon@{{ ansible_hostname }}
+      state: stopped
+      enabled: no
+    when:
+      ansible_os_family == 'RedHat' and
+      systemd_unit_files.stdout != "0"
+
+  - name: stop ceph mons
+    shell: "service ceph status mon ; if [ $? == 0 ] ; then service ceph stop mon ; else echo ; fi"
+    when:
+      ansible_os_family == 'RedHat'
+
+  - name: stop ceph mons on ubuntu
+    command: initctl stop ceph-mon cluster={{ cluster }} id={{ ansible_hostname }}
+    failed_when: false
+    when:
+      ansible_distribution == 'Ubuntu'
+
+  - name: remove monitor store and bootstrap keys
+    file:
+      path: /var/lib/ceph/
+      state: absent
+
+- name: final cleanup - check any running ceph, purge ceph packages, purge config and remove data
+
+  vars:
+    mon_group_name:       mons
+    osd_group_name:       osds
+    mds_group_name:       mdss
+    rgw_group_name:       rgws
+    rbdmirror_group_name: rbdmirrors
+    nfs_group_name:       nfss
+
+# When set to true both groups of packages are purged.
+# This can cause problem with qemu-kvm
+    purge_all_packages: true
+
+    ceph_packages:
+      - ceph
+      - ceph-common
+      - ceph-fs-common
+      - ceph-fuse
+      - ceph-mds
+      - ceph-release
+      - ceph-radosgw
+
+    ceph_remaining_packages:
+      - libcephfs1
+      - librados2
+      - libradosstriper1
+      - librbd1
+      - python-cephfs
+      - python-rados
+      - python-rbd
+
+  hosts:
+    - "{{ mon_group_name }}"
+    - "{{ osd_group_name }}"
+    - "{{ mds_group_name }}"
+    - "{{ rgw_group_name }}"
+    - "{{ rbdmirror_group_name }}"
+    - "{{ nfs_group_name }}"
+
+  gather_facts: false # Already gathered previously
+
+  become: true
+
+  handlers:
+  - name: remove data
+    file:
+     path: /var/lib/ceph
+     state: absent
+
+  tasks:
+  - name: check for anything running ceph
+    shell: "ps awux | grep -- /usr/bin/[c]eph-"
+    register: check_for_running_ceph
+    failed_when: check_for_running_ceph.rc == 0
 
   - name: purge ceph packages with yum
     yum:
@@ -474,3 +648,35 @@
       state: absent
     when:
       ansible_os_family == 'RedHat'
+
+
+- name: purge fetch directory
+
+  hosts:
+    - localhost
+
+  gather_facts: false
+
+  tasks:
+  - include_vars: ../roles/ceph-common/defaults/main.yml
+  - include_vars: ../group_vars/all
+    failed_when: false
+  - include_vars: ../group_vars/mdss
+    failed_when: false
+  - include_vars: ../group_vars/rgws
+    failed_when: false
+  - include_vars: ../group_vars/rbd-mirrors
+    failed_when: false
+  - include_vars: ../group_vars/nfss
+    failed_when: false
+  - include_vars: ../group_vars/osds
+    failed_when: false
+  - include_vars: ../group_vars/mons
+    failed_when: false
+  - include_vars: ../group_vars/restapis
+    failed_when: false
+
+  - name: purge fetch directory for localhost
+    file:
+      path: "{{ fetch_directory }}"
+      state: absent
