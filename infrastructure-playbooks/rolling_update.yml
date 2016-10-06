@@ -28,11 +28,17 @@
          invoking the playbook"
     when: ireallymeanit != 'yes'
 
-- hosts:
-  - mons
-  - osds
-  - mdss
-  - rgws
+vars:
+  mon_group_name:       mons
+  osd_group_name:       osds
+  mds_group_name:       mdss
+  rgw_group_name:       rgws
+
+hosts:
+  - "{{ mon_group_name }}"
+  - "{{ osd_group_name }}"
+  - "{{ mds_group_name }}"
+  - "{{ rgw_group_name }}"
 
   become: True
   tasks:
@@ -53,20 +59,33 @@
       register: is_systemd
 
 
-- hosts: mons
-  serial: 1
-  become: True
+- name: upgrade ceph mon cluster
+
   vars:
-    upgrade_ceph_packages: True
-    mon_group_name: mons
     health_mon_check_retries: 5
     health_mon_check_delay: 10
+
+  hosts:
+    - "{{ mon_group_name }}"
+
+  serial: 1
+  become: True
 
   roles:
     - ceph-common
     - ceph-mon
 
   post_tasks:
+    - include_vars: ../roles/ceph-common/defaults/main.yml
+    - include_vars: ../roles/ceph-mon/defaults/main.yml
+    - include_vars: ../roles/ceph-restapi/defaults/main.yml
+    - include_vars: ../group_vars/all
+      failed_when: false
+    - include_vars: ../group_vars/mons
+      failed_when: false
+    - include_vars: ../group_vars/restapis
+      failed_when: false
+
     - name: restart ceph mons with upstart
       service:
         name: ceph-mon
@@ -102,16 +121,27 @@
       delegate_to: "{{ mon_host }}"
 
 
-- hosts: osds
-  serial: 1
-  become: True
+- name: upgrade ceph osds cluster
+
   vars:
-    upgrade_ceph_packages: True
     osd_group_name: osds
     health_osd_check_retries: 10
     health_osd_check_delay: 10
 
+  hosts:
+    - "{{ osd_group_name }}"
+
+  serial: 1
+  become: True
+
   pre_tasks:
+    - include_vars: ../roles/ceph-common/defaults/main.yml
+    - include_vars: ../roles/ceph-osd/defaults/main.yml
+    - include_vars: ../group_vars/all
+      failed_when: false
+    - include_vars: ../group_vars/osds
+      failed_when: false
+
     - name: set osd flags
       command: ceph osd set {{ item }} --cluster {{ cluster }}
       with_items:
@@ -125,6 +155,13 @@
     - ceph-osd
 
   post_tasks:
+    - include_vars: ../roles/ceph-common/defaults/main.yml
+    - include_vars: ../roles/ceph-osd/defaults/main.yml
+    - include_vars: ../group_vars/all
+      failed_when: false
+    - include_vars: ../group_vars/osds
+      failed_when: false
+
     - name: get osd numbers
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi"
       register: osd_ids
@@ -168,18 +205,29 @@
       delegate_to: "{{ groups.mons[0] }}"
 
 
-- hosts: mdss
+- name: upgrade ceph mdss cluster
+
+  vars:
+    mds_group_name: mdss
+
+  hosts:
+    - "{{ mds_group_name }}"
+
   serial: 1
   become: True
-  vars:
-    upgrade_ceph_packages: True
-    mds_group_name: mdss
 
   roles:
     - ceph-common
     - ceph-mds
 
   post_tasks:
+    - include_vars: ../roles/ceph-common/defaults/main.yml
+    - include_vars: ../roles/ceph-mds/defaults/main.yml
+    - include_vars: ../group_vars/all
+      failed_when: false
+    - include_vars: ../group_vars/mdss
+      failed_when: false
+
     - name: restart ceph mdss with upstart
       service:
         name: ceph-mds
@@ -201,18 +249,30 @@
         enabled: yes
       when: is_systemd
 
-- hosts: rgws
+
+- name: upgrade ceph rgws cluster
+
+  vars:
+    rgw_group_name: rgws
+
+  hosts:
+    - "{{ rgw_group_name }}"
+
   serial: 1
   become: True
-  vars:
-    upgrade_ceph_packages: True
-    rgw_group_name: rgws
 
   roles:
     - ceph-common
     - ceph-rgw
 
   post_tasks:
+    - include_vars: ../roles/ceph-common/defaults/main.yml
+    - include_vars: ../roles/ceph-rgw/defaults/main.yml
+    - include_vars: ../group_vars/all
+      failed_when: false
+    - include_vars: ../group_vars/rgws
+      failed_when: false
+
     - name: restart ceph rgws with systemd
       service:
         name: ceph-radosgw@rgw.{{ ansible_hostname }}
