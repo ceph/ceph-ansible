@@ -11,7 +11,7 @@ for role in "$basedir"/roles/ceph-*; do
   elif [[ $rolename == "ceph-agent" ]]; then
       output="agent.sample"
   elif [[ $rolename == "ceph-fetch-keys" ]]; then
-      continue
+      output="ceph-fetch-keys.sample"
   else
       output="${rolename:5}s.sample"
   fi
