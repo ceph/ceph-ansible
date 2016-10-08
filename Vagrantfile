@@ -9,7 +9,7 @@ DEBUG = false
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
 settings=YAML.load_file(config_file)
 
-LABEL_PREFIX   = settings['label_prefix'] ? settings['label_prefix'] : ""
+LABEL_PREFIX   = settings['label_prefix'] ? settings['label_prefix'] + "-" : ""
 NMONS          = settings['mon_vms']
 NOSDS          = settings['osd_vms']
 NMDSS          = settings['mds_vms']
@@ -29,14 +29,6 @@ STORAGECTL     = settings['vagrant_storagectl']
 ETH            = settings['eth']
 DOCKER         = settings['docker']
 USER           = settings['ssh_username']
-
-if BOX == 'openstack'
-  require 'vagrant-openstack-provider'
-  if not USER then
-    USER = settings['os_ssh_username']
-  end
-  LABEL_PREFIX = "#{USER}-"
-end
 
 ASSIGN_STATIC_IP = !(BOX == 'openstack' or BOX == 'linode')
 
@@ -162,8 +154,15 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       os.image = settings['os_image']
       os.keypair_name = settings['os_keypair_name']
       os.security_groups = ['default']
-      os.networks = settings['os_networks']
-      os.floating_ip_pool = settings['os_floating_ip_pool']
+
+      if settings['os.networks'] then
+        os.networks = settings['os_networks']
+      end
+
+      if settings['os.floating_ip_pool'] then
+        os.floating_ip_pool = settings['os_floating_ip_pool']
+      end
+
       config.vm.provision "shell", inline: "true", upload_path: "/home/#{USER}/vagrant-shell"
     end
   elsif BOX == 'linode'
