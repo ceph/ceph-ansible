@@ -58,7 +58,7 @@
   copy:
     src: "{{ansible_dir}}/rundep"
     dest: "{{ item }}"
-  with_items: "{{ rundep_location }}.stdout_lines"
+  with_items: "{{ (rundep_location|default({})).stdout_lines|default([]) }}"
   when:
     - ceph_origin == 'local'
     - use_installer
@@ -66,7 +66,7 @@
 - name: install ceph dependencies
   script: "{{ ansible_dir }}/rundep_installer.sh {{ item }}"
   become: true
-  with_items: "{{ rundep_location }}.stdout_lines"
+  with_items: "{{ (rundep_location|default({})).stdout_lines|default([]) }}"
   when:
     - ceph_origin == 'local'
     - use_installer
