@@ -1,0 +1,24 @@
+---
+- name: check rbd pool usage
+  shell: |
+    ceph --connect-timeout 5 --cluster {{ cluster }} df | awk '/rbd/ {print $3}'
+  changed_when: false
+  failed_when: false
+  register: rbd_pool_df
+
+- name: check pg num for rbd pool
+  shell: |
+    ceph --connect-timeout 5 --cluster {{ cluster }} osd pool get rbd pg_num | awk '{print $2}'
+  changed_when: false
+  failed_when: false
+  register: rbd_pool_pgs
+
+- name: destroy and recreate rbd pool if osd_pool_default_pg_num is not honoured
+  shell: |
+    ceph --connect-timeout 5 --cluster {{ cluster }} osd pool rm rbd rbd --yes-i-really-really-mean-it
+    ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create rbd {{ ceph_conf_overrides.global.osd_pool_default_pg_num }}
+  changed_when: false
+  failed_when: false
+  when:
+    - rbd_pool_df.stdout == "0"
+    - rbd_pool_pgs.stdout != "{{ ceph_conf_overrides.global.osd_pool_default_pg_num }}"
