@@ -64,14 +64,6 @@ ansible_provision = proc do |ansible|
       journal_size: 100,
       public_network: "#{PUBLIC_SUBNET}.0/24",
   }
-  if settings['ceph_install_source'] == 'dev' then
-    ansible.extra_vars['ceph_dev'] = true
-    if settings['ceph_install_branch'] then
-      ansible.extra_vars['ceph_dev_branch'] = settings['ceph_install_branch']
-    end
-  else
-    ansible.extra_vars['ceph_stable'] = true
-  end
 
   # In a production deployment, these should be secret
   if DOCKER then
