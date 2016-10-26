@@ -10,7 +10,7 @@
     - docker.io
   when: ansible_distribution == 'Ubuntu'
   tags:
-    with_pkg
+    - with_pkg
 
 - name: install pip and docker on debian
   apt:
@@ -22,7 +22,7 @@
     - docker-engine
   when: ansible_distribution == 'Debian'
   tags:
-    with_pkg
+    - with_pkg
 
 - name: install epel-release on redhat
   yum:
@@ -30,7 +30,7 @@
     state: present
   when: ansible_os_family == 'RedHat'
   tags:
-    with_pkg
+    - with_pkg
 
 - name: install pip on redhat
   yum:
@@ -42,7 +42,7 @@
     - ansible_os_family == 'RedHat'
     - ansible_pkg_mgr == "yum"
   tags:
-    with_pkg
+    - with_pkg
 
 - name: enable extras repo for centos
   ini_file:
@@ -52,7 +52,7 @@
     value: 1
   when: ansible_distribution == 'CentOS'
   tags:
-    with_pkg
+    - with_pkg
 
 - name: install docker-engine on redhat
   yum:
@@ -64,7 +64,7 @@
     - ansible_os_family == 'RedHat'
     - ansible_pkg_mgr == "yum"
   tags:
-    with_pkg
+    - with_pkg
   failed_when: false
 
 # for CentOS
@@ -78,7 +78,7 @@
     - ansible_os_family == 'RedHat'
     - ansible_pkg_mgr == "yum"
   tags:
-    with_pkg
+    - with_pkg
   failed_when: false
 
 - name: install pip and docker on redhat
@@ -93,7 +93,7 @@
     - ansible_os_family == 'RedHat'
     - ansible_pkg_mgr == "dnf"
   tags:
-    with_pkg
+    - with_pkg
 
 
 # NOTE (jimcurtis): need at least version 1.9.0 of six or we get:
@@ -103,13 +103,13 @@
     name: six
     version: 1.9.0
   tags:
-    with_pkg
+    - with_pkg
 
 - name: pause after docker install before starting (on openstack vms)
   pause: seconds=5
   when: ceph_docker_on_openstack
   tags:
-    with_pkg
+    - with_pkg
 
 - name: start docker service
   service:
@@ -117,7 +117,7 @@
     state: started
     enabled: yes
   tags:
-    with_pkg
+    - with_pkg
 
 # NOTE (leseb): for version 1.1.0 because https://github.com/ansible/ansible-modules-core/issues/1227
 - name: install docker-py
@@ -125,7 +125,7 @@
     name: docker-py
     version: 1.1.0
   tags:
-    with_pkg
+    - with_pkg
   when: ansible_version['full'] | version_compare('2.1.0.0', '<')
  
 - name: install docker-py
@@ -133,7 +133,7 @@
     name: docker-py
     state: latest
   tags:
-    with_pkg
+    - with_pkg
   when: ansible_version['full'] | version_compare('2.1.0.0', '>=')
 
 - name: install ntp on redhat using yum
@@ -145,7 +145,7 @@
     - ansible_pkg_mgr == 'yum'
     - ntp_service_enabled
   tags:
-    with_pkg
+    - with_pkg
 
 - name: install ntp on redhat using dnf
   dnf:
@@ -156,7 +156,7 @@
     - ansible_pkg_mgr == 'dnf'
     - ntp_service_enabled
   tags:
-    with_pkg
+    - with_pkg
 
 - name: install ntp on debian
   apt:
@@ -166,4 +166,4 @@
     - ansible_os_family == 'Debian'
     - ntp_service_enabled
   tags:
-    with_pkg
+    - with_pkg
