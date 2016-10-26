@@ -453,7 +453,7 @@
     - fail: msg="Looks like an archive is already there, please remove it!"
       when: migration_completed.stat.exists == False and rgw_archive_leftover.stat.exists == True
 
-   - name: Archive rados gateway configs
+    - name: Archive rados gateway configs
       shell: >
         tar -cpvzf - --one-file-system . /etc/ceph/* /etc/apache2/* | cat > {{ ansible_hostname }}.tar
         chdir=/var/lib/ceph/
@@ -523,7 +523,9 @@
       when: migration_completed.stat.exists == False
 
     - name: Copy keys and configs
-      shell: {{ item }} chdir=/var/lib/ceph/
+      shell: >
+        {{ item }}
+        chdir=/var/lib/ceph/
       with_items:
         - cp etc/ceph/* /etc/ceph/
         - cp -r etc/apache2/* /etc/httpd/
