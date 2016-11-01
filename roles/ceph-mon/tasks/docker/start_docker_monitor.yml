@@ -78,14 +78,19 @@
   when: ansible_os_family == 'RedHat'
 
 - name: run the ceph monitor docker image
-  docker:
-    image: "{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}:{{ ceph_mon_docker_image_tag }}"
-    name: "{{ ansible_hostname }}"
-    net: "host"
-    state: "running"
-    privileged: "{{ mon_docker_privileged }}"
-    env: "MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},CEPH_FSID={{ fsid }},{{ ceph_mon_extra_envs }}"
-    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
+  shell: >
+         docker run -d \
+         --name "{{ ansible_hostname }}" \
+         --net "host" \
+         --privileged \
+         -e "MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }}" \
+         -e "CEPH_DAEMON=MON" \
+         -e "CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }}" \
+         -e "CEPH_FSID={{ fsid }}" \
+         -v "/var/lib/ceph:/var/lib/ceph" \
+         -v "/etc/ceph:/etc/ceph" \
+         -v "/etc/localtime:/etc/localtime:ro" \
+         "{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}:{{ ceph_mon_docker_image_tag }}"
   when:
     - ansible_os_family != 'RedHat'
     - ansible_os_family != 'CoreOS'

@@ -100,15 +100,20 @@
   when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
 
 - name: run the ceph osd docker image
-  docker:
-    image: "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}:{{ ceph_osd_docker_image_tag }}"
-    name: "{{ ansible_hostname }}-osd-{{ item | regex_replace('/', '') }}"
-    net: host
-    pid: host
-    state: started
-    privileged: yes
-    env: "OSD_DEVICE={{ item }},{{ ceph_osd_docker_extra_env }}"
-    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro,/dev:/dev,/run:/run"
+  shell: >
+         docker run -d \
+         --name "{{ ansible_hostname }}-osd-{{ item | regex_replace('/', '') }}" \
+         --net host \
+         --pid host \
+         --privileged \
+         -e "OSD_DEVICE={{ item }}" \
+         -e "{{ ceph_osd_docker_extra_env }}" \
+         -v "/var/lib/ceph:/var/lib/ceph" \
+         -v "/etc/ceph:/etc/ceph" \
+         -v "/etc/localtime:/etc/localtime:ro" \
+         -v "/dev:/dev" \
+         -v "/run:/run" \
+         "{{ ceph_osd_docker_username }}/{{ ceph_osd_docker_imagename }}:{{ ceph_osd_docker_image_tag }}"
   with_items: ceph_osd_docker_devices
   when:
     - ansible_os_family != 'RedHat'
