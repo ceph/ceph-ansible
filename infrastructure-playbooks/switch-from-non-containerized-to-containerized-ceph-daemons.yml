@@ -33,7 +33,7 @@
     osd_group_name:       osds
     mds_group_name:       mdss
     rgw_group_name:       rgws
-    rbdmirror_group_name: rbd_mirrors
+    rbdmirror_group_name: rbd-mirrors
     nfs_group_name:       nfss
 
   hosts:
@@ -48,7 +48,7 @@
 
   tasks:
 
-  - name: install docker and dependancies for the docker module
+  - name: install docker and dependencies for the docker module
     package:
       name: "{{ item }}"
       state: present
@@ -93,7 +93,8 @@
 - name: switching from non-containerized to containerized ceph mon
 
   vars:
-    mon_group_name: mons
+    mon_group_name:       mons    
+    restapi_group_name:   restapis
 
   hosts:
     - "{{ mon_group_name }}"
@@ -107,9 +108,9 @@
   - include_vars: roles/ceph-restapi/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/mons
+  - include_vars: group_vars/{{ mon_group_name }}
     failed_when: false
-  - include_vars: group_vars/restapis
+  - include_vars: group_vars/{{ restapi_group_name }}
     failed_when: false
 
   - name: select a running monitor
@@ -130,7 +131,7 @@
       enabled: no
 
   # NOTE(leseb): should we also create systemd files
-  # intead of running raw docker commands?
+  # instead of running raw docker commands?
   # It is probably more elegant but will require a template file...
   # which would make this single file playbook more complex
 
@@ -196,7 +197,7 @@
   - include_vars: roles/ceph-osd/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/osds
+  - include_vars: group_vars/{{ osd_group_name }}
     failed_when: false
 
   - name: collect osd ids
@@ -301,7 +302,7 @@
   - include_vars: roles/ceph-mds/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/mdss
+  - include_vars: group_vars/{{ mds_group_name }}
     failed_when: false
 
   - name: stop ceph mds service
@@ -361,7 +362,7 @@
   - include_vars: roles/ceph-rgw/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/rgws
+  - include_vars: group_vars/{{ rgw_group_name }}
     failed_when: false
 
   - name: stop ceph rgw service
@@ -409,7 +410,7 @@
 - name: switching from non-containerized to containerized ceph rbd-mirror
 
   vars:
-    rbdmirror_group_name: rbd_mirrors
+    rbdmirror_group_name: rbd-mirrors
 
   hosts:
     - "{{ rbdmirror_group_name }}"
@@ -422,7 +423,7 @@
   - include_vars: roles/ceph-rbd-mirror/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/rbd-mirrors
+  - include_vars: group_vars/{{ rbdmirror_group_name }}
     failed_when: false
 
   - name: stop ceph rbd mirror service
@@ -481,7 +482,7 @@
   - include_vars: roles/ceph-nfs/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/nfss
+  - include_vars: group_vars/{{ nfs_group_name }}
     failed_when: false
 
   - name: stop ceph nfs service
