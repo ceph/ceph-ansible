@@ -75,7 +75,7 @@
   - include_vars: roles/ceph-mds/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/mdss
+  - include_vars: group_vars/{{ mds_group_name }}
     failed_when: false
 
   - name: stop ceph.target with systemd
@@ -126,7 +126,7 @@
   - include_vars: roles/ceph-rgw/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/rgws
+  - include_vars: group_vars/{{ rgw_group_name }}
     failed_when: false
 
   - name: stop ceph.target with systemd
@@ -177,7 +177,7 @@
   - include_vars: roles/ceph-rbd-mirror/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/rbd-mirrors
+  - include_vars: group_vars/{{ rbdmirror_group_name }}
     failed_when: false
 
   - name: stop ceph.target with systemd
@@ -222,7 +222,7 @@
   - include_vars: roles/ceph-nfs/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/nfss
+  - include_vars: group_vars/{{ nfs_group_name }}
     failed_when: false
 
   - name: stop ceph.target with systemd
@@ -291,12 +291,12 @@
   - include_vars: roles/ceph-osd/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/osds
+  - include_vars: group_vars/{{ osd_group_name }}
     failed_when: false
 
   - name: check for a device list
     fail:
-      msg: "OSD automatic discovery was detected, purge cluster does not support this scenario. If you want to purge the cluster, manually provide the list of devices in group_vars/osds using the devices variable."
+      msg: "OSD automatic discovery was detected, purge cluster does not support this scenario. If you want to purge the cluster, manually provide the list of devices in group_vars/{{ osd_group_name }} using the devices variable."
     when:
       devices is not defined and
       osd_auto_discovery
@@ -429,7 +429,8 @@
 - name: purge ceph mon cluster
 
   vars:
-    mon_group_name: mons
+    mon_group_name:       mons
+    restapi_group_name:   restapis
 
   hosts:
     - "{{ mon_group_name }}"
@@ -444,9 +445,9 @@
   - include_vars: roles/ceph-restapi/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/mons
+  - include_vars: group_vars/{{ mon_group_name }}
     failed_when: false
-  - include_vars: group_vars/restapis
+  - include_vars: group_vars/{{ restapi_group_name }}
     failed_when: false
 
   - name: stop ceph.target with systemd
@@ -652,6 +653,15 @@
 
 - name: purge fetch directory
 
+  vars:
+    mon_group_name:       mons
+    osd_group_name:       osds
+    mds_group_name:       mdss
+    rgw_group_name:       rgws
+    rbdmirror_group_name: rbdmirrors
+    nfs_group_name:       nfss
+    restapi_group_name:   restapis
+
   hosts:
     - localhost
 
@@ -661,19 +671,19 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: group_vars/all
     failed_when: false
-  - include_vars: group_vars/mdss
+  - include_vars: group_vars/{{ mds_group_name }}
     failed_when: false
-  - include_vars: group_vars/rgws
+  - include_vars: group_vars/{{ rgw_group_name }}
     failed_when: false
-  - include_vars: group_vars/rbd-mirrors
+  - include_vars: group_vars/{{ rbdmirror_group_name }}
     failed_when: false
-  - include_vars: group_vars/nfss
+  - include_vars: group_vars/{{ nfs_group_name }}
     failed_when: false
-  - include_vars: group_vars/osds
+  - include_vars: group_vars/{{ osd_group_name }}
     failed_when: false
-  - include_vars: group_vars/mons
+  - include_vars: group_vars/{{ mon_group_name }}
     failed_when: false
-  - include_vars: group_vars/restapis
+  - include_vars: group_vars/{{ restapi_group_name }}
     failed_when: false
 
   - name: purge fetch directory for localhost
