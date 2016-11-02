@@ -24,11 +24,20 @@ mon_initial_members = {% if groups[mon_group_name] is defined %}{% for host in g
 {% if monitor_address_block is defined %}
 mon host = {% for host in groups[mon_group_name] %}{{ hostvars[host]['ansible_all_ipv4_addresses'] | ipaddr(monitor_address_block) | first }}{% if not loop.last %},{% endif %}{% endfor %}
 {% elif groups[mon_group_name] is defined %}
-mon host = {% for host in groups[mon_group_name] %}{% for key in hostvars[host].iterkeys() %}{% if hostvars[host][key]['macaddress'] is defined and hostvars[host][key]['device'] is defined and hostvars[host][key]['device'] == monitor_interface %}{{ hostvars[host][key]['ipv4']['address'] }}{% endif %}{% endfor %}{% if not loop.last %},{% endif %}{% endfor %}
-{% elif (hostvars[host]['monitor_interface'] is defined and hostvars[host]['monitor_interface'] != "interface") or monitor_interface != "interface" %}
-{% include 'mon_addr_interface.j2' %}
-{% else %}
-{% include 'mon_addr_address.j2' %}
+mon host = {% for host in groups[mon_group_name] %}
+             {% set address = hostvars[host]['monitor_address'] if hostvars[host]['monitor_address'] is defined else monitor_address %}
+             {% set interface = hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface %}
+             {% if address != "0.0.0.0" -%}
+               {{ address }}
+             {%- else %}
+               {% for key in hostvars[host].iterkeys() %}
+                 {% if hostvars[host][key]['macaddress'] is defined and hostvars[host][key]['device'] is defined and hostvars[host][key]['device'] == interface -%}
+                    {{ hostvars[host][key]['ipv4']['address'] }}
+                 {%- endif %}
+               {% endfor %}
+             {% endif %}
+             {%- if not loop.last %},{% endif %}
+           {% endfor %}
 {% endif %}
 {% endif %}
 {% if mon_containerized_deployment %}
