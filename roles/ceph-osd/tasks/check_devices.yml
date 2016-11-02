@@ -22,7 +22,7 @@
 
 - name: check the partition status of the journal devices
   shell: "parted --script {{ item }} print > /dev/null 2>&1"
-  with_items: "{{ raw_journal_devices|default([])|unique }}"
+  with_items: "{{ raw_journal_devices|unique }}"
   changed_when: false
   failed_when: false
   register: journal_partition_status
@@ -32,7 +32,7 @@
   shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }}"
   with_together:
     - "{{ journal_partition_status.results }}"
-    - "{{ raw_journal_devices|default([])|unique }}"
+    - "{{ raw_journal_devices|unique }}"
   changed_when: false
   when:
     - raw_multi_journal
