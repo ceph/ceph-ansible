@@ -12,8 +12,6 @@
   changed_when: false
   failed_when: false
   register: osd_partition_status_results
-  when:
-    - journal_collocation or raw_multi_journal
 
 # NOTE: The following calls to sgdisk are retried because sgdisk is known to
 # fully wipe a device the first time around. There is no need to halt execution
@@ -26,9 +24,7 @@
     - "{{ osd_partition_status_results.results }}"
     - "{{ devices }}"
   changed_when: false
-  when:
-    - journal_collocation or raw_multi_journal
-    - item.0.rc != 0
+  when: item.0.rc != 0
 
 - name: check if a partition named 'ceph' exists
   shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"

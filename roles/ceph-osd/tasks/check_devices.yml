@@ -11,12 +11,16 @@
 # for SSD journals.
 
 - include: ./check_devices_static.yml
-  when: not osd_auto_discovery
+  when:
+    - not osd_auto_discovery
+    - not osd_directory
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
 - include: ./check_devices_auto.yml
-  when: osd_auto_discovery
+  when:
+    - osd_auto_discovery
+    - not osd_directory
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
@@ -26,7 +30,7 @@
   changed_when: false
   failed_when: false
   register: journal_partition_status
-  when: raw_multi_journal
+  when: raw_multi_journal or dmcrypt_dedicated_journal
 
 - name: fix partitions gpt header or labels of the journal devices
   shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }}"
@@ -35,5 +39,5 @@
     - "{{ raw_journal_devices|unique }}"
   changed_when: false
   when:
-    - raw_multi_journal
+    - raw_multi_journal or dmcrypt_dedicated_journal
     - item.0.rc != 0
