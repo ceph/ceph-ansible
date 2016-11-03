@@ -13,7 +13,7 @@ class TestMon(object):
     def get_line_from_config(self, string, conf_path):
         with open(conf_path) as ceph_conf:
             ceph_conf_lines = ceph_conf.readlines()
-            for line in ceph_conf:
+            for line in ceph_conf_lines:
                 if string in line:
                     return line
 
@@ -21,12 +21,12 @@ class TestMon(object):
     def test_ceph_config_has_inital_members_line(self, scenario_config):
         cluster_name = scenario_config.get('ceph', {}).get('cluster_name', 'ceph')
         ceph_conf_path = '/etc/ceph/%s.conf' % cluster_name
-        initial_members_line = self.get_line_from_config('mon_initial_members', ceph_conf_path)
+        initial_members_line = self.get_line_from_config('mon initial members', ceph_conf_path)
         assert initial_members_line
 
     @uses_mon_initial_members
     def test_initial_members_line_has_correct_value(self, scenario_config):
         cluster_name = scenario_config.get('ceph', {}).get('cluster_name', 'ceph')
         ceph_conf_path = '/etc/ceph/%s.conf' % cluster_name
-        initial_members_line = self.get_line_from_config('mon_initial_members', ceph_conf_path)
-        assert initial_members_line == 'mon_initial_members = mon0'
+        initial_members_line = self.get_line_from_config('mon initial members', ceph_conf_path)
+        assert initial_members_line == 'mon initial members = mon0'
