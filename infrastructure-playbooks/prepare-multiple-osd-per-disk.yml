@@ -1,0 +1,96 @@
+---
+# This playbook prepares any drives to host more than one OSD.
+# We know that currently a single OSD hosted on a NVMe can not take advantage of the entire device.
+# As a result, hosting multiple OSDs help taking the best out your NVMe drive.
+#
+# Use it like this:
+# ansible-playbook prepare-multiple-osd-per-disk.yml -e partition_size=10
+#     Prompts for confirmation to shrink, defaults to no and
+#     doesn't shrink the cluster. yes shrinks the cluster.
+#
+# ansible-playbook -e ireallymeanit=yes|no prepare-multiple-osd-per-disk.yml
+#     Overrides the prompt using -e option. Can be used in
+#     automation scripts to avoid interactive prompt.
+
+
+- name: confirm whether user really meant to partition devices
+
+  vars:
+    osd_group_name: osds
+    how_many_osd: 0
+    devices_to_prepare: {}
+
+  hosts:
+    - "{{ osd_group_name }}"
+
+  gather_facts: false
+  become: true
+
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to partition your devices?
+      default: 'no'
+      private: no
+
+  tasks:
+  - include_vars: roles/ceph-common/defaults/main.yml
+  - include_vars: group_vars/all.yml
+
+  - name: exit playbook, if user did not mean to partition any device(s)
+    fail:
+      msg: "Exiting prepare-multiple-osd-per-disk playbook, no device(s) was/were partitioned...
+         To prepare your drives, either say 'yes' on the prompt or
+         or use `-e ireallymeanit=yes` on the command line when
+         invoking the playbook"
+    when: ireallymeanit != 'yes'
+
+  - fail:
+      msg: "Give me a partition size! In Gigabyte of course ;)"
+    when: how_many_osd == 0
+
+  - fail:
+      msg: "Give me a device list! As a dictionary"
+    when: devices_to_prepare|length == 0
+
+  - name: test if sgdisk command exist
+    command: command -v sgdisk
+    changed_when: false
+    failed_when: false
+    register: sgdisk_command
+
+  - fail:
+      msg: "The sgdisk command is not available, please install it :("
+    run_once: true
+    when: sgdisk_command.rc != 0
+
+  - name: check the partition status of the device(s)
+    shell: "parted --script {{ item }} print > /dev/null 2>&1"
+    with_items: "{{ devices_to_prepare|default([])|unique }}"
+    changed_when: false
+    failed_when: false
+    register: devices_to_prepare_partition_status
+
+  - name: fix partitions gpt header or labels of the journal devices
+    shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }}"
+    with_together:
+      - "{{ devices_to_prepare_status.results }}"
+      - "{{ devices_to_prepare|default([])|unique }}"
+    changed_when: false
+    when: item.0.rc != 0
+
+  - name: check if a partition named 'ceph' exists
+    shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"
+    with_items: "{{ devices_to_prepare }}"
+    changed_when: false
+    failed_when: false
+    register: parted_results
+
+  - fail:
+      msg: "Looks like a Ceph partition is present, would you like to remove it so we can proceed?"
+    with_items: "{{parted_results.results}}"
+    when: item.get("rc", 0) != 0
+
+  - name: prepare devices
+    command: echo lol
+    with_items:
+      - "{{ devices_to_prepare }}"
