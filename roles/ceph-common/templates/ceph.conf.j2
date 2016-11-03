@@ -17,18 +17,27 @@ osd crush chooseleaf type = 0
 {% endif %}
 {# NOTE (leseb): the blank lines in-between are needed otherwise we won't get any line break #}
 {% if groups[mon_group_name] is defined %}
-mon_initial_members = {% if groups[mon_group_name] is defined %}{% for host in groups[mon_group_name] %}{% if hostvars[host]['ansible_fqdn'] is defined and mon_use_fqdn %}{{ hostvars[host]['ansible_fqdn'] }}{% if not loop.last %},{% endif %}{% elif hostvars[host]['ansible_hostname'] is defined %}{{ hostvars[host]['ansible_hostname'] }}{% if not loop.last %},{% endif %}{% endif %}{% endfor %}{% endif %}
+mon initial members = {% if groups[mon_group_name] is defined %}{% for host in groups[mon_group_name] %}{% if hostvars[host]['ansible_fqdn'] is defined and mon_use_fqdn %}{{ hostvars[host]['ansible_fqdn'] }}{% if not loop.last %},{% endif %}{% elif hostvars[host]['ansible_hostname'] is defined %}{{ hostvars[host]['ansible_hostname'] }}{% if not loop.last %},{% endif %}{% endif %}{% endfor %}{% endif %}
 {% endif %}
 
 {% if not mon_containerized_deployment and not mon_containerized_deployment_with_kv %}
 {% if monitor_address_block is defined %}
 mon host = {% for host in groups[mon_group_name] %}{{ hostvars[host]['ansible_all_ipv4_addresses'] | ipaddr(monitor_address_block) | first }}{% if not loop.last %},{% endif %}{% endfor %}
 {% elif groups[mon_group_name] is defined %}
-mon host = {% for host in groups[mon_group_name] %}{% for key in hostvars[host].iterkeys() %}{% if hostvars[host][key]['macaddress'] is defined and hostvars[host][key]['device'] is defined and hostvars[host][key]['device'] == monitor_interface %}{{ hostvars[host][key]['ipv4']['address'] }}{% endif %}{% endfor %}{% if not loop.last %},{% endif %}{% endfor %}
-{% elif (hostvars[host]['monitor_interface'] is defined and hostvars[host]['monitor_interface'] != "interface") or monitor_interface != "interface" %}
-{% include 'mon_addr_interface.j2' %}
-{% else %}
-{% include 'mon_addr_address.j2' %}
+mon host = {% for host in groups[mon_group_name] %}
+             {% set address = hostvars[host]['monitor_address'] if hostvars[host]['monitor_address'] is defined else monitor_address %}
+             {% set interface = hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface %}
+             {% if address != "0.0.0.0" -%}
+               {{ address }}
+             {%- else %}
+               {% for key in hostvars[host].iterkeys() %}
+                 {% if hostvars[host][key]['macaddress'] is defined and hostvars[host][key]['device'] is defined and hostvars[host][key]['device'] == interface -%}
+                    {{ hostvars[host][key]['ipv4']['address'] }}
+                 {%- endif %}
+               {% endfor %}
+             {% endif %}
+             {%- if not loop.last %},{% endif %}
+           {% endfor %}
 {% endif %}
 {% endif %}
 {% if mon_containerized_deployment %}
@@ -51,10 +60,10 @@ monitor_address
 {% endif %}
 
 {% if public_network is defined %}
-public_network = {{ public_network }}
+public network = {{ public_network }}
 {% endif %}
 {% if cluster_network is defined %}
-cluster_network = {{ cluster_network }}
+cluster network = {{ cluster_network }}
 {% endif %}
 
 [client.libvirt]
