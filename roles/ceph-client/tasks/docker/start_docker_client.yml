@@ -1,0 +1,20 @@
+---
+- name: run the ceph fuse docker image
+  shell: >
+         docker run -d \
+           --name=cephfs \
+           --net=host \
+           --privileged \
+           -v /dev:/dev \
+           -v /run:/run \
+           -v /sys:/sys \
+           -v /etc/ceph:/etc/ceph \
+           -v {{ mount_point }}:/cephfs:shared \
+           --entrypoint="/bin/bash" \
+           "{{ ceph_client_docker_username }}/{{ ceph_client_docker_imagename }}:{{ ceph_client_docker_image_tag }}" \
+           -c "ceph-fuse /cephfs -d -o allow_other"
+
+- name: check to make sure it got mounted
+  shell: docker run --rm --volumes-from cephfs alpine sh -c "mount" | grep "ceph-fuse"
+  register: mount_out
+  failed_when: mount_out.rc != 0

@@ -1,0 +1,56 @@
+---
+- name: pull ceph daemon image
+  shell: "docker pull {{ ceph_mds_docker_username }}/{{ ceph_mds_docker_imagename }}"
+  changed_when: false
+  failed_when: false
+
+# NOTE (leseb): we can not use docker inspect with 'format filed' because of
+# https://github.com/ansible/ansible/issues/10156
+- name: inspect ceph version
+  shell: docker inspect docker.io/"{{ ceph_mds_docker_username }}"/"{{ ceph_mds_docker_imagename }}" | awk -F '=' '/CEPH_VERSION/ { gsub ("\",", "", $2); print $2 }' | uniq
+  changed_when: false
+  failed_when: false
+  run_once: true
+  register: ceph_version
+
+- set_fact:
+    after_hamer=True
+  when:
+    ceph_version.stdout not in ['firefly','giant', 'hammer']
+
+- name: create bootstrap directories (for or before hammer)
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  with_items:
+    - /etc/ceph/
+    - /var/lib/ceph/bootstrap-mds
+  when: not after_hamer
+
+- name: create bootstrap directories (after hammer)
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "64045"
+    group: "64045"
+    mode: "0755"
+  with_items:
+    - /etc/ceph/
+    - /var/lib/ceph/bootstrap-mds
+  when: after_hamer
+
+- name: umount {{ mount_point }}
+  command: umount {{ mount_point }}
+  ignore_errors: true
+  no_log: true
+
+- name: share root mount
+  command: mount --make-shared /
+
+- name: delete mount point
+  shell: rm -r {{ mount_point }}
+  ignore_errors: true
+  no_log: true
