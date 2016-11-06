@@ -9,6 +9,7 @@
   when:
     - ceph_health.rc != 0
     - not osd_containerized_deployment_with_kv
+    - not "{{ rolling_update | default(false) }}"
 
 - name: check if it is Atomic host
   stat: path=/run/ostree-booted
@@ -16,9 +17,10 @@
 
 - name: set fact for using Atomic host
   set_fact:
-      is_atomic: '{{ stat_ostree.stat.exists }}'
+    is_atomic: '{{ stat_ostree.stat.exists }}'
 
 - include: pre_requisite.yml
+  when: not is_atomic
 
 - include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_atomic.yml"
   when:
