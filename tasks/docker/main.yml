@@ -11,12 +11,15 @@
 
 - name: set fact for using Atomic host
   set_fact:
-      is_atomic='{{ stat_ostree.stat.exists }}'
+    is_atomic: '{{ stat_ostree.stat.exists }}'
 
 - include: checks.yml
-  when: ceph_health.rc != 0
+  when:
+    - ceph_health.rc != 0
+    - not "{{ rolling_update | default(false) }}"
 
 - include: pre_requisite.yml
+  when: not is_atomic
 
 - include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_atomic.yml"
   when:
