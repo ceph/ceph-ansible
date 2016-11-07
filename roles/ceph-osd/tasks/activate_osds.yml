@@ -5,7 +5,7 @@
 - name: automatically activate osd disk(s) without partitions
   command: ceph-disk activate "/dev/{{ item.key | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1"
   ignore_errors: true
-  with_dict: ansible_devices
+  with_dict: "{{ ansible_devices }}"
   when:
     - ansible_devices is defined
     - item.value.removable == "0"
@@ -30,7 +30,7 @@
 - name: automatically activate osd disk(s) without partitions (dmcrypt)
   command: ceph-disk activate --dmcrypt "/dev/{{ item.key }}"
   ignore_errors: true
-  with_dict: ansible_devices
+  with_dict: "{{ ansible_devices }}"
   when:
     - ansible_devices is defined
     - item.value.removable == "0"

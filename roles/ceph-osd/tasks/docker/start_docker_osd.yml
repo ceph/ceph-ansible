@@ -12,7 +12,7 @@
 - name: verify if the disk was already prepared
   shell: "lsblk -o PARTLABEL {{ item }} | grep -sq 'ceph'"
   failed_when: false
-  with_items: ceph_osd_docker_devices
+  with_items: "{{ ceph_osd_docker_devices }}"
   register: osd_prepared
 
 # use shell rather than docker module
@@ -81,7 +81,7 @@
   shell: systemctl enable ceph-osd@{{ item | basename }}.service
   failed_when: false
   changed_when: false
-  with_items: ceph_osd_docker_devices
+  with_items: "{{ ceph_osd_docker_devices }}"
   when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
 
 - name: reload systemd unit files
@@ -96,7 +96,7 @@
     state: started
     enabled: yes
   changed_when: false
-  with_items: ceph_osd_docker_devices
+  with_items: "{{ ceph_osd_docker_devices }}"
   when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
 
 - name: run the ceph osd docker image
@@ -109,7 +109,7 @@
     privileged: yes
     env: "OSD_DEVICE={{ item }},{{ ceph_osd_docker_extra_env }}"
     volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro,/dev:/dev,/run:/run"
-  with_items: ceph_osd_docker_devices
+  with_items: "{{ ceph_osd_docker_devices }}"
   when:
     - ansible_os_family != 'RedHat'
     - ansible_os_family != 'CoreOS'
@@ -125,7 +125,7 @@
     privileged: yes
     env: "KV_TYPE={{kv_type}},KV_IP={{kv_endpoint}},OSD_DEVICE={{ item }},{{ ceph_osd_docker_extra_env }}"
     volumes: "/etc/localtime:/etc/localtime:ro,/dev/:/dev/"
-  with_items: ceph_osd_docker_devices
+  with_items: "{{ ceph_osd_docker_devices }}"
   when:
    - ansible_os_family != 'RedHat'
    - ansible_os_family != 'CoreOS'
