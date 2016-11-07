@@ -45,14 +45,14 @@
       command: git subtree split --prefix=roles/{{ item }} -b {{ item }} --squash
       args:
         chdir: "{{ basedir }}"
-      with_items: roles
+      with_items: "{{ roles }}"
 
     - name: adds remote github repos for the splits
       tags: split
       command: git remote add {{ item }} git@github.com:{{ github }}-{{ item }}.git
       args:
         chdir: "{{ basedir }}"
-      with_items: roles
+      with_items: "{{ roles }}"
 
     - name: adds upstream remote
       tags: update
@@ -68,4 +68,4 @@
       shell: git push {{ item }} $(git subtree split --prefix roles/{{ item }} master):master --force
       args:
         chdir: "{{ basedir }}"
-      with_items: roles
+      with_items: "{{ roles }}"
