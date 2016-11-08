@@ -10,6 +10,14 @@ ceph = {
 nodes = {
     'mon0': {
         'username': 'vagrant',
-        'components': ['mon', 'mon_initial_members']
-    }
+        'components': ['conf_tests']
+    },
+    'mon1': {
+        'username': 'vagrant',
+        'components': ['conf_tests']
+    },
+    'mon2': {
+        'username': 'vagrant',
+        'components': ['conf_tests']
+    },
 }
