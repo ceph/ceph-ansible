@@ -17,7 +17,14 @@ osd crush chooseleaf type = 0
 {% endif %}
 {# NOTE (leseb): the blank lines in-between are needed otherwise we won't get any line break #}
 {% if groups[mon_group_name] is defined %}
-mon initial members = {% if groups[mon_group_name] is defined %}{% for host in groups[mon_group_name] %}{% if hostvars[host]['ansible_fqdn'] is defined and mon_use_fqdn %}{{ hostvars[host]['ansible_fqdn'] }}{% if not loop.last %},{% endif %}{% elif hostvars[host]['ansible_hostname'] is defined %}{{ hostvars[host]['ansible_hostname'] }}{% if not loop.last %},{% endif %}{% endif %}{% endfor %}{% endif %}
+mon initial members = {% for host in groups[mon_group_name] %}
+      {% if hostvars[host]['ansible_fqdn'] is defined and mon_use_fqdn -%}
+        {{ hostvars[host]['ansible_fqdn'] }}
+      {%- elif hostvars[host]['ansible_hostname'] is defined -%}
+        {{ hostvars[host]['ansible_hostname'] }}
+      {%- endif %}
+      {%- if not loop.last %},{% endif %}
+    {% endfor %}
 {% endif %}
 
 {% if not mon_containerized_deployment and not mon_containerized_deployment_with_kv %}
