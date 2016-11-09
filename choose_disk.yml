@@ -1,0 +1,17 @@
+---
+# Defines deployment design and assigns role to server groups
+
+- hosts: localhost
+  gather_facts: false
+  vars:
+      lookup_disks: "{'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '0', 'count': 2 }}"
+  tasks:
+    # If we can't get python2 installed before any module is used we will fail
+    # so just try what we can to get it installed
+    - name: gathering facts
+      setup:
+    - name: choose disk
+      choose_disk:
+        facts: "{{ansible_devices}}"
+        disks: "{{lookup_disks}}"
+
