@@ -465,7 +465,12 @@ class ActionModule(ActionBase):
         """Run the method"""
 
         try:
-            remote_user = task_vars.get('ansible_ssh_user') or self._play_context.remote_user
+            remote_user = task_vars.get('ansible_user')
+            if not remote_user:
+                remote_user = task_vars.get('ansible_ssh_user')
+            if not remote_user:
+                remote_user = self._play_context.remote_user
+
             if not tmp:
                 tmp = self._make_tmp_path(remote_user)
         except TypeError:
