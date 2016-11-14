@@ -353,6 +353,33 @@
   serial: 1
   become: True
 
+  pre_tasks:
+    - include_vars: roles/ceph-common/defaults/main.yml
+    - include_vars: roles/ceph-rgw/defaults/main.yml
+    - include_vars: group_vars/all
+      failed_when: false
+    - include_vars: group_vars/{{ rgw_group_name }}
+      failed_when: false
+
+    - name: stop ceph rgws with systemd
+      service:
+        name: ceph-radosgw@rgw.{{ ansible_hostname }}
+        state: stopped
+        enabled: yes
+      when: is_systemd
+
+    - name: stop ceph rgws with sysvinit
+      service:
+        name: radosgw
+        state: stopped
+      when: is_sysvinit.stat.exists == True
+
+    - name: stop ceph rgws with upstart
+      service:
+        name: ceph-radosgw
+        state: stopped
+      when: is_upstart.stat.exists == True
+
   roles:
     - ceph-common
     - ceph-rgw
@@ -365,21 +392,21 @@
     - include_vars: group_vars/{{ rgw_group_name }}
       failed_when: false
 
-    - name: restart ceph rgws with systemd
+    - name: start ceph rgws with systemd
       service:
         name: ceph-radosgw@rgw.{{ ansible_hostname }}
-        state: restarted
+        state: started
         enabled: yes
       when: is_systemd
 
-    - name: restart ceph rgws with sysvinit
+    - name: start ceph rgws with sysvinit
       service:
         name: radosgw
-        state: restarted
+        state: started
       when: is_sysvinit.stat.exists == True
 
-    - name: restart ceph rgws with upstart
+    - name: start ceph rgws with upstart
       service:
         name: ceph-radosgw
-        state: restarted
+        state: started
       when: is_upstart.stat.exists == True
