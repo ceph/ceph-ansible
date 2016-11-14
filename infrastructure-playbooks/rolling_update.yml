@@ -24,7 +24,7 @@
       msg: >
         "Exiting rolling_update.yml playbook, cluster was NOT upgraded.
          To upgrade the cluster, either say 'yes' on the prompt or
-         or use `-e ireallymeanit=yes` on the command line when
+         use `-e ireallymeanit=yes` on the command line when
          invoking the playbook"
     when: ireallymeanit != 'yes'
 
@@ -62,7 +62,6 @@
       command: grep -sq systemd /proc/1/comm
       register: is_systemd
 
-
 - name: upgrade ceph mon cluster
 
   vars:
@@ -78,6 +77,12 @@
   become: True
 
   pre_tasks:
+    - name: set mon_host_count
+      set_fact: mon_host_count={{ groups.mons | length }}
+
+    - debug: msg="WARNING - upgrading a Ceph cluster with only one monitor node ({{ inventory_hostname }})"
+      when: mon_host_count | int == 1
+
     - name: stop ceph mons with upstart
       service:
         name: ceph-mon
@@ -140,7 +145,7 @@
 
     - name: waiting for the monitor to join the quorum...
       shell: |
-        ceph -s  --cluster {{ cluster }} | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
+        ceph -s --cluster {{ cluster }} | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
       register: result
       until: result.rc == 0
       retries: "{{ health_mon_check_retries }}"
@@ -150,7 +155,7 @@
 
     - name: waiting for the containerized monitor to join the quorum...
       shell: |
-        docker exec {{ hostvars[mon_host]['ansible_hostname'] }} ceph -s  --cluster {{ cluster }} | grep quorum | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
+        docker exec {{ hostvars[mon_host]['ansible_hostname'] }} ceph -s --cluster {{ cluster }} | grep quorum | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
       register: result
       until: result.rc == 0
       retries: "{{ health_mon_check_retries }}"
@@ -247,7 +252,7 @@
         name: ceph-osd@{{ item | basename }}
         state: restarted
         enabled: yes
-      with_items: ceph_osd_docker_devices
+      with_items: "{{ ceph_osd_docker_devices }}"
       when:
         - is_systemd
         - osd_containerized_deployment
