@@ -278,6 +278,35 @@
   serial: 1
   become: True
 
+  pre_tasks:
+    - include_vars: roles/ceph-common/defaults/main.yml
+    - include_vars: roles/ceph-mds/defaults/main.yml
+    - include_vars: group_vars/all
+      failed_when: false
+    - include_vars: group_vars/{{ mds_group_name }}
+      failed_when: false
+
+    - name: stop ceph mdss with upstart
+      service:
+        name: ceph-mds
+        state: stopped
+        args: id={{ ansible_hostname }}
+      when: is_upstart.stat.exists == True
+
+    - name: stop ceph mdss with sysvinit
+      service:
+        name: ceph
+        state: stopped
+        args: mds
+      when: is_sysvinit.stat.exists == True
+
+    - name: stop ceph mdss with systemd
+      service:
+        name: ceph-mds@{{ ansible_hostname }}
+        state: stopped
+        enabled: yes
+      when: is_systemd
+
   roles:
     - ceph-common
     - ceph-mds
@@ -290,24 +319,24 @@
     - include_vars: group_vars/{{ mds_group_name }}
       failed_when: false
 
-    - name: restart ceph mdss with upstart
+    - name: start ceph mdss with upstart
       service:
         name: ceph-mds
-        state: restarted
+        state: started
         args: id={{ ansible_hostname }}
       when: is_upstart.stat.exists == True
 
-    - name: restart ceph mdss with sysvinit
+    - name: start ceph mdss with sysvinit
       service:
         name: ceph
-        state: restarted
+        state: started
         args: mds
       when: is_sysvinit.stat.exists == True
 
-    - name: restart ceph mdss with systemd
+    - name: start ceph mdss with systemd
       service:
         name: ceph-mds@{{ ansible_hostname }}
-        state: restarted
+        state: started
         enabled: yes
       when: is_systemd
 
