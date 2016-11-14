@@ -75,6 +75,37 @@
   serial: 1
   become: True
 
+  pre_tasks:
+    - include_vars: roles/ceph-common/defaults/main.yml
+    - include_vars: roles/ceph-mon/defaults/main.yml
+    - include_vars: roles/ceph-restapi/defaults/main.yml
+    - include_vars: group_vars/all
+      failed_when: false
+    - include_vars: group_vars/{{ mon_group_name }}
+      failed_when: false
+    - include_vars: group_vars/{{ restapi_group_name }}
+      failed_when: false
+
+    - name: stop ceph mons with upstart
+      service:
+        name: ceph-mon
+        state: stopped
+        args: id={{ ansible_hostname }}
+      when: is_upstart.stat.exists == True
+
+    - name: stop ceph mons with sysvinit
+      service:
+        name: ceph
+        state: stopped
+      when: is_sysvinit.stat.exists == True
+
+    - name: stop ceph mons with systemd
+      service:
+        name: ceph-mon@{{ ansible_hostname }}
+        state: stopped
+        enabled: yes
+      when: is_systemd
+
   roles:
     - ceph-common
     - ceph-mon
@@ -90,23 +121,23 @@
     - include_vars: group_vars/{{ restapi_group_name }}
       failed_when: false
 
-    - name: restart ceph mons with upstart
+    - name: start ceph mons with upstart
       service:
         name: ceph-mon
-        state: restarted
+        state: started
         args: id={{ ansible_hostname }}
       when: is_upstart.stat.exists == True
 
-    - name: restart ceph mons with sysvinit
+    - name: start ceph mons with sysvinit
       service:
         name: ceph
-        state: restarted
+        state: started
       when: is_sysvinit.stat.exists == True
 
-    - name: restart ceph mons with systemd
+    - name: start ceph mons with systemd
       service:
         name: ceph-mon@{{ ansible_hostname }}
-        state: restarted
+        state: started
         enabled: yes
       when: is_systemd
 
