@@ -155,6 +155,31 @@
         - nodeep-scrub
       delegate_to: "{{ groups.mons[0] }}"
 
+    - name: get osd numbers
+      shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi"
+      register: osd_ids
+      changed_when: false
+
+    - name: stop ceph osds (upstart)
+      service:
+        name: ceph-osd-all
+        state: stopped
+      when: is_upstart.stat.exists == True
+
+    - name: stop ceph osds (sysvinit)
+      service:
+        name: ceph
+        state: stopped
+      when: is_sysvinit.stat.exists == True
+
+    - name: stop ceph osds (systemd)
+      service:
+        name: ceph-osd@{{item}}
+        state: stopped
+        enabled: yes
+      with_items: "{{ osd_ids.stdout_lines }}"
+      when: is_systemd
+
   roles:
     - ceph-common
     - ceph-osd
@@ -172,22 +197,22 @@
       register: osd_ids
       changed_when: false
 
-    - name: restart ceph osds (upstart)
+    - name: start ceph osds (upstart)
       service:
         name: ceph-osd-all
-        state: restarted
+        state: started
       when: is_upstart.stat.exists == True
 
-    - name: restart ceph osds (sysvinit)
+    - name: start ceph osds (sysvinit)
       service:
         name: ceph
-        state: restarted
+        state: started
       when: is_sysvinit.stat.exists == True
 
-    - name: restart ceph osds (systemd)
+    - name: start ceph osds (systemd)
       service:
         name: ceph-osd@{{item}}
-        state: restarted
+        state: started
         enabled: yes
       with_items: "{{ osd_ids.stdout_lines }}"
       when: is_systemd
