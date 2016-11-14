@@ -46,7 +46,7 @@
   args:
     creates: /var/run/systemd/generator.late/ceph-radosgw.service
   when:
-    - ansible_os_family == "RedHat"
+    - use_systemd
     - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
 
 - name: activate rados gateway with upstart
@@ -60,7 +60,9 @@
     - done
     - upstart
   changed_when: false
-  when: ansible_distribution == "Ubuntu"
+  when:
+    - ansible_distribution == "Ubuntu"
+    - not use_systemd
 
 - name: activate rados gateway with sysvinit
   file:
@@ -73,7 +75,9 @@
     - done
     - sysvinit
   changed_when: false
-  when: ansible_distribution != "Ubuntu"
+  when:
+    - ansible_distribution != "Ubuntu"
+    - not use_systemd
 
 - name: generate rados gateway sudoers file
   template:
