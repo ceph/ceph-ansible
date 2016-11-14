@@ -75,6 +75,37 @@
   serial: 1
   become: True
 
+  pre_tasks:
+    - include_vars: roles/ceph-common/defaults/main.yml
+    - include_vars: roles/ceph-mon/defaults/main.yml
+    - include_vars: roles/ceph-restapi/defaults/main.yml
+    - include_vars: group_vars/all
+      failed_when: false
+    - include_vars: group_vars/{{ mon_group_name }}
+      failed_when: false
+    - include_vars: group_vars/{{ restapi_group_name }}
+      failed_when: false
+
+    - name: stop ceph mons with upstart
+      service:
+        name: ceph-mon
+        state: stopped
+        args: id={{ ansible_hostname }}
+      when: is_upstart.stat.exists == True
+
+    - name: stop ceph mons with sysvinit
+      service:
+        name: ceph
+        state: stopped
+      when: is_sysvinit.stat.exists == True
+
+    - name: stop ceph mons with systemd
+      service:
+        name: ceph-mon@{{ ansible_hostname }}
+        state: stopped
+        enabled: yes
+      when: is_systemd
+
   roles:
     - ceph-common
     - ceph-mon
@@ -90,23 +121,23 @@
     - include_vars: group_vars/{{ restapi_group_name }}
       failed_when: false
 
-    - name: restart ceph mons with upstart
+    - name: start ceph mons with upstart
       service:
         name: ceph-mon
-        state: restarted
+        state: started
         args: id={{ ansible_hostname }}
       when: is_upstart.stat.exists == True
 
-    - name: restart ceph mons with sysvinit
+    - name: start ceph mons with sysvinit
       service:
         name: ceph
-        state: restarted
+        state: started
       when: is_sysvinit.stat.exists == True
 
-    - name: restart ceph mons with systemd
+    - name: start ceph mons with systemd
       service:
         name: ceph-mon@{{ ansible_hostname }}
-        state: restarted
+        state: started
         enabled: yes
       when: is_systemd
 
@@ -155,6 +186,31 @@
         - nodeep-scrub
       delegate_to: "{{ groups.mons[0] }}"
 
+    - name: get osd numbers
+      shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi"
+      register: osd_ids
+      changed_when: false
+
+    - name: stop ceph osds (upstart)
+      service:
+        name: ceph-osd-all
+        state: stopped
+      when: is_upstart.stat.exists == True
+
+    - name: stop ceph osds (sysvinit)
+      service:
+        name: ceph
+        state: stopped
+      when: is_sysvinit.stat.exists == True
+
+    - name: stop ceph osds (systemd)
+      service:
+        name: ceph-osd@{{item}}
+        state: stopped
+        enabled: yes
+      with_items: "{{ osd_ids.stdout_lines }}"
+      when: is_systemd
+
   roles:
     - ceph-common
     - ceph-osd
@@ -172,22 +228,22 @@
       register: osd_ids
       changed_when: false
 
-    - name: restart ceph osds (upstart)
+    - name: start ceph osds (upstart)
       service:
         name: ceph-osd-all
-        state: restarted
+        state: started
       when: is_upstart.stat.exists == True
 
-    - name: restart ceph osds (sysvinit)
+    - name: start ceph osds (sysvinit)
       service:
         name: ceph
-        state: restarted
+        state: started
       when: is_sysvinit.stat.exists == True
 
-    - name: restart ceph osds (systemd)
+    - name: start ceph osds (systemd)
       service:
         name: ceph-osd@{{item}}
-        state: restarted
+        state: started
         enabled: yes
       with_items: "{{ osd_ids.stdout_lines }}"
       when: is_systemd
@@ -222,6 +278,35 @@
   serial: 1
   become: True
 
+  pre_tasks:
+    - include_vars: roles/ceph-common/defaults/main.yml
+    - include_vars: roles/ceph-mds/defaults/main.yml
+    - include_vars: group_vars/all
+      failed_when: false
+    - include_vars: group_vars/{{ mds_group_name }}
+      failed_when: false
+
+    - name: stop ceph mdss with upstart
+      service:
+        name: ceph-mds
+        state: stopped
+        args: id={{ ansible_hostname }}
+      when: is_upstart.stat.exists == True
+
+    - name: stop ceph mdss with sysvinit
+      service:
+        name: ceph
+        state: stopped
+        args: mds
+      when: is_sysvinit.stat.exists == True
+
+    - name: stop ceph mdss with systemd
+      service:
+        name: ceph-mds@{{ ansible_hostname }}
+        state: stopped
+        enabled: yes
+      when: is_systemd
+
   roles:
     - ceph-common
     - ceph-mds
@@ -234,24 +319,24 @@
     - include_vars: group_vars/{{ mds_group_name }}
       failed_when: false
 
-    - name: restart ceph mdss with upstart
+    - name: start ceph mdss with upstart
       service:
         name: ceph-mds
-        state: restarted
+        state: started
         args: id={{ ansible_hostname }}
       when: is_upstart.stat.exists == True
 
-    - name: restart ceph mdss with sysvinit
+    - name: start ceph mdss with sysvinit
       service:
         name: ceph
-        state: restarted
+        state: started
         args: mds
       when: is_sysvinit.stat.exists == True
 
-    - name: restart ceph mdss with systemd
+    - name: start ceph mdss with systemd
       service:
         name: ceph-mds@{{ ansible_hostname }}
-        state: restarted
+        state: started
         enabled: yes
       when: is_systemd
 
@@ -268,6 +353,33 @@
   serial: 1
   become: True
 
+  pre_tasks:
+    - include_vars: roles/ceph-common/defaults/main.yml
+    - include_vars: roles/ceph-rgw/defaults/main.yml
+    - include_vars: group_vars/all
+      failed_when: false
+    - include_vars: group_vars/{{ rgw_group_name }}
+      failed_when: false
+
+    - name: stop ceph rgws with systemd
+      service:
+        name: ceph-radosgw@rgw.{{ ansible_hostname }}
+        state: stopped
+        enabled: yes
+      when: is_systemd
+
+    - name: stop ceph rgws with sysvinit
+      service:
+        name: radosgw
+        state: stopped
+      when: is_sysvinit.stat.exists == True
+
+    - name: stop ceph rgws with upstart
+      service:
+        name: ceph-radosgw
+        state: stopped
+      when: is_upstart.stat.exists == True
+
   roles:
     - ceph-common
     - ceph-rgw
@@ -280,21 +392,21 @@
     - include_vars: group_vars/{{ rgw_group_name }}
       failed_when: false
 
-    - name: restart ceph rgws with systemd
+    - name: start ceph rgws with systemd
       service:
         name: ceph-radosgw@rgw.{{ ansible_hostname }}
-        state: restarted
+        state: started
         enabled: yes
       when: is_systemd
 
-    - name: restart ceph rgws with sysvinit
+    - name: start ceph rgws with sysvinit
       service:
         name: radosgw
-        state: restarted
+        state: started
       when: is_sysvinit.stat.exists == True
 
-    - name: restart ceph rgws with upstart
+    - name: start ceph rgws with upstart
       service:
         name: ceph-radosgw
-        state: restarted
+        state: started
       when: is_upstart.stat.exists == True
