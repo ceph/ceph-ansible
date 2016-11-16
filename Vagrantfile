@@ -30,6 +30,7 @@ DOCKER         = settings['docker']
 USER           = settings['ssh_username']
 
 ASSIGN_STATIC_IP = !(BOX == 'openstack' or BOX == 'linode')
+DISABLE_SYNCED_FOLDER = settings.fetch('vagrant_disable_synced_folder', false)
 
 ansible_provision = proc do |ansible|
   if DOCKER then
@@ -126,9 +127,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.ssh.private_key_path = settings['ssh_private_key_path']
   config.ssh.username = USER
 
-  # Faster bootup.  Disable if you need this for libvirt
-  config.vm.provider :libvirt do |v,override|
-    override.vm.synced_folder '.', SYNC_DIR, disabled: true
+  # Faster bootup. Disables mounting the sync folder for libvirt and virtualbox
+  if DISABLE_SYNCED_FOLDER
+    config.vm.provider :virtualbox do |v,override|
+      override.vm.synced_folder '.', SYNC_DIR, disabled: true
+    end
+    config.vm.provider :libvirt do |v,override|
+      override.vm.synced_folder '.', SYNC_DIR, disabled: true
+    end
   end
 
   if BOX == 'openstack'
