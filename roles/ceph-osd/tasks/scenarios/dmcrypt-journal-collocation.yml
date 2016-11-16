@@ -11,7 +11,7 @@
 # failed, this is why we check if the device is a partition too.
 - name: automatic prepare osd disk(s) without partitions (dmcrypt)
   command: ceph-disk prepare --dmcrypt --cluster "{{ cluster }}" "/dev/{{ item.key }}"
-  with_dict: ansible_devices
+  with_dict: "{{ ansible_devices }}"
   when:
     - ansible_devices is defined
     - item.value.removable == "0"
@@ -22,9 +22,9 @@
 - name: manually prepare osd disk(s) (dmcrypt)
   command: ceph-disk prepare --dmcrypt --cluster "{{ cluster }}" "{{ item.2 }}"
   with_together:
-    - parted_results.results
-    - ispartition_results.results
-    - devices
+    - "{{ parted_results.results }}"
+    - "{{ ispartition_results.results }}"
+    - "{{ devices }}"
   when:
     - not item.0.get("skipped")
     - not item.1.get("skipped")

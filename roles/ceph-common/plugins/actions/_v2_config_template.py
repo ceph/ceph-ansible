@@ -262,7 +262,7 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
 class ActionModule(ActionBase):
     TRANSFERS_FILES = True
 
-    def return_config_overrides_ini(self, config_overrides, resultant):
+    def return_config_overrides_ini(self, config_overrides, resultant, list_extend=True):
         """Returns string value from a modified config file.
 
         :param config_overrides: ``dict``
@@ -338,7 +338,7 @@ class ActionModule(ActionBase):
         else:
             config.set(str(section), str(key), str(value))
 
-    def return_config_overrides_json(self, config_overrides, resultant):
+    def return_config_overrides_json(self, config_overrides, resultant, list_extend=True):
         """Returns config json
 
         Its important to note that file ordering will not be preserved as the
@@ -351,7 +351,8 @@ class ActionModule(ActionBase):
         original_resultant = json.loads(resultant)
         merged_resultant = self._merge_dict(
             base_items=original_resultant,
-            new_items=config_overrides
+            new_items=config_overrides,
+            list_extend=list_extend
         )
         return json.dumps(
             merged_resultant,
@@ -359,7 +360,7 @@ class ActionModule(ActionBase):
             sort_keys=True
         )
 
-    def return_config_overrides_yaml(self, config_overrides, resultant):
+    def return_config_overrides_yaml(self, config_overrides, resultant, list_extend=True):
         """Return config yaml.
 
         :param config_overrides: ``dict``
@@ -369,7 +370,8 @@ class ActionModule(ActionBase):
         original_resultant = yaml.safe_load(resultant)
         merged_resultant = self._merge_dict(
             base_items=original_resultant,
-            new_items=config_overrides
+            new_items=config_overrides,
+            list_extend=list_extend
         )
         return yaml.safe_dump(
             merged_resultant,
@@ -377,7 +379,7 @@ class ActionModule(ActionBase):
             width=1000,
         )
 
-    def _merge_dict(self, base_items, new_items):
+    def _merge_dict(self, base_items, new_items, list_extend=True):
         """Recursively merge new_items into base_items.
 
         :param base_items: ``dict``
@@ -387,14 +389,15 @@ class ActionModule(ActionBase):
         for key, value in new_items.iteritems():
             if isinstance(value, dict):
                 base_items[key] = self._merge_dict(
-                    base_items.get(key, {}),
-                    value
+                    base_items=base_items.get(key, {}),
+                    new_items=value,
+                    list_extend=list_extend
                 )
             elif not isinstance(value, int) and (',' in value or '\n' in value):
                 base_items[key] = re.split(',|\n', value)
                 base_items[key] = [i.strip() for i in base_items[key] if i]
             elif isinstance(value, list):
-                if key in base_items and isinstance(base_items[key], list):
+                if isinstance(base_items.get(key), list) and list_extend:
                     base_items[key].extend(value)
                 else:
                     base_items[key] = value
@@ -416,38 +419,28 @@ class ActionModule(ActionBase):
         # Access to protected method is unavoidable in Ansible
         searchpath = [self._loader._basedir]
 
-        faf = self._task.first_available_file
-        if faf:
-            task_file = task_vars.get('_original_file', None, 'templates')
-            source = self._get_first_available_file(faf, task_file)
-            if not source:
-                return False, dict(
-                    failed=True,
-                    msg="could not find src in first_available_file list"
-                )
+        if self._task._role:
+            file_path = self._task._role._role_path
+            searchpath.insert(1, C.DEFAULT_ROLES_PATH)
+            searchpath.insert(1, self._task._role._role_path)
         else:
-            # Access to protected method is unavoidable in Ansible
-            if self._task._role:
-                file_path = self._task._role._role_path
-                searchpath.insert(1, C.DEFAULT_ROLES_PATH)
-                searchpath.insert(1, self._task._role._role_path)
-            else:
-                file_path = self._loader.get_basedir()
+            file_path = self._loader.get_basedir()
 
-            user_source = self._task.args.get('src')
-            if not user_source:
-                return False, dict(
-                    failed=True,
-                    msg="No user provided [ src ] was provided"
-                )
-            source = self._loader.path_dwim_relative(
-                file_path,
-                'templates',
-                user_source
+        user_source = self._task.args.get('src')
+        if not user_source:
+            return False, dict(
+                failed=True,
+                msg="No user provided [ src ] was provided"
             )
-            searchpath.insert(1, os.path.dirname(source))
+        source = self._loader.path_dwim_relative(
+            file_path,
+            'templates',
+            user_source
+        )
+        searchpath.insert(1, os.path.dirname(source))
 
         _dest = self._task.args.get('dest')
+        list_extend = self._task.args.get('list_extend')
         if not _dest:
             return False, dict(
                 failed=True,
@@ -464,14 +457,20 @@ class ActionModule(ActionBase):
             dest=user_dest,
             config_overrides=self._task.args.get('config_overrides', dict()),
             config_type=config_type,
-            searchpath=searchpath
+            searchpath=searchpath,
+            list_extend=list_extend
         )
 
     def run(self, tmp=None, task_vars=None):
         """Run the method"""
 
         try:
-            remote_user = task_vars.get('ansible_ssh_user') or self._play_context.remote_user
+            remote_user = task_vars.get('ansible_user')
+            if not remote_user:
+                remote_user = task_vars.get('ansible_ssh_user')
+            if not remote_user:
+                remote_user = self._play_context.remote_user
+
             if not tmp:
                 tmp = self._make_tmp_path(remote_user)
         except TypeError:
@@ -531,7 +530,8 @@ class ActionModule(ActionBase):
             type_merger = getattr(self, CONFIG_TYPES.get(_vars['config_type']))
             resultant = type_merger(
                 config_overrides=_vars['config_overrides'],
-                resultant=resultant
+                resultant=resultant,
+                list_extend=_vars.get('list_extend', True)
             )
 
         # Re-template the resultant object as it may have new data within it
@@ -562,6 +562,7 @@ class ActionModule(ActionBase):
         # Remove data types that are not available to the copy module
         new_module_args.pop('config_overrides', None)
         new_module_args.pop('config_type', None)
+        new_module_args.pop('list_extend', None)
 
         # Run the copy module
         return self._execute_module(

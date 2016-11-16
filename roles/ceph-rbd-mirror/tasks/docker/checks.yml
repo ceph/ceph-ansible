@@ -13,7 +13,7 @@
 - name: stat for ceph config and keys
   stat:
     path: "{{ item }}"
-  with_items: ceph_config_keys
+  with_items: "{{ ceph_config_keys }}"
   changed_when: false
   failed_when: false
   register: statleftover
@@ -22,6 +22,6 @@
   fail:
     msg: "looks like no cluster is running but ceph files are present, please remove them"
   with_together:
-    - ceph_config_keys
-    - statleftover.results
+    - "{{ ceph_config_keys }}"
+    - "{{ statleftover.results }}"
   when: item.1.stat.exists == true

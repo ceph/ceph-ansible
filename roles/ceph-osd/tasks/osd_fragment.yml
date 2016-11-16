@@ -1,7 +1,7 @@
 ---
 - name: get osd path
   shell: "df | grep {{ item }} | awk '{print $6}'"
-  with_items: devices
+  with_items: "{{ devices }}"
   changed_when: false
   failed_when: false
   register: osd_path
@@ -9,7 +9,7 @@
 
 - name: get osd id
   command: cat {{ item.stdout }}/whoami
-  with_items: osd_path.results
+  with_items: "{{ osd_path.results }}"
   changed_when: false
   failed_when: false
   register: osd_id_non_dir_scenario
@@ -17,7 +17,7 @@
 
 - name: get osd id for directory scenario
   command: cat {{ item.stdout }}/whoami
-  with_items: osd_directories
+  with_items: "{{ osd_directories }}"
   changed_when: false
   failed_when: false
   register: osd_id_dir_scenario
@@ -47,7 +47,7 @@
     owner: "{{ dir_owner }}"
     group: "{{ dir_group }}"
     mode: "{{ activate_file_mode }}"
-  with_items: combined_osd_id.results
+  with_items: "{{ combined_osd_id.results }}"
 
 - name: copy {{ cluster }}.conf for assembling
   command: cp /etc/ceph/{{ cluster }}.conf /etc/ceph/ceph.d/

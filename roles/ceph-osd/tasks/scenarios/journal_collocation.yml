@@ -12,7 +12,7 @@
 - name: automatic prepare osd disk(s) without partitions
   command: ceph-disk prepare --cluster "{{ cluster }}" "/dev/{{ item.key }}"
   register: prepared_osds
-  with_dict: ansible_devices
+  with_dict: "{{ ansible_devices }}"
   when:
     - ansible_devices is defined
     - item.value.removable == "0"
@@ -23,9 +23,9 @@
 - name: manually prepare osd disk(s)
   command: "ceph-disk prepare --cluster {{ cluster }} {{ item.2 }}"
   with_together:
-    - parted_results.results
-    - ispartition_results.results
-    - devices
+    - "{{ parted_results.results }}"
+    - "{{ ispartition_results.results }}"
+    - "{{ devices }}"
   when:
     - not item.0.get("skipped")
     - not item.1.get("skipped")

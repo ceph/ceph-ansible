@@ -10,20 +10,20 @@
     state: directory
     owner: "{{ dir_owner }}"
     group: "{{ dir_group }}"
-  with_items: osd_directories
+  with_items: "{{ osd_directories }}"
 
 # NOTE (leseb): the prepare process must be parallelized somehow...
 # if you have 64 disks with 4TB each, this will take a while
 # since Ansible will sequential process the loop
 - name: prepare OSD disk(s)
   command: "ceph-disk prepare --cluster {{ cluster }} {{ item }}"
-  with_items: osd_directories
+  with_items: "{{ osd_directories }}"
   changed_when: false
   when: osd_directory
 
 - name: activate OSD(s)
   command: "ceph-disk activate {{ item }}"
-  with_items: osd_directories
+  with_items: "{{ osd_directories }}"
   changed_when: false
 
 - name: start and add that the OSD service to the init sequence

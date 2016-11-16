@@ -70,7 +70,7 @@
 
   - fail:
       msg: "Ceph's configuration file is not present in /etc/ceph"
-    with_items: "{{ceph_conf_key.results}}"
+    with_items: "{{ ceph_conf_key.results }}"
     when:
       -  item.stat.exists == false
 
@@ -91,11 +91,11 @@
 #
   - name: find the host where the osd(s) is/are running on
     command: ceph --cluster {{ cluster }} osd find {{ item }}
-    with_items: "{{osd_ids.split(',')}}"
+    with_items: "{{ osd_ids.split(',') }}"
     register: osd_hosts
 
   - set_fact: ip_item="{{(item.stdout | from_json).ip}}"
-    with_items: "{{osd_hosts.results}}"
+    with_items: "{{ osd_hosts.results }}"
     register: ip_result
 
   - set_fact: ips="{{ ip_result.results | map(attribute='ansible_facts.ip_item') | list }}"
@@ -106,26 +106,26 @@
     stat:
       path: "/etc/ceph/{{ cluster }}.client.admin.keyring"
     register: ceph_admin_key
-    with_items: "{{real_ips}}"
-    delegate_to: "{{item}}"
+    with_items: "{{ real_ips }}"
+    delegate_to: "{{ item }}"
     failed_when: false
 
   - fail:
       msg: "The Ceph admin key is not present on the OSD node, please add it and remove it after the playbook is done."
-    with_items: "{{ceph_admin_key.results}}"
+    with_items: "{{ ceph_admin_key.results }}"
     when:
       -  item.stat.exists == false
 
   - name: deactivating osd(s)
     command: ceph-disk deactivate --cluster {{ cluster }} --deactivate-by-id {{ item.0 }} --mark-out
     with_together:
-      - "{{osd_ids.split(',')}}"
-      - "{{real_ips}}"
-    delegate_to: "{{item.1}}"
+      - "{{ osd_ids.split(',') }}"
+      - "{{ real_ips }}"
+    delegate_to: "{{ item.1 }}"
 
   - name: destroying osd(s)
     command: ceph-disk destroy --cluster {{ cluster }} --destroy-by-id {{ item.0 }} --zap
     with_together:
-      - "{{osd_ids.split(',')}}"
-      - "{{real_ips}}"
-    delegate_to: "{{item.1}}"
+      - "{{ osd_ids.split(',') }}"
+      - "{{ real_ips }}"
+    delegate_to: "{{ item.1 }}"
