@@ -28,6 +28,7 @@
          invoking the playbook"
     when: ireallymeanit != 'yes'
 
+
 - name: gather facts and check the init system
   vars:
     mon_group_name:       mons
@@ -62,6 +63,7 @@
       command: grep -sq systemd /proc/1/comm
       register: is_systemd
 
+
 - name: upgrade ceph mon cluster
 
   vars:
@@ -80,7 +82,7 @@
     - name: set mon_host_count
       set_fact: mon_host_count={{ groups.mons | length }}
 
-    - debug: msg="WARNING - upgrading a Ceph cluster with only one monitor node ({{ inventory_hostname }})"
+    - debug: msg="WARNING - upgrading a ceph cluster with only one monitor node ({{ inventory_hostname }})"
       when: mon_host_count | int == 1
 
     - name: stop ceph mons with upstart
@@ -101,7 +103,9 @@
         name: ceph-mon@{{ ansible_hostname }}
         state: stopped
         enabled: yes
-      when: is_systemd
+      when:
+        - is_systemd
+        - not mon_containerized_deployment
 
   roles:
     - ceph-mon
@@ -125,7 +129,18 @@
         name: ceph-mon@{{ ansible_hostname }}
         state: started
         enabled: yes
-      when: is_systemd
+      when:
+        - is_systemd
+        - not mon_containerized_deployment
+
+    - name: restart containerized ceph mons with systemd
+      service:
+        name: ceph-mon@{{ ansible_hostname }}
+        state: restarted
+        enabled: yes
+      when:
+        - is_systemd
+        - mon_containerized_deployment
 
     - name: set mon_host_count
       set_fact: mon_host_count={{ groups.mons | length }}
@@ -186,6 +201,17 @@
         - noscrub
         - nodeep-scrub
       delegate_to: "{{ groups.mons[0] }}"
+      when: not mon_containerized_deployment
+
+    - name: set containerized osd flags
+      command: |
+          docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph osd set {{ item }} --cluster {{ cluster }}
+      with_items:
+        - noout
+        - noscrub
+        - nodeep-scrub
+      delegate_to: "{{ groups.mons[0] }}"
+      when: mon_containerized_deployment
 
     - name: get osd numbers
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi"
@@ -329,7 +355,9 @@
         name: ceph-mds@{{ ansible_hostname }}
         state: stopped
         enabled: yes
-      when: is_systemd
+      when:
+        - is_systemd
+        - not mds_containerized_deployment
 
   roles:
     - ceph-mds
@@ -354,7 +382,18 @@
         name: ceph-mds@{{ ansible_hostname }}
         state: started
         enabled: yes
-      when: is_systemd
+      when:
+        - is_systemd
+        - not mds_containerized_deployment
+
+    - name: restart ceph mdss with systemd
+      service:
+        name: ceph-mds@{{ ansible_hostname }}
+        state: restarted
+        enabled: yes
+      when:
+        - is_systemd
+        - mds_containerized_deployment
 
 
 - name: upgrade ceph rgws cluster
