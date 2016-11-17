@@ -454,7 +454,7 @@
 
     - name: Archive rados gateway configs
       shell: >
-        tar -cpvzf - --one-file-system . /etc/ceph/* /etc/apache2/* | cat > {{ ansible_hostname }}.tar
+        tar -cpvzf - --one-file-system . /etc/ceph/* | cat > {{ ansible_hostname }}.tar
         chdir=/var/lib/ceph/
         creates={{ ansible_hostname }}.tar
       when: migration_completed.stat.exists == False
@@ -477,12 +477,11 @@
         flat=yes
       when: migration_completed.stat.exists == False
 
-    - name: Gracefully stop the rados gateway and apache
+    - name: Gracefully stop the rados gateway
       service: >
         name={{ item }}
         state=stopped
       with_items:
-        - apache2
         - radosgw
       when: migration_completed.stat.exists == False
 
@@ -527,15 +526,13 @@
         chdir=/var/lib/ceph/
       with_items:
         - cp etc/ceph/* /etc/ceph/
-        - cp -r etc/apache2/* /etc/httpd/
       when: migration_completed.stat.exists == False
 
-    - name: Start rados gateway and httpd
+    - name: Start rados gateway
       service: >
         name={{ item }}
         state=started
       with_items:
-        - httpd
         - radosgw
       when: migration_completed.stat.exists == False
 
