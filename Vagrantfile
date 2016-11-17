@@ -195,6 +195,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Libvirt
       client.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
+        lv.random_hostname = true
       end
 
       # Parallels
@@ -229,6 +230,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Libvirt
       rgw.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
+        lv.random_hostname = true
       end
 
       # Parallels
@@ -263,6 +265,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Libvirt
       nfs.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
+        lv.random_hostname = true
       end
 
       # Parallels
@@ -296,6 +299,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Libvirt
       mds.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
+        lv.random_hostname = true
       end
       # Parallels
       mds.vm.provider "parallels" do |prl|
@@ -328,6 +332,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Libvirt
       rbd_mirror.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
+        lv.random_hostname = true
       end
       # Parallels
       rbd_mirror.vm.provider "parallels" do |prl|
@@ -360,6 +365,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Libvirt
       iscsi_gw.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
+        lv.random_hostname = true
       end
       # Parallels
       iscsi_gw.vm.provider "parallels" do |prl|
@@ -392,6 +398,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # Libvirt
       mon.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
+        lv.random_hostname = true
       end
 
       # Parallels
@@ -452,6 +459,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
           lv.storage :file, :device => "hd#{driverletters[d]}", :path => "disk-#{i}-#{d}.disk", :size => '12G', :bus => "ide"
         end
         lv.memory = MEMORY
+        lv.random_hostname = true
       end
 
       # Parallels
