@@ -1,0 +1,47 @@
+%global commit @COMMIT@
+%global shortcommit %(c=%{commit}; echo ${c:0:7})
+
+Name:           ceph-ansible
+Version:        @VERSION@
+Release:        @RELEASE@%{?dist}
+Summary:        Ansible playbooks for Ceph
+# Some files have been copied from Ansible (GPLv3+). For example:
+#  library/ceph_facts
+#  plugins/actions/config_template.py
+#  roles/ceph-common/plugins/actions/config_template.py
+License:        ASL 2.0 and GPLv3+
+URL:            https://github.com/ceph/ceph-ansible
+Source0:        %{name}-%{version}-%{shortcommit}.tar.gz
+
+BuildArch:      noarch
+
+BuildRequires: ansible
+BuildRequires: python2-devel
+
+Requires: ansible
+
+%description
+Ansible playbooks for Ceph
+
+%prep
+%autosetup -p1
+
+%build
+
+%install
+mkdir -p %{buildroot}%{_datarootdir}/ceph-ansible
+
+for f in ansible.cfg *.yml *.sample group_vars roles library plugins; do
+  cp -a $f %{buildroot}%{_datarootdir}/ceph-ansible
+done
+
+%check
+# Borrowed from upstream's .travis.yml:
+ansible-playbook -i dummy-ansible-hosts test.yml --syntax-check
+
+%files
+%doc README.md
+%license LICENSE
+%{_datarootdir}/ceph-ansible
+
+%changelog
