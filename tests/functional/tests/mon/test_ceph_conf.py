@@ -36,4 +36,4 @@ class TestMon(object):
         cluster_name = scenario_config.get('ceph', {}).get('cluster_name', 'ceph')
         ceph_conf_path = '/etc/ceph/%s.conf' % cluster_name
         initial_members_line = self.get_line_from_config('mon host', ceph_conf_path)
-        assert initial_members_line == 'mon host = 192.168.42.10,192.168.42.11,192.168.42.12'
+        assert initial_members_line == 'mon host = 192.168.9.10,192.168.9.11,192.168.9.12'
