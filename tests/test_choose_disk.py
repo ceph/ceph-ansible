@@ -59,6 +59,16 @@ def test_expand_disks_multiple_implicit_count():
                                  'storage_disks_0': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}}"))
 
 
+def test_units_gb():
+    """
+    convert_units - checking storage units are well converted in bytes
+    """
+    units = {'100 MB': '104857600.0', '1 GIB': '1000000000.0', ' 1 Kb ': '1024.0'}
+
+    for unit in units.keys():
+        assert_equals(choose_disk.convert_units(unit), units[unit])
+
+
 def test_find_match_matched():
     """
     find_match - test for a matching device
@@ -86,6 +96,22 @@ def test_find_match_matched_lt():
     """
     ansible_devices = {'sr0': {'sectorsize': '512'}}
     disk_0 = {'storage_disks_0': {'sectorsize': 'lt(1024)'}}
+    expected_result = ansible_devices
+    result = choose_disk.find_match(ansible_devices, disk_0)
+    assert_equals(result, expected_result)
+
+
+def test_find_match_matched_gt_units():
+    """
+    find_match - test for a matching device with gt() operator and units
+    """
+    ansible_devices = {'sr0': {'size': '200.00 MB'}}
+    disk_0 = {'storage_disks_0': {'size': 'gt(100.00 MB)'}}
+    expected_result = ansible_devices
+    result = choose_disk.find_match(ansible_devices, disk_0)
+    assert_equals(result, expected_result)
+
+    disk_0 = {'storage_disks_0': {'size': 'lt(1 GB)'}}
     expected_result = ansible_devices
     result = choose_disk.find_match(ansible_devices, disk_0)
     assert_equals(result, expected_result)

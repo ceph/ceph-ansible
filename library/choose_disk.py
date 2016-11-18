@@ -33,6 +33,31 @@ _REGEXP = re.compile(r'^([^(]+)'          # function name
                      r'\)$')              # last parenthesis
 
 
+def convert_units(value):
+    ''' Convert units to ease comparaison '''
+    value = str(value).lower().strip()
+    storage_units = {
+            'kb': 1024,
+            'kib': 1000,
+            'mb': 1024*1024,
+            'mib': 1000*1000,
+            'gb': 1024*1024*1024,
+            'gib': 1000*1000*1000,
+            'tb': 1024*1024*1024*1024,
+            'tib': 1000*1000*1000*1000,
+            'pb': 1024*1024*1024*1024*1024,
+            'pib': 1000*1000*1000*1000*1000
+    }
+
+    # Units are storage units
+    for size in storage_units.keys():
+        if value.endswith(size):
+            real_value, unit = value.split(" ")
+            return str(float(real_value) * storage_units[unit])
+
+    return value
+
+
 def find_match(physical_disks, lookup_disks):
     ''' Find a set of matching devices in physical_disks
     '''
@@ -77,7 +102,7 @@ def find_match(physical_disks, lookup_disks):
                             assert("Unsupported %s operator in : %s\n" % (new_operator, right))
 
                 # Let's check if (left <operator> right) is True meaning the match is done
-                if globals()[operator](left, right):
+                if globals()[operator](convert_units(left), convert_units(right)):
                     fout.write("  %s : match  %s %s %s\n" % (physical_disk, left, operator, right))
                     match_count = match_count + 1
                     continue
