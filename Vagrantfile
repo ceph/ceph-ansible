@@ -2,6 +2,7 @@
 # vi: set ft=ruby :
 
 require 'yaml'
+require 'securerandom'
 VAGRANTFILE_API_VERSION = '2'
 
 DEBUG = false
@@ -31,6 +32,7 @@ USER           = settings['ssh_username']
 
 ASSIGN_STATIC_IP = !(BOX == 'openstack' or BOX == 'linode')
 DISABLE_SYNCED_FOLDER = settings.fetch('vagrant_disable_synced_folder', false)
+
 
 ansible_provision = proc do |ansible|
   if DOCKER then
@@ -180,7 +182,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "#{LABEL_PREFIX}client#{i}" do |client|
       client.vm.hostname = "#{LABEL_PREFIX}ceph-client#{i}"
       if ASSIGN_STATIC_IP
-        client.vm.network :private_network, ip: "#{PUBLIC_SUBNET}.4#{i}"
+        client.vm.network :private_network,
+          ip: "#{PUBLIC_SUBNET}.4#{i}"
       end
       # Virtualbox
       client.vm.provider :virtualbox do |vb|
@@ -214,7 +217,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "#{LABEL_PREFIX}rgw#{i}" do |rgw|
       rgw.vm.hostname = "#{LABEL_PREFIX}ceph-rgw#{i}"
       if ASSIGN_STATIC_IP
-        rgw.vm.network :private_network, ip: "#{PUBLIC_SUBNET}.5#{i}"
+        rgw.vm.network :private_network,
+          ip: "#{PUBLIC_SUBNET}.5#{i}"
       end
 
       # Virtualbox
@@ -249,7 +253,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "nfs#{i}" do |nfs|
       nfs.vm.hostname = "ceph-nfs#{i}"
       if ASSIGN_STATIC_IP
-        nfs.vm.network :private_network, ip: "#{PUBLIC_SUBNET}.6#{i}"
+        nfs.vm.network :private_network,
+          ip: "#{PUBLIC_SUBNET}.6#{i}"
       end
 
       # Virtualbox
@@ -284,7 +289,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "#{LABEL_PREFIX}mds#{i}" do |mds|
       mds.vm.hostname = "#{LABEL_PREFIX}ceph-mds#{i}"
       if ASSIGN_STATIC_IP
-        mds.vm.network :private_network, ip: "#{PUBLIC_SUBNET}.7#{i}"
+        mds.vm.network :private_network,
+          ip: "#{PUBLIC_SUBNET}.7#{i}"
       end
       # Virtualbox
       mds.vm.provider :virtualbox do |vb|
@@ -317,7 +323,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "#{LABEL_PREFIX}rbd_mirror#{i}" do |rbd_mirror|
       rbd_mirror.vm.hostname = "#{LABEL_PREFIX}ceph-rbd-mirror#{i}"
       if ASSIGN_STATIC_IP
-        rbd_mirror.vm.network :private_network, ip: "#{PUBLIC_SUBNET}.8#{i}"
+        rbd_mirror.vm.network :private_network,
+          ip: "#{PUBLIC_SUBNET}.8#{i}"
       end
       # Virtualbox
       rbd_mirror.vm.provider :virtualbox do |vb|
@@ -350,7 +357,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "#{LABEL_PREFIX}iscsi_gw#{i}" do |iscsi_gw|
       iscsi_gw.vm.hostname = "#{LABEL_PREFIX}ceph-iscsi-gw#{i}"
       if ASSIGN_STATIC_IP
-        iscsi_gw.vm.network :private_network, ip: "#{PUBLIC_SUBNET}.9#{i}"
+        iscsi_gw.vm.network :private_network,
+          ip: "#{PUBLIC_SUBNET}.9#{i}"
       end
       # Virtualbox
       iscsi_gw.vm.provider :virtualbox do |vb|
@@ -383,7 +391,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "#{LABEL_PREFIX}mon#{i}" do |mon|
       mon.vm.hostname = "#{LABEL_PREFIX}ceph-mon#{i}"
       if ASSIGN_STATIC_IP
-        mon.vm.network :private_network, ip: "#{PUBLIC_SUBNET}.1#{i}"
+        mon.vm.network :private_network,
+          ip: "#{PUBLIC_SUBNET}.1#{i}"
       end
       # Virtualbox
       mon.vm.provider :virtualbox do |vb|
@@ -417,8 +426,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "#{LABEL_PREFIX}osd#{i}" do |osd|
       osd.vm.hostname = "#{LABEL_PREFIX}ceph-osd#{i}"
       if ASSIGN_STATIC_IP
-        osd.vm.network :private_network, ip: "#{PUBLIC_SUBNET}.10#{i}"
-        osd.vm.network :private_network, ip: "#{CLUSTER_SUBNET}.20#{i}"
+        osd.vm.network :private_network,
+          ip: "#{PUBLIC_SUBNET}.10#{i}"
+        osd.vm.network :private_network,
+          ip: "#{CLUSTER_SUBNET}.20#{i}"
       end
       # Virtualbox
       osd.vm.provider :virtualbox do |vb|
