@@ -3,6 +3,7 @@
 from ansible.module_utils.basic import AnsibleModule
 import json
 import os
+import re
 
 DOCUMENTATION = '''
 ---
@@ -13,38 +14,84 @@ description:
     To be completed
 '''
 
-fout = open("/tmp/ansible", "a")
+
+def _equal(left, right):
+    return left == right
+
+
+def _gt(left, right):
+    return float(left) > float(right)
+
+
+def _lt(left, right):
+    return float(left) < float(right)
+
+
+_REGEXP = re.compile(r'^([^(]+)'          # function name
+                     r'\(\s*([^,]+)'      # first argument
+                     r'(?:\s*,\s*(.+))?'  # remaining optional arguments
+                     r'\)$')              # last parenthesis
 
 
 def find_match(physical_disks, lookup_disks):
     ''' Find a set of matching devices in physical_disks
     '''
+    fout = open("/tmp/ansible", "a")
     matched_devices = {}
     exclude_list = []
+
+    # Inspecting every disk we search for
     for disk in lookup_disks:
         fout.write("Working on %s\n" % disk)
+        # Trying to find a match against all physical disks we have
         for physical_disk in physical_disks:
+            # Avoid reusing an already matched physical disk
             if physical_disk in exclude_list:
-                fout.write("Skipping %s as per the exclude list\n" % physical_disk)
                 continue
+
             current_physical_disk = physical_disks[physical_disk]
             current_lookup = lookup_disks[disk]
             match_count = 0
+            # Checking what features are matching
             for feature in current_lookup:
                 if feature not in current_physical_disk:
                     continue
-                elif current_lookup[feature] != current_physical_disk[feature]:
-                    match_count = match_count
-                    # nomatch
-                else:
-                    fout.write("  %s : match for %s\n" % (physical_disk, feature))
+
+                # Default operator is equal
+                operator = "_equal"
+
+                # Assign left and right operands
+                right = current_lookup[feature]
+                left = current_physical_disk[feature]
+
+                # Test if we have anoter operator
+                arguments = _REGEXP.search(right)
+                if arguments:
+                        new_operator = "_" + arguments.group(1)
+                        # Check if the associated function exists
+                        if new_operator in globals():
+                            # and assign operands with the new values
+                            operator = new_operator
+                            right = arguments.group(2)
+                        else:
+                            assert("Unsupported %s operator in : %s\n" % (new_operator, right))
+
+                # Let's check if (left <operator> right) is True meaning the match is done
+                if globals()[operator](left, right):
+                    fout.write("  %s : match  %s %s %s\n" % (physical_disk, left, operator, right))
                     match_count = match_count + 1
                     continue
+                else:
+                    fout.write("  %s : no match  %s %s %s\n" % (physical_disk, left, operator, right))
+                    match_count = match_count
+                    # nomatch
 
+            # If all the features matched
             if match_count == len(current_lookup):
                 fout.write("  full match (%d/%d) for %s\n" % (match_count, len(current_lookup), physical_disk))
                 matched_devices[physical_disk] = physical_disks[physical_disk]
                 exclude_list.append(physical_disk)
+            # We were unable to find all part of the required features
             elif match_count > 0:
                 fout.write("  partial match for %s with %d/%d\n" % (physical_disk, match_count, len(current_lookup)))
             else:
@@ -120,6 +167,7 @@ def get_block_devices_persistent_name(physical_disks):
 
     return final_list
 
+
 def main():
     fields = {
         "facts": {"required": False, "type": "dict"},
@@ -136,8 +184,7 @@ def main():
     matched_devices = find_match(physical_disks, lookup_disks)
 
     if len(matched_devices) < len(lookup_disks):
-        message = module.fail_json(msg="Could only find %d of the %d expected devices \n" % (len(matched_devices), len(lookup_disks)))
-        fout.write(message)
+        message = "Could only find %d of the %d expected devices \n" % (len(matched_devices), len(lookup_disks))
         module.fail_json(msg=message)
     else:
         module.exit_json(msg="Success")

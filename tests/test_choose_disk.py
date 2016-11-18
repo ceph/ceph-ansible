@@ -7,6 +7,7 @@ from nose.tools import assert_equals, nottest
 
 host_dir = "tests/unit/hosts/"
 
+
 @nottest
 def get_hosts_to_test():
     # Retrieve what function called us
@@ -66,6 +67,28 @@ def test_find_match_matched():
         disk_0, expected_result = host_file.prepare_test_find_match_matched()
         result = choose_disk.find_match(host_file.ansible_devices, disk_0)
         assert_equals(result, expected_result)
+
+
+def test_find_match_matched_gt():
+    """
+    find_match - test for a matching device with gt() operator
+    """
+    ansible_devices = {'sr0': {'sectorsize': '512'}}
+    disk_0 = {'storage_disks_0': {'sectorsize': 'gt(256)'}}
+    expected_result = ansible_devices
+    result = choose_disk.find_match(ansible_devices, disk_0)
+    assert_equals(result, expected_result)
+
+
+def test_find_match_matched_lt():
+    """
+    find_match - test for a matching device with lt() operator
+    """
+    ansible_devices = {'sr0': {'sectorsize': '512'}}
+    disk_0 = {'storage_disks_0': {'sectorsize': 'lt(1024)'}}
+    expected_result = ansible_devices
+    result = choose_disk.find_match(ansible_devices, disk_0)
+    assert_equals(result, expected_result)
 
 
 def test_find_match_unmatched():
