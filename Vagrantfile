@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 
 require 'yaml'
-require 'securerandom'
+require 'time'
 VAGRANTFILE_API_VERSION = '2'
 
 DEBUG = false
@@ -32,6 +32,7 @@ USER           = settings['ssh_username']
 
 ASSIGN_STATIC_IP = !(BOX == 'openstack' or BOX == 'linode')
 DISABLE_SYNCED_FOLDER = settings.fetch('vagrant_disable_synced_folder', false)
+DISK_UUID = Time.now.utc.to_i
 
 
 ansible_provision = proc do |ansible|
@@ -467,7 +468,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         # always make /dev/sd{a/b/c} so that CI can ensure that
         # virtualbox and libvirt will have the same devices to use for OSDs
         (0..2).each do |d|
-          lv.storage :file, :device => "hd#{driverletters[d]}", :path => "disk-#{i}-#{d}.disk", :size => '12G', :bus => "ide"
+          lv.storage :file, :device => "hd#{driverletters[d]}", :path => "disk-#{i}-#{d}-#{DISK_UUID}.disk", :size => '12G', :bus => "ide"
         end
         lv.memory = MEMORY
         lv.random_hostname = true
