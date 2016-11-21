@@ -40,7 +40,6 @@ Have a look at `defaults/main.yml`.
 * restart ceph-mds
 * restart ceph-rgw
 * restart ceph-restapi
-* restart apache2
 
 # Dependencies
 

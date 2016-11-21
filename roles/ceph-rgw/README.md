@@ -3,10 +3,7 @@
 This role bootstraps Ceph Rados Gateway(s).
 It can bootstrap dockerized Ceph Rados Gateway(s).
 
-It supports two methods to configure Rados Gateway:
-
-* with civetweb (default and preferred)
-* with Apache and CGI
+Civetweb is the only supported method for the Rados Gateway.
 
 It can be configured to support a connection with OpenStack Keystone.
 
