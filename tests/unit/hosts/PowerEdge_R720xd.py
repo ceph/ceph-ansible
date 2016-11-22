@@ -293,21 +293,21 @@ def prepare_test_get_block_devices_persistent_name():
         disk_facts[disk] = {"name": disk}
 
     expected_result = {
-            'scsi-36848f690e68a50001e428e551e831be3': {'name': 'sdk', 'prefix' : '/dev/disk/by-id/'},
-            'scsi-36848f690e68a50001e428e511e3fb33c': {'name': 'sde', 'prefix' : '/dev/disk/by-id/'},
-            'scsi-36848f690e68a50001e428e521e55c62b': {'name': 'sdg', 'prefix' : '/dev/disk/by-id/'},
-            'scsi-36848f690e68a50001e428e531e60f90f': {'name': 'sdh', 'prefix' : '/dev/disk/by-id/'},
-            'scsi-36848f690e68a50001e428e4f1e211ba2': {'name': 'sdb', 'prefix' : '/dev/disk/by-id/'},
-            'dm-name-rhel_gprfs033-swap': {'name': 'dm-1', 'prefix' : '/dev/disk/by-id/'},
-            'scsi-36848f690e68a50001e428e4f1e2b4baf': {'name': 'sdc', 'prefix' : '/dev/disk/by-id/'},
-            'scsi-36848f690e68a50001e428e561e8e3478': {'name': 'sdl', 'prefix' : '/dev/disk/by-id/'},
-            'scsi-36848f690e68a50001e428e511e4a6c20': {'name': 'sdf', 'prefix' : '/dev/disk/by-id/'},
-            'scsi-36848f690e68a50001e428e541e778a3c': {'name': 'sdj', 'prefix' : '/dev/disk/by-id/'},
-            'scsi-36848f690e68a50001bbef0a0094625c1': {'name': 'sda', 'prefix' : '/dev/disk/by-id/'},
-            'dm-name-rhel_gprfs033-root': {'name': 'dm-0', 'prefix' : '/dev/disk/by-id/'},
-            'dm-name-rhel_gprfs033-home': {'name': 'dm-2', 'prefix' : '/dev/disk/by-id/'},
-            'scsi-36848f690e68a50001e428e571e9dccd1': {'name': 'sdm', 'prefix' : '/dev/disk/by-id/'},
-            'scsi-36848f690e68a50001e428e541e6c6027': {'name': 'sdi', 'prefix' : '/dev/disk/by-id/'}
+            'scsi-36848f690e68a50001e428e551e831be3': {'name': 'sdk', 'bdev' : '/dev/disk/by-id/scsi-36848f690e68a50001e428e551e831be3'},
+            'scsi-36848f690e68a50001e428e511e3fb33c': {'name': 'sde', 'bdev' : '/dev/disk/by-id/scsi-36848f690e68a50001e428e511e3fb33c'},
+            'scsi-36848f690e68a50001e428e521e55c62b': {'name': 'sdg', 'bdev' : '/dev/disk/by-id/scsi-36848f690e68a50001e428e521e55c62b'},
+            'scsi-36848f690e68a50001e428e531e60f90f': {'name': 'sdh', 'bdev' : '/dev/disk/by-id/scsi-36848f690e68a50001e428e531e60f90f'},
+            'scsi-36848f690e68a50001e428e4f1e211ba2': {'name': 'sdb', 'bdev' : '/dev/disk/by-id/scsi-36848f690e68a50001e428e4f1e211ba2'},
+            'dm-name-rhel_gprfs033-swap': {'name': 'dm-1', 'bdev' : '/dev/disk/by-id/dm-name-rhel_gprfs033-swap'},
+            'scsi-36848f690e68a50001e428e4f1e2b4baf': {'name': 'sdc', 'bdev' : '/dev/disk/by-id/scsi-36848f690e68a50001e428e4f1e2b4baf'},
+            'scsi-36848f690e68a50001e428e561e8e3478': {'name': 'sdl', 'bdev' : '/dev/disk/by-id/scsi-36848f690e68a50001e428e561e8e3478'},
+            'scsi-36848f690e68a50001e428e511e4a6c20': {'name': 'sdf', 'bdev' : '/dev/disk/by-id/scsi-36848f690e68a50001e428e511e4a6c20'},
+            'scsi-36848f690e68a50001e428e541e778a3c': {'name': 'sdj', 'bdev' : '/dev/disk/by-id/scsi-36848f690e68a50001e428e541e778a3c'},
+            'scsi-36848f690e68a50001bbef0a0094625c1': {'name': 'sda', 'bdev' : '/dev/disk/by-id/scsi-36848f690e68a50001bbef0a0094625c1'},
+            'dm-name-rhel_gprfs033-root': {'name': 'dm-0', 'bdev' : '/dev/disk/by-id/dm-name-rhel_gprfs033-root'},
+            'dm-name-rhel_gprfs033-home': {'name': 'dm-2', 'bdev' : '/dev/disk/by-id/dm-name-rhel_gprfs033-home'},
+            'scsi-36848f690e68a50001e428e571e9dccd1': {'name': 'sdm', 'bdev' : '/dev/disk/by-id/scsi-36848f690e68a50001e428e571e9dccd1'},
+            'scsi-36848f690e68a50001e428e541e6c6027': {'name': 'sdi', 'bdev' : '/dev/disk/by-id/scsi-36848f690e68a50001e428e541e6c6027'}
             }
 
     return (disk_facts, expected_result)
