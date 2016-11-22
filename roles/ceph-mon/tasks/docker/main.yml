@@ -17,8 +17,10 @@
   when:
     - ceph_health.rc != 0
     - not mon_containerized_deployment_with_kv
+    - not "{{ rolling_update | default(false) }}"
 
 - include: pre_requisite.yml
+  when: not is_atomic
 
 - include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_atomic.yml"
   when:
@@ -57,6 +59,14 @@
   when: ansible_os_family == 'RedHat'
 
 - include: start_docker_monitor.yml
+
+# NOTE: if we don't wait we will attempt to copy config to ansible host
+# before admin key is ready, preventing future daemons e.g. ceph-mds from
+# properly retrieving key
+- name: wait for client.admin key exists
+  wait_for:
+    path: /etc/ceph/{{ cluster }}.client.admin.keyring
+  when: cephx
 
 - include: copy_configs.yml
   when: not mon_containerized_deployment_with_kv
