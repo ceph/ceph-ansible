@@ -14,6 +14,8 @@ description:
     To be completed
 '''
 
+fout = open("/tmp/ansible", "a")
+
 
 def _equal(left, right):
     return left == right
@@ -61,7 +63,6 @@ def convert_units(value):
 def find_match(physical_disks, lookup_disks):
     ''' Find a set of matching devices in physical_disks
     '''
-    fout = open("/tmp/ansible", "a")
     matched_devices = {}
     exclude_list = []
 
@@ -159,6 +160,7 @@ def select_only_free_devices(physical_disks):
             continue
 
         selected_devices[physical_disk] = physical_disks[physical_disk]
+        selected_devices[physical_disk]['bdev'] = '/dev/' + physical_disk
 
     return selected_devices
 
@@ -184,30 +186,65 @@ def get_block_devices_persistent_name(physical_disks):
     for physical_disk in physical_disks:
         if physical_disk in matching_list:
             current_index = sorted(matching_list[physical_disk])[0]
+            final_list[current_index] = physical_disks[physical_disk]
+            final_list[current_index]["bdev"] = "%s%s" % (directory, current_index)
         else:
             current_index = physical_disk
-
-        final_list[current_index] = physical_disks[physical_disk]
-        final_list[current_index]["prefix"] = "%s" % (directory)
+            final_list[current_index] = physical_disks[physical_disk]
 
     return final_list
 
 
+def fake_device(device_list):
+    '''
+    In case of legacy block device names, let's create an internal faked
+    entry with a 'bdev' entry filled with the actual path. This will be used to
+    make a match later on.
+    '''
+    devices = {}
+    count = 0
+    for device in device_list.split():
+        devices["legacy_%d" % count] = {"bdev": os.path.dirname(device)+"/"+os.path.basename(device)}
+        count = count + 1
+
+    return devices
+
+
 def main():
+    module = None
+    matched_devices = None
+    lookup_disks = None
+    disks = "disks"
+    legacy = "legacy_disks"
+
     fields = {
-        "facts": {"required": False, "type": "dict"},
-        "disks": {"required": True, "type": "dict"},
+        "facts": {"required": True, "type": "dict"},
+        disks: {"required": False, "type": "dict"},
+        legacy: {"required": False, "type": "str"},
     }
 
     module = AnsibleModule(
         argument_spec=fields
     )
 
-    # From the ansible facts, we only keep the disks that doesn't have
-    # partitions, transform their device name in a persistent name
-    physical_disks = get_block_devices_persistent_name(select_only_free_devices(module.params["facts"]))
-    lookup_disks = expand_disks(module.params["disks"])
+    physical_disks = select_only_free_devices(module.params["facts"])
 
+    # The new disks description is preferred over the legacy (/dev/sd) naming
+    if module.params[disks]:
+        # From the ansible facts, we only keep the disks that doesn't have
+        # partitions, transform their device name in a persistent name
+        lookup_disks = expand_disks(module.params[disks])
+        physical_disks = get_block_devices_persistent_name(physical_disks)
+    elif module.params[legacy]:
+        # From the ansible facts, we only keep the disks that doesn't have partitions
+        # We don't transform into the persistent naming but rather fake the disk
+        # definition by creating "bdev" entries to get a feature to match.
+        lookup_disks = expand_disks(fake_device(module.params[legacy]))
+    else:
+        module.fail_json(msg="no 'disks' or 'legacy_disks' variables found in playbook")
+        return
+
+    # From the ansible facts, we only keep the disks that doesn't have
     matched_devices = find_match(physical_disks, lookup_disks)
 
     if len(matched_devices) < len(lookup_disks):

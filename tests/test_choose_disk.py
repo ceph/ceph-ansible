@@ -59,6 +59,15 @@ def test_expand_disks_multiple_implicit_count():
                                  'storage_disks_0': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}}"))
 
 
+def test_fake_device():
+    """
+    fake_device - Testing the legacy conversion of disk's definition
+    """
+    assert_equals(choose_disk.fake_device("/dev/sda /dev/sdb /dev/sdc"),
+            {'legacy_0': {'bdev': '/dev/sda'}, 'legacy_1': {'bdev': '/dev/sdb'},
+                'legacy_2': {'bdev': '/dev/sdc'}} )
+
+
 def test_units_gb():
     """
     convert_units - checking storage units are well converted in bytes
