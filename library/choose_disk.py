@@ -203,13 +203,15 @@ def main():
         argument_spec=fields
     )
 
-    physical_disks = module.params["facts"]
+    # From the ansible facts, we only keep the disks that doesn't have
+    # partitions, transform their device name in a persistent name
+    physical_disks = get_block_devices_persistent_name(select_only_free_devices(module.params["facts"]))
     lookup_disks = expand_disks(module.params["disks"])
 
     matched_devices = find_match(physical_disks, lookup_disks)
 
     if len(matched_devices) < len(lookup_disks):
-        message = "Could only find %d of the %d expected devices \n" % (len(matched_devices), len(lookup_disks))
+        message = "Could only find %d of the %d expected devices : %s\n" % (len(matched_devices), len(lookup_disks), physical_disks.keys())
         module.fail_json(msg=message)
     else:
         module.exit_json(msg="Success")
