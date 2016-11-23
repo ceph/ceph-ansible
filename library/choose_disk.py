@@ -117,6 +117,7 @@ def find_match(physical_disks, lookup_disks):
                 fout.write("  full match (%d/%d) for %s\n" % (match_count, len(current_lookup), physical_disk))
                 matched_devices[physical_disk] = physical_disks[physical_disk]
                 exclude_list.append(physical_disk)
+                break
             # We were unable to find all part of the required features
             elif match_count > 0:
                 fout.write("  partial match for %s with %d/%d\n" % (physical_disk, match_count, len(current_lookup)))
