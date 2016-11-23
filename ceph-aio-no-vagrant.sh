@@ -89,24 +89,24 @@ function ssh_setup {
 }
 
 function cp_var {
-  cp group_vars/all.sample group_vars/all
-  cp group_vars/osds.sample group_vars/osds
+  cp group_vars/all.yml.sample group_vars/all.yml
+  cp group_vars/osds.yml.sample group_vars/osds.yml
   cp site.yml.sample site.yml
 }
 
 function populate_vars {
-  sed -i "s/#osd_auto_discovery: false/osd_auto_discovery: true/" group_vars/osds
-  sed -i "s/#journal_collocation: false/journal_collocation: true/" group_vars/osds
-  sed -i "s/#pool_default_size: 3/pool_default_size: 2/" group_vars/all
-  sed -i "s/#monitor_address: 0.0.0.0/monitor_address: ${IP}/" group_vars/all
-  sed -i "s/#journal_size: 0/journal_size: 100/" group_vars/all
-  sed -i "s|#public_network: 0.0.0.0\/0|public_network: ${SUBNET}|" group_vars/all
-  sed -i "s/#common_single_host_mode: true/common_single_host_mode: true/" group_vars/all
+  sed -i "s/#osd_auto_discovery: false/osd_auto_discovery: true/" group_vars/osds.yml
+  sed -i "s/#journal_collocation: false/journal_collocation: true/" group_vars/osds.yml
+  sed -i "s/#pool_default_size: 3/pool_default_size: 2/" group_vars/all.yml
+  sed -i "s/#monitor_address: 0.0.0.0/monitor_address: ${IP}/" group_vars/all.yml
+  sed -i "s/#journal_size: 0/journal_size: 100/" group_vars/all.yml
+  sed -i "s|#public_network: 0.0.0.0\/0|public_network: ${SUBNET}|" group_vars/all.yml
+  sed -i "s/#common_single_host_mode: true/common_single_host_mode: true/" group_vars/all.yml
   if [[ ${SOURCE} == 'stable' ]]; then
-    sed -i "s/#ceph_stable: false/ceph_stable: true/" group_vars/all
+    sed -i "s/#ceph_stable: false/ceph_stable: true/" group_vars/all.yml
   else
-    sed -i "s/#ceph_dev: false/ceph_dev: true/" group_vars/all
-    sed -i "s|#ceph_dev_branch: master|ceph_dev_branch: ${BRANCH}|" group_vars/all
+    sed -i "s/#ceph_dev: false/ceph_dev: true/" group_vars/all.yml
+    sed -i "s|#ceph_dev_branch: master|ceph_dev_branch: ${BRANCH}|" group_vars/all.yml
   fi
 }
 
