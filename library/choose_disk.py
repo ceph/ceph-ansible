@@ -2,6 +2,7 @@
 
 from ansible.module_utils.basic import AnsibleModule
 import json
+import logging
 import os
 import re
 
@@ -14,7 +15,8 @@ description:
     To be completed
 '''
 
-fout = open("/tmp/ansible", "a")
+logger = logging.getLogger('choose_disk')
+module = None
 
 
 def _equal(left, right):
@@ -66,9 +68,15 @@ def find_match(physical_disks, lookup_disks):
     matched_devices = {}
     exclude_list = []
 
+    logger.info("Looking for matches")
     # Inspecting every disk we search for
     for disk in lookup_disks:
-        fout.write("Working on %s\n" % disk)
+
+        if len(exclude_list) == len(physical_disks):
+            info(" Skipping %s as no more free devices to match" % (disk))
+            continue
+
+        logger.info(" Inspecting %s" % disk)
         # Trying to find a match against all physical disks we have
         for physical_disk in physical_disks:
             # Avoid reusing an already matched physical disk
@@ -100,29 +108,29 @@ def find_match(physical_disks, lookup_disks):
                             operator = new_operator
                             right = arguments.group(2)
                         else:
-                            assert("Unsupported %s operator in : %s\n" % (new_operator, right))
+                            fatal("Unsupported %s operator in : %s" % (new_operator, right))
 
                 # Let's check if (left <operator> right) is True meaning the match is done
                 if globals()[operator](convert_units(left), convert_units(right)):
-                    fout.write("  %s : match  %s %s %s\n" % (physical_disk, left, operator, right))
+                    debug("  %s : match  %s %s %s" % (physical_disk, left, operator, right))
                     match_count = match_count + 1
                     continue
                 else:
-                    fout.write("  %s : no match  %s %s %s\n" % (physical_disk, left, operator, right))
+                    debug("  %s : no match  %s %s %s" % (physical_disk, left, operator, right))
                     match_count = match_count
                     # nomatch
 
             # If all the features matched
             if match_count == len(current_lookup):
-                fout.write("  full match (%d/%d) for %s\n" % (match_count, len(current_lookup), physical_disk))
+                info("  %50s matched" % (physical_disk))
                 matched_devices[physical_disk] = physical_disks[physical_disk]
                 exclude_list.append(physical_disk)
                 break
             # We were unable to find all part of the required features
             elif match_count > 0:
-                fout.write("  partial match for %s with %d/%d\n" % (physical_disk, match_count, len(current_lookup)))
+                info("  %50s partially matched with %d/%d items" % (physical_disk, match_count, len(current_lookup)))
             else:
-                fout.write("  no match for %s\n" % (physical_disk))
+                info("  %50s no devices matched" % (physical_disk))
 
     return matched_devices
 
@@ -150,18 +158,22 @@ def expand_disks(lookup_disks):
 def select_only_free_devices(physical_disks):
     ''' Don't keep that have partitions '''
     selected_devices = {}
-    for physical_disk in physical_disks:
+    info('Detecting free devices')
+    for physical_disk in sorted(physical_disks):
         current_physical_disk = physical_disks[physical_disk]
 
         # Don't consider devices that doesn't have partitions
         if 'partitions' not in current_physical_disk:
+            info(' Ignoring %10s : Device doesnt support partitioning' % physical_disk)
             continue
         # Don't consider the device if partition list is not empty,
         if len(current_physical_disk['partitions']) > 0:
+            info(' Ignoring %10s : Device have exisiting partitions' % physical_disk)
             continue
 
         selected_devices[physical_disk] = physical_disks[physical_disk]
         selected_devices[physical_disk]['bdev'] = '/dev/' + physical_disk
+        info(' Adding   %10s : %s' % (physical_disk, selected_devices[physical_disk]['bdev']))
 
     return selected_devices
 
@@ -170,8 +182,10 @@ def get_block_devices_persistent_name(physical_disks):
     ''' Replace the short name (sda) by the persistent naming 'by-id' '''
     directory = "/dev/disk/by-id/"
 
+    info('Finding persistent disks name')
     # If the directory doesn't exist, reports the list as-is
     if not os.path.isdir(directory):
+        info(' Cannot open %s' % directory)
         return physical_disks
 
     final_list = {}
@@ -184,11 +198,12 @@ def get_block_devices_persistent_name(physical_disks):
             else:
                 matching_list[device_name].append(f)
 
-    for physical_disk in physical_disks:
+    for physical_disk in sorted(physical_disks):
         if physical_disk in matching_list:
             current_index = sorted(matching_list[physical_disk])[0]
             final_list[current_index] = physical_disks[physical_disk]
             final_list[current_index]["bdev"] = "%s%s" % (directory, current_index)
+            info(' Renaming %10s to %50s' % (physical_disk, current_index))
         else:
             current_index = physical_disk
             final_list[current_index] = physical_disks[physical_disk]
@@ -211,12 +226,78 @@ def fake_device(device_list):
     return devices
 
 
+def show_resulting_devices(matched_devices, physical_disks_name):
+    unmatched = set(physical_disks_name).difference(set(matched_devices.keys()))
+    info("Matched devices   : %3d" % len(matched_devices))
+    for matched_device in sorted(matched_devices.keys()):
+        info(" %s" % matched_device)
+    info("Unmatched devices : %3d" % len(unmatched))
+    for unmatched_device in sorted(unmatched):
+        info(" %s" % unmatched_device)
+
+
+def info(message):
+    global logger
+    if logger:
+        logger.info(message)
+
+
+def warn(message):
+    global logger
+    if logger:
+        logger.warn(message)
+
+
+def debug(message):
+    global logger
+    if logger:
+        logger.debug(message)
+
+
+def error(message):
+    global logger
+    if logger:
+        logger.error(message)
+
+
+def setup_logging():
+    global logger
+    hdlr = logging.FileHandler('/var/log/choose_disk.log')
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    hdlr.setFormatter(formatter)
+    logger.addHandler(hdlr)
+    logger.setLevel(logging.INFO)
+    logger.info("############")
+    logger.info("# Starting #")
+    logger.info("############")
+
+
+def success(message):
+    global module
+    info(message)
+    logger.info("#######")
+    logger.info("# End #")
+    logger.info("#######")
+    module.exit_json(msg=message)
+
+
+def fatal(message):
+    global module
+    error(message)
+    logger.info("#######")
+    logger.info("# End #")
+    logger.info("#######")
+    module.fail_json(msg=message)
+
+
 def main():
-    module = None
+    global module
     matched_devices = None
     lookup_disks = None
     disks = "disks"
     legacy = "legacy_disks"
+
+    setup_logging()
 
     fields = {
         "facts": {"required": True, "type": "dict"},
@@ -230,29 +311,38 @@ def main():
 
     physical_disks = select_only_free_devices(module.params["facts"])
 
+    if module.params[disks] and module.params[legacy]:
+        fatal("%s and %s options are exclusive while both are defined" % (disks, legacy))
+
     # The new disks description is preferred over the legacy (/dev/sd) naming
     if module.params[disks]:
+        info("Native syntax")
+        info(" %s : %s" % (disks, module.params[disks]))
         # From the ansible facts, we only keep the disks that doesn't have
         # partitions, transform their device name in a persistent name
         lookup_disks = expand_disks(module.params[disks])
         physical_disks = get_block_devices_persistent_name(physical_disks)
     elif module.params[legacy]:
+        info("Legacy syntax")
+        info(" %s : %s" % (legacy, module.params[legacy]))
         # From the ansible facts, we only keep the disks that doesn't have partitions
         # We don't transform into the persistent naming but rather fake the disk
         # definition by creating "bdev" entries to get a feature to match.
         lookup_disks = expand_disks(fake_device(module.params[legacy]))
     else:
-        module.fail_json(msg="no 'disks' or 'legacy_disks' variables found in playbook")
+        fatal("no 'disks' or 'legacy_disks' variables found in playbook")
         return
 
+    debug("Looking for %s" % lookup_disks)
     # From the ansible facts, we only keep the disks that doesn't have
     matched_devices = find_match(physical_disks, lookup_disks)
 
+    show_resulting_devices(matched_devices, physical_disks.keys())
+
     if len(matched_devices) < len(lookup_disks):
-        message = "Could only find %d of the %d expected devices : %s\n" % (len(matched_devices), len(lookup_disks), physical_disks.keys())
-        module.fail_json(msg=message)
+        fatal("Could only find %d of the %d expected devices\n" % (len(matched_devices), len(lookup_disks)))
     else:
-        module.exit_json(msg="Success")
+        success("All search devices were found")
 
 if __name__ == '__main__':
         main()
