@@ -151,7 +151,7 @@ def find_match(physical_disks, lookup_disks):
         for n in range(0, len(matched_devices[matched_device]), 1):
             name = matched_device
             if len(matched_devices[matched_device]) > 1:
-                name = "%s_%d" % (matched_device, n)
+                name = "%s_%03d" % (matched_device, n)
             final_list[name] = matched_devices[matched_device][n]
 
     return final_list
@@ -176,9 +176,9 @@ def expand_disks(lookup_disks):
             count = 1
 
         for n in range(0, int(count), 1):
-            final_list["%s_%d" % (disk, n)] = lookup_disks[disk]
+            final_list["%s_%03d" % (disk, n)] = lookup_disks[disk]
             if infinite is True:
-                final_list["%s_%d" % (disk, n)]["infinite"] = "1"
+                final_list["%s_%03d" % (disk, n)]["infinite"] = "1"
 
     return final_list
 
