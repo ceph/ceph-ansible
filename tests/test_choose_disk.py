@@ -41,24 +41,6 @@ def test_expand_disks_explict_count_2():
     assert_equals(result, eval("{'storage_disks_0': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}, 'storage_disks_1': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}}"))
 
 
-def test_expand_disks_implicit_count():
-    """
-    expand_disks - test expand disk with implicit count=1
-    """
-    result = choose_disk.expand_disks(eval("{'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}}"))
-    assert_equals(result, eval("{'storage_disks_0': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}}"))
-
-
-def test_expand_disks_multiple_implicit_count():
-    """
-    expand_disks - test expand disk with two implicit count=1
-    """
-    result = choose_disk.expand_disks(eval("{'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'},\
-                                             'journal_disks': {'model': 'SANDISK PLIPM512', 'rotational': '0'}}"))
-    assert_equals(result, eval("{'journal_disks_0': {'model': 'SANDISK PLIPM512', 'rotational': '0'},\
-                                 'storage_disks_0': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}}"))
-
-
 def test_fake_device():
     """
     fake_device - Testing the legacy conversion of disk's definition
