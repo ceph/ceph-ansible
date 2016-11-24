@@ -30,7 +30,7 @@ def test_expand_disks_explict_count_1():
     expand_disks - test expand disk with explicit count=1
     """
     result = choose_disk.expand_disks(eval("{'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1', 'count': 1 }}"))
-    assert_equals(result, eval("{'storage_disks_0': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}}"))
+    assert_equals(result, eval("{'storage_disks_000': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}}"))
 
 
 def test_expand_disks_explict_count_2():
@@ -38,7 +38,7 @@ def test_expand_disks_explict_count_2():
     expand_disks - test expand disk with explicit count=2
     """
     result = choose_disk.expand_disks(eval("{'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1', 'count': 2 }}"))
-    assert_equals(result, eval("{'storage_disks_0': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}, 'storage_disks_1': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}}"))
+    assert_equals(result, eval("{'storage_disks_000': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}, 'storage_disks_001': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}}"))
 
 
 def test_fake_device():
