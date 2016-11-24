@@ -30,6 +30,12 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: group_vars/all.yml
 
+  - name: exit playbook, if only one monitor is present in cluster
+    fail:
+      msg: "You are about to shrink the only monitor present in the cluster.
+            If you really want to do that, please use the purge-cluster playbook."
+    when: "{{ groups[mon_group_name] | length | int == 1 }}"
+
   - name: exit playbook, if user did not mean to shrink cluster
     fail:
       msg: "Exiting shrink-mon playbook, no monitor(s) was/were removed.
