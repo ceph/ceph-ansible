@@ -138,13 +138,12 @@ def find_match(physical_disks, lookup_disks):
 def expand_disks(lookup_disks):
     '''
     Read the disks structure and expand them according to the count directive
-    If no count is provided, a default value of 1 is taken.
     '''
     final_list = {}
     for disk in lookup_disks:
         count = 0
         if 'count' not in lookup_disks[disk]:
-            count = 1
+            fatal("disk '%s' should have a 'count' value defined" % disk)
         if 'count' in lookup_disks[disk]:
             count = int(lookup_disks[disk]['count'])
             del lookup_disks[disk]['count']
