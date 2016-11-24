@@ -70,7 +70,13 @@ def find_match(physical_disks, lookup_disks):
 
     logger.info("Looking for matches")
     # Inspecting every disk we search for
-    for disk in lookup_disks:
+    for disk in sorted(lookup_disks):
+
+        current_lookup = lookup_disks[disk]
+        infinite = False
+        if "infinite" in current_lookup.keys():
+            infinite = True
+            del current_lookup["infinite"]
 
         if len(exclude_list) == len(physical_disks):
             info(" Skipping %s as no more free devices to match" % (disk))
@@ -78,13 +84,12 @@ def find_match(physical_disks, lookup_disks):
 
         logger.info(" Inspecting %s" % disk)
         # Trying to find a match against all physical disks we have
-        for physical_disk in physical_disks:
+        for physical_disk in sorted(physical_disks):
             # Avoid reusing an already matched physical disk
             if physical_disk in exclude_list:
                 continue
 
             current_physical_disk = physical_disks[physical_disk]
-            current_lookup = lookup_disks[disk]
             match_count = 0
             # Checking what features are matching
             for feature in current_lookup:
@@ -123,16 +128,32 @@ def find_match(physical_disks, lookup_disks):
             # If all the features matched
             if match_count == len(current_lookup):
                 info("  %50s matched" % (physical_disk))
-                matched_devices[physical_disk] = physical_disks[physical_disk]
+                # When looking for an infinite number of disks, we can have
+                # several disks per matching
+                if disk not in matched_devices:
+                    matched_devices[disk] = []
+                matched_devices[disk].append(physical_disks[physical_disk])
                 exclude_list.append(physical_disk)
-                break
+                # If we look for an inifinite list of those devices, let's
+                # continue looking for the same description unless let's go to
+                # the next device
+                if infinite is False:
+                    break
             # We were unable to find all part of the required features
             elif match_count > 0:
                 info("  %50s partially matched with %d/%d items" % (physical_disk, match_count, len(current_lookup)))
             else:
                 info("  %50s no devices matched" % (physical_disk))
 
-    return matched_devices
+    final_list = {}
+    for matched_device in matched_devices.keys():
+        for n in range(0, len(matched_devices[matched_device]), 1):
+            name = matched_device
+            if len(matched_devices[matched_device]) > 1:
+                name = "%s_%d" % (matched_device, n)
+            final_list[name] = matched_devices[matched_device][n]
+
+    return final_list
 
 
 def expand_disks(lookup_disks):
@@ -141,15 +162,22 @@ def expand_disks(lookup_disks):
     '''
     final_list = {}
     for disk in lookup_disks:
+        infinite = False
         count = 0
         if 'count' not in lookup_disks[disk]:
             fatal("disk '%s' should have a 'count' value defined" % disk)
         if 'count' in lookup_disks[disk]:
-            count = int(lookup_disks[disk]['count'])
+            count = lookup_disks[disk]['count']
             del lookup_disks[disk]['count']
 
-        for n in range(0, count, 1):
+        if '*' in str(count).strip():
+            infinite = True
+            count = 1
+
+        for n in range(0, int(count), 1):
             final_list["%s_%d" % (disk, n)] = lookup_disks[disk]
+            if infinite is True:
+                final_list["%s_%d" % (disk, n)]["infinite"] = "1"
 
     return final_list
 
@@ -225,14 +253,21 @@ def fake_device(device_list):
     return devices
 
 
-def show_resulting_devices(matched_devices, physical_disks_name):
-    unmatched = set(physical_disks_name).difference(set(matched_devices.keys()))
+def show_resulting_devices(matched_devices, physical_disks):
+    bdev_matched = []
+    bdev_unmatched = []
     info("Matched devices   : %3d" % len(matched_devices))
     for matched_device in sorted(matched_devices.keys()):
-        info(" %s" % matched_device)
-    info("Unmatched devices : %3d" % len(unmatched))
-    for unmatched_device in sorted(unmatched):
-        info(" %s" % unmatched_device)
+        info(" %s : %s" % (matched_device, matched_devices[matched_device]["bdev"]))
+        bdev_matched.append(matched_devices[matched_device]["bdev"])
+
+    for physical_disk in sorted(physical_disks):
+        if physical_disks[physical_disk]["bdev"] not in bdev_matched:
+            bdev_unmatched.append(physical_disks[physical_disk]["bdev"])
+
+    info("Unmatched devices : %3d" % len(bdev_unmatched))
+    for bdev in sorted(bdev_unmatched):
+        info(" %s" % bdev)
 
 
 def info(message):
@@ -286,7 +321,8 @@ def fatal(message):
     logger.info("#######")
     logger.info("# End #")
     logger.info("#######")
-    module.fail_json(msg=message)
+    if module:
+        module.fail_json(msg=message)
 
 
 def main():
@@ -336,7 +372,7 @@ def main():
     # From the ansible facts, we only keep the disks that doesn't have
     matched_devices = find_match(physical_disks, lookup_disks)
 
-    show_resulting_devices(matched_devices, physical_disks.keys())
+    show_resulting_devices(matched_devices, physical_disks)
 
     if len(matched_devices) < len(lookup_disks):
         fatal("Could only find %d of the %d expected devices\n" % (len(matched_devices), len(lookup_disks)))
