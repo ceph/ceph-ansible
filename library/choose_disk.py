@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 
 DOCUMENTATION = '''
 ---
@@ -182,11 +183,26 @@ def expand_disks(lookup_disks):
     return final_list
 
 
+def is_ceph_disk(partition):
+    '''
+    Check if a parition is used by ceph
+    '''
+    try:
+        stdout = subprocess.check_output(["lsblk", "-no", "PARTLABEL", "%s" % partition])
+        if "ceph data" in stdout:
+            return True
+    except:
+        pass
+
+    return False
+
+
 def select_only_free_devices(physical_disks):
     ''' Don't keep that have partitions '''
     selected_devices = {}
     info('Detecting free devices')
     for physical_disk in sorted(physical_disks):
+        ceph_disk = False
         current_physical_disk = physical_disks[physical_disk]
 
         # Don't consider devices that doesn't have partitions
@@ -195,12 +211,22 @@ def select_only_free_devices(physical_disks):
             continue
         # Don't consider the device if partition list is not empty,
         if len(current_physical_disk['partitions']) > 0:
-            info(' Ignoring %10s : Device have exisiting partitions' % physical_disk)
-            continue
+            for partition in current_physical_disk['partitions']:
+                if is_ceph_disk("/dev/" + partition):
+                    ceph_disk = True
+
+            if ceph_disk is False:
+                info(' Ignoring %10s : Device have exisiting partitions' % physical_disk)
+                continue
 
         selected_devices[physical_disk] = physical_disks[physical_disk]
         selected_devices[physical_disk]['bdev'] = '/dev/' + physical_disk
-        info(' Adding   %10s : %s' % (physical_disk, selected_devices[physical_disk]['bdev']))
+
+        if ceph_disk is True:
+            selected_devices[physical_disk]['ceph'] = 1
+            info(' Adding   %10s : Ceph disk detected' % physical_disk)
+        else:
+            info(' Adding   %10s : %s' % (physical_disk, selected_devices[physical_disk]['bdev']))
 
     return selected_devices
 
@@ -258,7 +284,10 @@ def show_resulting_devices(matched_devices, physical_disks):
     bdev_unmatched = []
     info("Matched devices   : %3d" % len(matched_devices))
     for matched_device in sorted(matched_devices.keys()):
-        info(" %s : %s" % (matched_device, matched_devices[matched_device]["bdev"]))
+        extra_string = ""
+        if "ceph" in matched_devices[matched_device]:
+            extra_string = " (ceph)"
+        info(" %s : %s%s" % (matched_device, matched_devices[matched_device]["bdev"], extra_string))
         bdev_matched.append(matched_devices[matched_device]["bdev"])
 
     for physical_disk in sorted(physical_disks):
