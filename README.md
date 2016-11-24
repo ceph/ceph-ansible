@@ -54,7 +54,7 @@ please use the `ceph_conf_overrides` variable.
 ## Special notes
 
 If you are looking at deploying a Ceph version older than Jewel.
-It is highly recommended that you apply the following settings to your `group_vars/all` file on the `ceph_conf_overrides` variable:
+It is highly recommended that you apply the following settings to your `group_vars/all.yml` file on the `ceph_conf_overrides` variable:
 
 ```
 ceph_conf_overrides:
@@ -171,7 +171,7 @@ $ vagrant provision
 
 The Vagrantfile specifies an fsid for the cluster and a secret key for the
 monitor. If using these playbooks in production, you must generate your own `fsid`
-in `group_vars/all` and `monitor_secret` in `group_vars/mons`. Those files contain
+in `group_vars/all.yml` and `monitor_secret` in `group_vars/mons.yml`. Those files contain
 information about how to generate appropriate values for these variables.
 
 ## Specifying package origin
@@ -243,7 +243,7 @@ Attention, ceph-common doesn't manage backports repository, you must add it your
 ### For Atomic systems
 
 If you want to run containerized deployment on Atomic systems (RHEL/CentOS Atomic), please copy
-[vagrant_variables.yml.atomic](vagrant_variables.yml.atomic) to vagrant_variables.yml, and copy [group_vars/all.docker](group_vars/all.docker) to `group_vars/all`.
+[vagrant_variables.yml.atomic](vagrant_variables.yml.atomic) to vagrant_variables.yml, and copy [group_vars/all.docker.yml.sample](group_vars/all.docker.yml.sample) to `group_vars/all.yml`.
 
 Since `centos/atomic-host` VirtualBox box doesn't have spare storage controller to attach more disks, it is likely the first time `vagrant up --provider=virtualbox` runs, it will fail to attach to a storage controller. In such case, run the following command:
 
@@ -259,7 +259,7 @@ Install the Vagrant plugin for the openstack provider: `vagrant plugin install v
 
 ```bash
 $ cp site.yml.sample site.yml
-$ cp group_vars/all.docker.sample group_vars/all
+$ cp group_vars/all.docker.yml.sample group_vars/all.yml
 $ cp vagrant_variables.yml.openstack vagrant_variables.yml
 ```
 * Edit `vagrant_variables.yml`:

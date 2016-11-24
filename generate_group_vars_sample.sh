@@ -7,13 +7,13 @@ basedir=$(dirname "$0")
 for role in "$basedir"/roles/ceph-*; do
   rolename=$(basename "$role")
   if [[ $rolename == "ceph-common" ]]; then
-      output="all.sample"
+      output="all.yml.sample"
   elif [[ $rolename == "ceph-agent" ]]; then
-      output="agent.sample"
+      output="agent.yml.sample"
   elif [[ $rolename == "ceph-fetch-keys" ]]; then
-      output="ceph-fetch-keys.sample"
+      output="ceph-fetch-keys.yml.sample"
   else
-      output="${rolename:5}s.sample"
+      output="${rolename:5}s.yml.sample"
   fi
 
   cat <<EOF > "$basedir"/group_vars/"$output"
