@@ -406,7 +406,7 @@ def main():
     if len(matched_devices) < len(lookup_disks):
         fatal("Could only find %d of the %d expected devices\n" % (len(matched_devices), len(lookup_disks)))
     else:
-        success("All search devices were found")
+        success("All searched devices were found")
 
 if __name__ == '__main__':
         main()

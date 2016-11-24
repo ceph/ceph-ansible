@@ -46,8 +46,11 @@ def test_fake_device():
     fake_device - Testing the legacy conversion of disk's definition
     """
     assert_equals(choose_disk.fake_device("/dev/sda /dev/sdb /dev/sdc"),
-            {'legacy_0': {'bdev': '/dev/sda'}, 'legacy_1': {'bdev': '/dev/sdb'},
-                'legacy_2': {'bdev': '/dev/sdc'}} )
+                  {'legacy_0': {'bdev': '/dev/sda'},
+                   'legacy_1': {'bdev': '/dev/sdb'},
+                   'legacy_2': {'bdev': '/dev/sdc'}
+                   }
+                  )
 
 
 def test_units_gb():
