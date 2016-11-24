@@ -21,9 +21,9 @@ ansible_devices = {
 
 
 def prepare_test_find_match_matched():
-    disk_0 = {'storage_disks_0': {'model': 'SAMSUNG MZ7LN512', 'rotational': '0'}}
+    disk_0 = {'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '0'}}
     expected_result = {
-            'sda': {'sectorsize': '512', 'vendor': 'ATA', 'sas_device_handle': None, 'host': 'SATA controller: Intel Corporation 8 Series/C220 Series Chipset Family 6-port SATA Controller 1 [AHCI mode] (rev 04)',
+            'storage_disks': {'sectorsize': '512', 'vendor': 'ATA', 'sas_device_handle': None, 'host': 'SATA controller: Intel Corporation 8 Series/C220 Series Chipset Family 6-port SATA Controller 1 [AHCI mode] (rev 04)',
                 'support_discard': '512', 'model': 'SAMSUNG MZ7LN512', 'size': '476.94 GB', 'scheduler_mode': 'cfq', 'rotational': '0', 'sectors': '1000215216', 'sas_address':  None,
                 'removable': '0', 'holders': [],
                 'partitions': {
