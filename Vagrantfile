@@ -29,6 +29,7 @@ MEMORY         = settings['memory']
 ETH            = settings['eth']
 DOCKER         = settings['docker']
 USER           = settings['ssh_username']
+CLUSTER_NUM    = settings['cluster_num']
 
 ASSIGN_STATIC_IP = !(BOX == 'openstack' or BOX == 'linode')
 DISABLE_SYNCED_FOLDER = settings.fetch('vagrant_disable_synced_folder', false)
@@ -184,7 +185,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       client.vm.hostname = "#{LABEL_PREFIX}ceph-client#{i}"
       if ASSIGN_STATIC_IP
         client.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.4#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{i + 40 + (CLUSTER_NUM * 100)}"
       end
       # Virtualbox
       client.vm.provider :virtualbox do |vb|
@@ -219,7 +220,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       rgw.vm.hostname = "#{LABEL_PREFIX}ceph-rgw#{i}"
       if ASSIGN_STATIC_IP
         rgw.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.5#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{i + 50 + (CLUSTER_NUM * 100)}"
       end
 
       # Virtualbox
@@ -255,7 +256,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       nfs.vm.hostname = "ceph-nfs#{i}"
       if ASSIGN_STATIC_IP
         nfs.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.6#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{i + 60 + (CLUSTER_NUM * 100)}"
       end
 
       # Virtualbox
@@ -291,7 +292,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mds.vm.hostname = "#{LABEL_PREFIX}ceph-mds#{i}"
       if ASSIGN_STATIC_IP
         mds.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.7#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{i + 70 + (CLUSTER_NUM * 100)}"
       end
       # Virtualbox
       mds.vm.provider :virtualbox do |vb|
@@ -325,7 +326,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       rbd_mirror.vm.hostname = "#{LABEL_PREFIX}ceph-rbd-mirror#{i}"
       if ASSIGN_STATIC_IP
         rbd_mirror.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.8#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{i + 80 + (CLUSTER_NUM * 100)}"
       end
       # Virtualbox
       rbd_mirror.vm.provider :virtualbox do |vb|
@@ -359,7 +360,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       iscsi_gw.vm.hostname = "#{LABEL_PREFIX}ceph-iscsi-gw#{i}"
       if ASSIGN_STATIC_IP
         iscsi_gw.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.9#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{i + 90 + (CLUSTER_NUM * 100)}"
       end
       # Virtualbox
       iscsi_gw.vm.provider :virtualbox do |vb|
@@ -393,7 +394,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mon.vm.hostname = "#{LABEL_PREFIX}ceph-mon#{i}"
       if ASSIGN_STATIC_IP
         mon.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.1#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{i + 10 + (CLUSTER_NUM * 100)}"
       end
       # Virtualbox
       mon.vm.provider :virtualbox do |vb|
@@ -428,9 +429,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       osd.vm.hostname = "#{LABEL_PREFIX}ceph-osd#{i}"
       if ASSIGN_STATIC_IP
         osd.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.10#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{i + 20 + (CLUSTER_NUM * 100)}"
         osd.vm.network :private_network,
-          ip: "#{CLUSTER_SUBNET}.20#{i}"
+          ip: "#{CLUSTER_SUBNET}.#{i + 30 + (CLUSTER_NUM * 100)}"
       end
       # Virtualbox
       osd.vm.provider :virtualbox do |vb|
