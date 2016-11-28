@@ -335,15 +335,6 @@ def setup_logging():
     logger.info("############")
 
 
-def success(message):
-    global module
-    info(message)
-    logger.info("#######")
-    logger.info("# End #")
-    logger.info("#######")
-    module.exit_json(msg=message)
-
-
 def fatal(message):
     global module
     error(message)
@@ -370,7 +361,8 @@ def main():
     }
 
     module = AnsibleModule(
-        argument_spec=fields
+        argument_spec=fields,
+        supports_check_mode=True
     )
 
     physical_disks = select_only_free_devices(module.params["facts"])
@@ -405,8 +397,23 @@ def main():
 
     if len(matched_devices) < len(lookup_disks):
         fatal("Could only find %d of the %d expected devices\n" % (len(matched_devices), len(lookup_disks)))
-    else:
-        success("All searched devices were found")
+
+    ceph_count = 0
+    for matched_device in matched_devices:
+        if "ceph" in matched_devices[matched_device]:
+            ceph_count = ceph_count + 1
+
+    changed = True
+    logger.info("%d/%d disks already configured" % (ceph_count, len(matched_devices)))
+    if ceph_count == matched_devices:
+        changed = False
+
+    message = "All searched devices were found"
+    info(message)
+    logger.info("#######")
+    logger.info("# End #")
+    logger.info("#######")
+    module.exit_json(msg=message, changed=changed, ansible_facts=dict(devices=matched_devices))
 
 if __name__ == '__main__':
         main()
