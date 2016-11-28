@@ -66,13 +66,13 @@ for ROLE in $ROLES; do
   for BRANCH in $BRANCHES; do
     git checkout -B $BRANCH origin/$BRANCH
     git filter-branch -f --prune-empty --subdirectory-filter roles/$ROLE
-    git push $REMOTE $BRANCH
+    git push -f $REMOTE $BRANCH
   done
   reset_hard_origin
   # then we filter tags starting from version 2.0 and push them
   for TAG in $(git tag | egrep '^v[2-9].[0-9]*.[0-9]*$'); do
     git filter-branch -f --prune-empty --subdirectory-filter roles/$ROLE $TAG
-    git push $REMOTE $TAG
+    git push -f $REMOTE $TAG
     reset_hard_origin
   done
 done
