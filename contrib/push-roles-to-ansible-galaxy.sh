@@ -29,7 +29,7 @@ function pull_origin {
 function reset_hard_origin {
   # let's bring everything back to normal
   git checkout $LOCAL_BRANCH
-  git fetch origin
+  git fetch --all
   git fetch --tags
   git reset --hard origin/master
 }
