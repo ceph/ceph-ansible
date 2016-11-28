@@ -23,7 +23,7 @@ function check_existing_remote {
 }
 
 function pull_origin {
-  git pull origin --tags
+  git pull origin master
 }
 
 function reset_hard_origin {
