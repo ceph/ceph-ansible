@@ -9,6 +9,13 @@ ROLES="ceph-common ceph-mon ceph-osd ceph-mds ceph-rgw ceph-restapi ceph-agent c
 
 
 # FUNCTIONS
+function goto_basedir {
+  TOP_LEVEL=$(cd $BASEDIR && git rev-parse --show-toplevel)
+  if [[ "$(pwd)" != "$TOP_LEVEL" ]]; then
+    pushd $TOP_LEVEL
+  fi
+}
+
 function check_existing_remote {
   if ! git remote show $1 &> /dev/null; then
     git remote add $1 git@github.com:/ceph/ansible-$1.git
@@ -42,6 +49,7 @@ function check_git_status {
 
 
 # MAIN
+goto_basedir
 check_git_status
 trap reset_hard_origin EXIT
 trap reset_hard_origin ERR
@@ -68,3 +76,4 @@ for ROLE in $ROLES; do
     reset_hard_origin
   done
 done
+popd &> /dev/null
