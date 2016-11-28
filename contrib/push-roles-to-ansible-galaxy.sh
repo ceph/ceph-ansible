@@ -76,4 +76,5 @@ for ROLE in $ROLES; do
     reset_hard_origin
   done
 done
+trap - EXIT ERR
 popd &> /dev/null
