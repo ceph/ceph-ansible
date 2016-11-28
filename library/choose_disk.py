@@ -63,6 +63,22 @@ def convert_units(value):
     return value
 
 
+def get_keys_by_ceph_order(physical_disks):
+    '''
+    Return a list of keys where ceph disks are reported first
+    while keeping the list sorted
+    '''
+    ceph_disks = []
+    non_ceph_disks = []
+    for physical_disk in sorted(physical_disks):
+        if "ceph" in physical_disks[physical_disk]:
+            ceph_disks.append(physical_disk)
+        else:
+            non_ceph_disks.append(physical_disk)
+
+    return ceph_disks + non_ceph_disks
+
+
 def find_match(physical_disks, lookup_disks):
     ''' Find a set of matching devices in physical_disks
     '''
@@ -85,7 +101,7 @@ def find_match(physical_disks, lookup_disks):
 
         logger.info(" Inspecting %s" % disk)
         # Trying to find a match against all physical disks we have
-        for physical_disk in sorted(physical_disks):
+        for physical_disk in get_keys_by_ceph_order(physical_disks):
             # Avoid reusing an already matched physical disk
             if physical_disk in exclude_list:
                 continue
@@ -405,7 +421,7 @@ def main():
 
     changed = True
     logger.info("%d/%d disks already configured" % (ceph_count, len(matched_devices)))
-    if ceph_count == matched_devices:
+    if ceph_count == len(matched_devices):
         changed = False
 
     message = "All searched devices were found"
