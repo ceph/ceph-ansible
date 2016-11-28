@@ -58,3 +58,23 @@
   when:
     - cephx
     - item.copy_key|bool
+
+- set_fact:
+     osd_uuids: |
+      {%- set o=[] %}
+      {%- for device in  devices %}
+        {%- if o.append( ( inventory_hostname + device + "osd_uuids") | to_uuid ) %}
+        {%- endif %}
+      {%- endfor %}
+      {{ o }}
+  when: osd_uuids is not defined
+
+- set_fact:
+     journal_uuids: |
+      {%- set o=[] %}
+      {%- for device in  devices %}
+        {%- if o.append( ( inventory_hostname + device + "journal_uuids") | to_uuid ) %}
+        {%- endif %}
+      {%- endfor %}
+      {{ o }}
+  when: journal_uuids is not defined
