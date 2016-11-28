@@ -12,36 +12,18 @@
   when: ceph_dev
 
 - name: add ceph stable repository
-  yum:
+  package:
     name: http://download.ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
+    state: present
   changed_when: false
-  when:
-    - ceph_stable
-    - ansible_pkg_mgr == "yum"
-
-- name: add ceph stable repository
-  dnf:
-    name: http://download.ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
-  changed_when: false
-  when:
-    - ceph_stable
-    - ansible_pkg_mgr == "dnf"
+  when: ceph_stable
 
 - name: add ceph development repository
-  yum:
+  package:
     name: http://gitbuilder.ceph.com/ceph-rpm-{{ ceph_dev_redhat_distro }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro }}.noarch.rpm
+    state: present
   changed_when: false
-  when:
-    - ceph_dev
-    - ansible_pkg_mgr == "yum"
-
-- name: add ceph development repository
-  dnf:
-    name: http://gitbuilder.ceph.com/ceph-rpm-{{ ceph_dev_redhat_distro }}-x86_64-basic/ref/{{ ceph_dev_branch }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro }}.noarch.rpm
-  changed_when: false
-  when:
-    - ceph_dev
-    - ansible_pkg_mgr == "dnf"
+  when: ceph_dev
 
 - name: add custom repo
   get_url:
