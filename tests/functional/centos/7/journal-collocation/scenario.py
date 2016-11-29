@@ -14,6 +14,7 @@ nodes = {
     },
     'osd0': {
         'username': 'vagrant',
-        'components': [],
+        'components': ['collocated_journals'],
+        'devices': ['/dev/sda', '/dev/sdb'],
     },
 }
