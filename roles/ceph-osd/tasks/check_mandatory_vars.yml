@@ -1,0 +1,72 @@
+---
+- name: make sure journal_size configured
+  debug:
+    msg: "WARNING: journal_size is configured to less than 5GB. This is not recommended and can lead to severe issues."
+  when:
+    - journal_size|int < 5120
+    - osd_objectstore != 'bluestore'
+    - osd_group_name in group_names
+
+- name: make sure an osd scenario was chosen
+  fail:
+    msg: "please choose an osd scenario"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not journal_collocation
+    - not raw_multi_journal
+    - not osd_directory
+    - not bluestore
+    - not dmcrypt_journal_collocation
+    - not dmcrypt_dedicated_journal
+
+- name: verify only one osd scenario was chosen
+  fail:
+    msg: "please select only one osd scenario"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - (journal_collocation and raw_multi_journal)
+      or (journal_collocation and osd_directory)
+      or (journal_collocation and bluestore)
+      or (raw_multi_journal and osd_directory)
+      or (raw_multi_journal and bluestore)
+      or (osd_directory and bluestore)
+      or (dmcrypt_journal_collocation and journal_collocation)
+      or (dmcrypt_journal_collocation and raw_multi_journal)
+      or (dmcrypt_journal_collocation and osd_directory)
+      or (dmcrypt_journal_collocation and bluestore)
+      or (dmcrypt_dedicated_journal and journal_collocation)
+      or (dmcrypt_dedicated_journal and raw_multi_journal)
+      or (dmcrypt_dedicated_journal and osd_directory)
+      or (dmcrypt_dedicated_journal and bluestore)
+      or (dmcrypt_dedicated_journal and dmcrypt_journal_collocation)
+
+- name: verify devices have been provided
+  fail:
+    msg: "please provide devices to your osd scenario"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - journal_collocation
+    - not osd_auto_discovery
+    - devices|length == 0
+
+- name: verify journal devices have been provided
+  fail:
+    msg: "please provide devices and raw journal devices to your osd scenario"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - raw_multi_journal
+    - raw_journal_devices|length == 0
+      or devices|length == 0
+
+- name: verify directories have been provided
+  fail:
+    msg: "please provide directories to your osd scenario"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - osd_directory
+    - osd_directories is not defined
