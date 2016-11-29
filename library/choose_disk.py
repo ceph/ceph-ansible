@@ -71,7 +71,7 @@ def get_keys_by_ceph_order(physical_disks):
     ceph_disks = []
     non_ceph_disks = []
     for physical_disk in sorted(physical_disks):
-        if "ceph" in physical_disks[physical_disk]:
+        if "ceph_prepared" in physical_disks[physical_disk]:
             ceph_disks.append(physical_disk)
         else:
             non_ceph_disks.append(physical_disk)
@@ -89,11 +89,17 @@ def find_match(physical_disks, lookup_disks):
     # Inspecting every disk we search for
     for disk in sorted(lookup_disks):
 
-        current_lookup = lookup_disks[disk]
+        current_lookup = dict(lookup_disks[disk])
         infinite = False
+        current_type = ""
         if "infinite" in current_lookup.keys():
             infinite = True
             del current_lookup["infinite"]
+
+        # We cannot keep the disk type as a feature to lookup
+        if "ceph_type" in current_lookup.keys():
+            current_type = current_lookup["ceph_type"]
+            del current_lookup["ceph_type"]
 
         if len(exclude_list) == len(physical_disks):
             info(" Skipping %s as no more free devices to match" % (disk))
@@ -149,7 +155,10 @@ def find_match(physical_disks, lookup_disks):
                 # several disks per matching
                 if disk not in matched_devices:
                     matched_devices[disk] = []
-                matched_devices[disk].append(physical_disks[physical_disk])
+                pdisk = dict(physical_disks[physical_disk])
+                # Reintroducing the disk type to keep disks categories alive
+                pdisk["ceph_type"] = current_type
+                matched_devices[disk].append(pdisk)
                 exclude_list.append(physical_disk)
                 # If we look for an inifinite list of those devices, let's
                 # continue looking for the same description unless let's go to
@@ -183,6 +192,10 @@ def expand_disks(lookup_disks):
         count = 0
         if 'count' not in lookup_disks[disk]:
             fatal("disk '%s' should have a 'count' value defined" % disk)
+        if 'ceph_type' not in lookup_disks[disk]:
+            fatal("disk '%s' should have a 'ceph_type' value defined : {data | journal}" % disk)
+        if lookup_disks[disk]['ceph_type'] not in ['data', 'journal']:
+            fatal("disk '%s' doesn't have a valid 'ceph_type' defined, it should be : {data | journal}" % disk)
         if 'count' in lookup_disks[disk]:
             count = lookup_disks[disk]['count']
             del lookup_disks[disk]['count']
@@ -239,7 +252,7 @@ def select_only_free_devices(physical_disks):
         selected_devices[physical_disk]['bdev'] = '/dev/' + physical_disk
 
         if ceph_disk is True:
-            selected_devices[physical_disk]['ceph'] = 1
+            selected_devices[physical_disk]['ceph_prepared'] = 1
             info(' Adding   %10s : Ceph disk detected' % physical_disk)
         else:
             info(' Adding   %10s : %s' % (physical_disk, selected_devices[physical_disk]['bdev']))
@@ -301,7 +314,7 @@ def show_resulting_devices(matched_devices, physical_disks):
     info("Matched devices   : %3d" % len(matched_devices))
     for matched_device in sorted(matched_devices.keys()):
         extra_string = ""
-        if "ceph" in matched_devices[matched_device]:
+        if "ceph_prepared" in matched_devices[matched_device]:
             extra_string = " (ceph)"
         info(" %s : %s%s" % (matched_device, matched_devices[matched_device]["bdev"], extra_string))
         bdev_matched.append(matched_devices[matched_device]["bdev"])
@@ -414,10 +427,19 @@ def main():
     if len(matched_devices) < len(lookup_disks):
         fatal("Could only find %d of the %d expected devices\n" % (len(matched_devices), len(lookup_disks)))
 
+    ceph_data = []
+    journal = []
     ceph_count = 0
     for matched_device in matched_devices:
-        if "ceph" in matched_devices[matched_device]:
+        device = matched_devices[matched_device]
+        device['name'] = matched_device
+        if "ceph_prepared" in device:
             ceph_count = ceph_count + 1
+            continue
+        if "data" in device["ceph_type"]:
+                ceph_data.append(device["bdev"])
+        if "journal" in device["ceph_type"]:
+            journal.append(device["bdev"])
 
     changed = True
     logger.info("%d/%d disks already configured" % (ceph_count, len(matched_devices)))
@@ -429,7 +451,7 @@ def main():
     logger.info("#######")
     logger.info("# End #")
     logger.info("#######")
-    module.exit_json(msg=message, changed=changed, ansible_facts=dict(devices=matched_devices))
+    module.exit_json(msg=message, changed=changed, ansible_facts=dict(devices=ceph_data, raw_journal_devices=journal))
 
 if __name__ == '__main__':
         main()

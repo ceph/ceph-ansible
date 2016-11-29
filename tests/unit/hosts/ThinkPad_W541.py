@@ -21,7 +21,7 @@ ansible_devices = {
 
 
 def prepare_test_find_match_matched():
-    disk_0 = {'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '0'}}
+    disk_0 = {'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '0', 'ceph_type': 'data' }}
     expected_result = {
             'storage_disks': {'sectorsize': '512', 'vendor': 'ATA', 'sas_device_handle': None, 'host': 'SATA controller: Intel Corporation 8 Series/C220 Series Chipset Family 6-port SATA Controller 1 [AHCI mode] (rev 04)',
                 'support_discard': '512', 'model': 'SAMSUNG MZ7LN512', 'size': '476.94 GB', 'scheduler_mode': 'cfq', 'rotational': '0', 'sectors': '1000215216', 'sas_address':  None,
@@ -32,7 +32,8 @@ def prepare_test_find_match_matched():
                     'sda2': {'sectorsize': 512, 'uuid': 'c3d3ae17-1ece-432e-bb4b-f38bfa12e876', 'sectors': '629149696', 'start': '411648', 'holders': [], 'size': '300.00 GB'},
                     'sda3': {'sectorsize': 512, 'uuid': '51f0126d-0d7f-4708-b8b8-f122ac8dcf46', 'sectors': '33554432', 'start': '629561344', 'holders': [], 'size': '16.00 GB'},
                     'sda1': {'sectorsize': 512, 'uuid': '71adc8ce-fc61-419d-82d5-0faec6d97f60', 'sectors': '409600', 'start': '2048', 'holders': [], 'size': '200.00 MB'}
-                    }
+                    },
+                'ceph_type': 'data'
                 }
             }
 
