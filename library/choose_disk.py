@@ -83,7 +83,7 @@ def find_match(physical_disks, lookup_disks):
     ''' Find a set of matching devices in physical_disks
     '''
     matched_devices = {}
-    exclude_list = []
+    ignored_devices = []
 
     logger.info("Looking for matches")
     # Inspecting every disk we search for
@@ -101,7 +101,7 @@ def find_match(physical_disks, lookup_disks):
             current_type = current_lookup["ceph_type"]
             del current_lookup["ceph_type"]
 
-        if len(exclude_list) == len(physical_disks):
+        if len(ignored_devices) == len(physical_disks):
             info(" Skipping %s as no more free devices to match" % (disk))
             continue
 
@@ -109,7 +109,7 @@ def find_match(physical_disks, lookup_disks):
         # Trying to find a match against all physical disks we have
         for physical_disk in get_keys_by_ceph_order(physical_disks):
             # Avoid reusing an already matched physical disk
-            if physical_disk in exclude_list:
+            if physical_disk in ignored_devices:
                 continue
 
             current_physical_disk = physical_disks[physical_disk]
@@ -159,7 +159,7 @@ def find_match(physical_disks, lookup_disks):
                 # Reintroducing the disk type to keep disks categories alive
                 pdisk["ceph_type"] = current_type
                 matched_devices[disk].append(pdisk)
-                exclude_list.append(physical_disk)
+                ignored_devices.append(physical_disk)
                 # If we look for an inifinite list of those devices, let's
                 # continue looking for the same description unless let's go to
                 # the next device
@@ -171,22 +171,22 @@ def find_match(physical_disks, lookup_disks):
             else:
                 info("  %50s no devices matched" % (physical_disk))
 
-    final_list = {}
+    final_disks = {}
     for matched_device in matched_devices.keys():
         for n in range(0, len(matched_devices[matched_device]), 1):
             name = matched_device
             if len(matched_devices[matched_device]) > 1:
                 name = "%s_%03d" % (matched_device, n)
-            final_list[name] = matched_devices[matched_device][n]
+            final_disks[name] = matched_devices[matched_device][n]
 
-    return final_list
+    return final_disks
 
 
 def expand_disks(lookup_disks):
     '''
     Read the disks structure and expand them according to the count directive
     '''
-    final_list = {}
+    final_disks = {}
     for disk in lookup_disks:
         infinite = False
         count = 0
@@ -270,30 +270,30 @@ def get_block_devices_persistent_name(physical_disks):
         info(' Cannot open %s' % directory)
         return physical_disks
 
-    final_list = {}
-    matching_list = {}
+    final_disks = {}
+    matching_devices = {}
     for f in os.listdir(directory):
         device_name = os.readlink(directory + f).split("/")[-1]
         if device_name in physical_disks:
-            if device_name not in matching_list:
-                matching_list[device_name] = [f]
+            if device_name not in matching_devices:
+                matching_devices[device_name] = [f]
             else:
-                matching_list[device_name].append(f)
+                matching_devices[device_name].append(f)
 
     for physical_disk in sorted(physical_disks):
-        if physical_disk in matching_list:
-            current_index = sorted(matching_list[physical_disk])[0]
-            final_list[current_index] = physical_disks[physical_disk]
-            final_list[current_index]["bdev"] = "%s%s" % (directory, current_index)
+        if physical_disk in matching_devices:
+            current_index = sorted(matching_devices[physical_disk])[0]
+            final_disks[current_index] = physical_disks[physical_disk]
+            final_disks[current_index]["bdev"] = "%s%s" % (directory, current_index)
             info(' Renaming %10s to %50s' % (physical_disk, current_index))
         else:
             current_index = physical_disk
-            final_list[current_index] = physical_disks[physical_disk]
+            final_disks[current_index] = physical_disks[physical_disk]
 
-    return final_list
+    return final_disks
 
 
-def fake_device(device_list):
+def fake_device(legacy_devices):
     '''
     In case of legacy block device names, let's create an internal faked
     entry with a 'bdev' entry filled with the actual path. This will be used to
@@ -301,7 +301,7 @@ def fake_device(device_list):
     '''
     devices = {}
     count = 0
-    for device in device_list.split():
+    for device in legacy_devices.split():
         devices["legacy_%d" % count] = {"bdev": os.path.dirname(device)+"/"+os.path.basename(device)}
         count = count + 1
 
