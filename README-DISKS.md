@@ -99,18 +99,20 @@ To describe this device, we only keep generic features that match several disks 
 
 From the above hardware description, we can extract relevant information and put them into the following syntax :
 
-        "{"profile_name" : { 'item 1': 'value, 'item 2' : value, count : 1 }}"
+        "{"profile_name" : { 'item 1': 'value, 'item 2' : value, count : 1, 'ceph_type' : 'data' }}"
 
-* **profile name**: a semantic name to indicate what kind of disks we are targeting. We recommend using **storage_disks** and **journal_disks ** to define disks to be used by Ceph.
+* **profile name**: a semantic name to indicate what kind of disks we are targeting.
 
 * **'item' : 'value'** : *item* is the feature you look at like 'vendor' and *value* is the associated value like *DELL* here.
 
-* **count** : the number of devices you want, starting from 1. If you want to match all the disks withtout taking care of the number, then use the **'*'** amount.
+* **count** : mandatory option to define the number of devices you want, starting from 1. If you want to match all the disks without taking care of the number, then use the **'*'** amount.
+
+* **ceph_type**: mandatory option that defines the kind of disk type. Could be "data" or "journal".
 
 A typical profile for this example could be : 
 
        vars:
-          lookup_disks: "{'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 1 }}"
+          lookup_disks: "{'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 1, 'ceph_type' : 'data' }}"
 
 If for any reasons, users needs to use the legacy naming by using direct path name, it can be done like :
 
@@ -127,7 +129,7 @@ Just define a yaml file with this setup :
         - hosts: localhost
           gather_facts: false
           vars:
-              lookup_disks: "{'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 1 }}"
+              lookup_disks: "{'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 1, 'ceph_type' : 'data' }}"
               legacy_lookup_disks: "/dev/sda /dev/sdb /dev/sdc"
           tasks:
             - name: gathering facts
@@ -142,39 +144,11 @@ Just define a yaml file with this setup :
 
 The resulting *devices* structure looks like :
 
-        TASK [debug] *******************************************************************
-        ok: [localhost] => {
-            "devices": {
-                "storage_disks_000": {
-                    "bdev": "/dev/disk/by-id/scsi-36848f690e68a50001e428e511e4a6c20", 
-                    "ceph": 1, 
-                    "holders": [], 
-                    "host": "RAID bus controller: LSI Logic / Symbios Logic MegaRAID SAS 2208 [Thunderbolt] (rev 01)", 
-                    "model": "PERC H710P", 
-                    "partitions": {
-                        "sdf1": {
-                            "holders": [], 
-                            "sectors": "1952446431", 
-                            "sectorsize": 512, 
-                            "size": "931.00 GB", 
-                            "start": "2048", 
-                            "uuid": "5f33d456-8af5-458c-b389-0f563fad056a"
-                        }
-                    }, 
-                    "removable": "0", 
-                    "rotational": "1", 
-                    "sas_address": null, 
-                    "sas_device_handle": null, 
-                    "scheduler_mode": "deadline", 
-                    "sectors": "1952448512", 
-                    "sectorsize": "512", 
-                    "size": "931.00 GB", 
-                    "support_discard": "0", 
-                    "vendor": "DELL"
-                }
+            ok: [localhost] => {
+                "devices": [
+                    "/dev/disk/by-id/scsi-36848f690e68a50001e428e4f1e211ba2"
+                ]
             }
-        }
-
 
 This structure reports the selected disks by using the *profile name* key padded with an increasing number : *storage_disks_000* in that example.
 
@@ -192,7 +166,7 @@ Any module that consume this 'devices' structure is now able to pick the right d
 ## Matching several disks types at a time
 A typical use case, is to use rotational disks for OSDs and SSDs/flash for journals. To do that the following can do it :
 
-          lookup_disks: "{'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 10 }, 'journal_disks' : {'vendor': 'Samsung', 'rotational: '0', 'count: 1}}"
+          lookup_disks: "{'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 10, 'ceph_type': 'data' }, 'journal_disks' : {'vendor': 'Samsung', 'rotational: '0', 'count: 1, 'ceph_type': 'journal'}}"
 
 
 ## Matching disks by their size
@@ -209,7 +183,7 @@ The module does convert the units automatically to allow comparison between vari
 
 A typical usage looks like : 
 
-          lookup_disks: "{'storage_disks': {'size': 'gt(800 MB)', 'rotational': '1', 'count': 3 }}"
+          lookup_disks: "{'storage_disks': {'size': 'gt(800 MB)', 'rotational': '1', 'count': 3, 'ceph_type': 'data'}}"
 
 ## Using native or legacy syntax
 
@@ -230,7 +204,7 @@ The main idea behind this module is being able to select precisely the disks use
 ### Being to simple
 Having a too simple profile leads to a less accurate results and could lead to a wrong selection of disks like in :
 
-          lookup_disks: "{'storage_disks': {'size' : 'gt(1MB)', 'count': '*' }}"
+          lookup_disks: "{'storage_disks': {'size' : 'gt(1MB)', 'count': '*', 'ceph_type': 'data'}}"
 
 This is grabbing any storage device, even like usb keys. That's really a lack of control.
 
@@ -263,7 +237,7 @@ A typical output looks like :
              Adding          sdl : /dev/sdl
              Adding          sdm : /dev/sdm
             Native syntax
-             disks : {'storage_disks': {'count': 3, 'rotational': '1', 'size': 'gt(800 MB)'}}
+             disks : {'storage_disks': {'count': 3, 'rotational': '1', 'size': 'gt(800 MB)', 'ceph_type': 'data'}}
             Finding persistent disks name
              Renaming        sdb to             scsi-36848f690e68a50001e428e4f1e211ba2
              Renaming        sdc to             scsi-36848f690e68a50001e428e4f1e2b4baf
