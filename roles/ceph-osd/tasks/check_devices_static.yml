@@ -8,12 +8,15 @@
   register: ispartition_results
 
 - name: check the partition status of the osd disks
-  shell: "parted --script {{ item }} print > /dev/null 2>&1"
-  with_items: "{{ devices }}"
+  shell: "parted --script {{ item.1 }} print > /dev/null 2>&1"
+  with_together:
+    - "{{ ispartition_results.results }}"
+    - "{{ devices }}"
   changed_when: false
   failed_when: false
   always_run: true
   register: osd_partition_status_results
+  when: item.0.rc != 0
 
 # NOTE: The following calls to sgdisk are retried because sgdisk is known to
 # fully wipe a device the first time around. There is no need to halt execution
@@ -26,12 +29,17 @@
     - "{{ osd_partition_status_results.results }}"
     - "{{ devices }}"
   changed_when: false
-  when: item.0.rc != 0
+  when:
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
 
 - name: check if a partition named 'ceph' exists
-  shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"
-  with_items: "{{ devices }}"
+  shell: "parted --script {{ item.1 }} print | egrep -sq '^ 1.*ceph'"
+  with_together:
+    - "{{ ispartition_results.results }}"
+    - "{{ devices }}"
   changed_when: false
   failed_when: false
   always_run: true
   register: parted_results
+  when: item.0.rc != 0
