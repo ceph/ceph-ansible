@@ -17,57 +17,55 @@
     - ceph_rhcs_iso_install
 
 - name: install dependencies
-  yum:
+  package:
     name: "{{ item }}"
     state: present
   with_items: "{{ redhat_package_dependencies }}"
-  when:
-    - ansible_pkg_mgr == "yum"
 
 - name: install red hat storage ceph mon
-  yum:
+  package:
     name: "ceph-mon"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - mon_group_name in group_names
 
 - name: install red hat storage ceph osd
-  yum:
+  package:
     name: "ceph-osd"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - osd_group_name in group_names
 
 - name: install red hat storage ceph mds
-  yum:
+  package:
     name: "ceph-mds"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - mds_group_name in group_names
 
 - name: install red hat storage ceph-common
-  yum:
+  package:
     name: "ceph-common"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - client_group_name in group_names
 
 - name: install ceph-test
-  yum:
+  package:
     name: ceph-test
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - ceph_test
 
 - name: install rados gateway
-  yum:
+  package:
     name: ceph-radosgw
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - rgw_group_name in group_names
 
 - name: install NFS gateway
-  yum:
+  package:
     name: nfs-ganesha-ceph
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
