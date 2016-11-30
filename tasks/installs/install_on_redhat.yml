@@ -1,39 +1,17 @@
 ---
-- name: install redhat dependencies via yum
-  yum:
+- name: install redhat dependencies
+  package:
     name: "{{ item }}"
     state: present
   with_items: "{{ redhat_package_dependencies }}"
-  when:
-    - ansible_distribution == "RedHat"
-    - ansible_pkg_mgr == "yum"
+  when: ansible_distribution == "RedHat"
 
-- name: install redhat dependencies via dnf
-  dnf:
-    name: "{{ item }}"
-    state: present
-  with_items: "{{ redhat_package_dependencies }}"
-  when:
-    - ansible_distribution == "RedHat"
-    - ansible_pkg_mgr == "dnf"
-
-- name: install centos dependencies via yum
-  yum:
+- name: install centos dependencies
+  package:
     name: "{{ item }}"
     state: present
   with_items: "{{ centos_package_dependencies }}"
-  when:
-    - ansible_distribution == "CentOS"
-    - ansible_pkg_mgr == "yum"
-
-- name: install centos dependencies via dnf
-  dnf:
-    name: "{{ item }}"
-    state: present
-  with_items: "{{ centos_package_dependencies }}"
-  when:
-    - ansible_distribution == "CentOS"
-    - ansible_pkg_mgr == "dnf"
+  when: ansible_distribution == "CentOS"
 
 - name: configure ceph yum repository
   include: redhat_ceph_repository.yml
@@ -99,184 +77,82 @@
   when:
     - ceph_origin == 'local'
 
-- name: install distro or red hat storage ceph mon via yum
-  yum:
+- name: install distro or red hat storage ceph mon
+  package:
     name: "ceph-mon"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - mon_group_name in group_names
-    - ansible_pkg_mgr == "yum"
     - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_custom
 
-- name: install distro or red hat storage ceph mon via dnf
-  dnf:
-    name: "ceph-mon"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - mon_group_name in group_names
-    - ansible_pkg_mgr == "dnf"
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
-      or ceph_origin == "distro"
-      or ceph_custom
-
-- name: install distro or red hat storage ceph osd via yum
-  yum:
+- name: install distro or red hat storage ceph osd
+  package:
     name: "ceph-osd"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - osd_group_name in group_names
-    - ansible_pkg_mgr == "yum"
     - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_custom
 
-- name: install distro or red hat storage ceph osd via dnf
-  dnf:
-    name: "ceph-osd"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - osd_group_name in group_names
-    - ansible_pkg_mgr == "dnf"
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
-      or ceph_origin == "distro"
-      or ceph_custom
-
-- name: install distro or red hat storage ceph mds via yum
-  yum:
+- name: install distro or red hat storage ceph mds
+  package:
     name: "ceph-mds"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - mds_group_name in group_names
-    - ansible_pkg_mgr == "yum"
     - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_custom
 
-- name: install distro or red hat storage ceph mds via dnf
-  dnf:
-    name: "ceph-mds"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - mds_group_name in group_names
-    - ansible_pkg_mgr == "dnf"
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
-      or ceph_origin == "distro"
-      or ceph_custom
-
-- name: install distro or red hat storage ceph-fuse via yum
-  yum:
+- name: install distro or red hat storage ceph-fuse
+  package:
     name: "ceph-fuse"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - client_group_name in group_names
-    - ansible_pkg_mgr == "yum"
     - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_dev
       or ceph_custom
 
-- name: install distro or red hat storage ceph-fuse via dnf
-  dnf:
-    name: "ceph-fuse"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - client_group_name in group_names
-    - ansible_pkg_mgr == "dnf"
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
-      or ceph_origin == "distro"
-      or ceph_dev
-      or ceph_custom
-
-- name: install distro or red hat storage ceph base via yum
-  yum:
+- name: install distro or red hat storage ceph base
+  package:
     name: "ceph-base"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - client_group_name in group_names
-    - ansible_pkg_mgr == "yum"
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
-      or ceph_origin == "distro"
-      or ceph_custom
-
-- name: install distro or red hat storage ceph base via dnf
-  dnf:
-    name: "ceph-base"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - client_group_name in group_names
-    - ansible_pkg_mgr == "dnf"
     - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_custom
 
 - name: install ceph-test
-  yum:
+  package:
     name: ceph-test
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - ceph_test
-    - ansible_pkg_mgr == "yum"
-
-- name: install ceph-test
-  dnf:
-    name: ceph-test
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - ceph_test
-    - ansible_pkg_mgr == "dnf"
+  when: ceph_test
 
 - name: install rados gateway
-  yum:
+  package:
     name: ceph-radosgw
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - rgw_group_name in group_names
-    - ansible_pkg_mgr == "yum"
-
-- name: install rados gateway
-  dnf:
-    name: ceph-radosgw
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - rgw_group_name in group_names
-    - ansible_pkg_mgr == "dnf"
+  when: rgw_group_name in group_names
 
 - name: install nfs ceph gateway
-  yum:
+  package:
     name: nfs-ganesha-ceph
   when:
     - nfs_group_name in group_names
-    - ansible_pkg_mgr == "yum"
-    - nfs_file_gw
-
-- name: install nfs ceph gateway
-  dnf:
-    name: nfs-ganesha-ceph
-  when:
-    - nfs_group_name in group_names
-    - ansible_pkg_mgr == "dnf"
     - nfs_file_gw
 
 - name: install nfs rgw gateway
-  yum:
+  package:
     name: "{{ item }}"
   with_items:
     - nfs-ganesha-rgw
     - ceph-radosgw
   when:
     - nfs_group_name in group_names
-    - ansible_pkg_mgr == "yum"
-    - nfs_obj_gw
-
-- name: install nfs rgw gateway
-  dnf:
-    name: "{{ item }}"
-  with_items:
-    - nfs-ganesha-rgw
-    - ceph-radosgw
-  when:
-    - nfs_group_name in group_names
-    - ansible_pkg_mgr == "dnf"
     - nfs_obj_gw
