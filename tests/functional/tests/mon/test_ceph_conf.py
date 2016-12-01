@@ -33,7 +33,10 @@ class TestMon(object):
 
     @uses_conf_tests
     def test_mon_host_line_has_correct_value(self, scenario_config):
-        cluster_name = scenario_config.get('ceph', {}).get('cluster_name', 'ceph')
+        config = scenario_config.get('ceph', {})
+        cluster_name = config.get('cluster_name', 'ceph')
         ceph_conf_path = '/etc/ceph/%s.conf' % cluster_name
         initial_members_line = self.get_line_from_config('mon host', ceph_conf_path)
-        assert initial_members_line == 'mon host = 192.168.9.10,192.168.9.11,192.168.9.12'
+        subnet = config.get('subnet', "192.168.9")
+        expected = 'mon host = {subnet}.10,{subnet}.11,{subnet}.12'.format(subnet=subnet)
+        assert initial_members_line == expected
