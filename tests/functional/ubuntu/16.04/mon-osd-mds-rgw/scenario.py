@@ -1,7 +1,8 @@
 # Basic information about ceph and its configuration
 ceph = {
     'releases': ['infernalis', 'jewel'],
-    'cluster_name': 'ceph'
+    'cluster_name': 'ceph',
+    'subnet': '192.168.5',
 }
 
 # remote nodes to test, with anything specific to them that might be useful for
@@ -10,7 +11,15 @@ ceph = {
 nodes = {
     'mon0': {
         'username': 'vagrant',
-        'components': ['mon', 'mon_initial_members']
+        'components': ['conf_tests']
+    },
+    'mon1': {
+        'username': 'vagrant',
+        'components': ['conf_tests']
+    },
+    'mon2': {
+        'username': 'vagrant',
+        'components': ['conf_tests']
     },
     'osd0': {
         'username': 'vagrant',
