@@ -429,15 +429,18 @@ def main():
 
     ceph_data = []
     journal = []
+    to_activate = []
     ceph_count = 0
     for matched_device in matched_devices:
         device = matched_devices[matched_device]
         device['name'] = matched_device
         if "ceph_prepared" in device:
             ceph_count = ceph_count + 1
+            to_activate.append(device["bdev"])
             continue
         if "data" in device["ceph_type"]:
                 ceph_data.append(device["bdev"])
+                continue
         if "journal" in device["ceph_type"]:
             journal.append(device["bdev"])
 
@@ -451,7 +454,7 @@ def main():
     logger.info("#######")
     logger.info("# End #")
     logger.info("#######")
-    module.exit_json(msg=message, changed=changed, ansible_facts=dict(devices=ceph_data, raw_journal_devices=journal))
+    module.exit_json(msg=message, changed=changed, ansible_facts=dict(devices=ceph_data, raw_journal_devices=journal, devices_to_activate=to_activate))
 
 if __name__ == '__main__':
         main()
