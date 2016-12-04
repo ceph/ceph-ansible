@@ -2,11 +2,20 @@ import pytest
 
 
 @pytest.fixture()
-def CephNode(Ansible, request):
+def CephNode(Ansible, Interface, request):
     vars = Ansible.get_variables()
     node_type = vars["group_names"][0]
     if not request.node.get_marker(node_type):
         pytest.skip("Not a valid test for node type")
+
+    # I can assume eth1 because I know all the vagrant
+    # boxes we test with use that interface
+    address = Interface("eth1").addresses[0]
+    data = dict(
+        address=address,
+        vars=vars,
+    )
+    return data
 
 
 def pytest_collection_modifyitems(session, config, items):
