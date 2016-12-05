@@ -8,6 +8,9 @@ def CephNode(Ansible, Interface, Command, request):
     if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
         pytest.skip("Not a valid test for node type")
 
+    if request.node.get_marker("journal_collocation") and not vars.get("journal_collocation"):
+        pytest.skip("Skipping because scenario is not using journal collocation")
+
     osd_ids = []
     if node_type == "osds":
         result = Command.check_output('sudo ls /var/lib/ceph/osd/ | grep -oP "\d+$"')
@@ -39,3 +42,6 @@ def pytest_collection_modifyitems(session, config, items):
             item.add_marker(pytest.mark.rgws)
         else:
             item.add_marker(pytest.mark.all)
+
+        if "journal_collocation" in test_path:
+            item.add_marker(pytest.mark.journal_collocation)
