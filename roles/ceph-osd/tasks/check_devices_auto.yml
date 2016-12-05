@@ -45,25 +45,8 @@
     - item.value.holders|count == 0
 
 - name: fix partitions gpt header or labels of the osd disks (autodiscover disks)
-  shell: "sgdisk --zap-all --clear --mbrtogpt -- '/dev/{{ item.0.item.key }}' || sgdisk --zap-all --clear --mbrtogpt -- '/dev/{{ item.0.item.key }}'"
-  with_together:
-    - "{{ osd_partition_status_results.results }}"
-    - "{{ ansible_devices }}"
+  shell: "sgdisk --zap-all --clear --mbrtogpt -- '{{ item }}' || sgdisk --zap-all --clear --mbrtogpt -- '{{ item }}'"
+  with_items: "{{ legacy_devices }}"
   changed_when: false
   when:
     - ansible_devices is defined
-    - item.0.item.value.removable == "0"
-    - item.0.item.value.partitions|count == 0
-    - item.0.item.value.holders|count == 0
-    - item.0.rc != 0
-
-- name: check if a partition named 'ceph' exists (autodiscover disks)
-  shell: "parted --script /dev/{{ item.key }} print | egrep -sq '^ 1.*ceph'"
-  with_dict: "{{ ansible_devices }}"
-  changed_when: false
-  failed_when: false
-  always_run: true
-  register: parted_results
-  when:
-    - ansible_devices is defined
-    - item.value.removable == "0"
