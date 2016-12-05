@@ -10,27 +10,19 @@
 # NOTE (alahouze): if the device is a partition, the parted command below has
 # failed, this is why we check if the device is a partition too.
 - name: automatic prepare filestore osd disk(s) without partitions with collocated osd data and journal
-  command: ceph-disk prepare --cluster "{{ cluster }}" "/dev/{{ item.key }}"
+  command: ceph-disk prepare --cluster "{{ cluster }}" "{{ item }}"
   register: prepared_osds
-  with_dict: "{{ ansible_devices }}"
+  with_items: "{{ legacy_devices }}"
   when:
-    - ansible_devices is defined
-    - item.value.removable == "0"
-    - item.value.partitions|count == 0
+    - legacy_devices is defined
     - journal_collocation
     - osd_auto_discovery
 
 - name: manually prepare filestore osd disk(s) with collocated osd data and journal
-  command: "ceph-disk prepare --cluster {{ cluster }} {{ item.2 }}"
-  with_together:
-    - "{{ parted_results.results }}"
-    - "{{ ispartition_results.results }}"
-    - "{{ devices }}"
+  command: "ceph-disk prepare --cluster {{ cluster }} {{ item }}"
+  with_items: "{{ legacy_devices }}"
   when:
-    - not item.0.get("skipped")
-    - not item.1.get("skipped")
-    - item.0.get("rc", 0) != 0
-    - item.1.get("rc", 0) != 0
+    - legacy_devices is defined
     - journal_collocation
     - not osd_auto_discovery
 

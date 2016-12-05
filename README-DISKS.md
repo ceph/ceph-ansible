@@ -117,9 +117,14 @@ A typical profile for this example could be :
 If for any reasons, users needs to use the legacy naming by using direct path name, it can be done like :
 
        vars:
-          lookup_disks: "/dev/sda /dev/sdb /dev/sdc"
+          devices:
+            - /dev/sda
+            - /dev/sdb
+            - /dev/sdc
+          raw_journal_devices:
+            - /dev/sdf
 
-**Note:** Using this legacy naming kills of the benefits of this module. That's mostly a workaround in case of issues.
+**Note:** Using this legacy naming kills most of the benefits of this module. That's mostly a workaround in case of issues. It will only filter out disks that have partitions.
 
 ## Step 3: calling the module
 ---
@@ -130,22 +135,32 @@ Just define a yaml file with this setup :
           gather_facts: false
           vars:
               lookup_disks: "{'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 1, 'ceph_type' : 'data' }}"
-              legacy_lookup_disks: "/dev/sda /dev/sdb /dev/sdc"
+              devices:
+                - /dev/sda
+                - /dev/sdb
+                - /dev/sdc
+              raw_journal_devices:
+                - /dev/sdf
           tasks:
             - name: gathering facts
               setup:
             - name: choose disk
               choose_disk:
                 facts: "{{ansible_devices}}"
-        #        legacy_disks: "{{legacy_lookup_disks}}"
+        #        devices: "{{devices}}"
+        #        raw_journal_devices: "{{raw_journal_devices}}"
                 disks: "{{lookup_disks}}"
-            - debug: var=devices
+            - debug: var=storage_devices
+            - debug: var=journal_devices
+            - debug: var=legacy_devices
+            - debug: var=legacy_raw_journal_devices
+            - debug: var=devices_to_activate
 
 
 The resulting *devices* structure looks like :
 
             ok: [localhost] => {
-                "devices": [
+                "storage_devices": [
                     "/dev/disk/by-id/scsi-36848f690e68a50001e428e4f1e211ba2"
                 ]
             }
@@ -191,9 +206,9 @@ If you use the native syntax, then the *disks* variable should be used as in :
 
                 disks: "{{lookup_disks}}"
 
-If you use the legacy syntax (aka "/dev/sdx"), then the *legacy_disks* variable should be used as in:
+If you use the legacy syntax (aka "/dev/sdx"), then the *devices* variable should be used as in:
 
-                legacy_disks: "{{legacy_lookup_disks}}"
+                devices: "{{devices}}"
 
 Note that one or the other should be defined, having the two simultaneously will trigger an error.
 

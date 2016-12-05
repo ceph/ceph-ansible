@@ -10,12 +10,10 @@
 - name: prepare filestore osd disk(s) with a dedicated journal device
   command: "ceph-disk prepare --cluster {{ cluster }} {{ item.1 }} {{ item.2 }}"
   with_together:
-    - "{{ parted_results.results }}"
-    - "{{ devices }}"
-    - "{{ raw_journal_devices }}"
+    - "{{ legacy_devices }}"
+    - "{{ legacy_raw_journal_devices }}"
   changed_when: false
   when:
-    - item.0.get("skipped") or item.0.get("rc", 0) != 0
     - raw_multi_journal
     - not osd_auto_discovery
 

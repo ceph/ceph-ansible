@@ -45,12 +45,20 @@ def test_fake_device():
     """
     fake_device - Testing the legacy conversion of disk's definition
     """
-    assert_equals(choose_disk.fake_device("/dev/sda /dev/sdb /dev/sdc"),
-                  {'legacy_0': {'bdev': '/dev/sda'},
-                   'legacy_1': {'bdev': '/dev/sdb'},
-                   'legacy_2': {'bdev': '/dev/sdc'}
+    assert_equals(choose_disk.fake_device(["/dev/sda", "/dev/sdb", "/dev/sdc"], "data"),
+                  {'data_0': {'bdev': '/dev/sda'},
+                   'data_1': {'bdev': '/dev/sdb'},
+                   'data_2': {'bdev': '/dev/sdc'}
                    }
                   )
+
+
+def test_expand_disks_legacy():
+    """
+    expand_disks - expanding legacy devices
+    """
+    result = choose_disk.expand_disks(choose_disk.fake_device(["/dev/sda", "/dev/sdb", "/dev/sdc"], "data"), "data")
+    assert_equals(result, {'data_1_000': {'ceph_type': 'data', 'bdev': '/dev/sdb'}, 'data_0_000': {'ceph_type': 'data', 'bdev': '/dev/sda'}, 'data_2_000': {'ceph_type': 'data', 'bdev': '/dev/sdc'}})
 
 
 def test_units_gb():
