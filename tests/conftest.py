@@ -11,8 +11,10 @@ def CephNode(Ansible, Interface, request):
     # I can assume eth1 because I know all the vagrant
     # boxes we test with use that interface
     address = Interface("eth1").addresses[0]
+    subnet = ".".join(vars["public_network"].split(".")[0:-1])
     data = dict(
         address=address,
+        subnet=subnet,
         vars=vars,
     )
     return data
