@@ -15,3 +15,12 @@ class TestMons(object):
     def test_can_get_cluster_health(self, CephNode, Command):
         output = Command.check_output("sudo ceph -s")
         assert output.strip().startswith("cluster")
+
+
+class TestOSDs(object):
+
+    def test_all_osds_are_up_and_in(self, CephNode, Command):
+        output = Command.check_output("sudo ceph -s")
+        num_osds = len(CephNode["vars"]["devices"])
+        phrase = "{num_osds} osds: {num_osds} up, {num_osds} in".format(num_osds=num_osds)
+        assert phrase in output
