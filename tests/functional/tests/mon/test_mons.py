@@ -1,6 +1,9 @@
 
 class TestMons(object):
 
+    def test_ceph_mon_package_is_installed(self, CephNode, Package):
+        assert Package("ceph-mon").is_installed
+
     def test_mon_listens_on_6789(self, CephNode, Socket):
         assert Socket("tcp://%s:6789" % CephNode["address"]).is_listening
 
