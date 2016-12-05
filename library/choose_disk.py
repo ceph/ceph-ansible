@@ -182,7 +182,7 @@ def find_match(physical_disks, lookup_disks):
     return final_disks
 
 
-def expand_disks(lookup_disks):
+def expand_disks(lookup_disks, ceph_type=""):
     '''
     Read the disks structure and expand them according to the count directive
     '''
@@ -190,15 +190,20 @@ def expand_disks(lookup_disks):
     for disk in lookup_disks:
         infinite = False
         count = 0
-        if 'count' not in lookup_disks[disk]:
-            fatal("disk '%s' should have a 'count' value defined" % disk)
-        if 'ceph_type' not in lookup_disks[disk]:
-            fatal("disk '%s' should have a 'ceph_type' value defined : {data | journal}" % disk)
-        if lookup_disks[disk]['ceph_type'] not in ['data', 'journal']:
-            fatal("disk '%s' doesn't have a valid 'ceph_type' defined, it should be : {data | journal}" % disk)
-        if 'count' in lookup_disks[disk]:
-            count = lookup_disks[disk]['count']
-            del lookup_disks[disk]['count']
+        if ceph_type:
+            # When legacy is enabled, let's enforce the count & type
+            count = 1
+            lookup_disks[disk]['ceph_type'] = ceph_type
+        else:
+            if 'count' not in lookup_disks[disk]:
+                fatal("disk '%s' should have a 'count' value defined" % disk)
+            if 'ceph_type' not in lookup_disks[disk]:
+                fatal("disk '%s' should have a 'ceph_type' value defined : {data | journal}" % disk)
+            if lookup_disks[disk]['ceph_type'] not in ['data', 'journal']:
+                fatal("disk '%s' doesn't have a valid 'ceph_type' defined, it should be : {data | journal}" % disk)
+            if 'count' in lookup_disks[disk]:
+                count = lookup_disks[disk]['count']
+                del lookup_disks[disk]['count']
 
         if '*' in str(count).strip():
             infinite = True
@@ -293,7 +298,7 @@ def get_block_devices_persistent_name(physical_disks):
     return final_disks
 
 
-def fake_device(legacy_devices):
+def fake_device(legacy_devices, ceph_type):
     '''
     In case of legacy block device names, let's create an internal faked
     entry with a 'bdev' entry filled with the actual path. This will be used to
@@ -301,8 +306,8 @@ def fake_device(legacy_devices):
     '''
     devices = {}
     count = 0
-    for device in legacy_devices.split():
-        devices["legacy_%d" % count] = {"bdev": os.path.dirname(device)+"/"+os.path.basename(device)}
+    for device in legacy_devices:
+        devices["%s_%d" % (ceph_type, count)] = {"bdev": os.path.dirname(device)+"/"+os.path.basename(device)}
         count = count + 1
 
     return devices
@@ -372,21 +377,26 @@ def fatal(message):
     logger.info("#######")
     if module:
         module.fail_json(msg=message)
+    else:
+        exit(1)
 
 
 def main():
     global module
+    legacy = False
     matched_devices = None
     lookup_disks = None
     disks = "disks"
-    legacy = "legacy_disks"
+    devices = "devices"
+    raw_journal_devices = "raw_journal_devices"
 
     setup_logging()
 
     fields = {
         "facts": {"required": True, "type": "dict"},
         disks: {"required": False, "type": "dict"},
-        legacy: {"required": False, "type": "str"},
+        devices: {"required": False, "type": "list"},
+        raw_journal_devices: {"required": False, "type": "list"},
     }
 
     module = AnsibleModule(
@@ -396,7 +406,7 @@ def main():
 
     physical_disks = select_only_free_devices(module.params["facts"])
 
-    if module.params[disks] and module.params[legacy]:
+    if module.params[disks] and module.params[devices]:
         fatal("%s and %s options are exclusive while both are defined" % (disks, legacy))
 
     # The new disks description is preferred over the legacy (/dev/sd) naming
@@ -407,15 +417,19 @@ def main():
         # partitions, transform their device name in a persistent name
         lookup_disks = expand_disks(module.params[disks])
         physical_disks = get_block_devices_persistent_name(physical_disks)
-    elif module.params[legacy]:
+    elif module.params[devices]:
+        legacy = True
         info("Legacy syntax")
-        info(" %s : %s" % (legacy, module.params[legacy]))
+        info(" %s : %s" % (devices, module.params[devices]))
         # From the ansible facts, we only keep the disks that doesn't have partitions
         # We don't transform into the persistent naming but rather fake the disk
         # definition by creating "bdev" entries to get a feature to match.
-        lookup_disks = expand_disks(fake_device(module.params[legacy]))
+        lookup_disks = expand_disks(fake_device(module.params[devices], "data"), "data")
+        if module.params[raw_journal_devices]:
+            info(" %s : %s" % (raw_journal_devices, module.params[raw_journal_devices]))
+            lookup_disks.update(expand_disks(fake_device(module.params[raw_journal_devices], "journal"), "journal"))
     else:
-        fatal("no 'disks' or 'legacy_disks' variables found in playbook")
+        fatal("no 'disks' or 'devices' variables found in playbook")
         return
 
     debug("Looking for %s" % lookup_disks)
@@ -454,7 +468,14 @@ def main():
     logger.info("#######")
     logger.info("# End #")
     logger.info("#######")
-    module.exit_json(msg=message, changed=changed, ansible_facts=dict(devices=ceph_data, raw_journal_devices=journal, devices_to_activate=to_activate))
+
+    if legacy is True:
+        # Reporting devices & raw_journal_devices for compatiblity
+        module.exit_json(msg=message, changed=changed, ansible_facts=dict(legacy_devices=ceph_data, legacy_raw_journal_devices=journal, devices_to_activate=to_activate))
+    else:
+        # Reporting storage_devices & journal_devices
+        module.exit_json(msg=message, changed=changed, ansible_facts=dict(storage_devices=ceph_data, journal_devices=journal, devices_to_activate=to_activate))
+
 
 if __name__ == '__main__':
         main()
