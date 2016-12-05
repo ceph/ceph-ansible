@@ -1,9 +1,9 @@
 import imp
 import inspect
-import library.choose_disk as choose_disk
 import mock
 import os
 from nose.tools import assert_equals, nottest
+from library import choose_disk
 
 host_dir = "tests/unit/hosts/"
 
@@ -85,8 +85,8 @@ def test_find_match_matched_gt():
     """
     find_match - test for a matching device with gt() operator
     """
-    ansible_devices = {'sr0': {'sectorsize': '512', 'ceph_type': 'data' }}
-    disk_0 = {'sr0': {'sectorsize': 'gt(256)', 'ceph_type': 'data' }}
+    ansible_devices = {'sr0': {'sectorsize': '512', 'ceph_type': 'data'}}
+    disk_0 = {'sr0': {'sectorsize': 'gt(256)', 'ceph_type': 'data'}}
     expected_result = ansible_devices
     result = choose_disk.find_match(ansible_devices, disk_0)
     assert_equals(result, expected_result)
@@ -96,8 +96,8 @@ def test_find_match_matched_lt():
     """
     find_match - test for a matching device with lt() operator
     """
-    ansible_devices = {'sr0': {'sectorsize': '512', 'ceph_type': 'data' }}
-    disk_0 = {'sr0': {'sectorsize': 'lt(1024)', 'ceph_type': 'data' }}
+    ansible_devices = {'sr0': {'sectorsize': '512', 'ceph_type': 'data'}}
+    disk_0 = {'sr0': {'sectorsize': 'lt(1024)', 'ceph_type': 'data'}}
     expected_result = ansible_devices
     result = choose_disk.find_match(ansible_devices, disk_0)
     assert_equals(result, expected_result)
@@ -107,13 +107,13 @@ def test_find_match_matched_gt_units():
     """
     find_match - test for a matching device with gt() operator and units
     """
-    ansible_devices = {'sr0': {'size': '200.00 MB', 'ceph_type': 'data' }}
-    disk_0 = {'sr0': {'size': 'gt(100.00 MB)', 'ceph_type': 'data' }}
+    ansible_devices = {'sr0': {'size': '200.00 MB', 'ceph_type': 'data'}}
+    disk_0 = {'sr0': {'size': 'gt(100.00 MB)', 'ceph_type': 'data'}}
     expected_result = ansible_devices
     result = choose_disk.find_match(ansible_devices, disk_0)
     assert_equals(result, expected_result)
 
-    disk_0 = {'sr0': {'size': 'lt(1 GB)', 'ceph_type': 'data' }}
+    disk_0 = {'sr0': {'size': 'lt(1 GB)', 'ceph_type': 'data'}}
     expected_result = ansible_devices
     result = choose_disk.find_match(ansible_devices, disk_0)
     assert_equals(result, expected_result)

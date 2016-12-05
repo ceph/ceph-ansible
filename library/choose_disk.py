@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 from ansible.module_utils.basic import AnsibleModule
-import json
 import logging
 import os
 import re
@@ -15,9 +14,6 @@ short_description: Choose disks based on their features
 description:
     To be completed
 '''
-
-logger = logging.getLogger('choose_disk')
-module = None
 
 
 def _equal(left, right):
@@ -36,6 +32,9 @@ _REGEXP = re.compile(r'^([^(]+)'          # function name
                      r'\(\s*([^,]+)'      # first argument
                      r'(?:\s*,\s*(.+))?'  # remaining optional arguments
                      r'\)$')              # last parenthesis
+
+
+logger = logging.getLogger('choose_disk')
 
 
 def convert_units(value):
@@ -79,7 +78,7 @@ def get_keys_by_ceph_order(physical_disks):
     return ceph_disks + non_ceph_disks
 
 
-def find_match(physical_disks, lookup_disks):
+def find_match(physical_disks, lookup_disks, module=None):
     ''' Find a set of matching devices in physical_disks
     '''
     matched_devices = {}
@@ -92,7 +91,7 @@ def find_match(physical_disks, lookup_disks):
         current_lookup = dict(lookup_disks[disk])
         infinite = False
         current_type = ""
-        if "infinite" in current_lookup.keys():
+        if "infinite" in current_lookup:
             infinite = True
             del current_lookup["infinite"]
 
@@ -102,10 +101,10 @@ def find_match(physical_disks, lookup_disks):
             del current_lookup["ceph_type"]
 
         if len(ignored_devices) == len(physical_disks):
-            info(" Skipping %s as no more free devices to match" % (disk))
+            logger.info(" Skipping %s as no more free devices to match", disk)
             continue
 
-        logger.info(" Inspecting %s" % disk)
+        logger.info(" Inspecting %s", disk)
         # Trying to find a match against all physical disks we have
         for physical_disk in get_keys_by_ceph_order(physical_disks):
             # Avoid reusing an already matched physical disk
@@ -136,21 +135,21 @@ def find_match(physical_disks, lookup_disks):
                             operator = new_operator
                             right = arguments.group(2)
                         else:
-                            fatal("Unsupported %s operator in : %s" % (new_operator, right))
+                            fatal("Unsupported %s operator in : %s" % (new_operator, right), module)
 
                 # Let's check if (left <operator> right) is True meaning the match is done
                 if globals()[operator](convert_units(left), convert_units(right)):
-                    debug("  %s : match  %s %s %s" % (physical_disk, left, operator, right))
+                    logger.debug("  %s : match  %s %s %s", physical_disk, left, operator, right)
                     match_count = match_count + 1
                     continue
                 else:
-                    debug("  %s : no match  %s %s %s" % (physical_disk, left, operator, right))
+                    logger.debug("  %s : no match  %s %s %s", physical_disk, left, operator, right)
                     match_count = match_count
                     # nomatch
 
             # If all the features matched
             if match_count == len(current_lookup):
-                info("  %50s matched" % (physical_disk))
+                logger.info("  %50s matched", physical_disk)
                 # When looking for an infinite number of disks, we can have
                 # several disks per matching
                 if disk not in matched_devices:
@@ -167,13 +166,13 @@ def find_match(physical_disks, lookup_disks):
                     break
             # We were unable to find all part of the required features
             elif match_count > 0:
-                info("  %50s partially matched with %d/%d items" % (physical_disk, match_count, len(current_lookup)))
+                logger.info("  %50s partially matched with %d/%d items", physical_disk, match_count, len(current_lookup))
             else:
-                info("  %50s no devices matched" % (physical_disk))
+                logger.info("  %50s no devices matched", physical_disk)
 
     final_disks = {}
-    for matched_device in matched_devices.keys():
-        for n in range(0, len(matched_devices[matched_device]), 1):
+    for matched_device in matched_devices:
+        for n in range(0, len(matched_devices[matched_device])):
             name = matched_device
             if len(matched_devices[matched_device]) > 1:
                 name = "%s_%03d" % (matched_device, n)
@@ -182,7 +181,7 @@ def find_match(physical_disks, lookup_disks):
     return final_disks
 
 
-def expand_disks(lookup_disks, ceph_type=""):
+def expand_disks(lookup_disks, ceph_type="", module=None):
     '''
     Read the disks structure and expand them according to the count directive
     '''
@@ -196,11 +195,11 @@ def expand_disks(lookup_disks, ceph_type=""):
             lookup_disks[disk]['ceph_type'] = ceph_type
         else:
             if 'count' not in lookup_disks[disk]:
-                fatal("disk '%s' should have a 'count' value defined" % disk)
+                fatal("disk '%s' should have a 'count' value defined" % disk, module)
             if 'ceph_type' not in lookup_disks[disk]:
-                fatal("disk '%s' should have a 'ceph_type' value defined : {data | journal}" % disk)
+                fatal("disk '%s' should have a 'ceph_type' value defined : {data | journal}" % disk, module)
             if lookup_disks[disk]['ceph_type'] not in ['data', 'journal']:
-                fatal("disk '%s' doesn't have a valid 'ceph_type' defined, it should be : {data | journal}" % disk)
+                fatal("disk '%s' doesn't have a valid 'ceph_type' defined, it should be : {data | journal}" % disk, module)
             if 'count' in lookup_disks[disk]:
                 count = lookup_disks[disk]['count']
                 del lookup_disks[disk]['count']
@@ -210,23 +209,20 @@ def expand_disks(lookup_disks, ceph_type=""):
             count = 1
 
         for n in range(0, int(count), 1):
-            final_list["%s_%03d" % (disk, n)] = lookup_disks[disk]
+            final_disks["%s_%03d" % (disk, n)] = lookup_disks[disk]
             if infinite is True:
-                final_list["%s_%03d" % (disk, n)]["infinite"] = "1"
+                final_disks["%s_%03d" % (disk, n)]["infinite"] = "1"
 
-    return final_list
+    return final_disks
 
 
 def is_ceph_disk(partition):
     '''
     Check if a parition is used by ceph
     '''
-    try:
-        stdout = subprocess.check_output(["lsblk", "-no", "PARTLABEL", "%s" % partition])
-        if "ceph data" in stdout:
-            return True
-    except:
-        pass
+    stdout = subprocess.check_output(["lsblk", "-no", "PARTLABEL", "%s" % partition])
+    if "ceph data" in stdout:
+        return True
 
     return False
 
@@ -234,14 +230,14 @@ def is_ceph_disk(partition):
 def select_only_free_devices(physical_disks):
     ''' Don't keep that have partitions '''
     selected_devices = {}
-    info('Detecting free devices')
+    logger.info('Detecting free devices')
     for physical_disk in sorted(physical_disks):
         ceph_disk = False
         current_physical_disk = physical_disks[physical_disk]
 
         # Don't consider devices that doesn't have partitions
         if 'partitions' not in current_physical_disk:
-            info(' Ignoring %10s : Device doesnt support partitioning' % physical_disk)
+            logger.info(' Ignoring %10s : Device doesnt support partitioning', physical_disk)
             continue
         # Don't consider the device if partition list is not empty,
         if len(current_physical_disk['partitions']) > 0:
@@ -250,7 +246,7 @@ def select_only_free_devices(physical_disks):
                     ceph_disk = True
 
             if ceph_disk is False:
-                info(' Ignoring %10s : Device have exisiting partitions' % physical_disk)
+                logger.info(' Ignoring %10s : Device have exisiting partitions', physical_disk)
                 continue
 
         selected_devices[physical_disk] = physical_disks[physical_disk]
@@ -258,9 +254,9 @@ def select_only_free_devices(physical_disks):
 
         if ceph_disk is True:
             selected_devices[physical_disk]['ceph_prepared'] = 1
-            info(' Adding   %10s : Ceph disk detected' % physical_disk)
+            logger.info(' Adding   %10s : Ceph disk detected', physical_disk)
         else:
-            info(' Adding   %10s : %s' % (physical_disk, selected_devices[physical_disk]['bdev']))
+            logger.info(' Adding   %10s : %s', physical_disk, selected_devices[physical_disk]['bdev'])
 
     return selected_devices
 
@@ -269,10 +265,10 @@ def get_block_devices_persistent_name(physical_disks):
     ''' Replace the short name (sda) by the persistent naming 'by-id' '''
     directory = "/dev/disk/by-id/"
 
-    info('Finding persistent disks name')
+    logger.info('Finding persistent disks name')
     # If the directory doesn't exist, reports the list as-is
     if not os.path.isdir(directory):
-        info(' Cannot open %s' % directory)
+        logger.info(' Cannot open %s', directory)
         return physical_disks
 
     final_disks = {}
@@ -290,7 +286,7 @@ def get_block_devices_persistent_name(physical_disks):
             current_index = sorted(matching_devices[physical_disk])[0]
             final_disks[current_index] = physical_disks[physical_disk]
             final_disks[current_index]["bdev"] = "%s%s" % (directory, current_index)
-            info(' Renaming %10s to %50s' % (physical_disk, current_index))
+            logger.info(' Renaming %10s to %50s', physical_disk, current_index)
         else:
             current_index = physical_disk
             final_disks[current_index] = physical_disks[physical_disk]
@@ -316,49 +312,24 @@ def fake_device(legacy_devices, ceph_type):
 def show_resulting_devices(matched_devices, physical_disks):
     bdev_matched = []
     bdev_unmatched = []
-    info("Matched devices   : %3d" % len(matched_devices))
-    for matched_device in sorted(matched_devices.keys()):
+    logger.info("Matched devices   : %3d", len(matched_devices))
+    for matched_device in sorted(matched_devices):
         extra_string = ""
         if "ceph_prepared" in matched_devices[matched_device]:
             extra_string = " (ceph)"
-        info(" %s : %s%s" % (matched_device, matched_devices[matched_device]["bdev"], extra_string))
+        logger.info(" %s : %s%s", matched_device, matched_devices[matched_device]["bdev"], extra_string)
         bdev_matched.append(matched_devices[matched_device]["bdev"])
 
     for physical_disk in sorted(physical_disks):
         if physical_disks[physical_disk]["bdev"] not in bdev_matched:
             bdev_unmatched.append(physical_disks[physical_disk]["bdev"])
 
-    info("Unmatched devices : %3d" % len(bdev_unmatched))
+    logger.info("Unmatched devices : %3d", len(bdev_unmatched))
     for bdev in sorted(bdev_unmatched):
-        info(" %s" % bdev)
-
-
-def info(message):
-    global logger
-    if logger:
-        logger.info(message)
-
-
-def warn(message):
-    global logger
-    if logger:
-        logger.warn(message)
-
-
-def debug(message):
-    global logger
-    if logger:
-        logger.debug(message)
-
-
-def error(message):
-    global logger
-    if logger:
-        logger.error(message)
+        logger.info(" %s", bdev)
 
 
 def setup_logging():
-    global logger
     hdlr = logging.FileHandler('/var/log/choose_disk.log')
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     hdlr.setFormatter(formatter)
@@ -369,9 +340,8 @@ def setup_logging():
     logger.info("############")
 
 
-def fatal(message):
-    global module
-    error(message)
+def fatal(message, module):
+    logger.error(message)
     logger.info("#######")
     logger.info("# End #")
     logger.info("#######")
@@ -382,7 +352,7 @@ def fatal(message):
 
 
 def main():
-    global module
+    module = None
     legacy = False
     matched_devices = None
     lookup_disks = None
@@ -407,39 +377,39 @@ def main():
     physical_disks = select_only_free_devices(module.params["facts"])
 
     if module.params[disks] and module.params[devices]:
-        fatal("%s and %s options are exclusive while both are defined" % (disks, legacy))
+        fatal("%s and %s options are exclusive while both are defined" % (disks, legacy), module)
 
     # The new disks description is preferred over the legacy (/dev/sd) naming
     if module.params[disks]:
-        info("Native syntax")
-        info(" %s : %s" % (disks, module.params[disks]))
+        logger.info("Native syntax")
+        logger.info(" %s : %s", disks, module.params[disks])
         # From the ansible facts, we only keep the disks that doesn't have
         # partitions, transform their device name in a persistent name
-        lookup_disks = expand_disks(module.params[disks])
+        lookup_disks = expand_disks(module.params[disks], "", module)
         physical_disks = get_block_devices_persistent_name(physical_disks)
     elif module.params[devices]:
         legacy = True
-        info("Legacy syntax")
-        info(" %s : %s" % (devices, module.params[devices]))
+        logger.info("Legacy syntax")
+        logger.info(" %s : %s", devices, module.params[devices])
         # From the ansible facts, we only keep the disks that doesn't have partitions
         # We don't transform into the persistent naming but rather fake the disk
         # definition by creating "bdev" entries to get a feature to match.
-        lookup_disks = expand_disks(fake_device(module.params[devices], "data"), "data")
+        lookup_disks = expand_disks(fake_device(module.params[devices], "data"), "data", module)
         if module.params[raw_journal_devices]:
-            info(" %s : %s" % (raw_journal_devices, module.params[raw_journal_devices]))
-            lookup_disks.update(expand_disks(fake_device(module.params[raw_journal_devices], "journal"), "journal"))
+            logger.info(" %s : %s", raw_journal_devices, module.params[raw_journal_devices])
+            lookup_disks.update(expand_disks(fake_device(module.params[raw_journal_devices], "journal"), "journal", module))
     else:
-        fatal("no 'disks' or 'devices' variables found in playbook")
+        fatal("no 'disks' or 'devices' variables found in playbook", module)
         return
 
-    debug("Looking for %s" % lookup_disks)
+    logger.debug("Looking for %s", lookup_disks)
     # From the ansible facts, we only keep the disks that doesn't have
-    matched_devices = find_match(physical_disks, lookup_disks)
+    matched_devices = find_match(physical_disks, lookup_disks, module)
 
     show_resulting_devices(matched_devices, physical_disks)
 
     if len(matched_devices) < len(lookup_disks):
-        fatal("Could only find %d of the %d expected devices\n" % (len(matched_devices), len(lookup_disks)))
+        fatal("Could only find %d of the %d expected devices\n" % (len(matched_devices), len(lookup_disks)), module)
 
     ceph_data = []
     journal = []
@@ -459,12 +429,12 @@ def main():
             journal.append(device["bdev"])
 
     changed = True
-    logger.info("%d/%d disks already configured" % (ceph_count, len(matched_devices)))
+    logger.info("%d/%d disks already configured", ceph_count, len(matched_devices))
     if ceph_count == len(matched_devices):
         changed = False
 
     message = "All searched devices were found"
-    info(message)
+    logger.info(message)
     logger.info("#######")
     logger.info("# End #")
     logger.info("#######")
