@@ -5,7 +5,7 @@ import pytest
 def CephNode(Ansible, Interface, request):
     vars = Ansible.get_variables()
     node_type = vars["group_names"][0]
-    if not request.node.get_marker(node_type):
+    if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
         pytest.skip("Not a valid test for node type")
 
     # I can assume eth1 because I know all the vagrant
