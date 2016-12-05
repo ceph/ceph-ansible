@@ -16,3 +16,8 @@ class TestOSDs(object):
         # TODO: figure out way to paramaterize CephNode['osd_ids'] for this test
         for osd_id in CephNode["osd_ids"]:
             assert Service("ceph-osd@%s" % osd_id).is_enabled
+
+    def test_osd_are_mounted(self, CephNode, MountPoint):
+        # TODO: figure out way to paramaterize CephNode['osd_ids'] for this test
+        for osd_id in CephNode["osd_ids"]:
+            assert MountPoint("/var/lib/ceph/osd/ceph-%s" % osd_id).exists
