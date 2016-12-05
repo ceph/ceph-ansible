@@ -2,11 +2,16 @@ import pytest
 
 
 @pytest.fixture()
-def CephNode(Ansible, Interface, request):
+def CephNode(Ansible, Interface, Command, request):
     vars = Ansible.get_variables()
     node_type = vars["group_names"][0]
     if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
         pytest.skip("Not a valid test for node type")
+
+    osd_ids = []
+    if node_type == "osds":
+        result = Command.check_output('sudo ls /var/lib/ceph/osd/ | grep -oP "\d+$"')
+        osd_ids = result.split("\n")
 
     # I can assume eth1 because I know all the vagrant
     # boxes we test with use that interface
@@ -16,6 +21,7 @@ def CephNode(Ansible, Interface, request):
         address=address,
         subnet=subnet,
         vars=vars,
+        osd_ids=osd_ids,
     )
     return data
 
