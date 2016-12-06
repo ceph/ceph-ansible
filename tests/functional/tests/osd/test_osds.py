@@ -4,8 +4,14 @@ class TestOSDs(object):
     def test_ceph_osd_package_is_installed(self, node, Package):
         assert Package("ceph-osd").is_installed
 
-    def test_osd_listens_on_6800(self, node, Socket):
-        assert Socket("tcp://%s:6800" % node["address"]).is_listening
+    def test_osds_listen_on_public_network(self, node, Socket):
+        # TODO: figure out way to paramaterize this test
+        for x in range(0, node["num_devices"] * 2):
+            port = "680{}".format(x)
+            assert Socket("tcp://{address}:{port}".format(
+                address=node["address"],
+                port=port,
+            )).is_listening
 
     def test_osd_services_are_running(self, node, Service):
         # TODO: figure out way to paramaterize node['osd_ids'] for this test
