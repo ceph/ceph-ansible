@@ -20,4 +20,8 @@ class TestOSDs(object):
     def test_osd_are_mounted(self, node, MountPoint):
         # TODO: figure out way to paramaterize node['osd_ids'] for this test
         for osd_id in node["osd_ids"]:
-            assert MountPoint("/var/lib/ceph/osd/ceph-%s" % osd_id).exists
+            osd_path = "/var/lib/ceph/osd/{cluster}-{osd_id}".format(
+                cluster=node["cluster_name"],
+                osd_id=osd_id,
+            )
+            assert MountPoint(osd_path).exists
