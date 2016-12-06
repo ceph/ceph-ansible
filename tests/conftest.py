@@ -21,9 +21,14 @@ def node(Ansible, Interface, Command, request):
         pytest.skip("Scenario is not using journal collocation")
 
     osd_ids = []
+    cluster_address = ""
     if node_type == "osds":
         result = Command.check_output('sudo ls /var/lib/ceph/osd/ | grep -oP "\d+$"')
         osd_ids = result.split("\n")
+        # I can assume eth2 because I know all the vagrant
+        # boxes we test with use that interface. OSDs are the only
+        # nodes that have this interface.
+        cluster_address = Interface("eth2").addresses[0]
 
     # I can assume eth1 because I know all the vagrant
     # boxes we test with use that interface
@@ -42,6 +47,7 @@ def node(Ansible, Interface, Command, request):
         num_devices=num_devices,
         cluster_name=cluster_name,
         conf_path=conf_path,
+        cluster_address=cluster_address,
     )
     return data
 

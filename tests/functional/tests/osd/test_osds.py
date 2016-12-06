@@ -13,6 +13,15 @@ class TestOSDs(object):
                 port=port,
             )).is_listening
 
+    def test_osds_listen_on_cluster_network(self, node, Socket):
+        # TODO: figure out way to paramaterize this test
+        for x in range(0, node["num_devices"] * 2):
+            port = "680{}".format(x)
+            assert Socket("tcp://{address}:{port}".format(
+                address=node["cluster_address"],
+                port=port,
+            )).is_listening
+
     def test_osd_services_are_running(self, node, Service):
         # TODO: figure out way to paramaterize node['osd_ids'] for this test
         for osd_id in node["osd_ids"]:
