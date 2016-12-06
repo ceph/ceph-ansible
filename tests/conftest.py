@@ -37,6 +37,8 @@ def node(Ansible, Interface, Command, request):
         vars=ansible_vars,
         osd_ids=osd_ids,
         num_mons=num_mons,
+        cluster_name=cluster_name,
+        conf_path=conf_path,
     )
     return data
 
