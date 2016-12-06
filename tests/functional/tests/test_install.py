@@ -19,22 +19,22 @@ class TestInstall(object):
 
 class TestCephConf(object):
 
-    def test_ceph_config_has_inital_members_line(self, CephNode, File):
+    def test_ceph_config_has_inital_members_line(self, node, File):
         assert File("/etc/ceph/ceph.conf").contains("^mon initial members = .*$")
 
-    def test_initial_members_line_has_correct_value(self, CephNode, File):
+    def test_initial_members_line_has_correct_value(self, node, File):
         mons = ",".join("ceph-%s" % host
-                        for host in CephNode["vars"]["groups"]["mons"])
+                        for host in node["vars"]["groups"]["mons"])
         line = "mon initial members = {}".format(mons)
         assert File("/etc/ceph/ceph.conf").contains(line)
 
-    def test_ceph_config_has_mon_host_line(self, CephNode, File):
+    def test_ceph_config_has_mon_host_line(self, node, File):
         assert File("/etc/ceph/ceph.conf").contains("^mon host = .*$")
 
-    def test_mon_host_line_has_correct_value(self, CephNode, File):
-        num_mons = len(CephNode["vars"]["groups"]["mons"])
+    def test_mon_host_line_has_correct_value(self, node, File):
+        num_mons = len(node["vars"]["groups"]["mons"])
         mon_ips = []
         for x in range(0, num_mons):
-            mon_ips.append("{}.1{}".format(CephNode["subnet"], x))
+            mon_ips.append("{}.1{}".format(node["subnet"], x))
         line = "mon host = {}".format(",".join(mon_ips))
         assert File("/etc/ceph/ceph.conf").contains(line)

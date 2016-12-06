@@ -2,7 +2,15 @@ import pytest
 
 
 @pytest.fixture()
-def CephNode(Ansible, Interface, Command, request):
+def node(Ansible, Interface, Command, request):
+    """
+    This fixture represents a single node in the ceph cluster. Using the
+    Ansible fixture provided by testinfra it can access all the ansible variables
+    provided to it by the specific test scenario being ran.
+
+    You must include this fixture on any tests that operate on specific type of node
+    because it contains the logic to manage which tests a node should run.
+    """
     vars = Ansible.get_variables()
     node_type = vars["group_names"][0]
     if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
