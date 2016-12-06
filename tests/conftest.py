@@ -14,10 +14,10 @@ def node(Ansible, Interface, Command, request):
     ansible_vars = Ansible.get_variables()
     node_type = ansible_vars["group_names"][0]
     if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
-        pytest.skip("Not a valid test for node type")
+        pytest.skip("Not a valid test for node type: %s" % node_type)
 
     if request.node.get_marker("journal_collocation") and not ansible_vars.get("journal_collocation"):
-        pytest.skip("Skipping because scenario is not using journal collocation")
+        pytest.skip("Scenario is not using journal collocation")
 
     osd_ids = []
     if node_type == "osds":
