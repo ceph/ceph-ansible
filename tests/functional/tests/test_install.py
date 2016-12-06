@@ -32,9 +32,8 @@ class TestCephConf(object):
         assert File("/etc/ceph/ceph.conf").contains("^mon host = .*$")
 
     def test_mon_host_line_has_correct_value(self, node, File):
-        num_mons = len(node["vars"]["groups"]["mons"])
         mon_ips = []
-        for x in range(0, num_mons):
+        for x in range(0, node["num_mons"]):
             mon_ips.append("{}.1{}".format(node["subnet"], x))
         line = "mon host = {}".format(",".join(mon_ips))
         assert File("/etc/ceph/ceph.conf").contains(line)

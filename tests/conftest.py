@@ -28,11 +28,15 @@ def node(Ansible, Interface, Command, request):
     # boxes we test with use that interface
     address = Interface("eth1").addresses[0]
     subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
+    num_mons = len(ansible_vars["groups"]["mons"])
+    cluster_name = ansible_vars.get("cluster", "ceph")
+    conf_path = "/etc/ceph/{}.conf".format(cluster_name)
     data = dict(
         address=address,
         subnet=subnet,
         vars=ansible_vars,
         osd_ids=osd_ids,
+        num_mons=num_mons,
     )
     return data
 
