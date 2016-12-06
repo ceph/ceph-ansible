@@ -16,7 +16,8 @@ def node(Ansible, Interface, Command, request):
     if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
         pytest.skip("Not a valid test for node type: %s" % node_type)
 
-    if request.node.get_marker("journal_collocation") and not ansible_vars.get("journal_collocation"):
+    journal_collocation_test = ansible_vars.get("journal_collocation") or ansible_vars.get("dmcrypt_journal_collocation")
+    if request.node.get_marker("journal_collocation") and not journal_collocation_test:
         pytest.skip("Scenario is not using journal collocation")
 
     osd_ids = []
