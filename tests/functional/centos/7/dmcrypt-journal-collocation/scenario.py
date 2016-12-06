@@ -1,11 +1,6 @@
-# This is the most basic tests that can be executed remotely. It will trigger
-# a series of checks for paths, permissions and flags. Whatever is not
-# dependant on particular component of ceph should go here (for example,
-# nothing related to just OSDs)
-
 # Basic information about ceph and its configuration
 ceph = {
-    'releases': ['jewel', 'infernalis'],
+    'releases': ['infernalis', 'jewel'],
     'cluster_name': 'test'
 }
 
@@ -15,10 +10,10 @@ ceph = {
 nodes = {
     'mon0': {
         'username': 'vagrant',
-        'components': ['mon']
+        'components': ['mon', 'mon_initial_members']
     },
     'osd0': {
         'username': 'vagrant',
-        'components': ['osd']
+        'components': [],
     },
 }
