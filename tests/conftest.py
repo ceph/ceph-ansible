@@ -11,12 +11,12 @@ def node(Ansible, Interface, Command, request):
     You must include this fixture on any tests that operate on specific type of node
     because it contains the logic to manage which tests a node should run.
     """
-    vars = Ansible.get_variables()
-    node_type = vars["group_names"][0]
+    ansible_vars = Ansible.get_variables()
+    node_type = ansible_vars["group_names"][0]
     if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
         pytest.skip("Not a valid test for node type")
 
-    if request.node.get_marker("journal_collocation") and not vars.get("journal_collocation"):
+    if request.node.get_marker("journal_collocation") and not ansible_vars.get("journal_collocation"):
         pytest.skip("Skipping because scenario is not using journal collocation")
 
     osd_ids = []
@@ -27,11 +27,11 @@ def node(Ansible, Interface, Command, request):
     # I can assume eth1 because I know all the vagrant
     # boxes we test with use that interface
     address = Interface("eth1").addresses[0]
-    subnet = ".".join(vars["public_network"].split(".")[0:-1])
+    subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
     data = dict(
         address=address,
         subnet=subnet,
-        vars=vars,
+        vars=ansible_vars,
         osd_ids=osd_ids,
     )
     return data
