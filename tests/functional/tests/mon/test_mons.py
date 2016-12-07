@@ -30,6 +30,5 @@ class TestOSDs(object):
     def test_all_osds_are_up_and_in(self, node, Command):
         cmd = "sudo ceph --cluster={} --connect-timeout 5 -s".format(node["cluster_name"])
         output = Command.check_output(cmd)
-        num_osds = len(node["vars"]["devices"])
-        phrase = "{num_osds} osds: {num_osds} up, {num_osds} in".format(num_osds=num_osds)
+        phrase = "{num_osds} osds: {num_osds} up, {num_osds} in".format(num_osds=node["total_osds"])
         assert phrase in output

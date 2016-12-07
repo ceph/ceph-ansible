@@ -36,6 +36,8 @@ def node(Ansible, Interface, Command, request):
     subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
     num_mons = len(ansible_vars["groups"]["mons"])
     num_devices = len(ansible_vars["devices"])
+    num_osd_hosts = len(ansible_vars["groups"]["osds"])
+    total_osds = num_devices * num_osd_hosts
     cluster_name = ansible_vars.get("cluster", "ceph")
     conf_path = "/etc/ceph/{}.conf".format(cluster_name)
     data = dict(
@@ -45,6 +47,8 @@ def node(Ansible, Interface, Command, request):
         osd_ids=osd_ids,
         num_mons=num_mons,
         num_devices=num_devices,
+        num_osd_hosts=num_osd_hosts,
+        total_osds=total_osds,
         cluster_name=cluster_name,
         conf_path=conf_path,
         cluster_address=cluster_address,
