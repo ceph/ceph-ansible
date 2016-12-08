@@ -1,8 +1,7 @@
 #!/bin/bash
 #
 # This script will install Ansible and then deploy a simple Ceph cluster.
-# The script relies on the auto osd discovery feature, so we at least expect 2 raw devices
-# to work properly.
+# The script relies on the auto osd discovery feature
 set -e
 
 
@@ -11,6 +10,9 @@ set -e
 SOURCE=stable
 IP=$(ip -4 -o a | awk '/eth|ens|eno|enp|em|p.p./ { sub ("/..", "", $4); print $4 }' | head -1)
 SUBNET=$(ip r | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}/[0-9]\{1,2\}' | head -1)
+CEPH_POOL_DEFAULT_SIZE=2
+INSTALL_MDS=true
+INSTALL_RGW=true
 
 
 # FUNCTIONS
@@ -28,17 +30,21 @@ None of the following options are mandatory!
 -b master          : DEV BRANCH, only valid when '-s dev' (DEFAULT: master)
 -i 192.168.0.1     : IP, if not set the first IP of the stack will be used
 -n 192.168.0.0/24  : Subnet, if not set the first subnet of the stack will be used
+-p 2               : OSD default pool size and min_size (DEFAULT: 2)
+-m true            : Install MDS (DEFAULT: true)
+-r true            : Install RGW (DEFAULT: true)
 
 Examples:
 ${PROG} -s stable # installs latest stable version and detects IP/SUBNET
 ${PROG} -s stable -i 192.168.0.1 -n 192.168.0.0/24 # installs latest stable version and use the provided IP/SUBNET
 ${PROG} -s dev -b master # installs master branch version and detects IP/SUBNET
 ${PROG} -s dev -b master -i 192.168.0.1 -n 192.168.0.0/24 # installs master branch version and use the provided IP/SUBNET
+${PROG} -s stable -i 192.168.0.1 -n 192.168.0.0/24 -p 1 -m false -r false # install latest stable version, use the provided IP/SUBNET, set default pool size and min_size to 1 and don't install MDS and RGW
 EOF
 }
 
 parse_cmdline() {
-while getopts "hs:b:i:n:" opt; do
+while getopts "hs:b:i:n:p:m:r:" opt; do
   case $opt in
     h)
     show_help
@@ -55,6 +61,15 @@ while getopts "hs:b:i:n:" opt; do
     ;;
     n)
     SUBNET=${OPTARG}
+    ;;
+    p)
+    CEPH_POOL_DEFAULT_SIZE=${OPTARG}
+    ;;
+    m)
+    INSTALL_MDS=${OPTARG}
+    ;;
+    r)
+    INSTALL_RGW=${OPTARG}
     ;;
    \?)
       exit 1
@@ -84,8 +99,12 @@ function install_ansible {
 }
 
 function ssh_setup {
-  echo -e  'y\n'|ssh-keygen -q -t rsa -N "" -f ~/.ssh/id_rsa
-  cat $HOME/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
+  if [ ! -f $HOME/.ssh/id_rsa ]; then
+    echo -e  'y\n'|ssh-keygen -q -t rsa -N "" -f $HOME/.ssh/id_rsa
+  fi
+  if ! grep -Fxq "$(cat $HOME/.ssh/id_rsa.pub)" $HOME/.ssh/authorized_keys; then
+    cat $HOME/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
+  fi
 }
 
 function cp_var {
@@ -95,37 +114,53 @@ function cp_var {
 }
 
 function populate_vars {
-  sed -i "s/#osd_auto_discovery: false/osd_auto_discovery: true/" group_vars/osds.yml
-  sed -i "s/#journal_collocation: false/journal_collocation: true/" group_vars/osds.yml
-  sed -i "s/#pool_default_size: 3/pool_default_size: 2/" group_vars/all.yml
-  sed -i "s/#monitor_address: 0.0.0.0/monitor_address: ${IP}/" group_vars/all.yml
-  sed -i "s/#journal_size: 0/journal_size: 100/" group_vars/all.yml
-  sed -i "s|#public_network: 0.0.0.0\/0|public_network: ${SUBNET}|" group_vars/all.yml
-  sed -i "s/#common_single_host_mode: true/common_single_host_mode: true/" group_vars/all.yml
+  sed -i "s/[#]*osd_auto_discovery: .*/osd_auto_discovery: true/" group_vars/osds.yml
+  sed -i "s/[#]*journal_collocation: .*/journal_collocation: true/" group_vars/osds.yml
+  sed -i "s/[#]*monitor_address: .*/monitor_address: ${IP}/" group_vars/all.yml
+  sed -i "s/[#]*journal_size: .*/journal_size: 100/" group_vars/all.yml
+  sed -i "s|[#]*public_network: .*|public_network: ${SUBNET}|" group_vars/all.yml
+  sed -i "s/[#]*common_single_host_mode: .*/common_single_host_mode: true/" group_vars/all.yml
+  grep -q '^[#]*osd_pool_default_size: .*' group_vars/all.yml \
+    && sed -i "s/^[#]*osd_pool_default_size: .*/osd_pool_default_size: $CEPH_POOL_DEFAULT_SIZE/" group_vars/all.yml \
+    || echo "osd_pool_default_size: $CEPH_POOL_DEFAULT_SIZE" >> group_vars/all.yml
+  grep -q '^[#]*osd_pool_default_min_size: .*' group_vars/all.yml \
+    && sed -i "s/^[#]*osd_pool_default_min_size: .*/osd_pool_default_min_size: $CEPH_POOL_DEFAULT_SIZE/" group_vars/all.yml \
+    || echo "osd_pool_default_min_size: $CEPH_POOL_DEFAULT_SIZE" >> group_vars/all.yml
+  grep -q '^[#]*mon_pg_warn_max_per_osd: .*' group_vars/all.yml \
+    && sed -i "s/^[#]*mon_pg_warn_max_per_osd: .*/mon_pg_warn_max_per_osd: 0/" group_vars/all.yml \
+    || echo "mon_pg_warn_max_per_osd: 0" >> group_vars/all.yml
   if [[ ${SOURCE} == 'stable' ]]; then
-    sed -i "s/#ceph_stable: false/ceph_stable: true/" group_vars/all.yml
+    sed -i "s/[#]*ceph_stable: .*/ceph_stable: true/" group_vars/all.yml
   else
-    sed -i "s/#ceph_dev: false/ceph_dev: true/" group_vars/all.yml
-    sed -i "s|#ceph_dev_branch: master|ceph_dev_branch: ${BRANCH}|" group_vars/all.yml
+    sed -i "s/[#]*ceph_dev: .*/ceph_dev: true/" group_vars/all.yml
+    sed -i "s|[#]*ceph_dev_branch: .*|ceph_dev_branch: ${BRANCH}|" group_vars/all.yml
   fi
 }
 
 function create_inventory {
-  cat > /etc/ansible/hosts <<EOF
+  cat > hosts <<EOF
 [mons]
 localhost
 [osds]
 localhost
+EOF
+  if [ "$INSTALL_MDS" = true ] ; then
+    cat >> hosts <<EOF
 [mdss]
 localhost
+EOF
+  fi
+  if [ "$INSTALL_RGW" = true ] ; then
+    cat >> hosts <<EOF
 [rgws]
 localhost
 EOF
+  fi
 }
 
 function test_and_run {
-  ansible all -m ping
-  ansible-playbook site.yml
+  ansible all -i hosts -m ping
+  ansible-playbook -i hosts site.yml
 }
 
 
