@@ -1,0 +1,24 @@
+---
+
+- hosts: all
+  gather_facts: true
+  become: yes
+  tasks:
+
+    - name: check if it is Atomic host
+      stat: path=/run/ostree-booted
+      register: stat_ostree
+      always_run: true
+
+    - name: set fact for using Atomic host
+      set_fact:
+        is_atomic: '{{ stat_ostree.stat.exists }}'
+
+      # we need to install this so the Socket testinfra module
+      # can use netcat for testing
+    - name: install net-tools
+      package:
+        name: net-tools
+        state: present
+      when:
+        - not is_atomic
