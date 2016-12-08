@@ -13,8 +13,12 @@ def node(Ansible, Interface, Command, request):
     """
     ansible_vars = Ansible.get_variables()
     node_type = ansible_vars["group_names"][0]
+    docker = ansible_vars.get("docker")
     if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
         pytest.skip("Not a valid test for node type: %s" % node_type)
+
+    if request.node.get_marker("no_docker") and docker:
+        pytest.skip("Not a valid test for containerized deployments or atomic hosts")
 
     journal_collocation_test = ansible_vars.get("journal_collocation") or ansible_vars.get("dmcrypt_journal_collocation")
     if request.node.get_marker("journal_collocation") and not journal_collocation_test:
@@ -52,6 +56,7 @@ def node(Ansible, Interface, Command, request):
         cluster_name=cluster_name,
         conf_path=conf_path,
         cluster_address=cluster_address,
+        docker=docker,
     )
     return data
 
