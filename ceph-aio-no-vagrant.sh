@@ -120,15 +120,19 @@ function populate_vars {
   sed -i "s/[#]*journal_size: .*/journal_size: 100/" group_vars/all.yml
   sed -i "s|[#]*public_network: .*|public_network: ${SUBNET}|" group_vars/all.yml
   sed -i "s/[#]*common_single_host_mode: .*/common_single_host_mode: true/" group_vars/all.yml
-  grep -q '^[#]*osd_pool_default_size: .*' group_vars/all.yml \
-    && sed -i "s/^[#]*osd_pool_default_size: .*/osd_pool_default_size: $CEPH_POOL_DEFAULT_SIZE/" group_vars/all.yml \
-    || echo "osd_pool_default_size: $CEPH_POOL_DEFAULT_SIZE" >> group_vars/all.yml
-  grep -q '^[#]*osd_pool_default_min_size: .*' group_vars/all.yml \
-    && sed -i "s/^[#]*osd_pool_default_min_size: .*/osd_pool_default_min_size: $CEPH_POOL_DEFAULT_SIZE/" group_vars/all.yml \
-    || echo "osd_pool_default_min_size: $CEPH_POOL_DEFAULT_SIZE" >> group_vars/all.yml
-  grep -q '^[#]*mon_pg_warn_max_per_osd: .*' group_vars/all.yml \
-    && sed -i "s/^[#]*mon_pg_warn_max_per_osd: .*/mon_pg_warn_max_per_osd: 0/" group_vars/all.yml \
-    || echo "mon_pg_warn_max_per_osd: 0" >> group_vars/all.yml
+
+  if ! grep -q '^ceph_conf_overrides:' group_vars/all.yml; then
+    cat >> group_vars/all.yml <<EOF
+ceph_conf_overrides:
+  global:
+    mon pg warn max per osd: 0
+    osd pool default size: 2
+    osd pool default min size: 2
+EOF
+  fi
+  sed -i "s/^    osd pool default size: .*/    osd pool default size: $CEPH_POOL_DEFAULT_SIZE/" group_vars/all.yml
+  sed -i "s/^    osd pool default min size: .*/    osd pool default min size: $CEPH_POOL_DEFAULT_SIZE/" group_vars/all.yml
+
   if [[ ${SOURCE} == 'stable' ]]; then
     sed -i "s/[#]*ceph_stable: .*/ceph_stable: true/" group_vars/all.yml
   else
