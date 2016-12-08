@@ -1,6 +1,9 @@
+import pytest
+
 
 class TestOSDs(object):
 
+    @pytest.mark.no_docker
     def test_ceph_osd_package_is_installed(self, node, Package):
         assert Package("ceph-osd").is_installed
 
@@ -32,6 +35,7 @@ class TestOSDs(object):
         for osd_id in node["osd_ids"]:
             assert Service("ceph-osd@%s" % osd_id).is_enabled
 
+    @pytest.mark.no_docker
     def test_osd_are_mounted(self, node, MountPoint):
         # TODO: figure out way to paramaterize node['osd_ids'] for this test
         for osd_id in node["osd_ids"]:

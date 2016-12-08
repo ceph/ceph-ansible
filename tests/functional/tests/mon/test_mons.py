@@ -1,6 +1,9 @@
+import pytest
+
 
 class TestMons(object):
 
+    @pytest.mark.no_docker
     def test_ceph_mon_package_is_installed(self, node, Package):
         assert Package("ceph-mon").is_installed
 
