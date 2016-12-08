@@ -5,6 +5,18 @@
   always_run: yes
   register: ceph_version
 
+- name: is ceph running already?
+  command: ceph --connect-timeout 3 --cluster {{ cluster }} fsid
+  changed_when: false
+  failed_when: false
+  always_run: yes
+  register: ceph_current_fsid
+  delegate_to: "{{ groups.mons[0] }}"
+
+- set_fact:
+    fsid: "{{ ceph_current_fsid.stdout }}"
+  when: ceph_current_fsid.rc == 0
+
 - set_fact:
     ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
 
