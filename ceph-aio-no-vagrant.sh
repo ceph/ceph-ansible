@@ -95,7 +95,7 @@ fi
 }
 
 function install_ansible {
-  sudo bash install-ansible.sh
+  bash install-ansible.sh
 }
 
 function ssh_setup {
@@ -159,7 +159,7 @@ EOF
 }
 
 function test_and_run {
-  ansible all -i hosts -m ping
+  ANSIBLE_HOST_KEY_CHECKING=False ansible all -i hosts -m ping
   ansible-playbook -i hosts site.yml
 }
 
