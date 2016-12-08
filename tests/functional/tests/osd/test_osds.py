@@ -26,14 +26,14 @@ class TestOSDs(object):
             )).is_listening
 
     def test_osd_services_are_running(self, node, Service):
-        # TODO: figure out way to paramaterize node['osd_ids'] for this test
-        for osd_id in node["osd_ids"]:
-            assert Service("ceph-osd@%s" % osd_id).is_running
+        # TODO: figure out way to paramaterize node['osds'] for this test
+        for osd in node["osds"]:
+            assert Service("ceph-osd@%s" % osd).is_running
 
     def test_osd_services_are_enabled(self, node, Service):
-        # TODO: figure out way to paramaterize node['osd_ids'] for this test
-        for osd_id in node["osd_ids"]:
-            assert Service("ceph-osd@%s" % osd_id).is_enabled
+        # TODO: figure out way to paramaterize node['osds'] for this test
+        for osd in node["osds"]:
+            assert Service("ceph-osd@%s" % osd).is_enabled
 
     @pytest.mark.no_docker
     def test_osd_are_mounted(self, node, MountPoint):
