@@ -127,11 +127,9 @@ ceph_conf_overrides:
   global:
     mon pg warn max per osd: 0
     osd pool default size: 2
-    osd pool default min size: 2
 EOF
   fi
   sed -i "s/^    osd pool default size: .*/    osd pool default size: $CEPH_POOL_DEFAULT_SIZE/" group_vars/all.yml
-  sed -i "s/^    osd pool default min size: .*/    osd pool default min size: $CEPH_POOL_DEFAULT_SIZE/" group_vars/all.yml
 
   if [[ ${SOURCE} == 'stable' ]]; then
     sed -i "s/[#]*ceph_stable: .*/ceph_stable: true/" group_vars/all.yml
