@@ -40,3 +40,82 @@
 - set_fact:
     mds_name: "{{ ansible_fqdn }}"
   when: mds_use_fqdn
+
+- set_fact:
+    dir_owner: ceph
+    dir_group: ceph
+    dir_mode: "0755"
+  when: ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+
+- set_fact:
+    dir_owner: root
+    dir_group: root
+    dir_mode: "0755"
+  when: ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+
+- set_fact:
+    key_owner: root
+    key_group: root
+    key_mode: "0600"
+  when: ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+
+- set_fact:
+    key_owner: ceph
+    key_group: ceph
+    key_mode: "0600"
+  when: ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+
+- set_fact:
+    activate_file_owner: ceph
+    activate_file_group: ceph
+    activate_file_mode: "0644"
+  when: ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+
+- set_fact:
+    activate_file_owner: root
+    activate_file_group: root
+    activate_file_mode: "0644"
+  when: ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+
+- set_fact:
+    rbd_client_directory_owner: root
+  when:
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+    - rbd_client_directory_owner is not defined
+      or not rbd_client_directory_owner
+
+- set_fact:
+    rbd_client_directory_owner: ceph
+  when:
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+    - rbd_client_directory_owner is not defined
+      or not rbd_client_directory_owner
+
+- set_fact:
+    rbd_client_directory_group: root
+  when:
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+    - rbd_client_directory_group is not defined
+      or not rbd_client_directory_group
+
+- set_fact:
+    rbd_client_directory_group: ceph
+  when:
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+    - rbd_client_directory_group is not defined
+      or not rbd_client_directory_group
+
+- set_fact:
+    rbd_client_directory_mode: "1777"
+  when:
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+    - rbd_client_directory_mode is not defined
+      or not rbd_client_directory_mode
+
+- set_fact:
+    rbd_client_directory_mode: "0770"
+  when:
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+    - rbd_client_directory_mode is not defined
+      or not rbd_client_directory_mode
+
