@@ -299,6 +299,16 @@ The repository centralises all the Ansible roles.
 The roles are all part of the Galaxy.
 We love contribution and we love giving visibility to our contributors, this is why all the **commits must be signed-off**.
 
+## Tools
+### Mailing list
+Please register the mailing list at http://lists.ceph.com/listinfo.cgi/ceph-ansible-ceph.com
+
+### IRC
+Feel free to join us in the channel #ceph-ansible of the OFTC servers
+
+### Github
+The maing github account for the project is at https://github.com/ceph/ceph-ansible/
+
 ## Submit a patch
 
 To start contributing just do:
