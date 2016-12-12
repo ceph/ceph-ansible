@@ -2,7 +2,7 @@
 # Try "make" (for SRPMS) or "make rpm"
 
 NAME = ceph-ansible
-VERSION := $(shell git describe --tags --abbrev=0)
+VERSION := $(shell git describe --tags --abbrev=0 --match 'v*' | sed 's/^v//')
 COMMIT := $(shell git rev-parse HEAD)
 SHORTCOMMIT := $(shell echo $(COMMIT) | cut -c1-7)
 RELEASE := $(shell git describe --tags --match 'v*' \
