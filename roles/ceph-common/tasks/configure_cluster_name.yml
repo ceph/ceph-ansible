@@ -1,0 +1,47 @@
+---
+- name: configure cluster name
+  lineinfile:
+    dest: /etc/sysconfig/ceph
+    insertafter: EOF
+    create: yes
+    line: "CLUSTER={{ cluster }}"
+  when: ansible_os_family == "RedHat"
+
+# NOTE(leseb): we are performing the following check
+# to ensure any Jewel installation will not fail.
+# The following commit https://github.com/ceph/ceph/commit/791eba81a5467dd5de4f1680ed0deb647eb3fb8b
+# fixed a package issue where the path was the wrong.
+# This bug is not yet on all the distros package so we are working around it
+# Impacted versions:
+# - Jewel from UCA: https://bugs.launchpad.net/ubuntu/+source/ceph/+bug/1582773
+# - Jewel from latest Canonical 16.04 distro
+# - All previous versions from Canonical
+# - Infernalis from ceph.com
+- name: check /etc/default/ceph exist
+  stat:
+    path: /etc/default/ceph
+  register: etc_default_ceph
+  always_run: true
+  when: ansible_os_family == "Debian"
+
+- name: configure cluster name
+  lineinfile:
+    dest: /etc/default/ceph
+    insertafter: EOF
+    create: yes
+    line: "CLUSTER={{ cluster }}"
+  when:
+    - ansible_os_family == "Debian"
+    - etc_default_ceph.stat.exists
+    - not etc_default_ceph.stat.isdir
+
+- name: configure cluster name
+  lineinfile:
+    dest: /etc/default/ceph/ceph
+    insertafter: EOF
+    create: yes
+    line: "CLUSTER={{ cluster }}"
+  when:
+    - ansible_os_family == "Debian"
+    - etc_default_ceph.stat.exists
+    - etc_default_ceph.stat.isdir
