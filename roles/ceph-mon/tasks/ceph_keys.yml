@@ -35,7 +35,7 @@
     owner: "{{ key_owner }}"
     group: "{{ key_group }}"
   with_items:
-    - "{{ ceph_keys.stdout_lines }}"
+    - "{{ ceph_keys.get('stdout_lines') | default([]) }}"
   when: cephx
 
 - name: copy keys to the ansible server
@@ -45,7 +45,7 @@
     flat: yes
   run_once: true
   with_items:
-    - "{{ ceph_keys.stdout_lines }}"
+    - "{{ ceph_keys.get('stdout_lines') | default([]) }}"
     - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
     - /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
     - /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring
