@@ -3,15 +3,13 @@
 # ISOs have MON, OSD, Tools, and Agent. If ISOs change the layout or provide
 # certain repos depending on the type of node this task will require a more
 # intelligent way to determine the location of the key.
-- name: install the rh ceph storage repository key
+- name: install the red hat ceph storage repository key
   apt_key:
     file: "{{ ceph_rhcs_repository_path }}/MON/release.asc"
     state: present
-  when:
-    - ceph_rhcs
-    - ceph_rhcs_iso_install
+  when: ceph_rhcs_iso_install
 
-- name: add rh ceph storage repositories
+- name: add red hat ceph storage repositories
   apt_repository:
     repo: "deb file://{{ ceph_rhcs_repository_path }}/{{ item }}/ {{ ansible_lsb.codename }} main"
     state: present
@@ -21,11 +19,17 @@
     - "OSD"
     - "Tools"
     - "Agent"
-  when:
-    - ceph_rhcs
-    - ceph_rhcs_iso_install
+  when: ceph_rhcs_iso_install
 
-- name: add the red hat storage apt-key
+- name: set apt pinning for red hat ceph storage
+  template:
+    src: "{{ role_path }}/templates/rhcs.pref.j2"
+    dest: /etc/apt/preferences.d/rhcs.pref
+    owner: root
+    group: root
+    mode: 0644
+
+- name: add red hat storage apt-key
   apt_key:
     data: "{{ lookup('file', role_path+'/files/cephstablerhcs.asc') }}"
     state: present
@@ -81,7 +85,7 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when: client_group_name in group_names
 
-- name: install red hat storage NFS gateway
+- name: install red hat storage nfs gateway
   apt:
     name: nfs-ganesha
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
