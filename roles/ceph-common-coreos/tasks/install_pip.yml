@@ -1,9 +1,9 @@
 ---
 - name: download get_pip.py
-  raw: cd $HOME && wget {{pip_url}}
+  raw: cd $HOME && https_proxy="{{ lookup('env', 'https_proxy') }}" wget {{pip_url}}
 
 - name: run get-pip.py
-  raw: "{{pypy_binary_directory}}/python $HOME/get-pip.py"
+  raw: "{{pypy_binary_directory}}/python $HOME/get-pip.py --proxy='{{ lookup('env', 'https_proxy') }}'"
 
 - name: create local temp directory
   local_action: raw mkdir -p {{local_temp_directory}}
@@ -19,7 +19,7 @@
 - name: add execute permission
   raw: chmod a+x {{pypy_directory}}/pip
 
-- name: create pypy_directory 
+- name: create pypy_directory
   raw: mkdir -p {{pypy_binary_directory}}
 
 - name: move python to binary directory
