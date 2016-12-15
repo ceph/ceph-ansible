@@ -1,0 +1,49 @@
+---
+# This playbook will make custom partition layout for your osd hosts.
+# You should define `devices` variable for every host.
+#
+# For example, in host_vars/hostname1
+#
+# devices:
+# - device_name: sdb
+#   partitions:
+#   - index: 1
+#     size: 10G
+#     type: data
+#   - index: 2
+#     size: 5G
+#     type: journal
+# - device_name: sdc
+#   partitions:
+#   - index: 1
+#     size: 10G
+#     type: data
+#   - index: 2
+#     size: 5G
+#     type: journal
+#
+- vars:
+    osd_group_name: osds
+    journal_typecode: 45b0969e-9b03-4f30-b4c6-b4b80ceff106
+    data_typecode: 4fbd7e29-9d25-41b8-afd0-062c0ceff05d
+  hosts:
+  - "{{ osd_group_name }}"
+
+  tasks:
+  - name: install sgdisk(gdisk)
+    package:
+      name: gdisk
+      state: present
+
+  - name: erase all previous partitions(dangerous!!!)
+    shell: sgdisk --zap-all -- /dev/{{item.device_name}}
+    with_items: "{{ devices }}"
+
+  - name: make osd partitions
+    shell: >
+           sgdisk --new={{item.1.index}}:0:+{{item.1.size}} "--change-name={{item.1.index}}:ceph {{item.1.type}}"
+           "--typecode={{item.1.index}}:{% if item.1.type=='data' %}{{data_typecode}}{% else %}{{journal_typecode}}{% endif %}"
+           --mbrtogpt -- /dev/{{item.0.device_name}}
+    with_subelements:
+    - "{{ devices }}"
+    - partitions

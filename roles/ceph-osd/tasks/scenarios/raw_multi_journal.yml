@@ -7,21 +7,15 @@
 # if you have 64 disks with 4TB each, this will take a while
 # since Ansible will sequential process the loop
 
-# NOTE (alahouze): if the device is a partition, the parted command below has
-# failed, this is why we check if the device is a partition too.
 - name: prepare osd disk(s)
-  command: "ceph-disk prepare --cluster {{ cluster }} {{ item.2 }} {{ item.3 }}"
+  command: "ceph-disk prepare --cluster {{ cluster }} {{ item.1 }} {{ item.2 }}"
   with_together:
     - "{{ parted_results.results }}"
-    - "{{ ispartition_results.results }}"
     - "{{ devices }}"
     - "{{ raw_journal_devices }}"
   changed_when: false
   when:
-    - not item.0.get("skipped")
-    - not item.1.get("skipped")
-    - item.0.get("rc", 0) != 0
-    - item.1.get("rc", 0) != 0
+    - item.0.get("skipped") or item.0.get("rc", 0) != 0
     - raw_multi_journal
     - not osd_auto_discovery
 
