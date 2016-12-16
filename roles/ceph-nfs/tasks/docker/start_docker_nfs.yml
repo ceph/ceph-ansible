@@ -43,40 +43,8 @@
     state: started
     enabled: yes
   changed_when: false
-  when:
-    is_atomic or
-    ansible_os_family == 'CoreOS'
 
 - name: wait for ceph.conf exists
   wait_for:
       path: "/etc/ceph/{{ cluster }}.conf"
   when: is_atomic
-
-- name: run the ceph NFS docker image
-  docker:
-    image: "{{ ceph_nfs_docker_username }}/{{ ceph_nfs_docker_imagename }}:{{ ceph_nfs_docker_image_tag }}"
-    name: "{{ ansible_hostname }}"
-    net: "host"
-    state: "running"
-    privileged: true
-    ports: "{{ ceph_nfs_port }}:{{ ceph_nfs_port }},111:111"
-    env: "CEPH_DAEMON=NFS,CEPH_PUBLIC_NETWORK={{ ceph_nfs_docker_subnet }},{{ ceph_nfs_extra_envs }}"
-    volumes: "/etc/ceph:/etc/ceph,/etc/ganesha:/etc/ganesha,/etc/localtime:/etc/localtime:ro"
-  when:
-    not is_atomic and
-    ansible_os_family != 'CoreOS' and
-    not mon_containerized_deployment_with_kv
-
-- name: run the ceph NFS docker image with kv
-  docker:
-    image: "{{ ceph_nfs_docker_username }}/{{ ceph_nfs_docker_imagename }}:{{ ceph_nfs_docker_image_tag }}"
-    name: "{{ ansible_hostname }}"
-    net: "host"
-    state: "running"
-    privileged: true
-    env: "CEPH_DAEMON=NFS,CEPH_PUBLIC_NETWORK={{ ceph_nfs_docker_subnet }},{{ ceph_nfs_extra_envs }}"
-    volumes: "/etc/ganesha:/etc/ganesha,/etc/localtime:/etc/localtime:ro"
-  when:
-    not is_atomic and
-    ansible_os_family != 'CoreOS' and
-    mon_containerized_deployment_with_kv
