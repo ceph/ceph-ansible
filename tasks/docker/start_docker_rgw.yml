@@ -35,15 +35,3 @@
     state: started
     enabled: yes
   changed_when: false
-  when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
-
-- name: run the rados gateway docker image
-  docker:
-    image: "{{ ceph_rgw_docker_username }}/{{ ceph_rgw_docker_imagename }}:{{ ceph_rgw_docker_image_tag }}"
-    name: ceph-{{ ansible_hostname }}-rgw
-    expose: "{{ ceph_rgw_civetweb_port }}"
-    ports: "{{ ceph_rgw_civetweb_port }}:{{ ceph_rgw_civetweb_port }}"
-    state: running
-    env: "CEPH_DAEMON=RGW,{{ ceph_rgw_docker_extra_env }}"
-    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
-  when: ansible_os_family != 'RedHat' and ansible_os_family != 'CoreOS'
