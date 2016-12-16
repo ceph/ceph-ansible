@@ -63,7 +63,7 @@ for ROLE in $ROLES; do
   reset_hard_origin
   # First we filter branches by rewriting master with the content of roles/$ROLE
   # this gives us a new commit history
-  for BRANCH in $BRANCHES; do
+  for BRANCH in $(git branch -r | egrep 'origin/master|origin/ansible-1.9|origin/stable-' | grep -v origin/HEAD | cut -d '/' -f2); do
     git checkout -B $BRANCH origin/$BRANCH
     git filter-branch -f --prune-empty --subdirectory-filter roles/$ROLE
     git push -f $REMOTE $BRANCH
