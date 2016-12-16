@@ -35,14 +35,3 @@
     state: started
     enabled: yes
   changed_when: false
-  when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
-
-- name: run the ceph metadata docker image
-  docker:
-    image: "{{ ceph_mds_docker_username }}/{{ ceph_mds_docker_imagename }}:{{ ceph_mds_docker_image_tag }}"
-    name: ceph-{{ ansible_hostname }}-mds
-    net: host
-    state: running
-    env: "CEPH_DAEMON=MDS,CEPHFS_CREATE=1,{{ ceph_mds_docker_extra_env }}"
-    volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
-  when: ansible_os_family != 'RedHat' and ansible_os_family != 'CoreOS'
