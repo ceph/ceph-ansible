@@ -145,3 +145,15 @@ nss db path = {{ radosgw_nss_db_path }}
 keyring = /var/lib/ceph/restapi/ceph-restapi/keyring
 log file = /var/log/ceph/ceph-restapi.log
 {% endif %}
+
+{% if groups[mon_group_name] is defined %}
+{% for host in groups[mon_group_name] %}
+{% if hostvars[host]['ansible_fqdn'] is defined and mon_use_fqdn %}
+[mon.{{ hostvars[host]['ansible_fqdn'] }}]
+host= {{ hostvars[host]['ansible_fqdn'] }}
+{% elif hostvars[host]['ansible_hostname'] is defined %}
+[mon.{{ hostvars[host]['ansible_hostname'] }}]
+host= {{ hostvars[host]['ansible_hostname'] }}
+{% endif %}
+{% endfor %}
+{% endif %}
