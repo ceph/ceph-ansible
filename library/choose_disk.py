@@ -84,6 +84,13 @@ def find_match(physical_disks, lookup_disks, module=None):
     matched_devices = {}
     ignored_devices = []
 
+    OPERATORS = {
+        "=": _equal,
+        "equal": _equal,
+        "gt": _gt,
+        "lt": _lt,
+    }
+
     logger.info("Looking for matches")
     # Inspecting every disk we search for
     for disk in sorted(lookup_disks):
@@ -119,7 +126,7 @@ def find_match(physical_disks, lookup_disks, module=None):
                     continue
 
                 # Default operator is equal
-                operator = "_equal"
+                operator = "equal"
 
                 # Assign left and right operands
                 right = current_lookup[feature]
@@ -128,9 +135,9 @@ def find_match(physical_disks, lookup_disks, module=None):
                 # Test if we have anoter operator
                 arguments = _REGEXP.search(right)
                 if arguments:
-                        new_operator = "_" + arguments.group(1)
+                        new_operator = arguments.group(1)
                         # Check if the associated function exists
-                        if new_operator in globals():
+                        if operator in OPERATORS:
                             # and assign operands with the new values
                             operator = new_operator
                             right = arguments.group(2)
@@ -138,7 +145,7 @@ def find_match(physical_disks, lookup_disks, module=None):
                             fatal("Unsupported %s operator in : %s" % (new_operator, right), module)
 
                 # Let's check if (left <operator> right) is True meaning the match is done
-                if globals()[operator](convert_units(left), convert_units(right)):
+                if OPERATORS[operator](convert_units(left), convert_units(right)):
                     logger.debug("  %s : match  %s %s %s", physical_disk, left, operator, right)
                     match_count = match_count + 1
                     continue
