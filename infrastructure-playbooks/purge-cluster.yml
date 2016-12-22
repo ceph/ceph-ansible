@@ -74,9 +74,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-mds/defaults/main.yml
   - include_vars: group_vars/all.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ mds_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
 
   - name: stop ceph.target with systemd
     service:
@@ -125,9 +125,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-rgw/defaults/main.yml
   - include_vars: group_vars/all.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ rgw_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
 
   - name: stop ceph.target with systemd
     service:
@@ -176,9 +176,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-rbd-mirror/defaults/main.yml
   - include_vars: group_vars/all.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ rbdmirror_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
 
   - name: stop ceph.target with systemd
     service:
@@ -221,9 +221,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-nfs/defaults/main.yml
   - include_vars: group_vars/all.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ nfs_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
 
   - name: stop ceph.target with systemd
     service:
@@ -290,9 +290,9 @@
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: roles/ceph-osd/defaults/main.yml
   - include_vars: group_vars/all.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ osd_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
 
   - name: check for a device list
     fail:
@@ -422,8 +422,8 @@
       sgdisk --delete $partition_nb $raw_device
     with_items: "{{ ceph_journal_partition_to_erase_path.stdout_lines }}"
     when:
-      ceph_journal_partlabels.rc == 0 and
-      zap_block_devs
+      - ceph_journal_partlabels.rc == 0
+      - zap_block_devs
 
 
 - name: purge ceph mon cluster
@@ -444,11 +444,11 @@
   - include_vars: roles/ceph-mon/defaults/main.yml
   - include_vars: roles/ceph-restapi/defaults/main.yml
   - include_vars: group_vars/all.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ mon_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ restapi_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
 
   - name: stop ceph.target with systemd
     service:
@@ -671,21 +671,21 @@
   tasks:
   - include_vars: roles/ceph-common/defaults/main.yml
   - include_vars: group_vars/all.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ mds_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ rgw_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ rbdmirror_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ nfs_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ osd_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ mon_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
   - include_vars: group_vars/{{ restapi_group_name }}.yml
-    failed_when: false
+    ignore_errors: true
 
   - name: purge fetch directory for localhost
     file:
