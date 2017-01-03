@@ -9,7 +9,7 @@
 - name: test if initial mon keyring is in mon kv store
   command: ceph --cluster {{ cluster }} config-key get initial_mon_keyring
   changed_when: false
-  failed_when: false
+  ignore_errors: true
   always_run: true
   run_once: true
   register: is_initial_mon_keyring_in_kv
@@ -67,8 +67,24 @@
     osd_pool_default_pg_num: "{{ ceph_conf_overrides.global.osd_pool_default_pg_num }}"
   when: ceph_conf_overrides.global.osd_pool_default_pg_num is defined
 
+- name: test if rbd exists
+  command: ceph --cluster {{ cluster }} osd pool stats rbd
+  changed_when: false
+  failed_when: false
+  register: rbd_pool_exist
+
 - include: rbd_pool.yml
-  when: ceph_conf_overrides.global.osd_pool_default_pg_num is defined
+  when: rbd_pool_exist.rc == 0
+
+- include: rbd_pool_pgs.yml
+  when:
+    - rbd_pool_exist.rc == 0
+    - ceph_conf_overrides.global.osd_pool_default_pg_num is defined
+
+- include: rbd_pool_size.yml
+  when:
+    - rbd_pool_exist.rc == 0
+    - ceph_conf_overrides.global.osd_pool_default_size is defined
 
 - include: openstack_config.yml
   when: openstack_config
