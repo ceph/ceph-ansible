@@ -253,9 +253,6 @@
   vars:
     osd_group_name: osds
 
-# When set to true and raw _multi_journal is used then block devices are also zapped
-    zap_block_devs: true
-
   hosts:
     - "{{ osd_group_name }}"
 
@@ -385,7 +382,6 @@
     when:
       - ceph_disk_present.rc == 0
       - ceph_data_partlabels.rc == 0
-      - zap_block_devs
 
   - name: get ceph journal partitions
     shell: |
@@ -409,7 +405,7 @@
     with_items: "{{ ceph_journal_partition_to_erase_path.stdout_lines }}"
     when:
       - ceph_journal_partlabels.rc == 0
-      - zap_block_devs
+      - raw_multi_journal
 
 
 - name: purge ceph mon cluster
