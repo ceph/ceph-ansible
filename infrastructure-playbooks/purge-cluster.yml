@@ -343,6 +343,35 @@
     failed_when: false
     register: ceph_journal_partlabels
 
+#   Initial attempt, doing everything in Ansible...
+#  - name: see if encrypted partitions are present
+#    shell: blkid -t TYPE=crypto_LUKS -o value -s PARTUUID
+#    register: encrypted_partuuid
+#
+#  - name: find if these encrypted partitions are ceph data partitions
+#    shell: blkid -t PARTLABEL="ceph data" -o value -s PARTUUID $(blkid -U {{ item }})
+#    failed_when: false
+#    with_items: "{{ encrypted_partuuid.stdout_lines }}"
+#    when: "{{ encrypted_partuuid | length > 0 }}"
+#    register: encrypted_partuuid_ceph_data
+#
+#  - name: find if these encrypted partitions are ceph journal partitions
+#    shell: blkid -t PARTLABEL="ceph journal" -o value -s PARTUUID $(blkid -U {{ item }})
+#    failed_when: false
+#    with_items: "{{ encrypted_partuuid.stdout_lines }}"
+#    when: "{{ encrypted_partuuid | length > 0 }}"
+#    register: encrypted_partuuid_ceph_journal
+#
+#  - name: merge the list of ceph encrypted partitions
+#    set_fact:
+#      encrypted_partuuid_ceph: "{{ encrypted_partuuid_ceph_data + encrypted_partuuid_ceph_journal }}"
+
+  # NOTE(leseb): hope someone will find a more elegant way one day...
+  - name: see if encrypted partitions are present
+    shell: |
+      blkid -t TYPE=crypto_LUKS -s PARTLABEL -s PARTUUID | grep "ceph.*." | grep -o PARTUUID.* | cut -d '"' -f 2
+    register: encrypted_ceph_partuuid
+
   - name: get osd data mount points
     shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
     register: mounted_osd
@@ -375,6 +404,11 @@
     shell: "which ceph-disk"
     failed_when: false
     register: ceph_disk_present
+
+  - name: delete dm-crypt devices if any
+    command: dmsetup remove {{ item }}
+    with_items: encrypted_ceph_partuuid.stdout_lines
+    when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
 
   - name: zap osd disks
     shell: ceph-disk zap "{{ item }}"
