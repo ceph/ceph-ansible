@@ -3,9 +3,9 @@
   file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ dir_owner }}"
-    group: "{{ dir_group }}"
-    mode: "{{ dir_mode }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0755"
   with_items:
     - /var/lib/ceph/bootstrap-rgw
     - /var/lib/ceph/radosgw
@@ -16,9 +16,9 @@
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}{{ item.name }}"
     dest: "{{ item.name }}"
-    owner: "{{ key_owner }}"
-    group: "{{ key_group }}"
-    mode: "{{ key_mode }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0600"
   with_items:
     - { name: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring", copy_key: true }
     - { name: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}" }
@@ -33,51 +33,13 @@
   changed_when: false
   when: cephx
 
-- name: set rados gateway key permissions (for or after the infernalis release)
+- name: set rados gateway key permissions
   file:
     path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
-    mode: "{{ key_mode }}"
-    owner: "{{ key_owner }}"
-    group: "{{ key_group }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0600"
   when: cephx
-
-- name: ensure ceph-radosgw systemd unit file is present
-  command: chkconfig --add ceph-radosgw
-  args:
-    creates: /var/run/systemd/generator.late/ceph-radosgw.service
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
-
-- name: activate rados gateway with upstart
-  file:
-    path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/{{ item }}
-    state: touch
-    owner: "{{ activate_file_owner }}"
-    group: "{{ activate_file_group }}"
-    mode: "{{ activate_file_mode }}"
-  with_items:
-    - done
-    - upstart
-  changed_when: false
-  when:
-    - ansible_distribution == "Ubuntu"
-    - not use_systemd
-
-- name: activate rados gateway with sysvinit
-  file:
-    path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/{{ item }}
-    state: touch
-    owner: "{{ activate_file_owner }}"
-    group: "{{ activate_file_group }}"
-    mode: "{{ activate_file_mode }}"
-  with_items:
-    - done
-    - sysvinit
-  changed_when: false
-  when:
-    - ansible_distribution != "Ubuntu"
-    - not use_systemd
 
 - name: generate rados gateway sudoers file
   template:

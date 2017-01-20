@@ -7,41 +7,7 @@
   always_run: true
 
 - name: start rgw
-  command: /etc/init.d/radosgw start
-  when:
-    - rgwstatus.rc != 0
-    - ansible_distribution != "Ubuntu"
-    - ansible_os_family != 'RedHat'
-    - not use_systemd
-
-- name: start and add that the rados gateway service to the init sequence (ubuntu)
-  command: initctl emit radosgw cluster={{ cluster }} id=rgw.{{ ansible_hostname }}
-  changed_when: false
-  failed_when: false
-  when: not use_systemd
-
-- name: start rgw on red hat (before or on infernalis)
-  service:
-    name: ceph-radosgw
-    state: started
-    enabled: yes
-  when:
-    - ansible_os_family == 'RedHat'
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
-
-- name: enable systemd unit file for rgw instance (for or after infernalis)
-  command: systemctl enable ceph-radosgw@rgw.{{ ansible_hostname }}
-  changed_when: false
-  failed_when: false
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
-
-- name: start rgw with systemd (for or after infernalis)
   service:
     name: ceph-radosgw@rgw.{{ ansible_hostname }}
     state: started
     enabled: yes
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
