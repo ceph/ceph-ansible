@@ -36,9 +36,9 @@
   file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ dir_owner }}"
-    group: "{{ dir_group }}"
-    mode: "{{ dir_mode }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0755"
   with_items:
     - /etc/ceph/ceph.d/
     - /etc/ceph/ceph.d/osd_fragments
@@ -47,9 +47,9 @@
   template:
     src: osd.conf.j2
     dest: /etc/ceph/ceph.d/osd_fragments/osd.{{ item.stdout }}.conf
-    owner: "{{ dir_owner }}"
-    group: "{{ dir_group }}"
-    mode: "{{ activate_file_mode }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0644"
   with_items: "{{ combined_osd_id.results }}"
 
 - name: copy {{ cluster }}.conf for assembling
@@ -60,14 +60,14 @@
   assemble:
     src: /etc/ceph/ceph.d/osd_fragments/
     dest: /etc/ceph/ceph.d/osd.conf
-    owner: "{{ dir_owner }}"
-    group: "{{ dir_group }}"
-    mode: "{{ activate_file_mode }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0644"
 
 - name: assemble {{ cluster }}.conf and osd fragments
   assemble:
     src: /etc/ceph/ceph.d/
     dest: /etc/ceph/{{ cluster }}.conf
-    owner: "{{ dir_owner }}"
-    group: "{{ dir_group }}"
-    mode: "{{ activate_file_mode }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0644"

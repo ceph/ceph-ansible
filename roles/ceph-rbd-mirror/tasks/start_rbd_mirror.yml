@@ -1,33 +1,7 @@
 ---
-- name: start and add that the rbd mirror service to the init sequence (upstart)
-  command: initctl emit ceph-rbd-mirror cluster={{ cluster }} id={{ ansible_hostname }}
-  changed_when: false
-  failed_when: false
-  when: not use_systemd
-
-# NOTE (leseb): somehow the service ansible module is messing things up
-# as a safety measure we run the raw command
-- name: start and add that the rbd mirror service to the init sequence (systemd before infernalis)
-  command: service ceph start ceph-rbd-mirror
-  changed_when: false
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
-
-- name: enable systemd unit file for the rbd mirror service (systemd after hammer)
-  command: systemctl enable ceph-rbd-mirror@{{ ceph_rbd_mirror_local_user }}
-  changed_when: false
-  failed_when: false
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
-
-- name: start and add that the rbd mirror service to the init sequence (systemd after hammer)
+- name: start and add that the rbd mirror service to the init sequence
   service:
       name: "ceph-rbd-mirror@{{ ceph_rbd_mirror_local_user }}"
       state: started
       enabled: yes
   changed_when: false
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer

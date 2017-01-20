@@ -3,17 +3,17 @@
   file:
     path: /var/lib/ceph/bootstrap-mds/
     state: directory
-    owner: "{{ dir_owner }}"
-    group: "{{ dir_group }}"
-    mode: "{{ dir_mode }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0755"
 
 - name: copy mds bootstrap key
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}{{ item.name }}"
     dest: "{{ item.name }}"
-    owner: "{{ key_owner }}"
-    group: "{{ key_group }}"
-    mode: "{{ key_mode }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0600"
   with_items:
     - { name: "/var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring", copy_key: true }
     - { name: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}" }
@@ -25,9 +25,9 @@
   file:
     path: /var/lib/ceph/mds/{{ cluster }}-{{ mds_name }}
     state: directory
-    owner: "{{ dir_owner }}"
-    group: "{{ dir_group }}"
-    mode: "{{ dir_mode }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0755"
 
 - name: create mds keyring
   command: ceph --cluster {{ cluster }} --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring auth get-or-create mds.{{ mds_name }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/{{ cluster }}-{{ mds_name }}/keyring
@@ -39,68 +39,14 @@
 - name: set mds key permissions
   file:
     path: /var/lib/ceph/mds/{{ cluster }}-{{ mds_name }}/keyring
-    mode: "{{ key_mode }}"
-    owner: "{{ key_owner }}"
-    group: "{{ key_group }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0600"
   when: cephx
 
-- name: activate metadata server with upstart
-  file:
-    path: /var/lib/ceph/mds/{{ cluster }}-{{ mds_name }}/{{ item }}
-    state: touch
-    owner: "{{ activate_file_owner }}"
-    group: "{{ activate_file_group }}"
-    mode: "{{ activate_file_mode }}"
-  with_items:
-    - done
-    - upstart
-  changed_when: false
-  when: not use_systemd
-
-- name: activate metadata server with sysvinit
-  file:
-    path: /var/lib/ceph/mds/{{ cluster }}-{{ mds_name }}/{{ item }}
-    state: touch
-    owner: "{{ activate_file_owner }}"
-    group: "{{ activate_file_group }}"
-    mode: "{{ activate_file_mode }}"
-  with_items:
-    - done
-    - sysvinit
-  changed_when: false
-  when: not use_systemd
-
-- name: enable systemd unit file for mds instance (for or after infernalis)
-  command: systemctl enable ceph-mds@{{ mds_name }}
-  changed_when: false
-  failed_when: false
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
-
-- name: start and add that the metadata service to the init sequence (upstart)
-  command: initctl emit ceph-mds cluster={{ cluster }} id={{ mds_name }}
-  changed_when: false
-  failed_when: false
-  when: not use_systemd
-
-- name: start and add that the metadata service to the init sequence (systemd before infernalis)
-  service:
-    name: ceph
-    state: started
-    enabled: yes
-    args: mds.{{ mds_name }}
-  changed_when: false
-  when:
-    - not use_systemd
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
-
-- name: start and add that the metadata service to the init sequence (systemd after hammer)
+- name: start and add that the metadata service to the init sequence
   service:
     name: ceph-mds@{{ mds_name }}
     state: started
     enabled: yes
   changed_when: false
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
