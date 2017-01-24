@@ -8,6 +8,9 @@ auth service required = none
 auth client required = none
 auth supported = none
 {% endif %}
+{% if ip_version == 'ipv6'  %}
+ms bind ipv6
+{% endif %}
 {% if not mon_containerized_deployment_with_kv and not mon_containerized_deployment %}
 fsid = {{ fsid }}
 {% endif %}
@@ -37,7 +40,7 @@ mon host = {% for host in groups[mon_group_name] %}
              {% if interface != "interface" %}
                {% for key in hostvars[host].keys() %}
                  {% if hostvars[host][key]['macaddress'] is defined and hostvars[host][key]['device'] is defined and hostvars[host][key]['device'] == interface -%}
-                    {{ hostvars[host][key]['ipv4']['address'] }}
+                    {{ hostvars[host][key][ip_version]['address'] }}
                  {%- endif %}
                {% endfor %}
              {% elif address != "0.0.0.0" -%}
