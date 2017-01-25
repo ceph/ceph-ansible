@@ -1,0 +1,16 @@
+---
+- name: check size for rbd pool
+  shell: |
+    ceph --connect-timeout 5 --cluster {{ cluster }} osd pool get rbd size | awk '{print $2}'
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: rbd_pool_size
+
+- name: change rbd pool size if osd_pool_default_size is not honoured
+  command: ceph --connect-timeout 5 --cluster {{ cluster }} osd pool set rbd size {{ ceph_conf_overrides.global.osd_pool_default_size }}
+  changed_when: false
+  failed_when: false
+  when:
+    - rbd_pool_df.stdout == "0"
+    - rbd_pool_size.stdout != "{{ ceph_conf_overrides.global.osd_pool_default_size }}"
