@@ -81,7 +81,6 @@ ansible_provision = proc do |ansible|
       rbd_mirror_containerized_deployment: 'true',
       ceph_mon_docker_interface: ETH,
       ceph_mon_docker_subnet: "#{PUBLIC_SUBNET}.0/24",
-      ceph_osd_docker_extra_env: "CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE,OSD_JOURNAL_SIZE=100",
       ceph_osd_docker_devices: settings['disks'],
       devices: settings['disks'],
       ceph_docker_on_openstack: BOX == 'openstack',
