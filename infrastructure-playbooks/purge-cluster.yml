@@ -76,13 +76,6 @@
   - include_vars: group_vars/{{ mds_group_name }}.yml
     ignore_errors: true
 
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when: ansible_service_mgr == 'systemd'
-
   - name: stop ceph mdss with systemd
     service:
       name: ceph-mds@{{ ansible_hostname }}
@@ -119,13 +112,6 @@
     ignore_errors: true
   - include_vars: group_vars/{{ rgw_group_name }}.yml
     ignore_errors: true
-
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph rgws with systemd
     service:
@@ -164,13 +150,6 @@
   - include_vars: group_vars/{{ rbdmirror_group_name }}.yml
     ignore_errors: true
 
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when: ansible_service_mgr == 'systemd'
-
   - name: stop ceph rbd mirror with systemd
     service:
       name: ceph-rbd-mirror@admin.service
@@ -202,13 +181,6 @@
     ignore_errors: true
   - include_vars: group_vars/{{ nfs_group_name }}.yml
     ignore_errors: true
-
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph nfss with systemd
     service:
@@ -271,13 +243,6 @@
     shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi"
     register: osd_ids
     changed_when: false
-
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph-osd with systemd
     service:
@@ -440,13 +405,6 @@
   - include_vars: group_vars/{{ restapi_group_name }}.yml
     ignore_errors: true
 
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when: ansible_service_mgr == 'systemd'
-
   - name: stop ceph mons with systemd
     service:
       name: ceph-mon@{{ ansible_hostname }}
@@ -520,6 +478,14 @@
      state: absent
 
   tasks:
+
+  - name: stop ceph.target with systemd
+    service:
+      name: ceph.target
+      state: stopped
+      enabled: no
+    when: ansible_service_mgr == 'systemd'
+
   - name: check for anything running ceph
     shell: "ps awux | grep -- /usr/bin/[c]eph-"
     register: check_for_running_ceph
