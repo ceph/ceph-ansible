@@ -407,7 +407,7 @@
 
   - name: delete dm-crypt devices if any
     command: dmsetup remove {{ item }}
-    with_items: encrypted_ceph_partuuid.stdout_lines
+    with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
     when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
 
   - name: zap osd disks
@@ -439,6 +439,7 @@
     with_items: "{{ ceph_journal_partition_to_erase_path.stdout_lines }}"
     when:
       - ceph_journal_partlabels.rc == 0
+      - raw_multi_journal is defined
       - raw_multi_journal
 
 
