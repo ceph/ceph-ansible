@@ -2,41 +2,19 @@
 - name: update apt cache
   apt:
     update-cache: yes
+  when: ansible_os_family == 'Debian'
 
 - name: restart ceph mons
-  service:
-      name: ceph-mon@{{ monitor_name }}
-      state: restarted
-  when:
-    - socket.rc == 0
-    - mon_group_name in group_names
+  include: "{{ playbook_dir }}/roles/ceph-common/handlers/restart-mon.yml"
 
-# This does not just restart OSDs but everything else too. Unfortunately
-# at this time the ansible role does not have an OSD id list to use
-# for restarting them specifically.
 - name: restart ceph osds
-  service:
-    name: ceph.target
-    state: restarted
-  when:
-    - socket.rc == 0
-    - osd_group_name in group_names
+  include: "{{ playbook_dir }}/roles/ceph-common/handlers/restart-osd.yml"
 
 - name: restart ceph mdss
-  service:
-      name: ceph-mds@{{ mds_name }}
-      state: restarted
-  when:
-    - socket.rc == 0
-    - mds_group_name in group_names
+  include: "{{ playbook_dir }}/roles/ceph-common/handlers/restart-mds.yml"
 
 - name: restart ceph rgws
-  service:
-    name: ceph-rgw@{{ ansible_hostname }}
-    state: restarted
-  when:
-    - socketrgw.rc == 0
-    - rgw_group_name in group_names
+  include: "{{ playbook_dir }}/roles/ceph-common/handlers/restart-rgw.yml"
 
 - name: restart ceph nfss
   service:

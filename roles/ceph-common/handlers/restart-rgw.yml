@@ -1,0 +1,13 @@
+---
+- name: restart ceph rgws
+  service:
+    name: ceph-rgw@{{ ansible_hostname }}
+    state: restarted
+  # serial: 1 would be the proper solution here, but that can only be set on play level
+  # upstream issue: https://github.com/ansible/ansible/issues/12170
+  run_once: true
+  with_items: "{{ groups[rgw_group_name] }}"
+  delegate_to: "{{ item }}"
+  when:
+    - socketrgw.rc == 0
+    - rgw_group_name in group_names

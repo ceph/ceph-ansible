@@ -1,0 +1,17 @@
+---
+- name: restart ceph mons
+  service:
+    name: ceph-mon@{{ monitor_name }}
+    state: restarted
+  # serial: 1 would be the proper solution here, but that can only be set on play level
+  # upstream issue: https://github.com/ansible/ansible/issues/12170
+  run_once: true
+  with_items: "{{ groups[mon_group_name] }}"
+  delegate_to: "{{ item }}"
+  when:
+    - socket.rc == 0
+    - mon_group_name in group_names
+
+- name: validate monitors
+  include: validate-mon.yml
+  when: mon_group_name in group_names
