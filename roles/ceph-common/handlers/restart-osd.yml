@@ -1,0 +1,22 @@
+---
+# This does not just restart OSDs but everything else too. Unfortunately
+# at this time the ansible role does not have an OSD id list to use
+# for restarting them specifically.
+- name: restart ceph osds
+  shell: |
+    for id in $(ls /var/lib/ceph/osd/ |grep -oh '[0-9]*'); do
+      systemctl restart ceph-osd@$id
+      sleep 5
+    done
+  # serial: 1 would be the proper solution here, but that can only be set on play level
+  # upstream issue: https://github.com/ansible/ansible/issues/12170
+  run_once: true
+  with_items: "{{ groups[osd_group_name] }}"
+  delegate_to: "{{ item }}"
+  when:
+    - socket.rc == 0
+    - osd_group_name in group_names
+
+- name: validate osds
+  include: validate-osd.yml
+  when: osd_group_name in group_names
