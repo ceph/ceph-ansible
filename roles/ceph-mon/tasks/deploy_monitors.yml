@@ -24,47 +24,29 @@
 - name: set initial monitor key permissions
   file:
     path: /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
-    mode: "{{ key_mode }}"
-    owner: "{{ key_owner }}"
-    group: "{{ key_group }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0600"
   when: cephx
 
 - name: create monitor directory
   file:
     path: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}
     state: directory
-    owner: "{{ dir_owner }}"
-    group: "{{ dir_group }}"
-    mode: "{{ dir_mode }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0755"
 
-- name: ceph monitor mkfs with keyring (for or after infernalis release)
+- name: ceph monitor mkfs with keyring
   command: ceph-mon --cluster {{ cluster }} --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
   args:
     creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring
   when:
     - cephx
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
 
-- name: ceph monitor mkfs without keyring (for or after infernalis release)
+- name: ceph monitor mkfs without keyring
   command: ceph-mon --cluster {{ cluster }} --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }}
   args:
     creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/store.db
   when:
     - not cephx
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
-
-- name: ceph monitor mkfs with keyring (before infernalis release)
-  command: ceph-mon --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
-  args:
-    creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring
-  when:
-    - cephx
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
-
-- name: ceph monitor mkfs without keyring (before infernalis release)
-  command: ceph-mon --mkfs -i {{ monitor_name }} --fsid {{ fsid }}
-  args:
-    creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/store.db
-  when:
-    - not cephx
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis

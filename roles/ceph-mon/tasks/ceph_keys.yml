@@ -8,7 +8,6 @@
   always_run: true
   when:
     - cephx
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.jewel
 
 # NOTE (leseb): wait for mon discovery and quorum resolution
 # the admin key is not instantaneously created so we have to wait a bit
@@ -112,9 +111,9 @@
 - name: set keys permissions
   file:
     path: "{{ item }}"
-    mode: "{{ key_mode }}"
-    owner: "{{ key_owner }}"
-    group: "{{ key_group }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0600"
   with_items:
     - "{{ ceph_keys.get('stdout_lines') | default([]) }}"
   when: cephx

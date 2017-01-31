@@ -49,15 +49,6 @@
     - ceph_origin == 'local'
     - use_installer
 
-- name: install ceph
-  yum:
-    name: ceph
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - ceph_release_num.{{ ceph_release }} <= ceph_release_num.infernalis
-    - ansible_pkg_mgr == "yum"
-    - ceph_origin != 'local'
-
 - name: synchronize ceph install
   synchronize:
     src: "{{ceph_installation_dir}}/"
@@ -83,7 +74,6 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - mon_group_name in group_names
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_custom
 
@@ -93,7 +83,6 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - osd_group_name in group_names
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_custom
 
@@ -103,7 +92,6 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - mds_group_name in group_names
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_custom
 
@@ -113,7 +101,6 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - client_group_name in group_names
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_dev
       or ceph_custom
@@ -124,7 +111,6 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - client_group_name in group_names
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.infernalis
       or ceph_origin == "distro"
       or ceph_custom
 

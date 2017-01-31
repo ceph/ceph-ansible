@@ -8,8 +8,8 @@
   file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ dir_owner }}"
-    group: "{{ dir_group }}"
+    owner: "ceph"
+    group: "ceph"
   with_items: "{{ osd_directories }}"
 
 # NOTE (leseb): the prepare process must be parallelized somehow...
@@ -26,16 +26,8 @@
   with_items: "{{ osd_directories }}"
   changed_when: false
 
-- name: start and add that the OSD service to the init sequence
-  service:
-    name: ceph
-    state: started
-    enabled: yes
-  when: not use_systemd
-
 - name: start and add the OSD target to the systemd sequence
   service:
     name: ceph.target
     state: started
     enabled: yes
-  when: use_systemd

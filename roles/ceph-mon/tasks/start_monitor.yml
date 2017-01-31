@@ -1,62 +1,7 @@
 ---
-- name: activate monitor with upstart
-  file:
-    path: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/{{ item }}
-    state: touch
-    owner: "{{ activate_file_owner }}"
-    group: "{{ activate_file_group }}"
-    mode: "{{ activate_file_mode }}"
-  changed_when: false
-  with_items:
-    - done
-    - upstart
-  when:
-    - not use_systemd
-
-- name: start and add that the monitor service to the init sequence (ubuntu)
-  command: initctl emit ceph-mon cluster={{ cluster }} id={{ monitor_name }}
-  changed_when: false
-  failed_when: false
-  when:
-    - not use_systemd
-
-# legacy ceph system v init scripts require a mon section in order to work
-# Not Ubuntu so we can catch old debian systems that don't use systemd or upstart
-- name: add mon section into ceph.conf for systemv init scripts
-  ini_file:
-    dest: /etc/ceph/{{ cluster }}.conf
-    section: mon.{{ monitor_name }}
-    option: host
-    value: "{{ monitor_name }}"
-    state: present
-  when:
-    - ansible_os_family != "Ubuntu"
-    - ceph_release_num.{{ ceph_stable_release }} < ceph_release_num.infernalis
- 
-# NOTE (jsaintrocc): can't use service module because we need to use the 
-# legacy systemv init for older ceph releases.  Even when the os supports systemd
-# Not Ubuntu so we can catch old debian systems that don't use systemd or upstart
-- name: start and add that the monitor service to the init sequence
-  command: service ceph start mon
-  changed_when: false
-  when:
-    - ansible_os_family != "Ubuntu"
-    - ceph_release_num.{{ ceph_stable_release }} < ceph_release_num.infernalis
-
-- name: start and add that the monitor service to the init sequence (for or after infernalis)
-  command: systemctl enable ceph-mon@{{ monitor_name }}
-  changed_when: false
-  failed_when: false
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
-
-- name: start the monitor service (for or after infernalis)
+- name: start the monitor service
   service:
     name: ceph-mon@{{ monitor_name }}
     state: started
     enabled: yes
   changed_when: false
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer

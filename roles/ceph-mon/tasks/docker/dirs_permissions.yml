@@ -1,34 +1,5 @@
 ---
-# NOTE (leseb): we can not use docker inspect with 'format filed' because of
-# https://github.com/ansible/ansible/issues/10156
-- name: inspect ceph version
-  shell: docker inspect "{{ ceph_docker_registry }}/{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}:{{ ceph_mon_docker_image_tag }}" | awk -F '=' '/CEPH_VERSION/ { gsub ("\",", "", $2); print $2 }' | uniq
-  changed_when: false
-  failed_when: false
-  run_once: true
-  register: ceph_version
-  always_run: true
-
-- set_fact:
-    after_hamer=True
-  when:
-    ceph_version.stdout not in ['firefly','giant', 'hammer']
-
-- name: create bootstrap directories (for or before hammer)
-  file:
-    path: "{{ item }}"
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
-  with_items:
-    - /etc/ceph/
-    - /var/lib/ceph/bootstrap-osd
-    - /var/lib/ceph/bootstrap-mds
-    - /var/lib/ceph/bootstrap-rgw
-  when: not after_hamer
-
-- name: create bootstrap directories (after hammer)
+- name: create bootstrap directories
   file:
     path: "{{ item }}"
     state: directory
@@ -40,4 +11,3 @@
     - /var/lib/ceph/bootstrap-osd
     - /var/lib/ceph/bootstrap-mds
     - /var/lib/ceph/bootstrap-rgw
-  when: after_hamer

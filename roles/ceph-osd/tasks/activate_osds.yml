@@ -81,51 +81,17 @@
 - include: osd_fragment.yml
   when: crush_location
 
-- name: set selinux to permissive and make it persistent
-  selinux:
-    policy: targeted
-    state: permissive
-  when:
-    - ansible_selinux != false
-    - ansible_selinux['status'] == 'enabled'
-    - ansible_selinux['config_mode'] != 'disabled'
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
-
-- name: start and add that the osd service(s) to the init sequence (before infernalis)
-  service:
-    name: ceph
-    state: started
-    enabled: yes
-  when:
-    - ansible_distribution != "Ubuntu"
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
-
-- name: get osd id (for or after infernalis)
+- name: get osd id
   shell: 'ls /var/lib/ceph/osd/ | grep -oP "\d+$"'
   changed_when: false
   failed_when: false
   always_run: true
   register: osd_id
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
 
-- name: enable the osd service (for or after infernalis)
-  command: systemctl enable ceph-osd@{{ item }}
-  changed_when: false
-  failed_when: false
-  with_items: "{{ (osd_id|default({})).stdout_lines|default([]) }}"
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
-
-- name: start and add that the osd service(s) to the init sequence (for or after infernalis)
+- name: start and add that the osd service(s) to the init sequence
   service:
     name: ceph-osd@{{ item }}
     state: started
     enabled: yes
   with_items: "{{ (osd_id|default({})).stdout_lines|default([]) }}"
   changed_when: false
-  when:
-    - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
