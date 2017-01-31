@@ -31,8 +31,7 @@
          invoking the playbook"
     when: ireallymeanit != 'yes'
 
-
-- name: gather facts and check if using systemd
+- name: gather facts and check init system
 
   vars:
     mon_group_name:       mons
@@ -53,10 +52,9 @@
   become: true
 
   tasks:
-  - name: are we using systemd
-    shell: "if [ -d /usr/lib/systemd ] ; then find /usr/lib/systemd/system -name 'ceph*' | wc -l ; else echo 0 ; fi"
-    register: systemd_unit_files
-
+  - name: detect init system
+    command: ceph-detect-init
+    register: init_system
 
 - name: purge ceph mds cluster
 
@@ -78,33 +76,21 @@
   - include_vars: group_vars/{{ mds_group_name }}.yml
     ignore_errors: true
 
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when:
-      - ansible_os_family == 'RedHat'
-      - systemd_unit_files.stdout != "0"
-
   - name: stop ceph mdss with systemd
     service:
       name: ceph-mds@{{ ansible_hostname }}
       state: stopped
       enabled: no
-    when:
-      - ansible_os_family == 'RedHat'
-      - systemd_unit_files.stdout != "0"
+    when: init_system.stdout == 'systemd'
 
   - name: stop ceph mdss
     shell: "service ceph status mds ; if [ $? == 0 ] ; then service ceph stop mds ; else echo ; fi"
-    when: ansible_os_family == 'RedHat'
+    when: init_system.stdout == 'sysvinit'
 
-# Ubuntu 14.04
   - name: stop ceph mdss on ubuntu
     command: initctl stop ceph-mds cluster={{ cluster }} id={{ ansible_hostname }}
     failed_when: false
-    when: ansible_distribution == 'Ubuntu'
+    when: init_system.stdout == 'upstart'
 
 
 - name: purge ceph rgw cluster
@@ -127,33 +113,21 @@
   - include_vars: group_vars/{{ rgw_group_name }}.yml
     ignore_errors: true
 
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when:
-      - ansible_os_family == 'RedHat'
-      - systemd_unit_files.stdout != "0"
-
   - name: stop ceph rgws with systemd
     service:
       name: ceph-radosgw@rgw.{{ ansible_hostname }}
       state: stopped
       enabled: no
-    when:
-      - ansible_os_family == 'RedHat'
-      - systemd_unit_files.stdout != "0"
+    when: init_system.stdout == 'systemd'
 
   - name: stop ceph rgws
     shell: "service ceph-radosgw status ; if [ $? == 0 ] ; then service ceph-radosgw stop ; else echo ; fi"
-    when: ansible_os_family == 'RedHat'
+    when: init_system.stdout == 'sysvinit'
 
-# Ubuntu 14.04
   - name: stop ceph rgws on ubuntu
     command: initctl stop radosgw cluster={{ cluster }} id={{ ansible_hostname }}
     failed_when: false
-    when: ansible_distribution == 'Ubuntu'
+    when: init_system.stdout == 'upstart'
 
 
 - name: purge ceph rbd-mirror cluster
@@ -176,28 +150,16 @@
   - include_vars: group_vars/{{ rbdmirror_group_name }}.yml
     ignore_errors: true
 
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when:
-      - ansible_os_family == 'RedHat'
-      - systemd_unit_files.stdout != "0"
-
   - name: stop ceph rbd mirror with systemd
     service:
       name: ceph-rbd-mirror@admin.service
       state: stopped
-    when:
-      - ansible_os_family == 'RedHat'
-      - systemd_unit_files.stdout != "0"
+    when: init_system.stdout == 'systemd'
 
-# Ubuntu 14.04
   - name: stop ceph rbd mirror on ubuntu
     command: initctl stop ceph-rbd-mirror cluster={{ cluster }} id=admin
     failed_when: false
-    when: ansible_distribution == 'Ubuntu'
+    when: init_system.stdout == 'upstart'
 
 
 - name: purge ceph nfs cluster
@@ -220,32 +182,20 @@
   - include_vars: group_vars/{{ nfs_group_name }}.yml
     ignore_errors: true
 
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when:
-      - ansible_os_family == 'RedHat'
-      - systemd_unit_files.stdout != "0"
-
   - name: stop ceph nfss with systemd
     service:
       name: nfs-ganesha
       state: stopped
-    when:
-      - ansible_os_family == 'RedHat'
-      - systemd_unit_files.stdout != "0"
+    when: init_system.stdout == 'systemd'
 
   - name: stop ceph nfss
     shell: "service nfs-ganesha status ; if [ $? == 0 ] ; then service nfs-ganesha stop ; else echo ; fi"
-    when: ansible_os_family == 'RedHat'
+    when: init_system.stdout == 'sysvinit'
 
-# Ubuntu 14.04
   - name: stop ceph nfss on ubuntu
     command: initctl stop nfs-ganesha
     failed_when: false
-    when: ansible_distribution == 'Ubuntu'
+    when: init_system.stdout == 'upstart'
 
 
 - name: purge ceph osd cluster
@@ -294,41 +244,29 @@
     register: osd_ids
     changed_when: false
 
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when:
-      - ansible_os_family == 'RedHat'
-      - systemd_unit_files.stdout != "0"
-
   - name: stop ceph-osd with systemd
     service:
       name: ceph-osd@{{item}}
       state: stopped
       enabled: no
     with_items: "{{ osd_ids.stdout_lines }}"
-    when:
-      - ansible_os_family == 'RedHat'
-      - systemd_unit_files.stdout != "0"
+    when: init_system.stdout == 'systemd'
 
-# before infernalis release, using sysvinit scripts
-# we use this test so we do not have to know which RPM contains the boot script
-# or where it is placed.
+  # before infernalis release, using sysvinit scripts
+  # we use this test so we do not have to know which RPM contains the boot script
+  # or where it is placed.
 
   - name: stop ceph osds
     shell: "service ceph status osd ; if [ $? == 0 ] ; then service ceph stop osd ; else echo ; fi"
-    when: ansible_os_family == 'RedHat'
+    when: init_system.stdout == 'sysvinit'
 
-# Ubuntu 14.04
   - name: stop ceph osds on ubuntu
     shell: |
       for id in $(ls /var/lib/ceph/osd/ |grep -oh '[0-9]*'); do
         initctl stop ceph-osd cluster={{ cluster }} id=$id
       done
     failed_when: false
-    when: ansible_distribution == 'Ubuntu'
+    when: init_system.stdout == 'upstart'
     with_items: "{{ osd_ids.stdout_lines }}"
 
   - name: see if ceph-disk-created data partitions are present
@@ -436,7 +374,7 @@
       raw_device=$(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}')
       partition_nb=$(echo "{{ item }}" | egrep -o '[0-9]{1,2}$')
       sgdisk --delete $partition_nb $raw_device
-    with_items: "{{ ceph_journal_partition_to_erase_path.stdout_lines }}"
+    with_items: "{{ ceph_journal_partition_to_erase_path.stdout_lines | default([]) }}"
     when:
       - ceph_journal_partlabels.rc == 0
       - raw_multi_journal is defined
@@ -467,32 +405,21 @@
   - include_vars: group_vars/{{ restapi_group_name }}.yml
     ignore_errors: true
 
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when:
-      - ansible_os_family == 'RedHat'
-      - systemd_unit_files.stdout != "0"
-
   - name: stop ceph mons with systemd
     service:
       name: ceph-mon@{{ ansible_hostname }}
       state: stopped
       enabled: no
-    when:
-      - ansible_os_family == 'RedHat'
-      - systemd_unit_files.stdout != "0"
+    when: init_system.stdout == 'systemd'
 
   - name: stop ceph mons
     shell: "service ceph status mon ; if [ $? == 0 ] ; then service ceph stop mon ; else echo ; fi"
-    when: ansible_os_family == 'RedHat'
+    when: init_system.stdout == 'sysvinit'
 
   - name: stop ceph mons on ubuntu
     command: initctl stop ceph-mon cluster={{ cluster }} id={{ ansible_hostname }}
     failed_when: false
-    when: ansible_distribution == 'Ubuntu'
+    when: init_system.stdout == 'upstart'
 
   - name: remove monitor store and bootstrap keys
     file:
@@ -509,8 +436,8 @@
     rbdmirror_group_name: rbd-mirrors
     nfs_group_name:       nfss
 
-# When set to true both groups of packages are purged.
-# This can cause problem with qemu-kvm
+    # When set to true both groups of packages are purged.
+    # This can cause problem with qemu-kvm
     purge_all_packages: true
 
     ceph_packages:
@@ -550,6 +477,14 @@
      state: absent
 
   tasks:
+
+  - name: stop ceph.target with systemd
+    service:
+      name: ceph.target
+      state: stopped
+      enabled: no
+    when: ansible_service_mgr == 'systemd'
+
   - name: check for anything running ceph
     shell: "ps awux | grep -- /usr/bin/[c]eph-"
     register: check_for_running_ceph
@@ -613,16 +548,17 @@
      path: /var/log/ceph
      state: absent
 
-  - name: remove from SysV
+  - name: remove from sysv
     shell: "update-rc.d -f ceph remove"
-    when: ansible_distribution == 'Ubuntu'
+    when: init_system.stdout == 'sysvinit'
 
-  - name: remove Upstart and SysV files
+  - name: remove upstart and sysv files
     shell: "find /etc -name '*ceph*' -delete"
-    when: ansible_distribution == 'Ubuntu'
+    when: init_system.stdout == 'upstart'
 
-  - name: remove Upstart and apt logs and cache
+  - name: remove upstart and apt logs and cache
     shell: "find /var -name '*ceph*' -delete"
+    failed_when: false
     when: ansible_distribution == 'Ubuntu'
 
   - name: request data removal
@@ -635,7 +571,7 @@
     command: dnf clean all
     when: ansible_pkg_mgr == 'dnf'
 
-  - name: purge RPM cache in /tmp
+  - name: purge rpm cache in /tmp
     file:
       path: /tmp/rh-storage-repo
       state: absent
