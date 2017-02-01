@@ -348,7 +348,9 @@ def setup_logging():
 
 
 def fatal(message, module):
+    logger.error("### FATAL ###")
     logger.error(message)
+    logger.error("#############")
     logger.info("#######")
     logger.info("# End #")
     logger.info("#######")
@@ -416,7 +418,7 @@ def main():
     show_resulting_devices(matched_devices, physical_disks)
 
     if len(matched_devices) < len(lookup_disks):
-        fatal("Could only find %d of the %d expected devices\n" % (len(matched_devices), len(lookup_disks)), module)
+        fatal("Could only find %d of the %d expected devices" % (len(matched_devices), len(lookup_disks)), module)
 
     ceph_data = []
     journal = []
