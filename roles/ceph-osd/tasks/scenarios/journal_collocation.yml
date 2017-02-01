@@ -12,17 +12,15 @@
 - name: automatic prepare filestore osd disk(s) without partitions with collocated osd data and journal
   command: ceph-disk prepare --cluster "{{ cluster }}" "{{ item }}"
   register: prepared_osds
-  with_items: "{{ legacy_devices }}"
+  with_items: "{{ legacy_devices + storage_devices }}"
   when:
-    - legacy_devices is defined
     - journal_collocation
     - osd_auto_discovery
 
 - name: manually prepare filestore osd disk(s) with collocated osd data and journal
   command: "ceph-disk prepare --cluster {{ cluster }} {{ item }}"
-  with_items: "{{ legacy_devices }}"
+  with_items: "{{ legacy_devices + storage_devices }}"
   when:
-    - legacy_devices is defined
     - journal_collocation
     - not osd_auto_discovery
 
