@@ -40,7 +40,6 @@
     image: "{{ ceph_mon_docker_username }}/{{ ceph_mon_docker_imagename }}:{{ ceph_mon_docker_image_tag }}"
   when: mon_containerized_deployment_with_kv
 
-# Use systemd to manage container on Atomic host and CoreOS
 - name: generate systemd unit file
   become: true
   template:
@@ -49,19 +48,16 @@
     owner: "root"
     group: "root"
     mode: "0644"
-  when:  ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
 
 - name: enable systemd unit file for mon instance
   shell: systemctl enable ceph-mon@{{ ansible_hostname }}.service
   failed_when: false
   changed_when: false
-  when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
 
 - name: reload systemd unit files
   shell: systemctl daemon-reload
   changed_when: false
   failed_when: false
-  when: ansible_os_family == 'RedHat' or ansible_os_family == 'CoreOS'
 
 - name: systemd start mon container
   service:
