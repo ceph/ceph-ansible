@@ -195,6 +195,8 @@ The module does convert the units automatically to allow comparison between vari
 
 * gt(x) : greater than (x)
 * lt(x) : lower than (x)
+* gte(x) : greater than or equal (x)
+* lte(x) : lower than or equal(x)
 
 A typical usage looks like : 
 
