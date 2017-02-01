@@ -24,8 +24,16 @@ def _gt(left, right):
     return float(left) > float(right)
 
 
+def _gte(left, right):
+    return float(left) >= float(right)
+
+
 def _lt(left, right):
     return float(left) < float(right)
+
+
+def _lte(left, right):
+    return float(left) <= float(right)
 
 
 _REGEXP = re.compile(r'^([^(]+)'          # function name
@@ -88,7 +96,9 @@ def find_match(physical_disks, lookup_disks, module=None):
         "=": _equal,
         "equal": _equal,
         "gt": _gt,
+        "gte": _gte,
         "lt": _lt,
+        "lte": _lte,
     }
 
     logger.info("Looking for matches")
