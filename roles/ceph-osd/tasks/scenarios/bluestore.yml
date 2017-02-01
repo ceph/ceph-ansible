@@ -9,7 +9,7 @@
 
 # NOTE (alahouze): if the device is a partition, the parted command below has
 # failed, this is why we check if the device is a partition too.
-- name: automatic prepare osd disk(s) without partitions
+- name: automatic prepare bluestore osd disk(s) without partitions
   command: ceph-disk prepare --bluestore --cluster "{{ cluster }}" "/dev/{{ item.key }}"
   register: prepared_osds
   with_dict: "{{ ansible_devices }}"
@@ -20,7 +20,7 @@
     - bluestore
     - osd_auto_discovery
 
-- name: manually prepare osd disk(s)
+- name: manually prepare bluestore osd disk(s)
   command: ceph-disk prepare --bluestore --cluster "{{ cluster }}" "{{ item.2 }}"
   with_together:
     - "{{ parted_results.results }}"

@@ -9,7 +9,7 @@
 
 # NOTE (alahouze): if the device is a partition, the parted command below has
 # failed, this is why we check if the device is a partition too.
-- name: automatic prepare osd disk(s) without partitions
+- name: automatic prepare filestore osd disk(s) without partitions with collocated osd data and journal
   command: ceph-disk prepare --cluster "{{ cluster }}" "/dev/{{ item.key }}"
   register: prepared_osds
   with_dict: "{{ ansible_devices }}"
@@ -20,7 +20,7 @@
     - journal_collocation
     - osd_auto_discovery
 
-- name: manually prepare osd disk(s)
+- name: manually prepare filestore osd disk(s) with collocated osd data and journal
   command: "ceph-disk prepare --cluster {{ cluster }} {{ item.2 }}"
   with_together:
     - "{{ parted_results.results }}"
