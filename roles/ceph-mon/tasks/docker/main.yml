@@ -74,9 +74,9 @@
   when: not mon_containerized_deployment_with_kv
 
 - name: create ceph rest api keyring when mon is containerized
-  command: docker exec {{ ansible_hostname }} ceph auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/ceph.client.restapi.keyring
+  command: docker exec {{ ansible_hostname }} ceph --cluster {{ cluster }} auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/{{ cluster }}.client.restapi.keyring
   args:
-     creates: /etc/ceph/ceph.client.restapi.keyring
+     creates: /etc/ceph/{{ cluster }}.client.restapi.keyring
   changed_when: false
   when:
     - cephx
