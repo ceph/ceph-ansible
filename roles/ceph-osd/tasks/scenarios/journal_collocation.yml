@@ -21,11 +21,13 @@
     - osd_auto_discovery
 
 - name: manually prepare osd disk(s)
-  command: "ceph-disk prepare --cluster {{ cluster }} {{ item.2 }}"
+  command: "ceph-disk prepare --cluster {{ cluster }} {{ item.2 }} --osd-uuid {{ item.3 }}  --journal-uuid {{ item.4 }}"
   with_together:
     - "{{ parted_results.results }}"
     - "{{ ispartition_results.results }}"
     - "{{ devices }}"
+    - "{{ osd_uuids }}"
+    - "{{ journal_uuids }}"
   when:
     - not item.0.get("skipped")
     - not item.1.get("skipped")
