@@ -48,7 +48,10 @@ ceph_conf_overrides:
      osd mkfs type: ext4
 ```
 
-**Note:** we will no longer accept pull requests that modify the ceph.conf template unless it helps the deployment. For simple configuration tweaks
+### Note
+* It is not recommended to use underscores when defining options in the `ceph_conf_overrides` variable (ex. osd_mkfs_type) as this may cause issues with
+incorrect configuration options appearing in ceph.conf.
+* We will no longer accept pull requests that modify the ceph.conf template unless it helps the deployment. For simple configuration tweaks
 please use the `ceph_conf_overrides` variable.
 
 ## Special notes
