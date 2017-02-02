@@ -9,7 +9,7 @@
 
 # NOTE (alahouze): if the device is a partition, the parted command below has
 # failed, this is why we check if the device is a partition too.
-- name: automatic prepare osd disk(s) without partitions (dmcrypt)
+- name: automatic prepare dmcrypt osd disk(s) without partitions with collocated osd data and journal
   command: ceph-disk prepare --dmcrypt --cluster "{{ cluster }}" "/dev/{{ item.key }}"
   with_dict: "{{ ansible_devices }}"
   when:
@@ -19,7 +19,7 @@
     - dmcrypt_journal_collocation
     - osd_auto_discovery
 
-- name: manually prepare osd disk(s) (dmcrypt)
+- name: manually prepare dmcrypt osd disk(s) with collocated osd data and journal
   command: ceph-disk prepare --dmcrypt --cluster "{{ cluster }}" "{{ item.2 }}"
   with_together:
     - "{{ parted_results.results }}"
