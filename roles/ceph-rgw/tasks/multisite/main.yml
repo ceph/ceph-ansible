@@ -17,10 +17,11 @@
 
 # Continue with common tasks
 - name: add zone to rgw stanza in ceph.conf
-  ini_file:
+  lineinfile:
     dest: "/etc/ceph/{{ cluster }}.conf"
-    section: "client.rgw.{{ ansible_hostname }}"
-    option: "rgw_zone"
-    value: "{{ rgw_zone }}"
+    regexp: "{{ ansible_host }}"
+    insertafter: "^[client.rgw.{{ ansible_host }}]"
+    line: "rgw_zone = {{ rgw_zone }}"
+    state: present
   notify:
     - restart rgw
