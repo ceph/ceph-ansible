@@ -27,17 +27,6 @@ def node(Ansible, Interface, Command, request):
     osd_ids = []
     osds = []
     cluster_address = ""
-    if node_type == "osds":
-        result = Command.check_output('sudo ls /var/lib/ceph/osd/ | grep -oP "\d+$"')
-        osd_ids = result.split("\n")
-        # I can assume eth2 because I know all the vagrant
-        # boxes we test with use that interface. OSDs are the only
-        # nodes that have this interface.
-        cluster_address = Interface("eth2").addresses[0]
-        osds = osd_ids
-        if docker:
-            osds = [device.split("/")[-1] for device in ansible_vars["devices"]]
-
     # I can assume eth1 because I know all the vagrant
     # boxes we test with use that interface
     address = Interface("eth1").addresses[0]
@@ -48,6 +37,18 @@ def node(Ansible, Interface, Command, request):
     total_osds = num_devices * num_osd_hosts
     cluster_name = ansible_vars.get("cluster", "ceph")
     conf_path = "/etc/ceph/{}.conf".format(cluster_name)
+    if node_type == "osds":
+        # I can assume eth2 because I know all the vagrant
+        # boxes we test with use that interface. OSDs are the only
+        # nodes that have this interface.
+        cluster_address = Interface("eth2").addresses[0]
+        cmd = Command('sudo ls /var/lib/ceph/osd/ | grep -oP "\d+$"')
+        if cmd.rc == 0:
+            osd_ids = cmd.stdout.rstrip("\n").split("\n")
+            osds = osd_ids
+            if docker:
+                osds = [device.split("/")[-1] for device in ansible_vars["devices"]]
+
     data = dict(
         address=address,
         subnet=subnet,
