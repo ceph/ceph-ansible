@@ -62,29 +62,21 @@
 
 - include: start_docker_monitor.yml
 
-- name: wait for monitor socket to exist
-  command: docker exec {{ ansible_hostname }} stat /var/run/ceph/{{ cluster }}-mon.{{ ansible_hostname }}.asok
-  register: monitor_socket
-  retries: 5
-  delay: 10
-  until: monitor_socket.rc == 0
-
-- name: force peer addition as potential bootstrap peer for cluster bringup
-  command: docker exec {{ ansible_hostname }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ ansible_hostname }}.asok add_bootstrap_peer_hint {{ hostvars[item]['ansible_' + ceph_mon_docker_interface].ipv4.address }}
-  with_items: "{{ groups.mons }}"
-  changed_when: false
-  failed_when: false
-  when:
-    - inventory_hostname == groups.mons[0]
-    - not mon_containerized_deployment_with_kv
+# NOTE: if we don't wait we will attempt to copy config to ansible host
+# before admin key is ready, preventing future daemons e.g. ceph-mds from
+# properly retrieving key
+- name: "wait for {{ cluster }}.client.admin.keyring exists"
+  wait_for:
+    path: /etc/ceph/{{ cluster }}.client.admin.keyring
+  when: cephx
 
 - include: copy_configs.yml
   when: not mon_containerized_deployment_with_kv
 
 - name: create ceph rest api keyring when mon is containerized
-  command: docker exec {{ ansible_hostname }} ceph --cluster {{ cluster }} auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/{{ cluster }}.client.restapi.keyring
+  command: docker exec {{ ansible_hostname }} ceph auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/ceph.client.restapi.keyring
   args:
-     creates: /etc/ceph/{{ cluster }}.client.restapi.keyring
+     creates: /etc/ceph/ceph.client.restapi.keyring
   changed_when: false
   when:
     - cephx
