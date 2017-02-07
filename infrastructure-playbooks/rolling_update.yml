@@ -52,22 +52,6 @@
 
     - set_fact: rolling_update=true
 
-    - name: check if sysvinit
-      stat:
-        path: /etc/rc?.d/S??ceph
-        follow: yes
-      register: is_sysvinit
-
-    - name: check if upstart
-      stat:
-        path: /var/lib/ceph/mon/ceph-{{ ansible_hostname }}/upstart
-      register: is_upstart
-
-    - name: check if systemd
-      command: grep -sq systemd /proc/1/comm
-      register: is_systemd
-
-
 - name: upgrade ceph mon cluster
 
   vars:
@@ -94,13 +78,13 @@
         name: ceph-mon
         state: stopped
         args: id={{ ansible_hostname }}
-      when: is_upstart.stat.exists == True
+      when: ansible_service_mgr == 'systemd'
 
     - name: stop ceph mons with sysvinit
       service:
         name: ceph
         state: stopped
-      when: is_sysvinit.stat.exists == True
+      when: ansible_service_mgr == 'sysvinit'
 
     - name: stop ceph mons with systemd
       service:
@@ -108,7 +92,7 @@
         state: stopped
         enabled: yes
       when:
-        - is_systemd
+        - ansible_service_mgr == 'systemd'
         - not mon_containerized_deployment
 
   roles:
@@ -120,13 +104,13 @@
         name: ceph-mon
         state: started
         args: id={{ ansible_hostname }}
-      when: is_upstart.stat.exists == True
+      when: ansible_service_mgr == 'upstart'
 
     - name: start ceph mons with sysvinit
       service:
         name: ceph
         state: started
-      when: is_sysvinit.stat.exists == True
+      when: ansible_service_mgr == 'sysvinit'
 
     - name: start ceph mons with systemd
       service:
@@ -134,7 +118,7 @@
         state: started
         enabled: yes
       when:
-        - is_systemd
+        - ansible_service_mgr == 'systemd'
         - not mon_containerized_deployment
 
     - name: restart containerized ceph mons with systemd
@@ -143,7 +127,7 @@
         state: restarted
         enabled: yes
       when:
-        - is_systemd
+        - ansible_service_mgr == 'systemd'
         - mon_containerized_deployment
 
     - name: set mon_host_count
@@ -227,13 +211,13 @@
       service:
         name: ceph-osd-all
         state: stopped
-      when: is_upstart.stat.exists == True
+      when: ansible_service_mgr == 'upstart'
 
     - name: stop ceph osds with sysvinit
       service:
         name: ceph
         state: stopped
-      when: is_sysvinit.stat.exists == True
+      when: ansible_service_mgr == 'sysvinit'
 
     - name: stop ceph osds with systemd
       service:
@@ -242,7 +226,7 @@
         enabled: yes
       with_items: "{{ osd_ids.stdout_lines }}"
       when:
-        - is_systemd
+        - ansible_service_mgr == 'systemd'
         - not osd_containerized_deployment
 
   roles:
@@ -259,13 +243,13 @@
       service:
         name: ceph-osd-all
         state: started
-      when: is_upstart.stat.exists == True
+      when: ansible_service_mgr == 'upstart'
 
     - name: start ceph osds with sysvinit
       service:
         name: ceph
         state: started
-      when: is_sysvinit.stat.exists == True
+      when: ansible_service_mgr == 'sysvinit'
 
     - name: start ceph osds with systemd
       service:
@@ -274,7 +258,7 @@
         enabled: yes
       with_items: "{{ osd_ids.stdout_lines }}"
       when:
-        - is_systemd
+        - ansible_service_mgr == 'systemd'
         - not osd_containerized_deployment
 
     - name: restart containerized ceph osds with systemd
@@ -284,7 +268,7 @@
         enabled: yes
       with_items: "{{ ceph_osd_docker_devices }}"
       when:
-        - is_systemd
+        - ansible_service_mgr == 'systemd'
         - osd_containerized_deployment
 
     - name: waiting for clean pgs...
@@ -345,14 +329,14 @@
         name: ceph-mds
         state: stopped
         args: id={{ ansible_hostname }}
-      when: is_upstart.stat.exists == True
+      when: ansible_service_mgr == 'upstart'
 
     - name: stop ceph mdss with sysvinit
       service:
         name: ceph
         state: stopped
         args: mds
-      when: is_sysvinit.stat.exists == True
+      when: ansible_service_mgr == 'sysvinit'
 
     - name: stop ceph mdss with systemd
       service:
@@ -360,7 +344,7 @@
         state: stopped
         enabled: yes
       when:
-        - is_systemd
+        - ansible_service_mgr == 'systemd'
         - not mds_containerized_deployment
 
   roles:
@@ -372,14 +356,14 @@
         name: ceph-mds
         state: started
         args: id={{ ansible_hostname }}
-      when: is_upstart.stat.exists == True
+      when: ansible_service_mgr == 'upstart'
 
     - name: start ceph mdss with sysvinit
       service:
         name: ceph
         state: started
         args: mds
-      when: is_sysvinit.stat.exists == True
+      when: ansible_service_mgr == 'sysvinit'
 
     - name: start ceph mdss with systemd
       service:
@@ -387,7 +371,7 @@
         state: started
         enabled: yes
       when:
-        - is_systemd
+        - ansible_service_mgr == 'systemd'
         - not mds_containerized_deployment
 
     - name: restart ceph mdss
@@ -396,7 +380,7 @@
         state: restarted
         enabled: yes
       when:
-        - is_systemd
+        - ansible_service_mgr == 'systemd'
         - mds_containerized_deployment
 
 
@@ -417,13 +401,13 @@
       service:
         name: ceph-radosgw
         state: stopped
-      when: is_upstart.stat.exists == True
+      when: ansible_service_mgr == 'upstart'
 
     - name: stop ceph rgws with sysvinit
       service:
         name: radosgw
         state: stopped
-      when: is_sysvinit.stat.exists == True
+      when: ansible_service_mgr == 'sysvinit'
 
     - name: stop ceph rgws with systemd
       service:
@@ -431,7 +415,7 @@
         state: stopped
         enabled: yes
       when:
-        - is_systemd
+        - ansible_service_mgr == 'systemd'
         - not rgw_containerized_deployment
 
   roles:
@@ -442,13 +426,13 @@
       service:
         name: ceph-radosgw
         state: started
-      when: is_upstart.stat.exists == True
+      when: ansible_service_mgr == 'upstart'
 
     - name: start ceph rgws with sysvinit
       service:
         name: radosgw
         state: started
-      when: is_sysvinit.stat.exists == True
+      when: ansible_service_mgr == 'sysvinit'
 
     - name: start ceph rgws with systemd
       service:
@@ -456,7 +440,7 @@
         state: started
         enabled: yes
       when:
-        - is_systemd
+        - ansible_service_mgr == 'systemd'
         - not rgw_containerized_deployment
 
     - name: restart containerized ceph rgws with systemd
@@ -465,5 +449,5 @@
         state: restarted
         enabled: yes
       when:
-        - is_systemd
+        - ansible_service_mgr == 'systemd'
         - rgw_containerized_deployment
