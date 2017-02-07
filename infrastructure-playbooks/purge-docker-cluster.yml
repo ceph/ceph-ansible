@@ -293,14 +293,18 @@
       privileged: yes
       env: "CEPH_DAEMON=zap_device,OSD_DEVICE={{ item }}"
       volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev:/dev,/run:/run"
-    with_items: "{{ ceph_osd_docker_devices }}"
+    with_items:
+      - "{{ ceph_osd_docker_devices }}"
+      - "{{ raw_journal_devices }}"
 
   - name: remove ceph osd zap disk container
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "{{ ansible_hostname }}-osd-zap-{{ item | regex_replace('/', '') }}"
       state: absent
-    with_items: "{{ ceph_osd_docker_devices }}"
+    with_items:
+      - "{{ ceph_osd_docker_devices }}"
+      - "{{ raw_journal_devices }}"
 
   # zap twice
   - name: zap ceph osd disk
@@ -313,14 +317,18 @@
       privileged: yes
       env: "CEPH_DAEMON=zap_device,OSD_DEVICE={{ item }}"
       volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev:/dev,/run:/run"
-    with_items: "{{ ceph_osd_docker_devices }}"
+    with_items:
+      - "{{ ceph_osd_docker_devices }}"
+      - "{{ raw_journal_devices }}"
 
   - name: remove ceph osd zap disk container
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "{{ ansible_hostname }}-osd-zap-{{ item | regex_replace('/', '') }}"
       state: absent
-    with_items: "{{ ceph_osd_docker_devices }}"
+    with_items:
+      - "{{ ceph_osd_docker_devices }}"
+      - "{{ raw_journal_devices }}"
 
   - name: remove ceph osd service
     file:
