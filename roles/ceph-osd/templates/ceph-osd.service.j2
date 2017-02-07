@@ -1,3 +1,4 @@
+# {{ ansible_managed }}
 [Unit]
 Description=Ceph OSD
 After=docker.service
@@ -5,24 +6,8 @@ After=docker.service
 [Service]
 EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/docker stop {{ ansible_hostname }}-osd-dev%i
-ExecStartPre=-/usr/bin/docker rm -f  {{ ansible_hostname }}-osd-dev%i
-ExecStart=/usr/bin/docker run --rm --net=host --pid=host\
-   {% if not osd_containerized_deployment_with_kv -%}
-   -v /var/lib/ceph:/var/lib/ceph \
-   -v /etc/ceph:/etc/ceph \
-   {% else -%}
-   -e KV_TYPE={{kv_type}} \
-   -e KV_IP={{kv_endpoint}} \
-   -e KV_PORT={{kv_port}} \
-   {% endif -%}
-   -v /etc/localtime:/etc/localtime:ro \
-   -v /dev:/dev \
-   --privileged \
-   -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE \
-   -e OSD_DEVICE=/dev/%i \
-   {{ ceph_osd_docker_extra_env }} \
-   --name={{ ansible_hostname }}-osd-dev%i \
-   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+ExecStartPre=-/usr/bin/docker rm -f {{ ansible_hostname }}-osd-dev%i
+ExecStart=/usr/share/ceph-osd-run.sh %i
 ExecStop=-/usr/bin/docker stop {{ ansible_hostname }}-osd-dev%i
 Restart=always
 RestartSec=10s

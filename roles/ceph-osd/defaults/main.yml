@@ -126,6 +126,11 @@ raw_multi_journal: false
 #  - /dev/sdf
 #  - /dev/sdg
 #  - /dev/sdg
+#
+# NOTE(leseb):
+# On a containerized scenario we only support A SINGLE journal
+# for all the OSDs on a given machine. If you don't, bad things will happen
+# This is a limitation we plan to fix at some point.
 raw_journal_devices: []
 
 
@@ -168,6 +173,11 @@ osd_containerized_deployment_with_kv: false
 kv_type: etcd
 kv_endpoint: 127.0.0.1
 kv_port: 4001
+
+# Add -e OSD_JOURNAL={{ raw_journal_devices }} to configure a journal device to ceph_osd_docker_prepare_env variable
+# make sure you only pass a single device, otherwise this will fail horribly.
+#
+# Add -e OSD_DMCRYPT=1 to use the collocated dmcrypt scenario to the ceph_osd_docker_prepare_env and ceph_osd_docker_extra_env variables
 ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1
 ceph_docker_image: "ceph/daemon"
 ceph_docker_image_tag: latest
