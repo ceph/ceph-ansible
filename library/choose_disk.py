@@ -84,7 +84,7 @@ def get_keys_by_ceph_order(physical_disks, expected_type):
             # Note that we don't neither return it to non_ceph_disks thoses
             # disks are not free
             pdisk = dict(physical_disks[physical_disk])
-            if expected_type == pdisk["ceph_prepared"]:
+            if expected_type in pdisk["ceph_prepared"]:
                 logger.debug("get_keys_by_ceph_order: Keeping %s", physical_disk)
                 ceph_disks.append(physical_disk)
             else:
@@ -269,10 +269,12 @@ def select_only_free_devices(physical_disks):
             continue
         # Don't consider the device if partition list is not empty,
         if len(current_physical_disk['partitions']) > 0:
-            for partition in current_physical_disk['partitions']:
+            for partition in sorted(current_physical_disk['partitions']):
                 disk_type = is_ceph_disk("/dev/" + partition)
                 if disk_type:
-                    ceph_disk = disk_type
+                    if ceph_disk:
+                        ceph_disk += " + "
+                    ceph_disk += disk_type
 
             if not ceph_disk:
                 logger.info(' Ignoring %10s : Device have exisiting partitions', physical_disk)
@@ -460,7 +462,7 @@ def main():
         device = matched_devices[matched_device]
         device['name'] = matched_device
         if "ceph_prepared" in device:
-            if device["ceph_prepared"] == "data":
+            if "data" in device["ceph_prepared"]:
                 ceph_count = ceph_count + 1
                 to_activate.append(device["bdev"])
             continue
