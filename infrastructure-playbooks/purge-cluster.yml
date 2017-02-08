@@ -31,7 +31,7 @@
          invoking the playbook"
     when: ireallymeanit != 'yes'
 
-- name: gather facts and check init system
+- name: gather facts on all hosts
 
   vars:
     mon_group_name:       mons
@@ -54,9 +54,7 @@
   become: true
 
   tasks:
-  - name: detect init system
-    command: ceph-detect-init
-    register: init_system
+    - debug: msg="gather facts on all Ceph hosts for following reference"
 
 - name: purge ceph mds cluster
 
@@ -71,28 +69,22 @@
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-mds/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ mds_group_name }}.yml
-    ignore_errors: true
 
   - name: stop ceph mdss with systemd
     service:
       name: ceph-mds@{{ ansible_hostname }}
       state: stopped
       enabled: no
-    when: init_system.stdout == 'systemd'
+    when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph mdss
     shell: "service ceph status mds ; if [ $? == 0 ] ; then service ceph stop mds ; else echo ; fi"
-    when: init_system.stdout == 'sysvinit'
+    when: ansible_service_mgr == 'sysvinit'
 
   - name: stop ceph mdss on ubuntu
     command: initctl stop ceph-mds cluster={{ cluster }} id={{ ansible_hostname }}
     failed_when: false
-    when: init_system.stdout == 'upstart'
+    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph rgw cluster
@@ -108,28 +100,22 @@
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-rgw/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ rgw_group_name }}.yml
-    ignore_errors: true
 
   - name: stop ceph rgws with systemd
     service:
       name: ceph-radosgw@rgw.{{ ansible_hostname }}
       state: stopped
       enabled: no
-    when: init_system.stdout == 'systemd'
+    when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph rgws
     shell: "service ceph-radosgw status ; if [ $? == 0 ] ; then service ceph-radosgw stop ; else echo ; fi"
-    when: init_system.stdout == 'sysvinit'
+    when: ansible_service_mgr == 'sysvinit'
 
   - name: stop ceph rgws on ubuntu
     command: initctl stop radosgw cluster={{ cluster }} id={{ ansible_hostname }}
     failed_when: false
-    when: init_system.stdout == 'upstart'
+    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph rbd-mirror cluster
@@ -145,23 +131,17 @@
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-rbd-mirror/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ rbdmirror_group_name }}.yml
-    ignore_errors: true
 
   - name: stop ceph rbd mirror with systemd
     service:
       name: ceph-rbd-mirror@admin.service
       state: stopped
-    when: init_system.stdout == 'systemd'
+    when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph rbd mirror on ubuntu
     command: initctl stop ceph-rbd-mirror cluster={{ cluster }} id=admin
     failed_when: false
-    when: init_system.stdout == 'upstart'
+    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph nfs cluster
@@ -177,27 +157,21 @@
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-nfs/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ nfs_group_name }}.yml
-    ignore_errors: true
 
   - name: stop ceph nfss with systemd
     service:
       name: nfs-ganesha
       state: stopped
-    when: init_system.stdout == 'systemd'
+    when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph nfss
     shell: "service nfs-ganesha status ; if [ $? == 0 ] ; then service nfs-ganesha stop ; else echo ; fi"
-    when: init_system.stdout == 'sysvinit'
+    when: ansible_service_mgr == 'sysvinit'
 
   - name: stop ceph nfss on ubuntu
     command: initctl stop nfs-ganesha
     failed_when: false
-    when: init_system.stdout == 'upstart'
+    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph osd cluster
@@ -229,10 +203,6 @@
      state: absent
 
   tasks:
-  - include_vars: group_vars/all.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ osd_group_name }}.yml
-    ignore_errors: true
 
   - name: check for a device list
     fail:
@@ -252,7 +222,7 @@
       state: stopped
       enabled: no
     with_items: "{{ osd_ids.stdout_lines }}"
-    when: init_system.stdout == 'systemd'
+    when: ansible_service_mgr == 'systemd'
 
   # before infernalis release, using sysvinit scripts
   # we use this test so we do not have to know which RPM contains the boot script
@@ -260,7 +230,7 @@
 
   - name: stop ceph osds
     shell: "service ceph status osd ; if [ $? == 0 ] ; then service ceph stop osd ; else echo ; fi"
-    when: init_system.stdout == 'sysvinit'
+    when: ansible_service_mgr == 'sysvinit'
 
   - name: stop ceph osds on ubuntu
     shell: |
@@ -268,7 +238,7 @@
         initctl stop ceph-osd cluster={{ cluster }} id=$id
       done
     failed_when: false
-    when: init_system.stdout == 'upstart'
+    when: ansible_service_mgr == 'upstart'
     with_items: "{{ osd_ids.stdout_lines }}"
 
   - name: see if ceph-disk-created data partitions are present
@@ -397,31 +367,22 @@
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-mon/defaults/main.yml
-  - include_vars: roles/ceph-restapi/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ mon_group_name }}.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ restapi_group_name }}.yml
-    ignore_errors: true
 
   - name: stop ceph mons with systemd
     service:
       name: ceph-mon@{{ ansible_hostname }}
       state: stopped
       enabled: no
-    when: init_system.stdout == 'systemd'
+    when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph mons
     shell: "service ceph status mon ; if [ $? == 0 ] ; then service ceph stop mon ; else echo ; fi"
-    when: init_system.stdout == 'sysvinit'
+    when: ansible_service_mgr == 'sysvinit'
 
   - name: stop ceph mons on ubuntu
     command: initctl stop ceph-mon cluster={{ cluster }} id={{ ansible_hostname }}
     failed_when: false
-    when: init_system.stdout == 'upstart'
+    when: ansible_service_mgr == 'upstart'
 
   - name: remove monitor store and bootstrap keys
     file:
@@ -555,11 +516,11 @@
 
   - name: remove from sysv
     shell: "update-rc.d -f ceph remove"
-    when: init_system.stdout == 'sysvinit'
+    when: ansible_service_mgr == 'sysvinit'
 
   - name: remove upstart and sysv files
     shell: "find /etc -name '*ceph*' -delete"
-    when: init_system.stdout == 'upstart'
+    when: ansible_service_mgr == 'upstart'
 
   - name: remove upstart and apt logs and cache
     shell: "find /var -name '*ceph*' -delete"
@@ -609,23 +570,11 @@
   gather_facts: false
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ mds_group_name }}.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ rgw_group_name }}.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ rbdmirror_group_name }}.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ nfs_group_name }}.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ osd_group_name }}.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ mon_group_name }}.yml
-    ignore_errors: true
-  - include_vars: group_vars/{{ restapi_group_name }}.yml
-    ignore_errors: true
+
+  - name: set fetch_directory value if not set
+    set_fact:
+      fetch_directory: "fetch/"
+    when: fetch_directory is not defined
 
   - name: purge fetch directory for localhost
     file:
