@@ -113,9 +113,8 @@ def find_match(physical_disks, lookup_disks, module=None):
             del current_lookup["infinite"]
 
         # We cannot keep the disk type as a feature to lookup
-        if "ceph_type" in current_lookup.keys():
-            current_type = current_lookup["ceph_type"]
-            del current_lookup["ceph_type"]
+        current_type = current_lookup["ceph_type"]
+        del current_lookup["ceph_type"]
 
         if len(ignored_devices) == len(physical_disks):
             logger.info(" Skipping %s as no more free devices to match", disk)
