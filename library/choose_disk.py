@@ -341,17 +341,27 @@ def fake_device(legacy_devices, ceph_type):
 def show_resulting_devices(matched_devices, physical_disks):
     bdev_matched = []
     bdev_unmatched = []
+
+    def prepare_device_string(device):
+        device_string = ""
+        if "ceph_prepared" in device:
+            device_string += " (ceph %s)" % device["ceph_prepared"]
+        device_string += " : "
+        for feature in ["vendor", "model", "size", "rotational"]:
+            if feature in device:
+                device_string += "%s:%s " % (feature[0], device[feature])
+
+        return device_string
+
     logger.info("Matched devices   : %3d", len(matched_devices))
     for matched_device in sorted(matched_devices):
-        extra_string = ""
-        if "ceph_prepared" in matched_devices[matched_device]:
-            extra_string = " (ceph %s)" % matched_devices[matched_device]["ceph_prepared"]
-        logger.info(" %s : %s%s", matched_device, matched_devices[matched_device]["bdev"], extra_string)
+        logger.info(" %s : %s%s", matched_device, matched_devices[matched_device]["bdev"], prepare_device_string(matched_devices[matched_device]))
         bdev_matched.append(matched_devices[matched_device]["bdev"])
 
     for physical_disk in sorted(physical_disks):
-        if physical_disks[physical_disk]["bdev"] not in bdev_matched:
-            bdev_unmatched.append(physical_disks[physical_disk]["bdev"])
+        pdisk = physical_disks[physical_disk]
+        if pdisk["bdev"] not in bdev_matched:
+            bdev_unmatched.append("%s %s" % (pdisk["bdev"], prepare_device_string(pdisk)))
 
     logger.info("Unmatched devices : %3d", len(bdev_unmatched))
     for bdev in sorted(bdev_unmatched):
