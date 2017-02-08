@@ -70,7 +70,7 @@ def convert_units(value):
     return value
 
 
-def get_keys_by_ceph_order(physical_disks):
+def get_keys_by_ceph_order(physical_disks, expected_type):
     '''
     Return a list of keys where ceph disks are reported first
     while keeping the list sorted
@@ -79,7 +79,16 @@ def get_keys_by_ceph_order(physical_disks):
     non_ceph_disks = []
     for physical_disk in sorted(physical_disks):
         if "ceph_prepared" in physical_disks[physical_disk]:
-            ceph_disks.append(physical_disk)
+            # We shall only return the ceph disks from the same type
+            # If we search for journals, don't return data disks
+            # Note that we don't neither return it to non_ceph_disks thoses
+            # disks are not free
+            pdisk = dict(physical_disks[physical_disk])
+            if expected_type == pdisk["ceph_prepared"]:
+                logger.debug("get_keys_by_ceph_order: Keeping %s", physical_disk)
+                ceph_disks.append(physical_disk)
+            else:
+                logger.debug("get_keys_by_ceph_order: %s doesn't have the proper ceph type", physical_disk)
         else:
             non_ceph_disks.append(physical_disk)
 
@@ -122,7 +131,7 @@ def find_match(physical_disks, lookup_disks, module=None):
 
         logger.info(" Inspecting %s", disk)
         # Trying to find a match against all physical disks we have
-        for physical_disk in get_keys_by_ceph_order(physical_disks):
+        for physical_disk in get_keys_by_ceph_order(physical_disks, current_type):
             # Avoid reusing an already matched physical disk
             if physical_disk in ignored_devices:
                 continue
@@ -238,9 +247,12 @@ def is_ceph_disk(partition):
     '''
     stdout = subprocess.check_output(["lsblk", "-no", "PARTLABEL", "%s" % partition])
     if "ceph data" in stdout:
-        return True
+        return "data"
 
-    return False
+    if "ceph journal" in stdout:
+        return "journal"
+
+    return ""
 
 
 def select_only_free_devices(physical_disks):
@@ -248,7 +260,7 @@ def select_only_free_devices(physical_disks):
     selected_devices = {}
     logger.info('Detecting free devices')
     for physical_disk in sorted(physical_disks):
-        ceph_disk = False
+        ceph_disk = ""
         current_physical_disk = physical_disks[physical_disk]
 
         # Don't consider devices that doesn't have partitions
@@ -258,19 +270,20 @@ def select_only_free_devices(physical_disks):
         # Don't consider the device if partition list is not empty,
         if len(current_physical_disk['partitions']) > 0:
             for partition in current_physical_disk['partitions']:
-                if is_ceph_disk("/dev/" + partition):
-                    ceph_disk = True
+                disk_type = is_ceph_disk("/dev/" + partition)
+                if disk_type:
+                    ceph_disk = disk_type
 
-            if ceph_disk is False:
+            if not ceph_disk:
                 logger.info(' Ignoring %10s : Device have exisiting partitions', physical_disk)
                 continue
 
         selected_devices[physical_disk] = physical_disks[physical_disk]
         selected_devices[physical_disk]['bdev'] = '/dev/' + physical_disk
 
-        if ceph_disk is True:
-            selected_devices[physical_disk]['ceph_prepared'] = 1
-            logger.info(' Adding   %10s : Ceph disk detected', physical_disk)
+        if ceph_disk:
+            selected_devices[physical_disk]['ceph_prepared'] = ceph_disk
+            logger.info(' Adding   %10s : Ceph disk detected (%s)', physical_disk, ceph_disk)
         else:
             logger.info(' Adding   %10s : %s', physical_disk, selected_devices[physical_disk]['bdev'])
 
@@ -332,7 +345,7 @@ def show_resulting_devices(matched_devices, physical_disks):
     for matched_device in sorted(matched_devices):
         extra_string = ""
         if "ceph_prepared" in matched_devices[matched_device]:
-            extra_string = " (ceph)"
+            extra_string = " (ceph %s)" % matched_devices[matched_device]["ceph_prepared"]
         logger.info(" %s : %s%s", matched_device, matched_devices[matched_device]["bdev"], extra_string)
         bdev_matched.append(matched_devices[matched_device]["bdev"])
 
@@ -437,8 +450,9 @@ def main():
         device = matched_devices[matched_device]
         device['name'] = matched_device
         if "ceph_prepared" in device:
-            ceph_count = ceph_count + 1
-            to_activate.append(device["bdev"])
+            if device["ceph_prepared"] == "data":
+                ceph_count = ceph_count + 1
+                to_activate.append(device["bdev"])
             continue
         if "data" in device["ceph_type"]:
                 ceph_data.append(device["bdev"])
