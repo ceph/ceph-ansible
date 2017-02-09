@@ -14,10 +14,17 @@
       cluster: ceph
       osd_objectstore: filestore
       osd_group_name: osds
-      #lookup_disks: "{'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '0',  'ceph_type' : 'data', 'count': 2 }}"
-      lookup_disks: "{'storage_disks': {'vendor': '0x1af4', 'ceph_type' : 'data', 'size': 'gte(30 GB)', 'count': 2 }}"
-      legacy_devices: []
-#      legacy_lookup_disks: "/dev/sda /dev/sdb /dev/sdc"
+#      devices: {'storage_disks': {'vendor': '0x1af4', 'ceph_type' : 'data', 'size': 'gte(30 GB)', 'count': 2 }}
+#      devices:
+#       storage_disks:
+#          model: 'SAMSUNG MZ7LN512'
+#          rotational: '0'
+#          ceph_type: 'data'
+#          count: 2
+#     devices: [ '/dev/sda', '/dev/sdb', '/dev/sdc' ]"
+#     devices:
+#       - /dev/sda
+#       - /dev/sdb
   pre_tasks:
     # If we can't get python2 installed before any module is used we will fail
     # so just try what we can to get it installed
@@ -25,9 +32,7 @@
       setup:
     - name: choose disk
       choose_disk:
-        facts: "{{ansible_devices}}"
-        disks: "{{lookup_disks}}"
-#       legacy_disks: "{{legacy_lookup_disks}}"
+        vars: "{{vars}}"
     - debug: var=storage_devices
     - debug: var=journal_devices
     - debug: var=legacy_devices
