@@ -394,22 +394,26 @@ def fatal(message, module):
         exit(1)
 
 
+def get_var(module, variable):
+    '''
+    Extract the ansible variable from the playbook
+    If variable doesn't exist, let's return None
+    '''
+    if variable in module.params["vars"]:
+        return module.params["vars"][variable]
+    return None
+
+
 def main():
     module = None
     legacy = False
     matched_devices = None
     lookup_disks = None
-    disks = "disks"
-    devices = "devices"
-    raw_journal_devices = "raw_journal_devices"
 
     setup_logging()
 
     fields = {
-        "facts": {"required": True, "type": "dict"},
-        disks: {"required": False, "type": "dict"},
-        devices: {"required": False, "type": "list"},
-        raw_journal_devices: {"required": False, "type": "list"},
+        "vars": {"required": True, "type": "dict"},
     }
 
     module = AnsibleModule(
@@ -417,33 +421,39 @@ def main():
         supports_check_mode=True
     )
 
-    physical_disks = select_only_free_devices(module.params["facts"])
+    # Loading variables from vars
+    ansible_devices = get_var(module, "ansible_devices")
+    if not ansible_devices:
+        fatal("Missing ansible_devices in vars !", module)
 
-    if module.params[disks] and module.params[devices]:
-        fatal("%s and %s options are exclusive while both are defined" % (disks, legacy), module)
+    physical_disks = select_only_free_devices(ansible_devices)
 
+    devices = get_var(module, "devices")
     # The new disks description is preferred over the legacy (/dev/sd) naming
-    if module.params[disks]:
+    if isinstance(devices, dict):
         logger.info("Native syntax")
-        logger.info(" %s : %s", disks, module.params[disks])
+        logger.info(" devices : %s", devices)
         # From the ansible facts, we only keep the disks that doesn't have
         # partitions, transform their device name in a persistent name
-        lookup_disks = expand_disks(module.params[disks], "", module)
+        lookup_disks = expand_disks(devices, "", module)
         physical_disks = get_block_devices_persistent_name(physical_disks)
-    elif module.params[devices]:
+    elif isinstance(devices, list):
         legacy = True
         logger.info("Legacy syntax")
-        logger.info(" %s : %s", devices, module.params[devices])
+        logger.info(" devices : %s", devices)
+
+        # In case of legacy, we search for a possible presence of raw_journal_devices
+        raw_journal_devices = get_var(module, "raw_journal_devices")
+
         # From the ansible facts, we only keep the disks that doesn't have partitions
         # We don't transform into the persistent naming but rather fake the disk
         # definition by creating "bdev" entries to get a feature to match.
-        lookup_disks = expand_disks(fake_device(module.params[devices], "data"), "data", module)
-        if module.params[raw_journal_devices]:
-            logger.info(" %s : %s", raw_journal_devices, module.params[raw_journal_devices])
-            lookup_disks.update(expand_disks(fake_device(module.params[raw_journal_devices], "journal"), "journal", module))
+        lookup_disks = expand_disks(fake_device(devices, "data"), "data", module)
+        if raw_journal_devices:
+            logger.info("raw_journal_devices : %s", raw_journal_devices)
+            lookup_disks.update(expand_disks(fake_device(raw_journal_devices, "journal"), "journal", module))
     else:
-        fatal("no 'disks' or 'devices' variables found in playbook", module)
-        return
+        fatal("devices variable should be a dict for native syntax {...} or a list for legacy syntax [ ... ] : %s detected" % type(devices), module)
 
     logger.debug("Looking for %s", lookup_disks)
     # From the ansible facts, we only keep the disks that doesn't have
