@@ -99,7 +99,7 @@ To describe this device, we only keep generic features that match several disks 
 
 From the above hardware description, we can extract relevant information and put them into the following syntax :
 
-        "{"profile_name" : { 'item 1': 'value, 'item 2' : value, count : 1, 'ceph_type' : 'data' }}"
+        {"profile_name" : { 'item 1': 'value, 'item 2' : value, count : 1, 'ceph_type' : 'data' }}
 
 * **profile name**: a semantic name to indicate what kind of disks we are targeting.
 
@@ -112,7 +112,7 @@ From the above hardware description, we can extract relevant information and put
 A typical profile for this example could be : 
 
        vars:
-          lookup_disks: "{'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 1, 'ceph_type' : 'data' }}"
+          devices: {'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 1, 'ceph_type' : 'data' }}
 
 If for any reasons, users needs to use the legacy naming by using direct path name, it can be done like :
 
@@ -121,8 +121,7 @@ If for any reasons, users needs to use the legacy naming by using direct path na
             - /dev/sda
             - /dev/sdb
             - /dev/sdc
-          raw_journal_devices:
-            - /dev/sdf
+          raw_journal_devices: [ '/dev/sdf' ]
 
 **Note:** Using this legacy naming kills most of the benefits of this module. That's mostly a workaround in case of issues. It will only filter out disks that have partitions.
 
@@ -134,22 +133,22 @@ Just define a yaml file with this setup :
         - hosts: localhost
           gather_facts: false
           vars:
-              lookup_disks: "{'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 1, 'ceph_type' : 'data' }}"
               devices:
-                - /dev/sda
-                - /dev/sdb
-                - /dev/sdc
-              raw_journal_devices:
-                - /dev/sdf
+                storage_disks:
+                   vendor: 'DELL'
+                   rotational: '1'
+                   model: 'PERC H710P'
+                   count: 1
+                   ceph_type: 'data'
+              # devices:[ '/dev/sda', '/dev/sdb', '/dev/sdc']
+              raw_journal_devices: [ '/dev/sdf' ]
+
           tasks:
             - name: gathering facts
               setup:
             - name: choose disk
               choose_disk:
-                facts: "{{ansible_devices}}"
-        #        devices: "{{devices}}"
-        #        raw_journal_devices: "{{raw_journal_devices}}"
-                disks: "{{lookup_disks}}"
+                vars: "{{vars}}"
             - debug: var=storage_devices
             - debug: var=journal_devices
             - debug: var=legacy_devices
@@ -181,7 +180,7 @@ Any module that consume this 'devices' structure is now able to pick the right d
 ## Matching several disks types at a time
 A typical use case, is to use rotational disks for OSDs and SSDs/flash for journals. To do that the following can do it :
 
-          lookup_disks: "{'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 10, 'ceph_type': 'data' }, 'journal_disks' : {'vendor': 'Samsung', 'rotational: '0', 'count: 1, 'ceph_type': 'journal'}}"
+          devices: {'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 10, 'ceph_type': 'data' }, 'journal_disks' : {'vendor': 'Samsung', 'rotational: '0', 'count: 1, 'ceph_type': 'journal'}}
 
 
 ## Matching disks by their size
@@ -200,17 +199,22 @@ The module does convert the units automatically to allow comparison between vari
 
 A typical usage looks like : 
 
-          lookup_disks: "{'storage_disks': {'size': 'gt(800 MB)', 'rotational': '1', 'count': 3, 'ceph_type': 'data'}}"
+          devices:
+            storage_disks:
+               size: 'gt(800 MB)'
+               rotational: 1
+               count: 3
+               ceph_type: 'data'
 
 ## Using native or legacy syntax
 
-If you use the native syntax, then the *disks* variable should be used as in :
+If you use the native syntax, then the *devices* variable should be used as in :
 
-                disks: "{{lookup_disks}}"
+                devices: {'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 10, 'ceph_type': 'data' }}
 
 If you use the legacy syntax (aka "/dev/sdx"), then the *devices* variable should be used as in:
 
-                devices: "{{devices}}"
+                devices: [ "/dev/sda", "/dev/sdb" ]
 
 Note that one or the other should be defined, having the two simultaneously will trigger an error.
 
@@ -221,7 +225,7 @@ The main idea behind this module is being able to select precisely the disks use
 ### Being to simple
 Having a too simple profile leads to a less accurate results and could lead to a wrong selection of disks like in :
 
-          lookup_disks: "{'storage_disks': {'size' : 'gt(1MB)', 'count': '*', 'ceph_type': 'data'}}"
+          devices: {'storage_disks': {'size' : 'gt(1MB)', 'count': '*', 'ceph_type': 'data'}}
 
 This is grabbing any storage device, even like usb keys. That's really a lack of control.
 
