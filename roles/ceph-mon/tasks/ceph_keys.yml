@@ -78,7 +78,9 @@
 
 - set_fact:
     osd_pool_default_pg_num: "{{ ceph_conf_overrides.global.osd_pool_default_pg_num }}"
-  when: ceph_conf_overrides.global.osd_pool_default_pg_num is defined
+  when:
+    - global_in_ceph_conf_overrides
+    - ceph_conf_overrides.global.osd_pool_default_pg_num is defined
 
 - name: test if rbd exists
   command: ceph --cluster {{ cluster }} osd pool stats rbd
@@ -92,11 +94,13 @@
 - include: rbd_pool_pgs.yml
   when:
     - rbd_pool_exist.rc == 0
+    - global_in_ceph_conf_overrides
     - ceph_conf_overrides.global.osd_pool_default_pg_num is defined
 
 - include: rbd_pool_size.yml
   when:
     - rbd_pool_exist.rc == 0
+    - global_in_ceph_conf_overrides
     - ceph_conf_overrides.global.osd_pool_default_size is defined
 
 - include: openstack_config.yml
