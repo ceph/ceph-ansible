@@ -455,6 +455,12 @@ def main():
     else:
         fatal("devices variable should be a dict for native syntax {...} or a list for legacy syntax [ ... ] : %s detected" % type(devices), module)
 
+    # Final checks between the lookup & the actual ansible configuration
+    for disk in lookup_disks:
+        if get_var(module, "journal_collocation") is True:
+            if lookup_disks[disk]["ceph_type"] == "journal":
+                fatal("We cannot search for journal devices when 'journal_collocation' is set", module)
+
     logger.debug("Looking for %s", lookup_disks)
     # From the ansible facts, we only keep the disks that doesn't have
     matched_devices = find_match(physical_disks, lookup_disks, module)
