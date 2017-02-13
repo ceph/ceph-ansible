@@ -7,32 +7,56 @@ import re
 import subprocess
 
 DOCUMENTATION = '''
----
 module: choose_disk
 author: Erwan Velu <erwan@redhat.com>
 short_description: Choose disks based on their features
 description:
-    To be completed
+    Ceph-ansible should pass the block devices to ceph-disk.
+    But what disks to consider ?
+    Passing block devices by their short path (/dev/sdx) means inconsistency
+    across reboots or nodes.
+    Using ids (/dev/disk/by-id) is too precise as it usually embedded a
+    serial number.
+    The solution is using a descriptive language to define "what" we are looking
+    for : then this module search for the give disks and reports their id path.
+    The module works in :
+    - legacy mode where the module only make a few checks but doesn't search/rename the block devices.
+    - native mode where user specify what disk to search base on its features
 '''
 
 
 def _equal(left, right):
+    '''
+    Function to test equality when comparing features
+    '''
     return left == right
 
 
 def _gt(left, right):
+    '''
+    Function to test superiority (greater than) when comparing features
+    '''
     return float(left) > float(right)
 
 
 def _gte(left, right):
+    '''
+    Function to test superiority (greater than or equal) when comparing features
+    '''
     return float(left) >= float(right)
 
 
 def _lt(left, right):
+    '''
+    Function to test inferiority (greater than) when comparing features
+    '''
     return float(left) < float(right)
 
 
 def _lte(left, right):
+    '''
+    Function to test inferiority (greater than or equal) when comparing features
+    '''
     return float(left) <= float(right)
 
 
@@ -46,8 +70,11 @@ logger = logging.getLogger('choose_disk')
 
 
 def convert_units(value):
-    ''' Convert units to ease comparaison '''
+    '''
+    Convert units to ease comparaison between reported sizes
+    '''
     value = str(value).lower().strip()
+
     storage_units = {
             'kb': 1024,
             'kib': 1000,
@@ -73,17 +100,19 @@ def convert_units(value):
 def get_keys_by_ceph_order(physical_disks, expected_type):
     '''
     Return a list of keys where ceph disks are reported first
-    while keeping the list sorted
+    while keeping the list sorted.
+    We need to return ceph disks first to insure they are reused in priority.
     '''
     ceph_disks = []
     non_ceph_disks = []
+
     for physical_disk in sorted(physical_disks):
         if "ceph_prepared" in physical_disks[physical_disk]:
             # We shall only return the ceph disks from the same type
-            # If we search for journals, don't return data disks
-            # Note that we don't neither return it to non_ceph_disks thoses
-            # disks are not free
+            # If we search for journals, don't return data disks :
+            #   Note that we don't neither them into 'non_ceph_disks' as they are not free
             pdisk = dict(physical_disks[physical_disk])
+
             if expected_type in pdisk["ceph_prepared"]:
                 logger.debug("get_keys_by_ceph_order: Keeping %s", physical_disk)
                 ceph_disks.append(physical_disk)
@@ -96,11 +125,13 @@ def get_keys_by_ceph_order(physical_disks, expected_type):
 
 
 def find_match(physical_disks, lookup_disks, module=None):
-    ''' Find a set of matching devices in physical_disks
+    '''
+    Find a set of matching devices in physical_disks
     '''
     matched_devices = {}
     ignored_devices = []
 
+    # associate a keyword and the associated function
     OPERATORS = {
         "=": _equal,
         "equal": _equal,
@@ -111,17 +142,21 @@ def find_match(physical_disks, lookup_disks, module=None):
     }
 
     logger.info("Looking for matches")
+
     # Inspecting every disk we search for
     for disk in sorted(lookup_disks):
 
-        current_lookup = dict(lookup_disks[disk])
         infinite = False
+        current_lookup = dict(lookup_disks[disk])
         current_type = ""
+
+        # Does the user want _all_ the devices matching that description ?
         if "infinite" in current_lookup:
             infinite = True
             del current_lookup["infinite"]
 
-        # We cannot keep the disk type as a feature to lookup
+        # We cannot keep the disk type as a feature to lookup unless the
+        # matching with a real device would fail
         current_type = current_lookup["ceph_type"]
         del current_lookup["ceph_type"]
 
@@ -143,14 +178,14 @@ def find_match(physical_disks, lookup_disks, module=None):
                 if feature not in current_physical_disk:
                     continue
 
-                # Default operator is equal
+                # Default comparing operator is equal
                 operator = "equal"
 
                 # Assign left and right operands
                 right = current_lookup[feature]
                 left = current_physical_disk[feature]
 
-                # Test if we have anoter operator
+                # Test if we have another operator in the right operand
                 arguments = _REGEXP.search(right)
                 if arguments:
                         new_operator = arguments.group(1)
@@ -160,42 +195,53 @@ def find_match(physical_disks, lookup_disks, module=None):
                             operator = new_operator
                             right = arguments.group(2)
                         else:
-                            fatal("Unsupported %s operator in : %s" % (new_operator, right), module)
+                            fatal("Unsupported '%s' operator in : %s" % (new_operator, right), module)
 
                 # Let's check if (left <operator> right) is True meaning the match is done
+                # To insure we compare similar metrics, we first convert them
+                # into the same unit (i.e to avoid comparing GB and MB)
                 if OPERATORS[operator](convert_units(left), convert_units(right)):
                     logger.debug("  %s : match  %s %s %s", physical_disk, left, operator, right)
                     match_count = match_count + 1
                     continue
                 else:
+                    # comparaison is false meaning devices doesn't match
                     logger.debug("  %s : no match  %s %s %s", physical_disk, left, operator, right)
-                    match_count = match_count
-                    # nomatch
 
             # If all the features matched
             if match_count == len(current_lookup):
                 logger.info("  %50s matched", physical_disk)
-                # When looking for an infinite number of disks, we can have
-                # several disks per matching
+
+                # When looking for an infinite number of disks, we can have several disks per matching
                 if disk not in matched_devices:
                     matched_devices[disk] = []
-                pdisk = dict(physical_disks[physical_disk])
+
                 # Reintroducing the disk type to keep disks categories alive
+                pdisk = dict(physical_disks[physical_disk])
                 pdisk["ceph_type"] = current_type
+
+                # The matching disk is saved and reported as one to be ignored for the next iterations
                 matched_devices[disk].append(pdisk)
                 ignored_devices.append(physical_disk)
+
                 # If we look for an inifinite list of those devices, let's
                 # continue looking for the same description unless let's go to
                 # the next device
                 if infinite is False:
                     break
-            # We were unable to find all part of the required features
             elif match_count > 0:
+                # We only found a subset of the required features
                 logger.info("  %50s partially matched with %d/%d items", physical_disk, match_count, len(current_lookup))
             else:
                 logger.info("  %50s no devices matched", physical_disk)
 
+    # Let's prepare the final output
     final_disks = {}
+
+    # Matching devices are named base on the user-provided name + incremental number
+    # If we look for {'storage_disks': {'count': 2, 'ceph_type': 'data', 'vendor': '0x1af4', 'size': 'gte(20 GB)'}}
+    # - first device will be named  : storage_disks_000
+    # - second device will be named : storage_disks_001
     for matched_device in matched_devices:
         for n in range(0, len(matched_devices[matched_device])):
             name = matched_device
@@ -211,6 +257,7 @@ def expand_disks(lookup_disks, ceph_type="", module=None):
     Read the disks structure and expand them according to the count directive
     '''
     final_disks = {}
+
     for disk in lookup_disks:
         infinite = False
         count = 0
@@ -229,6 +276,7 @@ def expand_disks(lookup_disks, ceph_type="", module=None):
                 count = lookup_disks[disk]['count']
                 del lookup_disks[disk]['count']
 
+        #  If the count field is set to '*', let's consider an infinite number of devices to match
         if '*' in str(count).strip():
             infinite = True
             count = 1
@@ -243,9 +291,10 @@ def expand_disks(lookup_disks, ceph_type="", module=None):
 
 def is_ceph_disk(partition):
     '''
-    Check if a parition is used by ceph
+    Check if a partition is containing some ceph structures
     '''
     stdout = subprocess.check_output(["lsblk", "-no", "PARTLABEL", "%s" % partition])
+
     if "ceph data" in stdout:
         return "data"
 
@@ -256,24 +305,34 @@ def is_ceph_disk(partition):
 
 
 def select_only_free_devices(physical_disks):
-    ''' Don't keep that have partitions '''
+    '''
+    It's important reporting only devices that are not currently used.
+    '''
     selected_devices = {}
     logger.info('Detecting free devices')
+
     for physical_disk in sorted(physical_disks):
         ceph_disk = ""
         current_physical_disk = physical_disks[physical_disk]
 
-        # Don't consider devices that doesn't have partitions
+        # Don't consider devices that doesn't support partitions
         if 'partitions' not in current_physical_disk:
             logger.info(' Ignoring %10s : Device doesnt support partitioning', physical_disk)
             continue
+
         # Don't consider the device if partition list is not empty,
+        # A disk that is already partionned may contain important data
+        # It's up to the admin to zap the device before using it in ceph-ansible
+        # There is only an exception :
+        #    if the partitions are from ceph, it surely means that we have to
+        #    reuse them
         if len(current_physical_disk['partitions']) > 0:
             for partition in sorted(current_physical_disk['partitions']):
                 disk_type = is_ceph_disk("/dev/" + partition)
                 if disk_type:
                     if ceph_disk:
                         ceph_disk += " + "
+                    # Saving the ceph type (journal and/or data)
                     ceph_disk += disk_type
 
             if not ceph_disk:
@@ -293,10 +352,13 @@ def select_only_free_devices(physical_disks):
 
 
 def get_block_devices_persistent_name(physical_disks):
-    ''' Replace the short name (sda) by the persistent naming 'by-id' '''
+    '''
+    Replace the short name (sda) by the persistent naming 'by-id'
+    '''
     directory = "/dev/disk/by-id/"
 
     logger.info('Finding persistent disks name')
+
     # If the directory doesn't exist, reports the list as-is
     if not os.path.isdir(directory):
         logger.info(' Cannot open %s', directory)
@@ -304,6 +366,8 @@ def get_block_devices_persistent_name(physical_disks):
 
     final_disks = {}
     matching_devices = {}
+
+    # Searching in the /dev/disk/by-id/ which are the disks we look for
     for f in os.listdir(directory):
         device_name = os.readlink(directory + f).split("/")[-1]
         if device_name in physical_disks:
@@ -312,6 +376,8 @@ def get_block_devices_persistent_name(physical_disks):
             else:
                 matching_devices[device_name].append(f)
 
+    # Saving matching disks and add the path of the block device
+    # Output is like : Renaming        vdb to                        virtio-e0b94c7d-75ca-4175-a
     for physical_disk in sorted(physical_disks):
         if physical_disk in matching_devices:
             current_index = sorted(matching_devices[physical_disk])[0]
@@ -341,6 +407,11 @@ def fake_device(legacy_devices, ceph_type):
 
 
 def show_resulting_devices(matched_devices, physical_disks):
+    '''
+    Print the current state :
+      - what devices matched
+      - what devices didn't matched
+    '''
     bdev_matched = []
     bdev_unmatched = []
 
@@ -371,6 +442,9 @@ def show_resulting_devices(matched_devices, physical_disks):
 
 
 def setup_logging():
+    '''
+    Preparing the logging system
+    '''
     hdlr = logging.FileHandler('/var/log/choose_disk.log')
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     hdlr.setFormatter(formatter)
@@ -382,6 +456,9 @@ def setup_logging():
 
 
 def fatal(message, module):
+    '''
+    Report a fatal error and exit
+    '''
     logger.error("### FATAL ###")
     logger.error(message)
     logger.error("#############")
@@ -429,11 +506,12 @@ def main():
     physical_disks = select_only_free_devices(ansible_devices)
 
     devices = get_var(module, "devices")
-    # The new disks description is preferred over the legacy (/dev/sd) naming
+
+    # The new disks description is preferred over the legacy (/dev/sdx) naming
     if isinstance(devices, dict):
         logger.info("Native syntax")
         logger.info(" devices : %s", devices)
-        # From the ansible facts, we only keep the disks that doesn't have
+        # From the ansible facts, we only keep disks that doesn't have
         # partitions, transform their device name in a persistent name
         lookup_disks = expand_disks(devices, "", module)
         physical_disks = get_block_devices_persistent_name(physical_disks)
@@ -462,7 +540,7 @@ def main():
                 fatal("We cannot search for journal devices when 'journal_collocation' is set", module)
 
     logger.debug("Looking for %s", lookup_disks)
-    # From the ansible facts, we only keep the disks that doesn't have
+
     matched_devices = find_match(physical_disks, lookup_disks, module)
 
     show_resulting_devices(matched_devices, physical_disks)
@@ -470,6 +548,10 @@ def main():
     if len(matched_devices) < len(lookup_disks):
         fatal("Could only find %d of the %d expected devices" % (len(matched_devices), len(lookup_disks)), module)
 
+    # Preparing the final output by deivces in several categories
+    # - data disks for ceph
+    # - disks to enable in ceph
+    # - journals
     ceph_data = []
     journal = []
     to_activate = []
@@ -490,6 +572,8 @@ def main():
 
     changed = True
     logger.info("%d/%d disks already configured", ceph_count, len(matched_devices))
+    # If we only report already ceph-prepared disks, let's report nothing
+    # changed to Ansible
     if ceph_count == len(matched_devices):
         changed = False
 
