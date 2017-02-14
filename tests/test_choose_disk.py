@@ -103,6 +103,30 @@ def test_find_match_matched_lt():
     assert_equals(result, expected_result)
 
 
+def test_find_match_matched_between():
+    """
+    find_match - test for a matching device with between() operator
+    """
+    ansible_devices = {'sr0': {'sectorsize': '512', 'ceph_type': 'data'}}
+    disk_0 = {'sr0': {'sectorsize': 'between(511, 513)', 'ceph_type': 'data'}}
+    expected_result = ansible_devices
+    choose_disk.setup_logging()
+    result = choose_disk.find_match(ansible_devices, disk_0)
+    assert_equals(result, expected_result)
+
+
+def test_find_match_matched_between_e():
+    """
+    find_match - test for a matching device with between_e() operator
+    """
+    ansible_devices = {'sr0': {'sectorsize': '512', 'ceph_type': 'data'}}
+    disk_0 = {'sr0': {'sectorsize': 'between_e(512, 512)', 'ceph_type': 'data'}}
+    expected_result = ansible_devices
+    choose_disk.setup_logging()
+    result = choose_disk.find_match(ansible_devices, disk_0)
+    assert_equals(result, expected_result)
+
+
 def test_find_match_matched_gt_units():
     """
     find_match - test for a matching device with gt() operator and units

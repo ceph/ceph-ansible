@@ -29,35 +29,57 @@ def _equal(left, right):
     '''
     Function to test equality when comparing features
     '''
-    return left == right
+    return convert_units(left) == convert_units(right)
 
 
 def _gt(left, right):
     '''
     Function to test superiority (greater than) when comparing features
     '''
-    return float(left) > float(right)
+    return float(convert_units(left)) > float(convert_units(right))
 
 
 def _gte(left, right):
     '''
     Function to test superiority (greater than or equal) when comparing features
     '''
-    return float(left) >= float(right)
+    return float(convert_units(left)) >= float(convert_units(right))
 
 
 def _lt(left, right):
     '''
     Function to test inferiority (greater than) when comparing features
     '''
-    return float(left) < float(right)
+    return float(convert_units(left)) < float(convert_units(right))
 
 
 def _lte(left, right):
     '''
     Function to test inferiority (greater than or equal) when comparing features
     '''
-    return float(left) <= float(right)
+    return float(convert_units(left)) <= float(convert_units(right))
+
+
+def _and(left, right):
+    '''
+    Function to test "left and right"
+    '''
+    return left and right
+
+
+def get_alias(operator, left, right):
+    '''
+    Function to translate some virtual operators into real ones
+    '''
+    aliases = {
+        "between": "and(gt(%s),lt(%s))" % (left, right),
+        "between_e": "and(gte(%s),lte(%s))" % (left, right)
+    }
+    for alias in aliases:
+        if alias in operator:
+            return aliases[alias]
+
+    return None
 
 
 _REGEXP = re.compile(r'^([^(]+)'          # function name
@@ -139,6 +161,7 @@ def find_match(physical_disks, lookup_disks, module=None):
         "gte": _gte,
         "lt": _lt,
         "lte": _lte,
+        "and": _and,
     }
 
     logger.info("Looking for matches")
@@ -178,35 +201,50 @@ def find_match(physical_disks, lookup_disks, module=None):
                 if feature not in current_physical_disk:
                     continue
 
-                # Default comparing operator is equal
-                operator = "equal"
-
                 # Assign left and right operands
                 right = current_lookup[feature]
                 left = current_physical_disk[feature]
 
-                # Test if we have another operator in the right operand
-                arguments = _REGEXP.search(right)
-                if arguments:
-                        new_operator = arguments.group(1)
-                        # Check if the associated function exists
-                        if new_operator in OPERATORS:
-                            # and assign operands with the new values
-                            operator = new_operator
-                            right = arguments.group(2)
-                        else:
-                            fatal("Unsupported '%s' operator in : %s" % (new_operator, right), module)
+                def evaluate_operator(left, right):
+                    # Default comparing operator is equal
+                    operator = "equal"
+
+                    # Test if we have another operator in the right operand
+                    arguments = _REGEXP.search(right)
+                    if arguments:
+                            new_operator = arguments.group(1)
+
+                            # Some operators are aliases to more complex commands.
+                            # Let's make the substition in place and restart with it
+                            alias = get_alias(new_operator, arguments.group(2), arguments.group(3))
+                            if alias:
+                                return evaluate_operator(left, alias)
+
+                            # Check if the associated function exists
+                            if new_operator in OPERATORS:
+                                # and assign operands with the new values
+                                operator = new_operator
+                                right = arguments.group(2)
+                                new_arguments = _REGEXP.search(right)
+                                if new_arguments:
+                                    # Don't forget to evaluate the two sides of the expression
+                                    # Typical case when we shall compare a 'value' with : 'and( gt(x), lt(y) )'
+                                    # The looking value always stays to the 'left' part of the expression
+                                    new_right = arguments.group(3)
+                                    return OPERATORS[operator](evaluate_operator(left, right), evaluate_operator(left, new_right))
+                                    #           and           (                  value,gt(x)),                   value,lt(y)     )
+                            else:
+                                fatal("Unsupported '%s' operator in : %s" % (new_operator, right), module)
+                    return OPERATORS[operator](left, right)
 
                 # Let's check if (left <operator> right) is True meaning the match is done
-                # To insure we compare similar metrics, we first convert them
-                # into the same unit (i.e to avoid comparing GB and MB)
-                if OPERATORS[operator](convert_units(left), convert_units(right)):
-                    logger.debug("  %s : match  %s %s %s", physical_disk, left, operator, right)
+                if evaluate_operator(left, right):
+                    logger.debug("  %s : match  %s %s", physical_disk, left, right)
                     match_count = match_count + 1
                     continue
                 else:
                     # comparaison is false meaning devices doesn't match
-                    logger.debug("  %s : no match  %s %s %s", physical_disk, left, operator, right)
+                    logger.debug("  %s : no match  %s %s", physical_disk, left, right)
 
             # If all the features matched
             if match_count == len(current_lookup):
