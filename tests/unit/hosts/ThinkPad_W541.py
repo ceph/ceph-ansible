@@ -41,4 +41,4 @@ def prepare_test_find_match_matched():
 
 
 def prepare_test_find_match_unmatched():
-    return({'storage_disks_0': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1'}}, {})
+    return({'storage_disks_0': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1', 'ceph_type': 'data'}}, {})
