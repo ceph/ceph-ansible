@@ -25,7 +25,6 @@
 - name: set flag for whether or not to check gpt headers
   with_together:
     - "{{ ispartition_results.results }}"
-    - "{{ devices }}"
   set_fact:
     fix_partitions_or_labels: item.0.rc != 0
 
@@ -54,3 +53,9 @@
   always_run: true
   register: parted_results
   when: item.0.rc != 0
+
+- name: Set flag for preparing osds with dedicated journals
+  with_together:
+    - "{{ ispartition_results.results }}"
+  set_fact:
+    prepare_osds_with_dedicated_journals: item.0.rc == 0
