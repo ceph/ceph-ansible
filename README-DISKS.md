@@ -187,14 +187,19 @@ A typical use case, is to use rotational disks for OSDs and SSDs/flash for journ
 Matching disks by size trigger two issues :
 
 * disk sizes are not always reported in the same units : MB vs GB vs PB
-* user doesn't always a perfect match but a set of disks greater or lower that a particular size
+* user doesn't always need a perfect match but a set of disks greater/lower than a particular size
 
-The module does convert the units automatically to allow comparison between various outputs. In addition, two functions helps are comparing the sizes :
+The module does convert the units automatically to allow comparison between various outputs.
 
+In addition, a set of functions helps at comparing the sizes :
+
+* and(x, y): (x) and (y)
 * gt(x) : greater than (x)
 * lt(x) : lower than (x)
 * gte(x) : greater than or equal (x)
 * lte(x) : lower than or equal(x)
+* between(x, y): gt(x) and lt(y)
+* between_e(x, y): gte(x) and lte(y)
 
 A typical usage looks like : 
 
