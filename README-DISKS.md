@@ -152,7 +152,6 @@ Just define a yaml file with this setup :
             - debug: var=storage_devices
             - debug: var=journal_devices
             - debug: var=legacy_devices
-            - debug: var=legacy_raw_journal_devices
             - debug: var=devices_to_activate
 
 
