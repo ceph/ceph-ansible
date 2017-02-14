@@ -32,7 +32,7 @@
 
 - name: check the partition status of the journal devices
   shell: "parted --script {{ item }} print > /dev/null 2>&1"
-  with_items: "{{ legacy_raw_journal_devices|unique }}"
+  with_items: "{{ journal_devices|unique }}"
   changed_when: false
   failed_when: false
   always_run: true
@@ -43,7 +43,7 @@
 
 - name: fix partitions gpt header or labels of the journal devices
   shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item }}"
-  with_items: "{{ journal_partition_status.results + legacy_raw_journal_devices|unique }}"
+  with_items: "{{ journal_partition_status.results + journal_devices|unique }}"
   changed_when: false
   when:
     - (raw_multi_journal or dmcrypt_dedicated_journal)
