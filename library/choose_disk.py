@@ -190,7 +190,7 @@ def find_match(physical_disks, lookup_disks, module=None):
                 if arguments:
                         new_operator = arguments.group(1)
                         # Check if the associated function exists
-                        if operator in OPERATORS:
+                        if new_operator in OPERATORS:
                             # and assign operands with the new values
                             operator = new_operator
                             right = arguments.group(2)
