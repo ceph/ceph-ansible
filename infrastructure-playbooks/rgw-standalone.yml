@@ -1,8 +1,12 @@
 ---
 # Run ceph-rgw role standalone
 
-# Need to load the facts from mons because ceph-common need them to generate the ceph.conf
+# Need to load the facts from mons because ceph-common needs them to generate the ceph.conf
+# and collect keys from a mon to bootstrap the rgw nodes
 - hosts: mons
+  become: True
+  roles:
+    - ceph-fetch-keys
 
 - hosts: rgws
   become: True
