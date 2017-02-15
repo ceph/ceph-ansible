@@ -203,6 +203,18 @@
      state: absent
 
   tasks:
+  - name: checking set fact
+    set_fact:
+      devices: "{{ item.value }}"
+    when: item.key == disk_type and heterogeneous_hw
+    with_dict: "{{ devices }}"
+
+  - name: heterogeneous journal
+    set_fact:
+      raw_journal_devices: "{{ item.value }}"
+    when: item.key == disk_type and heterogeneous_journal and raw_multi_journal
+    with_dict: "{{ raw_journal_devices }}"
+
 
   - name: check for a device list
     fail:
