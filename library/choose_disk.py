@@ -627,10 +627,10 @@ def main():
 
     if legacy is True:
         # Reporting devices & raw_journal_devices for compatiblity
-        module.exit_json(msg=message, changed=changed, ansible_facts=dict(legacy_devices=ceph_data, journal_devices=journal, devices_to_activate=to_activate))
+        module.exit_json(msg=message, changed=changed, ansible_facts=dict(legacy_devices=ceph_data, journal_devices=journal, devices_to_activate=to_activate, storage_devices=[]))
     else:
         # Reporting storage_devices & journal_devices
-        module.exit_json(msg=message, changed=changed, ansible_facts=dict(storage_devices=ceph_data, journal_devices=journal, devices_to_activate=to_activate))
+        module.exit_json(msg=message, changed=changed, ansible_facts=dict(storage_devices=ceph_data, journal_devices=journal, devices_to_activate=to_activate, legacy_devices=[]))
 
 
 if __name__ == '__main__':
