@@ -24,40 +24,44 @@ description:
     - native mode where user specify what disk to search base on its features
 '''
 
+# The following set of functions are used to compare units
+# To insure we compare similar metrics, we convert them with to_bytes()
+# into the same unit (i.e to avoid comparing GB and MB)
+
 
 def _equal(left, right):
     '''
     Function to test equality when comparing features
     '''
-    return convert_units(left) == convert_units(right)
+    return to_bytes(left) == to_bytes(right)
 
 
 def _gt(left, right):
     '''
     Function to test superiority (greater than) when comparing features
     '''
-    return float(convert_units(left)) > float(convert_units(right))
+    return float(to_bytes(left)) > float(to_bytes(right))
 
 
 def _gte(left, right):
     '''
     Function to test superiority (greater than or equal) when comparing features
     '''
-    return float(convert_units(left)) >= float(convert_units(right))
+    return float(to_bytes(left)) >= float(to_bytes(right))
 
 
 def _lt(left, right):
     '''
     Function to test inferiority (greater than) when comparing features
     '''
-    return float(convert_units(left)) < float(convert_units(right))
+    return float(to_bytes(left)) < float(to_bytes(right))
 
 
 def _lte(left, right):
     '''
     Function to test inferiority (greater than or equal) when comparing features
     '''
-    return float(convert_units(left)) <= float(convert_units(right))
+    return float(to_bytes(left)) <= float(to_bytes(right))
 
 
 def _and(left, right):
@@ -91,9 +95,9 @@ _REGEXP = re.compile(r'^([^(]+)'          # function name
 logger = logging.getLogger('choose_disk')
 
 
-def convert_units(value):
+def to_bytes(value):
     '''
-    Convert units to ease comparaison between reported sizes
+    Convert storage units into bytes to ease comparaison between sizex
     '''
     value = str(value).lower().strip()
 

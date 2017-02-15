@@ -63,12 +63,12 @@ def test_expand_disks_legacy():
 
 def test_units_gb():
     """
-    convert_units - checking storage units are well converted in bytes
+    to_bytes - checking storage units are well converted in bytes
     """
     units = {'100 MB': '104857600.0', '1 GIB': '1000000000.0', ' 1 Kb ': '1024.0'}
 
     for unit in units.keys():
-        assert_equals(choose_disk.convert_units(unit), units[unit])
+        assert_equals(choose_disk.to_bytes(unit), units[unit])
 
 
 def test_find_match_matched():
