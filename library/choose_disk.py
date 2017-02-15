@@ -116,9 +116,9 @@ def to_bytes(value):
 
     # Units are storage units
     for size in storage_units.keys():
-        if value.endswith(size):
-            real_value, unit = value.split(" ")
-            return str(float(real_value) * storage_units[unit])
+        if size in value:
+            real_value = value.replace(size, "")
+            return str(float(real_value) * storage_units[size])
 
     return value
 
