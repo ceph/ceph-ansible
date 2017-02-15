@@ -65,7 +65,7 @@ def test_units_gb():
     """
     to_bytes - checking storage units are well converted in bytes
     """
-    units = {'100 MB': '104857600.0', '1 GIB': '1000000000.0', ' 1 Kb ': '1024.0', ' 1giB ': '1000000000.0'}
+    units = {'100 MB': '104857600.0', '1 GIB': '1000000000.0', ' 1 Kb ': '1024.0', ' 1giB ': '1000000000.0', '1' : '1'}
 
     for unit in units.keys():
         assert_equals(choose_disk.to_bytes(unit), units[unit])
