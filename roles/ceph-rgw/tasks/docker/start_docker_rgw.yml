@@ -1,22 +1,15 @@
 ---
-# Use systemd to manage container on Atomic host
 - name: generate systemd unit file
   become: true
   template:
-    src: "{{ playbook_dir }}/roles/ceph-rgw/templates/ceph-rgw.service.j2"
-    dest: /var/lib/ceph/ceph-rgw@.service
+    src: "{{ role_path }}/templates/ceph-rgw.service.j2"
+    dest: /etc/systemd/system/ceph-rgw@.service
     owner: "root"
     group: "root"
     mode: "0644"
 
-- name: link systemd unit file for rgw instance
-  file:
-    src: /var/lib/ceph/ceph-rgw@.service
-    dest: /etc/systemd/system/multi-user.target.wants/ceph-rgw@{{ ansible_hostname }}.service
-    state: link
-
 - name: enable systemd unit file for rgw instance
-  shell: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-rgw@{{ ansible_hostname }}.service
+  shell: systemctl enable ceph-rgw@{{ ansible_hostname }}.service
   failed_when: false
   changed_when: false
 

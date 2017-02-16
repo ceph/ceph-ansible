@@ -1,27 +1,20 @@
 ---
-# Use systemd to manage container on Atomic host
 - name: generate systemd unit file
   become: true
   template:
     src: "{{ role_path }}/templates/ceph-mds.service.j2"
-    dest: /var/lib/ceph/ceph-mds@.service
+    dest: /etc/systemd/system/ceph-mds@.service
     owner: "root"
     group: "root"
     mode: "0644"
 
-- name: link systemd unit file for mds instance
-  file:
-    src: /var/lib/ceph/ceph-mds@.service
-    dest: /etc/systemd/system/multi-user.target.wants/ceph-mds@{{ ansible_hostname }}.service
-    state: link
-
 - name: enable systemd unit file for mds instance
-  command: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-mds@{{ ansible_hostname }}.service
+  shell: systemctl enable ceph-mds@{{ ansible_hostname }}.service
   failed_when: false
   changed_when: false
 
 - name: reload systemd unit files
-  command: systemctl daemon-reload
+  shell: systemctl daemon-reload
   changed_when: false
   failed_when: false
 
