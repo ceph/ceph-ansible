@@ -6,18 +6,14 @@
   when: ceph_stable
 
 - name: add ceph stable repository
-  package:
-    name: "{{ ceph_mirror }}/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm"
+  yum_repository:
+    name: ceph_stable
+    description: Ceph Stable repo
+    gpgcheck: yes
     state: present
-  changed_when: false
+    gpgkey: "{{ ceph_stable_key }}"
+    baseurl: "{{ ceph_mirror }}/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/$basearch"
   when: ceph_stable
-
-- name: change download url to ceph mirror
-  replace:
-    name: /etc/yum.repos.d/ceph.repo
-    regexp: http://download.ceph.com
-    replace: "{{ ceph_mirror }}"
-  when: ceph_mirror != "http://download.ceph.com"
 
 # we must use curl instead of ansible's uri module because SNI support in
 # Python is only available in 2.7.9 and later, and most supported distributions
