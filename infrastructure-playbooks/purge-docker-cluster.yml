@@ -283,43 +283,27 @@
     with_items: "{{ ceph_osd_docker_devices }}"
     ignore_errors: true
 
-  - name: zap ceph osd disk
-    docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}-osd-zap-{{ item | regex_replace('/', '') }}"
-      net: host
-      pid: host
-      state: started
-      privileged: yes
-      env: "CEPH_DAEMON=zap_device,OSD_DEVICE={{ item }}"
-      volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev:/dev,/run:/run"
+  - name: zap ceph osd disks
+    shell: |
+      docker run \
+      --privileged=true \
+      --name {{ ansible_hostname }}-osd-zap-{{ item | regex_replace('/', '') }} \
+      -v /dev/:/dev/ \
+      -e OSD_DEVICE={{ item }} \
+      {{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+      zap_device
     with_items:
       - "{{ ceph_osd_docker_devices }}"
       - "{{ raw_journal_devices }}"
 
-  - name: remove ceph osd zap disk container
-    docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}-osd-zap-{{ item | regex_replace('/', '') }}"
-      state: absent
-    with_items:
-      - "{{ ceph_osd_docker_devices }}"
-      - "{{ raw_journal_devices }}"
-
-  # zap twice
-  - name: zap ceph osd disk
-    docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}-osd-zap-{{ item | regex_replace('/', '') }}"
-      net: host
-      pid: host
-      state: started
-      privileged: yes
-      env: "CEPH_DAEMON=zap_device,OSD_DEVICE={{ item }}"
-      volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev:/dev,/run:/run"
-    with_items:
-      - "{{ ceph_osd_docker_devices }}"
-      - "{{ raw_journal_devices }}"
+  - name: wait until the zap containers die
+    shell: |
+      docker ps | grep -sq {{ ansible_hostname }}-osd-zap
+    register: zap_alive
+    failed_when: false
+    until: zap_alive.rc != 0
+    retries: 5
+    delay: 10
 
   - name: remove ceph osd zap disk container
     docker:
