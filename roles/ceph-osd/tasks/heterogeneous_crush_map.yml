@@ -1,0 +1,25 @@
+---
+- name: create rack buckets
+  command: ceph osd crush add-bucket "{{ item }}" rack
+  with_items: "{{ groups.osds.rack_type | unique }}"
+
+- name: move osd server to rack bucket
+  command: ceph osd crush move "{{ item }}" rack= "{{ item.rack_type }}"
+  with_items: "{{ groups.osds }}"
+
+- name: move rack bucket to crush root
+  command: ceph osd crush move "{{ item.rack_type }}" root= "{{ item.disk_type }}" 
+  with_items: "{{ groups.osds }}"
+
+- name: prepare rack rules 
+  command: echo "'{{ item.rack_type }}'-rule" "'{{ item.disk_type }}'" 
+  with_items: "{{ groups.osds }}"
+  register: racks_and_disk_types
+
+- name: create crush rules
+  command: ceph osd crush rule create-simple "{{ item }}" rack
+  with_items: "{{ racks_and_disk_types | unique }}"
+
+
+
+
