@@ -4,8 +4,8 @@ After=docker.service
 
 [Service]
 EnvironmentFile=-/etc/environment
-ExecStartPre=-/usr/bin/docker stop {{ ansible_hostname }}
-ExecStartPre=-/usr/bin/docker rm {{ ansible_hostname }}
+ExecStartPre=-/usr/bin/docker stop ceph-rgw-{{ ansible_hostname }}
+ExecStartPre=-/usr/bin/docker rm ceph-rgw-{{ ansible_hostname }}
 ExecStart=/usr/bin/docker run --rm --net=host \
    {% if not rgw_containerized_deployment_with_kv -%}
    -v /var/lib/ceph:/var/lib/ceph \
@@ -18,9 +18,9 @@ ExecStart=/usr/bin/docker run --rm --net=host \
    --privileged \
    -e CEPH_DAEMON=RGW \
    {{ ceph_rgw_docker_extra_env }} \
-   --name={{ ansible_hostname }} \
+   --name=ceph-rgw-{{ ansible_hostname }} \
    {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-ExecStopPost=-/usr/bin/docker stop {{ ansible_hostname }}
+ExecStopPost=-/usr/bin/docker stop ceph-rgw-{{ ansible_hostname }}
 Restart=always
 RestartSec=10s
 TimeoutStartSec=120
