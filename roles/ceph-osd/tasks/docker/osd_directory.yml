@@ -1,0 +1,66 @@
+---
+## SCENARIO 4: USE A DIRECTORY INSTEAD OF A DISK FOR OSD
+
+# NOTE (leseb): we do not check the filesystem underneath the directory
+# so it is really up to you to configure this properly.
+# Declaring more than one directory on the same filesystem will confuse Ceph.
+- name: create osd directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: 167
+    group: 167
+  with_items: "{{ osd_directories }}"
+
+- name: check if selinux is enabled
+  command: getenforce
+  register: sestatus
+  changed_when: false
+  always_run: true
+
+- name: set selinux permissions
+  shell: chcon -Rt svirt_sandbox_file_t {{ item }}
+  with_items: "{{ osd_directories }}"
+  changed_when: false
+  when: sestatus.stdout != 'Disabled'
+
+# NOTE (leseb): the prepare process must be parallelized somehow...
+# if you have 64 disks with 4TB each, this will take a while
+# since Ansible will sequential process the loop
+- name: prepare OSD disk(s)
+  command: |
+    docker run --rm --net=host --pid=host
+    --name "{{ ansible_hostname }}-osd-prepare-{{ item | regex_replace('/', '') }}"
+    -v /etc/ceph:/etc/ceph
+    -v /var/lib/ceph/:/var/lib/ceph/ \
+    -v /etc/localtime:/etc/localtime:ro \
+    -v "{{ item }}:{{ item }}"
+    --entrypoint /bin/sh
+    "{{ ceph_docker_registry }}/{{ ceph_osd_docker_username }}/{{ceph_osd_docker_imagename }}:{{ ceph_osd_docker_image_tag }}"
+    -c 'ceph-disk prepare --cluster "{{ cluster }}" "{{ item }}"'
+  args:
+    creates: "{{ item }}/superblock"
+  with_items: "{{ osd_directories }}"
+  when: osd_directory
+
+- name: activate OSD(s)
+  command: |
+    docker run --rm --net=host --pid=host
+    --name "{{ ansible_hostname }}-osd-prepare-{{ item | regex_replace('/', '') }}"
+    -v /etc/ceph:/etc/ceph
+    -v /var/lib/ceph/:/var/lib/ceph/ \
+    -v /etc/localtime:/etc/localtime:ro \
+    -v "{{ item }}:{{ item }}"
+    --entrypoint /bin/sh
+    "{{ ceph_docker_registry }}/{{ ceph_osd_docker_username }}/{{ceph_osd_docker_imagename }}:{{ ceph_osd_docker_image_tag }}"
+    -c 'ceph-disk activate --no-start-daemon "{{ item }}"'
+  #  args:
+  #    creates: /var/lib/ceph/osd/
+  with_items: "{{ osd_directories }}"
+  changed_when: false
+
+# - name: start and add the OSD target to the systemd sequence
+#   service:
+#     name: ceph.target
+#     state: started
+#     enabled: yes
