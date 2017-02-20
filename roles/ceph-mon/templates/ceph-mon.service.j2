@@ -4,9 +4,9 @@ After=docker.service
 
 [Service]
 EnvironmentFile=-/etc/environment
-ExecStartPre=-/usr/bin/docker rm %i
+ExecStartPre=-/usr/bin/docker rm ceph-mon-%i
 ExecStartPre=$(command -v mkdir) -p /etc/ceph /var/lib/ceph/mon
-ExecStart=/usr/bin/docker run --rm --name %i --net=host \
+ExecStart=/usr/bin/docker run --rm --name ceph-mon-%i --net=host \
    {% if not mon_containerized_deployment_with_kv -%}
    -v /var/lib/ceph:/var/lib/ceph \
    -v /etc/ceph:/etc/ceph \
@@ -27,7 +27,7 @@ ExecStart=/usr/bin/docker run --rm --name %i --net=host \
    -e CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }} \
    {{ ceph_mon_docker_extra_env }} \
    {{ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-ExecStopPost=-/usr/bin/docker stop %i
+ExecStopPost=-/usr/bin/docker stop ceph-mon-%i
 Restart=always
 RestartSec=10s
 TimeoutStartSec=120
