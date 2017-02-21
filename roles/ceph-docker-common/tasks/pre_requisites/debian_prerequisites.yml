@@ -1,0 +1,67 @@
+---
+# To install docker on debian
+- name: allow apt to use a repository over https (debian)
+  package:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - software-properties-common
+  when: ansible_distribution == 'Debian'
+  tags:
+    with_pkg
+
+- name: add docker's gpg key
+  apt_key:
+    url: https://apt.dockerproject.org/gpg
+    state: present
+  when: ansible_distribution == 'Debian'
+
+- name: add docker and debian testing repository
+  apt_repository:
+    repo: "{{ item }}"
+    state: present
+  with_items:
+    - "deb https://apt.dockerproject.org/repo/ debian-{{ ansible_distribution_release }} main"
+    - "deb http://http.us.debian.org/debian/ testing contrib main"
+  when: ansible_distribution == 'Debian'
+
+- name: install pip from testing on debian
+  package:
+    name: python-pip
+    state: present
+    default_release: testing
+    update_cache: yes
+  when: ansible_distribution == 'Debian'
+  tags:
+    with_pkg
+
+- name: install docker-py via pip for debian
+  pip:
+    name: docker-py
+    state: latest
+  tags:
+    with_pkg
+  when: ansible_distribution == 'Debian'
+
+- name: install docker on debian
+  package:
+    name: docker-engine
+    state: present
+    update_cache: yes
+  when: ansible_distribution == 'Debian'
+  tags:
+    with_pkg
+
+# NOTE (jimcurtis): need at least version 1.9.0 of six or we get:
+# re:NameError: global name 'DEFAULT_DOCKER_API_VERSION' is not defined
+- name: install six via pip
+  pip:
+    name: six
+    version: 1.9.0
+  when: ansible_distribution == 'Debian'
+  tags:
+    with_pkg
