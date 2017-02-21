@@ -1,15 +1,4 @@
 ---
-- name: make sure public_network configured
-  fail:
-    msg: "public_network must be configured. Ceph public network"
-  when: public_network == '0.0.0.0/0'
-
-- name: make sure cluster_network configured
-  fail:
-    msg: "cluster_network must be configured. Ceph replication network"
-  when:
-    - cluster_network == '0.0.0.0/0'
-    - not osd_containerized_deployment
 
 - name: make sure journal_size configured
   debug:
@@ -62,7 +51,7 @@
   when:
     - osd_group_name is defined
     - osd_group_name in group_names
-    - (journal_collocation or osd_containerized_deployment)
+    - (journal_collocation or (osd_containerized_deployment and not osd_directory))
     - not osd_auto_discovery
     - devices|length == 0
 
@@ -83,6 +72,5 @@
   when:
     - osd_group_name is defined
     - osd_group_name in group_names
-    - not osd_containerized_deployment
     - osd_directory
     - osd_directories is not defined

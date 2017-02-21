@@ -15,6 +15,7 @@
   always_run: true
   with_items: "{{ ceph_osd_docker_devices }}"
   register: osd_prepared
+  when: not osd_directory
 
 # use shell rather than docker module
 # to ensure osd disk prepare finishes before
@@ -40,6 +41,7 @@
   when:
     - item.1.get("rc", 0) != 0
     - ceph_osd_docker_prepare_env is defined
+    - not osd_directory
     - not osd_containerized_deployment_with_kv
 
 - name: prepare ceph osd disk with kv_store
@@ -67,6 +69,13 @@
     - ceph_osd_docker_prepare_env is defined
     - osd_containerized_deployment_with_kv
 
+- include: osd_directory.yml
+  when: osd_directory
+
+- name: XXX
+  debug:
+    msg: aha
+
 - name: generate systemd unit file
   become: true
   template:
@@ -90,8 +99,19 @@
 
 - name: systemd start osd container
   service:
+    name: ceph-osd@osd-directory
+    state: started
+    enabled: yes
+  changed_when: false
+  when:
+    - osd_directory
+
+- name: systemd start osd container
+  service:
     name: ceph-osd@{{ item | basename }}
     state: started
     enabled: yes
   changed_when: false
   with_items: "{{ ceph_osd_docker_devices }}"
+  when:
+    - not osd_directory
