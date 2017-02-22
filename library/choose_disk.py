@@ -111,7 +111,7 @@ logger = logging.getLogger('choose_disk')
 
 def to_bytes(value):
     '''
-    Convert storage units into bytes to ease comparaison between sizex
+    Convert storage units into bytes to ease comparaison between different units
     '''
     value = str(value).lower().strip()
 
@@ -392,7 +392,7 @@ def select_only_free_devices(physical_disks):
                     ceph_disk += disk_type
 
             if not ceph_disk:
-                logger.info(' Ignoring %10s : Device have exisiting partitions', physical_disk)
+                logger.info(' Ignoring %10s : Device has exisiting partitions', physical_disk)
                 continue
 
         selected_devices[physical_disk] = physical_disks[physical_disk]
