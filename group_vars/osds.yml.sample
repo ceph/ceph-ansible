@@ -134,6 +134,11 @@ dummy:
 #  - /dev/sdf
 #  - /dev/sdg
 #  - /dev/sdg
+#
+# NOTE(leseb):
+# On a containerized scenario we only support A SINGLE journal
+# for all the OSDs on a given machine. If you don't, bad things will happen
+# This is a limitation we plan to fix at some point.
 #raw_journal_devices: []
 
 
@@ -176,11 +181,31 @@ dummy:
 #kv_type: etcd
 #kv_endpoint: 127.0.0.1
 #kv_port: 4001
-#ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1
 #ceph_docker_image: "ceph/daemon"
 #ceph_docker_image_tag: latest
-#ceph_osd_docker_extra_env: -e CLUSTER={{ cluster }} -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE -e OSD_JOURNAL_SIZE={{ journal_size }}
-#ceph_osd_docker_devices: "{{ devices }}"
-#ceph_docker_on_openstack: false
 #ceph_config_keys: [] # DON'T TOUCH ME
+#ceph_docker_on_openstack: false
+
+# PREPARE DEVICE
+# Make sure you only pass a single device to raw_journal_devices, otherwise this will fail horribly.
+# This is why we use [0] in the example.
+#
+# WARNING /!\ DMCRYPT scenario ONLY works with Docker version 1.12.5 and above
+#
+# Examples:
+# Journal collocated: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1
+# Dedicated journal: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_JOURNAL={{ raw_journal_devices[0] }}
+# Encrypted OSD: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1
+# Encrypted OSD with dedicated journal: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1 -e OSD_JOURNAL={{ raw_journal_devices[0] }}
+#
+#ceph_osd_docker_devices: "{{ devices }}"
+#ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1
+
+# ACTIVATE DEVICE
+# Examples:
+# Journal collocated or Dedicated journal: ceph_osd_docker_extra_env: -e CLUSTER={{ cluster }} -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE -e OSD_JOURNAL_SIZE={{ journal_size }}
+# Encrypted OSD or Encrypted OSD with dedicated journal: ceph_osd_docker_extra_env: -e CLUSTER={{ cluster }} -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_DMCRYPT=1
+#
+#ceph_osd_docker_extra_env: -e CLUSTER={{ cluster }} -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE -e OSD_JOURNAL_SIZE={{ journal_size }}
+#ceph_osd_docker_run_script_path: "/usr/share" # script called by systemd to run the docker command
 
