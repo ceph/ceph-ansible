@@ -1,3 +1,4 @@
+import pytest
 
 class TestInstall(object):
 
@@ -13,6 +14,7 @@ class TestInstall(object):
     def test_ceph_conf_is_a_file(self, File, node):
         assert File(node["conf_path"]).is_file
 
+    @pytest.mark.no_docker
     def test_ceph_command_exists(self, Command):
         assert Command.exists("ceph")
 
