@@ -1,0 +1,36 @@
+---
+- name: determine if node is registered with subscription-manager.
+  command: subscription-manager identity
+  register: subscription
+  changed_when: false
+  always_run: true
+
+- name: check if the rhel 7 extras repo is already present
+  shell: yum --noplugins --cacheonly repolist | grep -sq rhel-7-server-extras-rpms
+  changed_when: false
+  failed_when: false
+  register: rh_extras_repo
+  always_run: true
+  when: mon_group_name in group_names
+
+- name: enable rhel 7 extras repository
+  command: subscription-manager repos --enable rhel-7-server-extras-rpms
+  changed_when: false
+  when:
+    - mon_group_name in group_names
+    - rh_extras_repo.rc != 0
+
+- name: check if the EPEL repo is already present
+  shell: yum --noplugins --cacheonly repolist | grep -sq ^epel/{{ ansible_architecture }}
+  changed_when: false
+  failed_when: false
+  register: rh_epel_repo
+  always_run: true
+  when: mon_group_name in group_names
+
+- name: enable EPEL repository
+  shell: sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm
+  changed_when: false
+  when:
+    - mon_group_name in group_names
+    - rh_epel_repo.rc != 0
