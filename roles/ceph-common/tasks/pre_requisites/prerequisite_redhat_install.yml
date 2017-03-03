@@ -21,7 +21,8 @@
     - rh_extras_repo.rc != 0
 
 - name: check if the epel repo is already present
-  shell: yum --noplugins --cacheonly repolist | grep -sq ^epel/{{ ansible_architecture }}
+  shell: |
+    yum --noplugins --cacheonly repolist | grep -sq ^epel/{{ ansible_architecture }}
   changed_when: false
   failed_when: false
   register: rh_epel_repo
@@ -32,7 +33,6 @@
   yum:
     name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm
     state: installed
-  changed_when: false
   when:
     - mon_group_name in group_names
     - rh_epel_repo.rc != 0
