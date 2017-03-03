@@ -1,16 +1,4 @@
 ---
-- name: check if it is Atomic host
-  stat: path=/run/ostree-booted
-  register: stat_ostree
-  always_run: true
-
-- name: set fact for using Atomic host
-  set_fact:
-      is_atomic: '{{ stat_ostree.stat.exists }}'
-
-- include: pre_requisite.yml
-  when: not is_atomic
-
 - include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_atomic.yml"
   when:
     - is_atomic
