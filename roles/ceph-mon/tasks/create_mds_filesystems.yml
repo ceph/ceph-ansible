@@ -15,14 +15,11 @@
   register: check_existing_cephfs
   changed_when: false
   failed_when: false
-  when: inventory_hostname == groups.mons|last
 
 - name: create ceph filesystem
   command: ceph --cluster {{ cluster }} fs new {{ cephfs }} {{ cephfs_metadata }} {{ cephfs_data }}
   changed_when: false
-  when:
-    - inventory_hostname == groups.mons|last
-    - check_existing_cephfs.rc != 0
+  when: check_existing_cephfs.rc != 0
 
 - name: allow multimds
   command: ceph --cluster {{ cluster }} fs set {{ cephfs }} allow_multimds true --yes-i-really-mean-it
