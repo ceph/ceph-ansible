@@ -2,6 +2,19 @@
 # Try "make" (for SRPMS) or "make rpm"
 
 NAME = ceph-ansible
+
+# Set the RPM package NVR from "git describe".
+# Examples:
+#
+#  A "git describe" value of "v2.2.0rc1" would create an NVR
+#  "ceph-ansible-2.2.0-0.rc1.1.el7"
+#
+#  A "git describe" value of "v2.2.0rc1-1-gc465f85" would create an NVR
+#  "ceph-ansible-2.2.0-0.rc1.1.gc465f85.el7"
+#
+#  A "git describe" value of "v2.2.0" creates an NVR
+#  "ceph-ansible-2.2.0-1.el7"
+
 VERSION := $(shell git describe --tags --abbrev=0 --match 'v*' | sed 's/^v//')
 COMMIT := $(shell git rev-parse HEAD)
 SHORTCOMMIT := $(shell echo $(COMMIT) | cut -c1-7)
@@ -10,7 +23,12 @@ RELEASE := $(shell git describe --tags --match 'v*' \
              | sed 's/^[^-]*-//' \
              | sed 's/-/./')
 ifeq ($(VERSION),$(RELEASE))
-  RELEASE = 0
+  RELEASE = 1
+endif
+ifneq (,$(findstring rc,$(VERSION)))
+    RC := $(shell echo $(VERSION) | sed 's/.*rc/rc/')
+    RELEASE := 0.$(RC).$(RELEASE)
+    VERSION := $(subst $(RC),,$(VERSION))
 endif
 NVR := $(NAME)-$(VERSION)-$(RELEASE).el7
 
