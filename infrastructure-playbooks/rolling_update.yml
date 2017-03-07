@@ -34,17 +34,12 @@
 
 
 - name: gather facts and check the init system
-  vars:
-    mon_group_name:       mons
-    osd_group_name:       osds
-    mds_group_name:       mdss
-    rgw_group_name:       rgws
 
   hosts:
-    - "{{ mon_group_name }}"
-    - "{{ osd_group_name }}"
-    - "{{ mds_group_name }}"
-    - "{{ rgw_group_name }}"
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
 
   become: True
   tasks:
@@ -55,13 +50,12 @@
 - name: upgrade ceph mon cluster
 
   vars:
-    mon_group_name:       mons
     health_mon_check_retries: 5
     health_mon_check_delay: 10
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ mon_group_name }}"
+    - "{{ mon_group_name|default('mons') }}"
 
   serial: 1
   become: True
@@ -170,13 +164,12 @@
 - name: upgrade ceph osds cluster
 
   vars:
-    osd_group_name: osds
     health_osd_check_retries: 40
     health_osd_check_delay: 30
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ osd_group_name }}"
+    - "{{ osd_group_name|default('osds') }}"
 
   serial: 1
   become: True
@@ -314,11 +307,10 @@
 - name: upgrade ceph mdss cluster
 
   vars:
-    mds_group_name: mdss
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ mds_group_name }}"
+    - "{{ mds_group_name|default('mdss') }}"
 
   serial: 1
   become: True
@@ -387,11 +379,10 @@
 - name: upgrade ceph rgws cluster
 
   vars:
-    rgw_group_name: rgws
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ rgw_group_name }}"
+    - "{{ rgw_group_name|default('rgws') }}"
 
   serial: 1
   become: True
