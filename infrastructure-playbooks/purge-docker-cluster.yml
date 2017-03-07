@@ -52,12 +52,6 @@
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-mds/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ mds_group_name }}.yml
-    failed_when: false
 
   - name: disable ceph mds service
     service:
@@ -96,12 +90,6 @@
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-rgw/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ rgw_group_name }}.yml
-    failed_when: false
 
   - name: disable ceph rgw service
     service:
@@ -140,12 +128,6 @@
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-rbd-mirror/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ rbdmirror_group_name }}.yml
-    failed_when: false
 
   - name: disable ceph rbd-mirror service
     service:
@@ -184,12 +166,6 @@
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-nfs/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ nfs_group_name }}.yml
-    failed_when: false
 
   - name: disable ceph nfs service
     service:
@@ -237,12 +213,6 @@
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-osd/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ osd_group_name }}.yml
-    failed_when: false
 
   - name: disable ceph osd service
     service:
@@ -322,15 +292,6 @@
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-mon/defaults/main.yml
-  - include_vars: roles/ceph-restapi/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ mon_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ restapi_group_name }}.yml
-    failed_when: false
 
   - name: disable ceph mon service
     service:
@@ -563,23 +524,11 @@
   gather_facts: false
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ mds_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ rgw_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ rbdmirror_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ nfs_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ osd_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ mon_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ restapi_group_name }}.yml
-    failed_when: false
+
+  - name: set fetch_directory value if not set
+    set_fact:
+      fetch_directory: "fetch/"
+    when: fetch_directory is not defined
 
   - name: purge fetch directory for localhost
     file:
