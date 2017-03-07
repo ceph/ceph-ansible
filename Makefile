@@ -10,7 +10,7 @@ RELEASE := $(shell git describe --tags --match 'v*' \
              | sed 's/^[^-]*-//' \
              | sed 's/-/./')
 ifeq ($(VERSION),$(RELEASE))
-  RELEASE = 0
+  RELEASE = 1
 endif
 NVR := $(NAME)-$(VERSION)-$(RELEASE).el7
 
