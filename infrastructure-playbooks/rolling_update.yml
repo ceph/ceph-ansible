@@ -152,7 +152,7 @@
 
     - name: waiting for the containerized monitor to join the quorum...
       shell: |
-        docker exec {{ hostvars[mon_host]['ansible_hostname'] }} ceph -s --cluster {{ cluster }} | grep quorum | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
+        docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph -s --cluster {{ cluster }} | grep quorum | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
       register: result
       until: result.rc == 0
       retries: "{{ health_mon_check_retries }}"
@@ -186,7 +186,7 @@
 
     - name: set containerized osd flags
       command: |
-          docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph osd set {{ item }} --cluster {{ cluster }}
+          docker exec ceph-osd-{{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph osd set {{ item }} --cluster {{ cluster }}
       with_items:
         - noout
         - noscrub
@@ -276,7 +276,7 @@
 
     - name: container - waiting for clean pgs...
       shell: |
-        test "$(docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/pgs.*//;s/^.*://;s/ //')" && docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
+        test "$(docker exec ceph-osd-{{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/pgs.*//;s/^.*://;s/ //')" && docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
       register: result
       until: result.rc == 0
       retries: "{{ health_osd_check_retries }}"
@@ -295,7 +295,7 @@
 
     - name: unset containerized osd flags
       command: |
-          docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph osd unset {{ item }} --cluster {{ cluster }}
+          docker exec ceph-osd-{{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph osd unset {{ item }} --cluster {{ cluster }}
       with_items:
         - noout
         - noscrub
