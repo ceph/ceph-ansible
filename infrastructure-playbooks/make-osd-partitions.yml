@@ -26,10 +26,25 @@
     osd_group_name: osds
     journal_typecode: 45b0969e-9b03-4f30-b4c6-b4b80ceff106
     data_typecode: 4fbd7e29-9d25-41b8-afd0-062c0ceff05d
+    devices: []
   hosts:
   - "{{ osd_group_name }}"
 
   tasks:
+  
+  - name: load a variable file for devices partition
+    include_vars: "{{ item }}"
+    with_first_found:
+      - files:
+          - "host_vars/{{ ansible_hostname }}.yml"
+          - "host_vars/default.yml"
+        skip: true
+        
+  - name: exit playbook, if devices not defined
+    fail:
+      msg: "devices must be define in host_vars/default.yml or host_vars/{{ ansible_hostname }}.yml"
+    when: devices is not defined
+
   - name: install sgdisk(gdisk)
     package:
       name: gdisk
