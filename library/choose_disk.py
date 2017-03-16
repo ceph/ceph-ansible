@@ -97,8 +97,6 @@ def get_alias(operator, left, right):
         if alias in operator:
             return aliases[alias]
 
-    return None
-
 
 _REGEXP = re.compile(r'^([^(]+)'          # function name
                      r'\(\s*([^,]+)'      # first argument
@@ -540,7 +538,6 @@ def get_var(module, variable):
     '''
     if variable in module.params["vars"]:
         return module.params["vars"][variable]
-    return None
 
 
 def main():
