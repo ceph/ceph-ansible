@@ -164,12 +164,10 @@ def get_keys_by_ceph_order(physical_disks, expected_type):
     return ceph_disks + non_ceph_disks
 
 
-def find_match(physical_disks, lookup_disks, module=None):
+def evaluate_operator(left, right, module=None):
     '''
-    Find a set of matching devices in physical_disks
+    Evaluate lines splitted in left/right items
     '''
-    matched_devices = {}
-    ignored_devices = []
 
     # associate a keyword and the associated function
     OPERATORS = {
@@ -181,6 +179,45 @@ def find_match(physical_disks, lookup_disks, module=None):
         "lte": _lte,
         "and": _and,
     }
+
+    # Default comparing operator is equal
+    operator = "equal"
+
+    # Test if we have another operator in the right operand
+    arguments = _REGEXP.search(right)
+    if arguments:
+            new_operator = arguments.group(1)
+
+            # Some operators are aliases to more complex commands.
+            # Let's make the substition in place and restart with it
+            alias = get_alias(new_operator, arguments.group(2), arguments.group(3))
+            if alias:
+                return evaluate_operator(left, alias, module)
+
+            # Check if the associated function exists
+            if new_operator in OPERATORS:
+                # and assign operands with the new values
+                operator = new_operator
+                right = arguments.group(2)
+                new_arguments = _REGEXP.search(right)
+                if new_arguments:
+                    # Don't forget to evaluate the two sides of the expression
+                    # Typical case when we shall compare a 'value' with : 'and( gt(x), lt(y) )'
+                    # The looking value always stays to the 'left' part of the expression
+                    new_right = arguments.group(3)
+                    return OPERATORS[operator](evaluate_operator(left, right, module), evaluate_operator(left, new_right, module))
+                    #           and           (                  value,gt(x)        ),                  (value,lt(y)            )
+            else:
+                fatal("Unsupported '%s' operator in : %s" % (new_operator, right), module)
+    return OPERATORS[operator](left, right)
+
+
+def find_match(physical_disks, lookup_disks, module=None):
+    '''
+    Find a set of matching devices in physical_disks
+    '''
+    matched_devices = {}
+    ignored_devices = []
 
     logger.info("Looking for matches")
 
@@ -223,40 +260,8 @@ def find_match(physical_disks, lookup_disks, module=None):
                 right = current_lookup[feature]
                 left = current_physical_disk[feature]
 
-                def evaluate_operator(left, right):
-                    # Default comparing operator is equal
-                    operator = "equal"
-
-                    # Test if we have another operator in the right operand
-                    arguments = _REGEXP.search(right)
-                    if arguments:
-                            new_operator = arguments.group(1)
-
-                            # Some operators are aliases to more complex commands.
-                            # Let's make the substition in place and restart with it
-                            alias = get_alias(new_operator, arguments.group(2), arguments.group(3))
-                            if alias:
-                                return evaluate_operator(left, alias)
-
-                            # Check if the associated function exists
-                            if new_operator in OPERATORS:
-                                # and assign operands with the new values
-                                operator = new_operator
-                                right = arguments.group(2)
-                                new_arguments = _REGEXP.search(right)
-                                if new_arguments:
-                                    # Don't forget to evaluate the two sides of the expression
-                                    # Typical case when we shall compare a 'value' with : 'and( gt(x), lt(y) )'
-                                    # The looking value always stays to the 'left' part of the expression
-                                    new_right = arguments.group(3)
-                                    return OPERATORS[operator](evaluate_operator(left, right), evaluate_operator(left, new_right))
-                                    #           and           (                  value,gt(x)),                   value,lt(y)     )
-                            else:
-                                fatal("Unsupported '%s' operator in : %s" % (new_operator, right), module)
-                    return OPERATORS[operator](left, right)
-
                 # Let's check if (left <operator> right) is True meaning the match is done
-                if evaluate_operator(left, right):
+                if evaluate_operator(left, right, module):
                     logger.debug("  %s : match  %s %s", physical_disk, left, right)
                     match_count = match_count + 1
                     continue

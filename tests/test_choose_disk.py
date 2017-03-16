@@ -192,4 +192,12 @@ def test_get_block_devices_persistent_name():
             result = choose_disk.get_block_devices_persistent_name(disk_facts)
             assert result == expected_result
 
+
+def test_evaluate_operator():
+    """
+    test_evaluate_operator - Evaluate expressions base on operators
+    """
+    assert choose_disk.evaluate_operator("12", "and(gt(10), lt(20))") == True
+
+
 # test_choosedisk.py ends here
