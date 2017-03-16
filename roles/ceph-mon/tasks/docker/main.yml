@@ -44,6 +44,10 @@
 - include: selinux.yml
   when: ansible_os_family == 'RedHat'
 
+- name: set docker_exec_cmd fact
+  set_fact:
+    docker_exec_cmd: "docker exec ceph-mon-{{ ansible_hostname }}"
+
 - include: start_docker_monitor.yml
 
 - name: wait for monitor socket to exist
@@ -76,3 +80,11 @@
     - groups[restapi_group_name] is defined
     - inventory_hostname == groups.mons|last
     - not mon_containerized_deployment_with_kv
+
+- include: "{{ playbook_dir }}/roles/ceph-mon/tasks/set_osd_pool_default_pg_num.yml"
+
+# create openstack pools only when all mons are up.
+- include: "{{ playbook_dir }}/roles/ceph-mon/tasks/openstack_config.yml"
+  when:
+    - openstack_config
+    - inventory_hostname == groups.mons|last
