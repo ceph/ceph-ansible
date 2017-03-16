@@ -1,0 +1,42 @@
+---
+- name: create mgr directory
+  file:
+    path: /var/lib/ceph/mgr/
+    state: directory
+    owner: "ceph"
+    group: "ceph"
+    mode: "0755"
+
+- name: create mgr directory
+  file:
+    path: /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}
+    state: directory
+    owner: "ceph"
+    group: "ceph"
+    mode: "0755"
+
+- name: copy mgr key
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.mgr.{{ ansible_hostname }}.keyring"
+    dest: "/var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0600"
+  when:
+    - cephx
+
+- name: set mgr key permissions
+  file:
+    path: /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring
+    owner: "ceph"
+    group: "ceph"
+    mode: "0600"
+  when:
+    - cephx
+
+- name: start and add that the mgr service to the init sequence
+  service:
+    name: "ceph-mgr@{{ ansible_hostname }}"
+    state: started
+    enabled: yes
+  changed_when: false

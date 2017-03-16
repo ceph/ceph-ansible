@@ -40,7 +40,19 @@
   changed_when: false
   when:
     - cephx
-    - groups[restapi_group_name] is defined
+    - groups.get(restapi_group_name, []) | length > 0
+    - inventory_hostname == groups[mon_group_name]|last
+
+- name: create ceph mgr keyring(s) when mon is not containerized
+  command: ceph --cluster {{ cluster }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring
+  args:
+    creates: /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring
+  changed_when: false
+  when:
+    - cephx
+    - groups.get(mgr_group_name, []) | length > 0
+    - inventory_hostname == groups[mon_group_name]|last
+  with_items: "{{ groups[mgr_group_name] }}"
 
 - include: set_osd_pool_default_pg_num.yml
 
@@ -92,13 +104,14 @@
     src: "{{ item }}"
     dest: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
     flat: yes
-  run_once: true
   with_items:
     - "{{ ceph_keys.get('stdout_lines') | default([]) }}"
     - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
     - /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
     - /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring
-  when: cephx
+  when:
+    - cephx
+    - inventory_hostname == groups[mon_group_name]|last
 
 - name: drop in a motd script to report status when logging in
   copy:

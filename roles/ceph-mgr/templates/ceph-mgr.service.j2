@@ -1,0 +1,30 @@
+[Unit]
+Description=Ceph Manager
+After=docker.service
+
+[Service]
+EnvironmentFile=-/etc/environment
+ExecStartPre=-/usr/bin/docker stop ceph-mgr-{{ ansible_hostname }}
+ExecStartPre=-/usr/bin/docker rm ceph-mgr-{{ ansible_hostname }}
+ExecStart=/usr/bin/docker run --rm --net=host \
+   {% if not mgr_containerized_deployment_with_kv -%}
+   -v /var/lib/ceph:/var/lib/ceph \
+   -v /etc/ceph:/etc/ceph \
+   {% else -%}
+   -e KV_TYPE={{kv_type}} \
+   -e KV_IP={{kv_endpoint}} \
+   -e KV_PORT={{kv_port}} \
+   {% endif -%}
+   -v /etc/localtime:/etc/localtime:ro \
+   -e CEPH_DAEMON=MGR \
+   {{ ceph_mgr_docker_extra_env }} \
+   --name=ceph-mgr-{{ ansible_hostname }} \
+   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+ExecStopPost=-/usr/bin/docker stop ceph-mgr-{{ ansible_hostname }}
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target
