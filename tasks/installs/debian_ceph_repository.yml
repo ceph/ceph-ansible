@@ -18,17 +18,16 @@
   changed_when: false
   when: ceph_stable
 
-# we must use curl instead of ansible's uri module because SNI support in
-# Python is only available in 2.7.9 and later, and most supported distributions
-# don't have that version, so a request to https fails.
-- name : fetch ceph development repository sources list file
-  command: "curl -L https://shaman.ceph.com/api/repos/ceph/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_lsb.codename }}/repo"
+- name: fetch ceph development repository sources list file
+  uri:
+    url: https://shaman.ceph.com/api/repos/ceph/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_lsb.codename }}/repo
+    return_content: yes
   register: ceph_dev_deb_repo
   when: ceph_dev
 
 - name: add ceph development repository
   apt_repository:
-    repo: "{{ ceph_dev_deb_repo.stdout }}"
+    repo: "{{ ceph_dev_deb_repo.content }}"
     state: present
   changed_when: false
   when: ceph_dev
