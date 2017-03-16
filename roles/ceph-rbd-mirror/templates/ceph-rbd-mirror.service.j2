@@ -4,8 +4,8 @@ After=docker.service
 
 [Service]
 EnvironmentFile=-/etc/environment
-ExecStartPre=-/usr/bin/docker stop ceph-rdb-mirror-{{ ansible_hostname }}
-ExecStartPre=-/usr/bin/docker rm ceph-rdb-mirror-{{ ansible_hostname }}
+ExecStartPre=-/usr/bin/docker stop ceph-rbd-mirror-{{ ansible_hostname }}
+ExecStartPre=-/usr/bin/docker rm ceph-rbd-mirror-{{ ansible_hostname }}
 ExecStart=/usr/bin/docker run --rm --net=host \
    {% if not rbd_mirror_containerized_deployment_with_kv -%}
    -v /etc/ceph:/etc/ceph \
@@ -16,9 +16,9 @@ ExecStart=/usr/bin/docker run --rm --net=host \
    {% endif -%}
    -v /etc/localtime:/etc/localtime:ro \
    -e CEPH_DAEMON=RBD_MIRROR \
-   --name=ceph-rdb-mirror-{{ ansible_hostname }} \
+   --name=ceph-rbd-mirror-{{ ansible_hostname }} \
    {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-ExecStopPost=-/usr/bin/docker stop ceph-rdb-mirror-{{ ansible_hostname }}
+ExecStopPost=-/usr/bin/docker stop ceph-rbd-mirror-{{ ansible_hostname }}
 Restart=always
 RestartSec=10s
 TimeoutStartSec=120
