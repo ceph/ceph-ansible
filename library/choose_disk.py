@@ -350,9 +350,9 @@ def expand_disks(lookup_disks, ceph_type="", module=None):
     return final_disks
 
 
-def is_ceph_disk(partition):
+def disk_label(partition):
     '''
-    Check if a partition is containing some ceph structures
+    Reports if a partition is containing some ceph structures
     '''
     stdout = subprocess.check_output(["lsblk", "-no", "PARTLABEL", "%s" % partition])
 
@@ -389,7 +389,7 @@ def select_only_free_devices(physical_disks):
         #    reuse them
         if len(current_physical_disk['partitions']) > 0:
             for partition in sorted(current_physical_disk['partitions']):
-                disk_type = is_ceph_disk("/dev/" + partition)
+                disk_type = disk_label("/dev/" + partition)
                 if disk_type:
                     if ceph_disk:
                         ceph_disk += " + "
