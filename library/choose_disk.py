@@ -497,14 +497,15 @@ def show_resulting_devices(matched_devices, physical_disks):
         logger.info(" %s", bdev)
 
 
-def setup_logging():
+def setup_logging(filename=None):
     '''
     Preparing the logging system
     '''
-    hdlr = logging.FileHandler('/var/log/choose_disk.log')
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-    hdlr.setFormatter(formatter)
-    logger.addHandler(hdlr)
+    if filename:
+        hdlr = logging.FileHandler(filename)
+        hdlr.setFormatter(formatter)
+        logger.addHandler(hdlr)
     logger.setLevel(logging.INFO)
     logger.info("############")
     logger.info("# Starting #")
