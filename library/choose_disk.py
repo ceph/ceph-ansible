@@ -461,7 +461,7 @@ def fake_device(legacy_devices, ceph_type):
     devices = {}
     count = 0
     for device in legacy_devices:
-        devices["%s_%d" % (ceph_type, count)] = {"bdev": os.path.dirname(device)+"/"+os.path.basename(device)}
+        devices["%s_%d" % (ceph_type, count)] = {"bdev": os.path.join(os.path.dirname(device), os.path.basename(device))}
         count = count + 1
 
     return devices
