@@ -266,7 +266,7 @@
 
     - name: waiting for clean pgs...
       shell: |
-        test "$(ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(ceph pg stat --cluster {{ cluster }}  | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
+        test "$(ceph pg stat --cluster {{ cluster }} | tr , '\n'  | sed 's/^.*pgs: //' | awk '/active.clean/ { SUM += $1 } END {print SUM}')" -eq "$(ceph pg stat --cluster {{ cluster }}  | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
       register: result
       until: result.rc == 0
       retries: "{{ health_osd_check_retries }}"
