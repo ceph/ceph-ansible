@@ -96,8 +96,7 @@
 
   - name: make partitions on new ssd
     shell: >
-      sgdisk --new={{item.item[1].index}}:0:+{{item.item[1].size}} "--change-name={{ item.item[1].index }}:ceph journal" --typecode={{ item.item[1].index
- }}:{{ journal_typecode }} --partition-guid={{ item.item[1].index }}:{{ item.stdout }} --mbrtogpt -- /dev/{{ item.item[0].device_name }}
+      sgdisk --new={{item.item[1].index}}:0:+{{item.item[1].size}} "--change-name={{ item.item[1].index }}:ceph journal" --typecode={{ item.item[1].index }}:{{ journal_typecode }} --partition-guid={{ item.item[1].index }}:{{ item.stdout }} --mbrtogpt -- /dev/{{ item.item[0].device_name }}
     with_items:
       - "{{ osds_uuid.results }}"
     when: dev_ssds is defined
@@ -111,18 +110,18 @@
       - "{{ osds_uuid.results }}"
     when: dev_ssds is defined
 
-   - name: reinitialize osd(s) journal in new ssd
-     shell: >
+  - name: reinitialize osd(s) journal in new ssd
+    shell: >
        ceph-osd -i {{ item.item[1].osd_id }} --mkjournal
-     with_items:
-       - "{{ osds_uuid.results }}"
-     when: dev_ssds is defined
+    with_items:
+      - "{{ osds_uuid.results }}"
+    when: dev_ssds is defined
  
-   - name: start osd(s) service
-     service:
-       name: "ceph-osd@{{ item.item[1].osd_id }}"
-       state: started
-       enabled: yes
-     with_items:
+  - name: start osd(s) service
+    service:
+      name: "ceph-osd@{{ item.item[1].osd_id }}"
+      state: started
+      enabled: yes
+    with_items:
        - "{{ osds_uuid.results }}"
-     when: dev_ssds is defined
+    when: dev_ssds is defined
