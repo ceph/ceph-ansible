@@ -56,6 +56,12 @@
    dev_ssds: []
 
   tasks: 
+  - name: get the name of the existing ceph cluster
+    shell: |
+      basename $(grep -R fsid /etc/ceph/ | egrep -o '^[^.]*')
+    changed_when: false
+    register: cluster_name
+        
   - name: get osd(s) if directory stat
     stat:
       path: "/var/lib/ceph/osd/ceph-{{ item.1.osd_id }}/journal_uuid"
@@ -105,10 +111,10 @@
 
   - name: reinitialize osd(s) journal in new ssd
     shell: >
-       ceph-osd -i {{ item.item[1].osd_id }} --mkjournal
+       ceph-osd -i {{ item.item[1].osd_id }} --mkjournal --cluster {{ cluster_name.stdout }}
     with_items:
       - "{{ osds_uuid.results }}"
-    when: dev_ssds is defined
+    when: dev_ssds is defined and cluster_name is defined
  
   - name: start osd(s) service
     service:
