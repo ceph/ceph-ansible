@@ -64,7 +64,7 @@
         
   - name: get osd(s) if directory stat
     stat:
-      path: "/var/lib/ceph/osd/ceph-{{ item.1.osd_id }}/journal_uuid"
+      path: "/var/lib/ceph/osd/{{ cluster_name }}-{{ item.1.osd_id }}/journal_uuid"
     register: osds_dir_stat
     with_subelements:
       - "{{ dev_ssds }}"
@@ -86,7 +86,7 @@
     when: dev_ssds is defined
     
   - name: get osd(s) journal uuid
-    shell: cat "/var/lib/ceph/osd/ceph-{{ item.1.osd_id }}/journal_uuid"
+    shell: cat "/var/lib/ceph/osd/{{ cluster_name.stdout }}-{{ item.1.osd_id }}/journal_uuid"
     register: osds_uuid
     with_subelements:
       - "{{ dev_ssds }}"
