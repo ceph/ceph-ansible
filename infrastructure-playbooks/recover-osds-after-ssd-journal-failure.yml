@@ -3,13 +3,13 @@
 # You will also realise that it’s really simple to bring your 
 # OSDs back to life after replacing your faulty SSD with a new one.
 #
-# You should define `dev_ssds` variable for host which change ssds after
-# failture. 
+# You should define `dev_ssds` variable for host which changes ssds after
+# failure. 
 # 
 # For example in host_vars/hostname1.yml
 #
 # dev_ssds:
-# - device_name: sdd
+# - device_name: /dev/sdd
 #   partitions:
 #   - index: 1
 #     size: 10G
@@ -17,17 +17,17 @@
 #   - index: 2
 #     size: 10G
 #     osd_id: 1
-# - device_name: sdf  
+# - device_name: /dev/sdf
 #   partitions:       
 #   - index: 1        
 #     size: 10G       
 #     osd_id: 2       
 #
-# @param device_name: The device name of new ssd
+# @param device_name: The full device path of new ssd
 # @param partitions:  The custom partition layout of new ssd
 # @param index:  The index of this partition
 # @param size:  The size of this partition
-# @param osd_id: Which osds's journal this pattition for.
+# @param osd_id: Which osds's journal this parttition for.
 #
 # ansible-playbook recover-osds-after-ssd-journal-failure.yml
 #     Prompts for select which host to recover, defaults to null,  
@@ -55,7 +55,10 @@
    journal_typecode: 45b0969e-9b03-4f30-b4c6-b4b80ceff106
    dev_ssds: []
 
-  tasks: 
+  tasks:
+  - fail: msg="please define dev_ssds variable"
+    when: dev_ssds|length <= 0
+
   - name: get the name of the existing ceph cluster
     shell: |
       basename $(grep -R fsid /etc/ceph/ | egrep -o '^[^.]*')
@@ -69,7 +72,6 @@
     with_subelements:
       - "{{ dev_ssds }}"
       - partitions
-    when: dev_ssds is defined
  
   - name: exit playbook osd(s) is not on this host
     fail:
@@ -77,13 +79,13 @@
     with_items:
         osds_dir_stat.results
     when:
-      -  osds_dir_stat is defined and item.stat.exists == false
+      - osds_dir_stat is defined 
+      - item.stat.exists == false
 
   - name: install sgdisk(gdisk)
     package:
       name: gdisk
       state: present
-    when: dev_ssds is defined
     
   - name: get osd(s) journal uuid
     shell: cat "/var/lib/ceph/osd/{{ cluster_name.stdout }}-{{ item.1.osd_id }}/journal_uuid"
@@ -91,14 +93,12 @@
     with_subelements:
       - "{{ dev_ssds }}"
       - partitions
-    when: dev_ssds is defined
 
   - name: make partitions on new ssd
     shell: >
-      sgdisk --new={{item.item[1].index}}:0:+{{item.item[1].size}} "--change-name={{ item.item[1].index }}:ceph journal" --typecode={{ item.item[1].index }}:{{ journal_typecode }} --partition-guid={{ item.item[1].index }}:{{ item.stdout }} --mbrtogpt -- /dev/{{ item.item[0].device_name }}
+      sgdisk --new={{item.item[1].index}}:0:+{{item.item[1].size}} "--change-name={{ item.item[1].index }}:ceph journal" --typecode={{ item.item[1].index }}:{{ journal_typecode }} --partition-guid={{ item.item[1].index }}:{{ item.stdout }} --mbrtogpt -- {{ item.item[0].device_name }}
     with_items:
       - "{{ osds_uuid.results }}"
-    when: dev_ssds is defined
 
   - name: stop osd(s) service
     service:
@@ -107,14 +107,13 @@
       enabled: no
     with_items:
       - "{{ osds_uuid.results }}"
-    when: dev_ssds is defined
 
   - name: reinitialize osd(s) journal in new ssd
     shell: >
        ceph-osd -i {{ item.item[1].osd_id }} --mkjournal --cluster {{ cluster_name.stdout }}
     with_items:
       - "{{ osds_uuid.results }}"
-    when: dev_ssds is defined and cluster_name is defined
+    when: cluster_name is defined
  
   - name: start osd(s) service
     service:
@@ -123,4 +122,3 @@
       enabled: yes
     with_items:
        - "{{ osds_uuid.results }}"
-    when: dev_ssds is defined
