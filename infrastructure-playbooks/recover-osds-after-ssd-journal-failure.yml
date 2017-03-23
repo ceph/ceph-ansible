@@ -82,7 +82,7 @@
       state: present
     
   - name: get osd(s) journal uuid
-    shell: cat "/var/lib/ceph/osd/{{ cluster }}-{{ item.1.osd_id }}/journal_uuid"
+    command: cat "/var/lib/ceph/osd/{{ cluster }}-{{ item.1.osd_id }}/journal_uuid"
     register: osds_uuid
     with_subelements:
       - "{{ dev_ssds }}"
@@ -105,8 +105,7 @@
       - "{{ osds_uuid.results }}"
 
   - name: reinitialize osd(s) journal in new ssd
-    shell: >
-       ceph-osd -i {{ item.item[1].osd_id }} --mkjournal --cluster {{ cluster }}
+    command: ceph-osd -i {{ item.item[1].osd_id }} --mkjournal --cluster {{ cluster }}
     with_items:
       - "{{ osds_uuid.results }}"
  
