@@ -90,7 +90,10 @@
 
   - name: make partitions on new ssd
     shell: >
-      sgdisk --new={{item.item[1].index}}:0:+{{item.item[1].size}} "--change-name={{ item.item[1].index }}:ceph journal" --typecode={{ item.item[1].index }}:{{ journal_typecode }} --partition-guid={{ item.item[1].index }}:{{ item.stdout }} --mbrtogpt -- {{ item.item[0].device_name }}
+      sgdisk --new={{item.item[1].index}}:0:+{{item.item[1].size}} "--change-name={{ item.item[1].index }}:ceph journal" 
+      --typecode={{ item.item[1].index }}:{{ journal_typecode }} 
+      --partition-guid={{ item.item[1].index }}:{{ item.stdout }} 
+      --mbrtogpt -- {{ item.item[0].device_name }}
     with_items:
       - "{{ osds_uuid.results }}"
 
@@ -98,7 +101,7 @@
     service:
       name: "ceph-osd@{{ item.item[1].osd_id }}"
       state: stopped
-      enabled: no
+      enabled: yes
     with_items:
       - "{{ osds_uuid.results }}"
 
