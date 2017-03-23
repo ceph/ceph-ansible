@@ -27,7 +27,7 @@
 # @param partitions:  The custom partition layout of new ssd
 # @param index:  The index of this partition
 # @param size:  The size of this partition
-# @param osd_id: Which osds's journal this parttition for.
+# @param osd_id: Which osds's journal this partition for.
 #
 # ansible-playbook recover-osds-after-ssd-journal-failure.yml
 #     Prompts for select which host to recover, defaults to null,  
@@ -58,16 +58,10 @@
   tasks:
   - fail: msg="please define dev_ssds variable"
     when: dev_ssds|length <= 0
-
-  - name: get the name of the existing ceph cluster
-    shell: |
-      basename $(grep -R fsid /etc/ceph/ | egrep -o '^[^.]*')
-    changed_when: false
-    register: cluster_name
-        
+ 
   - name: get osd(s) if directory stat
     stat:
-      path: "/var/lib/ceph/osd/{{ cluster_name.stdout }}-{{ item.1.osd_id }}/journal_uuid"
+      path: "/var/lib/ceph/osd/{{ cluster }}-{{ item.1.osd_id }}/journal_uuid"
     register: osds_dir_stat
     with_subelements:
       - "{{ dev_ssds }}"
@@ -88,7 +82,7 @@
       state: present
     
   - name: get osd(s) journal uuid
-    shell: cat "/var/lib/ceph/osd/{{ cluster_name.stdout }}-{{ item.1.osd_id }}/journal_uuid"
+    shell: cat "/var/lib/ceph/osd/{{ cluster }}-{{ item.1.osd_id }}/journal_uuid"
     register: osds_uuid
     with_subelements:
       - "{{ dev_ssds }}"
@@ -110,10 +104,9 @@
 
   - name: reinitialize osd(s) journal in new ssd
     shell: >
-       ceph-osd -i {{ item.item[1].osd_id }} --mkjournal --cluster {{ cluster_name.stdout }}
+       ceph-osd -i {{ item.item[1].osd_id }} --mkjournal --cluster {{ cluster }}
     with_items:
       - "{{ osds_uuid.results }}"
-    when: cluster_name is defined
  
   - name: start osd(s) service
     service:
