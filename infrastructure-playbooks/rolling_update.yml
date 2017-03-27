@@ -62,7 +62,7 @@
 
   pre_tasks:
     - name: set mon_host_count
-      set_fact: mon_host_count={{ groups.mons | length }}
+      set_fact: mon_host_count={{ groups[mon_group_name] | length }}
 
     - debug: msg="WARNING - upgrading a ceph cluster with only one monitor node ({{ inventory_hostname }})"
       when: mon_host_count | int == 1
@@ -125,18 +125,18 @@
         - mon_containerized_deployment
 
     - name: set mon_host_count
-      set_fact: mon_host_count={{ groups.mons | length }}
+      set_fact: mon_host_count={{ groups[mon_group_name] | length }}
 
     - name: select a running monitor if multiple monitors
       set_fact: mon_host={{ item }}
-      with_items: "{{ groups.mons }}"
+      with_items: "{{ groups[mon_group_name] }}"
       when:
         - mon_host_count | int > 1
         - item != inventory_hostname
 
     - name: select first monitor if only one monitor
       set_fact: mon_host={{ item }}
-      with_items: "{{ groups.mons[0] }}"
+      with_items: "{{ groups[mon_group_name][0] }}"
       when:
         - mon_host_count | int == 1
 
@@ -181,17 +181,17 @@
         - noout
         - noscrub
         - nodeep-scrub
-      delegate_to: "{{ groups.mons[0] }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       when: not mon_containerized_deployment
 
     - name: set containerized osd flags
       command: |
-          docker exec ceph-osd-{{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph osd set {{ item }} --cluster {{ cluster }}
+          docker exec ceph-osd-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph osd set {{ item }} --cluster {{ cluster }}
       with_items:
         - noout
         - noscrub
         - nodeep-scrub
-      delegate_to: "{{ groups.mons[0] }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       when: mon_containerized_deployment
 
     - name: get osd numbers
@@ -271,17 +271,17 @@
       until: result.rc == 0
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
-      delegate_to: "{{ groups.mons[0] }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       when: not osd_containerized_deployment
 
     - name: container - waiting for clean pgs...
       shell: |
-        test "$(docker exec ceph-osd-{{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/pgs.*//;s/^.*://;s/ //')" && docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
+        test "$(docker exec ceph-osd-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(docker exec {{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/pgs.*//;s/^.*://;s/ //')" && docker exec {{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
       register: result
       until: result.rc == 0
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
-      delegate_to: "{{ groups.mons[0] }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       when: osd_containerized_deployment
 
     - name: unset osd flags
@@ -290,17 +290,17 @@
         - noout
         - noscrub
         - nodeep-scrub
-      delegate_to: "{{ groups.mons[0] }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       when: not osd_containerized_deployment
 
     - name: unset containerized osd flags
       command: |
-          docker exec ceph-osd-{{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph osd unset {{ item }} --cluster {{ cluster }}
+          docker exec ceph-osd-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph osd unset {{ item }} --cluster {{ cluster }}
       with_items:
         - noout
         - noscrub
         - nodeep-scrub
-      delegate_to: "{{ groups.mons[0] }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       when: osd_containerized_deployment
 
 

@@ -59,11 +59,11 @@
 
 - name: force peer addition as potential bootstrap peer for cluster bringup
   command: docker exec ceph-mon-{{ ansible_hostname }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ ansible_fqdn }}.asok add_bootstrap_peer_hint {{ hostvars[item]['ansible_' + ceph_mon_docker_interface].ipv4.address }}
-  with_items: "{{ groups.mons }}"
+  with_items: "{{ groups[mon_group_name] }}"
   changed_when: false
   failed_when: false
   when:
-    - inventory_hostname == groups.mons[0]
+    - "{{ inventory_hostname == groups[mon_group_name][0] }}"
     - not mon_containerized_deployment_with_kv
 
 - include: copy_configs.yml
@@ -78,7 +78,7 @@
     - cephx
     - mon_containerized_deployment
     - groups[restapi_group_name] is defined
-    - inventory_hostname == groups.mons|last
+    - "{{ inventory_hostname == groups[mon_group_name] | last }}"
     - not mon_containerized_deployment_with_kv
 
 - include: "{{ playbook_dir }}/roles/ceph-mon/tasks/set_osd_pool_default_pg_num.yml"
@@ -87,4 +87,4 @@
 - include: "{{ playbook_dir }}/roles/ceph-mon/tasks/openstack_config.yml"
   when:
     - openstack_config
-    - inventory_hostname == groups.mons|last
+    - "{{ inventory_hostname == groups[mon_group_name] | last }}"
