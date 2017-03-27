@@ -1,0 +1,80 @@
+---
+# Manage debian in a separate file because of specificities
+- include: debian_prerequisites.yml
+  when: ansible_distribution == 'Debian'
+
+- name: install docker on ubuntu
+  package:
+    name: docker.io
+    state: present
+    update_cache: yes
+  when: ansible_distribution == 'Ubuntu'
+  tags:
+    with_pkg
+
+# ensure extras enabled for docker
+- name: enable extras on centos
+  yum_repository:
+    name: extras
+    state: present
+    enabled: yes
+  when:
+    - ansible_distribution == 'CentOS'
+    - ceph_docker_enable_centos_extra_repo
+  tags:
+    with_pkg
+
+- name: install python-six
+  package:
+    name: python-six
+    state: present
+    update_cache: yes
+  when: ansible_distribution != 'Debian'
+  tags:
+    with_pkg
+
+- name: install python-docker-py on red hat / centos
+  package:
+    name: python-docker-py
+    state: present
+  when: ansible_os_family == 'RedHat'
+  tags:
+    with_pkg
+
+- name: install python-docker on ubuntu
+  package:
+    name: python-docker
+    state: present
+  when: ansible_distribution == 'Ubuntu'
+  tags:
+    with_pkg
+
+- name: install docker on red hat / centos
+  package:
+    name: docker
+    state: present
+  when: ansible_os_family == 'RedHat'
+  tags:
+    with_pkg
+
+- name: pause after docker install before starting (on openstack vms)
+  pause: seconds=5
+  when: ceph_docker_on_openstack
+  tags:
+    with_pkg
+
+- name: start docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  tags:
+    with_pkg
+
+- name: install ntp
+  package:
+    name: ntp
+    state: present
+  when: ntp_service_enabled
+  tags:
+    with_pkg

@@ -46,21 +46,12 @@
 
 - name: purge ceph mds cluster
 
-  vars:
-    mds_group_name: mdss
-
   hosts:
-    - "{{ mds_group_name }}"
+    - "{{ mds_group_name|default('mdss') }}"
 
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-mds/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ mds_group_name }}.yml
-    failed_when: false
 
   - name: disable ceph mds service
     service:
@@ -72,7 +63,7 @@
   - name: remove ceph mds container
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}"
+      name: "ceph-mds-{{ ansible_hostname }}"
       state: absent
     ignore_errors: true
 
@@ -93,21 +84,12 @@
 
 - name: purge ceph rgw cluster
 
-  vars:
-    rgw_group_name: rgws
-
   hosts:
-    - "{{ rgw_group_name }}"
+    - "{{ rgw_group_name|default('rgws') }}"
 
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-rgw/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ rgw_group_name }}.yml
-    failed_when: false
 
   - name: disable ceph rgw service
     service:
@@ -119,7 +101,7 @@
   - name: remove ceph rgw container
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}"
+      name: "ceph-rgw-{{ ansible_hostname }}"
       state: absent
     ignore_errors: true
 
@@ -140,21 +122,12 @@
 
 - name: purge ceph rbd-mirror cluster
 
-  vars:
-    rbdmirror_group_name: rbd-mirrors
-
   hosts:
-    - "{{ rbdmirror_group_name }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
 
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-rbd-mirror/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ rbdmirror_group_name }}.yml
-    failed_when: false
 
   - name: disable ceph rbd-mirror service
     service:
@@ -166,7 +139,7 @@
   - name: remove ceph rbd-mirror container
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}"
+      name: "ceph-rbd-mirror-{{ ansible_hostname }}"
       state: absent
     ignore_errors: true
 
@@ -187,21 +160,12 @@
 
 - name: purge ceph nfs cluster
 
-  vars:
-    nfs_group_name: nfss
-
   hosts:
-    - "{{ nfs_group_name }}"
+    - "{{ nfs_group_name|default('nfss') }}"
 
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-nfs/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ nfs_group_name }}.yml
-    failed_when: false
 
   - name: disable ceph nfs service
     service:
@@ -213,7 +177,7 @@
   - name: remove ceph nfs container
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}"
+      name: "ceph-nfs-{{ ansible_hostname }}"
       state: absent
     ignore_errors: true
 
@@ -243,21 +207,12 @@
 
 - name: purge ceph osd cluster
 
-  vars:
-    osd_group_name: osds
-
   hosts:
-    - "{{ osd_group_name }}"
+    - "{{ osd_group_name|default('osds') }}"
 
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-osd/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ osd_group_name }}.yml
-    failed_when: false
 
   - name: disable ceph osd service
     service:
@@ -270,7 +225,7 @@
   - name: remove ceph osd prepare container
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}-osd-prepare-{{ item | regex_replace('/', '') }}"
+      name: "ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
       state: absent
     with_items: "{{ ceph_osd_docker_devices }}"
     ignore_errors: true
@@ -278,49 +233,41 @@
   - name: remove ceph osd container
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}-osd-{{ item | regex_replace('/', '') }}"
+      name: "ceph-osd-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
       state: absent
     with_items: "{{ ceph_osd_docker_devices }}"
     ignore_errors: true
 
-  - name: zap ceph osd disk
-    docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}-osd-zap-{{ item | regex_replace('/', '') }}"
-      net: host
-      pid: host
-      state: started
-      privileged: yes
-      env: "CEPH_DAEMON=zap_device,OSD_DEVICE={{ item }}"
-      volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev:/dev,/run:/run"
-    with_items: "{{ ceph_osd_docker_devices }}"
+  - name: zap ceph osd disks
+    shell: |
+      docker run \
+      --privileged=true \
+      --name ceph-osd-zap-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }} \
+      -v /dev/:/dev/ \
+      -e OSD_DEVICE={{ item }} \
+      {{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+      zap_device
+    with_items:
+      - "{{ ceph_osd_docker_devices }}"
+      - "{{ raw_journal_devices }}"
+
+  - name: wait until the zap containers die
+    shell: |
+      docker ps | grep -sq ceph-osd-zap-{{ ansible_hostname }}-dev
+    register: zap_alive
+    failed_when: false
+    until: zap_alive.rc != 0
+    retries: 5
+    delay: 10
 
   - name: remove ceph osd zap disk container
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}-osd-zap-{{ item | regex_replace('/', '') }}"
+      name: "ceph-osd-zap-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
       state: absent
-    with_items: "{{ ceph_osd_docker_devices }}"
-
-  # zap twice
-  - name: zap ceph osd disk
-    docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}-osd-zap-{{ item | regex_replace('/', '') }}"
-      net: host
-      pid: host
-      state: started
-      privileged: yes
-      env: "CEPH_DAEMON=zap_device,OSD_DEVICE={{ item }}"
-      volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/dev:/dev,/run:/run"
-    with_items: "{{ ceph_osd_docker_devices }}"
-
-  - name: remove ceph osd zap disk container
-    docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}-osd-zap-{{ item | regex_replace('/', '') }}"
-      state: absent
-    with_items: "{{ ceph_osd_docker_devices }}"
+    with_items:
+      - "{{ ceph_osd_docker_devices }}"
+      - "{{ raw_journal_devices }}"
 
   - name: remove ceph osd service
     file:
@@ -339,25 +286,12 @@
 
 - name: purge ceph mon cluster
 
-  vars:
-    mon_group_name:       mons
-    restapi_group_name:   restapis
-
   hosts:
-    - "{{ mon_group_name }}"
+    - "{{ mon_group_name|default('mons') }}"
 
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-mon/defaults/main.yml
-  - include_vars: roles/ceph-restapi/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ mon_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ restapi_group_name }}.yml
-    failed_when: false
 
   - name: disable ceph mon service
     service:
@@ -369,14 +303,14 @@
   - name: remove ceph mon container
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}"
+      name: "ceph-mon-{{ ansible_hostname }}"
       state: absent
     ignore_errors: true
 
   - name: remove restapi container
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}-ceph-restapi"
+      name: "ceph-restapi-{{ ansible_hostname }}"
       state: absent
     ignore_errors: true
 
@@ -397,21 +331,13 @@
 
 - name: remove installed packages
 
-  vars:
-    mon_group_name:       mons
-    osd_group_name:       osds
-    mds_group_name:       mdss
-    rgw_group_name:       rgws
-    rbdmirror_group_name: rbd-mirrors
-    nfs_group_name:       nfss
-
   hosts:
-    - "{{ mon_group_name }}"
-    - "{{ osd_group_name }}"
-    - "{{ mds_group_name }}"
-    - "{{ rgw_group_name }}"
-    - "{{ rbdmirror_group_name }}"
-    - "{{ nfs_group_name }}"
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
 
   become: true
 
@@ -567,21 +493,13 @@
 
 - name: purge ceph directories
 
-  vars:
-    mon_group_name:       mons
-    osd_group_name:       osds
-    mds_group_name:       mdss
-    rgw_group_name:       rgws
-    rbdmirror_group_name: rbd-mirrors
-    nfs_group_name:       nfss
-
   hosts:
-    - "{{ mon_group_name }}"
-    - "{{ osd_group_name }}"
-    - "{{ mds_group_name }}"
-    - "{{ rgw_group_name }}"
-    - "{{ rbdmirror_group_name }}"
-    - "{{ nfs_group_name }}"
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -600,38 +518,17 @@
 
 - name: purge fetch directory
 
-  vars:
-    mon_group_name:       mons
-    osd_group_name:       osds
-    mds_group_name:       mdss
-    rgw_group_name:       rgws
-    rbdmirror_group_name: rbd-mirrors
-    nfs_group_name:       nfss
-    restapi_group_name:   restapis
-
   hosts:
     - localhost
 
   gather_facts: false
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ mds_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ rgw_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ rbdmirror_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ nfs_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ osd_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ mon_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ restapi_group_name }}.yml
-    failed_when: false
+
+  - name: set fetch_directory value if not set
+    set_fact:
+      fetch_directory: "fetch/"
+    when: fetch_directory is not defined
 
   - name: purge fetch directory for localhost
     file:

@@ -1,12 +1,12 @@
 ---
 - name: create openstack pool
-  command: ceph --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pg_num }}
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pg_num }}"
   with_items: "{{ openstack_pools | unique }}"
   changed_when: false
   failed_when: false
 
 - name: create openstack keys
-  command: ceph --cluster {{ cluster }} auth get-or-create {{ item.name }} {{ item.value }} -o /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth get-or-create {{ item.name }} {{ item.value }} -o /etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
   args:
     creates: /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
   with_items: "{{ openstack_keys }}"

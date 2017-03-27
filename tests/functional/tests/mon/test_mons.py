@@ -22,6 +22,7 @@ class TestMons(object):
         )
         assert Service(service_name).is_enabled
 
+    @pytest.mark.no_docker
     def test_can_get_cluster_health(self, node, Command):
         cmd = "sudo ceph --cluster={} --connect-timeout 5 -s".format(node["cluster_name"])
         output = Command.check_output(cmd)
@@ -30,6 +31,7 @@ class TestMons(object):
 
 class TestOSDs(object):
 
+    @pytest.mark.no_docker
     def test_all_osds_are_up_and_in(self, node, Command):
         cmd = "sudo ceph --cluster={} --connect-timeout 5 -s".format(node["cluster_name"])
         output = Command.check_output(cmd)

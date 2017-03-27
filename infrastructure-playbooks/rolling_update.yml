@@ -34,17 +34,12 @@
 
 
 - name: gather facts and check the init system
-  vars:
-    mon_group_name:       mons
-    osd_group_name:       osds
-    mds_group_name:       mdss
-    rgw_group_name:       rgws
 
   hosts:
-    - "{{ mon_group_name }}"
-    - "{{ osd_group_name }}"
-    - "{{ mds_group_name }}"
-    - "{{ rgw_group_name }}"
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
 
   become: True
   tasks:
@@ -55,13 +50,12 @@
 - name: upgrade ceph mon cluster
 
   vars:
-    mon_group_name:       mons
     health_mon_check_retries: 5
     health_mon_check_delay: 10
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ mon_group_name }}"
+    - "{{ mon_group_name|default('mons') }}"
 
   serial: 1
   become: True
@@ -78,7 +72,7 @@
         name: ceph-mon
         state: stopped
         args: id={{ ansible_hostname }}
-      when: ansible_service_mgr == 'systemd'
+      when: ansible_service_mgr == 'upstart'
 
     - name: stop ceph mons with sysvinit
       service:
@@ -148,7 +142,7 @@
 
     - name: waiting for the monitor to join the quorum...
       shell: |
-        ceph -s --cluster {{ cluster }} | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
+        ceph -s --cluster {{ cluster }} | grep election | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
       register: result
       until: result.rc == 0
       retries: "{{ health_mon_check_retries }}"
@@ -158,7 +152,7 @@
 
     - name: waiting for the containerized monitor to join the quorum...
       shell: |
-        docker exec {{ hostvars[mon_host]['ansible_hostname'] }} ceph -s --cluster {{ cluster }} | grep quorum | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
+        docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph -s --cluster {{ cluster }} | grep quorum | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
       register: result
       until: result.rc == 0
       retries: "{{ health_mon_check_retries }}"
@@ -170,13 +164,12 @@
 - name: upgrade ceph osds cluster
 
   vars:
-    osd_group_name: osds
     health_osd_check_retries: 40
     health_osd_check_delay: 30
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ osd_group_name }}"
+    - "{{ osd_group_name|default('osds') }}"
 
   serial: 1
   become: True
@@ -193,7 +186,7 @@
 
     - name: set containerized osd flags
       command: |
-          docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph osd set {{ item }} --cluster {{ cluster }}
+          docker exec ceph-osd-{{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph osd set {{ item }} --cluster {{ cluster }}
       with_items:
         - noout
         - noscrub
@@ -273,7 +266,7 @@
 
     - name: waiting for clean pgs...
       shell: |
-        test "$(ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(ceph pg stat --cluster {{ cluster }}  | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
+        test "$(ceph pg stat --cluster {{ cluster }} | tr , '\n'  | sed 's/^.*pgs: //' | awk '/active.clean/ { SUM += $1 } END {print SUM}')" -eq "$(ceph pg stat --cluster {{ cluster }}  | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
       register: result
       until: result.rc == 0
       retries: "{{ health_osd_check_retries }}"
@@ -283,7 +276,7 @@
 
     - name: container - waiting for clean pgs...
       shell: |
-        test "$(docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/pgs.*//;s/^.*://;s/ //')" && docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
+        test "$(docker exec ceph-osd-{{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/pgs.*//;s/^.*://;s/ //')" && docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
       register: result
       until: result.rc == 0
       retries: "{{ health_osd_check_retries }}"
@@ -302,7 +295,7 @@
 
     - name: unset containerized osd flags
       command: |
-          docker exec {{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph osd unset {{ item }} --cluster {{ cluster }}
+          docker exec ceph-osd-{{ hostvars[groups.mons[0]]['ansible_hostname'] }} ceph osd unset {{ item }} --cluster {{ cluster }}
       with_items:
         - noout
         - noscrub
@@ -314,11 +307,10 @@
 - name: upgrade ceph mdss cluster
 
   vars:
-    mds_group_name: mdss
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ mds_group_name }}"
+    - "{{ mds_group_name|default('mdss') }}"
 
   serial: 1
   become: True
@@ -387,11 +379,10 @@
 - name: upgrade ceph rgws cluster
 
   vars:
-    rgw_group_name: rgws
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ rgw_group_name }}"
+    - "{{ rgw_group_name|default('rgws') }}"
 
   serial: 1
   become: True

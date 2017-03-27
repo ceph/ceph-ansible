@@ -24,13 +24,13 @@
     docker run --net=host \
     --pid=host \
     --privileged=true \
-    --name="{{ ansible_hostname }}-osd-prepare-{{ item.0 |
-    regex_replace('/', '') }}" \
+    --name="ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item.0 | regex_replace('/', '') }}" \
     -v /etc/ceph:/etc/ceph \
     -v /var/lib/ceph/:/var/lib/ceph/ \
     -v /dev:/dev \
     -v /etc/localtime:/etc/localtime:ro \
     -e "OSD_DEVICE={{ item.0 }}" \
+    -e "OSD_JOURNAL_UUID=$(python -c "import uuid; print uuid.uuid5(uuid.NAMESPACE_DNS, '{{ ansible_machine_id }}{{ item.0 }}')")" \
     -e CEPH_DAEMON=OSD_CEPH_DISK_PREPARE \
     {{ ceph_osd_docker_prepare_env }} \
     "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
@@ -47,11 +47,11 @@
     docker run  --net=host   \
     --pid=host \
     --privileged=true \
-    --name="{{ ansible_hostname }}-osd-prepare-{{ item.0 |
-    regex_replace('/', '') }}" \
+    --name="ceph-osd-prepare-{{ ansible_hostname }}-dev-{{ item.0 | regex_replace('/', '') }}" \
     -v /dev:/dev \
     -v /etc/localtime:/etc/localtime:ro \
     -e "OSD_DEVICE={{ item.0 }}" \
+    -e "OSD_JOURNAL_UUID=$(python -c "import uuid; print uuid.uuid5(uuid.NAMESPACE_DNS, '{{ ansible_machine_id }}{{ item.0 }}')")" \
     -e "{{ ceph_osd_docker_prepare_env }}" \
     -e CEPH_DAEMON=OSD_CEPH_DISK_PREPARE \
     -e KV_TYPE={{kv_type}} \
@@ -67,6 +67,15 @@
     - ceph_osd_docker_prepare_env is defined
     - osd_containerized_deployment_with_kv
 
+- name: generate ceph osd docker run script
+  become: true
+  template:
+    src: "{{ role_path }}/templates/ceph-osd-run.sh.j2"
+    dest: "{{ ceph_osd_docker_run_script_path }}/ceph-osd-run.sh"
+    owner: "root"
+    group: "root"
+    mode: "0744"
+
 - name: generate systemd unit file
   become: true
   template:
@@ -75,18 +84,15 @@
     owner: "root"
     group: "root"
     mode: "0644"
-  failed_when: false
 
 - name: enable systemd unit file for osd instance
   shell: systemctl enable ceph-osd@{{ item | basename }}.service
-  failed_when: false
   changed_when: false
   with_items: "{{ ceph_osd_docker_devices }}"
 
 - name: reload systemd unit files
   shell: systemctl daemon-reload
   changed_when: false
-  failed_when: false
 
 - name: systemd start osd container
   service:

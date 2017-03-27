@@ -1,2 +1,23 @@
 ---
 - include: system_checks.yml
+
+- name: check if it is atomic host
+  stat: path=/run/ostree-booted
+  register: stat_ostree
+  always_run: true
+
+- name: set fact for using atomic host
+  set_fact:
+    is_atomic: '{{ stat_ostree.stat.exists }}'
+
+- include: ./pre_requisites/prerequisites.yml
+  when: not is_atomic
+
+# NOTE(guits): would be nice to refact this block with L39-45 in roles/ceph-common/tasks/facts.yml
+- set_fact:
+    monitor_name: "{{ ansible_hostname }}"
+  when: not mon_use_fqdn
+
+- set_fact:
+    monitor_name: "{{ ansible_fqdn }}"
+  when: mon_use_fqdn
