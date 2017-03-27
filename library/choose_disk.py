@@ -427,13 +427,14 @@ def get_block_devices_persistent_name(physical_disks):
     matching_devices = {}
 
     # Searching in the /dev/disk/by-id/ which are the disks we look for
-    for f in os.listdir(directory):
-        device_name = os.readlink(directory + f).split("/")[-1]
-        if device_name in physical_disks:
-            if device_name not in matching_devices:
-                matching_devices[device_name] = [f]
-            else:
-                matching_devices[device_name].append(f)
+    for root, dirs, files in os.walk(directory, topdown=False):
+        for f in files:
+           device_name = os.path.basename(os.readlink(os.path.join(root, f)))
+           if device_name in physical_disks:
+               if device_name not in matching_devices:
+                   matching_devices[device_name] = [f]
+               else:
+                   matching_devices[device_name].append(f)
 
     # Saving matching disks and add the path of the block device
     # Output is like : Renaming        vdb to                        virtio-e0b94c7d-75ca-4175-a
