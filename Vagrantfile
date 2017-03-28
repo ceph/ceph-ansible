@@ -5,30 +5,29 @@ require 'yaml'
 require 'time'
 VAGRANTFILE_API_VERSION = '2'
 
-DEBUG = false
-
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
 settings=YAML.load_file(config_file)
 
-LABEL_PREFIX   = settings['label_prefix'] ? settings['label_prefix'] + "-" : ""
-NMONS          = settings['mon_vms']
-NOSDS          = settings['osd_vms']
-NMDSS          = settings['mds_vms']
-NRGWS          = settings['rgw_vms']
-NNFSS          = settings['nfs_vms']
-RESTAPI        = settings['restapi']
-NRBD_MIRRORS   = settings['rbd_mirror_vms']
-CLIENTS        = settings['client_vms']
-NISCSI_GWS     = settings['iscsi_gw_vms']
-PUBLIC_SUBNET  = settings['public_subnet']
-CLUSTER_SUBNET = settings['cluster_subnet']
-BOX            = settings['vagrant_box']
-BOX_URL        = settings['vagrant_box_url']
-SYNC_DIR       = settings['vagrant_sync_dir']
-MEMORY         = settings['memory']
-ETH            = settings['eth']
-DOCKER         = settings['docker']
-USER           = settings['ssh_username']
+LABEL_PREFIX    = settings['label_prefix'] ? settings['label_prefix'] + "-" : ""
+NMONS           = settings['mon_vms']
+NOSDS           = settings['osd_vms']
+NMDSS           = settings['mds_vms']
+NRGWS           = settings['rgw_vms']
+NNFSS           = settings['nfs_vms']
+RESTAPI         = settings['restapi']
+NRBD_MIRRORS    = settings['rbd_mirror_vms']
+CLIENTS         = settings['client_vms']
+NISCSI_GWS      = settings['iscsi_gw_vms']
+PUBLIC_SUBNET   = settings['public_subnet']
+CLUSTER_SUBNET  = settings['cluster_subnet']
+BOX             = settings['vagrant_box']
+BOX_URL         = settings['vagrant_box_url']
+SYNC_DIR        = settings['vagrant_sync_dir']
+MEMORY          = settings['memory']
+ETH             = settings['eth']
+DOCKER          = settings['docker']
+USER            = settings['ssh_username']
+DEBUG           = settings['debug']
 
 ASSIGN_STATIC_IP = !(BOX == 'openstack' or BOX == 'linode')
 DISABLE_SYNCED_FOLDER = settings.fetch('vagrant_disable_synced_folder', false)
@@ -111,7 +110,7 @@ ansible_provision = proc do |ansible|
   end
 
   if DEBUG then
-    ansible.verbose = '-vvv'
+    ansible.verbose = '-vvvv'
   end
   ansible.limit = 'all'
 end
