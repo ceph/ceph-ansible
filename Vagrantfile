@@ -28,6 +28,7 @@ ETH             = settings['eth']
 DOCKER          = settings['docker']
 USER            = settings['ssh_username']
 DEBUG           = settings['debug']
+LIBVIRT_CACHE   = settings['libvirt_cache']
 
 ASSIGN_STATIC_IP = !(BOX == 'openstack' or BOX == 'linode')
 DISABLE_SYNCED_FOLDER = settings.fetch('vagrant_disable_synced_folder', false)
@@ -199,6 +200,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       client.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
         lv.random_hostname = true
+        lv.volume_cache = "#{LIBVIRT_CACHE}"
       end
 
       # Parallels
@@ -235,6 +237,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       rgw.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
         lv.random_hostname = true
+        lv.volume_cache = "#{LIBVIRT_CACHE}"
       end
 
       # Parallels
@@ -271,6 +274,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       nfs.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
         lv.random_hostname = true
+        lv.volume_cache = "#{LIBVIRT_CACHE}"
       end
 
       # Parallels
@@ -306,6 +310,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mds.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
         lv.random_hostname = true
+        lv.volume_cache = "#{LIBVIRT_CACHE}"
       end
       # Parallels
       mds.vm.provider "parallels" do |prl|
@@ -340,6 +345,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       rbd_mirror.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
         lv.random_hostname = true
+        lv.volume_cache = "#{LIBVIRT_CACHE}"
       end
       # Parallels
       rbd_mirror.vm.provider "parallels" do |prl|
@@ -374,6 +380,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       iscsi_gw.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
         lv.random_hostname = true
+        lv.volume_cache = "#{LIBVIRT_CACHE}"
       end
       # Parallels
       iscsi_gw.vm.provider "parallels" do |prl|
@@ -408,6 +415,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mon.vm.provider :libvirt do |lv|
         lv.memory = MEMORY
         lv.random_hostname = true
+        lv.volume_cache = "#{LIBVIRT_CACHE}"
       end
 
       # Parallels
@@ -471,6 +479,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         end
         lv.memory = MEMORY
         lv.random_hostname = true
+        lv.volume_cache = "#{LIBVIRT_CACHE}"
       end
 
       # Parallels
