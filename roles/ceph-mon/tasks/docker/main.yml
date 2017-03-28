@@ -51,14 +51,14 @@
 - include: start_docker_monitor.yml
 
 - name: wait for monitor socket to exist
-  command: docker exec ceph-mon-{{ ansible_hostname }} stat /var/run/ceph/{{ cluster }}-mon.{{ ansible_fqdn }}.asok
+  command: docker exec ceph-mon-{{ ansible_hostname }} stat /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok
   register: monitor_socket
   retries: 5
   delay: 15
   until: monitor_socket.rc == 0
 
 - name: force peer addition as potential bootstrap peer for cluster bringup
-  command: docker exec ceph-mon-{{ ansible_hostname }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ ansible_fqdn }}.asok add_bootstrap_peer_hint {{ hostvars[item]['ansible_' + ceph_mon_docker_interface].ipv4.address }}
+  command: docker exec ceph-mon-{{ ansible_hostname }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok add_bootstrap_peer_hint {{ hostvars[item]['ansible_' + ceph_mon_docker_interface].ipv4.address }}
   with_items: "{{ groups[mon_group_name] }}"
   changed_when: false
   failed_when: false
