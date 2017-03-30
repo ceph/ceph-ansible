@@ -21,16 +21,13 @@
     - osd_auto_discovery
 
 - name: manually prepare filestore osd disk(s) with collocated osd data and journal
-  command: "ceph-disk prepare --cluster {{ cluster }} {{ item.2 }}"
+  command: "ceph-disk prepare --cluster {{ cluster }} {{ item.1 }}"
   with_together:
     - "{{ parted_results.results }}"
-    - "{{ ispartition_results.results }}"
     - "{{ devices }}"
   when:
     - not item.0.get("skipped")
-    - not item.1.get("skipped")
     - item.0.get("rc", 0) != 0
-    - item.1.get("rc", 0) != 0
     - journal_collocation
     - not osd_auto_discovery
 

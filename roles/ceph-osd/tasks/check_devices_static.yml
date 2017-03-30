@@ -33,6 +33,42 @@
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0
 
+- name: check if a partition named 'ceph' exists for device with existing partitions
+  shell: "parted --script {{ item.1[:-1] }} print | egrep -sq '^ 1.*ceph'"
+  with_together:
+    - "{{ ispartition_results.results }}"
+    - "{{ devices }}"
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: is_part_parted_results
+  when: item.0.rc == 0
+
+- name: make sure the partition does not have any name
+  shell: |
+    [[ "$(blkid -o value -s PARTLABEL {{ item.2 }} | wc -l)" == "0" ]]
+  with_together:
+    - "{{ ispartition_results.results }}"
+    - "{{ is_part_parted_results.results }}"
+    - "{{ devices }}"
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: partition_name_results
+  when:
+    - item.0.rc == 0
+    - item.1.rc != 0
+
+- fail:
+    msg: "Looks like your device partition already has a name and it's not 'ceph', please provide an unnamed partition."
+  with_together:
+    - "{{ partition_name_results.results }}"
+    - "{{ is_part_parted_results.results }}"
+  when:
+    - item.0.get("rc", 0) != 0
+    - item.1.get("rc", 0) != 0
+
+# we check again for both...
 - name: check if a partition named 'ceph' exists
   shell: "parted --script {{ item.1 }} print | egrep -sq '^ 1.*ceph'"
   with_together:
@@ -43,3 +79,28 @@
   always_run: true
   register: parted_results
   when: item.0.rc != 0
+
+- name: check if a partition named 'ceph' exists
+  shell: "parted --script {{ item.1[:-1] }} print | egrep -sq '^ 1.*ceph'"
+  with_together:
+    - "{{ ispartition_results.results }}"
+    - "{{ devices }}"
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: parted_results
+  when: item.0.rc == 0
+
+- name: name the unnamed partition
+  shell: |
+    parted $(readlink -f {{ item.2[:-1] }}) name {{ item.2[-1] }} '"ceph data"'
+  changed_when: false
+  failed_when: false
+  always_run: true
+  with_together:
+    - "{{ ispartition_results.results }}"
+    - "{{ is_part_parted_results.results }}"
+    - "{{ devices }}"
+  when:
+    - item.0.rc == 0
+    - item.1.rc != 0
