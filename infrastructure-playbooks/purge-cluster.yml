@@ -203,7 +203,7 @@
       - osd_auto_discovery
 
   - name: get osd numbers
-    shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi"
+    shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
     register: osd_ids
     changed_when: false
 
@@ -224,10 +224,7 @@
     when: ansible_service_mgr == 'sysvinit'
 
   - name: stop ceph osds on ubuntu
-    shell: |
-      for id in $(ls /var/lib/ceph/osd/ |grep -oP '\d+$'); do
-        initctl stop ceph-osd cluster={{ cluster }} id=$id
-      done
+    command: initctl stop ceph-osd cluster={{ cluster }} id={{ item }}
     failed_when: false
     when: ansible_service_mgr == 'upstart'
     with_items: "{{ osd_ids.stdout_lines }}"
