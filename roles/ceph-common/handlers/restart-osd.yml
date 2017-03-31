@@ -4,14 +4,14 @@
 # for restarting them specifically.
 - name: restart ceph osds
   shell: |
-    for id in $(ls /var/lib/ceph/osd/ |grep -oP '\d+$'); do
+    for id in $(ls /var/lib/ceph/osd/ | sed 's/.*-//'); do
       systemctl restart ceph-osd@$id
       sleep 5
     done
   # serial: 1 would be the proper solution here, but that can only be set on play level
   # upstream issue: https://github.com/ansible/ansible/issues/12170
   run_once: true
-  with_items: "{{ groups[osd_group_name] }}"
+  with_items: "{{ groups.get(osd_group_name, []) }}"
   delegate_to: "{{ item }}"
   when:
     - socket.rc == 0

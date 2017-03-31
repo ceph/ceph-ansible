@@ -98,7 +98,7 @@
 
   - name: select a running monitor
     set_fact: mon_host={{ item }}
-    with_items: "{{ groups.mons }}"
+    with_items: "{{ groups[mon_group_name] }}"
     when: item != inventory_hostname
 
   - name: get current ceph fsid
@@ -179,7 +179,7 @@
 
   - name: collect osd ids
     shell: |
-      if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi
+      if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi
     register: osd_ids
     changed_when: false
 
@@ -260,7 +260,7 @@
     retries: 10
     delay: 10
     changed_when: false
-    delegate_to: "{{ groups.mons[0] }}"
+    delegate_to: "{{ groups[mon_group_name][0] }}"
 
 
 - name: switching from non-containerized to containerized ceph mds

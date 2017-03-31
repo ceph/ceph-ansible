@@ -42,7 +42,7 @@ def node(Ansible, Interface, Command, request):
         # boxes we test with use that interface. OSDs are the only
         # nodes that have this interface.
         cluster_address = Interface("eth2").addresses[0]
-        cmd = Command('sudo ls /var/lib/ceph/osd/ | grep -oP "\d+$"')
+        cmd = Command('sudo ls /var/lib/ceph/osd/ | sed "s/.*-//"')
         if cmd.rc == 0:
             osd_ids = cmd.stdout.rstrip("\n").split("\n")
             osds = osd_ids

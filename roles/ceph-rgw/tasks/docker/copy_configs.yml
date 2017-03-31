@@ -9,7 +9,7 @@
   wait_for: path="/var/lib/ceph/radosgw/{{ ansible_hostname }}/keyring"
   when:
     - nfs_obj_gw
-    - inventory_hostname == groups.rgws[0]
+    - inventory_hostname == groups[rgw_group_name][0]
 
 - name: stat for config and keys
   local_action: stat path={{ fetch_directory }}/docker_mon_files/{{ item }}
@@ -21,7 +21,7 @@
   register: statconfig
   when:
     - nfs_obj_gw
-    - inventory_hostname == groups.rgws[0]
+    - inventory_hostname == groups[rgw_group_name][0]
 
 - name: push ceph files to the ansible server
   fetch:
@@ -34,4 +34,4 @@
   when:
     - nfs_obj_gw
     - item.1.stat.exists == false
-    - inventory_hostname == groups.rgws[0]
+    - inventory_hostname == groups[rgw_group_name][0]
