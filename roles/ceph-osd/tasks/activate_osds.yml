@@ -2,53 +2,80 @@
 # NOTE (leseb) : this task is for disk devices only because of the explicit use of the first
 # partition.
 
-- name: automatically activate osd disk(s) without partitions
-  command: ceph-disk activate "/dev/{{ item.key | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1"
+- name: automatically activate osd disk(s) without partitions (legacy)
+  command: ceph-disk activate "{{ item | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1"
   ignore_errors: true
-  with_dict: "{{ ansible_devices }}"
+  with_items: "{{ legacy_devices }}"
   when:
-    - ansible_devices is defined
-    - item.value.removable == "0"
-    - item.value.partitions|count == 0
+    - "{{ legacy_devices|length > 0 }}"
     - journal_collocation
     - osd_auto_discovery
 
-- name: activate osd(s) when device is a disk
-  command: ceph-disk activate {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
-  with_together:
-    - "{{ ispartition_results.results }}"
-    - "{{ devices|unique }}"
+
+- name: automatically activate osd disk(s) without partitions (native)
+  command: ceph-disk activate "{{ item }}-part1"
+  ignore_errors: true
+  with_items: "{{ storage_devices }}"
+  when:
+    - "{{ storage_devices|length > 0 }}"
+    - journal_collocation
+    - osd_auto_discovery
+
+
+- name: activate osd(s) when device is a disk (legacy)
+  command: ceph-disk activate {{ item | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
+  with_items:
+    - "{{ legacy_devices | unique }}"
   changed_when: false
   failed_when: false
   register: activate_osd_disk
   when:
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
+    - "{{ legacy_devices|length > 0 }}"
     - not osd_auto_discovery
     - raw_multi_journal
 
-- name: automatically activate osd disk(s) without partitions (dmcrypt)
-  command: ceph-disk activate --dmcrypt "/dev/{{ item.key }}"
-  ignore_errors: true
-  with_dict: "{{ ansible_devices }}"
+- name: activate osd(s) when device is a disk (native)
+  command: ceph-disk activate "{{ item }}-part1"
+  with_items:
+    - "{{ storage_devices + devices_to_activate }}"
+  changed_when: false
+  failed_when: false
+  register: activate_osd_disk
   when:
-    - ansible_devices is defined
-    - item.value.removable == "0"
-    - item.value.partitions|count == 0
+    - ("{{ storage_devices }} | length > 0" or "{{ devices_to_activate }} | length > 0")
+    - not osd_auto_discovery
+    - raw_multi_journal
+
+
+- name: automatically activate osd disk(s) without partitions (dmcrypt)
+  command: ceph-disk activate --dmcrypt "{{ item }}"
+  ignore_errors: true
+  with_items: "{{ legacy_devices + storage_devices }}"
+  when:
     - osd_auto_discovery
     - dmcrypt_journal_collocation
 
-- name: activate osd(s) when device is a disk (dmcrypt)
-  command: ceph-disk activate --dmcrypt {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
-  with_together:
-    - "{{ ispartition_results.results }}"
-    - "{{ devices|unique }}"
+- name: activate osd(s) when device is a disk (dmcrypt + legacy)
+  command: ceph-disk activate --dmcrypt {{ item | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
+  with_items:
+    - "{{ legacy_devices | unique }}"
   changed_when: false
   failed_when: false
   register: activate_osd_disk_dmcrypt
   when:
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
+    - "{{ legacy_devices|length > 0 }}"
+    - not osd_auto_discovery
+    - dmcrypt_dedicated_journal
+
+- name: activate osd(s) when device is a disk (dmcrypt + native)
+  command: ceph-disk activate --dmcrypt {{ item }}-part1
+  with_items:
+    - "{{ storage_devices + devices_to_activate }}"
+  changed_when: false
+  failed_when: false
+  register: activate_osd_disk_dmcrypt
+  when:
+    - ("{{ storage_devices }} | length > 0" or "{{ devices_to_activate }} | length > 0")
     - not osd_auto_discovery
     - dmcrypt_dedicated_journal
 
@@ -66,16 +93,24 @@
   with_items: "{{ (combined_activate_osd_disk_results|default({})).results|default([]) }}"
 
 # NOTE (leseb): this task is for partitions because we don't explicitly use a partition.
-- name: activate osd(s) when device is a partition
-  command: "ceph-disk activate {{ item.1 }}"
-  with_together:
-    - "{{ ispartition_results.results }}"
-    - "{{ devices|unique }}"
+- name: activate osd(s) when device is a partition (legacy)
+  command: "ceph-disk activate {{ item }}"
+  with_items:
+    - "{{ legacy_devices |unique }}"
   changed_when: false
   failed_when: false
   when:
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) == 0
+    - "{{ legacy_devices|length > 0 }}"
+    - not osd_auto_discovery
+
+- name: activate osd(s) when device is a partition (native)
+  command: "ceph-disk activate {{ item }}-part1"
+  with_items:
+    - "{{ storage_devices + devices_to_activate }}"
+  changed_when: false
+  failed_when: false
+  when:
+    - ("{{ storage_devices }} | length > 0" or "{{ devices_to_activate }} | length > 0")
     - not osd_auto_discovery
 
 - include: osd_fragment.yml

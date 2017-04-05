@@ -33,10 +33,8 @@
   register: journal_ispartition_results
 
 - name: check the partition status of the journal devices
-  shell: "parted --script {{ item.1 }} print > /dev/null 2>&1"
-  with_together:
-    - "{{ journal_ispartition_results.results }}"
-    - "{{ raw_journal_devices|unique }}"
+  shell: "parted --script {{ item }} print > /dev/null 2>&1"
+  with_items: "{{ journal_devices|unique }}"
   changed_when: false
   failed_when: false
   always_run: true
@@ -46,10 +44,8 @@
     - item.0.rc != 0
 
 - name: fix partitions gpt header or labels of the journal devices
-  shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }}"
-  with_together:
-    - "{{ journal_partition_status.results }}"
-    - "{{ raw_journal_devices|unique }}"
+  shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item }}"
+  with_items: "{{ journal_partition_status.results + journal_devices|unique }}"
   changed_when: false
   when:
     - (raw_multi_journal or dmcrypt_dedicated_journal)
