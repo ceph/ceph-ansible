@@ -28,3 +28,13 @@ At the very least, a scenario will need these files:
   machines, networks, disks, linux distro/version, can be defined.
 
 
+.. _test_conventions:
+
+Conventions
+-----------
+
+
+.. _testinfra:
+
+``testinfra``
+-------------
