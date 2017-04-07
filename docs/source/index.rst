@@ -12,7 +12,7 @@ Testing
 =======
 
 * :doc:`Testing with ceph-ansible <testing/index>`
-* :doc:`Glossary <testing/contents>`
+* :doc:`Glossary <testing/glossary>`
 
 
 OSDs
