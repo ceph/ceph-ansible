@@ -18,6 +18,7 @@ RESTAPI         = settings['restapi']
 NRBD_MIRRORS    = settings['rbd_mirror_vms']
 CLIENTS         = settings['client_vms']
 NISCSI_GWS      = settings['iscsi_gw_vms']
+MGRS            = settings['mgr_vms']
 PUBLIC_SUBNET   = settings['public_subnet']
 CLUSTER_SUBNET  = settings['cluster_subnet']
 BOX             = settings['vagrant_box']
@@ -55,7 +56,8 @@ ansible_provision = proc do |ansible|
     'nfss'            => (0..NNFSS - 1).map { |j| "#{LABEL_PREFIX}nfs#{j}" },
     'rbd_mirrors'     => (0..NRBD_MIRRORS - 1).map { |j| "#{LABEL_PREFIX}rbd_mirror#{j}" },
     'clients'         => (0..CLIENTS - 1).map { |j| "#{LABEL_PREFIX}client#{j}" },
-    'iscsi_gw'        => (0..NISCSI_GWS - 1).map { |j| "#{LABEL_PREFIX}iscsi_gw#{j}" }
+    'iscsi_gw'        => (0..NISCSI_GWS - 1).map { |j| "#{LABEL_PREFIX}iscsi_gw#{j}" },
+    'mgrs'            => (0..MGRS - 1).map { |j| "#{LABEL_PREFIX}mgr#{j}" }
   }
 
   if RESTAPI then
@@ -78,6 +80,7 @@ ansible_provision = proc do |ansible|
       nfs_containerized_deployment: 'true',
       restapi_containerized_deployment: 'true',
       rbd_mirror_containerized_deployment: 'true',
+      mgr_containerized_deployment: 'true',
       ceph_mon_docker_interface: ETH,
       ceph_mon_docker_subnet: "#{PUBLIC_SUBNET}.0/24",
       ceph_osd_docker_devices: settings['disks'],
@@ -175,6 +178,41 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       provider.xvda_size = 4*1024
       # add some swap as the Linode distros require it
       provider.swap_size = 128
+    end
+  end
+
+  (0..MGRS - 1).each do |i|
+    config.vm.define "#{LABEL_PREFIX}mgr#{i}" do |mgr|
+      mgr.vm.hostname = "#{LABEL_PREFIX}ceph-mgr#{i}"
+      if ASSIGN_STATIC_IP
+        mgr.vm.network :private_network,
+          ip: "#{PUBLIC_SUBNET}.3#{i}"
+      end
+      # Virtualbox
+      mgr.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
+      end
+
+      # VMware
+      mgr.vm.provider :vmware_fusion do |v|
+        v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      # Libvirt
+      mgr.vm.provider :libvirt do |lv|
+        lv.memory = MEMORY
+        lv.random_hostname = true
+      end
+
+      # Parallels
+      mgr.vm.provider "parallels" do |prl|
+        prl.name = "ceph-mgr#{i}"
+        prl.memory = "#{MEMORY}"
+      end
+
+      mgr.vm.provider :linode do |provider|
+        provider.label = mgr.vm.hostname
+      end
     end
   end
 
