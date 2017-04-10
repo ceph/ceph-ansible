@@ -20,6 +20,13 @@
         dest: "{{ change_dir }}/vagrant_variables.yml"
       when: change_dir is defined
 
+    - name: change centos/atomic-host vagrant box name to rhel7
+      replace:
+        regexp: "centos/atomic-host"
+        replace: "rhel7"
+        dest: "{{ change_dir }}/vagrant_variables.yml"
+      when: change_dir is defined
+
 - hosts: all
   gather_facts: true
   become: yes
@@ -41,6 +48,9 @@
         owner: root
         group: root
       when: not is_atomic
+
+    - name: enable the rhel-7-extras-nightly repo
+      command: "yum-config-manager --enable rhel-7-extras-nightly"
 
     - name: set MTU on eth0
       command: "ifconfig eth0 mtu 1400 up"
