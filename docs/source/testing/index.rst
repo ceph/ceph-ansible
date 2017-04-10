@@ -27,7 +27,7 @@ a behavior.
 * **Adding or modifying a scenario:**
   :ref:`scenario_conventions` |
   :ref:`scenario_environment_configuration` |
-  :ref:`scneario_ansible_configuration` |
+  :ref:`scenario_ansible_configuration` |
 
 * **Custom/development repositories and packages:**
   :ref:`tox_environment_variables` |

@@ -11,5 +11,5 @@ Glossary
    scenarios.rst
    modifying.rst
    layout.rst
-
-
+   tests.rst
+   tox.rst
