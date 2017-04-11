@@ -89,15 +89,39 @@
     - openstack_config
     - "{{ inventory_hostname == groups[mon_group_name] | last }}"
 
-- name: create ceph mgr keyring(s) when mon is containerized
-  command: docker exec ceph-mon-{{ ansible_hostname }} ceph --cluster {{ cluster }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring
-  args:
-    creates: /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring
-  changed_when: false
+- block:
+  - name: create ceph mgr keyring(s) when mon is containerized
+    command: docker exec ceph-mon-{{ ansible_hostname }} ceph --cluster {{ cluster }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring
+    args:
+      creates: /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring
+    changed_when: false
+    when:
+      - cephx
+      - mon_containerized_deployment
+      - "{{ groups.get(mgr_group_name, []) | length > 0 }}"
+      - not mon_containerized_deployment_with_kv
+    with_items: "{{ groups.get(mgr_group_name, []) }}"
+
+  - name: stat for ceph mgr key(s)
+    stat:
+      path: /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring
+    with_items: "{{ groups.get(mgr_group_name, []) }}"
+    changed_when: false
+    become: false
+    failed_when: false
+    register: stat_mgr_keys
+    always_run: true
+    when:
+      - "{{ groups.get(mgr_group_name, []) | length > 0 }}"
+
+  - name: push ceph mgr key(s)
+    fetch:
+      src: "/etc/ceph/{{ cluster }}.mgr.{{ hostvars[item.item]['ansible_hostname'] }}.keyring"
+      dest: "{{ fetch_directory }}/docker_mon_files/{{ item.stat.path }}"
+      flat: yes
+    with_items:
+      - "{{ stat_mgr_keys.results }}"
+    when:
+      - item.stat.exists == true
   when:
-    - cephx
-    - mon_containerized_deployment
-    - "{{ groups.get(mgr_group_name, []) | length > 0 }}"
     - inventory_hostname == groups[mon_group_name]|last
-    - not mon_containerized_deployment_with_kv
-  with_items: "{{ groups[mgr_group_name] }}"
