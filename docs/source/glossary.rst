@@ -6,6 +6,6 @@ Glossary
    :maxdepth: 3
    :caption: Contents:
 
-   testing/contents
+   testing/glossary
    index
 
