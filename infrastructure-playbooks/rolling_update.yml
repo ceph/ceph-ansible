@@ -88,7 +88,7 @@
         enabled: yes
       when:
         - ansible_service_mgr == 'systemd'
-        - not mon_containerized_deployment
+        - not containerized_deployment
 
   roles:
     - ceph-mon
@@ -114,7 +114,7 @@
         enabled: yes
       when:
         - ansible_service_mgr == 'systemd'
-        - not mon_containerized_deployment
+        - not containerized_deployment
 
     - name: restart containerized ceph mons with systemd
       service:
@@ -123,7 +123,7 @@
         enabled: yes
       when:
         - ansible_service_mgr == 'systemd'
-        - mon_containerized_deployment
+        - containerized_deployment
 
     - name: set mon_host_count
       set_fact: mon_host_count={{ groups[mon_group_name] | length }}
@@ -149,7 +149,7 @@
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
-      when: not mon_containerized_deployment
+      when: not containerized_deployment
 
     - name: waiting for the containerized monitor to join the quorum...
       shell: |
@@ -159,7 +159,7 @@
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
-      when: mon_containerized_deployment
+      when: containerized_deployment
 
 
 - name: upgrade ceph osds cluster
@@ -183,7 +183,7 @@
         - noscrub
         - nodeep-scrub
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when: not mon_containerized_deployment
+      when: not containerized_deployment
 
     - name: set containerized osd flags
       command: |
@@ -193,13 +193,13 @@
         - noscrub
         - nodeep-scrub
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when: mon_containerized_deployment
+      when: containerized_deployment
 
     - name: get osd numbers
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
       register: osd_ids
       changed_when: false
-      when: not osd_containerized_deployment
+      when: not containerized_deployment
 
     - name: stop ceph osds with upstart
       service:
@@ -221,7 +221,7 @@
       with_items: "{{ osd_ids.stdout_lines }}"
       when:
         - ansible_service_mgr == 'systemd'
-        - not osd_containerized_deployment
+        - not containerized_deployment
 
   roles:
     - ceph-osd
@@ -231,7 +231,7 @@
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
       register: osd_ids
       changed_when: false
-      when: not osd_containerized_deployment
+      when: not containerized_deployment
 
     - name: start ceph osds with upstart
       service:
@@ -253,7 +253,7 @@
       with_items: "{{ osd_ids.stdout_lines }}"
       when:
         - ansible_service_mgr == 'systemd'
-        - not osd_containerized_deployment
+        - not containerized_deployment
 
     - name: restart containerized ceph osds with systemd
       service:
@@ -263,7 +263,7 @@
       with_items: "{{ ceph_osd_docker_devices }}"
       when:
         - ansible_service_mgr == 'systemd'
-        - osd_containerized_deployment
+        - containerized_deployment
 
     - name: waiting for clean pgs...
       shell: |
@@ -273,7 +273,7 @@
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when: not osd_containerized_deployment
+      when: not containerized_deployment
 
     - name: container - waiting for clean pgs...
       shell: |
@@ -283,7 +283,7 @@
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when: osd_containerized_deployment
+      when: containerized_deployment
 
     - name: unset osd flags
       command: ceph osd unset {{ item }} --cluster {{ cluster }}
@@ -292,7 +292,7 @@
         - noscrub
         - nodeep-scrub
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when: not osd_containerized_deployment
+      when: not containerized_deployment
 
     - name: unset containerized osd flags
       command: |
@@ -302,7 +302,7 @@
         - noscrub
         - nodeep-scrub
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when: osd_containerized_deployment
+      when: containerized_deployment
 
 
 - name: upgrade ceph mdss cluster
@@ -338,7 +338,7 @@
         enabled: yes
       when:
         - ansible_service_mgr == 'systemd'
-        - not mds_containerized_deployment
+        - not containerized_deployment
 
   roles:
     - ceph-mds
@@ -365,7 +365,7 @@
         enabled: yes
       when:
         - ansible_service_mgr == 'systemd'
-        - not mds_containerized_deployment
+        - not containerized_deployment
 
     - name: restart ceph mdss
       service:
@@ -374,7 +374,7 @@
         enabled: yes
       when:
         - ansible_service_mgr == 'systemd'
-        - mds_containerized_deployment
+        - containerized_deployment
 
 
 - name: upgrade ceph rgws cluster
@@ -408,7 +408,7 @@
         enabled: yes
       when:
         - ansible_service_mgr == 'systemd'
-        - not rgw_containerized_deployment
+        - not containerized_deployment
 
   roles:
     - ceph-rgw
@@ -433,7 +433,7 @@
         enabled: yes
       when:
         - ansible_service_mgr == 'systemd'
-        - not rgw_containerized_deployment
+        - not containerized_deployment
 
     - name: restart containerized ceph rgws with systemd
       service:
@@ -442,4 +442,4 @@
         enabled: yes
       when:
         - ansible_service_mgr == 'systemd'
-        - rgw_containerized_deployment
+        - containerized_deployment

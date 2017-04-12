@@ -1,49 +1,4 @@
 ---
-- name: check if a cluster is already running
-  command: "docker ps -q -a --filter='ancestor={{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'"
-  register: ceph_health
-  changed_when: false
-  failed_when: false
-  always_run: true
-
-- include: checks.yml
-  when:
-    - ceph_health.rc != 0
-    - not mon_containerized_deployment_with_kv
-    - not "{{ rolling_update | default(false) }}"
-
-- include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_atomic.yml"
-  when:
-    - is_atomic
-    - ansible_os_family == 'RedHat'
-    - ntp_service_enabled
-
-- include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_redhat.yml"
-  when:
-    - not is_atomic
-    - ansible_os_family == 'RedHat'
-    - ntp_service_enabled
-
-- include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_debian.yml"
-  when:
-    - ansible_os_family == 'Debian'
-    - ntp_service_enabled
-
-- include: "{{ playbook_dir }}/roles/ceph-common/tasks/docker/fetch_image.yml"
-
-- include: dirs_permissions.yml
-
-# let the first mon create configs and keyrings
-- include: create_configs.yml
-  when:
-    - not mon_containerized_default_ceph_conf_with_kv
-
-- include: fetch_configs.yml
-  when: not mon_containerized_deployment_with_kv
-
-- include: selinux.yml
-  when: ansible_os_family == 'RedHat'
-
 - name: set docker_exec_cmd fact
   set_fact:
     docker_exec_cmd: "docker exec ceph-mon-{{ ansible_hostname }}"
@@ -64,10 +19,10 @@
   failed_when: false
   when:
     - "{{ inventory_hostname == groups[mon_group_name][0] }}"
-    - not mon_containerized_deployment_with_kv
+    - not containerized_deployment_with_kv
 
 - include: copy_configs.yml
-  when: not mon_containerized_deployment_with_kv
+  when: not containerized_deployment_with_kv
 
 - name: create ceph rest api keyring when mon is containerized
   command: docker exec ceph-mon-{{ ansible_hostname }} ceph --cluster {{ cluster }} auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/{{ cluster }}.client.restapi.keyring
@@ -76,10 +31,10 @@
   changed_when: false
   when:
     - cephx
-    - mon_containerized_deployment
+    - containerized_deployment
     - groups[restapi_group_name] is defined
     - "{{ inventory_hostname == groups[mon_group_name] | last }}"
-    - not mon_containerized_deployment_with_kv
+    - not containerized_deployment_with_kv
 
 - include: "{{ playbook_dir }}/roles/ceph-mon/tasks/set_osd_pool_default_pg_num.yml"
 
@@ -97,9 +52,9 @@
     changed_when: false
     when:
       - cephx
-      - mon_containerized_deployment
+      - containerized_deployment
       - "{{ groups.get(mgr_group_name, []) | length > 0 }}"
-      - not mon_containerized_deployment_with_kv
+      - not containerized_deployment_with_kv
     with_items: "{{ groups.get(mgr_group_name, []) }}"
 
   - name: stat for ceph mgr key(s)
