@@ -11,7 +11,7 @@ auth supported = none
 {% if ip_version == 'ipv6'  %}
 ms bind ipv6 = true
 {% endif %}
-{% if not mon_containerized_deployment_with_kv and not mon_containerized_deployment %}
+{% if not containerized_deployment_with_kv and not containerized_deployment %}
 fsid = {{ fsid }}
 {% endif %}
 max open files = {{ max_open_files }}
@@ -30,7 +30,7 @@ mon initial members = {% for host in groups[mon_group_name] %}
     {% endfor %}
 {% endif %}
 
-{% if not mon_containerized_deployment and not mon_containerized_deployment_with_kv %}
+{% if not containerized_deployment and not containerized_deployment_with_kv %}
 {% if monitor_address_block %}
 mon host = {% for host in groups[mon_group_name] %}{{ hostvars[host]['ansible_all_ipv4_addresses'] | ipaddr(monitor_address_block) | first }}{% if not loop.last %},{% endif %}{% endfor %}
 {% elif groups[mon_group_name] is defined %}
@@ -50,12 +50,12 @@ mon host = {% for host in groups[mon_group_name] %}
            {% endfor %}
 {% endif %}
 {% endif %}
-{% if mon_containerized_deployment %}
+{% if containerized_deployment %}
 fsid = {{ fsid }}
 {% if groups[mon_group_name] is defined %}
 mon host = {% for host in groups[mon_group_name] %}
              {% set interface = ["ansible_",ceph_mon_docker_interface]|join %}
-             {% if mon_containerized_deployment -%}
+             {% if containerized_deployment -%}
                 {{ hostvars[host][interface]['ipv4']['address'] }}
              {%- elif hostvars[host]['monitor_address'] is defined -%}
                 {{ hostvars[host]['monitor_address'] }}
