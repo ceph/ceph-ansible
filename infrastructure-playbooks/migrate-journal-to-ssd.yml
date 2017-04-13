@@ -1,0 +1,112 @@
+---
+# This playbook use to migrate activity osd(s) journal to SSD.
+#
+# You should define `osds_journal_devices` variable for host which osd(s) journal migrate to.
+# 
+# For example in host_vars/hostname1.yml
+#
+# osds_journal_devices:
+# - device_name: /dev/sdd
+#   partitions:
+#   - index: 1
+#     size: 10G
+#     osd_id: 0
+#   - index: 2
+#     size: 10G
+#     osd_id: 1
+# - device_name: /dev/sdf
+#   partitions:       
+#   - index: 1        
+#     size: 10G       
+#     osd_id: 2       
+#
+# @param device_name: The full device path of new ssd.
+# @param partitions:  The custom partition layout of ssd.
+# @param index:  The index of this partition.
+# @param size:  The size of this partition.
+# @param osd_id: Which osds's journal this partition for.
+#
+# ansible-playbook migrate-journal-to-ssd.yml
+#    The playbook will migrate osd(s) journal to ssd device which you define in host_vars. 
+
+- vars:
+    osd_group_name: osds
+    journal_typecode: 45b0969e-9b03-4f30-b4c6-b4b80ceff106
+    osds_journal_devices: []
+  hosts:
+      - "{{ osd_group_name }}"
+  serial: 1
+  tasks:
+
+  - name: get osd(s) if directory stat
+    stat:
+      path: "/var/lib/ceph/osd/{{ cluster }}-{{ item.1.osd_id }}/journal_uuid"
+    register: osds_dir_stat
+    with_subelements:
+      - "{{ osds_journal_devices }}"
+      - partitions
+
+  - name: exit playbook osd(s) is not on this host
+    fail:
+        msg: exit playbook osd(s) is not on this host
+    with_items: 
+        osds_dir_stat.results
+    when:
+      -  osds_dir_stat is defined and item.stat.exists == false
+
+  - name: install sgdisk(gdisk)
+    package:
+      name: gdisk
+      state: present
+    when: osds_journal_devices is defined
+
+  - name: generate uuid for osds journal
+    command: uuidgen
+    register: osds
+    with_subelements:
+      - "{{ osds_journal_devices }}"
+      - partitions
+
+  - name: make osd partitions on ssd
+    shell: >
+      sgdisk --new={{item.item[1].index}}:0:+{{item.item[1].size}} "--change-name={{ item.item[1].index }}:ceph journal" 
+      --typecode={{ item.item[1].index }}:{{ journal_typecode }} 
+      --partition-guid={{ item.item[1].index }}:{{ item.stdout }} 
+      --mbrtogpt -- {{ item.item[0].device_name }}
+    with_items: 
+      - "{{ osds.results }}"
+
+  - name: stop osd(s) service
+    service:
+      name: "ceph-osd@{{ item.item[1].osd_id }}"
+      state: stopped
+    with_items:
+      - "{{ osds.results }}"
+
+  - name: flush osd(s) journal
+    command: ceph-osd -i {{ item.item[1].osd_id }} --flush-journal --cluster {{ cluster }} 
+    with_items:
+      - "{{ osds.results }}"
+    when: osds_journal_devices is defined
+
+  - name: update osd(s) journal soft link
+    command: ln -sf /dev/disk/by-partuuid/{{ item.stdout }} /var/lib/ceph/osd/{{ cluster }}-{{ item.item[1].osd_id }}/journal
+    with_items:
+      - "{{ osds.results }}"
+
+  - name: update osd(s) journal uuid
+    command: echo {{ item.stdout }} > /var/lib/ceph/osd/{{ cluster }}-{{ item.item[1].osd_id }}/journal_uuid
+    with_items:
+      - "{{ osds.results }}"
+
+  - name: initialize osd(s) new journal 
+    command: ceph-osd -i {{ item.item[1].osd_id }} --mkjournal --cluster {{ cluster }}
+    with_items:
+      - "{{ osds.results }}"
+
+  - name: start osd(s) service
+    service:
+      name: "ceph-osd@{{ item.item[1].osd_id }}"
+      state: started
+    with_items:
+      - "{{ osds.results }}"
