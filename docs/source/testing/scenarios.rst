@@ -18,9 +18,16 @@ This yaml file is loaded in the ``Vagrantfile`` so that the settings can be
 used to bring up the boxes and pass some configuration to ansible when running.
 
 .. note:: The basic layout of a scenario is covered in :ref:`layout`
-There are just a handful of required files, this is the most basic layout
-nece
 
+There are just a handful of required files, these sections will cover the
+required (most basic) ones. Alternatively, other ceph-ansible files can be
+added to customize the behavior of a scenario deployment.
+
+
+.. _vagrant_variables:
+
+``vagrant_variables.yml``
+-------------------------
 There are a few sections in the ``vagrant_variables.yml`` file which are easy
 to follow (most of them are 1 line settings).
 
@@ -46,7 +53,7 @@ to follow (most of them are 1 line settings).
     osd_vms: 1
 
 * **RESTAPI**: (bool) Deploy RESTAPI on each of the monitor(s)
-restapi: true
+  restapi: true
 
 * **CEPH SOURCE**: (string) indicate whether a ``dev`` or ``stable`` release is
   needed. A ``stable`` release will use the latest stable release of Ceph,
@@ -95,6 +102,44 @@ are needed:
 
 * **os_tuning_params** : These are passed onto ceph-ansible as part of the
   variables for "system tunning". These shouldn't be changed.
+
+
+.. _vagrant_file:
+
+``Vagrantfile``
+---------------
+The ``Vagrantfile`` should not need to change, and it is symlinked back to the
+``Vagrantfile`` that exists in the root of the project. It is linked in this
+way so that a vagrant environment can be isolated to the given scenario.
+
+
+.. _hosts_file:
+
+``hosts``
+---------
+The ``hosts`` file should contain the hosts needed for the scenario. This might
+seem a bit repetitive since machines are already defined in
+:ref:`vagrant_variables` but it allows granular changes to hosts (for example
+defining an interface vs. an IP on a monitor) which can help catch issues in
+ceph-ansible configuration. For example::
+
+
+    [mons]
+    mon0 monitor_address=192.168.5.10
+    mon1 monitor_address=192.168.5.11
+    mon2 monitor_interface=eth1
+
+.. _group_vars:
+
+``group_vars``
+--------------
+This directory holds any configuration change that will affect ceph-ansible
+deployments in the same way as if ansible was executed from the root of the
+project.
+
+The file that will need to be defined always is ``all`` where (again) certain
+values like ``public_network`` and ``cluster_network`` will need to be defined
+along with any customizations that ceph-ansible supports.
 
 
 .. _scenario_wiring:
