@@ -18,6 +18,7 @@ This yaml file is loaded in the ``Vagrantfile`` so that the settings can be
 used to bring up the boxes and pass some configuration to ansible when running.
 
 .. note:: The basic layout of a scenario is covered in :ref:`layout`
+   There are just a handful of required files, this is the most basic layout.
 
 There are just a handful of required files, these sections will cover the
 required (most basic) ones. Alternatively, other ceph-ansible files can be
