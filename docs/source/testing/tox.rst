@@ -16,8 +16,8 @@ Environment variables
 ---------------------
 
 When running ``tox`` we've allowed for the usage of environment variables to tweak certain settings
-of the playbook run using ``--extra-vars``. This is mostly useful for usage in Jenkins jobs or for using
-ceph-ansible to run manual tests. For example, if you wanted to test the latest master build of ceph using
+of the playbook run using Ansible's ``--extra-vars``. It's helpful in Jenkins jobs or for manual test
+runs of ceph-ansible. For example, if you wanted to test the latest master build of ceph using
 our ``xenial_cluster`` scenario you could do the following::
 
     CEPH_DEV=true CEPH_DEV_BRANCH=master CEPH_DEV_SHA1=latest tox -rve jewel-ansible2.2-xenial_cluster
@@ -32,11 +32,15 @@ The following environent variables are available for use:
 
 * ``CEPH_ORIGIN``: (default: ``upstream``) This would configure the ceph-ansible variable ``ceph_origin``.
 
-* ``CEPH_DEV``: (default: ``false``) This would configure the ceph-ansible variable ``ceph_dev``.
+* ``CEPH_DEV``: (default: ``false``) This would configure the ceph-ansible variable ``ceph_dev`` which enables installing repos from
+  shaman.ceph.com.
 
-* ``CEPH_DEV_BRANCH``: (default: ``master``) This would configure the ceph-ansible variable ``ceph_dev_branch``.
+* ``CEPH_DEV_BRANCH``: (default: ``master``) This would configure the ceph-ansible variable ``ceph_dev_branch`` which defines which branch
+  to install from repos available at shaman.ceph.com. You need to define both branch and sha1 for shaman repos.
 
-* ``CEPH_DEV_SHA1``: (default: ``latest``) This would configure the ceph-ansible variable ``ceph_dev_sha1``.
+* ``CEPH_DEV_SHA1``: (default: ``latest``) This would configure the ceph-ansible variable ``ceph_dev_sha1`` which defines which sha1
+  to install from repos available at shaman.ceph.com. You need to define both branch and sha1 for shaman repos.
+
 
 * ``UPDATE_CEPH_DEV_BRANCH``: (default: ``master``) This would configure the ceph-ansible variable ``ceph_dev_branch`` during an ``update``
   scenario. The value set here is what the test will upgrade to.
@@ -83,9 +87,9 @@ on all subsections inside of a tox section please refer to the tox documentation
 Modifying or Adding environments
 --------------------------------
 
-The tox environments are controlled by the ``envlist`` subsection of the ``[tox]`` section. Anything inside of ``{}`` are considered a *factor* and will be included
-in the dynamic matrix that tox creates. Inside of ``{}`` you can include a comma separated list of the *factors* you wish to include. Do not use a hyphen (``-``) as part
-of the *factor* name as those are used to tox as the separator between different factor sets.
+The tox environments are controlled by the ``envlist`` subsection of the ``[tox]`` section. Anything inside of ``{}`` is considered a *factor* and will be included
+in the dynamic matrix that tox creates. Inside of ``{}`` you can include a comma separated list of the *factors*. Do not use a hyphen (``-``) as part
+of the *factor* name as those are used by tox as the separator between different factor sets.
 
 For example, if wanted to add a new test *factor* for the next ceph release of luminious this is how you'd accomplish that. Currently, the first factor set in our ``envlist``
 is used to define the ceph release (``{jewel,kraken,rhcs}-...``). To add luminous you'd change that to look like ``{luminous,kraken,rhcs}-...``. In the ``testenv`` section
