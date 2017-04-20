@@ -28,7 +28,6 @@
     - not osd_containerized_deployment
     - not journal_collocation
     - not raw_multi_journal
-    - not osd_directory
     - not bluestore
     - not dmcrypt_journal_collocation
     - not dmcrypt_dedicated_journal
@@ -41,18 +40,13 @@
     - osd_group_name in group_names
     - not osd_containerized_deployment
     - (journal_collocation and raw_multi_journal)
-      or (journal_collocation and osd_directory)
       or (journal_collocation and bluestore)
-      or (raw_multi_journal and osd_directory)
       or (raw_multi_journal and bluestore)
-      or (osd_directory and bluestore)
       or (dmcrypt_journal_collocation and journal_collocation)
       or (dmcrypt_journal_collocation and raw_multi_journal)
-      or (dmcrypt_journal_collocation and osd_directory)
       or (dmcrypt_journal_collocation and bluestore)
       or (dmcrypt_dedicated_journal and journal_collocation)
       or (dmcrypt_dedicated_journal and raw_multi_journal)
-      or (dmcrypt_dedicated_journal and osd_directory)
       or (dmcrypt_dedicated_journal and bluestore)
       or (dmcrypt_dedicated_journal and dmcrypt_journal_collocation)
 
@@ -77,12 +71,3 @@
     - raw_journal_devices|length == 0
       or devices|length == 0
 
-- name: verify directories have been provided
-  fail:
-    msg: "please provide directories to your osd scenario"
-  when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - not osd_containerized_deployment
-    - osd_directory
-    - osd_directories is not defined
