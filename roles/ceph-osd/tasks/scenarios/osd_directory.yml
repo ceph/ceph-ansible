@@ -1,0 +1,49 @@
+---
+## SCENARIO 4: USE A DIRECTORY INSTEAD OF A DISK FOR OSD
+
+# NOTE (leseb): we do not check the filesystem underneath the directory
+# so it is really up to you to configure this properly.
+# Declaring more than one directory on the same filesystem will confuse Ceph.
+- name: create osd directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "ceph"
+    group: "ceph"
+  with_items: "{{ osd_directories }}"
+
+# NOTE (leseb): the prepare process must be parallelized somehow...
+# if you have 64 disks with 4TB each, this will take a while
+# since Ansible will sequential process the loop
+- name: prepare osd directory disk(s)
+  command: "ceph-disk prepare --cluster {{ cluster }} {{ item }}"
+  with_items: "{{ osd_directories }}"
+  changed_when: false
+  when: osd_directory
+
+- name: activate osd(s)
+  command: "ceph-disk activate {{ item }}"
+  with_items: "{{ osd_directories }}"
+  changed_when: false
+
+- name: get osd id
+  shell: |
+    ls /var/lib/ceph/osd/ | grep ceph | sed 's/.*-//'
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: osd_id
+
+- name: start and add that the osd service(s) to the init sequence
+  service:
+    name: ceph-osd@{{ item }}
+    state: started
+    enabled: yes
+  with_items: "{{ (osd_id|default({})).stdout_lines|default([]) }}"
+  changed_when: false
+
+- name: start and add osd target(s) to the systemd sequence
+  service:
+    name: ceph.target
+    state: started
+    enabled: yes
