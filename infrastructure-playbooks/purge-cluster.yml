@@ -423,18 +423,6 @@
 
   tasks:
 
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when: ansible_service_mgr == 'systemd'
-
-  - name: check for anything running ceph
-    shell: "ps awux | grep -- /usr/bin/[c]eph-"
-    register: check_for_running_ceph
-    failed_when: check_for_running_ceph.rc == 0
-
   - name: purge ceph packages with yum
     yum:
       name: "{{ item }}"
@@ -493,19 +481,6 @@
      path: /var/log/ceph
      state: absent
 
-  - name: remove from sysv
-    shell: "update-rc.d -f ceph remove"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: remove upstart and sysv files
-    shell: "find /etc -name '*ceph*' -delete"
-    when: ansible_service_mgr == 'upstart'
-
-  - name: remove upstart and apt logs and cache
-    shell: "find /var -name '*ceph*' -delete"
-    failed_when: false
-    when: ansible_distribution == 'Ubuntu'
-
   - name: request data removal
     local_action: shell echo requesting data removal
     become: false
@@ -530,6 +505,11 @@
       path: /etc/yum.repos.d/rh_storage.repo
       state: absent
     when: ansible_os_family == 'RedHat'
+
+  - name: check for anything running ceph
+    command: "ps -u ceph -U ceph"
+    register: check_for_running_ceph
+    failed_when: check_for_running_ceph.rc == 0
 
 
 - name: purge fetch directory
