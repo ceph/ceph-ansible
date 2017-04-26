@@ -7,6 +7,10 @@
   always_run: true
   register: ispartition_results
 
+- name: Save flag for if device is a disk to use during activate osds
+  set_fact:
+    is_device_disk_activate: True
+
 - name: check the partition status of the osd disks
   shell: "parted --script {{ item.1 }} print > /dev/null 2>&1"
   with_together:
@@ -17,6 +21,12 @@
   always_run: true
   register: osd_partition_status_results
   when: item.0.rc != 0
+
+- name: set flag for whether or not to check gpt headers
+  with_together:
+    - "{{ ispartition_results.results }}"
+  set_fact:
+    fix_partitions_or_labels: item.0.rc != 0
 
 # NOTE: The following calls to sgdisk are retried because sgdisk is known to
 # fully wipe a device the first time around. There is no need to halt execution
@@ -30,7 +40,7 @@
     - "{{ devices }}"
   changed_when: false
   when:
-    - not item.0.get("skipped")
+    - fix_partitions_or_labels
     - item.0.get("rc", 0) != 0
 
 - name: check if a partition named 'ceph' exists
@@ -43,3 +53,9 @@
   always_run: true
   register: parted_results
   when: item.0.rc != 0
+
+- name: Set flag for preparing osds with dedicated journals
+  with_together:
+    - "{{ ispartition_results.results }}"
+  set_fact:
+    prepare_osds_with_dedicated_journals: item.0.rc == 0

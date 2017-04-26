@@ -10,6 +10,11 @@
     - ansible_devices is defined
     - item.value.removable == "0"
 
+- name: Save flag for if device is a disk to use during activate osds
+  with_dict: "{{ ansible_devices }}"
+  set_fact:
+    is_device_disk_activate: (ansible_devices is defined) and item.value.removable == "0"
+
 - name: check the partition status of the osd disks (autodiscover disks)
   shell: "parted --script /dev/{{ item.key }} print > /dev/null 2>&1"
   with_dict: "{{ ansible_devices }}"
@@ -46,3 +51,8 @@
   when:
     - ansible_devices is defined
     - item.value.removable == "0"
+
+- name: Set flag for preparing osds with dedicated journals
+  with_dict: "{{ ansible_devices }}"
+  set_fact:
+    prepare_osds_with_dedicated_journals: not (ansible_devices is defined and item.value.removable == "0")

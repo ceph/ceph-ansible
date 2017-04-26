@@ -43,6 +43,12 @@
     - (raw_multi_journal or dmcrypt_dedicated_journal)
     - item.0.rc != 0
 
+- name: save flag to fix partitions or labels for journals
+  with_items:
+    - "{{ journal_ispartition_results.results }}"
+  set_fact:
+    fix_partitions_or_labels_for_journals: item.0.rc != 0 and (raw_multi_journal or dmcrypt_dedicated_journal)
+
 - name: fix partitions gpt header or labels of the journal devices
   shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }}"
   with_together:
@@ -51,5 +57,5 @@
   changed_when: false
   when:
     - (raw_multi_journal or dmcrypt_dedicated_journal)
-    - not item.0.get("skipped")
+    - fix_partitions_or_labels_for_journals
     - item.0.get("rc", 0) != 0
