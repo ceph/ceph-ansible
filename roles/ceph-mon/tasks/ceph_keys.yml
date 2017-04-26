@@ -108,11 +108,11 @@
   when: cephx
 
 - name: set ceph libvirt keyring permission
-  shell: chown ceph:ceph *.libvirt.keyring ; chmod 0640 *.libvirt.keyring
-  args:
-    chdir: /etc/ceph/
-  changed_when: false
-  always_run: true
+  file:
+    path: "/etc/ceph/{{ cluster }}.client.libvirt.keyring"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0640"
   when:
     - is_libvirt_keyring_exists == 0
     - cephx
