@@ -118,14 +118,50 @@
 
   - name: deactivating osd(s)
     command: ceph-disk deactivate --cluster {{ cluster }} --deactivate-by-id {{ item.0 }} --mark-out
+    register: deactivate 
+    ignore_errors: yes
     with_together:
       - "{{ osd_ids.split(',') }}"
       - "{{ real_ips }}"
     delegate_to: "{{ item.1 }}"
 
+  - name: set osd(s) out when ceph-disk deactivating fail
+    command: ceph --cluster {{ cluster }} osd out osd.{{ item.0 }}
+    with_together:
+      - "{{ osd_ids.split(',') }}"
+      - "{{ deactivate.results }}"
+    when: 
+      - item.1.stderr|length > 0
+
   - name: destroying osd(s)
     command: ceph-disk destroy --cluster {{ cluster }} --destroy-by-id {{ item.0 }} --zap
+    register: destroy 
+    ignore_errors: yes
     with_together:
       - "{{ osd_ids.split(',') }}"
       - "{{ real_ips }}"
     delegate_to: "{{ item.1 }}"
+
+  - name: remove osd(s) from crush_map when ceph-disk destroy fail
+    command: ceph --cluster {{ cluster }} osd crush remove osd.{{ item.0 }}
+    with_together:
+      - "{{ osd_ids.split(',') }}"
+      - "{{ destroy.results }}"
+    when: 
+      - item.1.stderr|length > 0
+
+  - name: delete osd(s) auth key when ceph-disk destroy fail 
+    command: ceph --cluster {{ cluster }} auth del osd.{{ item.0 }}
+    with_together:
+      - "{{ osd_ids.split(',') }}"
+      - "{{ destroy.results }}"
+    when: 
+      - item.1.stderr|length > 0
+
+  - name: deallocate osd(s) id when ceph-disk destroy fail 
+    command: ceph --cluster {{ cluster }} osd rm {{ item.0 }}
+    with_together:
+      - "{{ osd_ids.split(',') }}"
+      - "{{ destroy.results }}"
+    when: 
+      - item.1.stderr|length > 0
