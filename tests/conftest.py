@@ -20,6 +20,9 @@ def node(Ansible, Interface, Command, request):
     if request.node.get_marker("no_docker") and docker:
         pytest.skip("Not a valid test for containerized deployments or atomic hosts")
 
+    if request.node.get_marker("docker") and not docker:
+        pytest.skip("Not a valid test for non-containerized deployments or atomic hosts")
+
     journal_collocation_test = ansible_vars.get("journal_collocation") or ansible_vars.get("dmcrypt_journal_collocation")
     if request.node.get_marker("journal_collocation") and not journal_collocation_test:
         pytest.skip("Scenario is not using journal collocation")
