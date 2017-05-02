@@ -17,36 +17,12 @@ Environment variables
 
 When running ``tox`` we've allowed for the usage of environment variables to tweak certain settings
 of the playbook run using Ansible's ``--extra-vars``. It's helpful in Jenkins jobs or for manual test
-runs of ceph-ansible. For example, if you wanted to test the latest master build of ceph using
-our ``xenial_cluster`` scenario you could do the following::
-
-    CEPH_DEV=true CEPH_DEV_BRANCH=master CEPH_DEV_SHA1=latest tox -rve jewel-ansible2.2-xenial_cluster
+runs of ceph-ansible.
 
 The following environent variables are available for use:
 
 * ``FETCH_DIRECTORY`` : (default: ``changedir``) This would configure the ceph-ansible variable ``fetch_directory``. This defaults to
   the ``changedir`` of the given scenario and should not need to be changed.
-
-* ``CEPH_RHCS`` : (default: ``false``) Setting this to ``true`` would enable testing of RHCS. This is set to ``true`` when using a ``rhcs-*``
-  testing scenario.
-
-* ``CEPH_ORIGIN``: (default: ``upstream``) This would configure the ceph-ansible variable ``ceph_origin``.
-
-* ``CEPH_DEV``: (default: ``false``) This would configure the ceph-ansible variable ``ceph_dev`` which enables installing repos from
-  shaman.ceph.com.
-
-* ``CEPH_DEV_BRANCH``: (default: ``master``) This would configure the ceph-ansible variable ``ceph_dev_branch`` which defines which branch
-  to install from repos available at shaman.ceph.com. You need to define both branch and sha1 for shaman repos.
-
-* ``CEPH_DEV_SHA1``: (default: ``latest``) This would configure the ceph-ansible variable ``ceph_dev_sha1`` which defines which sha1
-  to install from repos available at shaman.ceph.com. You need to define both branch and sha1 for shaman repos.
-
-
-* ``UPDATE_CEPH_DEV_BRANCH``: (default: ``master``) This would configure the ceph-ansible variable ``ceph_dev_branch`` during an ``update``
-  scenario. The value set here is what the test will upgrade to.
-
-* ``UPDATE_CEPH_DEV_SHA1``: (default: ``latest``) This would configure the ceph-ansible variable ``ceph_dev_sha1`` during an ``update``
-  scenario. The value set here is what the test will upgrade to.
 
 * ``CEPH_STABLE_RELEASE``: (default: ``jewel``) This would configure the ceph-ansible variable ``ceph_stable_relese``. This is set
   automatically when using the ``jewel-*`` or ``kraken-*`` testing scenarios.
