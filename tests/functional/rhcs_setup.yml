@@ -80,6 +80,22 @@
     - name: set MTU on eth1
       command: "ifconfig eth1 mtu 1400 up"
 
+    - name: install docker
+      package:
+        name: docker
+        state: present
+      when: ansible_os_family == 'RedHat'
+
+    - name: allow insecure docker registries
+      lineinfile:
+        line: 'INSECURE_REGISTRY="--insecure-registry {{ ceph_docker_registry }}"'
+        dest: "/etc/sysconfig/docker"
+
+    - name: restart docker
+      service:
+        name: docker
+        state: restarted
+
 - hosts: mons
   gather_facts: false
   become: yes
