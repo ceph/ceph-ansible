@@ -1,4 +1,5 @@
 import pytest
+import os
 
 
 @pytest.fixture()
@@ -12,6 +13,10 @@ def node(Ansible, Interface, Command, request):
     because it contains the logic to manage which tests a node should run.
     """
     ansible_vars = Ansible.get_variables()
+    # tox will pass in this environment variable. we need to do it this way
+    # because testinfra does not collect and provide ansible config passed in
+    # from using --extra-vars
+    ceph_stable_release = os.environ.get("CEPH_STABLE_RELEASE", "kraken")
     node_type = ansible_vars["group_names"][0]
     docker = ansible_vars.get("docker")
     if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
@@ -22,6 +27,9 @@ def node(Ansible, Interface, Command, request):
 
     if request.node.get_marker("docker") and not docker:
         pytest.skip("Not a valid test for non-containerized deployments or atomic hosts")
+
+    if node_type == "mgrs" and ceph_stable_release == "jewel":
+        pytest.skip("mgr nodes can not be tested with ceph release jewel")
 
     journal_collocation_test = ansible_vars.get("journal_collocation") or ansible_vars.get("dmcrypt_journal_collocation")
     if request.node.get_marker("journal_collocation") and not journal_collocation_test:
@@ -66,6 +74,7 @@ def node(Ansible, Interface, Command, request):
         cluster_address=cluster_address,
         docker=docker,
         osds=osds,
+        ceph_stable_release=ceph_stable_release,
     )
     return data
 
