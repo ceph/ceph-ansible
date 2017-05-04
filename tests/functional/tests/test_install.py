@@ -1,11 +1,12 @@
 import pytest
 
+
 class TestInstall(object):
 
-    def test_ceph_dir_exists(self, File):
+    def test_ceph_dir_exists(self, File, node):
         assert File('/etc/ceph').exists
 
-    def test_ceph_dir_is_a_directory(self, File):
+    def test_ceph_dir_is_a_directory(self, File, node):
         assert File('/etc/ceph').is_directory
 
     def test_ceph_conf_exists(self, File, node):
