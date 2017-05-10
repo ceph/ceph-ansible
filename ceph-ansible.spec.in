@@ -35,6 +35,14 @@ for f in ansible.cfg *.yml *.sample group_vars roles library plugins infrastruct
   cp -a $f %{buildroot}%{_datarootdir}/ceph-ansible
 done
 
+# Strip coreos files.
+# These are unneeded on RPM-based distros, and the playbooks download random
+# things from around the internet.
+pushd %{buildroot}%{_datarootdir}/ceph-ansible
+  rm -r roles/ceph-common-coreos
+  rm group_vars/common-coreoss.yml.sample
+popd
+
 %check
 # Borrowed from upstream's .travis.yml:
 ansible-playbook -i dummy-ansible-hosts test.yml --syntax-check
