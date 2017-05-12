@@ -13,7 +13,10 @@ check_pgs() {
     let RETRIES=RETRIES-1
   done
   # PGs not clean, exiting with return code 1
-  echo "Error with PGs, check config"
+  echo "Error while running 'ceph $CEPH_CLI -s', PGs were not reported as active+clean"
+  echo "It is possible that the cluster has less OSDs than the replica configuration"
+  echo "Will refuse to continue"
+  ceph $CEPH_CLI -s
   exit 1
 }
 
