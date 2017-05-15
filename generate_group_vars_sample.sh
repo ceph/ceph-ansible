@@ -36,7 +36,7 @@ EOF
     sed '/^---/d; s/^\([A-Za-z[:space:]]\)/#\1/' \
       "$defaults" >> "$basedir"/group_vars/"$output"
     echo >> "$basedir"/group_vars/"$output"
-  elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+  elif [ "$(uname -s)" == "Linux" ]; then
     sed '/^---/d; s/^\([A-Za-z[:space:]].\+\)/#\1/' \
       "$defaults" >> "$basedir"/group_vars/"$output"
     echo >> "$basedir"/group_vars/"$output"
