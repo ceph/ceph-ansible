@@ -21,10 +21,12 @@
 # starting the next task
 - name: prepare ceph osd disk
   shell: |
+    NAME="ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item.0 | regex_replace('/', '') }}"
+    docker ps -a | grep -sq $NAME && docker rm $NAME || true
     docker run --net=host \
     --pid=host \
     --privileged=true \
-    --name="ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item.0 | regex_replace('/', '') }}" \
+    --name=$NAME \
     -v /etc/ceph:/etc/ceph \
     -v /var/lib/ceph/:/var/lib/ceph/ \
     -v /dev:/dev \
@@ -42,15 +44,19 @@
     - ceph_osd_docker_prepare_env is defined
     - not osd_containerized_deployment_with_kv
   # https://github.com/ceph/ceph-ansible/issues/1495
+  register: prepare_osd_disk
+  until: prepare_osd_disk.rc == 0
   retries: 5
   delay: 3
 
 - name: prepare ceph osd disk with kv_store
   shell: |
+    NAME="ceph-osd-prepare-{{ ansible_hostname }}-dev-{{ item.0 | regex_replace('/', '') }}"
+    docker ps -a | grep -sq $NAME && docker rm $NAME || true
     docker run  --net=host   \
     --pid=host \
     --privileged=true \
-    --name="ceph-osd-prepare-{{ ansible_hostname }}-dev-{{ item.0 | regex_replace('/', '') }}" \
+    --name=$NAME \
     -v /dev:/dev \
     -v /etc/localtime:/etc/localtime:ro \
     -e "OSD_DEVICE={{ item.0 }}" \
@@ -70,6 +76,8 @@
     - ceph_osd_docker_prepare_env is defined
     - osd_containerized_deployment_with_kv
   # https://github.com/ceph/ceph-ansible/issues/1495
+  register: prepare_osd_disk_kv
+  until: prepare_osd_disk_kv.rc == 0
   retries: 5
   delay: 3
 
