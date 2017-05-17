@@ -2,20 +2,20 @@
 
 set -euo pipefail
 
+#############
+# VARIABLES #
+#############
+
 basedir=$(dirname "$0")
+no_header="ceph-docker-common" # pipe separated list of roles with no header, MUST end with '$', e.g: 'foo$|bar$'
+merge_in_all="ceph-common$|ceph-docker-common$" # pipe separated list of roles you want to merge in all.yml.sample, MUST end with '$', e.g: 'foo$|bar$'
 
-for role in "$basedir"/roles/ceph-*; do
-  rolename=$(basename "$role")
-  if [[ $rolename == "ceph-common" ]]; then
-      output="all.yml.sample"
-  elif [[ $rolename == "ceph-agent" ]]; then
-      output="agent.yml.sample"
-  elif [[ $rolename == "ceph-fetch-keys" ]]; then
-      output="ceph-fetch-keys.yml.sample"
-  else
-      output="${rolename:5}s.yml.sample"
-  fi
 
+#############
+# FUNCTIONS #
+#############
+
+populate_header () {
   cat <<EOF > "$basedir"/group_vars/"$output"
 ---
 # Variables here are applicable to all host groups NOT roles
@@ -27,21 +27,52 @@ for role in "$basedir"/roles/ceph-*; do
 dummy:
 
 EOF
-  defaults="$role"/defaults/main.yml
-  if [[ ! -f $defaults ]]; then
-      continue
-  fi
+}
 
+generate_group_vars_file () {
   if [ "$(uname)" == "Darwin" ]; then
-  sed '/^---/d; s/^\([A-Za-z[:space:]]\)/#\1/' \
-        "$defaults" >> "$basedir"/group_vars/"$output"
+    sed '/^---/d; s/^\([A-Za-z[:space:]]\)/#\1/' \
+      "$defaults" >> "$basedir"/group_vars/"$output"
     echo >> "$basedir"/group_vars/"$output"
-  elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+  elif [ "$(uname -s)" == "Linux" ]; then
     sed '/^---/d; s/^\([A-Za-z[:space:]].\+\)/#\1/' \
-        "$defaults" >> "$basedir"/group_vars/"$output"
+      "$defaults" >> "$basedir"/group_vars/"$output"
     echo >> "$basedir"/group_vars/"$output"
   else
     echo "Unsupported platform"
     exit 1
   fi
+}
+
+
+########
+# MAIN #
+########
+
+for role in "$basedir"/roles/ceph-*; do
+  rolename=$(basename "$role")
+
+  if echo "$rolename" | grep -qE "$merge_in_all"; then
+    output="all.yml.sample"
+  elif [[ $rolename == "ceph-agent" ]]; then
+    output="agent.yml.sample"
+  elif [[ $rolename == "ceph-fetch-keys" ]]; then
+    output="ceph-fetch-keys.yml.sample"
+  else
+    output="${rolename:5}s.yml.sample"
+  fi
+
+
+  # Do not re-regenerate the header for certain roles
+  # since we merge them in all.yml.sample
+  if ! echo "$rolename" | grep -qE "$no_header"; then
+    populate_header
+  fi
+
+  defaults="$role"/defaults/main.yml
+  if [[ ! -f $defaults ]]; then
+    continue
+  fi
+
+  generate_group_vars_file
 done
