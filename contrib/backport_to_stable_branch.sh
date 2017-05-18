@@ -20,7 +20,7 @@ bkp_branch=$bkp_branch_name-$bkp_branch_name_prefix
 
 verify_commit () {
   for com in ${commit//,/ }; do
-    if [[ $(git cat-file -t "$com" 2&>/dev/null) != commit ]]; then
+    if [[ $(git cat-file -t "$com" 2>/dev/null) != commit ]]; then
       echo "$com does not exist in your tree"
       echo "Run 'git fetch origin master && git pull origin master'"
       exit 1
