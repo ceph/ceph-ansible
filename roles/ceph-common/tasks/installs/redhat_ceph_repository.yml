@@ -6,10 +6,13 @@
   when: ceph_stable
 
 - name: add ceph stable repository
-  package:
-    name: http://download.ceph.com/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch/ceph-release-1-0.{{ ceph_stable_redhat_distro|replace('rhel', 'el') }}.noarch.rpm
+  yum_repository:
+    name: ceph_stable
+    description: Ceph Stable repo
+    gpgcheck: yes
     state: present
-  changed_when: false
+    gpgkey: "{{ ceph_stable_key }}"
+    baseurl: "{{ ceph_mirror }}/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/$basearch"
   when: ceph_stable
 
 # we must use curl instead of ansible's uri module because SNI support in
