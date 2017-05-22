@@ -19,7 +19,9 @@ max open files = {{ max_open_files }}
 osd crush chooseleaf type = 0
 {% endif %}
 {# NOTE (leseb): the blank lines in-between are needed otherwise we won't get any line break #}
-{% if groups[mon_group_name] is defined %}
+{% if mon_initial_members is defined %}
+mon initial members == {{ mon_initial_members|join(',') }}
+{% elif groups[mon_group_name] is defined %}
 mon initial members = {% for host in groups[mon_group_name] %}
       {% if hostvars[host]['ansible_fqdn'] is defined and mon_use_fqdn -%}
         {{ hostvars[host]['ansible_fqdn'] }}
@@ -31,7 +33,9 @@ mon initial members = {% for host in groups[mon_group_name] %}
 {% endif %}
 
 {% if not mon_containerized_deployment and not mon_containerized_deployment_with_kv %}
-{% if monitor_address_block %}
+{% if mon_host is defined %}
+mon host = {{ mon_host|join(',') }}
+{% elif monitor_address_block %}
 mon host = {% for host in groups[mon_group_name] %}{{ hostvars[host]['ansible_all_ipv4_addresses'] | ipaddr(monitor_address_block) | first }}{% if not loop.last %},{% endif %}{% endfor %}
 {% elif groups[mon_group_name] is defined %}
 mon host = {% for host in groups[mon_group_name] %}
