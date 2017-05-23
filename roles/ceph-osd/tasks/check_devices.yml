@@ -22,14 +22,6 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- name: check the journal device is partition
-  shell: "readlink -f {{ item }} | egrep '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p)[0-9]{1,2}|fio[a-z]{1,2}[0-9]{1,2}$'"
-  with_items: "{{ raw_journal_devices }}"
-  changed_when: false
-  failed_when: false
-  always_run: true
-  register: journal_ispartition_results
-
 - name: check the partition status of the journal devices
   shell: "parted --script {{ item }} print > /dev/null 2>&1"
   with_items: "{{ journal_devices|unique }}"
@@ -39,7 +31,6 @@
   register: journal_partition_status
   when:
     - (raw_multi_journal or dmcrypt_dedicated_journal)
-    - item.0.rc != 0
 
 - name: fix partitions gpt header or labels of the journal devices
   shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item }}"
@@ -47,5 +38,5 @@
   changed_when: false
   when:
     - (raw_multi_journal or dmcrypt_dedicated_journal)
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
+    - not item.get("skipped")
+    - item.get("rc", 0) != 0
