@@ -132,6 +132,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.ssh.private_key_path = settings['ssh_private_key_path']
   config.ssh.username = USER
 
+  # When using libvirt, avoid errors like:
+  # "host doesn't support requested feature: CPUID.01H:EDX.ds [bit 21]"
+  config.vm.provider :libvirt do |lv|
+    lv.cpu_mode = 'host-passthrough'
+  end
+
   # Faster bootup. Disables mounting the sync folder for libvirt and virtualbox
   if DISABLE_SYNCED_FOLDER
     config.vm.provider :virtualbox do |v,override|
