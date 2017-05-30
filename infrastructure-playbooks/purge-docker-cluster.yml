@@ -360,29 +360,19 @@
       enabled: no
     when: not is_atomic
 
-  - name: remove docker-py
-    pip:
-      name: docker-py
-      version: 1.1.0
-      state: absent
-    when:
-      ansible_version['full'] | version_compare('2.1.0.0', '<') and
-      not is_atomic
-
-  - name: remove docker-py
+  - name: remove docker-py on Debian
     pip:
       name: docker-py
       state: absent
     when:
-      ansible_version['full'] | version_compare('2.1.0.0', '>=') and
-      not is_atomic
+      - ansible_distribution == 'Debian'
 
-  - name: remove six
+  - name: remove six on Debian
     pip:
       name: six
-      version: 1.9.0
       state: absent
-    when: not is_atomic
+    when:
+      - ansible_distribution == 'Debian'
 
   - name: remove pip and docker on ubuntu
     apt:
