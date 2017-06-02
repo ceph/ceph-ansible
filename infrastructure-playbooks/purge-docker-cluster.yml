@@ -43,6 +43,11 @@
          on the command line when invoking the playbook"
     when: remove_packages != 'yes'
 
+  - name: set ceph_docker_registry value if not set
+    set_fact:
+      ceph_docker_registry: "docker.io"
+    when: ceph_docker_registry is not defined
+
 
 - name: purge ceph mds cluster
 
@@ -62,7 +67,7 @@
 
   - name: remove ceph mds container
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-mds-{{ ansible_hostname }}"
       state: absent
     ignore_errors: true
@@ -75,6 +80,7 @@
   - name: remove ceph mds image
     docker_image:
       state: absent
+      repository: "{{ ceph_docker_registry }}"
       name: "{{ ceph_docker_image }}"
       tag: "{{ ceph_docker_image_tag }}"
       force: yes
@@ -100,7 +106,7 @@
 
   - name: remove ceph rgw container
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-rgw-{{ ansible_hostname }}"
       state: absent
     ignore_errors: true
@@ -113,6 +119,7 @@
   - name: remove ceph rgw image
     docker_image:
       state: absent
+      repository: "{{ ceph_docker_registry }}"
       name: "{{ ceph_docker_image }}"
       tag: "{{ ceph_docker_image_tag }}"
       force: yes
@@ -138,7 +145,7 @@
 
   - name: remove ceph rbd-mirror container
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-rbd-mirror-{{ ansible_hostname }}"
       state: absent
     ignore_errors: true
@@ -151,6 +158,7 @@
   - name: remove ceph rbd-mirror image
     docker_image:
       state: absent
+      repository: "{{ ceph_docker_registry }}"
       name: "{{ ceph_docker_image }}"
       tag: "{{ ceph_docker_image_tag }}"
       force: yes
@@ -176,7 +184,7 @@
 
   - name: remove ceph nfs container
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-nfs-{{ ansible_hostname }}"
       state: absent
     ignore_errors: true
@@ -198,6 +206,7 @@
   - name: remove ceph nfs image
     docker_image:
       state: absent
+      repository: "{{ ceph_docker_registry }}"
       name: "{{ ceph_docker_image }}"
       tag: "{{ ceph_docker_image_tag }}"
       force: yes
@@ -224,7 +233,7 @@
 
   - name: remove ceph osd prepare container
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
       state: absent
     with_items: "{{ ceph_osd_docker_devices }}"
@@ -232,7 +241,7 @@
 
   - name: remove ceph osd container
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-osd-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
       state: absent
     with_items: "{{ ceph_osd_docker_devices }}"
@@ -245,7 +254,7 @@
       --name ceph-osd-zap-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }} \
       -v /dev/:/dev/ \
       -e OSD_DEVICE={{ item }} \
-      {{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+      {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
       zap_device
     with_items:
       - "{{ ceph_osd_docker_devices }}"
@@ -262,7 +271,7 @@
 
   - name: remove ceph osd zap disk container
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-osd-zap-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
       state: absent
     with_items:
@@ -277,6 +286,7 @@
   - name: remove ceph osd image
     docker_image:
       state: absent
+      repository: "{{ ceph_docker_registry }}"
       name: "{{ ceph_docker_image }}"
       tag: "{{ ceph_docker_image_tag }}"
       force: yes
@@ -302,14 +312,14 @@
 
   - name: remove ceph mon container
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-mon-{{ ansible_hostname }}"
       state: absent
     ignore_errors: true
 
   - name: remove restapi container
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-restapi-{{ ansible_hostname }}"
       state: absent
     ignore_errors: true
@@ -322,6 +332,7 @@
   - name: remove ceph mon image
     docker_image:
       state: absent
+      repository: "{{ ceph_docker_registry }}"
       name: "{{ ceph_docker_image }}"
       tag: "{{ ceph_docker_image_tag }}"
       force: yes
