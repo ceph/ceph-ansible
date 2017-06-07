@@ -23,8 +23,19 @@ ExecStart=/usr/bin/docker run --rm --name ceph-mon-%i --net=host \
    --net=host \
    {% endif -%}
    -e CEPH_DAEMON=MON \
-   -e MON_IP={{ hostvars[inventory_hostname]['ansible_default_' + ip_version]['address'] }} \
    -e CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }} \
+   -e IP_VERSION={{ ip_version[-1:] }} \
+   {% if monitor_address is defined and monitor_address != '0.0.0.0' %}
+     {% if ip_version == 'ipv4' -%}
+       -e MON_IP={{ monitor_address }} \
+     {% elif ip_version == 'ipv6' -%}
+       -e MON_IP=[{{ monitor_address }}] \
+     {% endif -%}
+   {% elif ip_version == 'ipv4' -%}
+   -e MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface][ip_version]['address'] }} \
+   {% elif ip_version =='ipv6' -%}
+   -e MON_IP=[{{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface][ip_version][0]['address'] }}] \
+   {% endif -%}
    {{ ceph_mon_docker_extra_env }} \
    {{ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
 ExecStopPost=-/usr/bin/docker stop ceph-mon-%i
