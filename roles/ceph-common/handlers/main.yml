@@ -44,7 +44,8 @@
 
   when:
 # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-    - socket.rc == 0
+# except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
+    - ((crush_location is defined and crush_location) or socket.rc == 0)
     - ceph_current_fsid.rc == 0
     - osd_group_name in group_names
 # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
