@@ -8,7 +8,7 @@ check_pgs() {
   while [ $RETRIES -ne 0 ]; do
     test "[""$(ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" == "$(ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
     RET=$?
-    test $RET -eq 0 && exit 0
+    test $RET -eq 0 && return 0
     sleep $DELAY
     let RETRIES=RETRIES-1
   done
@@ -28,7 +28,7 @@ for id in $(ls /var/lib/ceph/osd/ | sed 's/.*-//'); do
   # Wait and ensure the socket exists after restarting the daemon
   SOCKET=/var/run/ceph/{{ cluster }}-osd.${id}.asok
   while [ $COUNT -ne 0 ]; do
-    test -S $SOCKET && check_pgs
+    test -S $SOCKET && check_pgs && continue 2
     sleep 1
     let COUNT=COUNT-1
   done
