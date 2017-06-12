@@ -6,7 +6,7 @@ CEPH_CLI="--name client.bootstrap-osd --keyring /var/lib/ceph/bootstrap-osd/{{ c
 
 check_pgs() {
   while [ $RETRIES -ne 0 ]; do
-    test "$(ceph $CEPH_CLI -s | grep pgmap | sed -r 's/.*: ([0-9]+) pgs.*/\1/g')" -eq "$(ceph $CEPH_CLI -s | egrep '\sactive\+clean' | sed -r 's/[^0-9]*//g')" && ceph $CEPH_CLI health | egrep -sq "HEALTH_OK|HEALTH_WARN"
+    test "[""$(ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" == "$(ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
     RET=$?
     test $RET -eq 0 && exit 0
     sleep $DELAY
