@@ -1,0 +1,48 @@
+---
+- name: create roots needed for configured crush rules
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush add-bucket {{ item.root }} root"
+  with_items: "{{ crush_rules | unique }}"
+  changed_when: false
+  failed_when: false
+  run_once: true
+
+- name: create configured crush rules
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush rule create-simple {{ item.name }} {{ item.root }} {{ item.type }}"
+  with_items: "{{ crush_rules | unique }}"
+  changed_when: false
+  failed_when: false
+  run_once: true
+
+- name: get id for new default crush rule
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd -f json crush rule dump {{ item.name }}"
+  register: info_ceph_default_crush_rule
+  changed_when: false
+  failed_when: false
+  with_items: "{{ crush_rules }}"
+  when: item.default
+
+- name: set crush rule info as fact
+  set_fact:
+    info_ceph_default_crush_rule_yaml: "{{ info_ceph_default_crush_rule.results[0].stdout|from_json() }}"
+  when: info_ceph_default_crush_rule.results|length > 0
+
+- name: insert new default crush rule into daemon to prevent restart
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ monitor_name }} config set osd_pool_default_crush_replicated_ruleset {{ info_ceph_default_crush_rule_yaml.rule_id }}"
+  changed_when: false
+  failed_when: false
+  when: info_ceph_default_crush_rule.results|length > 0
+
+- name: add new default crush rule to ceph.conf
+  ini_file:
+    dest: "/etc/ceph/{{ cluster }}.conf"
+    section: "global"
+    option: "osd pool default crush replicated ruleset"
+    value: "{{ info_ceph_default_crush_rule_yaml.rule_id }}"
+  when: info_ceph_default_crush_rule.results|length > 0
+
+- name: move rbd pool to new default root
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd pool set rbd crush_ruleset {{ info_ceph_default_crush_rule_yaml.rule_id }}"
+  changed_when: false
+  failed_when: false
+  run_once: true
+  when: info_ceph_default_crush_rule.results|length > 0
