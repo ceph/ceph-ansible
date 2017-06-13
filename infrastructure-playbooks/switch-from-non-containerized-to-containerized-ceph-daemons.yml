@@ -254,7 +254,7 @@
 
   - name: waiting for clean pgs...
     shell: |
-      test "$(ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(ceph pg stat --cluster {{ cluster }}  | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
+      test "[""$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" == "$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
     register: result
     until: result.rc == 0
     retries: 10
