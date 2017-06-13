@@ -267,7 +267,7 @@
 
     - name: waiting for clean pgs...
       shell: |
-        test "$(ceph pg stat --cluster {{ cluster }} | tr , '\n'  | sed 's/^.*pgs: //' | awk '/active.clean/ { SUM += $1 } END {print SUM}')" -eq "$(ceph pg stat --cluster {{ cluster }}  | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
+        test "[""$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" == "$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
       register: result
       until: result.rc == 0
       retries: "{{ health_osd_check_retries }}"
@@ -277,7 +277,7 @@
 
     - name: container - waiting for clean pgs...
       shell: |
-        test "$(docker exec ceph-osd-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(docker exec {{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph pg stat --cluster {{ cluster }} | sed 's/pgs.*//;s/^.*://;s/ //')" && docker exec {{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
+        test "[""$(docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" == "$(docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
       register: result
       until: result.rc == 0
       retries: "{{ health_osd_check_retries }}"
