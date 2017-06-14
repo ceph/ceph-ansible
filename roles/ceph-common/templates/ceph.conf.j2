@@ -85,10 +85,12 @@ admin socket = {{ rbd_client_admin_socket_path }}/$cluster-$type.$id.$pid.$cctid
 log file = {{ rbd_client_log_file }} # must be writable by QEMU and allowed by SELinux or AppArmor
 
 [osd]
+{% if osd_objectstore != 'bluestore' %}
 osd mkfs type = {{ osd_mkfs_type }}
 osd mkfs options xfs = {{ osd_mkfs_options_xfs }}
 osd mount options xfs = {{ osd_mount_options_xfs }}
 osd journal size = {{ journal_size }}
+{% endif %}
 {% if filestore_xattr_use_omap != None %}
 filestore xattr use omap = {{ filestore_xattr_use_omap }}
 {% elif osd_mkfs_type == "ext4" %}
