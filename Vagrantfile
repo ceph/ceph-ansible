@@ -180,37 +180,39 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
   end
 
-  (0..MGRS - 1).each do |i|
-    config.vm.define "#{LABEL_PREFIX}mgr#{i}" do |mgr|
-      mgr.vm.hostname = "#{LABEL_PREFIX}ceph-mgr#{i}"
-      if ASSIGN_STATIC_IP
-        mgr.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.3#{i}"
-      end
-      # Virtualbox
-      mgr.vm.provider :virtualbox do |vb|
-        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
-      end
+  if "#{ENV['CEPH_STABLE_RELEASE']}" != "jewel"
+    (0..MGRS - 1).each do |i|
+      config.vm.define "#{LABEL_PREFIX}mgr#{i}" do |mgr|
+        mgr.vm.hostname = "#{LABEL_PREFIX}ceph-mgr#{i}"
+        if ASSIGN_STATIC_IP
+          mgr.vm.network :private_network,
+            ip: "#{PUBLIC_SUBNET}.3#{i}"
+        end
+        # Virtualbox
+        mgr.vm.provider :virtualbox do |vb|
+          vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
+        end
 
-      # VMware
-      mgr.vm.provider :vmware_fusion do |v|
-        v.vmx['memsize'] = "#{MEMORY}"
-      end
+        # VMware
+        mgr.vm.provider :vmware_fusion do |v|
+          v.vmx['memsize'] = "#{MEMORY}"
+        end
 
-      # Libvirt
-      mgr.vm.provider :libvirt do |lv|
-        lv.memory = MEMORY
-        lv.random_hostname = true
-      end
+        # Libvirt
+        mgr.vm.provider :libvirt do |lv|
+          lv.memory = MEMORY
+          lv.random_hostname = true
+        end
 
-      # Parallels
-      mgr.vm.provider "parallels" do |prl|
-        prl.name = "ceph-mgr#{i}"
-        prl.memory = "#{MEMORY}"
-      end
+        # Parallels
+        mgr.vm.provider "parallels" do |prl|
+          prl.name = "ceph-mgr#{i}"
+          prl.memory = "#{MEMORY}"
+        end
 
-      mgr.vm.provider :linode do |provider|
-        provider.label = mgr.vm.hostname
+        mgr.vm.provider :linode do |provider|
+          provider.label = mgr.vm.hostname
+        end
       end
     end
   end
