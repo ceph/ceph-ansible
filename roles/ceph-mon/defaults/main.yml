@@ -53,17 +53,22 @@ openstack_nova_pool:
 openstack_cinder_backup_pool:
   name: backups
   pg_num: "{{ osd_pool_default_pg_num }}"
+openstack_gnocchi_pool:
+  name: metrics
+  pg_num: "{{ osd_pool_default_pg_num }}"
 
 openstack_pools:
   - "{{ openstack_glance_pool }}"
   - "{{ openstack_cinder_pool }}"
   - "{{ openstack_nova_pool }}"
   - "{{ openstack_cinder_backup_pool }}"
+  - "{{ openstack_gnocchi_pool }}"
 
 openstack_keys:
   - { name: client.glance, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_glance_pool.name }}'" }
   - { name: client.cinder, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_pool.name }}, allow rwx pool={{ openstack_nova_pool.name }}, allow rx pool={{ openstack_glance_pool.name }}'"  }
   - { name: client.cinder-backup, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_backup_pool.name }}'" }
+  - { name: client.gnocchi, value: "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_gnocchi_pool.name }}'" }
 
 ##########
 # DOCKER #
