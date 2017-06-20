@@ -28,7 +28,7 @@
 
     - name: get the name of the existing ceph cluster
       shell: |
-        basename $(grep -R fsid /etc/ceph/ | egrep -o '^[^.]*')
+        basename $(grep --exclude '*.bak' -R fsid /etc/ceph/ | egrep -o '^[^.]*')
       changed_when: false
       register: cluster_name
 
@@ -36,6 +36,16 @@
       stat:
         path: "/etc/ceph/{{ cluster_name.stdout }}.conf"
       register: ceph_conf_stat
+
+    # Creates a backup of original ceph conf file in 'cluster_name-YYYYMMDDTHHMMSS.conf.bak' format
+    - name: "make a backup of original {{ cluster_name.stdout }}.conf"
+      copy:
+        src: "/etc/ceph/{{ cluster_name.stdout }}.conf"
+        dest: "/etc/ceph/{{ cluster_name.stdout }}-{{ ansible_date_time.iso8601_basic_short }}.conf.bak"
+        remote_src: true
+        owner: "{{ ceph_conf_stat.stat.pw_name }}"
+        group: "{{ ceph_conf_stat.stat.gr_name }}"
+        mode: "{{ ceph_conf_stat.stat.mode }}"
 
     - name: generate ceph configuration file
       action: config_template
