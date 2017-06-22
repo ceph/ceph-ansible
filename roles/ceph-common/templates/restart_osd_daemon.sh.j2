@@ -6,7 +6,7 @@ CEPH_CLI="--name client.bootstrap-osd --keyring /var/lib/ceph/bootstrap-osd/{{ c
 
 check_pgs() {
   while [ $RETRIES -ne 0 ]; do
-    test "[""$(ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" == "$(ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
+    test "[""$(ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" = "$(ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
     RET=$?
     test $RET -eq 0 && return 0
     sleep $DELAY
