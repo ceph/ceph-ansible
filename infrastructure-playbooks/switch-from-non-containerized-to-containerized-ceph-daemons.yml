@@ -254,7 +254,7 @@
 
   - name: waiting for clean pgs...
     shell: |
-      test "[""$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" == "$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
+      test "[""$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" = "$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
     register: result
     until: result.rc == 0
     retries: 10
