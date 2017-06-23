@@ -6,9 +6,10 @@
   always_run: true
 
 - name: set selinux permissions
-  shell: chcon -Rt svirt_sandbox_file_t {{ item }}
+  shell: |
+    chcon -Rt svirt_sandbox_file_t {{ item }}
   with_items:
-    - /etc/ceph
+    - "{{ ceph_conf_key_directory }}"
     - /var/lib/ceph
   changed_when: false
   when: sestatus.stdout != 'Disabled'
