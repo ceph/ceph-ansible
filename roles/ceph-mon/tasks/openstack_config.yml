@@ -1,14 +1,33 @@
 ---
-- name: create openstack pool
+- name: create openstack pool(s)
   command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pg_num }}"
   with_items: "{{ openstack_pools | unique }}"
   changed_when: false
   failed_when: false
 
-- name: create openstack keys
-  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth get-or-create {{ item.name }} {{ item.value }} -o /etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
+# NOTE: (leseb): I know this is not ideal since this only allows 2 caps.
+# A future version could use "--caps CAPSFILE"
+# which will set all of capabilities associated with a given key, for all subsystems
+- name: create openstack key(s)
+  shell: |
+    "{{ docker_exec_cmd }} ceph-authtool -C /etc/ceph/{{ cluster }}.{{ item.name }}.keyring --name {{ item.name }} --add-key {{ item.key }} --cap {{ item.mon_cap }} --cap {{ item.osd_cap }}"
   args:
-    creates: /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
+    creates: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
   with_items: "{{ openstack_keys }}"
   changed_when: false
   when: cephx
+
+- name: check if openstack key(s) already exist(s)
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
+  changed_when: false
+  failed_when: false
+  with_items: "{{ openstack_keys }}"
+  register: openstack_key_exist
+
+- name: add openstack key(s) to ceph
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth import -i {{ item.0.name }}.keyring"
+  changed_when: false
+  with_together:
+    - "{{ openstack_keys }}"
+    - "{{ openstack_key_exist.results }}"
+  when: item.1.rc != 0
