@@ -1,29 +1,38 @@
 #!/bin/bash
 # {{ ansible_managed }}
 
-if [[ "$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID /dev/${1}* | wc -l)" -gt 0 ]] ; then
-  for part in /dev/${1}*; do
-    if [[ "$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID ${part} | wc -l)" -gt 0 ]]; then
-DEVICES="${DEVICES} --device=/dev/disk/by-partuuid/$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID ${part}) "
-    fi
+
+#############
+# FUNCTIONS #
+#############
+
+function create_dev_list {
+  local regex
+  local disks
+  regex="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+  # we use the prepare container to find the partitions to expose
+  disks=$(docker logs ceph-osd-prepare-{{ ansible_hostname }}-dev${1} |& grep -Eo /dev/disk/by-partuuid/${regex} | uniq)
+  for disk in $disks; do
+    DEVICES="--device $disk "
   done
-  # we test if the dm exist, if it does we add it to --device list
-  # if not we don't add it, the first activation will fail
-  # however the dm will be created, on the second run it'll added to the device list
-  # the second run will succeed
-  blkid -t TYPE=crypto_LUKS -o value -s PARTUUID /dev/${1}1
-  # make sure blkid returns 0 otherwise we will test /dev/mapper/ which always exists
-	if [[ -e /dev/mapper/$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID /dev/${1}1) && "$?" -eq 0 ]]; then
-    DEVICES="${DEVICES} --device=/dev/disk/by-partuuid/$(blkid -t PARTLABEL="ceph lockbox" -o value -s PARTUUID /dev/${1}3) --device=/dev/${1}3 --device=/dev/mapper/control --device=/dev/mapper/$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID /dev/${1}2) --device=/dev/mapper/$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID /dev/${1}1)"
-  else
-    DEVICES="${DEVICES} --device=/dev/disk/by-partuuid/$(blkid -t PARTLABEL="ceph lockbox" -o value -s PARTUUID /dev/${1}3) --device=/dev/${1}3 --device=/dev/mapper/control --device=/dev/mapper/$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID /dev/${1}2)"
-  fi
-fi
+}
+
+create_dev_list $1
+
+
+########
+# MAIN #
+########
 
 /usr/bin/docker run \
   --rm \
   --net=host \
+  {% if 'OSD_DMCRYPT=1' in ceph_osd_docker_extra_env -%}
+  --privileged=true \
+  -v /dev:/dev \
+  {% else -%}
   --cap-add SYS_ADMIN \
+  {% endif -%}
   {% if ansible_distribution == 'Ubuntu' -%}
   --security-opt apparmor:unconfined \
   {% endif -%}
@@ -41,13 +50,11 @@ fi
   --device=/dev/${1}1 \
   {% if raw_journal_devices|length > 0 -%}
   -e OSD_JOURNAL={{ raw_journal_devices[0] }} \
-  --device={{ raw_journal_devices[0] }} \
   {% else -%}
   --device=/dev/${1}2 \
   {% endif -%}
-  --device=/dev/disk/by-partuuid/$(python -c "import uuid; f = open('/etc/machine-id', 'r').read(); print uuid.uuid5(uuid.NAMESPACE_DNS, f.strip() + '/dev/$1')") ${DEVICES} \
-  -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE \
   -e OSD_DEVICE=/dev/${1} \
   {{ ceph_osd_docker_extra_env }} \
   --name=ceph-osd-{{ ansible_hostname }}-dev${1} \
+  -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
