@@ -9,8 +9,7 @@
 # A future version could use "--caps CAPSFILE"
 # which will set all of capabilities associated with a given key, for all subsystems
 - name: create openstack key(s)
-  shell: |
-    "{{ docker_exec_cmd }} ceph-authtool -C /etc/ceph/{{ cluster }}.{{ item.name }}.keyring --name {{ item.name }} --add-key {{ item.key }} --cap {{ item.mon_cap }} --cap {{ item.osd_cap }}"
+  shell: "{{ docker_exec_cmd }} ceph-authtool -C /etc/ceph/{{ cluster }}.{{ item.name }}.keyring --name {{ item.name }} --add-key {{ item.key }} --cap {{ item.mon_cap }} --cap {{ item.osd_cap }}"
   args:
     creates: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
   with_items: "{{ openstack_keys }}"
@@ -25,7 +24,7 @@
   register: openstack_key_exist
 
 - name: add openstack key(s) to ceph
-  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth import -i {{ item.0.name }}.keyring"
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth import -i /etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
   changed_when: false
   with_together:
     - "{{ openstack_keys }}"
