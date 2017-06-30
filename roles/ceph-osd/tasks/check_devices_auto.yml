@@ -10,6 +10,27 @@
     - ansible_devices is defined
     - item.value.removable == "0"
 
+- name: check if any of the raw partitions are mounted
+  shell: "mount |grep -sq '^/dev/{{ item.key }} '"
+  args:
+    warn: false
+  ignore_errors: yes
+  with_dict: "{{ ansible_devices }}"
+  register: mount_cmd
+  changed_when: false
+  always_run: true
+  when:
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.partitions|count == 0
+    - item.value.holders|count == 0
+
+- name: fail if any of the raw partitions are mounted
+  fail:
+    msg: "OSD device autodetection failed because one or more raw partitions is mounted on the host."
+  when: item.rc == 0
+  with_items: "{{ mount_cmd.results }}"
+
 - name: check the partition status of the osd disks (autodiscover disks)
   shell: "parted --script /dev/{{ item.key }} print > /dev/null 2>&1"
   with_dict: "{{ ansible_devices }}"
