@@ -29,13 +29,14 @@
     mode: "0600"
   when: cephx
 
-- name: create monitor directory
+- name: create (and fix ownership of) monitor directory
   file:
     path: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}
     state: directory
     owner: "ceph"
     group: "ceph"
     mode: "0755"
+    recurse: true
 
 - name: ceph monitor mkfs with keyring
   command: ceph-mon --cluster {{ cluster }} --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
