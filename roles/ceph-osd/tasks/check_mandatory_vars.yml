@@ -55,6 +55,15 @@
     - not osd_auto_discovery
     - devices|length == 0
 
+- name: make sure the devices variable is a list
+  fail:
+    msg: "devices: must be a list, not a string, i.e. [ \"/dev/sda\" ]"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not osd_auto_discovery
+    - devices is string
+
 - name: verify journal devices have been provided
   fail:
     msg: "please provide devices and raw journal devices to your osd scenario"
@@ -63,6 +72,18 @@
     - osd_group_name in group_names
     - not containerized_deployment
     - raw_multi_journal
+    - raw_journal_devices|length == 0
+      or devices|length == 0
+
+- name: make sure the raw_journal_devices variable is a list
+  fail:
+    msg: "raw_journal_devices: must be a list, not a string, i.e. [ \"/dev/sda\" ]"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not containerized_deployment
+    - raw_multi_journal
+    - raw_journal_devices is string
     - raw_journal_devices|length == 0
       or devices|length == 0
 
