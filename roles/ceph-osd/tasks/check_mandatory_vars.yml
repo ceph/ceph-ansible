@@ -16,7 +16,7 @@
     msg: "WARNING: journal_size is configured to less than 5GB. This is not recommended and can lead to severe issues."
   when:
     - journal_size|int < 5120
-    - osd_objectstore != 'bluestore'
+    - osd_objectstore == 'filestore'
     - osd_group_name in group_names
 
 - name: make sure an osd scenario was chosen
@@ -28,7 +28,6 @@
     - not containerized_deployment
     - not journal_collocation
     - not raw_multi_journal
-    - not bluestore
     - not dmcrypt_journal_collocation
     - not dmcrypt_dedicated_journal
 
@@ -40,14 +39,10 @@
     - osd_group_name in group_names
     - not containerized_deployment
     - (journal_collocation and raw_multi_journal)
-      or (journal_collocation and bluestore)
-      or (raw_multi_journal and bluestore)
       or (dmcrypt_journal_collocation and journal_collocation)
       or (dmcrypt_journal_collocation and raw_multi_journal)
-      or (dmcrypt_journal_collocation and bluestore)
       or (dmcrypt_dedicated_journal and journal_collocation)
       or (dmcrypt_dedicated_journal and raw_multi_journal)
-      or (dmcrypt_dedicated_journal and bluestore)
       or (dmcrypt_dedicated_journal and dmcrypt_journal_collocation)
 
 - name: verify devices have been provided
@@ -71,3 +66,12 @@
     - raw_journal_devices|length == 0
       or devices|length == 0
 
+- name: check if bluestore is supported by the selected ceph version
+  fail:
+    msg: "bluestore is not supported by the selected Ceph version, use Luminous or above."
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not containerized_deployment
+    - osd_objectstore == 'bluestore'
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
