@@ -34,6 +34,24 @@
   when:
     - cephx
 
+- name: ensure systemd service override directory exists
+  file:
+    state: directory
+    path: "/etc/systemd/system/ceph-mgr@.service.d/"
+  when:
+    - ceph_mgr_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
+- name: add ceph-mgr systemd service overrides
+  config_template:
+    src: "ceph-mgr.service.d-overrides.j2"
+    dest: "/etc/systemd/system/ceph-mgr@.service.d/ceph-mgr-systemd-overrides.conf"
+    config_overrides: "{{ ceph_mgr_systemd_overrides | default({}) }}"
+    config_type: "ini"
+  when:
+    - ceph_mgr_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
 - name: start and add that the mgr service to the init sequence
   service:
     name: "ceph-mgr@{{ ansible_hostname }}"

@@ -1,4 +1,22 @@
 ---
+- name: ensure systemd service override directory exists
+  file:
+    state: directory
+    path: "/etc/systemd/system/ceph-mon@.service.d/"
+  when:
+    - ceph_mon_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
+- name: add ceph-mon systemd service overrides
+  config_template:
+    src: "ceph-mon.service.d-overrides.j2"
+    dest: "/etc/systemd/system/ceph-mon@.service.d/ceph-mon-systemd-overrides.conf"
+    config_overrides: "{{ ceph_mon_systemd_overrides | default({}) }}"
+    config_type: "ini"
+  when:
+    - ceph_mon_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
 - name: start the monitor service
   service:
     name: ceph-mon@{{ monitor_name }}
