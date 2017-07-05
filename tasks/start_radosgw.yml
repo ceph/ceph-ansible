@@ -6,6 +6,24 @@
   failed_when: false
   always_run: true
 
+- name: ensure systemd service override directory exists
+  file:
+    state: directory
+    path: "/etc/systemd/system/ceph-rgw@.service.d/"
+  when:
+    - ceph_rgw_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
+- name: add ceph-rgw systemd service overrides
+  config_template:
+    src: "ceph-rgw.service.d-overrides.j2"
+    dest: "/etc/systemd/system/ceph-rgw@.service.d/ceph-rgw-systemd-overrides.conf"
+    config_overrides: "{{ ceph_rgw_systemd_overrides | default({}) }}"
+    config_type: "ini"
+  when:
+    - ceph_rgw_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
 - name: start rgw
   service:
     name: ceph-radosgw@rgw.{{ ansible_hostname }}
