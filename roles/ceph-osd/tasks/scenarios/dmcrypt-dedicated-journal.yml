@@ -23,6 +23,24 @@
     - item.0.get("rc", 0) != 0
     - item.1.get("rc", 0) != 0
     - not osd_auto_discovery
+    - osd_objectstore == 'filestore'
+    - dmcrypt_dedicated_journal
+
+- name: prepare dmcrypt osd disk(s) with a dedicated journal device
+  command: "ceph-disk prepare --bluestore --dmcrypt --cluster {{ cluster }} {{ item.2 }} {{ item.3 }}"
+  with_together:
+    - "{{ parted_results.results }}"
+    - "{{ ispartition_results.results }}"
+    - "{{ devices }}"
+    - "{{ raw_journal_devices }}"
+  changed_when: false
+  when:
+    - not item.0.get("skipped")
+    - not item.1.get("skipped")
+    - item.0.get("rc", 0) != 0
+    - item.1.get("rc", 0) != 0
+    - not osd_auto_discovery
+    - osd_objectstore == 'bluestore'
     - dmcrypt_dedicated_journal
 
 - include: ../activate_osds.yml
