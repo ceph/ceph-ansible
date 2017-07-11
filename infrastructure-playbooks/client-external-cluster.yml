@@ -1,0 +1,32 @@
+- name: deploy a client node for an external cluster
+
+  vars:
+    _ceph_conf_key_directory: "{{ ceph_conf_key_directory | default('/etc/ceph') }}"
+    _cluster: "{{ cluster | default('ceph') }}"
+
+  hosts:
+    - "{{ client_group_name | default('clients') }}"
+    - "{{ mon_group_name | default('mons') }}"
+  become: true
+  tasks:
+
+    - set_fact:
+        _mon_group_name: "{{ mon_group_name | default('mons') }}"
+        _client_group_name: "{{ client_group_name | default('clients') }}"
+
+    - name: slurp ceph configuration
+      slurp:
+        src: "{{ _ceph_conf_key_directory }}/{{ _cluster }}.conf"
+      register: ceph_conf
+      delegate_to: "{{ groups[_mon_group_name][0] }}"
+      when: inventory_hostname in groups.get(_mon_group_name)
+
+    - name: write ceph configuration to client node
+      copy:
+        dest: "{{ ceph_conf.source }}"
+        content: "{{ ceph_conf.content | b64decode }}"
+        owner: root
+        group: root
+        mode: 0644
+      delegate_to: "{{ groups[_client_group_name][0] }}"
+      when: inventory_hostname in groups.get(_mon_group_name)
