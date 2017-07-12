@@ -143,9 +143,9 @@
 
     - name: waiting for the monitor to join the quorum...
       shell: |
-        ceph -s --cluster {{ cluster }} | grep election | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
+        ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["quorum_names"])'
       register: result
-      until: result.rc == 0
+      until: "{{ ansible_hostname in result.stdout }}"
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
@@ -153,9 +153,9 @@
 
     - name: waiting for the containerized monitor to join the quorum...
       shell: |
-        docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph -s --cluster {{ cluster }} | grep quorum | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
+        docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["quorum_names"])'
       register: result
-      until: result.rc == 0
+      until: "{{ ansible_hostname in result.stdout }}"
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"

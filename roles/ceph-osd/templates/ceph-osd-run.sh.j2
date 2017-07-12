@@ -11,7 +11,7 @@ function create_dev_list {
   local disks
   regex="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
   # we use the prepare container to find the partitions to expose
-  disks=$(docker logs ceph-osd-prepare-{{ ansible_hostname }}-dev${1} |& grep -Eo /dev/disk/by-partuuid/${regex} | uniq)
+  disks=$(docker logs ceph-osd-prepare-{{ ansible_hostname }}-devdev${1} |& grep -Eo /dev/disk/by-partuuid/${regex} | uniq)
   for disk in $disks; do
     DEVICES="--device $disk "
   done
@@ -27,12 +27,7 @@ create_dev_list $1
 /usr/bin/docker run \
   --rm \
   --net=host \
-  {% if 'OSD_DMCRYPT=1' in ceph_osd_docker_extra_env -%}
   --privileged=true \
-  -v /dev:/dev \
-  {% else -%}
-  --cap-add SYS_ADMIN \
-  {% endif -%}
   {% if ansible_distribution == 'Ubuntu' -%}
   --security-opt apparmor:unconfined \
   {% endif -%}
@@ -45,6 +40,7 @@ create_dev_list $1
   -e KV_IP={{kv_endpoint}} \
   -e KV_PORT={{kv_port}} \
   {% endif -%}
+  -v /dev:/dev \
   -v /etc/localtime:/etc/localtime:ro \
   --device=/dev/${1} \
   --device=/dev/${1}1 \
