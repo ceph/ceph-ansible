@@ -1,14 +1,32 @@
 ---
 - name: create pools
-  command: ceph --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pgs }}
+  command: "ceph --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pgs }}"
   with_items: "{{ pools }}"
   changed_when: false
   failed_when: false
+  when: pools | length > 0
 
-- name: create keys
-  command: ceph --cluster {{ cluster }} auth get-or-create {{ item.name }} {{ item.value }} -o /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
+- name: create key(s)
+  shell: "ceph-authtool -C /etc/ceph/{{ cluster }}.{{ item.name }}.keyring --name {{ item.name }} --add-key {{ item.key }} --cap mon \"{{ item.mon_cap|default('') }}\" --cap osd \"{{ item.osd_cap|default('') }}\" --cap mds \"{{ item.mds_cap|default('') }}\""
   args:
     creates: /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
   with_items: "{{ keys }}"
   changed_when: false
-  when: cephx
+  when:
+    - cephx
+    - keys | length > 0
+
+- name: check if key(s) already exist(s)
+  command: "ceph --cluster {{ cluster }} auth get {{ item.name }}"
+  changed_when: false
+  failed_when: false
+  with_items: "{{ keys }}"
+  register: keys_exist
+
+- name: add key(s) to ceph
+  command: "ceph --cluster {{ cluster }} auth import -i /etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
+  changed_when: false
+  with_together:
+    - "{{ keys }}"
+    - "{{ keys_exist.results }}"
+  when: item.1.rc != 0
