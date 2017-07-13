@@ -40,7 +40,7 @@
   when:
     - cephx
     - groups.get(restapi_group_name, []) | length > 0
-    - inventory_hostname == groups[mon_group_name]|last
+    - inventory_hostname == groups[mon_group_name]|first
 
 - name: create ceph mgr keyring(s) when mon is not containerized
   command: ceph --cluster {{ cluster }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring
@@ -50,7 +50,7 @@
   when:
     - cephx
     - groups.get(mgr_group_name, []) | length > 0
-    - inventory_hostname == groups[mon_group_name]|last
+    - inventory_hostname == groups[mon_group_name]|first
     - ceph_release_num.{{ ceph_release }} > ceph_release_num.jewel
   with_items: "{{ groups.get(mgr_group_name, []) }}"
 
@@ -116,7 +116,7 @@
     - /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring
   when:
     - cephx
-    - "{{ inventory_hostname == groups[mon_group_name] | last }}"
+    - "{{ inventory_hostname == groups[mon_group_name] | first }}"
 
 - name: drop in a motd script to report status when logging in
   copy:
