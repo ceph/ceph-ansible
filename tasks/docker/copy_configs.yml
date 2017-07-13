@@ -12,7 +12,7 @@
     - inventory_hostname == groups[rgw_group_name][0]
 
 - name: stat for config and keys
-  local_action: stat path={{ fetch_directory }}/docker_mon_files/{{ item }}
+  local_action: stat path={{ fetch_directory }}/{{ fsid }}/{{ item }}
   with_items: "{{ rgw_config_keys }}"
   changed_when: false
   become: false
@@ -26,7 +26,7 @@
 - name: push ceph files to the ansible server
   fetch:
     src: "{{ item.0 }}"
-    dest: "{{ fetch_directory }}/docker_mon_files/var/lib/ceph/radosgw/keyring"
+    dest: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/radosgw/keyring"
     flat: yes
   with_together:
     - "{{ rgw_config_keys }}"
