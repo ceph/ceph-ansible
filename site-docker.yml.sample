@@ -1,7 +1,18 @@
 ---
 # Defines deployment design and assigns role to server groups
 
-- hosts: mons # gather mon facts first before we process ceph-mon serially
+- hosts:
+  - mons
+  - agents
+  - osds
+  - mdss
+  - rgws
+  - nfss
+  - restapis
+  - rbdmirrors
+  - clients
+  - iscsigws
+  - mgrs
   tasks: []
 
 - hosts: mons
@@ -40,3 +51,13 @@
   become: True
   roles:
   - ceph-restapi
+
+- hosts: mgrs
+  become: True
+  roles:
+    - { role: ceph-mgr, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
+
+- hosts: clients
+  become: True
+  roles:
+  - ceph-client

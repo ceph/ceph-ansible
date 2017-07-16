@@ -11,7 +11,7 @@ auth supported = none
 {% if ip_version == 'ipv6'  %}
 ms bind ipv6 = true
 {% endif %}
-{% if not mon_containerized_deployment_with_kv and not mon_containerized_deployment %}
+{% if not containerized_deployment_with_kv and not containerized_deployment %}
 fsid = {{ fsid }}
 {% endif %}
 max open files = {{ max_open_files }}
@@ -30,41 +30,56 @@ mon initial members = {% for host in groups[mon_group_name] %}
     {% endfor %}
 {% endif %}
 
-{% if not mon_containerized_deployment and not mon_containerized_deployment_with_kv %}
-{% if monitor_address_block %}
-mon host = {% for host in groups[mon_group_name] %}{{ hostvars[host]['ansible_all_ipv4_addresses'] | ipaddr(monitor_address_block) | first }}{% if not loop.last %},{% endif %}{% endfor %}
-{% elif groups[mon_group_name] is defined %}
-mon host = {% for host in groups[mon_group_name] %}
-             {% set address = hostvars[host]['monitor_address'] if hostvars[host]['monitor_address'] is defined else monitor_address %}
-             {% set interface = hostvars[host]['monitor_interface'] if hostvars[host]['monitor_interface'] is defined else monitor_interface %}
-             {% if interface != "interface" %}
-               {% for key in hostvars[host].keys() %}
-                 {% if hostvars[host][key]['macaddress'] is defined and hostvars[host][key]['device'] is defined and hostvars[host][key]['device'] == interface -%}
-                    {{ hostvars[host][key][ip_version]['address'] }}
-                 {%- endif %}
-               {% endfor %}
-             {% elif address != "0.0.0.0" -%}
-               {{ address }}
-             {%- endif %}
-             {%- if not loop.last %},{% endif %}
-           {% endfor %}
-{% endif %}
-{% endif %}
-{% if mon_containerized_deployment %}
+{% if not containerized_deployment and not containerized_deployment_with_kv -%}
+mon host = {% for host in groups[mon_group_name] -%}
+    {% if monitor_address_block | length > 0 %}
+      {% if ip_version == 'ipv4' -%}
+        {{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}
+      {%- elif ip_version == 'ipv6' -%}
+        [{{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}]
+      {%- endif %}
+    {% elif hostvars[host]['monitor_address'] is defined and hostvars[host]['monitor_address'] != '0.0.0.0' -%}
+      {% if ip_version == 'ipv4' -%}
+        {{ hostvars[host]['monitor_address'] }}
+      {%- elif ip_version == 'ipv6' -%}
+        [{{ hostvars[host]['monitor_address'] }}]
+      {%- endif %}
+    {%- else -%}
+      {% if ip_version == 'ipv4' -%}
+       {{ hostvars[host]['ansible_' + hostvars[host]['monitor_interface']][ip_version]['address'] }}
+      {%- elif ip_version == 'ipv6' -%}
+       [{{ hostvars[host]['ansible_' + hostvars[host]['monitor_interface']][ip_version][0]['address'] }}]
+      {%- endif %}
+    {%- endif %}
+   {% if not loop.last -%},{%- endif %}
+  {%- endfor %}
+{%- endif %}
+
+{% if containerized_deployment %}
 fsid = {{ fsid }}
-{% if groups[mon_group_name] is defined %}
-mon host = {% for host in groups[mon_group_name] %}
-             {% set interface = ["ansible_",ceph_mon_docker_interface]|join %}
-             {% if mon_containerized_deployment -%}
-                {{ hostvars[host][interface]['ipv4']['address'] }}
-             {%- elif hostvars[host]['monitor_address'] is defined -%}
-                {{ hostvars[host]['monitor_address'] }}
-             {%- elif monitor_address != "0.0.0.0" -%}
-                {{ monitor_address }}
-             {%- endif %}
-             {%- if not loop.last %},{% endif %}
-           {% endfor %}
-{% endif %}
+mon host = {% for host in groups[mon_group_name] -%}
+    {% if monitor_address_block | length > 0 %}
+      {% if ip_version == 'ipv4' -%}
+        {{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}
+      {%- elif ip_version == 'ipv6' -%}
+        [{{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}]
+      {%- endif %}
+    {% elif hostvars[host]['monitor_address'] is defined and hostvars[host]['monitor_address'] != '0.0.0.0' -%}
+      {% if ip_version == 'ipv4' -%}
+        {{ hostvars[host]['monitor_address'] }}
+      {%- elif ip_version == 'ipv6' -%}
+        [{{ hostvars[host]['monitor_address'] }}]
+      {%- endif %}
+    {%- else -%}
+      {% set interface = ["ansible_",monitor_interface]|join %}
+      {% if ip_version == 'ipv4' -%}
+        {{ hostvars[host][interface][ip_version]['address'] }}
+      {%- elif ip_version == 'ipv6' -%}
+        [{{ hostvars[host][interface][ip_version][0]['address'] }}]
+      {%- endif %}
+    {%- endif %}
+    {% if not loop.last -%},{%- endif %}
+  {%- endfor %}
 {% endif %}
 
 {% if public_network is defined %}
@@ -72,6 +87,12 @@ public network = {{ public_network }}
 {% endif %}
 {% if cluster_network is defined %}
 cluster network = {{ cluster_network }}
+{% endif %}
+{% if rgw_override_bucket_index_max_shards is defined %}
+rgw override bucket index max shards = {{ rgw_override_bucket_index_max_shards }}
+{% endif %}
+{% if rgw_bucket_default_quota_max_objects is defined %}
+rgw bucket default quota max objects = {{ rgw_bucket_default_quota_max_objects }}
 {% endif %}
 
 [client.libvirt]

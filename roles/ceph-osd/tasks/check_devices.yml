@@ -13,19 +13,17 @@
 - include: ./check_devices_static.yml
   when:
     - not osd_auto_discovery
-    - not osd_directory
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
 - include: ./check_devices_auto.yml
   when:
     - osd_auto_discovery
-    - not osd_directory
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
 - name: check the journal device is partition
-  shell: "readlink -f {{ item }} | egrep '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p)[0-9]{1,2}$'"
+  shell: "readlink -f {{ item }} | egrep '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p)[0-9]{1,2}|fio[a-z]{1,2}[0-9]{1,2}$'"
   with_items: "{{ raw_journal_devices }}"
   changed_when: false
   failed_when: false

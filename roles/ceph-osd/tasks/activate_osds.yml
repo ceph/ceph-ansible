@@ -10,6 +10,7 @@
     - ansible_devices is defined
     - item.value.removable == "0"
     - item.value.partitions|count == 0
+    - item.value.holders|count == 0
     - journal_collocation
     - osd_auto_discovery
 
@@ -35,6 +36,7 @@
     - ansible_devices is defined
     - item.value.removable == "0"
     - item.value.partitions|count == 0
+    - item.value.holders|count == 0
     - osd_auto_discovery
     - dmcrypt_journal_collocation
 
@@ -82,7 +84,8 @@
   when: crush_location
 
 - name: get osd id
-  shell: 'ls /var/lib/ceph/osd/ | grep -oP "\d+$"'
+  shell: |
+    ls /var/lib/ceph/osd/ | sed 's/.*-//'
   changed_when: false
   failed_when: false
   always_run: true

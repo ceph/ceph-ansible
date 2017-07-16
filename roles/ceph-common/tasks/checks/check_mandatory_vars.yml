@@ -29,6 +29,14 @@
     - ceph_rhcs
     - not ceph_rhcs_cdn_install
     - not ceph_rhcs_iso_install
-    - ceph_origin == "upstream"
+    - ceph_origin != 'distro'
   tags:
     - package-install
+
+- name: make sure monitor_interface or monitor_address is defined
+  fail:
+    msg: "you must set monitor_interface or monitor_address"
+  when:
+    - monitor_interface == 'interface'
+    - monitor_address == "0.0.0.0"
+    - mon_group_name in group_names

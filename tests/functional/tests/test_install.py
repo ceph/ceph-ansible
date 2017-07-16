@@ -1,10 +1,12 @@
+import pytest
+
 
 class TestInstall(object):
 
-    def test_ceph_dir_exists(self, File):
+    def test_ceph_dir_exists(self, File, node):
         assert File('/etc/ceph').exists
 
-    def test_ceph_dir_is_a_directory(self, File):
+    def test_ceph_dir_is_a_directory(self, File, node):
         assert File('/etc/ceph').is_directory
 
     def test_ceph_conf_exists(self, File, node):
@@ -13,7 +15,8 @@ class TestInstall(object):
     def test_ceph_conf_is_a_file(self, File, node):
         assert File(node["conf_path"]).is_file
 
-    def test_ceph_command_exists(self, Command):
+    @pytest.mark.no_docker
+    def test_ceph_command_exists(self, Command, node):
         assert Command.exists("ceph")
 
 

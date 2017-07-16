@@ -17,11 +17,10 @@
 
 - name: install ceph
   apt:
-    name: "{{ item }}"
+    name: "ceph"
     update_cache: no
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
     default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-  with_items: "{{ debian_ceph_packages }}"
 
 - name: install ceph-test
   apt:
@@ -53,7 +52,16 @@
 
 - name: install NFS gateway
   apt:
-    pkg: nfs-ganesha
+    pkg: nfs-ganesha-fsal
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
     update_cache: yes
   when: nfs_group_name in group_names
+
+- name: install ceph mgr
+  apt:
+    pkg: ceph-mgr
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
+  when:
+    - mgr_group_name in group_names
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.jewel

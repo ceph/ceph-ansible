@@ -1,0 +1,29 @@
+---
+# this is only here to let the CI tests know
+# that this scenario is using docker
+docker: True
+
+ceph_stable: True
+containerized_deployment: True
+cluster: test
+monitor_interface: eth1
+ceph_mon_docker_subnet: "{{ public_network }}"
+journal_size: 100
+ceph_docker_on_openstack: False
+public_network: "192.168.15.0/24"
+cluster_network: "192.168.16.0/24"
+journal_collocation: true
+ceph_rgw_civetweb_port: 8080
+ceph_osd_docker_devices: "{{ devices }}"
+ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_FORCE_ZAP=1 -e OSD_BLUESTORE=1
+ceph_osd_docker_extra_env: -e CLUSTER={{ cluster }} -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE -e OSD_BLUESTORE=1
+devices:
+  - /dev/sda
+  - /dev/sdb
+ceph_osd_docker_run_script_path: /var/tmp
+rgw_override_bucket_index_max_shards: 16
+rgw_bucket_default_quota_max_objects: 1638400
+ceph_conf_overrides:
+  global:
+    osd_pool_default_pg_num: 8
+    osd_pool_default_size: 1

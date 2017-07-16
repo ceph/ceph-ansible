@@ -1,22 +1,15 @@
 ---
-# Use systemd to manage container on Atomic host and CoreOS
 - name: generate systemd unit file
   become: true
   template:
-    src: "{{ playbook_dir }}/roles/ceph-nfs/templates/ceph-nfs.service.j2"
-    dest: /var/lib/nfs/ganesha/ceph-nfs@.service
+    src: "{{ role_path }}/templates/ceph-nfs.service.j2"
+    dest: /etc/systemd/system/ceph-nfs@.service
     owner: "root"
     group: "root"
     mode: "0644"
 
-- name: link systemd unit file for NFS instance
-  file:
-    src: /var/lib/nfs/ganesha/ceph-nfs@.service
-    dest: /etc/systemd/system/multi-user.target.wants/ceph-nfs@{{ ansible_hostname }}.service
-    state: link
-
-- name: enable systemd unit file for NFS instance
-  shell: systemctl enable /etc/systemd/system/multi-user.target.wants/ceph-nfs@{{ ansible_hostname }}.service
+- name: enable systemd unit file for nfs instance
+  shell: systemctl enable ceph-nfs@{{ ansible_hostname }}.service
   failed_when: false
   changed_when: false
 
@@ -25,7 +18,7 @@
   changed_when: false
   failed_when: false
 
-- name: systemd start NFS container
+- name: systemd start nfs container
   service:
     name: ceph-nfs@{{ ansible_hostname }}
     state: started
@@ -36,3 +29,4 @@
   wait_for:
       path: "/etc/ceph/{{ cluster }}.conf"
   when: is_atomic
+

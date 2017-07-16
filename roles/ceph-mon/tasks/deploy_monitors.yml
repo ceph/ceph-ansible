@@ -29,13 +29,41 @@
     mode: "0600"
   when: cephx
 
-- name: create monitor directory
+- name: create (and fix ownership of) monitor directory
   file:
     path: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}
     state: directory
     owner: "ceph"
     group: "ceph"
     mode: "0755"
+    recurse: true
+
+- name: create custom admin keyring
+  command: ceph-authtool /etc/ceph/{{ cluster }}.client.admin.keyring --create-keyring --name=client.admin --add-key={{ admin_secret }} --set-uid=0 --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'
+  args:
+    creates: /etc/ceph/{{ cluster }}.client.admin.keyring
+  register: create_custom_admin_secret
+  when:
+    - cephx
+    - admin_secret != 'admin_secret'
+
+- name: set ownership of admin keyring
+  file:
+    path: /etc/ceph/{{ cluster }}.client.admin.keyring
+    state: file
+    owner: 'ceph'
+    group: 'ceph'
+    mode: '0600'
+  when:
+    - cephx
+    - admin_secret != 'admin_secret'
+
+- name: import admin keyring into mon keyring
+  command: ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }} --import-keyring /etc/ceph/{{ cluster }}.client.admin.keyring
+  when:
+    - cephx
+    - admin_secret != 'admin_secret'
+    - not create_custom_admin_secret.get('skipped')
 
 - name: ceph monitor mkfs with keyring
   command: ceph-mon --cluster {{ cluster }} --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}

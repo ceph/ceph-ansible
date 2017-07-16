@@ -5,7 +5,7 @@ set -xe
 BASEDIR=$(dirname "$0")
 LOCAL_BRANCH=$(cd $BASEDIR && git rev-parse --abbrev-ref HEAD)
 BRANCHES="master ansible-1.9"
-ROLES="ceph-common ceph-mon ceph-osd ceph-mds ceph-rgw ceph-restapi ceph-agent ceph-fetch-keys ceph-rbd-mirror ceph-client ceph-docker-common"
+ROLES="ceph-common ceph-mon ceph-osd ceph-mds ceph-rgw ceph-restapi ceph-agent ceph-fetch-keys ceph-rbd-mirror ceph-client ceph-docker-common ceph-mgr"
 
 
 # FUNCTIONS

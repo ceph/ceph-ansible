@@ -38,8 +38,8 @@
 
 - include: ./installs/install_on_redhat.yml
   when:
-    ansible_os_family == 'RedHat' and
-    not ceph_rhcs_iso_install
+    - ansible_os_family == 'RedHat'
+    - not ceph_rhcs
   tags:
     - package-install
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
@@ -67,6 +67,13 @@
   when:
     - ansible_os_family == 'Debian'
     - ceph_rhcs
+  tags:
+    - package-install
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
+
+- include: ./installs/install_on_clear.yml
+  when: ansible_os_family == 'ClearLinux'
   tags:
     - package-install
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)

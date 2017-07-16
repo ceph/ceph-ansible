@@ -9,14 +9,14 @@
     msg: "cluster_network must be configured. Ceph replication network"
   when:
     - cluster_network == '0.0.0.0/0'
-    - not osd_containerized_deployment
+    - not containerized_deployment
 
 - name: make sure journal_size configured
   debug:
     msg: "WARNING: journal_size is configured to less than 5GB. This is not recommended and can lead to severe issues."
   when:
     - journal_size|int < 5120
-    - osd_objectstore != 'bluestore'
+    - osd_objectstore == 'filestore'
     - osd_group_name in group_names
 
 - name: make sure an osd scenario was chosen
@@ -25,11 +25,9 @@
   when:
     - osd_group_name is defined
     - osd_group_name in group_names
-    - not osd_containerized_deployment
+    - not containerized_deployment
     - not journal_collocation
     - not raw_multi_journal
-    - not osd_directory
-    - not bluestore
     - not dmcrypt_journal_collocation
     - not dmcrypt_dedicated_journal
 
@@ -39,21 +37,12 @@
   when:
     - osd_group_name is defined
     - osd_group_name in group_names
-    - not osd_containerized_deployment
+    - not containerized_deployment
     - (journal_collocation and raw_multi_journal)
-      or (journal_collocation and osd_directory)
-      or (journal_collocation and bluestore)
-      or (raw_multi_journal and osd_directory)
-      or (raw_multi_journal and bluestore)
-      or (osd_directory and bluestore)
       or (dmcrypt_journal_collocation and journal_collocation)
       or (dmcrypt_journal_collocation and raw_multi_journal)
-      or (dmcrypt_journal_collocation and osd_directory)
-      or (dmcrypt_journal_collocation and bluestore)
       or (dmcrypt_dedicated_journal and journal_collocation)
       or (dmcrypt_dedicated_journal and raw_multi_journal)
-      or (dmcrypt_dedicated_journal and osd_directory)
-      or (dmcrypt_dedicated_journal and bluestore)
       or (dmcrypt_dedicated_journal and dmcrypt_journal_collocation)
 
 - name: verify devices have been provided
@@ -62,9 +51,18 @@
   when:
     - osd_group_name is defined
     - osd_group_name in group_names
-    - (journal_collocation or osd_containerized_deployment)
+    - (journal_collocation or containerized_deployment)
     - not osd_auto_discovery
     - devices|length == 0
+
+- name: make sure the devices variable is a list
+  fail:
+    msg: "devices: must be a list, not a string, i.e. [ \"/dev/sda\" ]"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not osd_auto_discovery
+    - devices is string
 
 - name: verify journal devices have been provided
   fail:
@@ -72,17 +70,29 @@
   when:
     - osd_group_name is defined
     - osd_group_name in group_names
-    - not osd_containerized_deployment
+    - not containerized_deployment
     - raw_multi_journal
     - raw_journal_devices|length == 0
-    - devices|length == 0 and not osd_auto_discovery
+      or devices|length == 0
 
-- name: verify directories have been provided
+- name: make sure the raw_journal_devices variable is a list
   fail:
-    msg: "please provide directories to your osd scenario"
+    msg: "raw_journal_devices: must be a list, not a string, i.e. [ \"/dev/sda\" ]"
   when:
     - osd_group_name is defined
     - osd_group_name in group_names
-    - not osd_containerized_deployment
-    - osd_directory
-    - osd_directories is not defined
+    - not containerized_deployment
+    - raw_multi_journal
+    - raw_journal_devices is string
+    - raw_journal_devices|length == 0
+    - devices|length == 0 and not osd_auto_discovery
+
+- name: check if bluestore is supported by the selected ceph version
+  fail:
+    msg: "bluestore is not supported by the selected Ceph version, use Luminous or above."
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not containerized_deployment
+    - osd_objectstore == 'bluestore'
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous

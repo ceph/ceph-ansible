@@ -5,30 +5,30 @@ require 'yaml'
 require 'time'
 VAGRANTFILE_API_VERSION = '2'
 
-DEBUG = false
-
 config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
 settings=YAML.load_file(config_file)
 
-LABEL_PREFIX   = settings['label_prefix'] ? settings['label_prefix'] + "-" : ""
-NMONS          = settings['mon_vms']
-NOSDS          = settings['osd_vms']
-NMDSS          = settings['mds_vms']
-NRGWS          = settings['rgw_vms']
-NNFSS          = settings['nfs_vms']
-RESTAPI        = settings['restapi']
-NRBD_MIRRORS   = settings['rbd_mirror_vms']
-CLIENTS        = settings['client_vms']
-NISCSI_GWS     = settings['iscsi_gw_vms']
-PUBLIC_SUBNET  = settings['public_subnet']
-CLUSTER_SUBNET = settings['cluster_subnet']
-BOX            = settings['vagrant_box']
-BOX_URL        = settings['vagrant_box_url']
-SYNC_DIR       = settings['vagrant_sync_dir']
-MEMORY         = settings['memory']
-ETH            = settings['eth']
-DOCKER         = settings['docker']
-USER           = settings['ssh_username']
+LABEL_PREFIX    = settings['label_prefix'] ? settings['label_prefix'] + "-" : ""
+NMONS           = settings['mon_vms']
+NOSDS           = settings['osd_vms']
+NMDSS           = settings['mds_vms']
+NRGWS           = settings['rgw_vms']
+NNFSS           = settings['nfs_vms']
+RESTAPI         = settings['restapi']
+NRBD_MIRRORS    = settings['rbd_mirror_vms']
+CLIENTS         = settings['client_vms']
+NISCSI_GWS      = settings['iscsi_gw_vms']
+MGRS            = settings['mgr_vms']
+PUBLIC_SUBNET   = settings['public_subnet']
+CLUSTER_SUBNET  = settings['cluster_subnet']
+BOX             = settings['vagrant_box']
+BOX_URL         = settings['vagrant_box_url']
+SYNC_DIR        = settings['vagrant_sync_dir']
+MEMORY          = settings['memory']
+ETH             = settings['eth']
+DOCKER          = settings['docker']
+USER            = settings['ssh_username']
+DEBUG           = settings['debug']
 
 ASSIGN_STATIC_IP = !(BOX == 'openstack' or BOX == 'linode')
 DISABLE_SYNCED_FOLDER = settings.fetch('vagrant_disable_synced_folder', false)
@@ -56,7 +56,8 @@ ansible_provision = proc do |ansible|
     'nfss'            => (0..NNFSS - 1).map { |j| "#{LABEL_PREFIX}nfs#{j}" },
     'rbd_mirrors'     => (0..NRBD_MIRRORS - 1).map { |j| "#{LABEL_PREFIX}rbd_mirror#{j}" },
     'clients'         => (0..CLIENTS - 1).map { |j| "#{LABEL_PREFIX}client#{j}" },
-    'iscsi_gw'        => (0..NISCSI_GWS - 1).map { |j| "#{LABEL_PREFIX}iscsi_gw#{j}" }
+    'iscsi_gw'        => (0..NISCSI_GWS - 1).map { |j| "#{LABEL_PREFIX}iscsi_gw#{j}" },
+    'mgrs'            => (0..MGRS - 1).map { |j| "#{LABEL_PREFIX}mgr#{j}" }
   }
 
   if RESTAPI then
@@ -72,14 +73,8 @@ ansible_provision = proc do |ansible|
   # In a production deployment, these should be secret
   if DOCKER then
     ansible.extra_vars = ansible.extra_vars.merge({
-      mon_containerized_deployment: 'true',
-      osd_containerized_deployment: 'true',
-      mds_containerized_deployment: 'true',
-      rgw_containerized_deployment: 'true',
-      nfs_containerized_deployment: 'true',
-      restapi_containerized_deployment: 'true',
-      rbd_mirror_containerized_deployment: 'true',
-      ceph_mon_docker_interface: ETH,
+      containerized_deployment: 'true',
+      monitor_interface: ETH,
       ceph_mon_docker_subnet: "#{PUBLIC_SUBNET}.0/24",
       ceph_osd_docker_devices: settings['disks'],
       devices: settings['disks'],
@@ -111,7 +106,7 @@ ansible_provision = proc do |ansible|
   end
 
   if DEBUG then
-    ansible.verbose = '-vvv'
+    ansible.verbose = '-vvvv'
   end
   ansible.limit = 'all'
 end
@@ -129,6 +124,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.ssh.insert_key = false # workaround for https://github.com/mitchellh/vagrant/issues/5048
   config.ssh.private_key_path = settings['ssh_private_key_path']
   config.ssh.username = USER
+
+  # When using libvirt, avoid errors like:
+  # "host doesn't support requested feature: CPUID.01H:EDX.ds [bit 21]"
+  config.vm.provider :libvirt do |lv|
+    lv.cpu_mode = 'host-passthrough'
+  end
 
   # Faster bootup. Disables mounting the sync folder for libvirt and virtualbox
   if DISABLE_SYNCED_FOLDER
@@ -176,6 +177,41 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       provider.xvda_size = 4*1024
       # add some swap as the Linode distros require it
       provider.swap_size = 128
+    end
+  end
+
+  (0..MGRS - 1).each do |i|
+    config.vm.define "#{LABEL_PREFIX}mgr#{i}" do |mgr|
+      mgr.vm.hostname = "#{LABEL_PREFIX}ceph-mgr#{i}"
+      if ASSIGN_STATIC_IP
+        mgr.vm.network :private_network,
+          ip: "#{PUBLIC_SUBNET}.3#{i}"
+      end
+      # Virtualbox
+      mgr.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
+      end
+
+      # VMware
+      mgr.vm.provider :vmware_fusion do |v|
+        v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      # Libvirt
+      mgr.vm.provider :libvirt do |lv|
+        lv.memory = MEMORY
+        lv.random_hostname = true
+      end
+
+      # Parallels
+      mgr.vm.provider "parallels" do |prl|
+        prl.name = "ceph-mgr#{i}"
+        prl.memory = "#{MEMORY}"
+      end
+
+      mgr.vm.provider :linode do |provider|
+        provider.label = mgr.vm.hostname
+      end
     end
   end
 
@@ -468,7 +504,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         # always make /dev/sd{a/b/c} so that CI can ensure that
         # virtualbox and libvirt will have the same devices to use for OSDs
         (0..2).each do |d|
-          lv.storage :file, :device => "hd#{driverletters[d]}", :path => "disk-#{i}-#{d}-#{DISK_UUID}.disk", :size => '12G', :bus => "ide"
+          lv.storage :file, :device => "hd#{driverletters[d]}", :path => "disk-#{i}-#{d}-#{DISK_UUID}.disk", :size => '50G', :bus => "ide"
         end
         lv.memory = MEMORY
         lv.random_hostname = true

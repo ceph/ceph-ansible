@@ -1,0 +1,145 @@
+---
+- hosts: localhost
+  gather_facts: false
+  become: yes
+  tags:
+    - vagrant_setup
+  tasks:
+
+    - name: change centos/7 vagrant box name to rhel7
+      replace:
+        regexp: "centos/7"
+        replace: "rhel7"
+        dest: "{{ change_dir }}/vagrant_variables.yml"
+      when: change_dir is defined
+
+    - name: change ceph/ubuntu-xenial vagrant box name to rhel7
+      replace:
+        regexp: "ceph/ubuntu-xenial"
+        replace: "rhel7"
+        dest: "{{ change_dir }}/vagrant_variables.yml"
+      when: change_dir is defined
+
+    - name: change centos/atomic-host vagrant box name to rhel7
+      replace:
+        regexp: "centos/atomic-host"
+        replace: "rhel7"
+        dest: "{{ change_dir }}/vagrant_variables.yml"
+      when: change_dir is defined
+
+    - name: change ceph_stable to False
+      replace:
+        regexp: "ceph_stable:.*"
+        replace: "ceph_stable: False"
+        dest: "{{ change_dir }}/group_vars/all"
+      when: change_dir is defined
+
+    - name: set ceph_rhcs to True
+      lineinfile:
+        line: "ceph_rhcs: True"
+        dest: "{{ change_dir }}/group_vars/all"
+      when: change_dir is defined
+
+    - name: set ceph_origin to distro
+      lineinfile:
+        line: "ceph_origin: distro"
+        dest: "{{ change_dir }}/group_vars/all"
+      when: change_dir is defined
+
+    - name: print contents of {{ change_dir }}/group_vars/all
+      command: "cat {{ change_dir }}/group_vars/all"
+
+- hosts: all
+  gather_facts: true
+  become: yes
+  tasks:
+
+    - name: check if it is Atomic host
+      stat: path=/run/ostree-booted
+      register: stat_ostree
+      always_run: true
+
+    - name: set fact for using Atomic host
+      set_fact:
+        is_atomic: '{{ stat_ostree.stat.exists }}'
+
+    - name: install nightly rhel7 repo
+      get_url:
+        url: "{{ rhel7_repo_url }}"
+        dest: /etc/yum.repos.d
+        owner: root
+        group: root
+      when: not is_atomic
+
+    - name: enable the rhel-7-extras-nightly repo
+      command: "yum-config-manager --enable rhel-7-extras-nightly"
+
+    - name: set MTU on eth0
+      command: "ifconfig eth0 mtu 1400 up"
+
+    - name: set MTU on eth1
+      command: "ifconfig eth1 mtu 1400 up"
+
+    - name: install docker
+      package:
+        name: docker
+        state: present
+      when: ansible_os_family == 'RedHat'
+
+    - name: allow insecure docker registries
+      lineinfile:
+        line: 'INSECURE_REGISTRY="--insecure-registry {{ ceph_docker_registry }}"'
+        dest: "/etc/sysconfig/docker"
+
+    - name: restart docker
+      service:
+        name: docker
+        state: restarted
+
+- hosts: mons:mgrs
+  gather_facts: false
+  become: yes
+  tasks:
+
+    - name: install ceph mon repo
+      yum_repository:
+        name: ceph-mon
+        description: repo for rhcs ceph-mon
+        baseurl: "{{ repo_url }}/MON/x86_64/os/"
+        gpgcheck: no
+        enabled: yes
+      when:
+        - not is_atomic
+
+- hosts: osds
+  gather_facts: false
+  become: yes
+  tasks:
+
+    - name: install ceph osd repo
+      yum_repository:
+        name: ceph-osd
+        description: repo for rhcs ceph-osd
+        baseurl: "{{ repo_url }}/OSD/x86_64/os/"
+        gpgcheck: no
+        enabled: yes
+      when:
+        - not is_atomic
+
+    - name: set MTU on eth2
+      command: "ifconfig eth2 mtu 1400 up"
+
+- hosts: mdss:rgws:clients 
+  gather_facts: false
+  become: yes
+  tasks:
+
+    - name: install ceph tools repo
+      yum_repository:
+        name: ceph-osd
+        description: repo for rhcs ceph tools
+        baseurl: "{{ repo_url }}/Tools/x86_64/os/"
+        gpgcheck: no
+        enabled: yes
+      when:
+        - not is_atomic

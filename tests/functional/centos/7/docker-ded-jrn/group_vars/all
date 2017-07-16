@@ -1,0 +1,22 @@
+---
+# this is only here to let the CI tests know
+# that this scenario is using docker
+docker: True
+
+ceph_stable: True
+containerized_deployment: True
+cluster: test
+monitor_interface: eth1
+ceph_mon_docker_subnet: "{{ public_network }}"
+journal_size: 100
+ceph_docker_on_openstack: False
+public_network: "192.168.15.0/24"
+cluster_network: "192.168.16.0/24"
+ceph_rgw_civetweb_port: 8080
+ceph_osd_docker_devices: "{{ devices }}"
+devices:
+  - /dev/sda
+raw_journal_devices:
+  - /dev/sdb
+ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_JOURNAL={{ raw_journal_devices[0] }}
+ceph_osd_docker_run_script_path: /var/tmp

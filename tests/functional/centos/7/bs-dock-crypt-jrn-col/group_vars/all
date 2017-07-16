@@ -1,0 +1,26 @@
+---
+docker: true
+containerized_deployment: True
+ceph_stable: True
+ceph_mon_docker_subnet: "{{ public_network }}"
+public_network: "192.168.23.0/24"
+cluster_network: "192.168.24.0/24"
+journal_size: 100
+monitor_interface: eth1
+dmcrypt_journal_collocation: true
+osd_objectstore: "bluestore"
+devices:
+  - '/dev/sda'
+  - '/dev/sdb'
+os_tuning_params:
+  - { name: kernel.pid_max, value: 4194303 }
+  - { name: fs.file-max, value: 26234859 }
+ceph_conf_overrides:
+  global:
+    osd_pool_default_pg_num: 8
+    osd_pool_default_size: 1
+  osd:
+    bluestore block db size = 67108864
+    bluestore block wal size = 1048576000
+ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1
+ceph_osd_docker_extra_env: -e CLUSTER={{ cluster }} -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_DMCRYPT=1

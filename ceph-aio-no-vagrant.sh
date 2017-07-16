@@ -18,7 +18,7 @@ INSTALL_RGW=true
 # FUNCTIONS
 
 show_help() {
-    PROG=$(basename $0)
+    PROG=$(basename "$0")
     echo ""
     echo "Usage of ${PROG}:"
     cat << EOF
@@ -94,16 +94,19 @@ fi
 
 }
 
-function install_ansible {
-  bash install-ansible.sh
+function is_ansible_installed {
+  if ! command -v ansible-playbook 1&> /dev/null; then
+    echo "Please install Ansible"
+    exit 1
+  fi
 }
 
 function ssh_setup {
-  if [ ! -f $HOME/.ssh/id_rsa ]; then
-    echo -e  'y\n'|ssh-keygen -q -t rsa -N "" -f $HOME/.ssh/id_rsa
+  if [ ! -f "$HOME"/.ssh/id_rsa ]; then
+    echo -e  'y\n'|ssh-keygen -q -t rsa -N "" -f "$HOME"/.ssh/id_rsa
   fi
-  if ! grep -Fxq "$(cat $HOME/.ssh/id_rsa.pub)" $HOME/.ssh/authorized_keys; then
-    cat $HOME/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
+  if ! grep -Fxq "$(cat "$HOME"/.ssh/id_rsa.pub)" "$HOME"/.ssh/authorized_keys; then
+    cat "$HOME"/.ssh/id_rsa.pub >> "$HOME"/.ssh/authorized_keys
   fi
 }
 
@@ -168,7 +171,7 @@ function test_and_run {
 
 # MAIN
 parse_cmdline $@
-install_ansible
+is_ansible_installed
 ssh_setup
 cp_var
 populate_vars

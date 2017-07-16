@@ -87,6 +87,14 @@
 
 - name: install red hat storage nfs gateway
   apt:
-    name: nfs-ganesha
+    name: nfs-ganesha-fsal
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when: nfs_group_name in group_names
+
+- name: install ceph mgr
+  apt:
+    pkg: ceph-mgr
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - mgr_group_name in group_names
+    - ceph_release_num.{{ ceph_release }} > ceph_release_num.jewel

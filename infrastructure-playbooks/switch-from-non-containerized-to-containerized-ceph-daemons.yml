@@ -28,21 +28,13 @@
 
 - name: make sure docker is present and started
 
-  vars:
-    mon_group_name:       mons
-    osd_group_name:       osds
-    mds_group_name:       mdss
-    rgw_group_name:       rgws
-    rbdmirror_group_name: rbd-mirrors
-    nfs_group_name:       nfss
-
   hosts:
-    - "{{ mon_group_name }}"
-    - "{{ osd_group_name }}"
-    - "{{ mds_group_name }}"
-    - "{{ rgw_group_name }}"
-    - "{{ rbdmirror_group_name }}"
-    - "{{ nfs_group_name }}"
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
 
   become: true
 
@@ -97,25 +89,16 @@
     restapi_group_name:   restapis
 
   hosts:
-    - "{{ mon_group_name }}"
+    - "{{ mon_group_name|default('mons') }}"
 
   serial: 1
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-mon/defaults/main.yml
-  - include_vars: roles/ceph-restapi/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ mon_group_name }}.yml
-    failed_when: false
-  - include_vars: group_vars/{{ restapi_group_name }}.yml
-    failed_when: false
 
   - name: select a running monitor
     set_fact: mon_host={{ item }}
-    with_items: "{{ groups.mons }}"
+    with_items: "{{ groups[mon_group_name] }}"
     when: item != inventory_hostname
 
   - name: get current ceph fsid
@@ -163,11 +146,11 @@
   - name: start ceph mon container image
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}"
+      name: "ceph-mon-{{ ansible_hostname }}"
       net: "host"
       state: "running"
       privileged: "{{ mon_docker_privileged }}"
-      env: "MON_IP={{ hostvars[inventory_hostname]['ansible_' + ceph_mon_docker_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},CEPH_FSID={{ ceph_fsid.stdout }},{{ ceph_mon_docker_extra_env }}"
+      env: "MON_IP={{ hostvars[inventory_hostname]['ansible_' + monitor_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},CEPH_FSID={{ ceph_fsid.stdout }},{{ ceph_mon_docker_extra_env }}"
       volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
 
   - name: waiting for the monitor to join the quorum...
@@ -187,22 +170,16 @@
     osd_group_name: osds
 
   hosts:
-    - "{{ osd_group_name }}"
+    - "{{ osd_group_name|default('osds') }}"
 
   serial: 1
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-osd/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ osd_group_name }}.yml
-    failed_when: false
 
   - name: collect osd ids
     shell: |
-      if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi
+      if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi
     register: osd_ids
     changed_when: false
 
@@ -266,7 +243,7 @@
   - name: start ceph osd container image(s)
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}-osd-{{ item | regex_replace('/', '') }}"
+      name: "ceph-osd-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
       net: host
       pid: host
       state: started
@@ -277,33 +254,24 @@
 
   - name: waiting for clean pgs...
     shell: |
-      test "$(ceph pg stat --cluster {{ cluster }} | sed 's/^.*pgs://;s/active+clean.*//;s/ //')" -eq "$(ceph pg stat --cluster {{ cluster }}  | sed 's/pgs.*//;s/^.*://;s/ //')" && ceph health --cluster {{ cluster }}  | egrep -sq "HEALTH_OK|HEALTH_WARN"
+      test "[""$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" = "$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
     register: result
     until: result.rc == 0
     retries: 10
     delay: 10
     changed_when: false
-    delegate_to: "{{ groups.mons[0] }}"
+    delegate_to: "{{ groups[mon_group_name][0] }}"
 
 
 - name: switching from non-containerized to containerized ceph mds
 
-  vars:
-    mds_group_name: mdss
-
   hosts:
-    - "{{ mds_group_name }}"
+    - "{{ mds_group_name|default('mdss') }}"
 
   serial: 1
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-mds/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ mds_group_name }}.yml
-    failed_when: false
 
   - name: stop ceph mds service
     service:
@@ -339,7 +307,7 @@
   - name: start ceph metadata container image
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: ceph-{{ ansible_hostname }}-mds
+      name: ceph-mds-{{ ansible_hostname }}
       net: host
       state: running
       env: "CEPH_DAEMON=MDS,CEPHFS_CREATE=1,{{ ceph_mds_docker_extra_env }}"
@@ -348,22 +316,13 @@
 
 - name: switching from non-containerized to containerized ceph rgw
 
-  vars:
-    rgw_group_name: rgws
-
   hosts:
-    - "{{ rgw_group_name }}"
+    - "{{ rgw_group_name|default('rgws') }}"
 
   serial: 1
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-rgw/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ rgw_group_name }}.yml
-    failed_when: false
 
   - name: stop ceph rgw service
     service:
@@ -399,7 +358,7 @@
   - name: start ceph rados gateway container image
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: ceph-{{ ansible_hostname }}-rgw
+      name: ceph-rgw-{{ ansible_hostname }}
       expose: "{{ ceph_rgw_civetweb_port }}"
       ports: "{{ ceph_rgw_civetweb_port }}:{{ ceph_rgw_civetweb_port }}"
       state: running
@@ -409,22 +368,13 @@
 
 - name: switching from non-containerized to containerized ceph rbd-mirror
 
-  vars:
-    rbdmirror_group_name: rbd-mirrors
-
   hosts:
-    - "{{ rbdmirror_group_name }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
 
   serial: 1
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-rbd-mirror/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ rbdmirror_group_name }}.yml
-    failed_when: false
 
   - name: stop ceph rbd mirror service
     service:
@@ -460,7 +410,7 @@
   - name: start ceph rbd mirror container image
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}"
+      name: "ceph-rbd-mirror-{{ ansible_hostname }}"
       net: host
       state: running
       volumes: "/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
@@ -468,22 +418,13 @@
 
 - name: switching from non-containerized to containerized ceph nfs
 
-  vars:
-    nfs_group_name: nfss
-
   hosts:
-    - "{{ nfs_group_name }}"
+    - "{{ nfs_group_name|default('nfss') }}"
 
   serial: 1
   become: true
 
   tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: roles/ceph-nfs/defaults/main.yml
-  - include_vars: group_vars/all.yml
-    failed_when: false
-  - include_vars: group_vars/{{ nfs_group_name }}.yml
-    failed_when: false
 
   - name: stop ceph nfs service
     service:
@@ -519,7 +460,7 @@
   - name: start ceph nfs container image
     docker:
       image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ ansible_hostname }}"
+      name: "ceph-nfs-{{ ansible_hostname }}"
       net: "host"
       state: "running"
       privileged: true

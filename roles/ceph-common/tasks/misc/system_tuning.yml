@@ -4,10 +4,25 @@
   changed_when: false
   failed_when: false
 
+- name: create tmpfiles.d directory
+  file:
+    path: "/etc/tmpfiles.d"
+    state: "directory"
+    owner: "root"
+    group: "root"
+    mode: "0755"
+  register: "tmpfiles_d"
+  when: disable_transparent_hugepage
+
 - name: disable transparent hugepage
-  command: "echo never > /sys/kernel/mm/transparent_hugepage/enabled"
-  changed_when: false
-  failed_when: false
+  template:
+    src: "tmpfiles_hugepage.j2"
+    dest: "/etc/tmpfiles.d/ceph_transparent_hugepage.conf"
+    group: "root"
+    owner: "root"
+    mode: "0644"
+    force: "yes"
+    validate: "systemd-tmpfiles --create %s"
   when: disable_transparent_hugepage
 
 - name: get default vm.min_free_kbytes
@@ -26,6 +41,6 @@
     name: "{{ item.name }}"
     value: "{{ item.value }}"
     state: present
-    sysctl_file: /etc/sysctl.conf
+    sysctl_file: /etc/sysctl.d/ceph-tuning.conf
     ignoreerrors: yes
   with_items: "{{ os_tuning_params }}"

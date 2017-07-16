@@ -33,23 +33,14 @@
 
 - name: gather facts on all hosts
 
-  vars:
-    mon_group_name:       mons
-    osd_group_name:       osds
-    mds_group_name:       mdss
-    rgw_group_name:       rgws
-    rbdmirror_group_name: rbd-mirrors
-    nfs_group_name:       nfss
-    client_group_name:       clients
-
   hosts:
-    - "{{ mon_group_name }}"
-    - "{{ osd_group_name }}"
-    - "{{ mds_group_name }}"
-    - "{{ rgw_group_name }}"
-    - "{{ rbdmirror_group_name }}"
-    - "{{ nfs_group_name }}"
-    - "{{ client_group_name }}"
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ client_group_name|default('clients') }}"
 
   become: true
 
@@ -62,7 +53,7 @@
     mds_group_name: mdss
 
   hosts:
-    - "{{ mds_group_name }}"
+    - "{{ mds_group_name|default('mdss') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -93,7 +84,7 @@
     rgw_group_name: rgws
 
   hosts:
-    - "{{ rgw_group_name }}"
+    - "{{ rgw_group_name|default('rgws') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -124,7 +115,7 @@
     rbdmirror_group_name: rbd-mirrors
 
   hosts:
-    - "{{ rbdmirror_group_name }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -150,7 +141,7 @@
     nfs_group_name: nfss
 
   hosts:
-    - "{{ nfs_group_name }}"
+    - "{{ nfs_group_name|default('nfss') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -180,7 +171,7 @@
     osd_group_name: osds
 
   hosts:
-    - "{{ osd_group_name }}"
+    - "{{ osd_group_name|default('osds') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -224,7 +215,7 @@
       - osd_auto_discovery
 
   - name: get osd numbers
-    shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | cut -d '-' -f 2 ; fi"
+    shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
     register: osd_ids
     changed_when: false
 
@@ -245,10 +236,7 @@
     when: ansible_service_mgr == 'sysvinit'
 
   - name: stop ceph osds on ubuntu
-    shell: |
-      for id in $(ls /var/lib/ceph/osd/ |grep -oh '[0-9]*'); do
-        initctl stop ceph-osd cluster={{ cluster }} id=$id
-      done
+    command: initctl stop ceph-osd cluster={{ cluster }} id={{ item }}
     failed_when: false
     when: ansible_service_mgr == 'upstart'
     with_items: "{{ osd_ids.stdout_lines }}"
@@ -355,7 +343,7 @@
         echo "Do not use your system disk!"
         exit 1
       fi
-      raw_device=$(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}')
+      raw_device=$(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}')
       partition_nb=$(echo "{{ item }}" | egrep -o '[0-9]{1,2}$')
       sgdisk --delete $partition_nb $raw_device
     with_items: "{{ ceph_journal_partition_to_erase_path.stdout_lines | default([]) }}"
@@ -370,7 +358,7 @@
     restapi_group_name:   restapis
 
   hosts:
-    - "{{ mon_group_name }}"
+    - "{{ mon_group_name|default('mons') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -402,14 +390,6 @@
 - name: final cleanup - check any running ceph, purge ceph packages, purge config and remove data
 
   vars:
-    mon_group_name:       mons
-    osd_group_name:       osds
-    mds_group_name:       mdss
-    rgw_group_name:       rgws
-    rbdmirror_group_name: rbd-mirrors
-    nfs_group_name:       nfss
-    client_group_name:       clients
-
     # When set to true both groups of packages are purged.
     # This can cause problem with qemu-kvm
     purge_all_packages: true
@@ -435,13 +415,13 @@
       - python-rbd
 
   hosts:
-    - "{{ mon_group_name }}"
-    - "{{ osd_group_name }}"
-    - "{{ mds_group_name }}"
-    - "{{ rgw_group_name }}"
-    - "{{ rbdmirror_group_name }}"
-    - "{{ nfs_group_name }}"
-    - "{{ client_group_name }}"
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ client_group_name|default('clients') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -454,18 +434,6 @@
      state: absent
 
   tasks:
-
-  - name: stop ceph.target with systemd
-    service:
-      name: ceph.target
-      state: stopped
-      enabled: no
-    when: ansible_service_mgr == 'systemd'
-
-  - name: check for anything running ceph
-    shell: "ps awux | grep -- /usr/bin/[c]eph-"
-    register: check_for_running_ceph
-    failed_when: check_for_running_ceph.rc == 0
 
   - name: purge ceph packages with yum
     yum:
@@ -525,19 +493,6 @@
      path: /var/log/ceph
      state: absent
 
-  - name: remove from sysv
-    shell: "update-rc.d -f ceph remove"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: remove upstart and sysv files
-    shell: "find /etc -name '*ceph*' -delete"
-    when: ansible_service_mgr == 'upstart'
-
-  - name: remove upstart and apt logs and cache
-    shell: "find /var -name '*ceph*' -delete"
-    failed_when: false
-    when: ansible_distribution == 'Ubuntu'
-
   - name: request data removal
     local_action: shell echo requesting data removal
     become: false
@@ -563,17 +518,13 @@
       state: absent
     when: ansible_os_family == 'RedHat'
 
+  - name: check for anything running ceph
+    command: "ps -u ceph -U ceph"
+    register: check_for_running_ceph
+    failed_when: check_for_running_ceph.rc == 0
+
 
 - name: purge fetch directory
-
-  vars:
-    mon_group_name:       mons
-    osd_group_name:       osds
-    mds_group_name:       mdss
-    rgw_group_name:       rgws
-    rbdmirror_group_name: rbdmirrors
-    nfs_group_name:       nfss
-    restapi_group_name:   restapis
 
   hosts:
     - localhost
