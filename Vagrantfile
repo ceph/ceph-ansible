@@ -22,6 +22,7 @@ MGRS            = settings['mgr_vms']
 PUBLIC_SUBNET   = settings['public_subnet']
 CLUSTER_SUBNET  = settings['cluster_subnet']
 BOX             = settings['vagrant_box']
+CLIENT_BOX      = settings['client_vagrant_box'] || settings['vagrant_box']
 BOX_URL         = settings['vagrant_box_url']
 SYNC_DIR        = settings['vagrant_sync_dir']
 MEMORY          = settings['memory']
@@ -217,6 +218,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   (0..CLIENTS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}client#{i}" do |client|
+      client.vm.box = CLIENT_BOX
       client.vm.hostname = "#{LABEL_PREFIX}ceph-client#{i}"
       if ASSIGN_STATIC_IP
         client.vm.network :private_network,
