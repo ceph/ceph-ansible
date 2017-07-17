@@ -82,6 +82,16 @@
     - global_in_ceph_conf_overrides
     - ceph_conf_overrides.global.osd_pool_default_size is defined
 
+- name: create rbd pool on luminous
+  shell: ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create rbd {{ ceph_conf_overrides.global.osd_pool_default_pg_num }}
+  changed_when: false
+  failed_when: false
+  when:
+    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - global_in_ceph_conf_overrides
+    - ceph_conf_overrides.global.osd_pool_default_pg_num is defined
+    - rbd_pool_exist.rc != 0
+
 - include: openstack_config.yml
   when:
     - openstack_config
