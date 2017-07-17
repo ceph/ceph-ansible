@@ -67,18 +67,7 @@
 # # because it creates the directories needed by the latter.
 - include: ./dirs_permissions.yml
 
-# let the first mon create configs and keyrings
-# Only include 'create_configs.yml" when:
-# we are not populating kv_store with default ceph.conf AND host is a mon
-# OR
-# we are not population kv_store with default ceph.conf AND there at least 1 nfs in nfs group AND host is the first nfs
 - include: create_configs.yml
-  when:
-    - (not mon_containerized_default_ceph_conf_with_kv and
-        (inventory_hostname in groups.get(mon_group_name, []))) or
-      (not mon_containerized_default_ceph_conf_with_kv and
-        ((groups.get(nfs_group_name, []) | length > 0)
-          and (inventory_hostname == groups.get(nfs_group_name, [])[0])))
 
 # Only include 'fetch_configs.yml' when:
 # - we are deploying containers without kv AND host is either a mon OR a nfs OR an osd
