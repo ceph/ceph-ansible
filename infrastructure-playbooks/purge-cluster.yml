@@ -309,7 +309,14 @@
     when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
 
   - name: zap osd disks
-    shell: ceph-disk zap "{{ item }}"
+    shell: |
+      if (echo "{{ item }}" | grep -Esq '[0-9]{1,2}$'); then
+        raw_device=$(echo "{{ item }}" | grep -Eo '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}')
+        partition_nb=$(echo "{{ item }}" | grep -Eo '[0-9]{1,2}$')
+        sgdisk --delete $partition_nb $raw_device
+      else
+        ceph-disk zap "{{ item }}"
+      fi
     with_items: "{{ devices }}"
     when:
       - ceph_disk_present.rc == 0
