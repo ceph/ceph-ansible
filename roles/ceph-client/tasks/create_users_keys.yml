@@ -30,3 +30,15 @@
     - "{{ keys }}"
     - "{{ keys_exist.results }}"
   when: item.1.rc != 0
+
+- name: setfacl for key(s)
+  acl:
+    path: "/etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
+    entry: "{{ item.1 }}"
+    state: present
+  with_subelements:
+    - "{{ keys }}"
+    - acls
+  when:
+    - cephx
+    - keys | length > 0
