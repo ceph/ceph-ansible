@@ -46,6 +46,26 @@
     - not osd_auto_discovery
     - devices|length == 0
 
+- name: verify lvm_volumes have been provided
+  fail:
+    msg: "please provide lvm_volumes to your osd scenario"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - lvm_osds
+    - not osd_auto_discovery
+    - lvm_volumes|length == 0
+
+- name: make sure the lvm_volumes variable is a dictionary
+  fail:
+    msg: "lvm_volumes: must be a dictionary"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not osd_auto_discovery
+    - lvm_osds
+    - lvm_volumes is not mapping
+
 - name: make sure the devices variable is a list
   fail:
     msg: "devices: must be a list, not a string, i.e. [ \"/dev/sda\" ]"
@@ -86,4 +106,14 @@
     - osd_group_name in group_names
     - not containerized_deployment
     - osd_objectstore == 'bluestore'
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
+
+- name: check if lvm_osds is supported by the selected ceph version
+  fail:
+    msg: "lvm_osds is not supported by the selected Ceph version, use Luminous or above."
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not containerized_deployment
+    - lvm_osds
     - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
