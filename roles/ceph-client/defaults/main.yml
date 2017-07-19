@@ -11,6 +11,8 @@ pools:
   - { name: test2, pgs: "{{ ceph_conf_overrides.global.osd_pool_default_pg_num }}" }
 
 # Can add `mds_cap` attribute to override the default value which is '' for mds capabilities.
+# To have have ansible setfacl the generated key for $user, set the acls var like so:
+# acls: ["u:$user:r--"]
 keys:
-  - { name: client.test, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool=test" }
-  - { name: client.test2, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool=test2" }
+  - { name: client.test, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool=test", acls: [] }
+  - { name: client.test2, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool=test2", acls: [] }
