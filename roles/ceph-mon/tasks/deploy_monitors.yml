@@ -38,8 +38,22 @@
     mode: "0755"
     recurse: true
 
+- set_fact:
+    ceph_authtool_cap: "--cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow' --cap mgr 'allow *'"
+  when:
+    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - cephx
+    - admin_secret != 'admin_secret'
+
+- set_fact:
+    ceph_authtool_cap: "--cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'"
+  when:
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
+    - cephx
+    - admin_secret != 'admin_secret'
+
 - name: create custom admin keyring
-  command: ceph-authtool /etc/ceph/{{ cluster }}.client.admin.keyring --create-keyring --name=client.admin --add-key={{ admin_secret }} --set-uid=0 --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'
+  command: "ceph-authtool /etc/ceph/{{ cluster }}.client.admin.keyring --create-keyring --name=client.admin --add-key={{ admin_secret }} --set-uid=0 {{ ceph_authtool_cap }}"
   args:
     creates: /etc/ceph/{{ cluster }}.client.admin.keyring
   register: create_custom_admin_secret
