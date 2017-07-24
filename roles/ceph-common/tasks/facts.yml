@@ -5,37 +5,6 @@
   always_run: yes
   register: ceph_version
 
-# this task shouldn't run in a rolling_update situation
-# because it blindly picks a mon, which may be down because
-# of the rolling update
-- name: is ceph running already?
-  command: ceph --connect-timeout 3 --cluster {{ cluster }} fsid
-  changed_when: false
-  failed_when: false
-  always_run: yes
-  register: ceph_current_fsid
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  when: not rolling_update
-
-# set this as a default when performing a rolling_update
-# so the rest of the tasks here will succeed
-- set_fact:
-    ceph_current_fsid:
-      rc: 1
-  when: rolling_update
-
-- name: create a local fetch directory if it does not exist
-  local_action: file path={{ fetch_directory }} state=directory
-  changed_when: false
-  become: false
-  run_once: true
-  when: cephx or generate_fsid
-
-- set_fact:
-    fsid: "{{ ceph_current_fsid.stdout }}"
-  when:
-    - ceph_current_fsid.rc == 0
-
 - set_fact:
     monitor_name: "{{ ansible_hostname }}"
   when: not mon_use_fqdn
