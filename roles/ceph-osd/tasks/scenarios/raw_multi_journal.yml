@@ -8,13 +8,25 @@
 # since Ansible will sequential process the loop
 
 - set_fact:
-    osd_type: "--filestore"
-  when: 
+    ceph_disk_cli_options: "--cluster {{ cluster }} --bluestore"
+  when:
+    - osd_objectstore == 'bluestore'
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+
+- set_fact:
+    ceph_disk_cli_options: "--cluster {{ cluster }} --filestore"
+  when:
     - osd_objectstore == 'filestore'
+    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+
+- set_fact:
+    ceph_disk_cli_options: "--cluster {{ cluster }}"
+  when:
+    - osd_objectstore == 'filestore'
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
 
 - name: prepare filestore osd disk(s) with a dedicated journal device
-  command: "ceph-disk prepare {{ osd_type | default('') }} --cluster {{ cluster }} {{ item.1 }} {{ item.2 }}"
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }} {{ item.2 }}"
   with_together:
     - "{{ parted_results.results }}"
     - "{{ devices }}"
@@ -22,12 +34,11 @@
   changed_when: false
   when:
     - item.0.get("skipped") or item.0.get("rc", 0) != 0
-    - raw_multi_journal
     - osd_objectstore == 'filestore'
     - not osd_auto_discovery
 
 - name: manually prepare bluestore osd disk(s) with a dedicated device for db and wal
-  command: "ceph-disk prepare --bluestore --cluster {{ cluster }} --block.db {{ item.1 }} --block.wal {{ item.2 }} {{ item.3 }}"
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.1 }} --block.wal {{ item.2 }} {{ item.3 }}"
   with_together:
     - "{{ parted_results.results }}"
     - "{{ raw_journal_devices }}"
@@ -36,7 +47,6 @@
   when:
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0
-    - raw_multi_journal
     - osd_objectstore == 'bluestore'
     - not osd_auto_discovery
 
