@@ -54,10 +54,27 @@
   changed_when: false
   when:
     - ansible_devices is defined
-    - item.0.item.value.removable == 0
-    - item.0.item.value.partitions|count == 0
-    - item.0.item.value.holders|count == 0
-    - item.0.rc != 0
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
+    - item.1.value.removable == 0
+    - item.1.value.partitions|count == 0
+    - item.1.value.holders|count == 0
+    - not containerized_deployment
+
+- name: create gpt disk label
+  command: parted --script {{ item.1 }} mklabel gpt
+  with_together:
+    - "{{ osd_partition_status_results.results }}"
+    - "{{ ansible_devices }}"
+  changed_when: false
+  when:
+    - ansible_devices is defined
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
+    - item.1.value.removable == 0
+    - item.1.value.partitions|count == 0
+    - item.1.value.holders|count == 0
+    - containerized_deployment
 
 - name: check if a partition named 'ceph' exists (autodiscover disks)
   shell: "parted --script /dev/{{ item.key }} print | egrep -sq '^ 1.*ceph'"

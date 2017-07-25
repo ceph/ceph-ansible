@@ -77,7 +77,6 @@ ansible_provision = proc do |ansible|
       containerized_deployment: 'true',
       monitor_interface: ETH,
       ceph_mon_docker_subnet: "#{PUBLIC_SUBNET}.0/24",
-      ceph_osd_docker_devices: settings['disks'],
       devices: settings['disks'],
       ceph_docker_on_openstack: BOX == 'openstack',
       ceph_rgw_civetweb_port: 8080,
