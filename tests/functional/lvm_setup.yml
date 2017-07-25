@@ -1,0 +1,18 @@
+---
+
+- hosts: osds
+  gather_facts: false
+  become: yes
+  tasks:
+    
+    - name: create physical volume
+      command: pvcreate /dev/sda
+      failed_when: false
+
+    - name: create volume group
+      command: vgcreate test_group /dev/sda
+      failed_when: false
+
+    - name: create logical volume
+      command: lvcreate --yes -l 100%FREE -n test_volume test_group
+      failed_when: false
