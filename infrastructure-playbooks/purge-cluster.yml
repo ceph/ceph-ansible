@@ -77,7 +77,6 @@
     failed_when: false
     when: ansible_service_mgr == 'upstart'
 
-
 - name: purge ceph rgw cluster
 
   vars:
@@ -510,6 +509,11 @@
     command: "ps -u ceph -U ceph"
     register: check_for_running_ceph
     failed_when: check_for_running_ceph.rc == 0
+
+  - name: remove ceph systemd unit files
+    shell: rm -rf /etc/systemd/system/ceph*
+    changed_when: false
+    when: ansible_service_mgr == 'systemd'
 
 
 - name: purge fetch directory
