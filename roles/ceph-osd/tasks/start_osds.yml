@@ -1,0 +1,19 @@
+---
+
+- include: osd_fragment.yml
+  when: crush_location
+
+- name: get osd id
+  shell: |
+    ls /var/lib/ceph/osd/ | sed 's/.*-//'
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: osd_id
+
+- name: start and add that the osd service(s) to the init sequence
+  service:
+    name: ceph-osd@{{ item }}
+    state: started
+  with_items: "{{ (osd_id|default({})).stdout_lines|default([]) }}"
+  changed_when: false
