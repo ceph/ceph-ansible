@@ -56,6 +56,16 @@
     - not osd_auto_discovery
     - lvm_volumes|length == 0
 
+- name: verify osd_objectstore is 'filestore' when using lvm_osds
+  fail:
+    msg: "the lvm_osds scenario currently only works for filestore, not bluestore"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - lvm_osds
+    - not osd_auto_discovery
+    - osd_objectstore != 'filestore'
+
 - name: make sure the lvm_volumes variable is a dictionary
   fail:
     msg: "lvm_volumes: must be a dictionary"
