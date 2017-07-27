@@ -46,15 +46,15 @@
     - not osd_auto_discovery
     - devices|length == 0
 
-- name: verify lvm_volumes have been provided
+- name: check if lvm_osds is supported by the selected ceph version
   fail:
-    msg: "please provide lvm_volumes to your osd scenario"
+    msg: "lvm_osds is not supported by the selected Ceph version, use Luminous or above."
   when:
     - osd_group_name is defined
     - osd_group_name in group_names
+    - not containerized_deployment
     - lvm_osds
-    - not osd_auto_discovery
-    - lvm_volumes|length == 0
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
 
 - name: verify osd_objectstore is 'filestore' when using lvm_osds
   fail:
@@ -65,6 +65,16 @@
     - lvm_osds
     - not osd_auto_discovery
     - osd_objectstore != 'filestore'
+
+- name: verify lvm_volumes have been provided
+  fail:
+    msg: "please provide lvm_volumes to your osd scenario"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - lvm_osds
+    - not osd_auto_discovery
+    - lvm_volumes|length == 0
 
 - name: make sure the lvm_volumes variable is a dictionary
   fail:
@@ -116,14 +126,4 @@
     - osd_group_name in group_names
     - not containerized_deployment
     - osd_objectstore == 'bluestore'
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
-
-- name: check if lvm_osds is supported by the selected ceph version
-  fail:
-    msg: "lvm_osds is not supported by the selected Ceph version, use Luminous or above."
-  when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - not containerized_deployment
-    - lvm_osds
     - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
