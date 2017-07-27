@@ -112,6 +112,7 @@ filestore xattr use omap = true
 {% endif %}
 
 {% if groups[mds_group_name] is defined %}
+{% if mds_group_name in group_names %}
 {% for host in groups[mds_group_name] %}
 {% if hostvars[host]['ansible_fqdn'] is defined and mds_use_fqdn %}
 [mds.{{ hostvars[host]['ansible_fqdn'] }}]
@@ -122,8 +123,10 @@ host = {{ hostvars[host]['ansible_hostname'] }}
 {% endif %}
 {% endfor %}
 {% endif %}
+{% endif %}
 
 {% if groups[rgw_group_name] is defined %}
+{% if rgw_group_name in group_names %}
 {% for host in groups[rgw_group_name] %}
 {% if hostvars[host]['ansible_hostname'] is defined %}
 [client.rgw.{{ hostvars[host]['ansible_hostname'] }}]
@@ -136,8 +139,10 @@ rgw frontends = civetweb port={{ radosgw_civetweb_bind_ip }}:{{ radosgw_civetweb
 {% endif %}
 {% endfor %}
 {% endif %}
+{% endif %}
 
 {% if groups[restapi_group_name] is defined %}
+{% if restapi_group_name in group_names %}
 [client.restapi]
 {% if restapi_interface != "interface" %}
 {% include 'client_restapi_interface.j2' %}
@@ -146,4 +151,5 @@ rgw frontends = civetweb port={{ radosgw_civetweb_bind_ip }}:{{ radosgw_civetweb
 {% endif %}
 keyring = /var/lib/ceph/restapi/ceph-restapi/keyring
 log file = /var/log/ceph/ceph-restapi.log
+{% endif %}
 {% endif %}
