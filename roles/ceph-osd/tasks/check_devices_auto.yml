@@ -8,7 +8,7 @@
   register: ispartition_results
   when:
     - ansible_devices is defined
-    - item.value.removable == "0"
+    - item.value.removable == 0
 
 - name: check if any of the raw partitions are mounted
   shell: "mount |grep -sq '^/dev/{{ item.key }} '"
@@ -21,15 +21,17 @@
   always_run: true
   when:
     - ansible_devices is defined
-    - item.value.removable == "0"
+    - item.value.removable == 0
     - item.value.partitions|count == 0
     - item.value.holders|count == 0
 
 - name: fail if any of the raw partitions are mounted
   fail:
     msg: "OSD device autodetection failed because one or more raw partitions is mounted on the host."
-  when: item.rc == 0
   with_items: "{{ mount_cmd.results }}"
+  when:
+    - item.rc == 0
+    - not item.get("skipped")
 
 - name: check the partition status of the osd disks (autodiscover disks)
   shell: "parted --script /dev/{{ item.key }} print > /dev/null 2>&1"
@@ -40,7 +42,7 @@
   register: osd_partition_status_results
   when:
     - ansible_devices is defined
-    - item.value.removable == "0"
+    - item.value.removable == 0
     - item.value.partitions|count == 0
     - item.value.holders|count == 0
 
@@ -52,7 +54,7 @@
   changed_when: false
   when:
     - ansible_devices is defined
-    - item.0.item.value.removable == "0"
+    - item.0.item.value.removable == 0
     - item.0.item.value.partitions|count == 0
     - item.0.item.value.holders|count == 0
     - item.0.rc != 0
@@ -66,4 +68,4 @@
   register: parted_results
   when:
     - ansible_devices is defined
-    - item.value.removable == "0"
+    - item.value.removable == 0
