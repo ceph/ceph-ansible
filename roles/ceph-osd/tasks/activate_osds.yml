@@ -11,7 +11,7 @@
     - item.value.removable == "0"
     - item.value.partitions|count == 0
     - item.value.holders|count == 0
-    - journal_collocation
+    - osd_scenario == 'collocated'
     - osd_auto_discovery
 
 - name: activate osd(s) when device is a disk
@@ -26,7 +26,7 @@
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0
     - not osd_auto_discovery
-    - raw_multi_journal
+    - osd_scenario == 'non-collocated'
 
 - name: automatically activate osd disk(s) without partitions (dmcrypt)
   command: ceph-disk activate --dmcrypt "/dev/{{ item.key }}"
@@ -38,7 +38,8 @@
     - item.value.partitions|count == 0
     - item.value.holders|count == 0
     - osd_auto_discovery
-    - dmcrypt_journal_collocation
+    - dmcrypt
+    - osd_scenario == 'collocated'
 
 - name: activate osd(s) when device is a disk (dmcrypt)
   command: ceph-disk activate --dmcrypt {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
@@ -52,13 +53,14 @@
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0
     - not osd_auto_discovery
-    - dmcrypt_dedicated_journal
+    - dmcrypt
+    - osd_scenario == 'non-collocated'
 
 # NOTE (leseb): we must do this because of
 # https://github.com/ansible/ansible/issues/4297
 - name: combine ispartition results
   set_fact:
-    combined_activate_osd_disk_results: "{{ activate_osd_disk if not dmcrypt_journal_collocation else activate_osd_disk_dmcrypt }}"
+    combined_activate_osd_disk_results: "{{ activate_osd_disk if osd_scenario != 'collocated' else activate_osd_disk_dmcrypt }}"
 
 - name: fail if ceph-disk cannot create an OSD
   fail:

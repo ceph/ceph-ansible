@@ -86,7 +86,7 @@ ansible_provision = proc do |ansible|
   else
     ansible.extra_vars = ansible.extra_vars.merge({
       devices: settings['disks'],
-      journal_collocation: 'true',
+      osd_scenario: 'collocated',
       monitor_interface: ETH,
       os_tuning_params: settings['os_tuning_params'],
       pool_default_size: '2',
@@ -100,7 +100,7 @@ ansible_provision = proc do |ansible|
     ansible.extra_vars = ansible.extra_vars.merge({
       cluster_network: "#{CLUSTER_SUBNET}.0/16",
       devices: ['/dev/sdc'], # hardcode leftover disk
-      journal_collocation: 'true',
+      osd_scenario: 'collocated',
       monitor_address_block: "#{PUBLIC_SUBNET}.0/16",
       public_network: "#{PUBLIC_SUBNET}.0/16",
     })

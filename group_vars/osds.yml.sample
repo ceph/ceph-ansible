@@ -85,51 +85,68 @@ dummy:
 #
 #osd_auto_discovery: false
 
+# Encrypt your OSD device using dmcrypt
+# If set to True, no matter which osd_objecstore and osd_scenario you use the data will be encrypted
+#dmcrypt: false
 
-# !! WARNING !!
-# #
-# # /!\ ENABLE ONLY ONE SCENARIO AT A TIME /!\
-# #
-# #  !! WARNING !!
-#
 
-# I. First scenario: journal and osd_data on the same device
-# Use 'true' to enable this scenario
-# This will collocate both journal and data on the same disk
-# creating a partition at the beginning of the device
-# List devices under 'devices' variable above or choose 'osd_auto_discovery'
+# I. First scenario: collocated
+#
+# To enable this scenario do: osd_scenario: collocated
 #
 #
-# If osd_objectstore: bluestore is enabled both rocksdb DB and WAL will be stored
-# on the device. So the device will get 2 partitions:
-# - One for 'data', also called 'block'
-# - One for block, db, and wal data
+# If osd_objectstore: filestore is enabled both 'ceph data' and 'ceph journal' partitions
+# will be stored on the same device.
+#
+# If osd_objectstore: bluestore is enabled 'ceph data', 'ceph block', 'ceph block.db', 'ceph block.wal' will be stored
+# on the same device. The device will get 2 partitions:
+# - One for 'data', called 'ceph data'
+# - One for 'ceph block', 'ceph block.db', 'ceph block.wal' called 'ceph block'
 #
 # Example of what you will get:
 # [root@ceph-osd0 ~]# blkid /dev/sda*
 # /dev/sda: PTTYPE="gpt"
 # /dev/sda1: UUID="9c43e346-dd6e-431f-92d8-cbed4ccb25f6" TYPE="xfs" PARTLABEL="ceph data" PARTUUID="749c71c9-ed8f-4930-82a7-a48a3bcdb1c7"
 # /dev/sda2: PARTLABEL="ceph block" PARTUUID="e6ca3e1d-4702-4569-abfa-e285de328e9d"
-#journal_collocation: false
+#
+
+#osd_scenario: dummy
+#valid_osd_scenarios:
+#  - collocated
+#  - non-collocated
 
 
-# II.  Second scenario:  N journal devices for N OSDs
-# Use 'true' for 'raw_multi_journal' to enable this scenario
-# List devices under 'devices' variable above and
-# write journal devices for those under 'raw_journal_devices'
-# In the following example:
-# * sdb and sdc will get sdf as a journal
-# * sdd and sde will get sdg as a journal
-
-# While starting you have 2 options:
-# 1. Pre-allocate all the devices
-# 2. Progressively add new devices
-#raw_multi_journal: false
-#raw_journal_devices:
-#  - /dev/sdf
-#  - /dev/sdf
-#  - /dev/sdg
-#  - /dev/sdg
+# II.  Second scenario: non-collocated
+#
+# To enable this scenario do: osd_scenario: non-collocated
+#
+# If osd_objectstore: filestore is enabled 'ceph data' and 'ceph journal' partitions
+# will be stored on different devices:
+# - 'ceph data' will be stored on the device listed in 'devices'
+# - 'ceph journal' will be stored on the device listed in 'dedicated_devices'
+#
+# Let's take an example, imagine 'devices' was declared like this:
+#
+# devices:
+#   - /dev/sda
+#   - /dev/sdb
+#   - /dev/sdc
+#   - /dev/sdd
+#
+# And 'dedicated_devices' was declared like this:
+#
+# dedicated_devices:
+#   - /dev/sdf
+#   - /dev/sdf
+#   - /dev/sdg
+#   - /dev/sdg
+#
+# This will result in the following mapping:
+# - /dev/sda will have /dev/sdf1 as journal
+# - /dev/sdb will have /dev/sdf2 as a journal
+# - /dev/sdc will have /dev/sdg1 as a journal
+# - /dev/sdd will have /dev/sdg2 as a journal
+#
 #
 # NOTE(leseb):
 # On a containerized scenario we only support A SINGLE journal
@@ -137,15 +154,17 @@ dummy:
 # This is a limitation we plan to fix at some point.
 #
 #
-# If osd_objectstore: bluestore is enabled, both rocksdb DB and WAL will be stored
-# on a dedicated device. So the following will happen:
+# If osd_objectstore: bluestore is enabled, both 'ceph block.db' and 'ceph block.wal' partitions will be stored
+# on a dedicated device.
+#
+# So the following will happen:
 # - The devices listed in 'devices' will get 2 partitions, one for 'block' and one for 'data'.
 # 'data' is only 100MB big and do not store any of your data, it's just a bunch of Ceph metadata.
-# 'block' will store all your data.
-# - The devices in 'raw_journal_devices' will get 1 partition for RocksDB DB, called 'block.db'
+# 'block' will store all your actual data.
+# - The devices in 'dedicated_devices' will get 1 partition for RocksDB DB, called 'block.db'
 #  and one for RocksDB WAL, called 'block.wal'
 #
-# By default raw_journal_devices will represent block.db
+# By default dedicated_devices will represent block.db
 #
 # Example of what you will get:
 # [root@ceph-osd0 ~]# blkid /dev/sd*
@@ -155,17 +174,15 @@ dummy:
 # /dev/sdb: PTTYPE="gpt"
 # /dev/sdb1: PARTLABEL="ceph block.db" PARTUUID="af5b2d74-4c08-42cf-be57-7248c739e217"
 # /dev/sdb2: PARTLABEL="ceph block.wal" PARTUUID="af3f8327-9aa9-4c2b-a497-cf0fe96d126a"
-#raw_journal_devices: []
+#dedicated_devices: []
 
 
-# IV. This will partition disks for BlueStore
-# To enable bluestore just set:
-# osd_objectstore: bluestore
+# More device granularity for Bluestore
 #
-# If osd_objectstore: bluestore is enabled.
-# By default, if bluestore_wal_devices is empty, it will get the content of raw_journal_devices.
-# If set, then you will have a dedicated partition on a specific device (bluestore_wal_devices)
-# for block.wal
+# ONLY if osd_objectstore: bluestore is enabled.
+#
+# By default, if 'bluestore_wal_devices' is empty, it will get the content of 'dedicated_devices'.
+# If set, then you will have a dedicated partition on a specific device for block.wal.
 #
 # Example of what you will get:
 # [root@ceph-osd0 ~]# blkid /dev/sd*
@@ -176,22 +193,7 @@ dummy:
 # /dev/sdb1: PARTLABEL="ceph block.db" PARTUUID="0734f6b6-cc94-49e9-93de-ba7e1d5b79e3"
 # /dev/sdc: PTTYPE="gpt"
 # /dev/sdc1: PARTLABEL="ceph block.wal" PARTUUID="824b84ba-6777-4272-bbbd-bfe2a25cecf3"
-#bluestore_wal_devices: "{{ raw_journal_devices }}"
-
-
-# V. Encrypt osd data and/or journal devices with dm-crypt.
-# Keys are stored into the monitors k/v store
-# Use 'true' to enable this scenario
-# Both journal and data are stored on the same dm-crypt encrypted device
-#dmcrypt_journal_collocation: false
-
-
-# VI. Encrypt osd data and/or journal devices with dm-crypt.
-# Keys are stored into the monitors k/v store
-# Use 'true' to enable this scenario
-# Journal and osd data are separated, each with their own dm-crypt device
-# You must use raw_journal_devices and set your journal devices
-#dmcrypt_dedicated_journal: false
+#bluestore_wal_devices: "{{ dedicated_devices }}"
 
 
 ##########
@@ -201,22 +203,22 @@ dummy:
 #ceph_config_keys: [] # DON'T TOUCH ME
 
 # PREPARE DEVICE
-# Make sure you only pass a single device to raw_journal_devices, otherwise this will fail horribly.
+# Make sure you only pass a single device to dedicated_devices, otherwise this will fail horribly.
 # This is why we use [0] in the example.
 #
 # WARNING /!\ DMCRYPT scenario ONLY works with Docker version 1.12.5 and above
 #
 # Examples:
 # Journal collocated on Filestore: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_FILESTORE=1
-# Dedicated journal on Filestore: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_JOURNAL={{ raw_journal_devices[0] }} -e OSD_FILESTORE=1
+# Dedicated journal on Filestore: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_JOURNAL={{ dedicated_devices[0] }} -e OSD_FILESTORE=1
 # Encrypted OSD on Filestore: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1 -e OSD_FILESTORE=1
-# Encrypted OSD with dedicated journal on Filestore: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1 -e OSD_JOURNAL={{ raw_journal_devices[0] }} -e OSD_FILESTORE=1
+# Encrypted OSD with dedicated journal on Filestore: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1 -e OSD_JOURNAL={{ dedicated_devices[0] }} -e OSD_FILESTORE=1
 #
 # Bluestore OSD collocated: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_BLUESTORE=1
-# Bluestore OSD with dedicated db: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_BLUESTORE=1 -e OSD_JOURNAL={{ raw_journal_devices[0] }}
-# Bluestore OSD with dedicated db and wal: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_BLUESTORE=1 -e OSD_JOURNAL={{ raw_journal_devices[0] }} -e OSD_BLUESTORE_BLOCK_WAL={{ bluestore_wal_devices[0] }}
+# Bluestore OSD with dedicated db: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_BLUESTORE=1 -e OSD_JOURNAL={{ dedicated_devices[0] }}
+# Bluestore OSD with dedicated db and wal: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_BLUESTORE=1 -e OSD_JOURNAL={{ dedicated_devices[0] }} -e OSD_BLUESTORE_BLOCK_WAL={{ bluestore_wal_devices[0] }}
 # Encrypted OSD: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1 -e OSD_FILESTORE=1
-# Encrypted OSD with dedicated journal: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1 -e OSD_JOURNAL={{ raw_journal_devices[0] }} -e OSD_FILESTORE=1
+# Encrypted OSD with dedicated journal: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1 -e OSD_JOURNAL={{ dedicated_devices[0] }} -e OSD_FILESTORE=1
 #
 #
 #ceph_osd_docker_devices: "{{ devices }}"

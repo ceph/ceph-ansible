@@ -118,7 +118,7 @@ function cp_var {
 
 function populate_vars {
   sed -i "s/[#]*osd_auto_discovery: .*/osd_auto_discovery: true/" group_vars/osds.yml
-  sed -i "s/[#]*journal_collocation: .*/journal_collocation: true/" group_vars/osds.yml
+  sed -i "s/[#]*osd_scenario: .*/osd_scenario: collocated/" group_vars/osds.yml
   sed -i "s/[#]*monitor_address: .*/monitor_address: ${IP}/" group_vars/all.yml
   sed -i "s/[#]*journal_size: .*/journal_size: 100/" group_vars/all.yml
   sed -i "s|[#]*public_network: .*|public_network: ${SUBNET}|" group_vars/all.yml
