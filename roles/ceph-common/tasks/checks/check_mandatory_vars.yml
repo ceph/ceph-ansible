@@ -22,6 +22,24 @@
   tags:
     - package-install
 
+- name: make sure ceph_stable_release is set
+  fail:
+    msg: "make sure ceph_stable_release is set to a release name (e.g: luminous), http://docs.ceph.com/docs/master/release-notes/"
+  when:
+    - ceph_stable_release == 'dummy'
+    - not ceph_rhcs
+  tags:
+    - package-install
+
+- name: make sure ceph_stable_release is correct
+  fail:
+    msg: "wrong release name, see http://docs.ceph.com/docs/master/release-notes/"
+  when:
+    - ceph_stable_release not in ceph_release_num
+    - not ceph_rhcs
+  tags:
+    - package-install
+
 - name: verify that a method was chosen for red hat storage
   fail:
     msg: "choose between ceph_rhcs_cdn_install and ceph_rhcs_iso_install"
