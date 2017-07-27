@@ -62,3 +62,24 @@
     with_subelements:
     - "{{ devices }}"
     - partitions
+
+  - set_fact:
+      owner: 167
+      group: 167
+    when:
+      - ansible_os_family == "RedHat"
+  
+  - set_fact:
+      owner: 64045
+      group: 64045
+    when:
+      - ansible_os_family == "Debian"
+
+  - name: change partitions ownership
+    file:
+      path: "/dev/{{item.0.device_name}}{{item.1.index}}"
+      owner: "{{ owner | default('root')}}"
+      group: "{{ group | default('disk')}}"
+    with_subelements:
+      - "{{ devices }}"
+      - partitions
