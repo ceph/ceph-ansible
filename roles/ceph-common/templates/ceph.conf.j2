@@ -112,6 +112,7 @@ filestore xattr use omap = true
 {% endif %}
 
 {% if groups[mds_group_name] is defined %}
+{% if mds_group_name in group_names %}
 {% for host in groups[mds_group_name] %}
 {% if hostvars[host]['ansible_fqdn'] is defined and mds_use_fqdn %}
 [mds.{{ hostvars[host]['ansible_fqdn'] }}]
@@ -122,56 +123,26 @@ host = {{ hostvars[host]['ansible_hostname'] }}
 {% endif %}
 {% endfor %}
 {% endif %}
+{% endif %}
 
 {% if groups[rgw_group_name] is defined %}
+{% if rgw_group_name in group_names %}
 {% for host in groups[rgw_group_name] %}
 {% if hostvars[host]['ansible_hostname'] is defined %}
 [client.rgw.{{ hostvars[host]['ansible_hostname'] }}]
-{% if radosgw_dns_name is defined %}
-rgw dns name = {{ radosgw_dns_name }}
-{% endif %}
 host = {{ hostvars[host]['ansible_hostname'] }}
 keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['ansible_hostname'] }}/keyring
 rgw socket path = /tmp/radosgw-{{ hostvars[host]['ansible_hostname'] }}.sock
 log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
 rgw data = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['ansible_hostname'] }}
-rgw frontends = civetweb {{ radosgw_civetweb_options }}
-rgw resolve cname = {{ radosgw_resolve_cname | bool }}
-{% if radosgw_keystone %}
-rgw keystone url = {{ radosgw_keystone_url }}
-rgw keystone api version = {{ radosgw_keystone_api_version }}
-{% if radosgw_keystone_auth_method == 'admin_token' %}
-rgw keystone admin token = {{ radosgw_keystone_admin_token }}
-{% elif radosgw_keystone_auth_method == 'auth_token' %}
-rgw keystone admin user = {{ radosgw_keystone_admin_user }}
-rgw keystone admin password = {{ radosgw_keystone_admin_password }}
-rgw keystone admin tenant = {{ radosgw_keystone_admin_tenant }}
-rgw keystone admin domain = {{ radosgw_keystone_admin_domain }}
-{% endif %}
-rgw keystone accepted roles = {{ radosgw_keystone_accepted_roles }}
-rgw keystone token cache size = {{ radosgw_keystone_token_cache_size }}
-rgw keystone revocation interval = {{ radosgw_keystone_revocation_internal }}
-rgw s3 auth use keystone = {{ radosgw_s3_auth_use_keystone }}
-{% if radosgw_keystone_ssl | bool %}
-nss db path = {{ radosgw_nss_db_path }}
-{% endif %}
-{% endif %}
-{% if radosgw_usage_log | bool %}
-rgw enable usage log = true
-rgw usage log tick interval = {{ radosgw_usage_log_tick_interval }}
-rgw usage log flush threshold = {{ radosgw_usage_log_flush_threshold }}
-rgw usage max shards = {{ radosgw_usage_max_shards }}
-rgw usage max user shards = {{ radosgw_usage_max_user_shards }}
-{% endif %}
-{% if radosgw_static_website | bool %}
-rgw enable static website = {{ radosgw_static_website }}
-rgw dns s3website name = {{ radosgw_dns_s3website_name }}
-{% endif %}
+rgw frontends = civetweb port={{ radosgw_civetweb_bind_ip }}:{{ radosgw_civetweb_port }} num_threads={{ radosgw_civetweb_num_threads }}
 {% endif %}
 {% endfor %}
 {% endif %}
+{% endif %}
 
 {% if groups[restapi_group_name] is defined %}
+{% if restapi_group_name in group_names %}
 [client.restapi]
 {% if restapi_interface != "interface" %}
 {% include 'client_restapi_interface.j2' %}
@@ -180,4 +151,5 @@ rgw dns s3website name = {{ radosgw_dns_s3website_name }}
 {% endif %}
 keyring = /var/lib/ceph/restapi/ceph-restapi/keyring
 log file = /var/log/ceph/ceph-restapi.log
+{% endif %}
 {% endif %}

@@ -1,0 +1,31 @@
+---
+# THIS FILE IS AN EXAMPLE THAT CONTAINS A SET OF VARIABLE FOR A PARTICULAR PURPOSE
+# GOAL: CONFIGURE RADOS GATEWAY WITH KEYSTONE V3
+#
+# The following variables should be added in your group_vars/rgws.yml file
+# The double quotes are important, do NOT remove them.
+
+
+ceph_conf_overrides:
+  "client.rgw.{{ hostvars[inventory_hostname]['ansible_hostname'] }}":
+    "rgw keystone api version": "3"
+    "rgw keystone url": "http://192.168.0.1:35357"
+    "rgw keystone admin token": "password"
+    "rgw keystone admin project": "admin"
+    "rgw keystone admin domain": "default"
+    "rgw keystone accepted roles": "Member, _member_, admin"
+    "rgw keystone token cache size": "10000"
+    "rgw keystone revocation interval": "900"
+    "rgw s3 auth use keystone": "true"
+    "nss db path": "/var/lib/ceph/radosgw/ceph-radosgw.{{ ansible_hostname }}/nss"
+
+
+# NOTE (leseb): to authentivate with Keystone you have two options:
+# * using a token (like shown above)
+#     - "rgw keystone admin token" = admin"
+#     - "rgw keystone token cache size" = 10000"
+#
+# * use credential:
+#     - "rgw keystone admin user" = "admin"
+#     - "rgw keystone admin password" = "password"
+#
