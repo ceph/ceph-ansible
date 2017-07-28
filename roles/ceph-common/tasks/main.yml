@@ -2,11 +2,6 @@
 - include: ./checks/check_system.yml
 - include: ./checks/check_mandatory_vars.yml
 
-# Set ceph_release
-- include: ./release.yml
-  tags:
-    - always
-
 - include: ./checks/check_firewall.yml
   when: check_firewall
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
@@ -93,10 +88,25 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- include: facts.yml
+- name: get ceph version
+  command: ceph --version
+  changed_when: false
+  always_run: yes
+  register: ceph_version
+
+- set_fact:
+    ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
+
+- include: facts_mon_fsid.yml
+  run_once: true
+  when:
+    - cephx
+    - not monitor_keyring_conf.stat.exists
+    - ceph_current_fsid.rc == 0
+    - mon_group_name in group_names
+
 - include: ./checks/check_socket.yml
 - include: create_ceph_initial_dirs.yml
-- include: generate_cluster_fsid.yml
 - include: generate_ceph_conf.yml
 - include: create_rbd_client_dir.yml
 - include: configure_cluster_name.yml
