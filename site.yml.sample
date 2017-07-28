@@ -42,58 +42,78 @@
   gather_facts: false
   become: True
   roles:
-  - ceph-mon
+    - ceph-defaults
+    - ceph-common
+    - ceph-mon
 
 - hosts: agents
   gather_facts: false
   become: True
   roles:
-  - ceph-agent
+    - ceph-defaults
+    - ceph-common
+    - ceph-agent
 
 - hosts: osds
   gather_facts: false
   become: True
   roles:
-  - ceph-osd
+    - ceph-defaults
+    - ceph-common
+    - ceph-osd
 
 - hosts: mdss
   gather_facts: false
   become: True
   roles:
-  - ceph-mds
+    - ceph-defaults
+    - ceph-common
+    - ceph-mds
 
 - hosts: rgws
   gather_facts: false
   become: True
   roles:
-  - ceph-rgw
+    - ceph-defaults
+    - ceph-common
+    - ceph-rgw
 
 - hosts: nfss
   gather_facts: false
   become: True
   roles:
-  - ceph-nfs
+    - ceph-defaults
+    - ceph-common
+    - ceph-nfs
 
 - hosts: restapis
   gather_facts: false
   become: True
   roles:
-  - ceph-restapi
+    - ceph-defaults
+    - ceph-common
+    - ceph-restapi
 
 - hosts: rbdmirrors
   gather_facts: false
   become: True
   roles:
-  - ceph-rbd-mirror
+    - ceph-defaults
+    - ceph-common
+    - ceph-rbd-mirror
 
 - hosts: clients
   gather_facts: false
   become: True
   roles:
-  - ceph-client
+    - ceph-defaults
+    - ceph-common
+    - ceph-client
 
 - hosts: mgrs
   gather_facts: false
   become: True
   roles:
+    - { role: ceph-defaults, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
+    - { role: ceph-common, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
     - { role: ceph-mgr, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
