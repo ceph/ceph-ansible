@@ -31,6 +31,16 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
+- include: ./pre_requisites/prerequisite_rhcs_cdn_install_debian.yml
+  when:
+    - ceph_rhcs
+    - ceph_rhcs_cdn_install
+    - ansible_os_family == "Debian"
+  tags:
+    - package-install
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
+
 - include: ./installs/install_on_redhat.yml
   when:
     - ansible_os_family == 'RedHat'
@@ -40,19 +50,19 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- include: ./installs/install_rh_storage_on_redhat.yml
+- include: ./installs/install_on_debian.yml
   when:
-    - ansible_distribution == "RedHat"
-    - ceph_rhcs
+    - ansible_os_family == 'Debian'
+    - not ceph_rhcs
   tags:
     - package-install
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- include: ./installs/install_on_debian.yml
+- include: ./installs/install_rh_storage_on_redhat.yml
   when:
-    - ansible_os_family == 'Debian'
-    - not ceph_rhcs
+    - ceph_rhcs
+    - ansible_distribution == "RedHat"
   tags:
     - package-install
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
