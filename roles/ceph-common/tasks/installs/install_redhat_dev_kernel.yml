@@ -1,0 +1,45 @@
+---
+- name: fetch ceph kernel repo file
+  uri:
+    url: https://shaman.ceph.com/api/repos/kernel/testing/{{ ceph_dev_kernel_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo
+    return_content: yes
+  register: ceph_dev_kernel_repo
+  when: ceph_dev_kernel
+
+- name: add ceph kernel repository
+  copy:
+    content: "{{ ceph_dev_kernel_repo.content }}"
+    dest: /etc/yum.repos.d/ceph-kernel.repo
+    owner: root
+    group: root
+    backup: yes
+  when: ceph_dev_kernel
+- name: install ceph development kernel package
+  package:
+    name: "kernel"
+    disablerepo: "base"
+    state: latest
+  when:
+    - client_group_name in group_names
+    - ceph_dev_kernel
+
+- name: configure grub to boot ceph kernel
+  command: grub2-mkconfig -o /boot/grub2/grub.cfg
+  when:
+    - client_group_name in group_names
+    - ceph_dev_kernel
+
+- name: reboot to install ceph development kernel
+  shell: sleep 5 && shutdown -r now "Boot ceph dev kernel"
+  async: 1
+  poll: 0
+  ignore_errors: true
+  when:
+    - client_group_name in group_names
+    - ceph_dev_kernel
+
+- name: wait for reboot to complete
+  local_action: wait_for host={{ inventory_hostname }} state=started
+  when:
+    - client_group_name in group_names
+    - ceph_dev_kernel
