@@ -83,3 +83,17 @@
     with_subelements:
       - "{{ devices }}"
       - partitions
+    when:
+      item.0.device_name | match('/dev/([hsv]d[a-z]{1,2}){1,2}$')
+
+  - name: change partitions ownership
+    file:
+      path: "/dev/{{item.0.device_name}}p{{item.1.index}}"
+      owner: "{{ owner | default('root')}}"
+      group: "{{ group | default('disk')}}"
+    with_subelements:
+      - "{{ devices }}"
+      - partitions
+    when:
+      item.0.device_name | match('/dev/(cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}$')
+...
