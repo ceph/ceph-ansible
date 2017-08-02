@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
+
 
 #############
 # VARIABLES #
 #############
 
 basedir=$(dirname "$0")
-no_header="ceph-docker-common" # pipe separated list of roles with no header, MUST end with '$', e.g: 'foo$|bar$'
-merge_in_all="ceph-common$|ceph-docker-common$" # pipe separated list of roles you want to merge in all.yml.sample, MUST end with '$', e.g: 'foo$|bar$'
+do_not_generate="ceph-common$|ceph-docker-common$" # pipe separated list of roles we don't want to generate sample file, MUST end with '$', e.g: 'foo$|bar$'
 
 
 #############
@@ -52,7 +51,7 @@ generate_group_vars_file () {
 for role in "$basedir"/roles/ceph-*; do
   rolename=$(basename "$role")
 
-  if echo "$rolename" | grep -qE "$merge_in_all"; then
+  if [[ $rolename == "ceph-defaults" ]]; then
     output="all.yml.sample"
   elif [[ $rolename == "ceph-agent" ]]; then
     output="agent.yml.sample"
@@ -62,17 +61,13 @@ for role in "$basedir"/roles/ceph-*; do
     output="${rolename:5}s.yml.sample"
   fi
 
-
-  # Do not re-regenerate the header for certain roles
-  # since we merge them in all.yml.sample
-  if ! echo "$rolename" | grep -qE "$no_header"; then
-    populate_header
-  fi
-
   defaults="$role"/defaults/main.yml
   if [[ ! -f $defaults ]]; then
     continue
   fi
 
-  generate_group_vars_file
+  if ! echo "$rolename" | grep -qE "$do_not_generate"; then
+    populate_header
+    generate_group_vars_file
+  fi
 done

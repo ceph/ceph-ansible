@@ -3,13 +3,12 @@
 RETRIES="{{ handler_health_mon_check_retries }}"
 DELAY="{{ handler_health_mon_check_delay }}"
 MONITOR_NAME="{{ monitor_name }}"
-CLUSTER="{{ cluster }}"
-SOCKET=/var/run/ceph/${CLUSTER}-mon.${MONITOR_NAME}.asok
+SOCKET=/var/run/ceph/{{ cluster }}-mon.${MONITOR_NAME}.asok
 
 
 check_quorum() {
 while [ $RETRIES -ne 0 ]; do
-  MEMBERS=$(ceph --cluster ${CLUSTER} -s --format json | sed -r 's/.*"quorum_names":(\[[^]]+\]).*/\1/')
+  MEMBERS=$({{ docker_exec_cmd }} ceph --cluster {{ cluster }}   -s --format json | sed -r 's/.*"quorum_names":(\[[^]]+\]).*/\1/')
   test "${MEMBERS/$MONITOR_NAME}" != "$MEMBERS" && exit 0
   sleep $DELAY
   let RETRIES=RETRIES-1
@@ -17,7 +16,7 @@ done
 # If we reach this point, it means there is a problem with the quorum
 echo "Error with quorum."
 echo "cluster status:"
-ceph --cluster ${CLUSTER} -s
+{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s
 exit 1
 }
 
@@ -27,7 +26,7 @@ systemctl restart ceph-mon@${MONITOR_NAME}
 COUNT=10
 # Wait and ensure the socket exists after restarting the daemon
 while [ $COUNT -ne 0 ]; do
-  test -S $SOCKET && check_quorum
+  {{ docker_exec_cmd }} test -S $SOCKET && check_quorum
   sleep 1
   let COUNT=COUNT-1
 done

@@ -97,9 +97,17 @@
 
   tasks:
 
-  - name: disable ceph rgw service
+# For backward compatibility
+  - name: disable ceph rgw service (old unit name, for backward compatibility)
     service:
       name: "ceph-rgw@{{ ansible_hostname }}"
+      state: stopped
+      enabled: no
+    ignore_errors: true
+
+  - name: disable ceph rgw service (new unit name)
+    service:
+      name: "ceph-radosgw@{{ ansible_hostname }}"
       state: stopped
       enabled: no
     ignore_errors: true
@@ -113,8 +121,12 @@
 
   - name: remove ceph rgw service
     file:
-      path: /etc/systemd/system/ceph-rgw@.service
+      path: "{{ item }}"
       state: absent
+    with_items:
+# For backward compatibility
+      - /etc/systemd/system/ceph-rgw@.service
+      - /etc/systemd/system/ceph-radosgw@.service
 
   - name: remove ceph rgw image
     docker_image:

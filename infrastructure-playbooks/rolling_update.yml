@@ -41,6 +41,7 @@
     - "{{ mds_group_name|default('mdss') }}"
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ client_group_name|default('clients') }}"
 
   become: True
   tasks:
@@ -91,6 +92,9 @@
         - not containerized_deployment
 
   roles:
+    - ceph-defaults
+    - { role: ceph-common, when: not containerized_deployment }
+    - { role: ceph-docker-common, when: containerized_deployment }
     - ceph-mon
 
   post_tasks:
@@ -224,6 +228,9 @@
         - not containerized_deployment
 
   roles:
+    - ceph-defaults
+    - { role: ceph-common, when: not containerized_deployment }
+    - { role: ceph-docker-common, when: containerized_deployment }
     - ceph-osd
 
   post_tasks:
@@ -341,6 +348,9 @@
         - not containerized_deployment
 
   roles:
+    - ceph-defaults
+    - { role: ceph-common, when: not containerized_deployment }
+    - { role: ceph-docker-common, when: containerized_deployment }
     - ceph-mds
 
   post_tasks:
@@ -411,6 +421,9 @@
         - not containerized_deployment
 
   roles:
+    - ceph-defaults
+    - { role: ceph-common, when: not containerized_deployment }
+    - { role: ceph-docker-common, when: containerized_deployment }
     - ceph-rgw
 
   post_tasks:
@@ -437,9 +450,26 @@
 
     - name: restart containerized ceph rgws with systemd
       service:
-        name: ceph-rgw@{{ ansible_hostname }}
+        name: ceph-radosgw@{{ ansible_hostname }}
         state: restarted
         enabled: yes
       when:
         - ansible_service_mgr == 'systemd'
         - containerized_deployment
+
+
+- name: upgrade ceph client node
+
+  vars:
+    upgrade_ceph_packages: True
+
+  hosts:
+    - "{{ client_group_name|default('clients') }}"
+
+  serial: 1
+  become: True
+
+  roles:
+    - ceph-defaults
+    - ceph-common
+    - ceph-client
