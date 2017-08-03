@@ -24,7 +24,7 @@
 
 - name: check the journal device is partition
   shell: "readlink -f {{ item }} | egrep '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p)[0-9]{1,2}|fio[a-z]{1,2}[0-9]{1,2}$'"
-  with_items: "{{ raw_journal_devices }}"
+  with_items: "{{ dedicated_devices }}"
   changed_when: false
   failed_when: false
   always_run: true
@@ -34,22 +34,22 @@
   shell: "parted --script {{ item.1 }} print > /dev/null 2>&1"
   with_together:
     - "{{ journal_ispartition_results.results }}"
-    - "{{ raw_journal_devices|unique }}"
+    - "{{ dedicated_devices|unique }}"
   changed_when: false
   failed_when: false
   always_run: true
   register: journal_partition_status
   when:
-    - (raw_multi_journal or dmcrypt_dedicated_journal)
+    - osd_scenario == 'non-collocated'
     - item.0.rc != 0
 
 - name: fix partitions gpt header or labels of the journal devices
   shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }}"
   with_together:
     - "{{ journal_partition_status.results }}"
-    - "{{ raw_journal_devices|unique }}"
+    - "{{ dedicated_devices|unique }}"
   changed_when: false
   when:
-    - (raw_multi_journal or dmcrypt_dedicated_journal)
+    - osd_scenario == 'non-collocated'
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0

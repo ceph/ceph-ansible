@@ -1,6 +1,4 @@
 ---
-## SCENARIO 1: JOURNAL AND OSD_DATA ON THE SAME DEVICE
-
 - include: ../check_devices.yml
 
 # NOTE (leseb): the prepare process must be parallelized somehow...
@@ -11,68 +9,70 @@
     ceph_disk_cli_options: "--cluster {{ cluster }} --bluestore"
   when:
     - osd_objectstore == 'bluestore'
-    - journal_collocation
+    - not dmcrypt
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
 
 - set_fact:
     ceph_disk_cli_options: "--cluster {{ cluster }} --filestore"
   when:
     - osd_objectstore == 'filestore'
-    - journal_collocation
+    - not dmcrypt
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
 
 - set_fact:
     ceph_disk_cli_options: "--cluster {{ cluster }}"
   when:
     - osd_objectstore == 'filestore'
-    - journal_collocation
+    - not dmcrypt
     - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
 
 - set_fact:
     ceph_disk_cli_options: "--cluster {{ cluster }} --bluestore --dmcrypt"
   when:
     - osd_objectstore == 'bluestore'
-    - dmcrypt_journal_collocation
+    - dmcrypt
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
 
 - set_fact:
     ceph_disk_cli_options: "--cluster {{ cluster }} --filestore --dmcrypt"
   when:
     - osd_objectstore == 'filestore'
-    - dmcrypt_journal_collocation
+    - dmcrypt
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
 
 - set_fact:
     ceph_disk_cli_options: "--cluster {{ cluster }} --dmcrypt"
   when:
     - osd_objectstore == 'filestore'
-    - dmcrypt_journal_collocation
+    - dmcrypt
     - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
 
-# NOTE (alahouze): if the device is a partition, the parted command below has
-# failed, this is why we check if the device is a partition too.
-- name: automatic prepare "{{ osd_objectstore }}" osd disk(s) without partitions with collocated osd data and journal
-  command: "ceph-disk prepare {{ ceph_disk_cli_options }} /dev/{{ item.key }}"
-  register: prepared_osds
-  with_dict: "{{ ansible_devices }}"
-  when:
-    - ansible_devices is defined
-    - item.value.removable == "0"
-    - item.value.partitions|count == 0
-    - item.value.holders|count == 0
-    - osd_auto_discovery
-
-- name: manually prepare "{{ osd_objectstore }}" osd disk(s) with collocated osd data and journal
-  command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.2 }}"
+- name: prepare filestore osd disk(s) non-collocated
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.2 }} {{ item.3 }}"
   with_together:
     - "{{ parted_results.results }}"
     - "{{ ispartition_results.results }}"
     - "{{ devices }}"
+    - "{{ dedicated_devices }}"
+  changed_when: false
+  when:
+    - item.0.get("skipped") or item.0.get("rc", 0) != 0
+    - not item.1.get("skipped")
+    - item.1.get("rc", 0) != 0
+    - osd_objectstore == 'filestore'
+    - not osd_auto_discovery
+
+- name: manually prepare "{{ osd_objectstore }}" osd disk(s) with a dedicated device for db and wal
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.1 }} --block.wal {{ item.2 }} {{ item.3 }}"
+  with_together:
+    - "{{ parted_results.results }}"
+    - "{{ dedicated_devices }}"
+    - "{{ bluestore_wal_devices }}"
+    - "{{ devices }}"
   when:
     - not item.0.get("skipped")
-    - not item.1.get("skipped")
     - item.0.get("rc", 0) != 0
-    - item.1.get("rc", 0) != 0
+    - osd_objectstore == 'bluestore'
     - not osd_auto_discovery
 
 - include: ../activate_osds.yml

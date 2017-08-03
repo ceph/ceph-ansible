@@ -31,7 +31,7 @@ def node(Ansible, Interface, Command, request):
     if node_type == "mgrs" and ceph_stable_release == "jewel":
         pytest.skip("mgr nodes can not be tested with ceph release jewel")
 
-    journal_collocation_test = ansible_vars.get("journal_collocation") or ansible_vars.get("dmcrypt_journal_collocation")
+    journal_collocation_test = ansible_vars.get("osd_scenario") == "collocated"
     if request.node.get_marker("journal_collocation") and not journal_collocation_test:
         pytest.skip("Scenario is not using journal collocation")
 
