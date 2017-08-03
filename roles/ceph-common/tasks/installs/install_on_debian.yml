@@ -1,4 +1,9 @@
 ---
+- name: configure debian repository installation
+  include: configure_debian_repository_installation.yml
+  when:
+    - ceph_origin == 'repository'
+
 - name: install dependencies
   apt:
     name: "{{ item }}"
@@ -7,66 +12,18 @@
     cache_valid_time: 3600
   with_items: "{{ debian_package_dependencies }}"
 
-- name: configure ceph apt repository
-  include: debian_ceph_repository.yml
-  when: ceph_origin == 'upstream'
-
 - name: update apt cache
   apt:
     update_cache: yes
 
-- name: install ceph
-  apt:
-    name: "ceph"
-    update_cache: no
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-
-- name: install ceph-test
-  apt:
-    pkg: ceph-test
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-  when: ceph_test
-
-- name: install ceph-common
-  package:
-    name: 'ceph-common'
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-
-- name: install rados gateway
-  apt:
-    pkg: radosgw
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    update_cache: yes
-  when: rgw_group_name in group_names
-
-- name: install ceph mds
-  apt:
-    pkg: ceph-mds
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-  when: mds_group_name in group_names
-
-- name: install jemalloc
-  apt:
-    pkg: libjemalloc1
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    update_cache: yes
-  when: nfs_group_name in group_names
-
-- name: install NFS gateway
-  apt:
-    pkg: nfs-ganesha-fsal
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    update_cache: yes
-  when: nfs_group_name in group_names
-
-- name: install ceph mgr
-  apt:
-    pkg: ceph-mgr
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
+- name: install ceph debian packages
+  include: install_debian_packages.yml
   when:
-    - mgr_group_name in group_names
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.jewel
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
+    - ceph_repository != 'rhcs'
+
+- name: install ceph rhcs debian packages
+  include: install_debian_rhcs_packages.yml
+  when:
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
+    - ceph_repository == 'rhcs'

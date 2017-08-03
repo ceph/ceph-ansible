@@ -12,39 +12,9 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- include: ./pre_requisites/prerequisite_rhcs_iso_install.yml
-  when:
-    - ceph_rhcs
-    - ceph_rhcs_iso_install
-  tags:
-    - package-install
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
-
-- include: ./pre_requisites/prerequisite_rhcs_cdn_install.yml
-  when:
-    - ceph_rhcs
-    - ceph_rhcs_cdn_install
-    - ansible_os_family == "RedHat"
-  tags:
-    - package-install
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
-
-- include: ./pre_requisites/prerequisite_rhcs_cdn_install_debian.yml
-  when:
-    - ceph_rhcs
-    - ceph_rhcs_cdn_install
-    - ansible_os_family == "Debian"
-  tags:
-    - package-install
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
-
 - include: ./installs/install_on_redhat.yml
   when:
     - ansible_os_family == 'RedHat'
-    - not ceph_rhcs
   tags:
     - package-install
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
@@ -53,25 +23,6 @@
 - include: ./installs/install_on_debian.yml
   when:
     - ansible_os_family == 'Debian'
-    - not ceph_rhcs
-  tags:
-    - package-install
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
-
-- include: ./installs/install_rh_storage_on_redhat.yml
-  when:
-    - ceph_rhcs
-    - ansible_distribution == "RedHat"
-  tags:
-    - package-install
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
-
-- include: ./installs/install_rh_storage_on_debian.yml
-  when:
-    - ansible_os_family == 'Debian'
-    - ceph_rhcs
   tags:
     - package-install
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
@@ -109,7 +60,9 @@
 
 # override ceph_stable_release for ceph_dev and rhcs installations since ceph_stable_release is not mandatory
 - include: ./release-rhcs.yml
-  when: (ceph_rhcs or ceph_dev)
+  when:
+    - ansible_os_family == 'RedHat'
+    - ceph_repository in ['rhcs', 'dev']
   tags:
     - always
 

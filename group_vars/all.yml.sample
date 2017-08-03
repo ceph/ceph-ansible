@@ -13,6 +13,22 @@ dummy:
 # GENERAL #
 ###########
 
+######################################
+# Releases name to number dictionary #
+######################################
+#ceph_release_num:
+#  dumpling: 0.67
+#  emperor: 0.72
+#  firefly: 0.80
+#  giant: 0.87
+#  hammer: 0.94
+#  infernalis: 9
+#  jewel: 10
+#  kraken: 11
+#  luminous: 12
+#  mimic: 13
+
+# Directory to fetch cluster fsid, keys etc...
 #fetch_directory: fetch/
 
 # The 'cluster' variable determines the name of the cluster.
@@ -26,16 +42,7 @@ dummy:
 # With that you will be able to run "ceph health" normally
 #cluster: ceph
 
-###########
-# INSTALL #
-###########
-
-# Set uid/gid to default '64045' for bootstrap directories.
-# '64045' is used for debian based distros. It must be set to 167 in case of rhel based distros.
-# These values have to be set according to the base OS used by the container image, NOT the host.
-#bootstrap_dirs_owner: "64045"
-#bootstrap_dirs_group: "64045"
-
+# Inventory host group variables
 #mon_group_name: mons
 #osd_group_name: osds
 #rgw_group_name: rgws
@@ -53,13 +60,10 @@ dummy:
 # want to set this to False to skip those checks.
 #check_firewall: False
 
-# This variable determines if ceph packages can be updated.  If False, the
-# package resources will use "state=present".  If True, they will use
-# "state=latest".
-#upgrade_ceph_packages: False
 
-# /!\ EITHER ACTIVE ceph_stable OR ceph_stable_uca OR ceph_dev OR ceph_custom /!\
-
+############
+# PACKAGES #
+############
 #debian_package_dependencies:
 #  - python-pycurl
 #  - hdparm
@@ -76,69 +80,78 @@ dummy:
 #  - hdparm
 #  - python-setuptools
 
+# Whether or not to install the ceph-test package.
+#ceph_test: false
+
 # Enable the ntp service by default to avoid clock skew on
 # ceph nodes
 #ntp_service_enabled: true
 
-# Whether or not to install the ceph-test package.
-#ceph_test: False
+# Set uid/gid to default '64045' for bootstrap directories.
+# '64045' is used for debian based distros. It must be set to 167 in case of rhel based distros.
+# These values have to be set according to the base OS used by the container image, NOT the host.
+#bootstrap_dirs_owner: "64045"
+#bootstrap_dirs_group: "64045"
 
-## Configure package origin
-#
-#ceph_origin: 'upstream' # or 'distro' or 'local'
-# 'distro' means that no separate repo file will be added
-# you will get whatever version of Ceph is included in your Linux distro.
-# 'local' means that the ceph binaries will be copied over from the local machine
-
-# LOCAL CEPH INSTALLATION (ceph_origin==local)
-#
-# Path to DESTDIR of the ceph install
-#ceph_installation_dir: "/path/to/ceph_installation/"
-# Whether or not to use installer script rundep_installer.sh
-# This script takes in rundep and installs the packages line by line onto the machine
-# If this is set to false then it is assumed that the machine ceph is being copied onto will already have
-# all runtime dependencies installed
-#use_installer: false
-# Root directory for ceph-ansible
-#ansible_dir: "/path/to/ceph-ansible"
+# This variable determines if ceph packages can be updated.  If False, the
+# package resources will use "state=present".  If True, they will use
+# "state=latest".
+#upgrade_ceph_packages: False
 
 #ceph_use_distro_backports: false # DEBIAN ONLY
 
-# STABLE
-########
 
-# COMMUNITY VERSION
-#ceph_stable: false # use ceph stable branch
+###########
+# INSTALL #
+###########
+
+
+# ORIGIN SOURCE
+#
+# Choose between:
+# - 'repository' means that you will get ceph installed through a new repository. Later below choose between 'community', 'rhcs' or 'dev'
+# - 'distro' means that no separate repo file will be added
+#  you will get whatever version of Ceph is included in your Linux distro.
+# 'local' means that the ceph binaries will be copied over from the local machine
+#ceph_origin: 'dummy'
+#valid_ceph_origins:
+#  - repository
+#  - distro
+#  - local
+
+
+#ceph_repository: dummy
+#valid_ceph_repository:
+#  - community
+#  - rhcs
+#  - dev
+#  - uca
+#  - custom
+
+
+# REPOSITORY: COMMUNITY VERSION
+#
+# Enabled when ceph_repository == 'community'
+#
 #ceph_mirror: http://download.ceph.com
 #ceph_stable_key: https://download.ceph.com/keys/release.asc
 #ceph_stable_release: dummy
 #ceph_stable_repo: "{{ ceph_mirror }}/debian-{{ ceph_stable_release }}"
 
-######################################
-# Releases name to number dictionary #
-######################################
-#ceph_release_num:
-#  dumpling: 0.67
-#  emperor: 0.72
-#  firefly: 0.80
-#  giant: 0.87
-#  hammer: 0.94
-#  infernalis: 9
-#  jewel: 10
-#  kraken: 11
-#  luminous: 12
-#  mimic: 13
-
 # Use the option below to specify your applicable package tree, eg. when using non-LTS Ubuntu versions
 # # for a list of available Debian distributions, visit http://download.ceph.com/debian-{{ ceph_stable_release }}/dists/
 # for more info read: https://github.com/ceph/ceph-ansible/issues/305
-#ceph_stable_distro_source:
+#ceph_stable_distro_source: "{{ ansible_lsb.codename }}"
 
 # This option is needed for _both_ stable and dev version, so please always fill the right version
 # # for supported distros, see http://download.ceph.com/rpm-{{ ceph_stable_release }}/
 #ceph_stable_redhat_distro: el7
 
-# ENTERPRISE VERSION RED HAT STORAGE (from 1.3)
+
+# REPOSITORY: RHCS VERSION RED HAT STORAGE (from 1.3)
+#
+# Enabled when ceph_repository == 'rhcs'
+#
 # This version is only supported on RHEL >= 7.1
 # As of RHEL 7.1, libceph.ko and rbd.ko are now included in Red Hat's kernel
 # packages natively. The RHEL 7.1 kernel packages are more stable and secure than
@@ -151,46 +164,62 @@ dummy:
 # on RHEL 7.
 #
 #
-# Backward compatibility of variable names
-# Commit 492518a2 changed variable names of rhcs installations
-# to not break backward compatiblity we re-declare these variables
-# with the content of the new variable
-#ceph_rhcs: "{{ ceph_stable_rh_storage | default(false) }}"
-# This will affect how/what repositories are enabled depending on the desired
-# version. The previous version was 1.3. The current version is 2.
 #ceph_rhcs_version: "{{ ceph_stable_rh_storage_version | default(2) }}"
-#ceph_rhcs_cdn_install: "{{ ceph_stable_rh_storage_cdn_install | default(false) }}" # assumes all the nodes can connect to cdn.redhat.com
-#ceph_rhcs_cdn_debian_repo: https://customername:customerpasswd@rhcs.download.redhat.com
-#ceph_rhcs_iso_install: "{{ ceph_stable_rh_storage_iso_install | default(false) }}" # usually used when nodes don't have access to cdn.redhat.com
+#ceph_repository_type: dummy
+#valid_ceph_repository_type:
+#  - cdn
+#  - iso
 #ceph_rhcs_iso_path: "{{ ceph_stable_rh_storage_iso_path | default('') }}"
 #ceph_rhcs_mount_path: "{{ ceph_stable_rh_storage_mount_path | default('/tmp/rh-storage-mount') }}"
 #ceph_rhcs_repository_path: "{{ ceph_stable_rh_storage_repository_path | default('/tmp/rh-storage-repo') }}" # where to copy iso's content
 
 
-# UBUNTU CLOUD ARCHIVE
+# REPOSITORY: UBUNTU CLOUD ARCHIVE
+#
+# Enabled when ceph_repository == 'uca'
+#
 # This allows the install of Ceph from the Ubuntu Cloud Archive.  The Ubuntu Cloud Archive
 # usually has newer Ceph releases than the normal distro repository.
 #
-#ceph_stable_uca: false
+#
 #ceph_stable_repo_uca: "http://ubuntu-cloud.archive.canonical.com/ubuntu"
 #ceph_stable_openstack_release_uca: liberty
 #ceph_stable_release_uca: "{{ansible_lsb.codename}}-updates/{{ceph_stable_openstack_release_uca}}"
 
-# DEV
-# ###
 
-#ceph_dev: false # use ceph development branch
+# REPOSITORY: DEV
+#
+# Enabled when ceph_repository == 'dev'
+#
 #ceph_dev_branch: master # development branch you would like to use e.g: master, wip-hack
 #ceph_dev_sha1: latest # distinct sha1 to use, defaults to 'latest' (as in latest built)
 
-# CUSTOM
-# ###
 
+
+# REPOSITORY: CUSTOM
+#
+# Enabled when ceph_repository == 'custom'
+#
 # Use a custom repository to install ceph.  For RPM, ceph_custom_repo should be
 # a URL to the .repo file to be installed on the targets.  For deb,
 # ceph_custom_repo should be the URL to the repo base.
-#ceph_custom: false # use custom ceph repository
+#
 #ceph_custom_repo: https://server.domain.com/ceph-custom-repo
+
+
+# ORIGIN: LOCAL CEPH INSTALLATION
+#
+# Enabled when ceph_repository == 'local'
+#
+# Path to DESTDIR of the ceph install
+#ceph_installation_dir: "/path/to/ceph_installation/"
+# Whether or not to use installer script rundep_installer.sh
+# This script takes in rundep and installs the packages line by line onto the machine
+# If this is set to false then it is assumed that the machine ceph is being copied onto will already have
+# all runtime dependencies installed
+#use_installer: false
+# Root directory for ceph-ansible
+#ansible_dir: "/path/to/ceph-ansible"
 
 
 ######################

@@ -5,6 +5,7 @@
 
 ceph-ansible
 ============
+
 Ansible playbooks for Ceph, the distributed filesystem.
 
 
@@ -42,6 +43,7 @@ The ``master`` branch should be considered experimental and used with caution.
 
 Configuration and Usage
 =======================
+
 This project assumes you have a basic knowledge of how ansible works and have already prepared your hosts for
 configuration by ansible.
 
@@ -85,6 +87,15 @@ appropriate for your cluster setup. Perform the following steps to prepare your 
    It's important the playbook you use is placed at the root of the ``ceph-ansible`` project. This is how ansible will be able to find the roles that
    ``ceph-ansible`` provides.
 
+ceph-ansible - choose installation method
+-----------------------------------------
+
+Ceph can be installed through several methods.
+
+.. toctree::
+   :maxdepth: 1
+
+   installation/methods
 
 ceph-ansible Configuration
 --------------------------
@@ -106,32 +117,26 @@ at the end of the filename, uncomment the options you wish to change and provide
 An example configuration that deploys the upstream ``jewel`` version of ceph with OSDs that have collocated journals would look like this in ``group_vars/all.yml``::
 
 
-    ceph_stable: True
+    ceph_origin: repository
+    ceph_repository: community
     ceph_stable_release: jewel
     public_network: "192.168.3.0/24"
     cluster_network: "192.168.4.0/24"
     monitor_interface: eth1
-    journal_size: 100
-    osd_objectstore: "filestore"
     devices:
       - '/dev/sda'
       - '/dev/sdb'
     osd_scenario: collocated
-    # use this to set your PG config for the cluster
-    ceph_conf_overrides:
-      global:
-        osd_pool_default_pg_num: 8
-        osd_pool_default_size: 1
 
 The following config options are required to be changed on all installations but there could be other required options depending on your OSD scenario
 selection or other aspects of your cluster.
 
+- ``ceph_origin``
 - ``ceph_stable_release``
-- ``ceph_stable`` or ``ceph_rhcs`` or ``ceph_dev``
 - ``public_network``
 - ``osd_scenario``
-- ``journal_size``
 - ``monitor_interface`` or ``monitor_address``
+- ``radosgw_interface`` or ``radosgw_address``
 
 ceph.conf Configuration
 -----------------------
@@ -166,7 +171,7 @@ by setting the ``osd_scenario`` configuration option.
    :maxdepth: 1
 
    osds/scenarios
-    
+
 Contribution
 ============
 
