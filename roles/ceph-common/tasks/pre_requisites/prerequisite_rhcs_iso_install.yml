@@ -41,3 +41,22 @@
     src: "{{ ceph_rhcs_iso_path }}"
     fstype: iso9660
     state: unmounted
+
+- name: install the red hat ceph storage repository key
+  apt_key:
+    file: "{{ ceph_rhcs_repository_path }}/MON/release.asc"
+    state: present
+  when: ceph_rhcs_iso_install
+
+- name: add red hat ceph storage repositories
+  apt_repository:
+    repo: "deb file://{{ ceph_rhcs_repository_path }}/{{ item }}/ {{ ansible_lsb.codename }} main"
+    state: present
+  changed_when: false
+  with_items:
+    - "MON"
+    - "OSD"
+    - "Tools"
+    - "Agent"
+  when: ceph_rhcs_iso_install
+
