@@ -50,15 +50,15 @@ ansible_provision = proc do |ansible|
   # these aren't supported by Vagrant, see
   # https://github.com/mitchellh/vagrant/issues/3539
   ansible.groups = {
-    'mons'            => (0..NMONS - 1).map { |j| "#{LABEL_PREFIX}mon#{j}" },
-    'osds'            => (0..NOSDS - 1).map { |j| "#{LABEL_PREFIX}osd#{j}" },
-    'mdss'            => (0..NMDSS - 1).map { |j| "#{LABEL_PREFIX}mds#{j}" },
-    'rgws'            => (0..NRGWS - 1).map { |j| "#{LABEL_PREFIX}rgw#{j}" },
-    'nfss'            => (0..NNFSS - 1).map { |j| "#{LABEL_PREFIX}nfs#{j}" },
-    'rbd_mirrors'     => (0..NRBD_MIRRORS - 1).map { |j| "#{LABEL_PREFIX}rbd_mirror#{j}" },
-    'clients'         => (0..CLIENTS - 1).map { |j| "#{LABEL_PREFIX}client#{j}" },
-    'iscsi_gw'        => (0..NISCSI_GWS - 1).map { |j| "#{LABEL_PREFIX}iscsi_gw#{j}" },
-    'mgrs'            => (0..MGRS - 1).map { |j| "#{LABEL_PREFIX}mgr#{j}" }
+    'mons'             => (0..NMONS - 1).map { |j| "#{LABEL_PREFIX}mon#{j}" },
+    'osds'             => (0..NOSDS - 1).map { |j| "#{LABEL_PREFIX}osd#{j}" },
+    'mdss'             => (0..NMDSS - 1).map { |j| "#{LABEL_PREFIX}mds#{j}" },
+    'rgws'             => (0..NRGWS - 1).map { |j| "#{LABEL_PREFIX}rgw#{j}" },
+    'nfss'             => (0..NNFSS - 1).map { |j| "#{LABEL_PREFIX}nfs#{j}" },
+    'rbd_mirrors'      => (0..NRBD_MIRRORS - 1).map { |j| "#{LABEL_PREFIX}rbd_mirror#{j}" },
+    'clients'          => (0..CLIENTS - 1).map { |j| "#{LABEL_PREFIX}client#{j}" },
+    'iscsi_gws'        => (0..NISCSI_GWS - 1).map { |j| "#{LABEL_PREFIX}iscsi_gw#{j}" },
+    'mgrs'             => (0..MGRS - 1).map { |j| "#{LABEL_PREFIX}mgr#{j}" }
   }
 
   if RESTAPI then
@@ -397,7 +397,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   (0..NISCSI_GWS - 1).each do |i|
-    config.vm.define "#{LABEL_PREFIX}iscsi_gw#{i}" do |iscsi_gw|
+    config.vm.define "#{LABEL_PREFIX}iscsi-gw#{i}" do |iscsi_gw|
       iscsi_gw.vm.hostname = "#{LABEL_PREFIX}iscsi-gw#{i}"
       if ASSIGN_STATIC_IP
         iscsi_gw.vm.network :private_network,
@@ -420,7 +420,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
       # Parallels
       iscsi_gw.vm.provider "parallels" do |prl|
-        prl.name = "ceph-iscsi-gw#{i}"
+        prl.name = "iscsi-gw#{i}"
         prl.memory = "#{MEMORY}"
       end
 

@@ -1,0 +1,34 @@
+---
+- name: check the status of the target.service override
+  stat:
+    path: /etc/systemd/system/target.service
+  register: target
+
+- name: mask the target service - preventing manual start
+  systemd:
+    name: target
+    masked: yes
+    enabled: no
+  when:
+    - target.stat.exists == False or (target.stat.exists and target.stat.islnk == False)
+
+- name: enable the rbd-target-gw service and make sure it is running
+  service:
+    name: rbd-target-gw
+    enabled: yes
+    state: started
+
+- name: copy admin key
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.client.admin.keyring"
+    dest: "/etc/ceph/{{ cluster }}.client.admin.keyring"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0600"
+  when:
+    - cephx
+
+- name: deploy gateway settings, used by the ceph_iscsi_config modules
+  template:
+    src: "{{ role_path }}/templates/iscsi-gateway.cfg.j2"
+    dest: /etc/ceph/iscsi-gateway.cfg
