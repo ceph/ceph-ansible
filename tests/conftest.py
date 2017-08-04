@@ -43,7 +43,9 @@ def node(Ansible, Interface, Command, request):
     address = Interface("eth1").addresses[0]
     subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
     num_mons = len(ansible_vars["groups"]["mons"])
-    num_devices = len(ansible_vars["devices"])
+    num_devices = len(ansible_vars.get("devices", []))
+    if not num_devices:
+        num_devices = len(ansible_vars.get("lvm_volumes", []))
     num_osd_hosts = len(ansible_vars["groups"]["osds"])
     total_osds = num_devices * num_osd_hosts
     cluster_name = ansible_vars.get("cluster", "ceph")
@@ -58,7 +60,7 @@ def node(Ansible, Interface, Command, request):
             osd_ids = cmd.stdout.rstrip("\n").split("\n")
             osds = osd_ids
             if docker:
-                osds = [device.split("/")[-1] for device in ansible_vars["devices"]]
+                osds = [device.split("/")[-1] for device in ansible_vars.get("devices", [])]
 
     data = dict(
         address=address,

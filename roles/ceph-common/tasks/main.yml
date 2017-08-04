@@ -84,12 +84,6 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-# override ceph_stable_release for ceph_dev and rhcs installations since ceph_stable_release is not mandatory
-- include: ./release-rhcs.yml
-  when: (ceph_rhcs or ceph_dev)
-  tags:
-    - always
-
 - include: ./misc/ntp_redhat.yml
   when:
     - ansible_os_family == 'RedHat'
@@ -112,6 +106,12 @@
 
 - set_fact:
     ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
+
+# override ceph_stable_release for ceph_dev and rhcs installations since ceph_stable_release is not mandatory
+- include: ./release-rhcs.yml
+  when: (ceph_rhcs or ceph_dev)
+  tags:
+    - always
 
 - include: facts_mon_fsid.yml
   run_once: true

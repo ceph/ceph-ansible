@@ -44,7 +44,48 @@
     - osd_group_name is defined
     - osd_group_name in group_names
     - not osd_auto_discovery
+    - not osd_scenario == "lvm"
     - devices|length == 0
+
+- name: check if osd_scenario lvm is supported by the selected ceph version
+  fail:
+    msg: "osd_scenario lvm is not supported by the selected Ceph version, use Luminous or newer."
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not containerized_deployment
+    - osd_scenario == "lvm"
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
+
+- name: verify osd_objectstore is 'filestore' when using the lvm osd_scenario
+  fail:
+    msg: "the lvm osd_scenario currently only works for filestore, not bluestore"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - osd_scenario == "lvm"
+    - not osd_auto_discovery
+    - osd_objectstore != 'filestore'
+
+- name: verify lvm_volumes have been provided
+  fail:
+    msg: "please provide lvm_volumes to your osd scenario"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - osd_scenario == "lvm"
+    - not osd_auto_discovery
+    - lvm_volumes|length == 0
+
+- name: make sure the lvm_volumes variable is a dictionary
+  fail:
+    msg: "lvm_volumes: must be a dictionary"
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not osd_auto_discovery
+    - osd_scenario == "lvm"
+    - lvm_volumes is not mapping
 
 - name: make sure the devices variable is a list
   fail:

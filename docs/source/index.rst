@@ -18,6 +18,12 @@ Testing
 OSDs
 ====
 
+.. toctree::
+   :maxdepth: 1
+
+   osds/scenarios
+    
+
 MONs
 ====
 
