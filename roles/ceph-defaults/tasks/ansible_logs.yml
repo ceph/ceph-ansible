@@ -1,0 +1,23 @@
+---
+- name: test if we have a local ansible.cfg file
+  local_action: stat path=ansible.cfg
+  register: ansible_cfg
+
+- name: lookup the value of log_path in ansible.cfg
+  local_action: shell awk -F "=" '/log_path/ {print $2}' ansible.cfg
+  register: ansible_log_location
+  when: ansible_cfg.stat.exists == True
+
+- name: test if ansible_cfg.stdout can be written
+  local_action: shell mktemp --dry-run --quiet --tmpdir=$(dirname {{ ansible_log_location.stdout }})
+  changed_when: false
+  failed_when: false
+  register: mktemp
+  when: ansible_cfg.stat.exists == True
+
+- name: fail if log_path directory from ansible.cfg is not writable
+  fail:
+    msg: "make sure log_path directory from ansible.cfg is writable by the user running ansible"
+  when:
+    - mktemp.stdout != '0'
+    - ansible_cfg.stat.exists == True
