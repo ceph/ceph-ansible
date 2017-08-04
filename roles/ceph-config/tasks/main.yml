@@ -1,0 +1,118 @@
+---
+# ceph-common
+- block:
+  - name: create ceph conf directory and assemble directory
+    file:
+      path: "{{ item }}"
+      state: directory
+      owner: "ceph"
+      group: "ceph"
+      mode: "0755"
+    with_items:
+      - /etc/ceph/
+      - /etc/ceph/ceph.d/
+
+  - name: template ceph_conf_overrides
+    local_action: copy content="{{ ceph_conf_overrides }}" dest=/tmp/ceph_conf_overrides_temp
+    run_once: true
+
+  - name: get rendered ceph_conf_overrides
+    local_action: set_fact ceph_conf_overrides_rendered="{{ lookup('template', '/tmp/ceph_conf_overrides_temp') | from_yaml }}"
+    run_once: true
+
+  - name: remove tmp template file for ceph_conf_overrides
+    local_action: file path=/tmp/ceph_conf_overrides_temp state=absent
+    run_once: true
+
+  - name: "generate ceph configuration file: {{ cluster }}.conf"
+    action: config_template
+    args:
+      src: ceph.conf.j2
+      dest: /etc/ceph/ceph.d/{{ cluster }}.conf
+      owner: "ceph"
+      group: "ceph"
+      mode: "0644"
+      config_overrides: "{{ ceph_conf_overrides_rendered }}"
+      config_type: ini
+
+  - name: assemble {{ cluster }}.conf and fragments
+    assemble:
+      src: /etc/ceph/ceph.d/
+      dest: /etc/ceph/{{ cluster }}.conf
+      regexp: "^(({{cluster}})|(osd)).conf$"
+      owner: "ceph"
+      group: "ceph"
+      mode: "0644"
+    notify:
+      - restart ceph mons
+      - restart ceph osds
+      - restart ceph mdss
+      - restart ceph rgws
+      - restart ceph nfss
+  when: not containerized_deployment
+
+# ceph-docker-common
+# only create fetch directory when:
+# we are not populating kv_store with default ceph.conf AND host is a mon
+# OR
+# we are not population kv_store with default ceph.conf AND there at least 1 nfs in nfs group AND host is the first nfs
+- block:
+  - name: create a local fetch directory if it does not exist
+    local_action: file path={{ fetch_directory }} state=directory
+    changed_when: false
+    become: false
+    run_once: true
+    when:
+      - (cephx or generate_fsid)
+      - (not mon_containerized_default_ceph_conf_with_kv and
+          (inventory_hostname in groups.get(mon_group_name, []))) or
+        (not mon_containerized_default_ceph_conf_with_kv and
+          ((groups.get(nfs_group_name, []) | length > 0)
+            and (inventory_hostname == groups.get(nfs_group_name, [])[0])))
+
+  - name: generate cluster uuid
+    local_action: shell python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
+      creates="{{ fetch_directory }}/ceph_cluster_uuid.conf"
+    register: cluster_uuid
+    become: false
+    when: generate_fsid
+
+  - name: read cluster uuid if it already exists
+    local_action: command cat {{ fetch_directory }}/ceph_cluster_uuid.conf
+      removes="{{ fetch_directory }}/ceph_cluster_uuid.conf"
+    changed_when: false
+    register: cluster_uuid
+    always_run: true
+    become: false
+    when: generate_fsid
+
+  - name: ensure /etc/ceph exists
+    file:
+      path: /etc/ceph
+      state: directory
+      owner: 'ceph'
+      group: 'ceph'
+      mode: 0755
+    when: groups.get(mon_group_name, []) | length == 0
+
+  - name: "generate {{ cluster }}.conf configuration file"
+    action: config_template
+    args:
+      src: "ceph.conf.j2"
+      dest: "{{ ceph_conf_key_directory }}/{{ cluster }}.conf"
+      owner: "root"
+      group: "root"
+      mode: "0644"
+      config_overrides: "{{ ceph_conf_overrides }}"
+      config_type: ini
+    notify:
+      - restart ceph mons
+      - restart ceph osds
+      - restart ceph mdss
+      - restart ceph rgws
+
+  - name: set fsid fact when generate_fsid = true
+    set_fact:
+      fsid: "{{ cluster_uuid.stdout }}"
+    when: generate_fsid
+  when: containerized_deployment

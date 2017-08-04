@@ -17,7 +17,9 @@
   always_run: yes
   register: ceph_current_fsid
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  when: not rolling_update
+  when:
+    - not rolling_update
+    - groups.get(mon_group_name, []) | length > 0
 
 # We want this check to be run only on the first node
 - name: check if {{ fetch_directory }} directory exists
@@ -31,7 +33,8 @@
 - set_fact:
     ceph_current_fsid:
       rc: 1
-  when: rolling_update
+  when:
+    - rolling_update or groups.get(mon_group_name, []) | length == 0
 
 - name: create a local fetch directory if it does not exist
   local_action: file path={{ fetch_directory }} state=directory
