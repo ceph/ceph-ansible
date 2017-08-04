@@ -1,0 +1,14 @@
+---
+- name: fetch ceph kernel development repository
+  uri:
+    url: https://shaman.ceph.com/api/repos/kernel/testing/{{ ceph_dev_kernel_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_lsb.codename }}/repo
+    return_content: yes
+  register: ceph_dev_kernel_deb_repo
+  when: ceph_dev_kernel
+
+- name: add ceph kernel development repository
+  apt_repository:
+    repo: "{{ ceph_dev_kernel_deb_repo.content }}"
+    state: present
+  changed_when: false
+  when: ceph_dev_kernel
