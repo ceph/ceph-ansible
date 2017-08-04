@@ -19,7 +19,13 @@ max open files = {{ max_open_files }}
 osd crush chooseleaf type = 0
 {% endif %}
 {# NOTE (leseb): the blank lines in-between are needed otherwise we won't get any line break #}
-{% if groups[mon_group_name] is defined %}
+
+{% set nb_mon = groups.get(mon_group_name, []) | length | int %}
+{% set nb_client = groups.get(client_group_name, []) | length | int %}
+{% set nb_osd = groups.get(osd_group_name, []) | length | int %}
+
+
+{% if nb_mon > 0 and inventory_hostname in groups.get(mon_group_name, []) %}
 mon initial members = {% for host in groups[mon_group_name] %}
       {% if hostvars[host]['ansible_fqdn'] is defined and mon_use_fqdn -%}
         {{ hostvars[host]['ansible_fqdn'] }}
@@ -31,7 +37,8 @@ mon initial members = {% for host in groups[mon_group_name] %}
 {% endif %}
 
 {% if not containerized_deployment and not containerized_deployment_with_kv -%}
-mon host = {% for host in groups[mon_group_name] -%}
+mon host = {% if nb_mon > 0 %}
+  {% for host in groups[mon_group_name] -%}
     {% if monitor_address_block | length > 0 %}
       {% if ip_version == 'ipv4' -%}
         {{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}
@@ -53,11 +60,15 @@ mon host = {% for host in groups[mon_group_name] -%}
     {%- endif %}
    {% if not loop.last -%},{%- endif %}
   {%- endfor %}
+  {% elif nb_mon == 0 and inventory_hostname in groups.get(client_group_name, []) %}
+  {{ external_cluster_mon_ips }}
+  {% endif %}
 {%- endif %}
 
 {% if containerized_deployment %}
 fsid = {{ fsid }}
-mon host = {% for host in groups[mon_group_name] -%}
+mon host = {% if nb_mon > 0 %}
+{% for host in groups[mon_group_name] -%}
     {% if monitor_address_block | length > 0 %}
       {% if ip_version == 'ipv4' -%}
         {{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}
@@ -80,6 +91,9 @@ mon host = {% for host in groups[mon_group_name] -%}
     {%- endif %}
     {% if not loop.last -%},{%- endif %}
   {%- endfor %}
+  {% elif nb_mon == 0 and inventory_hostname in groups.get(client_group_name, []) %}
+  {{ external_cluster_mon_ips }}
+  {% endif %}
 {% endif %}
 
 {% if public_network is defined %}
@@ -95,10 +109,13 @@ rgw override bucket index max shards = {{ rgw_override_bucket_index_max_shards }
 rgw bucket default quota max objects = {{ rgw_bucket_default_quota_max_objects }}
 {% endif %}
 
+{% if inventory_hostname in groups.get(client_group_name, []) %}
 [client.libvirt]
 admin socket = {{ rbd_client_admin_socket_path }}/$cluster-$type.$id.$pid.$cctid.asok # must be writable by QEMU and allowed by SELinux or AppArmor
 log file = {{ rbd_client_log_file }} # must be writable by QEMU and allowed by SELinux or AppArmor
+{% endif %}
 
+{% if inventory_hostname in groups.get(osd_group_name, []) %}
 [osd]
 osd mkfs type = {{ osd_mkfs_type }}
 osd mkfs options xfs = {{ osd_mkfs_options_xfs }}
@@ -109,6 +126,7 @@ filestore xattr use omap = {{ filestore_xattr_use_omap }}
 {% elif osd_mkfs_type == "ext4" %}
 filestore xattr use omap = true
 {# else, default is false #}
+{% endif %}
 {% endif %}
 
 {% if groups[mds_group_name] is defined %}
@@ -172,3 +190,4 @@ keyring = /var/lib/ceph/restapi/ceph-restapi/keyring
 log file = /var/log/ceph/ceph-restapi.log
 {% endif %}
 {% endif %}
+
