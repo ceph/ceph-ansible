@@ -41,7 +41,6 @@
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
     dest: "/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
-    mode: "{{ item.1.mode }}"
   with_nested:
     - "{{ groups[mon_group_name] }}"
     - "{{ openstack_keys }}"
@@ -60,6 +59,15 @@
     - "{{ openstack_keys }}"
     - acls
     - skip_missing: true
+  when:
+    - openstack_config
+    - cephx
+
+- name: chmod openstack key(s)
+  file:
+    path: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
+    mode: "{{ item.mode }}"
+  with_items: "{{ openstack_keys }}"
   when:
     - openstack_config
     - cephx
