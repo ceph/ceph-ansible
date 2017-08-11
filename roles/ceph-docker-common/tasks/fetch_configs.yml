@@ -1,4 +1,9 @@
 ---
+- name: register rbd bootstrap key
+  set_fact:
+    bootstrap_rbd_keyring: "/var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring"
+  when: ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+
 - name: set config and keys paths
   set_fact:
     ceph_config_keys:
@@ -8,6 +13,7 @@
       - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
       - /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
       - /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring
+      - "{{ bootstrap_rbd_keyring | default([]) }}"
 
 - name: add mgr keys to config and keys paths
   set_fact:
