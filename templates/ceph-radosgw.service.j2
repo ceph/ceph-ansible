@@ -7,19 +7,41 @@ EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/docker stop ceph-rgw-{{ ansible_hostname }}
 ExecStartPre=-/usr/bin/docker rm ceph-rgw-{{ ansible_hostname }}
 ExecStart=/usr/bin/docker run --rm --net=host \
-   {% if not containerized_deployment_with_kv -%}
-   -v /var/lib/ceph:/var/lib/ceph \
-   -v /etc/ceph:/etc/ceph \
-   {% else -%}
-   -e KV_TYPE={{kv_type}} \
-   -e KV_IP={{kv_endpoint}} \
-   -e KV_PORT={{kv_port}} \
-   {% endif -%}
-   -v /etc/localtime:/etc/localtime:ro \
-   -e CEPH_DAEMON=RGW \
-   {{ ceph_rgw_docker_extra_env }} \
-   --name=ceph-rgw-{{ ansible_hostname }} \
-   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  {% if not containerized_deployment_with_kv -%}
+  -v /var/lib/ceph:/var/lib/ceph \
+  -v /etc/ceph:/etc/ceph \
+  {% else -%}
+  -e KV_TYPE={{ kv_type }} \
+  -e KV_IP={{ kv_endpoint }} \
+  -e KV_PORT={{ kv_port }} \
+  {% endif -%}
+  {% if radosgw_address_block | length > 0 %}
+    {% if ip_version == 'ipv4' -%}
+  -e RGW_CIVETWEB_IP={{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }} \
+    {%- elif ip_version == 'ipv6' -%}
+  -e RGW_CIVETWEB_IP=[{{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }}] \
+    {%- endif %}
+  {% elif hostvars[inventory_hostname]['radosgw_address'] is defined and hostvars[inventory_hostname]['radosgw_address'] != '0.0.0.0' -%}
+    {% if ip_version == 'ipv4' -%}
+  -e RGW_CIVETWEB_IP={{ hostvars[inventory_hostname]['radosgw_address'] }} \
+    {%- elif ip_version == 'ipv6' -%}
+  -e RGW_CIVETWEB_IP=[{{ hostvars[inventory_hostname]['radosgw_address'] }}] \
+    {% endif %}
+  {%- else -%}
+    {% set interface = ["ansible_",radosgw_interface]|join %}
+      {% if ip_version == 'ipv6' -%}
+  -e RGW_CIVETWEB_IP=[{{ hostvars[inventory_hostname][interface][ip_version][0]['address'] }}] \
+      {%- elif ip_version == 'ipv4' -%}
+  -e RGW_CIVETWEB_IP={{ hostvars[inventory_hostname][interface][ip_version]['address'] }} \
+      {% endif %}
+  {%- endif %}
+  -v /etc/localtime:/etc/localtime:ro \
+  -e CEPH_DAEMON=RGW \
+  -e CLUSTER={{ cluster }} \
+  -e RGW_CIVETWEB_PORT={{ radosgw_civetweb_port }} \
+  --name=ceph-rgw-{{ ansible_hostname }} \
+  {{ ceph_rgw_docker_extra_env }} \
+  {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
 ExecStopPost=-/usr/bin/docker stop ceph-rgw-{{ ansible_hostname }}
 Restart=always
 RestartSec=10s
