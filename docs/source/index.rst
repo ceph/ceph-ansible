@@ -156,3 +156,16 @@ Documentation for writing functional testing scenarios for ceph-ansible.
 
 * :doc:`Testing with ceph-ansible <testing/index>`
 * :doc:`Glossary <testing/glossary>`
+
+Demos
+=====
+
+Vagrant Demo
+------------
+
+Deployment from scratch on bare metal machines: https://youtu.be/E8-96NamLDo
+
+Bare metal demo
+---------------
+
+Deployment from scratch on bare metal machines: https://youtu.be/dv_PEp9qAqg
