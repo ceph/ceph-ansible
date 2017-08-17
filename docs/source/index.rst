@@ -167,6 +167,16 @@ by setting the ``osd_scenario`` configuration option.
 
    osds/scenarios
     
+Contribution
+============
+
+See the following section for guidelines on how to contribute to ``ceph-ansible``.
+
+.. toctree::
+   :maxdepth: 1
+
+   dev/index
+
 Testing
 =======
 
