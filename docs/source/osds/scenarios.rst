@@ -44,6 +44,9 @@ An example of using the ``collocated`` OSD scenario with encryption would look l
 
     osd_scenario: collocated
     dmcrypt: true
+    devices:
+      - /dev/sda
+      - /dev/sdb
 
 non-collocated
 --------------
@@ -142,6 +145,21 @@ Example of what you will get::
     /dev/sdb1: PARTLABEL="ceph block.db" PARTUUID="0734f6b6-cc94-49e9-93de-ba7e1d5b79e3"
     /dev/sdc: PTTYPE="gpt"
     /dev/sdc1: PARTLABEL="ceph block.wal" PARTUUID="824b84ba-6777-4272-bbbd-bfe2a25cecf3"
+
+An example of using the ``non-collocated`` OSD scenario with encryption, bluestore and dedicated wal devices would look like::
+
+    osd_scenario: non-collocated
+    osd_objectstore: bluestore
+    dmcrypt: true
+    devices:
+      - /dev/sda
+      - /dev/sdb
+    dedicated_devices:
+      - /dev/sdc
+      - /dev/sdc
+    bluestore_wal_devices:
+      - /dev/sdd
+      - /dev/sdd
 
 lvm
 ---
