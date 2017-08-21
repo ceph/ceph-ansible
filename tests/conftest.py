@@ -103,6 +103,8 @@ def pytest_collection_modifyitems(session, config, items):
             item.add_marker(pytest.mark.mdss)
         elif "rgw" in test_path:
             item.add_marker(pytest.mark.rgws)
+        elif "nfs" in test_path:
+            item.add_marker(pytest.mark.nfss)
         else:
             item.add_marker(pytest.mark.all)
 
