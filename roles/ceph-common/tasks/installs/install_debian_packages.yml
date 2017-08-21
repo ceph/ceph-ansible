@@ -44,13 +44,22 @@
   when:
     - nfs_group_name in group_names
 
-- name: install nfs gateway for debian
-  apt:
-    name: nfs-ganesha-fsal
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    update_cache: yes
+- name: install nfs cephfs gateway
+  package:
+    name: nfs-ganesha-ceph
   when:
     - nfs_group_name in group_names
+    - nfs_file_gw
+
+- name: install nfs rgw gateway
+  package:
+    name: "{{ item }}"
+  with_items:
+    - nfs-ganesha-rgw
+    - radosgw
+  when:
+    - nfs_group_name in group_names
+    - nfs_obj_gw
 
 - name: install ceph mgr for debian
   apt:

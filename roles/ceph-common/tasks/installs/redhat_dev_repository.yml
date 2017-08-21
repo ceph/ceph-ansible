@@ -12,3 +12,24 @@
     owner: root
     group: root
     backup: yes
+
+- name: fetch nfs-ganesha red hat development repository
+  uri:
+    url: https://shaman.ceph.com/api/repos/nfs-ganesha/next/latest/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/flavors/{{ nfs_ganesha_flavor }}/repo
+    return_content: yes
+  register: nfs_ganesha_dev_yum_repo
+  when:
+    - nfs_group_name in group_names
+    - nfs_ganesha_dev
+
+- name: add nfs-ganesha development repository
+  copy:
+    content: "{{ nfs_ganesha_dev_yum_repo.content }}"
+    dest: /etc/yum.repos.d/nfs-ganesha-dev.repo
+    owner: root
+    group: root
+    backup: yes
+  when:
+    - nfs_group_name in group_names
+    - nfs_ganesha_dev
+
