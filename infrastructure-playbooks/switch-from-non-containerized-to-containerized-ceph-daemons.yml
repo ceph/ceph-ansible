@@ -128,7 +128,7 @@
 
   - set_fact:
       ceph_uid: 167
-    when: ceph_docker_image_tag | search("centos")
+    when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph")
 
   - set_fact:
       ceph_uid: 167
@@ -145,17 +145,17 @@
 
   - name: start ceph mon container image
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry|default('docker.io') }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-mon-{{ ansible_hostname }}"
       net: "host"
       state: "running"
-      privileged: "{{ mon_docker_privileged }}"
-      env: "MON_IP={{ hostvars[inventory_hostname]['ansible_' + monitor_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ ceph_mon_docker_subnet }},CEPH_FSID={{ ceph_fsid.stdout }},{{ ceph_mon_docker_extra_env }}"
+      privileged: "{{ mon_docker_privileged|default(false) }}"
+      env: "MON_IP={{ hostvars[inventory_hostname]['ansible_' + monitor_interface]['ipv4']['address'] }},CEPH_DAEMON=MON,CEPH_PUBLIC_NETWORK={{ public_network }},CEPH_FSID={{ ceph_fsid.stdout }},{{ ceph_mon_docker_extra_env|default('') }}"
       volumes: "/var/lib/ceph:/var/lib/ceph,/etc/ceph:/etc/ceph,/etc/localtime:/etc/localtime:ro"
 
   - name: waiting for the monitor to join the quorum...
     shell: |
-      ceph -s  --cluster {{ cluster }} | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
+      ceph -s  --cluster {{ cluster|default('ceph') }} | grep monmap | sed 's/.*quorum//' | egrep -sq {{ ansible_hostname }}
     register: result
     until: result.rc == 0
     retries: 5
@@ -206,7 +206,7 @@
 
   - set_fact:
       ceph_uid: 167
-    when: ceph_docker_image_tag | search("centos")
+    when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph")
 
   - set_fact:
       ceph_uid: 167
@@ -242,7 +242,7 @@
 
   - name: start ceph osd container image(s)
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry|default('docker.io') }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-osd-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
       net: host
       pid: host
@@ -289,7 +289,7 @@
 
   - set_fact:
       ceph_uid: 167
-    when: ceph_docker_image_tag | search("centos")
+    when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph")
 
   - set_fact:
       ceph_uid: 167
@@ -306,7 +306,7 @@
 
   - name: start ceph metadata container image
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry|default('docker.io') }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: ceph-mds-{{ ansible_hostname }}
       net: host
       state: running
@@ -340,7 +340,7 @@
 
   - set_fact:
       ceph_uid: 167
-    when: ceph_docker_image_tag | search("centos")
+    when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph")
 
   - set_fact:
       ceph_uid: 167
@@ -357,7 +357,7 @@
 
   - name: start ceph rados gateway container image
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry|default('docker.io') }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: ceph-rgw-{{ ansible_hostname }}
       expose: "{{ ceph_rgw_civetweb_port }}"
       ports: "{{ ceph_rgw_civetweb_port }}:{{ ceph_rgw_civetweb_port }}"
@@ -392,7 +392,7 @@
 
   - set_fact:
       ceph_uid: 167
-    when: ceph_docker_image_tag | search("centos")
+    when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph")
 
   - set_fact:
       ceph_uid: 167
@@ -409,7 +409,7 @@
 
   - name: start ceph rbd mirror container image
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry|default('docker.io') }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-rbd-mirror-{{ ansible_hostname }}"
       net: host
       state: running
@@ -442,7 +442,7 @@
 
   - set_fact:
       ceph_uid: 167
-    when: ceph_docker_image_tag | search("centos")
+    when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph")
 
   - set_fact:
       ceph_uid: 167
@@ -459,7 +459,7 @@
 
   - name: start ceph nfs container image
     docker:
-      image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      image: "{{ ceph_docker_registry|default('docker.io') }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-nfs-{{ ansible_hostname }}"
       net: "host"
       state: "running"
