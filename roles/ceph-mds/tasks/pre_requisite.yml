@@ -44,6 +44,24 @@
     mode: "0600"
   when: cephx
 
+- name: ensure systemd service override directory exists
+  file:
+    state: directory
+    path: "/etc/systemd/system/ceph-mds@.service.d/"
+  when:
+    - ceph_mds_systemd_overrides is defined
+    - ansible_server_mgr == 'systemd'
+
+- name: add ceph-mds systemd service overrides
+  config_template:
+    src: "ceph-mds.service.d-overrides.j2"
+    dest: "/etc/systemd/system/ceph-mds@.service.d/ceph-mds-systemd-overrides.conf"
+    config_overrides: "{{ ceph_mds_systemd_overrides | default({}) }}"
+    config_type: "ini"
+  when:
+    - ceph_mds_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
 - name: start and add that the metadata service to the init sequence
   service:
     name: ceph-mds@{{ mds_name }}
