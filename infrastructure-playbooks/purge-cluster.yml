@@ -240,6 +240,18 @@
     failed_when: false
     register: ceph_journal_partlabels
 
+  - name: see if ceph-disk-created block db partitions are present
+    shell: |
+      ls /dev/disk/by-partlabel | grep -q "ceph.*.block.db"
+    failed_when: false
+    register: ceph_db_partlabels
+
+  - name: see if ceph-disk-created block wal partitions are present
+    shell: |
+      ls /dev/disk/by-partlabel | grep -q "ceph.*.block.wal"
+    failed_when: false
+    register: ceph_wal_partlabels
+
 #   Initial attempt, doing everything in Ansible...
 #  - name: see if encrypted partitions are present
 #    shell: blkid -t TYPE=crypto_LUKS -o value -s PARTUUID
@@ -328,6 +340,20 @@
     failed_when: false
     register: ceph_journal_partition_to_erase_path
 
+  - name: get ceph db partitions
+    shell: |
+      blkid | awk '/ceph block.db/ { sub (":", "", $1); print $1 }'
+    when: ceph_db_partlabels.rc == 0
+    failed_when: false
+    register: ceph_db_partition_to_erase_path
+
+  - name: get ceph wal partitions
+    shell: |
+      blkid | awk '/ceph block.wal/ { sub (":", "", $1); print $1 }'
+    when: ceph_wal_partlabels.rc == 0
+    failed_when: false
+    register: ceph_wal_partition_to_erase_path
+
   - name: zap ceph journal partitions
     shell: |
       # if the disk passed is a raw device AND the boot system disk
@@ -340,9 +366,12 @@
       raw_device=$(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}')
       partition_nb=$(echo "{{ item }}" | egrep -o '[0-9]{1,2}$')
       sgdisk --delete $partition_nb $raw_device
-    with_items: "{{ ceph_journal_partition_to_erase_path.stdout_lines | default([]) }}"
+    with_items:
+      - "{{ ceph_journal_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_db_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_wal_partition_to_erase_path.stdout_lines | default([]) }}"
     when:
-      - ceph_journal_partlabels.rc == 0
+      - (ceph_journal_partlabels.rc == 0 or ceph_db_partlabels.rc == 0 or ceph_wal_partlabels.rc == 0)
       - osd_scenario == 'non-collocated'
 
 - name: purge ceph mon cluster
