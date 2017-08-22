@@ -75,9 +75,9 @@
 - name: import admin keyring into mon keyring
   command: ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }} --import-keyring /etc/ceph/{{ cluster }}.client.admin.keyring
   when:
+    - not create_custom_admin_secret.get('skipped')
     - cephx
     - admin_secret != 'admin_secret'
-    - not create_custom_admin_secret.get('skipped')
 
 - name: ceph monitor mkfs with keyring
   command: ceph-mon --cluster {{ cluster }} --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
