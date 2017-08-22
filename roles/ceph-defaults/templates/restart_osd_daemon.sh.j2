@@ -22,8 +22,8 @@ check_pgs() {
 
 wait_for_socket_in_docker() {
   if ! docker exec "$1" timeout 10 bash -c "while [ ! -e /var/run/ceph/*.asok ]; do sleep 1 ; done"; then
-    log "Timed out while trying to look for a Ceph OSD socket."
-    log "Abort mission!"
+    echo "Timed out while trying to look for a Ceph OSD socket."
+    echo "Abort mission!"
     exit 1
   fi
 }
@@ -52,7 +52,7 @@ get_docker_osd_id() {
 
 # For containerized deployments, the unit file looks like: ceph-osd@sda.service
 # For non-containerized deployments, the unit file looks like: ceph-osd@0.service
-for unit in $(systemctl list-units | grep -oE "ceph-osd@([0-9]{1,2}|[a-z]+).service"); do
+for unit in $(systemctl list-units | grep "loaded active" | grep -oE "ceph-osd@([0-9]{1,2}|[a-z]+).service"); do
   # First, restart daemon(s)
   systemctl restart "${unit}"
   # We need to wait because it may take some time for the socket to actually exists
@@ -66,7 +66,7 @@ for unit in $(systemctl list-units | grep -oE "ceph-osd@([0-9]{1,2}|[a-z]+).serv
   {% else %}
   osd_id=$(echo ${unit#ceph-osd@} | grep -oE '[0-9]{1,2}')
   {% endif %}
-  SOCKET=/var/run/ceph/test-osd.${osd_id}.asok
+  SOCKET=/var/run/ceph/{{ cluster }}-osd.${osd_id}.asok
   while [ $COUNT -ne 0 ]; do
     $docker_exec test -S "$SOCKET" && check_pgs && continue 2
     sleep 1
