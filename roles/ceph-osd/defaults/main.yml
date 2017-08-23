@@ -191,15 +191,25 @@ bluestore_wal_devices: "{{ dedicated_devices }}"
 # III. Use ceph-volume to create OSDs from logical volumes.
 # Use 'osd_scenario: lvm' to enable this scenario. Currently we only support dedicated journals
 # when using lvm, not collocated journals.
-# lvm_volumes is a dictionary whose key/value pair represent a data lv and a journal pair.
-# Any logical volume or logical group used must be a name and not a path.
-# Journals can be either a lv, device or partition. You can not use the same journal for many data lvs.
+# lvm_volumes is a list of dictionaries. Each dictionary must contain a data, journal and vg_name
+# key. Any logical volume or logical group used must be a name and not a path.
+# data must be a logical volume
+# journal can be either a lv, device or partition. You can not use the same journal for many data lvs.
+# data_vg must be the volume group name of the data lv
+# journal_vg is optional and must be the volume group name of the journal lv, if applicable
 # For example:
 # lvm_volumes:
-#   data-lv1: journal-lv1
-#   data-lv2: /dev/sda
-#   data:lv3: /dev/sdb1
-lvm_volumes: {}
+#   - data: data-lv1
+#     data_vg: vg1
+#     journal: journal-lv1
+#     journal_vg: vg2
+#   - data: data-lv2
+#     journal: /dev/sda
+#     data_vg: vg1
+#   - data: data-lv3
+#     journal: /dev/sdb1
+#     data_vg: vg2
+lvm_volumes: []
 
 
 ##########
