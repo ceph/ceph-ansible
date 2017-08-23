@@ -81,6 +81,7 @@ ansible_provision = proc do |ansible|
       devices: settings['disks'],
       ceph_docker_on_openstack: BOX == 'openstack',
       ceph_rgw_civetweb_port: 8080,
+      radosgw_interface: ETH,
       generate_fsid: 'true',
     })
   else
@@ -88,6 +89,7 @@ ansible_provision = proc do |ansible|
       devices: settings['disks'],
       osd_scenario: 'collocated',
       monitor_interface: ETH,
+      radosgw_interface: ETH,
       os_tuning_params: settings['os_tuning_params'],
       pool_default_size: '2',
     })
@@ -97,11 +99,14 @@ ansible_provision = proc do |ansible|
     ansible.sudo = true
     # Use monitor_address_block instead of monitor_interface:
     ansible.extra_vars.delete(:monitor_interface)
+    # Use radosgw_address_block instead of radosgw_interface:
+    ansible.extra_vars.delete(:radosgw_interface)
     ansible.extra_vars = ansible.extra_vars.merge({
       cluster_network: "#{CLUSTER_SUBNET}.0/16",
       devices: ['/dev/sdc'], # hardcode leftover disk
       osd_scenario: 'collocated',
       monitor_address_block: "#{PUBLIC_SUBNET}.0/16",
+      radosgw_address_block: "#{PUBLIC_SUBNET}.0/16",
       public_network: "#{PUBLIC_SUBNET}.0/16",
     })
   end
