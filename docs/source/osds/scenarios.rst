@@ -173,17 +173,29 @@ is only available when the ceph release is Luminous or newer.
 Use ``osd_scenario: lvm`` to enable this scenario. Currently we only support dedicated journals
 when using lvm, not collocated journals.
 
-To configure this scenario use the ``lvm_volumes`` config option. ``lvm_volumes``  is a dictionary whose
-key/value pairs represent a data lv and a journal pair. Journals can be either a lv, device or partition.
-You can not use the same journal for many data lvs.
+To configure this scenario use the ``lvm_volumes`` config option. ``lvm_volumes``  is a list of dictionaries which can
+contain a ``data``, ``journal``, ``data_vg`` and ``journal_vg`` key. The ``data`` key represents the logical volume name that is to be used for your OSD
+data. The ``journal`` key represents the logical volume name, device or partition that will be used for your OSD journal. The ``data_vg``
+key represents the volume group name that your ``data`` logical volume resides on. This key is required for purging of OSDs created
+by this scenario. The ``journal_vg`` key is optional and should be the volume group name that your journal lv resides on, if applicable.
 
 .. note::
    Any logical volume or logical group used in ``lvm_volumes`` must be a name and not a path.
+
+.. note::
+   You can not use the same journal for many OSDs.
 
 For example, a configuration to use the ``lvm`` osd scenario would look like::
     
     osd_scenario: lvm
     lvm_volumes:
-      data-lv1: journal-lv1
-      data-lv2: /dev/sda
-      data:lv3: /dev/sdb1
+      - data: data-lv1
+        data_vg: vg1
+        journal: journal-lv1
+        journal_vg: vg2
+      - data: data-lv2
+        journal: /dev/sda
+        data_vg: vg1
+      - data: data-lv3
+        journal: /dev/sdb1
+        data_vg: vg2
