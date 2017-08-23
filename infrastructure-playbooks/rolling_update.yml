@@ -272,6 +272,14 @@
         - ansible_service_mgr == 'systemd'
         - containerized_deployment
 
+    - name: get pg num
+      shell: |
+        ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])'
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      register: num_pgs
+      when:
+        - not containerized_deployment
+
     - name: waiting for clean pgs...
       shell: |
         test "[""$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" = "$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
@@ -280,7 +288,17 @@
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when: not containerized_deployment
+      when:
+        - not containerized_deployment
+        - num_pgs.stdout != "0"
+
+    - name: container - get pg num
+      shell: |
+        docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])'
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      register: container_num_pgs
+      when:
+        - containerized_deployment
 
     - name: container - waiting for clean pgs...
       shell: |
@@ -290,7 +308,9 @@
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when: containerized_deployment
+      when:
+        - containerized_deployment
+        - container_num_pgs.stdout != "0"
 
     - name: unset osd flags
       command: ceph osd unset {{ item }} --cluster {{ cluster }}
