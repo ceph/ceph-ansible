@@ -8,14 +8,25 @@
   delay: 15
   until: monitor_socket.rc == 0
 
-- name: force peer addition as potential bootstrap peer for cluster bringup
+- name: ipv4 - force peer addition as potential bootstrap peer for cluster bringup
   command: docker exec ceph-mon-{{ ansible_hostname }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok add_bootstrap_peer_hint {{ hostvars[item]['ansible_' + monitor_interface].ipv4.address }}
   with_items: "{{ groups[mon_group_name] }}"
   changed_when: false
   failed_when: false
   when:
-    - "{{ inventory_hostname == groups[mon_group_name][0] }}"
+    - inventory_hostname == groups[mon_group_name][0]
     - not containerized_deployment_with_kv
+    - ip_version == 'ipv4'
+
+- name: ipv6 - force peer addition as potential bootstrap peer for cluster bringup
+  command: docker exec ceph-mon-{{ ansible_hostname }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok add_bootstrap_peer_hint [{{ hostvars[item]['ansible_' + monitor_interface].ipv6[0].address }}]
+  with_items: "{{ groups[mon_group_name] }}"
+  changed_when: false
+  failed_when: false
+  when:
+    - inventory_hostname == groups[mon_group_name][0]
+    - not containerized_deployment_with_kv
+    - ip_version == 'ipv6'
 
 - include: copy_configs.yml
   when: not containerized_deployment_with_kv
