@@ -55,20 +55,6 @@
     - osd_auto_discovery
     - containerized_deployment
 
-# NOTE (alahouze): if the device is a partition, the parted command below has
-# failed, this is why we check if the device is a partition too.
-- name: automatic prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) without partitions with collocated osd data and journal
-  command: "ceph-disk prepare {{ ceph_disk_cli_options }} /dev/{{ item.key }}"
-  register: prepared_osds
-  with_dict: "{{ ansible_devices }}"
-  when:
-    - ansible_devices is defined
-    - item.value.removable == "0"
-    - item.value.partitions|count == 0
-    - item.value.holders|count == 0
-    - osd_auto_discovery
-    - not containerized_deployment
-
 - name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with collocated osd data and journal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.2 }}"
   with_together:
@@ -80,7 +66,6 @@
     - not item.1.get("skipped")
     - item.0.get("rc", 0) != 0
     - item.1.get("rc", 0) != 0
-    - not osd_auto_discovery
     - not containerized_deployment
 
 - include: ../activate_osds.yml
