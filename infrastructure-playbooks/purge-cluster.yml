@@ -327,7 +327,7 @@
   - name: zap osd disks
     shell: |
       if (echo "{{ item }}" | grep -Esq '[0-9]{1,2}$'); then
-        raw_device=$(echo "{{ item }}" | grep -Eo '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}')
+        raw_device=$(echo "{{ item }}" | grep -Eo '/dev/([hsv]d[a-z]{1,2}|xvd[a-z]{1,2}|cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}')
         partition_nb=$(echo "{{ item }}" | grep -Eo '[0-9]{1,2}$')
         sgdisk --delete $partition_nb $raw_device
       else
@@ -380,13 +380,13 @@
   - name: zap ceph journal partitions
     shell: |
       # if the disk passed is a raw device AND the boot system disk
-      if echo "{{ item }}" | egrep -sq '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}$' && parted -s $(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}') print | grep -sq boot; then
+      if echo "{{ item }}" | egrep -sq '/dev/([hsv]d[a-z]{1,2}|xvd[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}$' && parted -s $(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|xvd[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}') print | grep -sq boot; then
         echo "Looks like {{ item }} has a boot partition,"
         echo "if you want to delete specific partitions point to the partition instead of the raw device"
         echo "Do not use your system disk!"
         exit 1
       fi
-      raw_device=$(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}')
+      raw_device=$(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|xvd[a-z]{1,2}|cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}')
       partition_nb=$(echo "{{ item }}" | egrep -o '[0-9]{1,2}$')
       sgdisk --delete $partition_nb $raw_device
     with_items:
