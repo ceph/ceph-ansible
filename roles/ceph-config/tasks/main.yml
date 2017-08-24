@@ -14,14 +14,17 @@
 
   - name: template ceph_conf_overrides
     local_action: copy content="{{ ceph_conf_overrides }}" dest="{{ fetch_directory }}/ceph_conf_overrides_temp"
+    become: false
     run_once: true
 
   - name: get rendered ceph_conf_overrides
     local_action: set_fact ceph_conf_overrides_rendered="{{ lookup('template', '{{ fetch_directory }}/ceph_conf_overrides_temp') | from_yaml }}"
+    become: false
     run_once: true
 
   - name: remove tmp template file for ceph_conf_overrides
     local_action: file path="{{ fetch_directory }}/ceph_conf_overrides_temp" state=absent
+    become: false
     run_once: true
 
   - name: "generate ceph configuration file: {{ cluster }}.conf"
