@@ -43,10 +43,10 @@
     - "{{ inventory_hostname == groups[mon_group_name] | last }}"
     - not containerized_deployment_with_kv
 
-- include: "{{ playbook_dir }}/roles/ceph-mon/tasks/set_osd_pool_default_pg_num.yml"
+- include: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-mon/tasks/set_osd_pool_default_pg_num.yml"
 
 # create openstack pools only when all mons are up.
-- include: "{{ playbook_dir }}/roles/ceph-mon/tasks/openstack_config.yml"
+- include: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-mon/tasks/openstack_config.yml"
   when:
     - openstack_config
     - "{{ inventory_hostname == groups[mon_group_name] | last }}"
