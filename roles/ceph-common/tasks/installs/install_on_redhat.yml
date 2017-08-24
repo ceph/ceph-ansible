@@ -4,14 +4,18 @@
     name: "{{ item }}"
     state: present
   with_items: "{{ redhat_package_dependencies }}"
-  when: ansible_distribution == "RedHat"
+  when:
+    - ansible_distribution == "RedHat"
+    - ceph_origin != 'distro'
 
 - name: install centos dependencies
   package:
     name: "{{ item }}"
     state: present
   with_items: "{{ centos_package_dependencies }}"
-  when: ansible_distribution == "CentOS"
+  when:
+    - ansible_distribution == "CentOS"
+    - ceph_origin != 'distro'
 
 - name: configure ceph yum repository
   include: redhat_ceph_repository.yml
