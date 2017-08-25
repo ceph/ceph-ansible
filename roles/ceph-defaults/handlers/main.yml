@@ -40,12 +40,11 @@
 - name: restart containerized ceph osds daemon(s)
   command: /tmp/restart_osd_daemon.sh
   listen: "restart ceph osds"
-  with_items: "{{ socket_osd_container.results }}"
+  with_items: "{{ socket_osd_container.results | default([]) }}"
   when:
   # We do not want to run these checks on initial deployment (`socket_osd_container.results[n].rc == 0`)
   # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
     - containerized_deployment
-    - not item.get("skipped")
     - ((crush_location is defined and crush_location) or item.get('rc') == 0)
     - handler_health_osd_check
     # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
