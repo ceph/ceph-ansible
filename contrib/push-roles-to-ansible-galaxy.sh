@@ -47,6 +47,23 @@ function check_git_status {
   fi
 }
 
+function compare_tags {
+  # compare local tags (from https://github.com/ceph/ceph-ansible/) with distant tags (from https://github.com/ceph/ansible-ceph-$ROLE)
+  local tags
+  tags=$(git tag | grep -oE '^v[2-9].[0-9]*.[0-9]*$' | sort -t. -k 1,1n -k 2,2n -k 3,3n -k 4,4n)
+  IFS=" " read -r -a tags_array <<< "${tags}"
+  local remote_tags
+  remote_tags=$(git ls-remote --tags $1 | grep -oE 'v[2-9].[0-9]*.[0-9]*$' | sort -t. -k 1,1n -k 2,2n -k 3,3n -k 4,4n)
+  IFS=" " read -r -a remote_tags_array <<< "${remote_tags}"
+
+  for i in "${tags_array[@]}"; do
+    skip=
+    for j in "${remote_tags_array[@]}"; do
+      [[ $i == $j ]] && { skip=1; break; }
+    done
+    [[ -n $skip ]] || tag_to_apply+=("$i")
+  done
+}
 
 # MAIN
 goto_basedir
@@ -65,13 +82,20 @@ for ROLE in $ROLES; do
   # this gives us a new commit history
   for BRANCH in $(git branch --list --remotes "origin/stable-*" "origin/master" "origin/ansible-1.9" | cut -d '/' -f2); do
     git checkout -B $BRANCH origin/$BRANCH
-    git filter-branch -f --prune-empty --subdirectory-filter roles/$ROLE
+    # use || true to avoid exiting in case of 'Found nothing to rewrite'
+    git filter-branch -f --prune-empty --subdirectory-filter roles/$ROLE || true
     git push -f $REMOTE $BRANCH
   done
   reset_hard_origin
   # then we filter tags starting from version 2.0 and push them
-  for TAG in $(git tag | egrep '^v[2-9].[0-9]*.[0-9]*$'); do
-    git filter-branch -f --prune-empty --subdirectory-filter roles/$ROLE $TAG
+  compare_tags $ROLE
+  if [[ ${#tag_to_apply[@]} == 0 ]]; then
+    echo "No new tag to push."
+    continue
+  fi
+  for TAG in "${tag_to_apply[@]}"; do
+    # use || true to avoid exiting in case of 'Found nothing to rewrite'
+    git filter-branch -f --prune-empty --subdirectory-filter roles/$ROLE $TAG || true
     git push -f $REMOTE $TAG
     reset_hard_origin
   done
