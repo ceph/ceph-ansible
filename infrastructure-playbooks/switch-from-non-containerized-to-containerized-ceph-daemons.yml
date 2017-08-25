@@ -32,6 +32,7 @@
     - "{{ mon_group_name|default('mons') }}"
     - "{{ osd_group_name|default('osds') }}"
     - "{{ mds_group_name|default('mdss') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
@@ -39,32 +40,6 @@
   become: true
 
   tasks:
-    - name: install docker and dependencies for the docker module
-      package:
-        name: "{{ item }}"
-        state: present
-      with_items:
-        - python-docker-py
-        - python-urllib3
-        - docker
-      when: ansible_os_family == 'RedHat'
-
-    - name: install docker-py for the docker module
-      package:
-        name: "{{ item }}"
-        state: present
-      with_items:
-        - docker-py
-        - python-urllib3
-        - docker
-      when: ansible_os_family == 'Debian'
-
-    - name: start docker service
-      service:
-        name: docker
-        state: started
-        enabled: yes
-
     - name: check if selinux is enabled
       command: getenforce
       register: sestatus
@@ -80,6 +55,12 @@
       when:
         - sestatus.stdout != 'Disabled'
         - ansible_os_family == 'RedHat'
+
+    - name: gather and delegate facts
+      setup:
+      delegate_to: "{{ item }}"
+      delegate_facts: True
+      with_items: "{{ groups['all'] }}"
 
 - name: switching from non-containerized to containerized ceph mon
 
@@ -143,9 +124,11 @@
     - ceph-mon
 
   post_tasks:
+    # We don't do a container test by running 'docker exec ...' since not all the monitors have switched to containers yet.
+    # Thus, we continue to use the 'ceph' binary from the host, there is no issue with that.
     - name: waiting for the containerized monitor to join the quorum...
       shell: |
-        docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["quorum_names"])'
+        ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["quorum_names"])'
       register: result
       until: "{{ ansible_hostname in result.stdout }}"
       retries: "{{ health_mon_check_retries }}"
@@ -182,10 +165,11 @@
       changed_when: false
 
     - name: stop non-containerized ceph osd(s)
-      service:
+      systemd:
         name: "{{ item }}"
         state: stopped
         enabled: no
+        masked: yes
       with_items: "{{ running_osds.stdout_lines }}"
 
     - set_fact:
@@ -259,6 +243,10 @@
   hosts:
     - "{{ mds_group_name|default('mdss') }}"
 
+  vars:
+    containerized_deployment: true
+    mds_group_name: mdss
+
   serial: 1
   become: true
 
@@ -297,13 +285,17 @@
   hosts:
     - "{{ rgw_group_name|default('rgws') }}"
 
+  vars:
+    containerized_deployment: true
+    rgw_group_name: rgws
+
   serial: 1
   become: true
 
   pre_tasks:
     - name: stop non-containerized ceph rgw(s)
       service:
-        name: "ceph-rgw@{{ ansible_hostname }}"
+        name: "ceph-radosgw@rgw.{{ ansible_hostname }}"
         state: stopped
         enabled: no
 
@@ -335,13 +327,17 @@
   hosts:
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
 
+  vars:
+    containerized_deployment: true
+    rbdmirror_group_name: rbdmirrors
+
   serial: 1
   become: true
 
   pre_tasks:
     - name: stop non-containerized ceph rbd mirror(s)
       service:
-        name: "ceph-rbd-mirror@{{ ansible_hostname }}"
+        name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
         state: stopped
         enabled: no
 
@@ -372,6 +368,10 @@
 
   hosts:
     - "{{ nfs_group_name|default('nfss') }}"
+
+  vars:
+    containerized_deployment: true
+    nfs_group_name: nfss
 
   serial: 1
   become: true
