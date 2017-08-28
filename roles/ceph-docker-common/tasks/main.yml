@@ -44,28 +44,39 @@
     - ceph_health.rc != 0
     - not "{{ rolling_update | default(false) }}"
 
-- include: "./misc/ntp_atomic.yml"
+- include: ./misc/ntp_atomic.yml
   when:
     - is_atomic
     - ansible_os_family == 'RedHat'
     - ntp_service_enabled
 
-- include: "./misc/ntp_redhat.yml"
+- include: ./misc/ntp_redhat.yml
   when:
     - not is_atomic
     - ansible_os_family == 'RedHat'
     - ntp_service_enabled
 
-- include: "./misc/ntp_debian.yml"
+- include: ./misc/ntp_debian.yml
   when:
     - ansible_os_family == 'Debian'
     - ntp_service_enabled
 
-- include: "./fetch_image.yml"
+- include: fetch_image.yml
+
+- name: get ceph version
+  command: docker run --entrypoint /usr/bin/ceph {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} --version
+  changed_when: false
+  always_run: yes
+  register: ceph_version
+
+- set_fact:
+    ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
+
+- include: release.yml
 
 # NOTE (jimcurtis): dirs_permissions.yml must precede fetch_configs.yml
 # # because it creates the directories needed by the latter.
-- include: ./dirs_permissions.yml
+- include: dirs_permissions.yml
 
 - include: create_configs.yml
 
