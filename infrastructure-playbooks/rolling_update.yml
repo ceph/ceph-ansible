@@ -165,21 +165,6 @@
       delegate_to: "{{ mon_host }}"
       when: containerized_deployment
 
-
-- name: upgrade ceph osds cluster
-
-  vars:
-    health_osd_check_retries: 40
-    health_osd_check_delay: 30
-    upgrade_ceph_packages: True
-
-  hosts:
-    - "{{ osd_group_name|default('osds') }}"
-
-  serial: 1
-  become: True
-
-  pre_tasks:
     - name: set osd flags
       command: ceph osd set {{ item }} --cluster {{ cluster }}
       with_items:
@@ -199,6 +184,21 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when: containerized_deployment
 
+
+- name: upgrade ceph osds cluster
+
+  vars:
+    health_osd_check_retries: 40
+    health_osd_check_delay: 30
+    upgrade_ceph_packages: True
+
+  hosts:
+    - "{{ osd_group_name|default('osds') }}"
+
+  serial: 1
+  become: True
+
+  pre_tasks:
     - name: get osd numbers
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
       register: osd_ids
@@ -312,6 +312,18 @@
         - containerized_deployment
         - container_num_pgs.stdout != "0"
 
+
+- name: unset osd flags
+
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+
+  become: True
+
+  roles:
+    - ceph-defaults
+
+  tasks:
     - name: unset osd flags
       command: ceph osd unset {{ item }} --cluster {{ cluster }}
       with_items:
