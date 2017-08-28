@@ -61,12 +61,20 @@
 
   tasks:
 
+  # this next task should go away if ansible service module worked correctly
+  
+  - name: get ceph mds status
+    shell: "systemctl status ceph-mds@{{ ansible_hostname }}"
+    register: ceph_mds_status
+    failed_when: false
+    when: ansible_service_mgr == 'systemd'
+
   - name: stop ceph mdss with systemd
     service:
       name: ceph-mds@{{ ansible_hostname }}
       state: stopped
       enabled: no
-    failed_when: false
+    failed_when: "'service could not be found' in ceph_mds_status.stdout_lines | join | lower"
     when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph mdss
@@ -93,12 +101,18 @@
 
   tasks:
 
+  - name: get ceph rgw status
+    shell: "systemctl status ceph-rgw@{{ ansible_hostname }}"
+    register: ceph_rgw_status
+    failed_when: false
+    when: ansible_service_mgr == 'systemd'
+
   - name: stop ceph rgws with systemd
     service:
       name: ceph-radosgw@rgw.{{ ansible_hostname }}
       state: stopped
       enabled: no
-    failed_when: false
+    failed_when: "'service could not be found' in ceph_rgw_status.stdout_lines | join | lower"
     when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph rgws
@@ -126,11 +140,17 @@
 
   tasks:
 
+  - name: get ceph rbd mirror status
+    shell: "systemctl status ceph-rbd-mirror@admin"
+    register: ceph_rbdmir_status
+    failed_when: false
+    when: ansible_service_mgr == 'systemd'
+
   - name: stop ceph rbd mirror with systemd
     service:
       name: ceph-rbd-mirror@admin.service
       state: stopped
-    failed_when: false
+    failed_when: "'service could not be found' in ceph_rbdmir_status.stdout_lines | join | lower"
     when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph rbd mirror on ubuntu
@@ -153,11 +173,17 @@
 
   tasks:
 
+  - name: get ganesha status
+    shell: "systemctl status nfs-ganesha"
+    register: ceph_ganesha_status
+    failed_when: false
+    when: ansible_service_mgr == 'systemd'
+
   - name: stop ceph nfss with systemd
     service:
       name: nfs-ganesha
       state: stopped
-    failed_when: false
+    failed_when: "'service could not be found' in ceph_ganesha_status.stdout_lines | join | lower"
     when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph nfss
@@ -419,12 +445,18 @@
 
   tasks:
 
+  - name: get monitor status
+    shell: "systemctl status ceph-mon@{{ ansible_hostname }}"
+    register: ceph_mon_status
+    failed_when: false
+    when: ansible_service_mgr == 'systemd'
+
   - name: stop ceph mons with systemd
     service:
       name: ceph-mon@{{ ansible_hostname }}
       state: stopped
       enabled: no
-    failed_when: false
+    failed_when: "'service could not be found' in ceph_mon_status.stdout_lines | join | lower"
     when: ansible_service_mgr == 'systemd'
 
   - name: stop ceph mons
