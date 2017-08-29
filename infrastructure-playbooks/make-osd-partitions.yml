@@ -32,6 +32,9 @@
 
   tasks:
 
+  - name: include regex vars
+    include_vars: ../roles/ceph-defaults/defaults/main.yml
+
   - name: load a variable file for devices partition
     include_vars: "{{ item }}"
     with_first_found:
@@ -95,5 +98,5 @@
       - "{{ devices }}"
       - partitions
     when:
-      item.0.device_name | match('/dev/(cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}$')
-...
+      item.0.device_name | match('{{ ceph_osd_partition_regex }}$')
+
