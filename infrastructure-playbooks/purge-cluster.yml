@@ -194,18 +194,6 @@
 
   tasks:
 
-  - name: set devices if osd scenario is lvm
-    set_fact:
-      devices: []
-    when: osd_scenario == "lvm"
-
-  - name: check for a device list
-    fail:
-      msg: "OSD automatic discovery was detected, purge cluster does not support this scenario. If you want to purge the cluster, manually provide the list of devices in group_vars/{{ osd_group_name }} using the devices variable."
-    when:
-      - devices|length == 0
-      - osd_auto_discovery|default(false)
-
   - name: get osd numbers
     shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
     register: osd_ids
@@ -324,6 +312,13 @@
     with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
     when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
 
+  - name: get ceph data partitions
+    shell: |
+      blkid | awk -F: '/ceph data/ { print $1 }'
+    when: ceph_data_partlabels.rc == 0
+    failed_when: false
+    register: ceph_data_partition_to_erase_path
+
   - name: zap osd disks
     shell: |
       if (echo "{{ item }}" | grep -Esq '[0-9]{1,2}$'); then
@@ -333,7 +328,7 @@
       else
         ceph-disk zap "{{ item }}"
       fi
-    with_items: "{{ devices }}"
+    with_items: "{{ ceph_data_partition_to_erase_path.stdout_lines | default([]) }}"
     when:
       - ceph_disk_present.rc == 0
       - ceph_data_partlabels.rc == 0
