@@ -187,7 +187,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   (0..MGRS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}mgr#{i}" do |mgr|
-      mgr.vm.hostname = "#{LABEL_PREFIX}ceph-mgr#{i}"
+      mgr.vm.hostname = "#{LABEL_PREFIX}mgr#{i}"
       if ASSIGN_STATIC_IP
         mgr.vm.network :private_network,
           ip: "#{PUBLIC_SUBNET}.3#{i}"
@@ -223,7 +223,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..CLIENTS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}client#{i}" do |client|
       client.vm.box = CLIENT_BOX
-      client.vm.hostname = "#{LABEL_PREFIX}ceph-client#{i}"
+      client.vm.hostname = "#{LABEL_PREFIX}client#{i}"
       if ASSIGN_STATIC_IP
         client.vm.network :private_network,
           ip: "#{PUBLIC_SUBNET}.4#{i}"
@@ -258,7 +258,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   (0..NRGWS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}rgw#{i}" do |rgw|
-      rgw.vm.hostname = "#{LABEL_PREFIX}ceph-rgw#{i}"
+      rgw.vm.hostname = "#{LABEL_PREFIX}rgw#{i}"
       if ASSIGN_STATIC_IP
         rgw.vm.network :private_network,
           ip: "#{PUBLIC_SUBNET}.5#{i}"
@@ -294,7 +294,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   (0..NNFSS - 1).each do |i|
     config.vm.define "nfs#{i}" do |nfs|
-      nfs.vm.hostname = "ceph-nfs#{i}"
+      nfs.vm.hostname = "#{LABEL_PREFIX}ceph-nfs#{i}"
       if ASSIGN_STATIC_IP
         nfs.vm.network :private_network,
           ip: "#{PUBLIC_SUBNET}.6#{i}"
@@ -330,7 +330,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   (0..NMDSS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}mds#{i}" do |mds|
-      mds.vm.hostname = "#{LABEL_PREFIX}ceph-mds#{i}"
+      mds.vm.hostname = "#{LABEL_PREFIX}mds#{i}"
       if ASSIGN_STATIC_IP
         mds.vm.network :private_network,
           ip: "#{PUBLIC_SUBNET}.7#{i}"
@@ -364,7 +364,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   (0..NRBD_MIRRORS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}rbd_mirror#{i}" do |rbd_mirror|
-      rbd_mirror.vm.hostname = "#{LABEL_PREFIX}ceph-rbd-mirror#{i}"
+      rbd_mirror.vm.hostname = "#{LABEL_PREFIX}rbd-mirror#{i}"
       if ASSIGN_STATIC_IP
         rbd_mirror.vm.network :private_network,
           ip: "#{PUBLIC_SUBNET}.8#{i}"
@@ -398,7 +398,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   (0..NISCSI_GWS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}iscsi_gw#{i}" do |iscsi_gw|
-      iscsi_gw.vm.hostname = "#{LABEL_PREFIX}ceph-iscsi-gw#{i}"
+      iscsi_gw.vm.hostname = "#{LABEL_PREFIX}iscsi-gw#{i}"
       if ASSIGN_STATIC_IP
         iscsi_gw.vm.network :private_network,
           ip: "#{PUBLIC_SUBNET}.9#{i}"
@@ -432,7 +432,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   (0..NMONS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}mon#{i}" do |mon|
-      mon.vm.hostname = "#{LABEL_PREFIX}ceph-mon#{i}"
+      mon.vm.hostname = "#{LABEL_PREFIX}mon#{i}"
       if ASSIGN_STATIC_IP
         mon.vm.network :private_network,
           ip: "#{PUBLIC_SUBNET}.1#{i}"
@@ -467,7 +467,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   (0..NOSDS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}osd#{i}" do |osd|
-      osd.vm.hostname = "#{LABEL_PREFIX}ceph-osd#{i}"
+      osd.vm.hostname = "#{LABEL_PREFIX}osd#{i}"
       if ASSIGN_STATIC_IP
         osd.vm.network :private_network,
           ip: "#{PUBLIC_SUBNET}.10#{i}"

@@ -11,13 +11,13 @@ class TestMons(object):
         assert host.socket("tcp://%s:6789" % node["address"]).is_listening
 
     def test_mon_service_is_running(self, node, host):
-        service_name = "ceph-mon@ceph-{hostname}".format(
+        service_name = "ceph-mon@{hostname}".format(
             hostname=node["vars"]["inventory_hostname"]
         )
         assert host.service(service_name).is_running
 
     def test_mon_service_is_enabled(self, node, host):
-        service_name = "ceph-mon@ceph-{hostname}".format(
+        service_name = "ceph-mon@{hostname}".format(
             hostname=node["vars"]["inventory_hostname"]
         )
         assert host.service(service_name).is_enabled
@@ -32,7 +32,7 @@ class TestMons(object):
         assert File(node["conf_path"]).contains("^mon initial members = .*$")
 
     def test_initial_members_line_has_correct_value(self, node, File):
-        mons = ",".join("ceph-%s" % host
+        mons = ",".join("%s" % host
                         for host in node["vars"]["groups"]["mons"])
         line = "mon initial members = {}".format(mons)
         assert File(node["conf_path"]).contains(line)
@@ -49,7 +49,7 @@ class TestOSDs(object):
 
     @pytest.mark.docker
     def test_all_docker_osds_are_up_and_in(self, node, host):
-        cmd = "sudo docker exec ceph-mon-ceph-{} ceph --cluster={} --connect-timeout 5 -s".format(
+        cmd = "sudo docker exec ceph-mon-{} ceph --cluster={} --connect-timeout 5 -s".format(
             node["vars"]["inventory_hostname"],
             node["cluster_name"]
         )
