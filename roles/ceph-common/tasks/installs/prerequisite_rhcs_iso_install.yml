@@ -42,21 +42,15 @@
     fstype: iso9660
     state: unmounted
 
-- name: install the red hat ceph storage repository key
-  apt_key:
-    file: "{{ ceph_rhcs_repository_path }}/MON/release.asc"
+- name: install red hat storage repository key
+  rpm_key:
+    key: "{{ ceph_rhcs_repository_path }}/RPM-GPG-KEY-redhat-release"
     state: present
-  when: ceph_rhcs_iso_install
 
-- name: add red hat ceph storage repositories
-  apt_repository:
-    repo: "deb file://{{ ceph_rhcs_repository_path }}/{{ item }}/ {{ ansible_lsb.codename }} main"
-    state: present
-  changed_when: false
-  with_items:
-    - "MON"
-    - "OSD"
-    - "Tools"
-    - "Agent"
-  when: ceph_rhcs_iso_install
-
+- name: add red hat storage repository
+  template:
+    src: "{{ role_path }}/templates/redhat_storage_repo.j2"
+    dest: /etc/yum.repos.d/rh_storage.repo
+    owner: root
+    group: root
+    mode: 0644

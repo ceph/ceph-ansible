@@ -1,0 +1,23 @@
+---
+- name: configure debian ceph community repository stable key
+  apt_key:
+    data: "{{ lookup('file', role_path+'/files/cephstable.asc') }}"
+    state: present
+
+- name: configure debian ceph stable community repository
+  apt_repository:
+    repo: "deb {{ ceph_stable_repo }} {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
+    state: present
+  changed_when: false
+
+- name: configure debian gluster nfs ganesha community repository for rgw nfs
+  apt_repository:
+    repo: "{{ item }}"
+    state: present
+  with_items:
+    - ppa:gluster/libntirpc
+    - ppa:gluster/nfs-ganesha
+  changed_when: false
+  when:
+    - (nfs_obj_gw or nfs_file_gw)
+    - not ansible_distribution == "Debian"

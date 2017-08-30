@@ -1,34 +1,34 @@
 ---
 - name: make sure an installation origin was chosen
   fail:
-    msg: "choose an installation origin"
+    msg: "choose an installation origin between repository, distro and local\nValid ceph_origin are: {{ valid_ceph_origins }}"
   when:
-    - ceph_origin != 'upstream'
-    - ceph_origin != 'distro'
-    - ceph_origin != 'local'
+    - ceph_origin not in valid_ceph_origins
   tags:
     - package-install
 
-- name: make sure an installation source was chosen
+- name: make sure a repository was chosen
   fail:
-    msg: "choose an upstream installation source or read https://github.com/ceph/ceph-ansible/wiki"
+    msg: "choose a repository installation source: {{ valid_ceph_repository }} or read http://docs.ceph.com/ceph-ansible/master/"
   when:
-    - ceph_origin == 'upstream'
-    - not ceph_stable
-    - not ceph_dev
-    - not ceph_rhcs
-    - not ceph_stable_uca
-    - not ceph_custom
+    - ceph_origin == 'repository'
+    - ceph_repository not in valid_ceph_repository
   tags:
     - package-install
+
+- name: fail if local scenario is enabled on debian
+  fail:
+    msg: "'local' installation scenario not supported on Debian systems"
+  when:
+    - ansible_os_family == 'Debian'
+    - ceph_origin == 'local'
 
 - name: make sure ceph_stable_release is set
   fail:
     msg: "make sure ceph_stable_release is set to a release name (e.g: luminous), http://docs.ceph.com/docs/master/release-notes/"
   when:
     - ceph_stable_release == 'dummy'
-    - ceph_origin == 'upstream'
-    - ceph_stable
+    - (ceph_repository != 'rhcs' or ceph_repository != 'dev')
   tags:
     - package-install
 
@@ -37,19 +37,18 @@
     msg: "wrong release name, see http://docs.ceph.com/docs/master/release-notes/"
   when:
     - ceph_stable_release not in ceph_release_num
-    - ceph_origin == 'upstream'
-    - ceph_stable
+    - ceph_origin == 'repository'
+    - ceph_repository != 'rhcs'
   tags:
     - package-install
 
-- name: verify that a method was chosen for red hat storage
+- name: verify that a repository type was chosen for ceph rhcs version
   fail:
-    msg: "choose between ceph_rhcs_cdn_install and ceph_rhcs_iso_install"
+    msg: "choose between 'cdn' or 'iso' installation, e.g: ceph_repository_type: cdn.\nValid ceph_repository_type are: {{ valid_ceph_repository_type }}"
   when:
-    - ceph_rhcs
-    - not ceph_rhcs_cdn_install
-    - not ceph_rhcs_iso_install
-    - ceph_origin != 'distro'
+    - ceph_origin == 'repository'
+    - ceph_repository == 'rhcs'
+    - ceph_repository_type in valid_ceph_repository_type
   tags:
     - package-install
 
@@ -57,10 +56,22 @@
   fail:
     msg: "ceph_rhcs_cdn_debian_repo url is invalid, please set your customername:customerpasswd"
   when:
-    - ceph_rhcs
-    - ceph_rhcs_cdn_install
+    - ceph_origin == 'repository'
+    - ceph_repository == 'rhcs'
+    - ceph_repository_type == 'cdn'
     - ansible_os_family == 'Debian'
     - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
+  tags:
+    - package-install
+
+- name: verify that ceph_rhcs_cdn_debian_repo url is valid for red hat storage
+  fail:
+    msg: "iso installation is not supported by the Ceph Debian rhcs version"
+  when:
+    - ceph_origin == 'repository'
+    - ceph_repository == 'rhcs'
+    - ceph_repository_type == 'iso'
+    - ansible_os_family == 'Debian'
   tags:
     - package-install
 

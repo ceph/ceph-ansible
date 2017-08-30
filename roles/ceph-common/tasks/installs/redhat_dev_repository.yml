@@ -1,0 +1,14 @@
+---
+- name: fetch ceph red hat development repository
+  uri:
+    url: https://shaman.ceph.com/api/repos/ceph/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo
+    return_content: yes
+  register: ceph_dev_yum_repo
+
+- name: configure ceph red hat development repository
+  copy:
+    content: "{{ ceph_dev_yum_repo.content }}"
+    dest: /etc/yum.repos.d/ceph-dev.repo
+    owner: root
+    group: root
+    backup: yes

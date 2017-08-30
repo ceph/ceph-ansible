@@ -18,15 +18,36 @@
   fail:
     msg: "Distribution not supported {{ ansible_distribution_version }} by Red Hat Ceph Storage, only RHEL >= 7.3"
   when:
-    - ceph_rhcs
+    - ansible_distribution == 'Red Hat Enterprise Linux'
+    - ceph_repository == 'rhcs'
     - ansible_distribution_version | version_compare('7.3', '<')
+
+- name: determine if node is registered with subscription-manager
+  command: subscription-manager identity
+  register: subscription
+  changed_when: false
+  failed_when: false
+  always_run: true
+  when:
+    - ansible_distribution == 'Red Hat Enterprise Linux'
+    - ceph_repository == 'rhcs'
+    - ceph_repository_type == 'cdn'
+
+- name: fail on unregistered red hat rhcs linux
+  fail:
+    msg: "You must register your machine with subscription-manager"
+  when:
+    - ansible_distribution == 'Red Hat Enterprise Linux'
+    - ceph_repository == 'rhcs'
+    - ceph_repository_type == 'cdn'
+    - subscription.rc != '0'
 
 - name: fail on unsupported distribution for ubuntu cloud archive
   fail:
     msg: "Distribution not supported by Ubuntu Cloud Archive: {{ ansible_distribution }}"
   when:
-    ceph_stable_uca and
-    '{{ ansible_distribution }}' not in ['Ubuntu']
+    - ceph_repository == 'uca'
+    - ansible_distribution != 'Ubuntu'
 
 - name: fail on unsupported ansible version
   fail:
