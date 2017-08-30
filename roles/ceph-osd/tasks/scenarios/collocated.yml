@@ -1,63 +1,59 @@
 ---
-## SCENARIO 1: JOURNAL AND OSD_DATA ON THE SAME DEVICE
-
-- include: ../check_devices.yml
-
-# NOTE (leseb): the prepare process must be parallelized somehow...
-# if you have 64 disks with 4TB each, this will take a while
-# since Ansible will sequential process the loop
-
-- set_fact:
-    ceph_disk_cli_options: "--cluster {{ cluster }} --bluestore"
+# use shell rather than docker module
+# to ensure osd disk prepare finishes before
+# starting the next task
+- name: prepare ceph containerized osd disk collocated
+  shell: |
+    docker run --net=host \
+    --pid=host \
+    --privileged=true \
+    --name=ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item.1 | regex_replace('/', '') }} \
+    -v /etc/ceph:/etc/ceph \
+    -v /var/lib/ceph/:/var/lib/ceph/ \
+    -v /dev:/dev \
+    -v /etc/localtime:/etc/localtime:ro \
+    -e CLUSTER={{ cluster }} \
+    -e CEPH_DAEMON=OSD_CEPH_DISK_PREPARE \
+    -e OSD_DEVICE={{ item.1 }} \
+    {{ docker_env_args }} \
+    {{ ceph_osd_docker_prepare_env }} \
+    {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  with_together:
+    - "{{ parted_results.results }}"
+    - "{{ devices }}"
   when:
-    - osd_objectstore == 'bluestore'
-    - osd_scenario == 'collocated'
-    - not dmcrypt
-    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - not item.0.get("skipped")
+    - not osd_auto_discovery
+    - containerized_deployment
 
-- set_fact:
-    ceph_disk_cli_options: "--cluster {{ cluster }} --filestore"
+- name: automatic prepare ceph containerized osd disk collocated
+  shell: |
+    docker run --net=host \
+    --pid=host \
+    --privileged=true \
+    --name=ceph-osd-prepare-{{ ansible_hostname }}-devdev{{ item.key }} \
+    -v /etc/ceph:/etc/ceph \
+    -v /var/lib/ceph/:/var/lib/ceph/ \
+    -v /dev:/dev \
+    -v /etc/localtime:/etc/localtime:ro \
+    -e CLUSTER={{ cluster }} \
+    -e CEPH_DAEMON=OSD_CEPH_DISK_PREPARE \
+    -e OSD_DEVICE=/dev/{{ item.key }} \
+    {{ docker_env_args }} \
+    {{ ceph_osd_docker_prepare_env }} \
+    {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  with_dict: "{{ ansible_devices }}"
   when:
-    - osd_objectstore == 'filestore'
-    - osd_scenario == 'collocated'
-    - not dmcrypt
-    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
-
-- set_fact:
-    ceph_disk_cli_options: "--cluster {{ cluster }}"
-  when:
-    - osd_objectstore == 'filestore'
-    - osd_scenario == 'collocated'
-    - not dmcrypt
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
-
-- set_fact:
-    ceph_disk_cli_options: "--cluster {{ cluster }} --bluestore --dmcrypt"
-  when:
-    - osd_objectstore == 'bluestore'
-    - osd_scenario == 'collocated'
-    - dmcrypt
-    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
-
-- set_fact:
-    ceph_disk_cli_options: "--cluster {{ cluster }} --filestore --dmcrypt"
-  when:
-    - osd_objectstore == 'filestore'
-    - osd_scenario == 'collocated'
-    - dmcrypt
-    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
-
-- set_fact:
-    ceph_disk_cli_options: "--cluster {{ cluster }} --dmcrypt"
-  when:
-    - osd_objectstore == 'filestore'
-    - osd_scenario == 'collocated'
-    - dmcrypt
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.partitions|count == 0
+    - item.value.holders|count == 0
+    - osd_auto_discovery
+    - containerized_deployment
 
 # NOTE (alahouze): if the device is a partition, the parted command below has
 # failed, this is why we check if the device is a partition too.
-- name: automatic prepare "{{ osd_objectstore }}" osd disk(s) without partitions with collocated osd data and journal
+- name: automatic prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) without partitions with collocated osd data and journal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} /dev/{{ item.key }}"
   register: prepared_osds
   with_dict: "{{ ansible_devices }}"
@@ -67,8 +63,9 @@
     - item.value.partitions|count == 0
     - item.value.holders|count == 0
     - osd_auto_discovery
+    - not containerized_deployment
 
-- name: manually prepare "{{ osd_objectstore }}" osd disk(s) with collocated osd data and journal
+- name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with collocated osd data and journal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.2 }}"
   with_together:
     - "{{ parted_results.results }}"
@@ -80,5 +77,6 @@
     - item.0.get("rc", 0) != 0
     - item.1.get("rc", 0) != 0
     - not osd_auto_discovery
+    - not containerized_deployment
 
 - include: ../activate_osds.yml

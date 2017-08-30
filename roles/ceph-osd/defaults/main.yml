@@ -219,40 +219,22 @@ lvm_volumes: []
 ceph_config_keys: [] # DON'T TOUCH ME
 
 # PREPARE DEVICE
-# Make sure you only pass a single device to dedicated_devices, otherwise this will fail horribly.
-# This is why we use [0] in the example.
 #
 # WARNING /!\ DMCRYPT scenario ONLY works with Docker version 1.12.5 and above
 #
-# Examples:
-# Journal collocated on Filestore: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_FILESTORE=1
-# Dedicated journal on Filestore: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_JOURNAL={{ dedicated_devices[0] }} -e OSD_FILESTORE=1
-# Encrypted OSD on Filestore: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1 -e OSD_FILESTORE=1
-# Encrypted OSD with dedicated journal on Filestore: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1 -e OSD_JOURNAL={{ dedicated_devices[0] }} -e OSD_FILESTORE=1
-#
-# Bluestore OSD collocated: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_BLUESTORE=1
-# Bluestore OSD with dedicated db: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_BLUESTORE=1 -e OSD_JOURNAL={{ dedicated_devices[0] }}
-# Bluestore OSD with dedicated db and wal: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_BLUESTORE=1 -e OSD_JOURNAL={{ dedicated_devices[0] }} -e OSD_BLUESTORE_BLOCK_WAL={{ bluestore_wal_devices[0] }}
-# Encrypted OSD: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1 -e OSD_FILESTORE=1
-# Encrypted OSD with dedicated journal: ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1 -e OSD_DMCRYPT=1 -e OSD_JOURNAL={{ dedicated_devices[0] }} -e OSD_FILESTORE=1
-#
-#
 ceph_osd_docker_devices: "{{ devices }}"
-ceph_osd_docker_prepare_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1
+ceph_osd_docker_prepare_env: -e OSD_JOURNAL_SIZE={{ journal_size }}
 
 # ACTIVATE DEVICE
-# Examples:
-# Journal collocated or Dedicated journal on Filesore: ceph_osd_docker_extra_env: -e CLUSTER={{ cluster }} -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FILESTORE=1
-# Encrypted OSD or Encrypted OSD with dedicated journal: ceph_osd_docker_extra_env: -e CLUSTER={{ cluster }} -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_DMCRYPT=1 -e OSD_FILESTORE=1
-# Bluestore OSD: ceph_osd_docker_extra_env: -e CLUSTER={{ cluster }} -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE -e OSD_BLUESTORE=1
 #
-ceph_osd_docker_extra_env: -e CLUSTER={{ cluster }} -e OSD_JOURNAL_SIZE={{ journal_size }}
+ceph_osd_docker_extra_env:
 ceph_osd_docker_run_script_path: "/usr/share" # script called by systemd to run the docker command
 
 
 ###########
 # SYSTEMD #
 ###########
+
 # ceph_osd_systemd_overrides will override the systemd settings
 # for the ceph-osd services.
 # For example,to set "PrivateDevices=false" you can specify:

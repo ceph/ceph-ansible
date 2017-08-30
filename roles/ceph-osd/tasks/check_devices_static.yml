@@ -32,6 +32,18 @@
   when:
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0
+    - not containerized_deployment
+
+- name: create gpt disk label
+  command: parted --script {{ item.1 }} mklabel gpt
+  with_together:
+    - "{{ osd_partition_status_results.results }}"
+    - "{{ devices }}"
+  changed_when: false
+  when:
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
+    - containerized_deployment
 
 - name: check if a partition named 'ceph' exists
   shell: "parted --script {{ item.1 }} print | egrep -sq '^ 1.*ceph'"

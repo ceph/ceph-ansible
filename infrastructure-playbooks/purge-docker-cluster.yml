@@ -240,7 +240,7 @@
       name: "ceph-osd@{{ item | basename }}"
       state: stopped
       enabled: no
-    with_items: "{{ ceph_osd_docker_devices }}"
+    with_items: "{{ devices }}"
     ignore_errors: true
 
   - name: remove ceph osd prepare container
@@ -248,7 +248,7 @@
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
       state: absent
-    with_items: "{{ ceph_osd_docker_devices }}"
+    with_items: "{{ devices }}"
     ignore_errors: true
 
   - name: remove ceph osd container
@@ -256,7 +256,7 @@
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-osd-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
       state: absent
-    with_items: "{{ ceph_osd_docker_devices }}"
+    with_items: "{{ devices }}"
     ignore_errors: true
 
   - name: zap ceph osd disks
@@ -269,7 +269,7 @@
       {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
       zap_device
     with_items:
-      - "{{ ceph_osd_docker_devices }}"
+      - "{{ devices }}"
       - "{{ dedicated_devices|default([]) }}"
 
   - name: wait until the zap containers die
@@ -287,7 +287,7 @@
       name: "ceph-osd-zap-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
       state: absent
     with_items:
-      - "{{ ceph_osd_docker_devices }}"
+      - "{{ devices }}"
       - "{{ dedicated_devices|default([]) }}"
 
   - name: remove ceph osd service
