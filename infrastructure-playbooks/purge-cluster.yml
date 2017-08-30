@@ -165,7 +165,8 @@
 
 
 - name: purge ceph osd cluster
-
+  roles:
+    - ceph-defaults
   vars:
     osd_group_name: osds
 
@@ -321,9 +322,9 @@
 
   - name: zap osd disks
     shell: |
-      if (echo "{{ item }}" | grep -Esq '[0-9]{1,2}$'); then
-        raw_device=$(echo "{{ item }}" | grep -Eo '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}')
-        partition_nb=$(echo "{{ item }}" | grep -Eo '[0-9]{1,2}$')
+      if (echo "{{ item }}" | grep -Esq '{{ ceph_osd_partnum_regex }}'); then
+        raw_device=$(echo "{{ item }}" | grep -Eo '{{ ceph_osd_blkdev_regex }}')
+        partition_nb=$(echo "{{ item }}" | grep -Eo '{{ ceph_osd_partnum_regex }}')
         sgdisk --delete $partition_nb $raw_device
       else
         ceph-disk zap "{{ item }}"
@@ -375,14 +376,14 @@
   - name: zap ceph journal partitions
     shell: |
       # if the disk passed is a raw device AND the boot system disk
-      if echo "{{ item }}" | egrep -sq '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}$' && parted -s $(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}') print | grep -sq boot; then
+      if echo "{{ item }}" | egrep -sq '{{ ceph_osd_partition_regex }}$' && parted -s $(echo "{{ item }}" | egrep -o '{{ ceph_osd_blkdev_regex }}') print | grep -sq boot; then
         echo "Looks like {{ item }} has a boot partition,"
         echo "if you want to delete specific partitions point to the partition instead of the raw device"
         echo "Do not use your system disk!"
         exit 1
       fi
-      raw_device=$(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}')
-      partition_nb=$(echo "{{ item }}" | egrep -o '[0-9]{1,2}$')
+      raw_device=$(echo "{{ item }}" | egrep -o '{{ ceph_osd_blkdev_regex }}')
+      partition_nb=$(echo "{{ item }}" | egrep -o '{{ ceph_osd_partnum_regex }}')
       sgdisk --delete $partition_nb $raw_device
     with_items:
       - "{{ ceph_journal_partition_to_erase_path.stdout_lines | default([]) }}"
