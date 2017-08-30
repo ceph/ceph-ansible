@@ -22,10 +22,10 @@ class TestOSDs(object):
         for osd in node["osds"]:
             assert host.service("ceph-osd@%s" % osd).is_running
 
-    def test_osd_services_are_running(self, node, host):
+    def test_osd_services_are_enabled(self, node, host):
         # TODO: figure out way to paramaterize node['osds'] for this test
         for osd in node["osds"]:
-            assert host.service("ceph-osd@%s" % osd).is_running
+            assert host.service("ceph-osd@%s" % osd).is_enabled
 
     @pytest.mark.no_docker
     def test_osd_are_mounted(self, node, host):
