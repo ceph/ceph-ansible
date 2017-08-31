@@ -22,6 +22,7 @@ class TestOSDs(object):
         for osd in node["osds"]:
             assert host.service("ceph-osd@%s" % osd).is_running
 
+    @pytest.mark.no_lvm_scenario
     def test_osd_services_are_enabled(self, node, host):
         # TODO: figure out way to paramaterize node['osds'] for this test
         for osd in node["osds"]:
