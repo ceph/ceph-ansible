@@ -23,6 +23,9 @@ def node(host, request):
     if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
         pytest.skip("Not a valid test for node type: %s" % node_type)
 
+    if request.node.get_marker("no_lvm_scenario") and lvm_scenario:
+        pytest.skip("Not a valid test for lvm scenarios")
+
     if not lvm_scenario and request.node.get_marker("lvm_scenario"):
         pytest.skip("Not a valid test for non-lvm scenarios")
 
