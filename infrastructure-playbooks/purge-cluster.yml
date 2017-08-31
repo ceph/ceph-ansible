@@ -221,6 +221,14 @@
     when: ansible_service_mgr == 'upstart'
     with_items: "{{ osd_ids.stdout_lines }}"
 
+  - name: remove ceph udev rules
+    file:
+      path: "{{ item }}"
+      state: absent
+    with_items:
+      - /usr/lib/udev/rules.d/95-ceph-osd.rules
+      - /usr/lib/udev/rules.d/60-ceph-by-parttypeuuid.rules
+
   - name: see if ceph-disk-created data partitions are present
     shell: |
       ls /dev/disk/by-partlabel | grep -q "ceph.*.data"
@@ -244,6 +252,12 @@
       ls /dev/disk/by-partlabel | grep -q "ceph.*.block.wal"
     failed_when: false
     register: ceph_wal_partlabels
+
+  - name: see if ceph-disk-created lockbox partitions are present
+    shell: |
+      ls /dev/disk/by-partlabel | grep -q "ceph.*.lockbox"
+    failed_when: false
+    register: ceph_lockbox_partlabels
 
 #   Initial attempt, doing everything in Ansible...
 #  - name: see if encrypted partitions are present
@@ -274,8 +288,8 @@
       blkid -t TYPE=crypto_LUKS -s PARTLABEL -s PARTUUID | grep "ceph.*." | grep -o PARTUUID.* | cut -d '"' -f 2
     register: encrypted_ceph_partuuid
 
-  - name: get osd data mount points
-    shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
+  - name: get osd data and lockbox mount points
+    shell: "(grep /var/lib/ceph /proc/mounts || echo -n) | awk '{ print $2 }'"
     register: mounted_osd
     changed_when: false
 
@@ -308,7 +322,7 @@
     register: ceph_disk_present
 
   - name: delete dm-crypt devices if any
-    command: dmsetup remove {{ item }}
+    command: dmsetup remove --retry --force {{ item }}
     with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
     when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
 
@@ -319,16 +333,27 @@
     failed_when: false
     register: ceph_data_partition_to_erase_path
 
+  - name: get ceph lockbox partitions
+    shell: |
+      blkid | awk '/ceph lockbox/ { sub (":", "", $1); print $1 }'
+    when: ceph_lockbox_partlabels.rc == 0
+    failed_when: false
+    register: ceph_lockbox_partition_to_erase_path
+
   - name: zap osd disks
     shell: |
       if (echo "{{ item }}" | grep -Esq '[0-9]{1,2}$'); then
         raw_device=$(echo "{{ item }}" | grep -Eo '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}')
         partition_nb=$(echo "{{ item }}" | grep -Eo '[0-9]{1,2}$')
         sgdisk --delete $partition_nb $raw_device
+        udevadm settle --timeout=600
       else
         ceph-disk zap "{{ item }}"
+        udevadm settle --timeout=600
       fi
-    with_items: "{{ ceph_data_partition_to_erase_path.stdout_lines | default([]) }}"
+    with_items:
+      - "{{ ceph_data_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_lockbox_partition_to_erase_path.stdout_lines | default([]) }}"
     when:
       - ceph_disk_present.rc == 0
       - ceph_data_partlabels.rc == 0
@@ -372,7 +397,7 @@
     failed_when: false
     register: ceph_wal_partition_to_erase_path
 
-  - name: zap ceph journal partitions
+  - name: zap ceph journal/block db/block wal partitions
     shell: |
       # if the disk passed is a raw device AND the boot system disk
       if echo "{{ item }}" | egrep -sq '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}$' && parted -s $(echo "{{ item }}" | egrep -o '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p){1,2}') print | grep -sq boot; then
@@ -469,10 +494,22 @@
   become: true
 
   handlers:
+  - name: get osd data and lockbox mount points
+    shell: "(grep /var/lib/ceph /proc/mounts || echo -n) | awk '{ print $2 }'"
+    register: mounted_osd
+    changed_when: false
+    listen: "remove data"
+
+  - name: umount osd data partition
+    shell: umount {{ item }}
+    with_items: "{{ mounted_osd.stdout_lines }}"
+    listen: "remove data"
+
   - name: remove data
     file:
      path: /var/lib/ceph
      state: absent
+    listen: "remove data"
 
   tasks:
 
