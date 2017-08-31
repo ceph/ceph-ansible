@@ -8,7 +8,7 @@ SOCKET=/var/run/ceph/{{ cluster }}-mon.${MONITOR_NAME}.asok
 
 check_quorum() {
 while [ $RETRIES -ne 0 ]; do
-  MEMBERS=$({{ docker_exec_cmd }} ceph --cluster {{ cluster }}   -s --format json | sed -r 's/.*"quorum_names":(\[[^]]+\]).*/\1/')
+  MEMBERS=$({{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s --format json | sed -r 's/.*"quorum_names":(\[[^]]+\]).*/\1/')
   test "${MEMBERS/$MONITOR_NAME}" != "$MEMBERS" && exit 0
   sleep $DELAY
   let RETRIES=RETRIES-1

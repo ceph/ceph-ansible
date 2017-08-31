@@ -18,7 +18,7 @@
     command: /tmp/restart_mon_daemon.sh
     listen: "restart ceph mons"
   when:
-# We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - socket.rc == 0
     - mon_group_name in group_names
 
@@ -42,8 +42,8 @@
   listen: "restart ceph osds"
   with_items: "{{ socket_osd_container.results | default([]) }}"
   when:
-  # We do not want to run these checks on initial deployment (`socket_osd_container.results[n].rc == 0`)
-  # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
+    # We do not want to run these checks on initial deployment (`socket_osd_container.results[n].rc == 0`)
+    # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
     - containerized_deployment
     - ((crush_location is defined and crush_location) or item.get('rc') == 0)
     - handler_health_osd_check
@@ -55,8 +55,8 @@
   command: /tmp/restart_osd_daemon.sh
   listen: "restart ceph osds"
   when:
-  # We do not want to run these checks on initial deployment (`socket_osd_container.results[n].rc == 0`)
-  # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
+    # We do not want to run these checks on initial deployment (`socket_osd_container.results[n].rc == 0`)
+    # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
     - ((crush_location is defined and crush_location) or socket.rc == 0)
     - ceph_current_fsid.rc == 0
     - handler_health_osd_check
@@ -64,28 +64,44 @@
     - inventory_hostname in play_hosts
     - osd_group_name in group_names
 
-- name: restart ceph mdss
-  service:
-    name: ceph-mds@{{ mds_name }}
-    state: restarted
-  # serial: 1 would be the proper solution here, but that can only be set on play level
-  # upstream issue: https://github.com/ansible/ansible/issues/12170
-  run_once: true
-  with_items: "{{ groups.get(mds_group_name, []) }}"
-  delegate_to: "{{ item }}"
+- name: copy mds restart script
+  template:
+    src: restart_mds_daemon.sh.j2
+    dest: /tmp/restart_mds_daemon.sh
+    owner: root
+    group: root
+    mode: 0750
+  listen: "restart ceph mdss"
   when:
+    - inventory_hostname in play_hosts
     - mds_group_name in group_names
 
-- name: restart ceph rgws
-  service:
-    name: ceph-radosgw@rgw.{{ ansible_hostname }}
-    state: restarted
-  # serial: 1 would be the proper solution here, but that can only be set on play level
-  # upstream issue: https://github.com/ansible/ansible/issues/12170
-  run_once: true
-  with_items: "{{ groups.get(rgw_group_name, []) }}"
-  delegate_to: "{{ item }}"
+- name: restart ceph mds daemon(s)
+  command: /tmp/restart_mds_daemon.sh
+  listen: "restart ceph mdss"
   when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - socket.rc == 0
+    - mds_group_name in group_names
+
+- name: copy rgw restart script
+  template:
+    src: restart_rgw_daemon.sh.j2
+    dest: /tmp/restart_rgw_daemon.sh
+    owner: root
+    group: root
+    mode: 0750
+  listen: "restart ceph rgws"
+  when:
+    - inventory_hostname in play_hosts
+    - rgw_group_name in group_names
+
+- name: restart ceph rgw daemon(s)
+  command: /tmp/restart_rgw_daemon.sh
+  listen: "restart ceph rgws"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - socket.rc == 0
     - rgw_group_name in group_names
 
 - name: restart ceph nfss
