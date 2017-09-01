@@ -18,23 +18,24 @@ ExecStart=/usr/bin/docker run --rm --net=host \
   {% if radosgw_address_block | length > 0 %}
     {% if ip_version == 'ipv4' -%}
   -e RGW_CIVETWEB_IP={{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }} \
-    {%- elif ip_version == 'ipv6' -%}
+    {% elif ip_version == 'ipv6' -%}
   -e RGW_CIVETWEB_IP=[{{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }}] \
-    {%- endif %}
+    {% endif -%}
   {% elif hostvars[inventory_hostname]['radosgw_address'] is defined and hostvars[inventory_hostname]['radosgw_address'] != '0.0.0.0' -%}
     {% if ip_version == 'ipv4' -%}
   -e RGW_CIVETWEB_IP={{ hostvars[inventory_hostname]['radosgw_address'] }} \
-    {%- elif ip_version == 'ipv6' -%}
+    {% elif ip_version == 'ipv6' -%}
   -e RGW_CIVETWEB_IP=[{{ hostvars[inventory_hostname]['radosgw_address'] }}] \
-    {% endif %}
-  {%- else -%}
+    {% endif -%}
+  {% else -%}
     {% set interface = ["ansible_",radosgw_interface]|join %}
       {% if ip_version == 'ipv6' -%}
   -e RGW_CIVETWEB_IP=[{{ hostvars[inventory_hostname][interface][ip_version][0]['address'] }}] \
-      {%- elif ip_version == 'ipv4' -%}
+      {% elif ip_version == 'ipv4' -%}
   -e RGW_CIVETWEB_IP={{ hostvars[inventory_hostname][interface][ip_version]['address'] }} \
-      {% endif %}
-  {%- endif %}
+      {% endif -%}
+  {% endif -%}
+
   -v /etc/localtime:/etc/localtime:ro \
   -e CEPH_DAEMON=RGW \
   -e CLUSTER={{ cluster }} \
