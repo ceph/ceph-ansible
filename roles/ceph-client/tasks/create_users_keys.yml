@@ -4,7 +4,9 @@
   with_items: "{{ pools }}"
   changed_when: false
   failed_when: false
-  when: pools | length > 0
+  when: 
+    - pools | length > 0
+    - copy_admin_key
 
 - name: create key(s)
   shell: "ceph-authtool -C /etc/ceph/{{ cluster }}.{{ item.name }}.keyring --name {{ item.name }} --add-key {{ item.key }} --cap mon \"{{ item.mon_cap|default('') }}\" --cap osd \"{{ item.osd_cap|default('') }}\" --cap mds \"{{ item.mds_cap|default('') }}\""
@@ -22,14 +24,19 @@
   failed_when: false
   with_items: "{{ keys }}"
   register: keys_exist
+  when:
+    - copy_admin_key
 
 - name: add key(s) to ceph
   command: "ceph --cluster {{ cluster }} auth import -i /etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
   changed_when: false
   with_together:
     - "{{ keys }}"
-    - "{{ keys_exist.results }}"
-  when: item.1.rc != 0
+    - "{{ keys_exist.results | default([]) }}"
+  when:
+    - not item.1.get("skipped")    
+    - copy_admin_key
+    - item.1.rc != 0
 
 - name: setfacl for key(s)
   acl:
