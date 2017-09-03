@@ -17,3 +17,7 @@ class TestNFSs(object):
     @pytest.mark.no_docker
     def test_nfs_services_are_enabled(self, node, host):
         assert host.service("nfs-ganesha").is_enabled
+
+    @pytest.mark.no_docker
+    def test_nfs_config_override(self, node, host):
+        assert host.file("/etc/ganesha/ganesha.conf").contains("Entries_HWMark")

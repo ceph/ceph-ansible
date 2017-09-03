@@ -12,15 +12,17 @@ EXPORT
 
 	Access_Type = {{ ceph_nfs_ceph_access_type }};
 
-	NFS_Protocols = {{ ceph_nfs_ceph_protocols }};
+	Protocols = {{ ceph_nfs_ceph_protocols }};
 
-	Transport_Protocols = TCP;
+	Transports = TCP;
 
 	Sectype = sys,krb5,krb5i,krb5p;
 
 	FSAL {
 		Name = CEPH;
 	}
+
+        {{ ganesha_ceph_export_overrides | default(None) }}
 }
 {% endif %}
 {% if nfs_obj_gw %}
@@ -34,9 +36,9 @@ EXPORT
 
 	Access_Type = {{ ceph_nfs_rgw_access_type }};
 
-	NFS_Protocols = {{ ceph_nfs_rgw_protocols }};
+	Protocols = {{ ceph_nfs_rgw_protocols }};
 
-	Transport_Protocols = TCP;
+	Transports = TCP;
 
 	Sectype = sys,krb5,krb5i,krb5p;
 
@@ -46,6 +48,9 @@ EXPORT
 		Access_Key_Id ="{{ ceph_nfs_rgw_access_key }}";
 		Secret_Access_Key = "{{ ceph_nfs_rgw_secret_key }}";
 	}
+
+        {{ ganesha_rgw_export_overrides | default(None) }}
+
 }
 {% endif %}
 
@@ -55,4 +60,8 @@ LOG {
                 destination = "{{ ceph_nfs_log_file }}";
                 enable = active;
         }
+
+        {{ ganesha_log_overrides | default(None) }}
 }
+
+{{ ganesha_conf_overrides | default(None) }}

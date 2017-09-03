@@ -35,12 +35,17 @@
 - name: generate ganesha configuration file
   action: config_template
   args:
-    src: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-common/templates/ganesha.conf.j2"
+    src: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-nfs/templates/ganesha.conf.j2"
     dest: /etc/ganesha/ganesha.conf
     owner: "root"
     group: "root"
     mode: "0644"
     config_type: ini
+  notify:
+    - restart ceph nfss
+
+- name: cat ganesha conf file to view overrides
+  command: cat /etc/ganesha/ganesha.conf
 
 - name: start nfs gateway service
   service:
