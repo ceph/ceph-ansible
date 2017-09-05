@@ -30,9 +30,9 @@
 
   hosts:
     - "{{ mon_group_name|default('mons') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ osd_group_name|default('osds') }}"
     - "{{ mds_group_name|default('mdss') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
@@ -134,6 +134,48 @@
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
+
+
+- name: switching from non-containerized to containerized ceph mgr
+
+  hosts:
+    - "{{ mgr_group_name|default('mgrs') }}"
+
+  vars:
+    containerized_deployment: true
+    mgr_group_name: mgrs
+
+  serial: 1
+  become: true
+
+  pre_tasks:
+    - name: stop non-containerized ceph mgr(s)
+      service:
+        name: "ceph-mgr@{{ ansible_hostname }}"
+        state: stopped
+        enabled: no
+
+    - set_fact:
+        ceph_uid: 64045
+      when: ceph_docker_image_tag | match("latest") or ceph_docker_image_tag | search("ubuntu")
+
+    - set_fact:
+        ceph_uid: 167
+      when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph") or ceph_docker_image_tag | search("fedora")
+
+    - name: set proper ownership on ceph directories
+      file:
+        path: "{{ item }}"
+        owner: "{{ ceph_uid }}"
+        recurse: yes
+      with_items:
+        - /var/lib/ceph
+        - /etc/ceph
+
+  roles:
+    - ceph-defaults
+    - ceph-docker-common
+    - ceph-mgr
 
 
 - name: switching from non-containerized to containerized ceph osd
