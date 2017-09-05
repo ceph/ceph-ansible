@@ -118,7 +118,11 @@
       shell: |
         ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["quorum_names"])'
       delegate_to: "{{ mon_host }}"
+      failed_when: false
       register: result
+      until: mon_to_kill_hostname not in result.stdout
+      retries: 2
+      delay: 10
 
     - name: please remove the monitor from your ceph configuration file
       debug:
