@@ -7,17 +7,24 @@ EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/docker stop ceph-rbd-mirror-{{ ansible_hostname }}
 ExecStartPre=-/usr/bin/docker rm ceph-rbd-mirror-{{ ansible_hostname }}
 ExecStart=/usr/bin/docker run --rm --net=host \
-   {% if not containerized_deployment_with_kv -%}
-   -v /etc/ceph:/etc/ceph \
-   {% else -%}
-   -e KV_TYPE={{kv_type}} \
-   -e KV_IP={{kv_endpoint}} \
-   -e KV_PORT={{kv_port}} \
-   {% endif -%}
-   -v /etc/localtime:/etc/localtime:ro \
-   -e CEPH_DAEMON=RBD_MIRROR \
-   --name=ceph-rbd-mirror-{{ ansible_hostname }} \
-   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  --memory={{ ceph_rbd_mirorr_docker_memory_limit }} \
+  {% if docker_version.split('.')[0] | version_compare('13', '>=') -%}
+  --cpus={{ ceph_rbd_mirror_docker_cpu_limit }} \
+  {% else -%}
+  --cpu-quota={{ ceph_rbd_mirorr_docker_cpu_limit * 100000 }} \
+  {% endif -%}
+  {% if not containerized_deployment_with_kv -%}
+  -v /etc/ceph:/etc/ceph \
+  {% else -%}
+  -e KV_TYPE={{kv_type}} \
+  -e KV_IP={{kv_endpoint}} \
+  -e KV_PORT={{kv_port}} \
+  {% endif -%}
+  -v /etc/localtime:/etc/localtime:ro \
+  -e CEPH_DAEMON=RBD_MIRROR \
+  --name=ceph-rbd-mirror-{{ ansible_hostname }} \
+  {{ ceph_rbd_mirror_docker_extra_env }} \
+  {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
 ExecStopPost=-/usr/bin/docker stop ceph-rbd-mirror-{{ ansible_hostname }}
 Restart=always
 RestartSec=10s

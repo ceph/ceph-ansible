@@ -54,6 +54,12 @@ expose_partitions $1
   --net=host \
   --privileged=true \
   --pid=host \
+  --memory={{ ceph_osd_docker_memory_limit }} \
+  {% if docker_version.split('.')[0] | version_compare('13', '>=') -%}
+  --cpus={{ ceph_osd_docker_cpu_limit }} \
+  {% else -%}
+  --cpu-quota={{ ceph_osd_docker_cpu_limit * 100000 }} \
+  {% endif -%}
   -v /dev:/dev \
   -v /etc/localtime:/etc/localtime:ro \
   -v /var/lib/ceph:/var/lib/ceph \
