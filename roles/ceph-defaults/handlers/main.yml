@@ -19,7 +19,7 @@
     listen: "restart ceph mons"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-    - socket.rc == 0
+    - mon_socket.rc == 0
     - mon_group_name in group_names
 
 # This does not just restart OSDs but everything else too. Unfortunately
@@ -57,7 +57,7 @@
   when:
     # We do not want to run these checks on initial deployment (`socket_osd_container.results[n].rc == 0`)
     # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
-    - ((crush_location is defined and crush_location) or socket.rc == 0)
+    - ((crush_location is defined and crush_location) or osd_socket.rc == 0)
     - ceph_current_fsid.rc == 0
     - handler_health_osd_check
     # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
@@ -76,12 +76,18 @@
     - inventory_hostname in play_hosts
     - mds_group_name in group_names
 
+- name: debug socket mds
+  debug: msg="{{mds_socket}}"
+  listen: "restart ceph mdss"
+  when:
+    - mds_group_name in group_names
+
 - name: restart ceph mds daemon(s)
   command: /tmp/restart_mds_daemon.sh
   listen: "restart ceph mdss"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-    - socket.rc == 0
+    - mds_socket.rc == 0
     - mds_group_name in group_names
 
 - name: copy rgw restart script
@@ -101,7 +107,7 @@
   listen: "restart ceph rgws"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-    - socket.rc == 0
+    - rgw_socket.rc == 0
     - rgw_group_name in group_names
 
 - name: restart ceph nfss

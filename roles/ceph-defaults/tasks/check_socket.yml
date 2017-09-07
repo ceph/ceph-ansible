@@ -1,12 +1,52 @@
 ---
 # These checks are used to avoid running handlers at initial deployment.
-- name: check for a ceph socket
+- name: check for a ceph mon socket
   shell: |
-    {{ docker_exec_cmd }} bash -c 'stat {{ rbd_client_admin_socket_path }}/*.asok > /dev/null 2>&1'
+    {{ docker_exec_cmd }} bash -c 'stat {{ rbd_client_admin_socket_path }}/{{ cluster }}-mon*.asok > /dev/null 2>&1'
   changed_when: false
   failed_when: false
   always_run: true
-  register: socket
+  register: mon_socket
+
+- name: check for a ceph osd socket
+  shell: |
+    {{ docker_exec_cmd }} bash -c 'stat {{ rbd_client_admin_socket_path }}/{{ cluster }}-osd*.asok > /dev/null 2>&1'
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: osd_socket
+
+- name: check for a ceph mds socket
+  shell: |
+    {{ docker_exec_cmd }} bash -c 'stat {{ rbd_client_admin_socket_path }}/{{ cluster }}-mds*.asok > /dev/null 2>&1'
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: mds_socket
+
+- name: check for a ceph rgw socket
+  shell: |
+    {{ docker_exec_cmd }} bash -c 'stat {{ rbd_client_admin_socket_path }}/{{ cluster }}-client.rgw*.asok > /dev/null 2>&1'
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: rgw_socket
+
+- name: check for a ceph mgr socket
+  shell: |
+    {{ docker_exec_cmd }} bash -c 'stat {{ rbd_client_admin_socket_path }}/{{ cluster }}-mgr*.asok > /dev/null 2>&1'
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: mgr_socket
+
+- name: check for a ceph rbd mirror socket
+  shell: |
+    {{ docker_exec_cmd }} bash -c 'stat {{ rbd_client_admin_socket_path }}/{{ cluster }}-client.rbd-mirror*.asok > /dev/null 2>&1'
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: rbd_mirror_socket
 
 - name: check for a ceph socket in containerized deployment (osds)
   shell: |
