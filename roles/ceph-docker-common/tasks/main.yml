@@ -22,6 +22,15 @@
     monitor_name: "{{ ansible_fqdn }}"
   when: mon_use_fqdn
 
+- name: get docker version
+  command: docker --version
+  changed_when: false
+  always_run: yes
+  register: docker_version
+
+- set_fact:
+    docker_version: "{{ docker_version.stdout.split(' ')[2] }}"
+
 - name: check if a cluster is already running
   command: "docker ps -q -a --filter='ancestor={{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'"
   register: ceph_health

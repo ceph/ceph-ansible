@@ -7,19 +7,25 @@ EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/docker stop ceph-mgr-{{ ansible_hostname }}
 ExecStartPre=-/usr/bin/docker rm ceph-mgr-{{ ansible_hostname }}
 ExecStart=/usr/bin/docker run --rm --net=host \
-   {% if not containerized_deployment_with_kv -%}
-   -v /var/lib/ceph:/var/lib/ceph \
-   -v /etc/ceph:/etc/ceph \
-   {% else -%}
-   -e KV_TYPE={{kv_type}} \
-   -e KV_IP={{kv_endpoint}} \
-   -e KV_PORT={{kv_port}} \
-   {% endif -%}
-   -v /etc/localtime:/etc/localtime:ro \
-   -e CEPH_DAEMON=MGR \
-   {{ ceph_mgr_docker_extra_env }} \
-   --name=ceph-mgr-{{ ansible_hostname }} \
-   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  --memory={{ ceph_mgr_docker_memory_limit }} \
+  {% if docker_version.split('.')[0] | version_compare('13', '>=') -%}
+  --cpus={{ ceph_mgr_docker_cpu_limit }} \
+  {% else -%}
+  --cpu-quota={{ ceph_mgr_docker_cpu_limit * 100000 }} \
+  {% endif -%}
+  {% if not containerized_deployment_with_kv -%}
+  -v /var/lib/ceph:/var/lib/ceph \
+  -v /etc/ceph:/etc/ceph \
+  {% else -%}
+  -e KV_TYPE={{kv_type}} \
+  -e KV_IP={{kv_endpoint}} \
+  -e KV_PORT={{kv_port}} \
+  {% endif -%}
+  -v /etc/localtime:/etc/localtime:ro \
+  -e CEPH_DAEMON=MGR \
+  {{ ceph_mgr_docker_extra_env }} \
+  --name=ceph-mgr-{{ ansible_hostname }} \
+  {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
 ExecStopPost=-/usr/bin/docker stop ceph-mgr-{{ ansible_hostname }}
 Restart=always
 RestartSec=10s
