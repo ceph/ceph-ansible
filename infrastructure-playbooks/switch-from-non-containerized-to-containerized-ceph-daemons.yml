@@ -203,8 +203,18 @@
     - name: collect osd devices
       shell: |
         blkid | awk '/ceph data/ { sub ("1:", "", $1); print $1 }'
-      register: devices
+      register: collect_devices
       changed_when: false
+      when:
+        - devices is not defined or (devices is defined and devices == [])
+
+    - name: set devices
+      set_fact:
+        devices: "{{ collect_devices.stdout_lines | list }}"
+      when:
+        - collect_devices is defined
+        - not collect_devices.get("skipped")
+        - collect_devices != []
 
     - name: stop non-containerized ceph osd(s)
       systemd:
@@ -249,7 +259,7 @@
         docker ps | grep -sq {{ item | regex_replace('/', '') }}
       changed_when: false
       failed_when: false
-      with_items: "{{ devices.stdout_lines }}"
+      with_items: "{{ devices }}"
       register: osd_running
 
     - name: unmount all the osd directories
@@ -257,12 +267,10 @@
       changed_when: false
       failed_when: false
       with_together:
-        - "{{ devices.stdout_lines }}"
+        - "{{ devices }}"
         - "{{ osd_running.results }}"
       when:
         - item.1.get("rc", 0) != 0
-
-    - set_fact: devices={{ devices.stdout_lines }}
 
   roles:
     - ceph-defaults
