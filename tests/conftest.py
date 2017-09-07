@@ -19,6 +19,7 @@ def node(host, request):
     ceph_stable_release = os.environ.get("CEPH_STABLE_RELEASE", "kraken")
     node_type = ansible_vars["group_names"][0]
     docker = ansible_vars.get("docker")
+    osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
     lvm_scenario = ansible_vars.get("osd_scenario") == 'lvm'
     if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
         pytest.skip("Not a valid test for node type: %s" % node_type)
@@ -50,7 +51,10 @@ def node(host, request):
     address = host.interface("eth1").addresses[0]
     subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
     num_mons = len(ansible_vars["groups"]["mons"])
-    num_devices = len(ansible_vars.get("devices", []))
+    if osd_auto_discovery:
+        num_devices = 3
+    else:
+        num_devices = len(ansible_vars.get("devices", []))
     if not num_devices:
         num_devices = len(ansible_vars.get("lvm_volumes", []))
     num_osd_hosts = len(ansible_vars["groups"]["osds"])
