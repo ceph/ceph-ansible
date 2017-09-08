@@ -199,6 +199,7 @@
         systemctl list-units | grep "loaded active" | grep -Eo 'ceph-osd@[0-9]{1,2}.service'
       register: running_osds
       changed_when: false
+      failed_when: false
 
     - name: collect osd devices
       shell: |
@@ -222,7 +223,8 @@
         state: stopped
         enabled: no
         masked: yes
-      with_items: "{{ running_osds.stdout_lines }}"
+      with_items: "{{ running_osds.stdout_lines | default([])}}"
+      when: running_osds != []
 
     - set_fact:
         ceph_uid: 64045
