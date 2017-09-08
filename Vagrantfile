@@ -363,7 +363,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   (0..NRBD_MIRRORS - 1).each do |i|
-    config.vm.define "#{LABEL_PREFIX}rbd_mirror#{i}" do |rbd_mirror|
+    config.vm.define "#{LABEL_PREFIX}rbd-mirror#{i}" do |rbd_mirror|
       rbd_mirror.vm.hostname = "#{LABEL_PREFIX}rbd-mirror#{i}"
       if ASSIGN_STATIC_IP
         rbd_mirror.vm.network :private_network,
