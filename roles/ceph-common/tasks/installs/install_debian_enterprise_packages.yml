@@ -43,9 +43,25 @@
 
 - name: install red hat storage nfs gateway for debian
   apt:
-    name: nfs-ganesha-fsal
+    name: nfs-ganesha
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when: nfs_group_name in group_names
+
+- name: install red hat storage nfs file gateway
+  apt:
+    name: nfs-ganesha-ceph
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when: 
+    - nfs_group_name in group_names
+    - nfs_file_gw
+
+- name: install red hat storage nfs obj gateway
+  apt:
+    name: nfs-ganesha-rgw
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when: 
+    - nfs_group_name in group_names
+    - nfs_obj_gw
 
 - name: install ceph mgr for debian
   apt:

@@ -7,14 +7,20 @@
 
 fetch_directory: fetch/
 
+# Even though NFS nodes should not have the admin key
+# at their disposal, some people might want to have it
+# distributed on RGW nodes. Setting 'copy_admin_key' to 'true'
+# will copy the admin key to the /etc/ceph/ directory
+copy_admin_key: false
+
 #######################
 # Access type options #
 #######################
 # These are currently in ceph-common defaults because nfs_obj_gw shared with ceph-rgw
 # Enable NFS File access
-#nfs_file_gw: true
+nfs_file_gw: false
 # Enable NFS Object access
-#nfs_obj_gw: false
+nfs_obj_gw: true
 
 ######################
 # NFS Ganesha Config #
@@ -46,23 +52,27 @@ ceph_nfs_rgw_user: "cephnfs"
 #ceph_nfs_rgw_access_key: "QFAMEDSJP5DEKJO0DDXY"
 #ceph_nfs_rgw_secret_key: "iaSFLDVvDdQt6lkNzHyW4fPLZugBAI1g17LO0+87[MAC[M#C"
 
-
 ###################
 # CONFIG OVERRIDE #
 ###################
 
 # Ganesha configuration file override.
-# This allows you to specify more configuration options
-# using an INI style format.
-# The following sections are supported: [global], [mon], [osd], [mds], [rgw]
+# These multiline strings will be appended to the contents of the blocks in ganesha.conf and
+# must be in the correct ganesha.conf format seen here:
+# https://github.com/nfs-ganesha/nfs-ganesha/blob/next/src/config_samples/ganesha.conf.example
 #
 # Example:
-# ceph_conf_overrides:
-#   global:
-#     foo: 1234
-#     bar: 5678
+#CACHEINODE {
+        #Entries_HWMark = 100000;
+#}
 #
-ganesha_conf_overrides: {}
+#ganesha_ceph_export_overrides:
+#ganesha_rgw_export_overrides:
+#ganesha_log_overrides:
+#ganesha_conf_overrides: |
+#    CACHEINODE {
+            #Entries_HWMark = 100000;
+#    }
 
 ##########
 # DOCKER #

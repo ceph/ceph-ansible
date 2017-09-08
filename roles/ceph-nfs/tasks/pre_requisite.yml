@@ -1,4 +1,26 @@
 ---
+- name: create rgw nfs user
+  command: radosgw-admin --cluster {{ cluster }} user create --uid={{ ceph_nfs_rgw_user }} --display-name="RGW NFS User"
+  register: rgwuser
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when: nfs_obj_gw
+
+- name: set access key
+  set_fact:
+    ceph_nfs_rgw_access_key: "{{ (rgwuser.stdout | from_json)['keys'][0]['access_key'] }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - nfs_obj_gw
+    - ceph_nfs_rgw_access_key is not defined
+
+- name: set secret key
+  set_fact:
+    ceph_nfs_rgw_secret_key: "{{(rgwuser.stdout | from_json)['keys'][0]['secret_key']}}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - nfs_obj_gw
+    - ceph_nfs_rgw_secret_key is not defined
+
 - name: create nfs gateway directories
   file:
     path: "{{ item }}"
@@ -10,31 +32,17 @@
     - /var/lib/nfs/ganesha
     - /var/run/ganesha
 
-- name: create rgw nfs user
-  command: radosgw-admin --cluster {{ cluster }} user create --uid={{ ceph_nfs_rgw_user }} --display-name="RGW NFS User"
-  register: rgwuser
-  when: nfs_obj_gw
-
-- name: set access key
-  set_fact:
-    ceph_nfs_rgw_access_key: "{{ (rgwuser.stdout | from_json)['keys'][0]['access_key'] }}"
-  when: nfs_obj_gw
-
-- name: set secret key
-  set_fact:
-    ceph_nfs_rgw_secret_key: "{{(rgwuser.stdout | from_json)['keys'][0]['secret_key']}}"
-  when: nfs_obj_gw
-
 - name: generate ganesha configuration file
   action: config_template
   args:
-    src: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-common/templates/ganesha.conf.j2"
+    src: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-nfs/templates/ganesha.conf.j2"
     dest: /etc/ganesha/ganesha.conf
     owner: "root"
     group: "root"
     mode: "0644"
-    config_overrides: "{{ ganesha_conf_overrides }}"
     config_type: ini
+  notify:
+    - restart ceph nfss
 
 - name: start nfs gateway service
   service:

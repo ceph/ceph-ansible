@@ -293,8 +293,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   (0..NNFSS - 1).each do |i|
-    config.vm.define "nfs#{i}" do |nfs|
-      nfs.vm.hostname = "#{LABEL_PREFIX}ceph-nfs#{i}"
+    config.vm.define "#{LABEL_PREFIX}nfs#{i}" do |nfs|
+      nfs.vm.hostname = "#{LABEL_PREFIX}nfs#{i}"
       if ASSIGN_STATIC_IP
         nfs.vm.network :private_network,
           ip: "#{PUBLIC_SUBNET}.6#{i}"
