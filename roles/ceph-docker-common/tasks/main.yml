@@ -89,19 +89,5 @@
 
 - include: create_configs.yml
 
-# Only include 'fetch_configs.yml' when:
-# - we are deploying containers without kv AND host is either a mon OR a nfs OR an osd
-# OR
-# - host is either a mdss OR mgrs OR rgws
-- include: fetch_configs.yml
-  when:
-    - (not containerized_deployment_with_kv and
-        ((inventory_hostname in groups.get(mon_group_name, [])) or
-          (inventory_hostname in groups.get(nfs_group_name, [])) or
-          (inventory_hostname in groups.get(osd_group_name, [])))) or
-      (inventory_hostname in groups.get('mdss', [])) or
-      (inventory_hostname in groups.get('mgrs', [])) or
-      (inventory_hostname in groups.get('rgws', []))
-
 - include: selinux.yml
   when: ansible_os_family == 'RedHat'

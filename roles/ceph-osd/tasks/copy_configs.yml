@@ -3,10 +3,14 @@
   set_fact:
     ceph_config_keys:
       - /etc/ceph/{{ cluster }}.conf
-      - /etc/ceph/{{ cluster }}.client.admin.keyring
-      - /var/lib/ceph/radosgw/keyring
+      - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
 
-- name: stat for config and keys
+- name: wait for ceph.conf and keys
+  local_action: wait_for path={{ fetch_directory }}/{{ fsid }}/{{ item.0 }}
+  become: false
+  with_items: "{{ ceph_config_keys }}"
+
+- name: stat for ceph config and keys
   local_action: stat path={{ fetch_directory }}/{{ fsid }}/{{ item }}
   with_items: "{{ ceph_config_keys }}"
   changed_when: false
@@ -15,18 +19,15 @@
   always_run: true
   register: statconfig
 
-- name: try to fetch config and keys
+- name: try to copy ceph config and keys
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/{{ item.0 }}"
     dest: "{{ item.0 }}"
-    owner: "64045"
-    group: "64045"
+    owner: root
+    group: root
     mode: 0644
   changed_when: false
-  with_together:
-    - "{{ ceph_config_keys }}"
-    - "{{ statconfig.results }}"
-  when: item.1.stat.exists == true
+  with_items: "{{ ceph_config_keys }}"
 
 - name: set selinux permissions
   shell: |
