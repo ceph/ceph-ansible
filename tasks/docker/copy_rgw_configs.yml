@@ -1,0 +1,38 @@
+---
+- name: set config and keys paths
+  set_fact:
+    rgw_config_keys:
+      - "/var/lib/ceph/radosgw/{{ ansible_hostname }}/keyring"
+  when: nfs_obj_gw
+
+- name: wait for rgw keyring
+  wait_for:
+    path: "/var/lib/ceph/radosgw/{{ ansible_hostname }}/keyring"
+  when:
+    - nfs_obj_gw
+    - inventory_hostname == groups[rgw_group_name][0]
+
+- name: stat for config and keys
+  local_action: stat path={{ fetch_directory }}/{{ fsid }}/{{ item }}
+  with_items: "{{ rgw_config_keys }}"
+  changed_when: false
+  become: false
+  failed_when: false
+  always_run: true
+  register: statconfig
+  when:
+    - nfs_obj_gw
+    - inventory_hostname == groups[rgw_group_name][0]
+
+- name: push ceph files to the ansible server
+  fetch:
+    src: "{{ item.0 }}"
+    dest: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/radosgw/keyring"
+    flat: yes
+  with_together:
+    - "{{ rgw_config_keys }}"
+    - "{{ statconfig.results }}"
+  when:
+    - nfs_obj_gw
+    - item.1.stat.exists == false
+    - inventory_hostname == groups[rgw_group_name][0]
