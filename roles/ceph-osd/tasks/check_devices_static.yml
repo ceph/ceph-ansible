@@ -1,22 +1,12 @@
 ---
-- name: check if the device is a partition
-  shell: "readlink -f {{ item }} | egrep '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p)[0-9]{1,2}|fio[a-z]{1,2}[0-9]{1,2}$'"
-  with_items: "{{ devices }}"
-  changed_when: false
-  failed_when: false
-  always_run: true
-  register: ispartition_results
-
 - name: check the partition status of the osd disks
-  shell: "parted --script {{ item.1 }} print > /dev/null 2>&1"
-  with_together:
-    - "{{ ispartition_results.results }}"
+  command: "parted --script {{ item }} print"
+  with_items:
     - "{{ devices }}"
   changed_when: false
   failed_when: false
   always_run: true
   register: osd_partition_status_results
-  when: item.0.rc != 0
 
 # NOTE: The following calls to sgdisk are retried because sgdisk is known to
 # fully wipe a device the first time around. There is no need to halt execution
@@ -46,12 +36,10 @@
     - containerized_deployment
 
 - name: check if a partition named 'ceph' exists
-  shell: "parted --script {{ item.1 }} print | egrep -sq '^ 1.*ceph'"
-  with_together:
-    - "{{ ispartition_results.results }}"
+  shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"
+  with_items:
     - "{{ devices }}"
   changed_when: false
   failed_when: false
   always_run: true
   register: parted_results
-  when: item.0.rc != 0

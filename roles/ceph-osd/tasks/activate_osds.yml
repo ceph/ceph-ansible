@@ -3,29 +3,23 @@
 # partition.
 
 - name: activate osd(s) when device is a disk
-  command: ceph-disk activate {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
-  with_together:
-    - "{{ ispartition_results.results }}"
+  command: ceph-disk activate {{ item | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
+  with_items:
     - "{{ devices|unique }}"
   changed_when: false
   failed_when: false
   register: activate_osd_disk
   when:
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != "0"
     - not osd_auto_discovery
 
 - name: activate osd(s) when device is a disk (dmcrypt)
-  command: ceph-disk activate --dmcrypt {{ item.1 | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
-  with_together:
-    - "{{ ispartition_results.results }}"
+  command: ceph-disk activate --dmcrypt {{ item | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
+  with_items:
     - "{{ devices|unique }}"
   changed_when: false
   failed_when: false
   register: activate_osd_disk_dmcrypt
   when:
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != "0"
     - not osd_auto_discovery
     - dmcrypt
 
@@ -44,13 +38,10 @@
 
 # NOTE (leseb): this task is for partitions because we don't explicitly use a partition.
 - name: activate osd(s) when device is a partition
-  command: "ceph-disk activate {{ item.1 }}"
-  with_together:
-    - "{{ ispartition_results.results }}"
+  command: "ceph-disk activate {{ item }}"
+  with_items:
     - "{{ devices|unique }}"
   changed_when: false
   failed_when: false
   when:
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) == "0"
     - not osd_auto_discovery
