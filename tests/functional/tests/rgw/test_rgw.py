@@ -52,3 +52,9 @@ class TestRGWs(object):
         output = host.check_output(cmd)
         daemons = [i for i in json.loads(output)["servicemap"]["services"]["rgw"]["daemons"]]
         assert hostname in daemons
+
+    @pytest.mark.docker
+    def test_rgw_compression_is_enabled(self, node, host):
+        cmd = "sudo radosgw-admin zone get --rgw-zone=default"
+        output = host.check_output(cmd)
+        assert "zlib" in output
