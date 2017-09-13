@@ -50,7 +50,7 @@
     - name: exit playbook, if no osd(s) was/were given
       fail:
         msg: "osd_to_kill must be declared
-          Exiting shrink-osd playbook, no OSD()s was/were removed.
+          Exiting shrink-osd playbook, no OSD(s) was/were removed.
            On the command line when invoking the playbook, you can use
            -e osd_to_kill=0,1,2,3 argument."
       when: osd_to_kill is not defined
@@ -75,7 +75,7 @@
       register: find_osd_hosts
 
     - set_fact:
-        osd_hosts: "{{ (item.stdout | from_json).crush_location.host }}"
+        osd_hosts: "{{ osd_hosts | default([]) + [ (item.stdout | from_json).crush_location.host ] }}"
       with_items: "{{ find_osd_hosts.results }}"
 
     - name: check if ceph admin key exists on the osd nodes
@@ -96,6 +96,7 @@
       command: ceph-disk deactivate --cluster {{ cluster }} --deactivate-by-id {{ item.0 }} --mark-out
       register: deactivate
       ignore_errors: yes
+      run_once: true
       with_together:
         - "{{ osd_to_kill.split(',') }}"
         - "{{ osd_hosts }}"
@@ -114,6 +115,7 @@
       command: ceph-disk destroy --cluster {{ cluster }} --destroy-by-id {{ item.0 }} --zap
       register: destroy
       ignore_errors: yes
+      run_once: true
       with_together:
         - "{{ osd_to_kill.split(',') }}"
         - "{{ osd_hosts }}"
@@ -121,6 +123,7 @@
 
     - name: remove osd(s) from crush_map when ceph-disk destroy fail
       command: ceph --cluster {{ cluster }} osd crush remove osd.{{ item.0 }}
+      run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_together:
         - "{{ osd_to_kill.split(',') }}"
