@@ -1,0 +1,35 @@
+---
+- name: set crt path(s)
+  set_fact:
+    crt_files:
+      - "/etc/ceph/iscsi-gateway.crt"
+      - "/etc/ceph/iscsi-gateway.key"
+      - "/etc/ceph/iscsi-gateway.pem"
+      - "/etc/ceph/iscsi-gateway-pub.key"
+
+- name: stat for crt file(s)
+  local_action: stat path={{ fetch_directory }}/{{ fsid }}/{{ item }}
+  with_items: "{{ crt_files }}"
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: crt_files_exist
+
+- name: try to fetch crt file(s)
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/{{ item.0 }}"
+    dest: "{{ item.0 }}"
+    owner: root
+    group: root
+    mode: 0400
+  changed_when: false
+  with_together:
+    - "{{ crt_files }}"
+    - "{{ crt_files_exist.results }}"
+  when: item.1.stat.exists == true
+
+- include: generate_crt.yml
+  with_together:
+    - "{{ crt_files }}"
+    - "{{ crt_files_exist.results }}"
+  when: item.1.stat.exists == false
