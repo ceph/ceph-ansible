@@ -14,25 +14,15 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- name: check the journal device is partition
-  shell: "readlink -f {{ item }} | egrep '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p)[0-9]{1,2}|fio[a-z]{1,2}[0-9]{1,2}$'"
-  with_items: "{{ dedicated_devices }}"
-  changed_when: false
-  failed_when: false
-  always_run: true
-  register: journal_ispartition_results
-
 - name: check the partition status of the journal devices
-  shell: "parted --script {{ item.1 }} print > /dev/null 2>&1"
-  with_together:
-    - "{{ journal_ispartition_results.results }}"
+  command: "parted --script {{ item }} print"
+  with_items:
     - "{{ dedicated_devices|unique }}"
   changed_when: false
   failed_when: false
   always_run: true
   register: journal_partition_status
   when:
-    - item.0.rc != 0
     - osd_scenario == 'non-collocated'
 
 - name: fix partitions gpt header or labels of the journal device(s)
@@ -50,7 +40,7 @@
 - name: create gpt disk label of the journal device(s)
   command: parted --script {{ item.1 }} mklabel gpt
   with_together:
-    - "{{ osd_partition_status_results.results }}"
+    - "{{ journal_partition_status.results }}"
     - "{{ dedicated_devices|unique }}"
   changed_when: false
   when:

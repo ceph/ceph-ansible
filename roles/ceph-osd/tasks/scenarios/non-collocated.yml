@@ -20,11 +20,12 @@
     {{ ceph_osd_docker_prepare_env }} \
     {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
   with_together:
-    - "{{ parted_results.results }}"
+    - "{{ parted_results.results | default([]) }}"
     - "{{ devices }}"
     - "{{ dedicated_devices }}"
   when:
     - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
     - not osd_auto_discovery
     - containerized_deployment
     - osd_objectstore == 'filestore'
@@ -48,35 +49,34 @@
     {{ ceph_osd_docker_prepare_env }} \
     {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
   with_together:
-    - "{{ parted_results.results }}"
+    - "{{ parted_results.results | default([]) }}"
     - "{{ devices }}"
     - "{{ dedicated_devices }}"
     - "{{ bluestore_wal_devices }}"
   when:
     - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
     - not osd_auto_discovery
     - containerized_deployment
     - osd_objectstore == 'bluestore'
 
 - name: prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) non-collocated
-  command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.2 }} {{ item.3 }}"
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }} {{ item.2 }}"
   with_together:
-    - "{{ parted_results.results }}"
-    - "{{ ispartition_results.results }}"
+    - "{{ parted_results.results | default([]) }}"
     - "{{ devices }}"
     - "{{ dedicated_devices }}"
   changed_when: false
   when:
-    - item.0.get("skipped") or item.0.get("rc", 0) != 0
-    - not item.1.get("skipped")
-    - item.1.get("rc", 0) != 0
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
     - osd_objectstore == 'filestore'
     - not containerized_deployment
 
 - name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with a dedicated device for db and wal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.1 }} --block.wal {{ item.2 }} {{ item.3 }}"
   with_together:
-    - "{{ parted_results.results }}"
+    - "{{ parted_results.results | default([]) }}"
     - "{{ dedicated_devices }}"
     - "{{ bluestore_wal_devices }}"
     - "{{ devices }}"
