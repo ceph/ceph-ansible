@@ -1,4 +1,16 @@
 ---
+- name: set selinux permissions
+  shell: |
+    chcon -Rt svirt_sandbox_file_t {{ item }}
+  with_items:
+    - /etc/ceph
+    - /var/lib/ceph
+  changed_when: false
+  when:
+    - sestatus is defined
+    - sestatus.stdout != 'Disabled'
+    - containerized_deployment
+
 - name: copy ceph admin keyring
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.client.admin.keyring"
