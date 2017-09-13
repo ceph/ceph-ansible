@@ -57,7 +57,11 @@ spec:
 	  > ceph-ansible.spec
 
 srpm: dist spec
-	fedpkg --dist epel7 srpm
+	rpmbuild -bs ceph-ansible.spec \
+	  --define "_topdir ." \
+	  --define "_sourcedir ." \
+	  --define "_srcrpmdir ." \
+	  --define "dist .el7"
 
 rpm: dist srpm
 	mock -r epel-7-x86_64 rebuild $(NVR).src.rpm \
