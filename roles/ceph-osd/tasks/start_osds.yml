@@ -9,6 +9,8 @@
   failed_when: false
   always_run: true
   register: osd_id
+  until: osd_id.stdout_lines|length == devices|unique|length
+  retries: 10
 
 - name: ensure systemd service override directory exists
   file:
@@ -32,5 +34,6 @@
   service:
     name: ceph-osd@{{ item }}
     state: started
+    enabled: true
   with_items: "{{ (osd_id|default({})).stdout_lines|default([]) }}"
   changed_when: false
