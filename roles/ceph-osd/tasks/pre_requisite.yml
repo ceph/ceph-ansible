@@ -5,13 +5,15 @@
     section: extras
     option: enabled
     value: 1
-  when: ansible_distribution == 'CentOS'
+  when:
+    - ansible_distribution == 'CentOS'
 
 - name: install rependencies
   package:
     name: parted
     state: present
-  when: ansible_os_family != 'ClearLinux'
+  when:
+    - ansible_os_family != 'ClearLinux'
 
 - name: create bootstrap-osd and osd directories
   file:
@@ -26,7 +28,7 @@
     - /var/lib/ceph/bootstrap-osd/
     - /var/lib/ceph/osd/
 
-- name: copy ceph admin key when using dmcrypt
+- name: set_fact copy_admin_key
   set_fact:
     copy_admin_key: true
   when:

@@ -1,18 +1,26 @@
 ---
-- include: ./checks/check_system.yml
-- include: ./checks/check_mandatory_vars.yml
+- name: include checks/check_system.yml
+  include: checks/check_system.yml
 
-- include: ./checks/check_firewall.yml
-  when: check_firewall
+- name: include checks/check_mandatory_vars.yml
+  include: checks/check_mandatory_vars.yml
+
+- name: include checks/check_firewall.yml
+  include: checks/check_firewall.yml
+  when:
+    - check_firewall
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- include: ./misc/system_tuning.yml
-  when: osd_group_name in group_names
+- name: include misc/system_tuning.yml
+  include: misc/system_tuning.yml
+  when:
+    - osd_group_name in group_names
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- include: ./installs/install_on_redhat.yml
+- name: include installs/install_on_redhat.yml
+  include: installs/install_on_redhat.yml
   when:
     - ansible_os_family == 'RedHat'
   tags:
@@ -20,7 +28,8 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- include: ./installs/install_on_debian.yml
+- name: include installs/install_on_debian.yml
+  include: installs/install_on_debian.yml
   when:
     - ansible_os_family == 'Debian'
   tags:
@@ -28,21 +37,25 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- include: ./installs/install_on_clear.yml
-  when: ansible_os_family == 'ClearLinux'
+- name: include installs/install_on_clear.yml
+  include: installs/install_on_clear.yml
+  when:
+    - ansible_os_family == 'ClearLinux'
   tags:
     - package-install
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- include: ./misc/ntp_redhat.yml
+- name: include misc/ntp_redhat.yml
+  include: misc/ntp_redhat.yml
   when:
     - ansible_os_family == 'RedHat'
     - ntp_service_enabled
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- include: ./misc/ntp_debian.yml
+- name: include misc/ntp_debian.yml
+  include: misc/ntp_debian.yml
   when:
     - ansible_os_family == 'Debian'
     - ntp_service_enabled
@@ -55,17 +68,20 @@
   always_run: yes
   register: ceph_version
 
-- set_fact:
+- name: set_fact ceph_version
+  set_fact:
     ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
 
 # override ceph_stable_release for ceph_dev and rhcs installations since ceph_stable_release is not mandatory
-- include: ./release-rhcs.yml
+- name: include release-rhcs.yml
+  include: release-rhcs.yml
   when:
     - ceph_repository in ['rhcs', 'dev']
   tags:
     - always
 
-- include: facts_mon_fsid.yml
+- name: include facts_mon_fsid.yml
+  include: facts_mon_fsid.yml
   run_once: true
   when:
     - cephx
@@ -73,6 +89,11 @@
     - ceph_current_fsid.rc == 0
     - mon_group_name in group_names
 
-- include: create_ceph_initial_dirs.yml
-- include: create_rbd_client_dir.yml
-- include: configure_cluster_name.yml
+- name: include create_ceph_initial_dirs.yml
+  include: create_ceph_initial_dirs.yml
+
+- name: include create_rbd_client_dir.yml
+  include: create_rbd_client_dir.yml
+
+- name: include configure_cluster_name.yml
+  include: configure_cluster_name.yml

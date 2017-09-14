@@ -4,14 +4,16 @@
     name: "{{ item }}"
     state: present
   with_items: "{{ redhat_package_dependencies }}"
-  when: ansible_distribution == "RedHat"
+  when:
+    - ansible_distribution == 'RedHat'
 
 - name: install centos dependencies
   package:
     name: "{{ item }}"
     state: present
   with_items: "{{ centos_package_dependencies }}"
-  when: ansible_distribution == "CentOS"
+  when:
+    - ansible_distribution == 'CentOS'
 
 - name: install redhat ceph-common
   package:
@@ -58,13 +60,15 @@
   package:
     name: ceph-test
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when: ceph_test
+  when:
+    - ceph_test
 
 - name: install redhat ceph-radosgw package
   package:
     name: ceph-radosgw
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when: rgw_group_name in group_names
+  when:
+    - rgw_group_name in group_names
 
 - name: install redhat nfs-ganesha-ceph package
   package:

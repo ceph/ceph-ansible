@@ -54,9 +54,11 @@
     - ceph_release_num.{{ ceph_release }} > ceph_release_num.jewel
   with_items: "{{ groups.get(mgr_group_name, []) }}"
 
-- include: set_osd_pool_default_pg_num.yml
+- name: include set_osd_pool_default_pg_num.yml
+  include: set_osd_pool_default_pg_num.yml
 
-- include: crush_rules.yml
+- name: crush_rules.yml
+  include: crush_rules.yml
   when:
     - crush_rule_config
 
@@ -67,16 +69,19 @@
   failed_when: false
   register: rbd_pool_exist
 
-- include: rbd_pool.yml
+- name: include rbd_pool.yml
+  include: rbd_pool.yml
   when: rbd_pool_exist.rc == 0
 
-- include: rbd_pool_pgs.yml
+- name: include rbd_pool_pgs.yml
+  include: rbd_pool_pgs.yml
   when:
     - rbd_pool_exist.rc == 0
     - global_in_ceph_conf_overrides
     - ceph_conf_overrides.global.osd_pool_default_pg_num is defined
 
-- include: rbd_pool_size.yml
+- name: include rbd_pool_size.yml
+  include: rbd_pool_size.yml
   when:
     - rbd_pool_exist.rc == 0
     - global_in_ceph_conf_overrides
@@ -92,17 +97,19 @@
     - ceph_conf_overrides.global.osd_pool_default_pg_num is defined
     - rbd_pool_exist.rc != 0
 
-- include: openstack_config.yml
+- name: include openstack_config.yml
+  include: openstack_config.yml
   when:
     - openstack_config
-    - "{{ inventory_hostname == groups[mon_group_name] | last }}"
+    - inventory_hostname == groups[mon_group_name] | last
 
 - name: find ceph keys
   shell: ls -1 /etc/ceph/*.keyring
   changed_when: false
   register: ceph_keys
   always_run: true
-  when: cephx
+  when:
+    - cephx
 
 - name: set keys permissions
   file:
@@ -112,12 +119,14 @@
     mode: "0600"
   with_items:
     - "{{ ceph_keys.get('stdout_lines') | default([]) }}"
-  when: cephx
+  when:
+    - cephx
 
-- name: register rbd bootstrap key
+- name: set_fact bootstrap_rbd_keyring
   set_fact:
     bootstrap_rbd_keyring: "/var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring"
-  when: ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+  when:
+    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
 
 - name: copy keys to the ansible server
   fetch:
@@ -132,7 +141,7 @@
     - "{{ bootstrap_rbd_keyring | default([]) }}"
   when:
     - cephx
-    - "{{ inventory_hostname == groups[mon_group_name] | last }}"
+    - inventory_hostname == groups[mon_group_name] | last
 
 - name: drop in a motd script to report status when logging in
   copy:
@@ -141,4 +150,5 @@
     owner: root
     group: root
     mode: 0755
-  when: ansible_distribution_release == 'precise'
+  when:
+    - ansible_distribution_release == 'precise'

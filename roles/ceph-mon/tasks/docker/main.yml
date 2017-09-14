@@ -1,8 +1,10 @@
 ---
-- include: copy_configs.yml
+- name: include copy_configs.yml
+  include: copy_configs.yml
   when: not containerized_deployment_with_kv
 
-- include: start_docker_monitor.yml
+- name: include start_docker_monitor.yml
+  include: start_docker_monitor.yml
 
 - name: wait for monitor socket to exist
   command: docker exec ceph-mon-{{ ansible_hostname }} stat /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok
@@ -71,7 +73,8 @@
     - hostvars[groups[mon_group_name][0]]['monitor_address_block'] is defined
     - hostvars[groups[mon_group_name][0]]['monitor_address_block'] | length > 0
 
-- include: ./fetch_configs.yml
+- name: include fetch_configs.yml
+  include: fetch_configs.yml
   when: not containerized_deployment_with_kv
 
 - name: create ceph rest api keyring when mon is containerized
@@ -86,10 +89,12 @@
     - "{{ inventory_hostname == groups[mon_group_name] | last }}"
     - not containerized_deployment_with_kv
 
-- include: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-mon/tasks/set_osd_pool_default_pg_num.yml"
+- name: include ceph-mon/tasks/set_osd_pool_default_pg_num.yml
+  include: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-mon/tasks/set_osd_pool_default_pg_num.yml"
 
 # create openstack pools only when all mons are up.
-- include: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-mon/tasks/openstack_config.yml"
+- name: include ceph-mon/tasks/set_osd_pool_default_pg_num.yml
+  include: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-mon/tasks/openstack_config.yml"
   when:
     - openstack_config
     - "{{ inventory_hostname == groups[mon_group_name] | last }}"

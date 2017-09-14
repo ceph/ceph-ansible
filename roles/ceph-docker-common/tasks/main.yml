@@ -1,26 +1,34 @@
 ---
-- include: system_checks.yml
+- name: include system_checks.yml
+  include: system_checks.yml
 
 - name: check if it is atomic host
-  stat: path=/run/ostree-booted
+  stat:
+    path: /run/ostree-booted
   register: stat_ostree
   always_run: true
 
-- name: set fact for using atomic host
+- name: set_fact is_atomic
   set_fact:
     is_atomic: '{{ stat_ostree.stat.exists }}'
 
-- include: ./pre_requisites/prerequisites.yml
-  when: not is_atomic
+- name: include pre_requisites/prerequisites.yml
+  include: pre_requisites/prerequisites.yml
+  when:
+    - not is_atomic
 
 # NOTE(guits): would be nice to refact this block with L39-45 in roles/ceph-common/tasks/facts.yml
-- set_fact:
+- name: set_fact monitor_name ansible_hostname
+  set_fact:
     monitor_name: "{{ ansible_hostname }}"
-  when: not mon_use_fqdn
+  when:
+    - not mon_use_fqdn
 
-- set_fact:
+- name: set_fact monitor_name ansible_fqdn
+  set_fact:
     monitor_name: "{{ ansible_fqdn }}"
-  when: mon_use_fqdn
+  when:
+    - mon_use_fqdn
 
 - name: get docker version
   command: docker --version
@@ -28,7 +36,8 @@
   always_run: yes
   register: docker_version
 
-- set_fact:
+- name: set_fact docker_version docker_version.stdout.split
+  set_fact:
     docker_version: "{{ docker_version.stdout.split(' ')[2] }}"
 
 - name: check if a cluster is already running
@@ -44,7 +53,8 @@
 # a cluster is not already running,
 # AND
 # we are not playing rolling-update.yml playbook.
-- include: checks.yml
+- name: include checks.yml
+  include: checks.yml
   when:
     - (not containerized_deployment_with_kv and
        ((inventory_hostname in groups.get(mon_group_name, [])) or
@@ -53,24 +63,28 @@
     - ceph_health.rc != 0
     - not "{{ rolling_update | default(false) }}"
 
-- include: ./misc/ntp_atomic.yml
+- name: include misc/ntp_atomic.yml
+  include: misc/ntp_atomic.yml
   when:
     - is_atomic
     - ansible_os_family == 'RedHat'
     - ntp_service_enabled
 
-- include: ./misc/ntp_redhat.yml
+- name: include misc/ntp_redhat.yml
+  include: misc/ntp_redhat.yml
   when:
     - not is_atomic
     - ansible_os_family == 'RedHat'
     - ntp_service_enabled
 
-- include: ./misc/ntp_debian.yml
+- name: include misc/ntp_debian.yml
+  include: misc/ntp_debian.yml
   when:
     - ansible_os_family == 'Debian'
     - ntp_service_enabled
 
-- include: fetch_image.yml
+- name: include fetch_image.yml
+  include: fetch_image.yml
 
 - name: get ceph version
   command: docker run --entrypoint /usr/bin/ceph {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} --version
@@ -78,16 +92,22 @@
   always_run: yes
   register: ceph_version
 
-- set_fact:
+- name: set_fact ceph_version ceph_version.stdout.split
+  set_fact:
     ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
 
-- include: release.yml
+- name: include release.yml
+  include: release.yml
 
 # NOTE (jimcurtis): dirs_permissions.yml must precede fetch_configs.yml
 # # because it creates the directories needed by the latter.
-- include: dirs_permissions.yml
+- name: include dirs_permissions.yml
+  include: dirs_permissions.yml
 
-- include: create_configs.yml
+- name: include create_configs.yml
+  include: create_configs.yml
 
-- include: selinux.yml
-  when: ansible_os_family == 'RedHat'
+- name: include selinux.yml
+  include: selinux.yml
+  when:
+    - ansible_os_family == 'RedHat'

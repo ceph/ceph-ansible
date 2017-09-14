@@ -27,7 +27,8 @@
 - name: fail if initial mon keyring found doesn't work
   fail:
     msg: "Initial mon keyring found doesn't work."
-  when: test_initial_monitor_keyring.rc != 0
+  when:
+    - test_initial_monitor_keyring.rc != 0
 
 - name: write initial mon keyring in {{ fetch_directory }}/monitor_keyring.conf if it doesn't exist
   local_action: shell echo {{ monitor_keyring.stdout }} | tee {{ fetch_directory }}/monitor_keyring.conf
@@ -37,4 +38,5 @@
 
 - name: put initial mon keyring in mon kv store
   command: ceph --cluster {{ cluster }} config-key put initial_mon_keyring {{ monitor_keyring.stdout }}
-  when: test_initial_monitor_keyring.rc == 0
+  when:
+    - test_initial_monitor_keyring.rc == 0

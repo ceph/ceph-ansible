@@ -1,31 +1,39 @@
 ---
-- include: check_mandatory_vars.yml
+- name: include check_mandatory_vars.yml
+  include: check_mandatory_vars.yml
 
-- include: deploy_monitors.yml
+- name: include deploy_monitors.yml
+  include: deploy_monitors.yml
   when: not containerized_deployment
 
-- include: start_monitor.yml
+- name: include start_monitor.yml
+  include: start_monitor.yml
   when: not containerized_deployment
 
-- include: ceph_keys.yml
+- name: include ceph_keys.yml
+  include: ceph_keys.yml
   when: not containerized_deployment
   # this avoids the bug mentioned here: https://github.com/ansible/ansible/issues/18206
   static: no
 
-- include: create_mds_filesystems.yml
+- name: include create_mds_filesystems.yml
+  include: create_mds_filesystems.yml
   when:
     - not containerized_deployment
     - groups[mds_group_name] is defined
     - "{{ groups[mds_group_name]|length > 0 }}"
     - "{{ inventory_hostname == groups[mon_group_name] | last }}"
 
-- include: secure_cluster.yml
+- name: include secure_cluster.yml
+  include: secure_cluster.yml
   when:
     - secure_cluster
     - not containerized_deployment
 
-- include: ./docker/main.yml
+- name: include docker/main.yml
+  include: docker/main.yml
   when: containerized_deployment
 
-- include: calamari.yml
+- name: include calamari.yml
+  include: calamari.yml
   when: calamari
