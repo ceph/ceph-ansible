@@ -44,6 +44,13 @@ pushd %{buildroot}%{_datarootdir}/ceph-ansible
   rm group_vars/common-coreoss.yml.sample
   # These untested playbooks are too unstable for users.
   rm -r infrastructure-playbooks/untested-by-ci
+  %if 0%{?fedora} || 0%{?centos}
+    # Ship the upstream config (delete RHCS)
+    rm group_vars/rhcs.yml.sample
+  %else
+    # Ship only the Red Hat Ceph Storage config (delete upstream)
+    rm group_vars/all.yml.sample
+  %endif
 popd
 
 %check
