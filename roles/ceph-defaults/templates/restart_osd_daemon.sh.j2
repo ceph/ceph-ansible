@@ -39,7 +39,7 @@ get_docker_id_from_dev_name() {
   while [ $count -ne 0 ]; do
     id=$(docker ps -q -f "name=$1")
     test "$id" != "" && break
-    sleep 1
+    sleep $DELAY
     let count=count-1
   done
   echo "$id"
@@ -69,7 +69,7 @@ for unit in $(systemctl list-units | grep "loaded active" | grep -oE "ceph-osd@(
   SOCKET=/var/run/ceph/{{ cluster }}-osd.${osd_id}.asok
   while [ $COUNT -ne 0 ]; do
     $docker_exec test -S "$SOCKET" && check_pgs && continue 2
-    sleep 1
+    sleep $DELAY
     let COUNT=COUNT-1
   done
   # If we reach this point, it means the socket is not present.
