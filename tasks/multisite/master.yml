@@ -2,27 +2,34 @@
 - name: create the realm
   command: radosgw-admin realm create --rgw-realm={{ rgw_realm }} --default
   run_once: true
-  when: ("No such file or directory" in realmcheck.stderr) and rgw_zonemaster
+  when:
+    - 'No such file or directory' in realmcheck.stderr
+    - rgw_zonemaster
   notify:
     - update period
 
-- name: create the zonegroup 
+- name: create the zonegroup
   command: radosgw-admin zonegroup create --rgw-zonegroup={{ rgw_zonegroup }} --endpoints=http://{{ ansible_fqdn }}:{{ radosgw_civetweb_port }} --master --default
   run_once: true
-  when: ("No such file or directory" in zonegroupcheck.stderr) and rgw_zonemaster
+  when:
+    - 'No such file or directory' in zonegroupcheck.stderr
+    - rgw_zonemaster
   notify:
     - update period
 
 - name: create the zone
   command: radosgw-admin zone create --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --endpoints=http://{{ ansible_fqdn }}:{{ radosgw_civetweb_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }} --default --master
   run_once: true
-  when: ("No such file or directory" in zonecheck.stderr) and rgw_zonemaster
+  when:
+    - 'No such file or directory' in zonecheck.stderr
+    - rgw_zonemaster
   notify:
     - update period
 
 - name: create the zone user
   command: radosgw-admin user create --uid=zone.user --display-name="Zone User" --access-key={{ system_access_key }} --secret={{ system_secret_key }} --system
   run_once: true
-  when: "'could not fetch user info: no user info saved' in usercheck.stderr"
+  when:
+    - 'could not fetch user info: no user info saved' in usercheck.stderr
   notify:
     - update period
