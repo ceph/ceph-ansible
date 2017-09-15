@@ -1,5 +1,5 @@
 ---
-- name: generate systemd unit file
+- name: generate mgr systemd unit file
   become: true
   template:
     src: "{{ role_path }}/templates/ceph-mgr.service.j2"
@@ -14,4 +14,25 @@
     state: started
     enabled: yes
     daemon_reload: yes
+
+- name: get ceph mgr container id
+  command: "docker ps -q --filter='name=ceph-mgr-{{ ansible_hostname }}'"
   changed_when: false
+  register: ceph_mgr_container_id
+
+- name: set_fact mgr_container_health rc
+  set_fact:
+    mgr_container_health:
+      rc: 1
+  when: ceph_mgr_container_id.stdout|length == '0'
+
+- name: make sure ceph mgr container stays alive
+  shell: |
+    first_id="{{ ceph_mgr_container_id }}"
+    id=$(docker ps -q --filter='name=ceph-mgr-{{ ansible_hostname }}')
+    ! timeout 30 bash -c "while [[ $first_id == $id ]]; do continue ; done" ]]
+  changed_when: false
+  failed_when: false
+  register: mgr_container_health
+  when:
+    - ceph_mgr_container_id.stdout|length != '0'

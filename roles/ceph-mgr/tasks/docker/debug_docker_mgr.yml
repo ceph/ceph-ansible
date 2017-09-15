@@ -1,0 +1,30 @@
+---
+- name: set_fact
+  set_fact:
+    ceph_mgr_docker_extra_env: -e DEBUG=verbose
+
+- name: generate mgr systemd unit file
+  become: true
+  template:
+    src: "{{ role_path }}/templates/ceph-mgr.service.j2"
+    dest: /etc/systemd/system/ceph-mgr@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+
+- name: systemd start mgr container
+  systemd:
+    name: ceph-mgr@{{ ansible_hostname }}
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
+- name: wait for the container to run again
+  command: sleep 20
+
+- name: show mgr container logs
+  command: journalctl -u ceph-mgr@{{ ansible_hostname }}
+
+- name: fail the playbook
+  fail:
+    msg: "Go debug!"

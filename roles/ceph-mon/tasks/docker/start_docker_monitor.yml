@@ -55,4 +55,25 @@
     state: started
     enabled: yes
     daemon_reload: yes
+
+- name: get ceph mon container id
+  command: "docker ps -q --filter='name=ceph-mon-{{ ansible_hostname }}'"
   changed_when: false
+  register: ceph_mon_container_id
+
+- name: set_fact mon_container_health rc
+  set_fact:
+    mon_container_health:
+      rc: 1
+  when: ceph_mon_container_id.stdout|length == '0'
+
+- name: make sure ceph mon container stays alive
+  shell: |
+    first_id="{{ ceph_mon_container_id }}"
+    id=$(docker ps -q --filter='name=ceph-mon-{{ ansible_hostname }}')
+    ! timeout 30 bash -c "while [[ $first_id == $id ]]; do continue ; done" ]]
+  changed_when: false
+  failed_when: false
+  register: mon_container_health
+  when:
+    - ceph_mon_container_id.stdout|length != '0'

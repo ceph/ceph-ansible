@@ -1,0 +1,32 @@
+---
+- name: set_fact
+  set_fact:
+    ceph_rgw_docker_extra_env: -e DEBUG=verbose
+
+- name: generate rgw systemd unit file
+  become: true
+  template:
+    src: "{{ role_path }}/templates/ceph-radosgw.service.j2"
+    dest: /etc/systemd/system/ceph-radosgw@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+
+- name: systemd start rgw container
+  systemd:
+    name: ceph-radosgw@{{ ansible_hostname }}
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: wait for the rgw container to run again
+  command: sleep 20
+  changed_when: false
+
+- name: show rgw container logs
+  command: journalctl -u ceph-radosgw@{{ ansible_hostname }}
+  changed_when: false
+
+- name: fail the playbook
+  fail:
+    msg: "Go debug!"

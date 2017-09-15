@@ -1,0 +1,32 @@
+---
+- name: set_fact
+  set_fact:
+    ceph_rbd_mirror_docker_extra_env: -e DEBUG=verbose
+
+- name: generate rbd mirror systemd unit file
+  become: true
+  template:
+    src: "{{ role_path }}/templates/ceph-rbd-mirror.service.j2"
+    dest: /etc/systemd/system/ceph-rbd-mirror@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+
+- name: systemd start rbd mirror container
+  systemd:
+    name: ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
+- name: wait for the container rbd mirror to run again
+  command: sleep 20
+  changed_when: false
+
+- name: show rbd mirror container logs
+  command: journalctl -u ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}
+  changed_when: false
+
+- name: fail the playbook
+  fail:
+    msg: "Go debug!"

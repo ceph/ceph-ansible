@@ -1,5 +1,5 @@
 ---
-- name: generate systemd unit file
+- name: generate rgw systemd unit file
   become: true
   template:
     src: "{{ role_path }}/templates/ceph-radosgw.service.j2"
@@ -26,4 +26,25 @@
     state: started
     enabled: yes
     daemon_reload: yes
+
+- name: get ceph rgw container id
+  command: "docker ps -q --filter='name=ceph-rgw-{{ ansible_hostname }}'"
   changed_when: false
+  register: ceph_rgw_container_id
+
+- name: set_fact rgw_container_health rc
+  set_fact:
+    rgw_container_health:
+      rc: 1
+  when: ceph_rgw_container_id.stdout|length == '0'
+
+- name: make sure ceph rgw container stays alive
+  shell: |
+    first_id="{{ ceph_rgw_container_id }}"
+    id=$(docker ps -q --filter='name=ceph-rgw-{{ ansible_hostname }}')
+    ! timeout 30 bash -c "while [[ $first_id == $id ]]; do continue ; done" ]]
+  changed_when: false
+  failed_when: false
+  register: rgw_container_health
+  when:
+    - ceph_rgw_container_id.stdout|length != '0'

@@ -1,0 +1,32 @@
+---
+- name: set_fact ceph_osd_docker_extra_env debug
+  set_fact:
+    ceph_osd_docker_extra_env: -e DEBUG=verbose
+
+- name: generate ceph osd docker run script
+  become: true
+  template:
+    src: "{{ role_path }}/templates/ceph-osd-run.sh.j2"
+    dest: "{{ ceph_osd_docker_run_script_path }}/ceph-osd-run.sh"
+    owner: "root"
+    group: "root"
+    mode: "0744"
+
+- name: systemd start osd container
+  systemd:
+    name: ceph-osd@{{ devices | first | basename }}
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: wait for the osd container to run again
+  command: sleep 20
+  changed_when: false
+
+- name: show osd container logs
+  command: journalctl -u ceph-osd@{{ devices | first | basename }}
+  changed_when: false
+
+- name: fail the playbook
+  fail:
+    msg: "Go debug!"
