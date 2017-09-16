@@ -10,24 +10,17 @@
 
 # For backward compatibility
 - name: disable old systemd unit ('ceph-rgw@') if present
-  service:
+  systemd:
     name: ceph-rgw@{{ ansible_hostname }}
-    state: disable
+    state: stopped
+    enabled: no
+    daemon_reload: yes
   ignore_errors: true
 
-- name: enable systemd unit file for rgw instance
-  shell: systemctl enable ceph-radosgw@{{ ansible_hostname }}.service
-  failed_when: false
-  changed_when: false
-
-- name: reload systemd unit files
-  shell: systemctl daemon-reload
-  changed_when: false
-  failed_when: false
-
 - name: systemd start rgw container
-  service:
-    name: ceph-radosgw@{{ ansible_hostname }}
+  systemd:
+    name: ceph-radosgw@{{ ansible_hostname }}.service
     state: started
     enabled: yes
+    daemon_reload: yes
   changed_when: false
