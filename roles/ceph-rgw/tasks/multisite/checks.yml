@@ -1,6 +1,7 @@
 ---
 - name: check if the realm already exists
   command: radosgw-admin realm get --rgw-realm={{ rgw_realm }}
+  delegate_to: "{{ groups[mon_group_name][0] }}"
   register: realmcheck
   failed_when: False
   changed_when: False
@@ -8,6 +9,7 @@
 
 - name: check if the zonegroup already exists
   command: radosgw-admin zonegroup get --rgw-zonegroup={{ rgw_zonegroup }}
+  delegate_to: "{{ groups[mon_group_name][0] }}"
   register: zonegroupcheck
   failed_when: False
   changed_when: False
@@ -15,13 +17,15 @@
 
 - name: check if the zone already exists
   command: radosgw-admin zone get --rgw-zone={{ rgw_zone }}
+  delegate_to: "{{ groups[mon_group_name][0] }}"
   register: zonecheck
   failed_when: False
   changed_when: False
   check_mode: no
 
 - name: check if the system user already exists
-  command: radosgw-admin user info --uid=zone.user
+  command: radosgw-admin user info --uid={{ rgw_zone_user }}
+  delegate_to: "{{ groups[mon_group_name][0] }}"
   register: usercheck
   failed_when: False
   changed_when: False
