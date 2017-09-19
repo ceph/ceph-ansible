@@ -1,0 +1,20 @@
+---
+- name: generate ganesha configuration file
+  action: config_template
+  args:
+    src: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-nfs/templates/ganesha.conf.j2"
+    dest: /etc/ganesha/ganesha.conf
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    config_type: ini
+  notify:
+    - restart ceph nfss
+
+- name: start nfs gateway service
+  service:
+    name: nfs-ganesha
+    state: started
+    enabled: yes
+  when:
+    - ceph_nfs_enable_service

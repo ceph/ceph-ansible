@@ -8,22 +8,11 @@
     group: "root"
     mode: "0644"
 
-- name: enable systemd unit file for nfs instance
-  shell: systemctl enable ceph-nfs@{{ ansible_hostname }}.service
-  failed_when: false
-  changed_when: false
-  when: ceph_nfs_enable_service
-
-- name: reload systemd unit files
-  shell: systemctl daemon-reload
-  changed_when: false
-  failed_when: false
-  when: ceph_nfs_enable_service
-
 - name: systemd start nfs container
-  service:
-    name: ceph-nfs@{{ ansible_hostname }}
+  systemd:
+    name: "ceph-nfs@{{ ansible_hostname }}.service"
     state: started
     enabled: yes
-  changed_when: false
-  when: ceph_nfs_enable_service
+    daemon_reload: yes
+  when:
+    - ceph_nfs_enable_service
