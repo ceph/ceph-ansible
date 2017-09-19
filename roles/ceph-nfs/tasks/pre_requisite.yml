@@ -44,15 +44,17 @@
     owner: "ceph"
     group: "ceph"
     mode: "0600"
-  when: cephx
+  when:
+    - cephx
 
 - name: create rgw nfs user
   command: radosgw-admin --cluster {{ cluster }} user create --uid={{ ceph_nfs_rgw_user }} --display-name="RGW NFS User"
   register: rgwuser
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  when: nfs_obj_gw
+  when:
+    - nfs_obj_gw
 
-- name: set access key
+- name: set_fact ceph_nfs_rgw_access_key
   set_fact:
     ceph_nfs_rgw_access_key: "{{ (rgwuser.stdout | from_json)['keys'][0]['access_key'] }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -60,7 +62,7 @@
     - nfs_obj_gw
     - ceph_nfs_rgw_access_key is not defined
 
-- name: set secret key
+- name: set_fact ceph_nfs_rgw_secret_key
   set_fact:
     ceph_nfs_rgw_secret_key: "{{(rgwuser.stdout | from_json)['keys'][0]['secret_key']}}"
   delegate_to: "{{ groups[mon_group_name][0] }}"

@@ -38,14 +38,16 @@
     mode: "0755"
     recurse: true
 
-- set_fact:
+- name: set_fact ceph_authtool_cap >= ceph_release_num.luminous
+  set_fact:
     ceph_authtool_cap: "--cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow' --cap mgr 'allow *'"
   when:
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
     - cephx
     - admin_secret != 'admin_secret'
 
-- set_fact:
+- name: set_fact ceph_authtool_cap < ceph_release_num.luminous
+  set_fact:
     ceph_authtool_cap: "--cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'"
   when:
     - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous

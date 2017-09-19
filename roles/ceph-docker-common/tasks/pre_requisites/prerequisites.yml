@@ -1,8 +1,11 @@
 ---
-- include: remove_ceph_udev_rules.yml
+- name: include remove_ceph_udev_rules.yml
+  include: remove_ceph_udev_rules.yml
 
-- include: debian_prerequisites.yml
-  when: ansible_distribution == 'Debian'
+- name: include debian_prerequisites.yml
+  include: debian_prerequisites.yml
+  when:
+    - ansible_distribution == 'Debian'
   tags:
     with_pkg
 
@@ -11,7 +14,8 @@
     name: docker.io
     state: present
     update_cache: yes
-  when: ansible_distribution == 'Ubuntu'
+  when:
+    - ansible_distribution == 'Ubuntu'
   tags:
     with_pkg
 
@@ -32,7 +36,8 @@
     name: python-six
     state: present
     update_cache: yes
-  when: ansible_distribution != 'Debian'
+  when:
+    - ansible_distribution != 'Debian'
   tags:
     with_pkg
 
@@ -40,7 +45,8 @@
   package:
     name: python-docker-py
     state: present
-  when: ansible_os_family == 'RedHat'
+  when:
+    - ansible_os_family == 'RedHat'
   tags:
     with_pkg
 
@@ -48,7 +54,8 @@
   package:
     name: python-docker
     state: present
-  when: ansible_distribution == 'Ubuntu'
+  when:
+    - ansible_distribution == 'Ubuntu'
   tags:
     with_pkg
 
@@ -56,13 +63,15 @@
   package:
     name: docker
     state: present
-  when: ansible_os_family == 'RedHat'
+  when:
+    - ansible_os_family == 'RedHat'
   tags:
     with_pkg
 
 - name: pause after docker install before starting (on openstack vms)
   pause: seconds=5
-  when: ceph_docker_on_openstack
+  when:
+    - ceph_docker_on_openstack
   tags:
     with_pkg
 
@@ -78,6 +87,7 @@
   package:
     name: ntp
     state: present
-  when: ntp_service_enabled
+  when:
+    - ntp_service_enabled
   tags:
     with_pkg

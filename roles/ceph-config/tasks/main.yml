@@ -52,7 +52,8 @@
       - restart ceph mdss
       - restart ceph rgws
       - restart ceph nfss
-  when: not containerized_deployment|bool
+  when:
+    - not containerized_deployment|bool
 
 # ceph-docker-common
 # only create fetch directory when:
@@ -78,7 +79,8 @@
       creates="{{ fetch_directory }}/ceph_cluster_uuid.conf"
     register: cluster_uuid
     become: false
-    when: generate_fsid
+    when:
+      - generate_fsid
 
   - name: read cluster uuid if it already exists
     local_action: command cat {{ fetch_directory }}/ceph_cluster_uuid.conf
@@ -87,7 +89,8 @@
     register: cluster_uuid
     always_run: true
     become: false
-    when: generate_fsid
+    when:
+      - generate_fsid
 
   - name: ensure /etc/ceph exists
     file:
@@ -96,7 +99,8 @@
       owner: 'ceph'
       group: 'ceph'
       mode: 0755
-    when: groups.get(mon_group_name, []) | length == 0
+    when:
+      - groups.get(mon_group_name, []) | length == 0
 
   - name: "generate {{ cluster }}.conf configuration file"
     action: config_template
@@ -117,5 +121,7 @@
   - name: set fsid fact when generate_fsid = true
     set_fact:
       fsid: "{{ cluster_uuid.stdout }}"
-    when: generate_fsid
-  when: containerized_deployment|bool
+    when:
+      - generate_fsid
+  when:
+    - containerized_deployment|bool

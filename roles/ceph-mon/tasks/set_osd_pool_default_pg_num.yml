@@ -20,18 +20,21 @@
   register: default_pool_default_pg_num
   when: pool_default_pg_num is not defined or not global_in_ceph_conf_overrides
 
-- set_fact:
+- name: set_fact osd_pool_default_pg_num pool_default_pg_num
+  set_fact:
     osd_pool_default_pg_num: "{{ pool_default_pg_num }}"
   when: pool_default_pg_num is defined
 
-- set_fact:
+- name: set_fact osd_pool_default_pg_num default_pool_default_pg_num.stdout
+  set_fact:
     osd_pool_default_pg_num: "{{ default_pool_default_pg_num.stdout }}"
   when:
     - pool_default_pg_num is not defined
     - default_pool_default_pg_num.rc == 0
     - (osd_pool_default_pg_num_in_overrides is not defined or not osd_pool_default_pg_num_in_overrides)
 
-- set_fact:
+- name: set_fact osd_pool_default_pg_num ceph_conf_overrides.global.osd_pool_default_pg_num
+  set_fact:
     osd_pool_default_pg_num: "{{ ceph_conf_overrides.global.osd_pool_default_pg_num }}"
   when:
     - global_in_ceph_conf_overrides

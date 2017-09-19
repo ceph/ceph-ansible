@@ -1,11 +1,15 @@
 ---
-- set_fact:
+- name: set_fact monitor_name ansible_hostname
+  set_fact:
     monitor_name: "{{ ansible_hostname }}"
-  when: not mon_use_fqdn
+  when:
+    - not mon_use_fqdn
 
-- set_fact:
+- name: set_fact monitor_name ansible_fqdn
+  set_fact:
     monitor_name: "{{ ansible_fqdn }}"
-  when: mon_use_fqdn
+  when:
+    - mon_use_fqdn
 
 # this task shouldn't run in a rolling_update situation
 # because it blindly picks a mon, which may be down because
@@ -30,7 +34,8 @@
 
 # set this as a default when performing a rolling_update
 # so the rest of the tasks here will succeed
-- set_fact:
+- name: set_fact ceph_current_fsid rc 1
+  set_fact:
     ceph_current_fsid:
       rc: 1
   when:
@@ -41,15 +46,18 @@
   changed_when: false
   become: false
   run_once: true
-  when: cephx or generate_fsid
+  when:
+    - (cephx or generate_fsid)
 
-- set_fact:
+- name: set_fact fsid ceph_current_fsid.stdout
+  set_fact:
     fsid: "{{ ceph_current_fsid.stdout }}"
   when:
     - ceph_current_fsid.rc == 0
 
 # Set ceph_release to ceph_stable by default
-- set_fact:
+- name: set_fact ceph_release ceph_stable_release
+  set_fact:
     ceph_release: "{{ ceph_stable_release }}"
 
 - name: generate cluster fsid
@@ -65,7 +73,8 @@
   local_action: shell echo {{ fsid }} | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
     creates="{{ fetch_directory }}/ceph_cluster_uuid.conf"
   become: false
-  when: ceph_current_fsid.rc == 0
+  when:
+    - ceph_current_fsid.rc == 0
 
 - name: read cluster fsid if it already exists
   local_action: command cat {{ fetch_directory }}/ceph_cluster_uuid.conf
@@ -74,39 +83,49 @@
   register: cluster_uuid
   become: false
   always_run: true
-  when: generate_fsid
+  when:
+    - generate_fsid
 
-- name: set fsid fact when generate_fsid = true
+- name: set_fact fsid
   set_fact:
     fsid: "{{ cluster_uuid.stdout }}"
-  when: generate_fsid
+  when:
+    - generate_fsid
 
-- name: set docker_exec_cmd fact
+- name: set_fact docker_exec_cmd
   set_fact:
     docker_exec_cmd: "docker exec ceph-mon-{{ ansible_hostname }}"
-  when: containerized_deployment
+  when:
+    - containerized_deployment
 
-- set_fact:
+- name: set_fact mds_name ansible_hostname
+  set_fact:
     mds_name: "{{ ansible_hostname }}"
-  when: not mds_use_fqdn
+  when:
+    - not mds_use_fqdn
 
-- set_fact:
+- name: set_fact mds_name ansible_fqdn
+  set_fact:
     mds_name: "{{ ansible_fqdn }}"
-  when: mds_use_fqdn
+  when:
+    - mds_use_fqdn
 
-- set_fact:
+- name: set_fact rbd_client_directory_owner ceph
+  set_fact:
     rbd_client_directory_owner: ceph
   when:
     - rbd_client_directory_owner is not defined
       or not rbd_client_directory_owner
 
-- set_fact:
+- name: set_fact rbd_client_directory_group rbd_client_directory_group
+  set_fact:
     rbd_client_directory_group: ceph
   when:
     - rbd_client_directory_group is not defined
       or not rbd_client_directory_group
 
-- set_fact:
+- name: set_fact rbd_client_directory_mode 0770
+  set_fact:
     rbd_client_directory_mode: "0770"
   when:
     - rbd_client_directory_mode is not defined
