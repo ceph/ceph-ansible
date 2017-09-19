@@ -35,14 +35,14 @@
   shell: yum --noplugins --cacheonly repolist | grep -sq rhel-7-server-rhceph-{{ ceph_rhcs_version }}-tools-rpms
   changed_when: false
   failed_when: false
-  register: rhcs_rgw_mds_repo
+  register: rhcs_rgw_mds_nfs_repo
   always_run: true
   when:
-    - (rgw_group_name in group_names or mds_group_name in group_names)
+    - (rgw_group_name in group_names or mds_group_name in group_names or nfs_group_name in group_names)
 
 - name: enable red hat storage rados gateway / mds repository
   command: subscription-manager repos --enable rhel-7-server-rhceph-{{ ceph_rhcs_version }}-tools-rpms
   changed_when: false
   when:
-    - (rgw_group_name in group_names or mds_group_name in group_names)
-    - rhcs_rgw_mds_repo.rc != 0
+    - (rgw_group_name in group_names or mds_group_name in group_names or nfs_group_name in group_names)
+    - rhcs_rgw_mds_nfs_repo.rc != 0
