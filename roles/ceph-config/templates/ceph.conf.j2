@@ -14,7 +14,6 @@ ms bind ipv6 = true
 {% if not containerized_deployment_with_kv and not containerized_deployment %}
 fsid = {{ fsid }}
 {% endif %}
-max open files = {{ max_open_files }}
 {% if common_single_host_mode is defined and common_single_host_mode %}
 osd crush chooseleaf type = 0
 {% endif %}
@@ -116,6 +115,7 @@ log file = {{ rbd_client_log_file }} # must be writable by QEMU and allowed by S
 {% endif %}
 
 {% if inventory_hostname in groups.get(osd_group_name, []) %}
+{% if osd_objectstore == 'filestore' %}
 [osd]
 osd mkfs type = {{ osd_mkfs_type }}
 osd mkfs options xfs = {{ osd_mkfs_options_xfs }}
@@ -126,6 +126,7 @@ filestore xattr use omap = {{ filestore_xattr_use_omap }}
 {% elif osd_mkfs_type == "ext4" %}
 filestore xattr use omap = true
 {# else, default is false #}
+{% endif %}
 {% endif %}
 {% endif %}
 
