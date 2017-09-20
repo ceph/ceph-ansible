@@ -116,6 +116,7 @@ log file = {{ rbd_client_log_file }} # must be writable by QEMU and allowed by S
 {% endif %}
 
 {% if inventory_hostname in groups.get(osd_group_name, []) %}
+{% if osd_objectstore == 'filestore' %}
 [osd]
 osd mkfs type = {{ osd_mkfs_type }}
 osd mkfs options xfs = {{ osd_mkfs_options_xfs }}
@@ -126,6 +127,7 @@ filestore xattr use omap = {{ filestore_xattr_use_omap }}
 {% elif osd_mkfs_type == "ext4" %}
 filestore xattr use omap = true
 {# else, default is false #}
+{% endif %}
 {% endif %}
 {% endif %}
 
