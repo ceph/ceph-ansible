@@ -116,7 +116,7 @@ An example configuration that deploys the upstream ``jewel`` version of ceph wit
     devices:
       - '/dev/sda'
       - '/dev/sdb'
-    osd_scenario: collocated
+    journal_collocation: true
     # use this to set your PG config for the cluster
     ceph_conf_overrides:
       global:
@@ -129,9 +129,17 @@ selection or other aspects of your cluster.
 - ``ceph_stable_release``
 - ``ceph_stable`` or ``ceph_rhcs`` or ``ceph_dev``
 - ``public_network``
-- ``osd_scenario``
 - ``journal_size``
 - ``monitor_interface`` or ``monitor_address``
+
+In addition, one of the OSD deployment scenarios must be set to ``true``. This can be one of:
+
+- ``journal_collocation``
+- ``raw_multi_journal``
+- ``osd_directory``
+- ``bluestore`` (must also set ``osd_objectstore`` to ``bluestore``, considered experimental in the ``jewel`` release)
+- ``dmcrypt_journal_collocation``
+- ``dmcrypt_dedicated_journal``
 
 ceph.conf Configuration
 -----------------------
