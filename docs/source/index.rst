@@ -163,19 +163,6 @@ An example::
 
 Full documentation for configuring each of the ceph daemon types are in the following sections.
 
-OSD Configuration
-=================
-
-OSD configuration is set by selecting an osd scenario and providing the configuration needed for
-that scenario. Each scenario is different in it's requirements. Selecting your OSD scenario is done
-by setting the ``osd_scenario`` configuration option.
-
-=======
-.. toctree::
-   :maxdepth: 1
-
-   osds/scenarios
-    
 Contribution
 ============
 
