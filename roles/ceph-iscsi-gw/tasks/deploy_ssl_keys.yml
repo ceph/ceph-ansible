@@ -28,9 +28,12 @@
     - "{{ crt_files_exist.results }}"
   when: item.1.stat.exists == true
 
+- name: set_fact generate_crt
+  set_fact:
+    generate_crt: true
+  with_items: "{{ crt_files_exist.results }}"
+  when: item.stat.exists == false
+
 - name: include generate_crt.yml
   include: generate_crt.yml
-  with_together:
-    - "{{ crt_files }}"
-    - "{{ crt_files_exist.results }}"
-  when: item.1.stat.exists == false
+  when: generate_crt|bool|default(false)

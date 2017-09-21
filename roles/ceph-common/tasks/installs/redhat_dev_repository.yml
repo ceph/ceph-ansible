@@ -33,22 +33,35 @@
     - nfs_group_name in group_names
     - nfs_ganesha_dev
 
+- name: set_fact ceph_iscsi_repos
+  set_fact:
+    ceph_iscsi_repos:
+      - ceph-iscsi-config
+      - tcmu-runner
+  when:
+    - ceph_iscsi_config_dev
+    - iscsi_gw_group_name in group_names
+
 - name: fetch ceph-iscsi-config red hat development repository
   uri:
-    url: https://shaman.ceph.com/api/repos/ceph-iscsi-config/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo
+    url: https://shaman.ceph.com/api/repos/{{ item }}/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo
     return_content: yes
   register: ceph_iscsi_config_dev_yum_repo
+  with_items: "{{ ceph_iscsi_repos }}"
   when:
     - ceph_iscsi_config_dev
     - iscsi_gw_group_name in group_names
 
 - name: configure ceph-iscsi-config red hat development repository
   copy:
-    content: "{{ ceph_iscsi_config_dev_yum_repo.content }}"
-    dest: /etc/yum.repos.d/ceph-iscsi-config-dev.repo
+    content: "{{ item.0.content }}"
+    dest: "/etc/yum.repos.d/{{ item.1 }}-dev.repo"
     owner: root
     group: root
     backup: yes
+  with_together:
+    - "{{ ceph_iscsi_config_dev_yum_repo.results }}"
+    - "{{ ceph_iscsi_repos }}"
   when:
     - ceph_iscsi_config_dev
     - iscsi_gw_group_name in group_names

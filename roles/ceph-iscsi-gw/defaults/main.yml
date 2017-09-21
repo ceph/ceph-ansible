@@ -9,7 +9,7 @@ gateway_iqn: "iqn.2003-01.com.redhat.iscsi-gw:ceph-igw"
 # as an iscsi target portal ip. The list must be comma separated - and the order determines
 # the sequence of TPG's within the iscsi target across each gateway. Once set, additional
 # gateways can be added, but the order must *not* be changed.
-gateway_ip_list: "192.168.122.101,192.168.122.102,192.168.122.103"
+gateway_ip_list: 0.0.0.0
 
 # rbd_devices defines the images that should be created and exported from the iscsi gateways.
 # If the rbd does not exist, it will be created for you. In addition you may increase the
@@ -22,11 +22,15 @@ gateway_ip_list: "192.168.122.101,192.168.122.102,192.168.122.103"
 # to any client, and the remove it from LIO and then delete the rbd image
 #
 # NB. this variable definition can be commented out to bypass LUN management
-rbd_devices:
-  - { pool: 'rbd', image: 'ansible1', size: '30G', host: 'ceph-1', state: 'present' }
-  - { pool: 'rbd', image: 'ansible2', size: '15G', host: 'ceph-1', state: 'present' }
-  - { pool: 'rbd', image: 'ansible3', size: '30G', host: 'ceph-1', state: 'present' }
-  - { pool: 'rbd', image: 'ansible4', size: '50G', host: 'ceph-1', state: 'present' }
+#
+# Example:
+#
+#rbd_devices:
+#  - { pool: 'rbd', image: 'ansible1', size: '30G', host: 'ceph-1', state: 'present' }
+#  - { pool: 'rbd', image: 'ansible2', size: '15G', host: 'ceph-1', state: 'present' }
+#  - { pool: 'rbd', image: 'ansible3', size: '30G', host: 'ceph-1', state: 'present' }
+#  - { pool: 'rbd', image: 'ansible4', size: '50G', host: 'ceph-1', state: 'present' }
+rbd_devices: {}
 
 
 # client_connections defines the client ACL's to restrict client access to specific LUNs
@@ -37,6 +41,11 @@ rbd_devices:
 # - status shows the intended state of this client definition - 'present' or 'absent'
 #
 # NB. this definition can be commented out to skip client (nodeACL) management
-client_connections:
-  - { client: 'iqn.1994-05.com.redhat:rh7-iscsi-client', image_list: 'rbd.ansible1,rbd.ansible2', chap: 'rh7-iscsi-client/redhat', status: 'present' }
-  - { client: 'iqn.1991-05.com.microsoft:w2k12r2', image_list: 'rbd.ansible4', chap: 'w2k12r2/microsoft_w2k12', status: 'absent' }
+#
+# Example:
+#
+#client_connections:
+#  - { client: 'iqn.1994-05.com.redhat:rh7-iscsi-client', image_list: 'rbd.ansible1,rbd.ansible2', chap: 'rh7-iscsi-client/redhat', status: 'present' }
+#  - { client: 'iqn.1991-05.com.microsoft:w2k12r2', image_list: 'rbd.ansible4', chap: 'w2k12r2/microsoft_w2k12', status: 'absent' }
+
+client_connections: {}
