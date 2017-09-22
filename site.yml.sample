@@ -61,6 +61,15 @@
     - ceph-config
     - ceph-mon
 
+- hosts: mgrs
+  gather_facts: false
+  become: True
+  roles:
+    - { role: ceph-defaults, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
+    - { role: ceph-common, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
+    - { role: ceph-config, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
+    - { role: ceph-mgr, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
+
 - hosts: agents
   gather_facts: false
   become: True
@@ -132,15 +141,6 @@
     - ceph-common
     - ceph-config
     - ceph-client
-
-- hosts: mgrs
-  gather_facts: false
-  become: True
-  roles:
-    - { role: ceph-defaults, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
-    - { role: ceph-common, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
-    - { role: ceph-config, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
-    - { role: ceph-mgr, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
 
 - hosts: iscsi_gws
   gather_facts: false
