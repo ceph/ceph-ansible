@@ -87,6 +87,41 @@
     tags:
       remove_img
 
+- name: purge ceph mgr cluster
+
+  hosts:
+    - "{{ mgr_group_name|default('mgrs') }}"
+  become: true
+  tasks:
+
+  - name: disable ceph mgr service
+    service:
+      name: "ceph-mgr@{{ ansible_hostname }}"
+      state: stopped
+      enabled: no
+    ignore_errors: true
+
+  - name: remove ceph mgr container
+    docker:
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      name: "ceph-mgr-{{ ansible_hostname }}"
+      state: absent
+    ignore_errors: true
+
+  - name: remove ceph mgr service
+    file:
+      path: /etc/systemd/system/ceph-mgr@.service
+      state: absent
+
+  - name: remove ceph mgr image
+    docker_image:
+      state: absent
+      repository: "{{ ceph_docker_registry }}"
+      name: "{{ ceph_docker_image }}"
+      tag: "{{ ceph_docker_image_tag }}"
+      force: yes
+    tags:
+      remove_img
 
 - name: purge ceph rgw cluster
 
@@ -361,6 +396,7 @@
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
 
   become: true
 
@@ -513,6 +549,7 @@
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
 
   gather_facts: false # Already gathered previously
 

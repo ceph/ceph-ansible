@@ -41,6 +41,7 @@
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
 
   become: true
 
@@ -76,6 +77,27 @@
     command: initctl stop ceph-mds cluster={{ cluster }} id={{ ansible_hostname }}
     failed_when: false
     when: ansible_service_mgr == 'upstart'
+
+- name: purge ceph mgr cluster
+
+  vars:
+    mgr_group_name: mgrs
+
+  hosts:
+    - "{{ mgr_group_name|default('mgrs') }}"
+
+  gather_facts: false # Already gathered previously
+
+  become: true
+
+  tasks:
+
+  - name: stop ceph mgrs with systemd
+    service:
+      name: ceph-mgr@{{ ansible_hostname}}
+      state: stopped
+      enabled: no
+    when: ansible_service_mgr == 'systemd'
 
 - name: purge ceph rgw cluster
 
@@ -507,6 +529,7 @@
       - ceph-fs-common
       - ceph-fuse
       - ceph-mds
+      - ceph-mgr
       - ceph-release
       - ceph-radosgw
       - calamari-server
@@ -529,6 +552,7 @@
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
 
   gather_facts: false # Already gathered previously
 
