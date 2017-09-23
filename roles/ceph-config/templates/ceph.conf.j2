@@ -81,7 +81,7 @@ mon host = {% if nb_mon > 0 %}
         [{{ hostvars[host]['monitor_address'] }}]
       {%- endif %}
     {%- else -%}
-      {% set interface = ["ansible_",monitor_interface]|join %}
+      {% set interface = 'ansible_' + hostvars[host]['monitor_interface'] %}
       {% if ip_version == 'ipv4' -%}
         {{ hostvars[host][interface][ip_version]['address'] }}
       {%- elif ip_version == 'ipv6' -%}
@@ -199,7 +199,7 @@ rgw data = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['ansible_ho
       rgw frontends = civetweb port=[{{ hostvars[host]['radosgw_address'] }}]:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
     {% endif %}
 {%- else -%}
-    {% set interface = ["ansible_",radosgw_interface]|join %}
+    {% set interface = 'ansible_' + hostvars[host]['radosgw_interface'] %}
     {% if ip_version == 'ipv6' -%}
       rgw frontends = civetweb port=[{{ hostvars[host][interface][ip_version][0]['address'] }}]:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
     {%- elif ip_version == 'ipv4' -%}
