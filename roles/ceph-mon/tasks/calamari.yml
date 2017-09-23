@@ -2,9 +2,20 @@
 - name: install calamari server
   package:
     name: calamari-server
-    state: present
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   tags:
     - package-install
+
+- name: increase calamari logging level when debug is on
+  ini_file:
+    dest: /etc/calamari/calamari.conf
+    section: "{{ item }}"
+    option: log_level
+    value: DEBUG
+  with_items:
+    - cthulhu
+    - calamari_web
+  when: calamari_debug
 
 - name: initialize the calamari server api
   command: calamari-ctl initialize

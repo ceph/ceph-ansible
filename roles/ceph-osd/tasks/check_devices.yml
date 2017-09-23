@@ -10,48 +10,42 @@
 # allow 2-digit partition numbers so fast SSDs can be shared by > 9 disks
 # for SSD journals.
 
-- include: ./check_devices_static.yml
-  when:
-    - not osd_auto_discovery
-    - not osd_directory
+- name: include check_devices_static.yml
+  include: check_devices_static.yml
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
-
-- include: ./check_devices_auto.yml
-  when:
-    - osd_auto_discovery
-    - not osd_directory
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
-
-- name: check the journal device is partition
-  shell: "readlink -f {{ item }} | egrep '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p)[0-9]{1,2}$'"
-  with_items: "{{ raw_journal_devices }}"
-  changed_when: false
-  failed_when: false
-  always_run: true
-  register: journal_ispartition_results
 
 - name: check the partition status of the journal devices
-  shell: "parted --script {{ item.1 }} print > /dev/null 2>&1"
-  with_together:
-    - "{{ journal_ispartition_results.results }}"
-    - "{{ raw_journal_devices|unique }}"
+  command: "parted --script {{ item }} print"
+  with_items:
+    - "{{ dedicated_devices|unique }}"
   changed_when: false
   failed_when: false
   always_run: true
   register: journal_partition_status
   when:
-    - (raw_multi_journal or dmcrypt_dedicated_journal)
-    - item.0.rc != 0
+    - osd_scenario == 'non-collocated'
 
-- name: fix partitions gpt header or labels of the journal devices
+- name: fix partitions gpt header or labels of the journal device(s)
   shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }}"
   with_together:
     - "{{ journal_partition_status.results }}"
-    - "{{ raw_journal_devices|unique }}"
+    - "{{ dedicated_devices|unique }}"
   changed_when: false
   when:
-    - (raw_multi_journal or dmcrypt_dedicated_journal)
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0
+    - osd_scenario == 'non-collocated'
+    - not containerized_deployment
+
+- name: create gpt disk label of the journal device(s)
+  command: parted --script {{ item.1 }} mklabel gpt
+  with_together:
+    - "{{ journal_partition_status.results }}"
+    - "{{ dedicated_devices|unique }}"
+  changed_when: false
+  when:
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
+    - osd_scenario == 'non-collocated'
+    - containerized_deployment

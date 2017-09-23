@@ -1,4 +1,16 @@
 ---
+- name: set selinux permissions
+  shell: |
+    chcon -Rt svirt_sandbox_file_t {{ item }}
+  with_items:
+    - /etc/ceph
+    - /var/lib/ceph
+  changed_when: false
+  when:
+    - sestatus is defined
+    - sestatus.stdout != 'Disabled'
+    - containerized_deployment
+
 - name: copy ceph admin keyring
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.client.admin.keyring"
@@ -6,8 +18,10 @@
     owner: "ceph"
     group: "ceph"
     mode: "0600"
-  when: cephx
+  when:
+    - cephx
+    - copy_admin_key
 
-- name: check if global key exists in ceph_conf_overrides
+- name: set_fact global_in_ceph_conf_overrides
   set_fact:
     global_in_ceph_conf_overrides: "{{ 'global' in ceph_conf_overrides }}"

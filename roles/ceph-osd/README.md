@@ -17,13 +17,11 @@ Choose between the following scenario to configure your OSDs, **choose only one*
 
 * `journal_collocation`
 * `raw_multi_journal`
-* `osd_directory`
 
 Then:
 
 * `devices`
 * `raw_journal_devices` (**only if** you activated `raw_multi_journal`)
-* `osd_directories` (**only if** you activated `osd_directory`)
 
 # Dependencies
 

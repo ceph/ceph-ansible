@@ -1,26 +1,45 @@
 import pytest
+import os
 
 
 @pytest.fixture()
-def node(Ansible, Interface, Command, request):
+def node(host, request):
     """
     This fixture represents a single node in the ceph cluster. Using the
-    Ansible fixture provided by testinfra it can access all the ansible variables
+    host.ansible fixture provided by testinfra it can access all the ansible variables
     provided to it by the specific test scenario being ran.
 
     You must include this fixture on any tests that operate on specific type of node
     because it contains the logic to manage which tests a node should run.
     """
-    ansible_vars = Ansible.get_variables()
+    ansible_vars = host.ansible.get_variables()
+    # tox will pass in this environment variable. we need to do it this way
+    # because testinfra does not collect and provide ansible config passed in
+    # from using --extra-vars
+    ceph_stable_release = os.environ.get("CEPH_STABLE_RELEASE", "kraken")
     node_type = ansible_vars["group_names"][0]
     docker = ansible_vars.get("docker")
+    osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
+    lvm_scenario = ansible_vars.get("osd_scenario") == 'lvm'
     if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
         pytest.skip("Not a valid test for node type: %s" % node_type)
+
+    if request.node.get_marker("no_lvm_scenario") and lvm_scenario:
+        pytest.skip("Not a valid test for lvm scenarios")
+
+    if not lvm_scenario and request.node.get_marker("lvm_scenario"):
+        pytest.skip("Not a valid test for non-lvm scenarios")
 
     if request.node.get_marker("no_docker") and docker:
         pytest.skip("Not a valid test for containerized deployments or atomic hosts")
 
-    journal_collocation_test = ansible_vars.get("journal_collocation") or ansible_vars.get("dmcrypt_journal_collocation")
+    if request.node.get_marker("docker") and not docker:
+        pytest.skip("Not a valid test for non-containerized deployments or atomic hosts")
+
+    if node_type == "mgrs" and ceph_stable_release == "jewel":
+        pytest.skip("mgr nodes can not be tested with ceph release jewel")
+
+    journal_collocation_test = ansible_vars.get("osd_scenario") == "collocated"
     if request.node.get_marker("journal_collocation") and not journal_collocation_test:
         pytest.skip("Scenario is not using journal collocation")
 
@@ -29,10 +48,15 @@ def node(Ansible, Interface, Command, request):
     cluster_address = ""
     # I can assume eth1 because I know all the vagrant
     # boxes we test with use that interface
-    address = Interface("eth1").addresses[0]
+    address = host.interface("eth1").addresses[0]
     subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
     num_mons = len(ansible_vars["groups"]["mons"])
-    num_devices = len(ansible_vars["devices"])
+    if osd_auto_discovery:
+        num_devices = 3
+    else:
+        num_devices = len(ansible_vars.get("devices", []))
+    if not num_devices:
+        num_devices = len(ansible_vars.get("lvm_volumes", []))
     num_osd_hosts = len(ansible_vars["groups"]["osds"])
     total_osds = num_devices * num_osd_hosts
     cluster_name = ansible_vars.get("cluster", "ceph")
@@ -41,13 +65,13 @@ def node(Ansible, Interface, Command, request):
         # I can assume eth2 because I know all the vagrant
         # boxes we test with use that interface. OSDs are the only
         # nodes that have this interface.
-        cluster_address = Interface("eth2").addresses[0]
-        cmd = Command('sudo ls /var/lib/ceph/osd/ | grep -oP "\d+$"')
+        cluster_address = host.interface("eth2").addresses[0]
+        cmd = host.run('sudo ls /var/lib/ceph/osd/ | sed "s/.*-//"')
         if cmd.rc == 0:
             osd_ids = cmd.stdout.rstrip("\n").split("\n")
             osds = osd_ids
             if docker:
-                osds = [device.split("/")[-1] for device in ansible_vars["devices"]]
+                osds = [device.split("/")[-1] for device in ansible_vars.get("devices", [])]
 
     data = dict(
         address=address,
@@ -63,6 +87,7 @@ def node(Ansible, Interface, Command, request):
         cluster_address=cluster_address,
         docker=docker,
         osds=osds,
+        ceph_stable_release=ceph_stable_release,
     )
     return data
 
@@ -76,8 +101,14 @@ def pytest_collection_modifyitems(session, config, items):
             item.add_marker(pytest.mark.osds)
         elif "mds" in test_path:
             item.add_marker(pytest.mark.mdss)
+        elif "mgr" in test_path:
+            item.add_marker(pytest.mark.mgrs)
+        elif "rbd-mirror" in test_path:
+            item.add_marker(pytest.mark.rbdmirrors)
         elif "rgw" in test_path:
             item.add_marker(pytest.mark.rgws)
+        elif "nfs" in test_path:
+            item.add_marker(pytest.mark.nfss)
         else:
             item.add_marker(pytest.mark.all)
 

@@ -1,0 +1,99 @@
+---
+# This playbook will make custom partition layout for your osd hosts.
+# You should define `devices` variable for every host.
+#
+# For example, in host_vars/hostname1
+#
+# devices:
+# - device_name: sdb
+#   partitions:
+#   - index: 1
+#     size: 10G
+#     type: data
+#   - index: 2
+#     size: 5G
+#     type: journal
+# - device_name: sdc
+#   partitions:
+#   - index: 1
+#     size: 10G
+#     type: data
+#   - index: 2
+#     size: 5G
+#     type: journal
+#
+- vars:
+    osd_group_name: osds
+    journal_typecode: 45b0969e-9b03-4f30-b4c6-b4b80ceff106
+    data_typecode: 4fbd7e29-9d25-41b8-afd0-062c0ceff05d
+    devices: []
+  hosts:
+  - "{{ osd_group_name }}"
+
+  tasks:
+
+  - name: load a variable file for devices partition
+    include_vars: "{{ item }}"
+    with_first_found:
+      - files:
+          - "host_vars/{{ ansible_hostname }}.yml"
+          - "host_vars/default.yml"
+        skip: true
+
+  - name: exit playbook, if devices not defined
+    fail:
+      msg: "devices must be define in host_vars/default.yml or host_vars/{{ ansible_hostname }}.yml"
+    when: devices is not defined
+
+  - name: install sgdisk(gdisk)
+    package:
+      name: gdisk
+      state: present
+
+  - name: erase all previous partitions(dangerous!!!)
+    shell: sgdisk --zap-all -- /dev/{{item.device_name}}
+    with_items: "{{ devices }}"
+
+  - name: make osd partitions
+    shell: >
+           sgdisk --new={{item.1.index}}:0:+{{item.1.size}} "--change-name={{item.1.index}}:ceph {{item.1.type}}"
+           "--typecode={{item.1.index}}:{% if item.1.type=='data' %}{{data_typecode}}{% else %}{{journal_typecode}}{% endif %}"
+           --mbrtogpt -- /dev/{{item.0.device_name}}
+    with_subelements:
+    - "{{ devices }}"
+    - partitions
+
+  - set_fact:
+      owner: 167
+      group: 167
+    when:
+      - ansible_os_family == "RedHat"
+  
+  - set_fact:
+      owner: 64045
+      group: 64045
+    when:
+      - ansible_os_family == "Debian"
+
+  - name: change partitions ownership
+    file:
+      path: "/dev/{{item.0.device_name}}{{item.1.index}}"
+      owner: "{{ owner | default('root')}}"
+      group: "{{ group | default('disk')}}"
+    with_subelements:
+      - "{{ devices }}"
+      - partitions
+    when:
+      item.0.device_name | match('/dev/([hsv]d[a-z]{1,2}){1,2}$')
+
+  - name: change partitions ownership
+    file:
+      path: "/dev/{{item.0.device_name}}p{{item.1.index}}"
+      owner: "{{ owner | default('root')}}"
+      group: "{{ group | default('disk')}}"
+    with_subelements:
+      - "{{ devices }}"
+      - partitions
+    when:
+      item.0.device_name | match('/dev/(cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}$')
+...

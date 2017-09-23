@@ -1,34 +1,6 @@
 ---
-- name: check if it is Atomic host
-  stat: path=/run/ostree-booted
-  register: stat_ostree
-  always_run: true
+- name: include copy_configs.yml
+  include: copy_configs.yml
 
-- name: set fact for using Atomic host
-  set_fact:
-      is_atomic: '{{ stat_ostree.stat.exists }}'
-
-- include: pre_requisite.yml
-  when: not is_atomic
-
-- include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_atomic.yml"
-  when:
-    - is_atomic
-    - ansible_os_family == 'RedHat'
-    - ntp_service_enabled
-
-- include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_redhat.yml"
-  when:
-    - not is_atomic
-    - ansible_os_family == 'RedHat'
-    - ntp_service_enabled
-
-- include: "{{ playbook_dir }}/roles/ceph-common/tasks/misc/ntp_debian.yml"
-  when:
-    - ansible_os_family == 'Debian'
-    - ntp_service_enabled
-
-- include: "{{ playbook_dir }}/roles/ceph-common/tasks/docker/fetch_image.yml"
-- include: dirs_permissions.yml
-- include: fetch_configs.yml
-- include: start_docker_restapi.yml
+- name: include start_docker_restapi.yml
+  include: start_docker_restapi.yml

@@ -1,14 +1,21 @@
 ---
-- include: pre_requisite.yml
-  when: not rbd_mirror_containerized_deployment
+- name: include pre_requisite.yml
+  include: pre_requisite.yml
+  when:
+    - not containerized_deployment
 
-- include: start_rbd_mirror.yml
-  when: not rbd_mirror_containerized_deployment
+- name: include start_rbd_mirror.yml
+  include: start_rbd_mirror.yml
+  when:
+    - not containerized_deployment
 
-- include: configure_mirroring.yml
+- name: include configure_mirroring.yml
+  include: configure_mirroring.yml
   when:
     - ceph_rbd_mirror_configure
-    - not rbd_mirror_containerized_deployment
+    - not containerized_deployment
 
-- include: ./docker/main.yml
-  when: rbd_mirror_containerized_deployment
+- name: include docker/main.yml
+  include: docker/main.yml
+  when:
+    - containerized_deployment

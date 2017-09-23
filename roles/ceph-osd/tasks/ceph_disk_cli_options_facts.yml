@@ -1,0 +1,92 @@
+---
+- name: set_fact ceph_disk_cli_options '--cluster {{ cluster }} --bluestore'
+  set_fact:
+    ceph_disk_cli_options: "--cluster {{ cluster }} --bluestore"
+  when:
+    - osd_objectstore == 'bluestore'
+    - not dmcrypt
+    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - not containerized_deployment
+
+- name: set_fact ceph_disk_cli_options 'ceph_disk_cli_options'
+  set_fact:
+    ceph_disk_cli_options: "--cluster {{ cluster }} --filestore"
+  when:
+    - osd_objectstore == 'filestore'
+    - not dmcrypt
+    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - not containerized_deployment
+
+- name: set_fact ceph_disk_cli_options '--cluster {{ cluster }}'
+  set_fact:
+    ceph_disk_cli_options: "--cluster {{ cluster }}"
+  when:
+    - osd_objectstore == 'filestore'
+    - not dmcrypt
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
+    - not containerized_deployment
+
+- name: set_fact ceph_disk_cli_options '--cluster {{ cluster }} --bluestore --dmcrypt'
+  set_fact:
+    ceph_disk_cli_options: "--cluster {{ cluster }} --bluestore --dmcrypt"
+  when:
+    - osd_objectstore == 'bluestore'
+    - dmcrypt
+    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - not containerized_deployment
+
+- name: set_fact ceph_disk_cli_options '--cluster {{ cluster }} --filestore --dmcrypt'
+  set_fact:
+    ceph_disk_cli_options: "--cluster {{ cluster }} --filestore --dmcrypt"
+  when:
+    - osd_objectstore == 'filestore'
+    - dmcrypt
+    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - not containerized_deployment
+
+- name: set_fact ceph_disk_cli_options '--cluster {{ cluster }} --dmcrypt'
+  set_fact:
+    ceph_disk_cli_options: "--cluster {{ cluster }} --dmcrypt"
+  when:
+    - osd_objectstore == 'filestore'
+    - dmcrypt
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
+    - not containerized_deployment
+
+- name: set_fact docker_env_args '-e KV_TYPE={{ kv_type }} -e KV_IP={{ kv_endpoint }} -e KV_PORT={{ kv_port }}'
+  set_fact:
+    docker_env_args: -e KV_TYPE={{ kv_type }} -e KV_IP={{ kv_endpoint }} -e KV_PORT={{ kv_port }}
+  when:
+    - containerized_deployment_with_kv
+
+- name: set_fact docker_env_args '-e OSD_BLUESTORE=0 -e OSD_FILESTORE=1 -e OSD_DMCRYPT=0'
+  set_fact:
+    docker_env_args: -e OSD_BLUESTORE=0 -e OSD_FILESTORE=1 -e OSD_DMCRYPT=0
+  when:
+    - containerized_deployment
+    - osd_objectstore == 'filestore'
+    - not dmcrypt
+
+- name: set_fact docker_env_args '-e OSD_BLUESTORE=0 -e OSD_FILESTORE=1 -e OSD_DMCRYPT=1'
+  set_fact:
+    docker_env_args: -e OSD_BLUESTORE=0 -e OSD_FILESTORE=1 -e OSD_DMCRYPT=1
+  when:
+    - containerized_deployment
+    - osd_objectstore == 'filestore'
+    - dmcrypt
+
+- name: set_fact docker_env_args '-e OSD_BLUESTORE=1 -e OSD_FILESTORE=0 -e OSD_DMCRYPT=0'
+  set_fact:
+    docker_env_args: -e OSD_BLUESTORE=1 -e OSD_FILESTORE=0 -e OSD_DMCRYPT=0
+  when:
+    - containerized_deployment
+    - osd_objectstore == 'bluestore'
+    - not dmcrypt
+
+- name: set_fact docker_env_args '-e OSD_BLUESTORE=1 -e OSD_FILESTORE=0 -e OSD_DMCRYPT=1'
+  set_fact:
+    docker_env_args: -e OSD_BLUESTORE=1 -e OSD_FILESTORE=0 -e OSD_DMCRYPT=1
+  when:
+    - containerized_deployment
+    - osd_objectstore == 'bluestore'
+    - dmcrypt

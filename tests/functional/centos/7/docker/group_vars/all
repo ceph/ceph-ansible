@@ -1,0 +1,32 @@
+---
+# this is only here to let the CI tests know
+# that this scenario is using docker
+docker: True
+
+containerized_deployment: True
+cluster: test
+monitor_interface: eth1
+radosgw_interface: eth1
+ceph_mon_docker_subnet: "{{ public_network }}"
+journal_size: 100
+ceph_docker_on_openstack: False
+public_network: "192.168.15.0/24"
+cluster_network: "192.168.16.0/24"
+osd_scenario: collocated
+ceph_rgw_civetweb_port: 8080
+osd_objectstore: filestore
+ceph_osd_docker_prepare_env: -e OSD_JOURNAL_SIZE={{ journal_size }} -e OSD_FORCE_ZAP=1
+devices:
+  - /dev/sda
+  - /dev/sdb
+ceph_osd_docker_run_script_path: /var/tmp
+rgw_override_bucket_index_max_shards: 16
+rgw_bucket_default_quota_max_objects: 1638400
+ceph_conf_overrides:
+  global:
+    osd_pool_default_pg_num: 8
+    osd_pool_default_size: 1
+user_config: True
+keys:
+  - { name: client.test, key: "AQAin8tUoMPDGRAACcfAQHbq4eTuUoTCZdW1Uw==", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool=test", mode: "0600", acls: [] }
+  - { name: client.test2, key: "AQAin8tUAJkGGhAA8WZ8Lz5c7IkT8QZ5s7bI1A==", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool=test2", mode: "0600", acls: [] }

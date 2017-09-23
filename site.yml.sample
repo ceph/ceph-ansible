@@ -11,10 +11,14 @@
   - restapis
   - rbdmirrors
   - clients
-  - iscsigws
+  - mgrs
+  - iscsi_gws
+
   gather_facts: false
+
   tags:
     - always
+
   tasks:
     # If we can't get python2 installed before any module is used we will fail
     # so just try what we can to get it installed
@@ -23,77 +27,127 @@
         path: /usr/bin/python
       ignore_errors: yes
       register: systempython2
-    - name: install python2 for Debian based systems
+
+    - name: install python2 for debian based systems
       raw: sudo apt-get -y install python-simplejson
       ignore_errors: yes
-      when: systempython2.stat.exists is undefined or systempython2.stat.exists == false
-    # Try to install python2 on Fedora > 23
-    - name: install python2 for Fedora
+      when:
+        - systempython2.stat.exists is undefined or systempython2.stat.exists == false
+
+    - name: install python2 for fedora
       raw: sudo dnf -y install python creates=/usr/bin/python
       ignore_errors: yes
-      when: systempython2.stat.exists is undefined or systempython2.stat.exists == false
-    - name: gathering facts
+      when:
+        - systempython2.stat.exists is undefined or systempython2.stat.exists == false
+
+    - name: gather and delegate facts
       setup:
-    - name: install required packages for Fedora > 23
+      delegate_to: "{{ item }}"
+      delegate_facts: True
+      with_items: "{{ groups['all'] }}"
+
+    - name: install required packages for fedora > 23
       raw: sudo dnf -y install python2-dnf libselinux-python ntp
-      when: ansible_distribution == 'Fedora' and ansible_distribution_major_version|int >= 23
+      when:
+        - ansible_distribution == 'Fedora'
+        - ansible_distribution_major_version|int >= 23
 
 - hosts: mons
   gather_facts: false
   become: True
   roles:
-  - ceph-mon
+    - ceph-defaults
+    - ceph-common
+    - ceph-config
+    - ceph-mon
+
+- hosts: mgrs
+  gather_facts: false
+  become: True
+  roles:
+    - { role: ceph-defaults, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
+    - { role: ceph-common, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
+    - { role: ceph-config, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
+    - { role: ceph-mgr, when: "ceph_release_num.{{ ceph_stable_release }} > ceph_release_num.jewel" }
 
 - hosts: agents
   gather_facts: false
   become: True
   roles:
-  - ceph-agent
+    - ceph-defaults
+    - ceph-common
+    - ceph-config
+    - ceph-agent
 
 - hosts: osds
   gather_facts: false
   become: True
   roles:
-  - ceph-osd
+    - ceph-defaults
+    - ceph-common
+    - ceph-config
+    - ceph-osd
 
 - hosts: mdss
   gather_facts: false
   become: True
   roles:
-  - ceph-mds
+    - ceph-defaults
+    - ceph-common
+    - ceph-config
+    - ceph-mds
 
 - hosts: rgws
   gather_facts: false
   become: True
   roles:
-  - ceph-rgw
+    - ceph-defaults
+    - ceph-common
+    - ceph-config
+    - ceph-rgw
 
 - hosts: nfss
   gather_facts: false
   become: True
   roles:
-  - ceph-nfs
+    - ceph-defaults
+    - ceph-common
+    - ceph-config
+    - ceph-nfs
 
 - hosts: restapis
   gather_facts: false
   become: True
   roles:
-  - ceph-restapi
+    - ceph-defaults
+    - ceph-common
+    - ceph-config
+    - ceph-restapi
 
 - hosts: rbdmirrors
   gather_facts: false
   become: True
   roles:
-  - ceph-rbd-mirror
+    - ceph-defaults
+    - ceph-common
+    - ceph-config
+    - ceph-rbd-mirror
 
 - hosts: clients
   gather_facts: false
   become: True
   roles:
-  - ceph-client
+    - ceph-defaults
+    - ceph-common
+    - ceph-config
+    - ceph-client
 
-- hosts: iscsigws
+- hosts: iscsi_gws
   gather_facts: false
   become: True
   roles:
-  - ceph-iscsi-gw
+    - { role: ceph-defaults, when: "ceph_release_num.{{ ceph_stable_release }} >= ceph_release_num.luminous" }
+    - { role: ceph-common, when: "ceph_release_num.{{ ceph_stable_release }} >= ceph_release_num.luminous" }
+    - { role: ceph-config, when: "ceph_release_num.{{ ceph_stable_release }} >= ceph_release_num.luminous" }
+    - { role: ceph-iscsi-gw, when: "ceph_release_num.{{ ceph_stable_release }} >= ceph_release_num.luminous" }
+

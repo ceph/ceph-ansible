@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
+
+#############
+# VARIABLES #
+#############
+
 basedir=$(dirname "$0")
+do_not_generate="ceph-common$|ceph-docker-common$" # pipe separated list of roles we don't want to generate sample file, MUST end with '$', e.g: 'foo$|bar$'
 
-for role in "$basedir"/roles/ceph-*; do
-  rolename=$(basename "$role")
-  if [[ $rolename == "ceph-common" ]]; then
-      output="all.yml.sample"
-  elif [[ $rolename == "ceph-agent" ]]; then
-      output="agent.yml.sample"
-  elif [[ $rolename == "ceph-fetch-keys" ]]; then
-      output="ceph-fetch-keys.yml.sample"
-  else
-      output="${rolename:5}s.yml.sample"
-  fi
 
-  cat <<EOF > "$basedir"/group_vars/"$output"
+#############
+# FUNCTIONS #
+#############
+
+populate_header () {
+  for i in $output; do
+    cat <<EOF > "$basedir"/group_vars/"$i"
 ---
 # Variables here are applicable to all host groups NOT roles
 
@@ -27,21 +27,58 @@ for role in "$basedir"/roles/ceph-*; do
 dummy:
 
 EOF
-  defaults="$role"/defaults/main.yml
-  if [[ ! -f $defaults ]]; then
-      continue
+  done
+}
+
+generate_group_vars_file () {
+  for i in $output; do
+    if [ "$(uname)" == "Darwin" ]; then
+      sed '/^---/d; s/^\([A-Za-z[:space:]]\)/#\1/' \
+        "$defaults" >> "$basedir"/group_vars/"$i"
+      echo >> "$basedir"/group_vars/"$i"
+    elif [ "$(uname -s)" == "Linux" ]; then
+      sed '/^---/d; s/^\([A-Za-z[:space:]].\+\)/#\1/' \
+        "$defaults" >> "$basedir"/group_vars/"$i"
+      echo >> "$basedir"/group_vars/"$i"
+    else
+      echo "Unsupported platform"
+      exit 1
+    fi
+  done
+}
+
+rhcs_edits () {
+  tail -n +1 rhcs_edits.txt | while IFS= read -r option; do
+    sed -i "s|#${option% *} .*|${option}|" group_vars/rhcs.yml.sample
+  done
+}
+
+########
+# MAIN #
+########
+
+for role in "$basedir"/roles/ceph-*; do
+  rolename=$(basename "$role")
+
+  if [[ $rolename == "ceph-defaults" ]]; then
+    output="all.yml.sample rhcs.yml.sample"
+  elif [[ $rolename == "ceph-agent" ]]; then
+    output="agent.yml.sample"
+  elif [[ $rolename == "ceph-fetch-keys" ]]; then
+    output="ceph-fetch-keys.yml.sample"
+  else
+    output="${rolename:5}s.yml.sample"
   fi
 
-  if [ "$(uname)" == "Darwin" ]; then
-  sed '/^---/d; s/^\([A-Za-z[:space:]]\)/#\1/' \
-        "$defaults" >> "$basedir"/group_vars/"$output"
-    echo >> "$basedir"/group_vars/"$output"
-  elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
-    sed '/^---/d; s/^\([A-Za-z[:space:]].\+\)/#\1/' \
-        "$defaults" >> "$basedir"/group_vars/"$output"
-    echo >> "$basedir"/group_vars/"$output"
-  else
-    echo "Unsupported platform"
-    exit 1
+  defaults="$role"/defaults/main.yml
+  if [[ ! -f $defaults ]]; then
+    continue
+  fi
+
+  if ! echo "$rolename" | grep -qE "$do_not_generate"; then
+    populate_header
+    generate_group_vars_file
   fi
 done
+
+rhcs_edits

@@ -1,0 +1,87 @@
+---
+# use shell rather than docker module
+# to ensure osd disk prepare finishes before
+# starting the next task
+- name: prepare ceph "{{ osd_objectstore }}" containerized osd disk(s) non-collocated
+  shell: |
+    docker run --net=host \
+    --pid=host \
+    --privileged=true \
+    --name=ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item.1 | regex_replace('/', '') }} \
+    -v /etc/ceph:/etc/ceph \
+    -v /var/lib/ceph/:/var/lib/ceph/ \
+    -v /dev:/dev \
+    -v /etc/localtime:/etc/localtime:ro \
+    -e CLUSTER={{ cluster }} \
+    -e CEPH_DAEMON=OSD_CEPH_DISK_PREPARE \
+    -e OSD_DEVICE={{ item.1 }} \
+    -e OSD_JOURNAL={{ item.2 }} \
+    {{ docker_env_args }} \
+    {{ ceph_osd_docker_prepare_env }} \
+    {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  with_together:
+    - "{{ parted_results.results | default([]) }}"
+    - "{{ devices }}"
+    - "{{ dedicated_devices }}"
+  when:
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
+    - not osd_auto_discovery
+    - containerized_deployment
+    - osd_objectstore == 'filestore'
+
+- name: prepare ceph "{{ osd_objectstore }}" containerized osd disk(s) non-collocated with a dedicated device for db and wal
+  shell: |
+    docker run --net=host \
+    --pid=host \
+    --privileged=true \
+    --name=ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item.1 | regex_replace('/', '') }} \
+    -v /etc/ceph:/etc/ceph \
+    -v /var/lib/ceph/:/var/lib/ceph/ \
+    -v /dev:/dev \
+    -v /etc/localtime:/etc/localtime:ro \
+    -e CLUSTER={{ cluster }} \
+    -e CEPH_DAEMON=OSD_CEPH_DISK_PREPARE \
+    -e OSD_DEVICE={{ item.1 }} \
+    -e OSD_BLUESTORE_BLOCK_DB={{ item.2 }} \
+    -e OSD_BLUESTORE_BLOCK_WAL={{ item.3 }} \
+    {{ docker_env_args }} \
+    {{ ceph_osd_docker_prepare_env }} \
+    {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  with_together:
+    - "{{ parted_results.results | default([]) }}"
+    - "{{ devices }}"
+    - "{{ dedicated_devices }}"
+    - "{{ bluestore_wal_devices }}"
+  when:
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
+    - not osd_auto_discovery
+    - containerized_deployment
+    - osd_objectstore == 'bluestore'
+
+- name: prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) non-collocated
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }} {{ item.2 }}"
+  with_together:
+    - "{{ parted_results.results | default([]) }}"
+    - "{{ devices }}"
+    - "{{ dedicated_devices }}"
+  changed_when: false
+  when:
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
+    - osd_objectstore == 'filestore'
+    - not containerized_deployment
+
+- name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with a dedicated device for db and wal
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.1 }} --block.wal {{ item.2 }} {{ item.3 }}"
+  with_together:
+    - "{{ parted_results.results | default([]) }}"
+    - "{{ dedicated_devices }}"
+    - "{{ bluestore_wal_devices }}"
+    - "{{ devices }}"
+  when:
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
+    - osd_objectstore == 'bluestore'
+    - not containerized_deployment

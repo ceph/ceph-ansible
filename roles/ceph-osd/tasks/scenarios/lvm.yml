@@ -1,0 +1,12 @@
+---
+- name: use ceph-volume to create filestore osds with dedicated journals
+  command: "ceph-volume lvm create --filestore --data {{ item.data_vg }}/{{ item.data }} --journal {{ item.journal }}"
+  with_items: "{{ lvm_volumes }}"
+  when:
+    - item.journal_vg is not defined
+
+- name: use ceph-volume to create filestore osds with dedicated lv journals
+  command: "ceph-volume lvm create --filestore --data {{ item.data_vg }}/{{ item.data }} --journal {{item.journal_vg }}/{{ item.journal }}"
+  with_items: "{{ lvm_volumes }}"
+  when:
+    - item.journal_vg is defined

@@ -1,9 +1,9 @@
 ---
 # This playbook shrinks the Ceph monitors from your cluster
-# It can remove any number of monitor(s) from the cluster and ALL THEIR DATA
+# It can remove a Ceph of monitor from the cluster and ALL ITS DATA
 #
 # Use it like this:
-# ansible-playbook shrink-mon.yml -e mon_host=ceph-mon01,ceph-mon02
+# ansible-playbook shrink-mon.yml -e mon_to_kill=ceph-mon01
 #     Prompts for confirmation to shrink, defaults to no and
 #     doesn't shrink the cluster. yes shrinks the cluster.
 #
@@ -12,12 +12,21 @@
 #     automation scripts to avoid interactive prompt.
 
 
-- name: confirm whether user really meant to remove monitor(s) from the ceph cluster
+- name: gather facts and check the init system
+
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+
+  become: true
+
+  tasks:
+    - debug: msg="gather facts on all Ceph hosts for following reference"
+
+- name: confirm whether user really meant to remove monitor from the ceph cluster
 
   hosts:
     - localhost
 
-  gather_facts: false
   become: true
 
   vars_prompt:
@@ -26,123 +35,121 @@
       default: 'no'
       private: no
 
-  tasks:
-  - include_vars: roles/ceph-common/defaults/main.yml
-  - include_vars: group_vars/all.yml
+  vars:
+    mon_group_name: mons
 
-  - name: exit playbook, if only one monitor is present in cluster
-    fail:
-      msg: "You are about to shrink the only monitor present in the cluster.
-            If you really want to do that, please use the purge-cluster playbook."
-    when: "{{ groups[mon_group_name] | length | int == 1 }}"
+  pre_tasks:
+    - name: exit playbook, if only one monitor is present in cluster
+      fail:
+        msg: "You are about to shrink the only monitor present in the cluster.
+              If you really want to do that, please use the purge-cluster playbook."
+      when:
+        - groups[mon_group_name] | length | int == 1
 
-  - name: exit playbook, if user did not mean to shrink cluster
-    fail:
-      msg: "Exiting shrink-mon playbook, no monitor(s) was/were removed.
-         To shrink the cluster, either say 'yes' on the prompt or
-         or use `-e ireallymeanit=yes` on the command line when
-         invoking the playbook"
-    when: ireallymeanit != 'yes'
+    - name: exit playbook, if no monitor was given
+      fail:
+        msg: "mon_to_kill must be declared
+          Exiting shrink-cluster playbook, no monitor was removed.
+           On the command line when invoking the playbook, you can use
+           -e mon_to_kill=ceph-mon01 argument. You can only remove a single monitor each time the playbook runs."
+      when:
+        - mon_to_kill is not defined
 
-  - name: exit playbook, if no monitor(s) was/were given
-    fail:
-      msg: "mon_host must be declared
-        Exiting shrink-cluster playbook, no monitor(s) was/were removed.
-         On the command line when invoking the playbook, you can use
-         -e mon_host=ceph-mon01,ceph-mon02 argument."
-    when: mon_host is not defined
+    - name: exit playbook, if the monitor is not part of the inventory
+      fail:
+        msg: "It seems that the host given is not part of your inventory, please make sure it is."
+      when:
+        - mon_to_kill not in groups[mon_group_name]
 
-  - name: test if ceph command exist
-    command: command -v ceph
-    changed_when: false
-    failed_when: false
-    register: ceph_command
+    - name: exit playbook, if user did not mean to shrink cluster
+      fail:
+        msg: "Exiting shrink-mon playbook, no monitor was removed.
+           To shrink the cluster, either say 'yes' on the prompt or
+           or use `-e ireallymeanit=yes` on the command line when
+           invoking the playbook"
+      when:
+        - ireallymeanit != 'yes'
 
-  - name: exit playbook, if ceph command does not exist
-    debug:
-      msg: "The ceph command is not available, please install it :("
-    run_once: true
-    when:
-      - ceph_command.rc != 0
+  roles:
+    - ceph-defaults
 
-  - name: exit playbook, if cluster files do not exist
-    stat:
-      path: "{{ item }}"
-    register: ceph_conf_key
-    with_items:
-      - /etc/ceph/{{ cluster }}.conf
-      - /etc/ceph/{{ cluster }}.client.admin.keyring
-    failed_when: false
+  post_tasks:
+    - name: pick a monitor different than the one we want to remove
+      set_fact:
+        mon_host: "{{ item }}"
+      with_items: "{{ groups[mon_group_name] }}"
+      when:
+        - item != mon_to_kill
 
-  - fail:
-      msg: "Ceph's configuration file is not present in /etc/ceph"
-    with_items: "{{ceph_conf_key.results}}"
-    when:
-      -  item.stat.exists == false
+    - name: set_fact docker_exec_cmd build docker exec command (containerized)
+      set_fact:
+        docker_exec_cmd: "docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }}"
+      when: containerized_deployment
 
-  - name: exit playbook, if can not connect to the cluster
-    command: timeout 5 ceph --cluster {{ cluster }} health
-    register: ceph_health
-    until: ceph_health.stdout.find("HEALTH") > -1
-    retries: 5
-    delay: 2
+    - name: exit playbook, if can not connect to the cluster
+      command: "{{ docker_exec_cmd }} timeout 5 ceph --cluster {{ cluster }} health"
+      register: ceph_health
+      until: ceph_health.stdout.find("HEALTH") > -1
+      delegate_to: "{{ mon_host }}"
+      retries: 5
+      delay: 2
 
-  - name: verify given monitors are reachable
-    command: ping -c 1 {{ item }}
-    with_items: "{{mon_host.split(',')}}"
-    register: mon_reachable
-    failed_when: false
+    - name: set_fact mon_to_kill_hostname
+      set_fact:
+        mon_to_kill_hostname: "{{ hostvars[mon_to_kill]['ansible_hostname'] }}"
 
-  - fail:
-      msg: "One or more monitors are not reachable, please check your /etc/hosts or your DNS"
-    with_items: "{{mon_reachable.results}}"
-    when:
-      -  item.rc != 0
+    - name: stop monitor service(s)
+      service:
+        name: ceph-mon@{{ mon_to_kill_hostname }}
+        state: stopped
+        enabled: no
+      delegate_to: "{{ mon_to_kill }}"
+      failed_when: false
 
-  - name: stop monitor service
-    service:
-      name: ceph-mon@{{ item }}
-      state: stopped
-      enabled: no
-    with_items: "{{mon_host.split(',')}}"
-    delegate_to: "{{item}}"
-    failed_when: false
+    - name: purge monitor store
+      file:
+        path: /var/lib/ceph/mon/{{ cluster }}-{{ mon_to_kill_hostname }}
+        state: absent
+      delegate_to: "{{ mon_to_kill }}"
 
-  - name: purge monitor store
-    file:
-      path: /var/lib/ceph/mon/{{ cluster }}-{{ item }}
-      state: absent
-    with_items: "{{mon_host.split(',')}}"
-    delegate_to: "{{item}}"
+    - name: remove monitor from the quorum
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} mon remove {{ mon_to_kill_hostname }}"
+      failed_when: false
+      delegate_to: "{{ mon_host }}"
 
-  - name: remove monitor from the quorum
-    command: ceph --cluster {{ cluster }} mon remove {{ item }}
-    failed_when: false
-    with_items: "{{mon_host.split(',')}}"
+    # NOTE (leseb): sorry for the 'sleep' command
+    # but it will take a couple of seconds for other monitors
+    # to notice that one member has left.
+    # 'sleep 5' is not that bad and should be sufficient
+    - name: verify the monitor is out of the cluster
+      shell: |
+        {{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["quorum_names"])'
+      delegate_to: "{{ mon_host }}"
+      failed_when: false
+      register: result
+      until: mon_to_kill_hostname not in result.stdout
+      retries: 2
+      delay: 10
 
-  # NOTE (leseb): sorry for the 'sleep' command
-  # but it will take a couple of seconds for other monitors
-  # to notice that one member has left.
-  # 'sleep 5' is not that bad and should be sufficient
-  - name: verify the monitor is out of the cluster
-    shell: "sleep 5 && ceph --cluster {{ cluster }} -s | grep monmap | sed 's/.*quorum//' | egrep -sq {{ item }}"
-    with_items: "{{mon_host.split(',')}}"
-    failed_when: false
-    register: ceph_health_mon
+    - name: please remove the monitor from your ceph configuration file
+      debug:
+          msg: "The monitor has been successfully removed from the cluster.
+          Please remove the monitor entry from the rest of your ceph configuration files, cluster wide."
+      run_once: true
+      when:
+        - mon_to_kill_hostname not in result.stdout
 
-  - name: please remove the monitor from your ceph configuration file
-    debug:
-        msg: "The monitor(s) has/have been successfully removed from the cluster.
-        Please remove the monitor(s) entry(ies) from the rest of your ceph configuration files, cluster wide."
-    run_once: true
-    with_items: "{{ceph_health_mon.results}}"
-    when:
-      - item.rc != 0
+    - name: fail if monitor is still part of the cluster
+      fail:
+          msg: "Monitor appears to still be part of the cluster, please check what happened."
+      run_once: true
+      when:
+        - mon_to_kill_hostname in result.stdout
 
-  - name: please remove the monitor from your ceph configuration file
-    fail:
-        msg: "Monitor(s) appear(s) to still be part of the cluster, please check what happened."
-    run_once: true
-    with_items: "{{ceph_health_mon.results}}"
-    when:
-      - item.rc == 0
+    - name: show ceph health
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s"
+      delegate_to: "{{ mon_host }}"
+
+    - name: show ceph mon status
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} mon stat"
+      delegate_to: "{{ mon_host }}"

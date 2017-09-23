@@ -1,6 +1,18 @@
 ---
-- include: pre_requisite.yml
-  when: not nfs_containerized_deployment
+- name: include pre_requisite.yml
+  include: pre_requisite.yml
+  when:
+    - not containerized_deployment
 
-- include: ./docker/main.yml
-  when: nfs_containerized_deployment
+- name: include create_rgw_nfs_user.yml
+  include: create_rgw_nfs_user.yml
+
+- name: include start_nfs.yml
+  include: start_nfs.yml
+  when:
+    - not containerized_deployment
+
+- name: include docker/main.yml
+  include: docker/main.yml
+  when:
+    - containerized_deployment

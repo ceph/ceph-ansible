@@ -1,4 +1,9 @@
 ---
+- name: include configure_debian_repository_installation.yml
+  include: configure_debian_repository_installation.yml
+  when:
+    - ceph_origin == 'repository'
+
 - name: install dependencies
   apt:
     name: "{{ item }}"
@@ -7,53 +12,18 @@
     cache_valid_time: 3600
   with_items: "{{ debian_package_dependencies }}"
 
-- name: configure ceph apt repository
-  include: debian_ceph_repository.yml
-  when: ceph_origin == 'upstream'
-
 - name: update apt cache
   apt:
     update_cache: yes
 
-- name: install ceph
-  apt:
-    name: "{{ item }}"
-    update_cache: no
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-  with_items: "{{ debian_ceph_packages }}"
+- name: include install_debian_packages.yml
+  include: install_debian_packages.yml
+  when:
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
+    - ceph_repository != 'rhcs'
 
-- name: install ceph-test
-  apt:
-    pkg: ceph-test
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-  when: ceph_test
-
-- name: install rados gateway
-  apt:
-    pkg: radosgw
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    update_cache: yes
-  when: rgw_group_name in group_names
-
-- name: install ceph mds
-  apt:
-    pkg: ceph-mds
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default(ansible_distribution_release) }}{{ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-  when: mds_group_name in group_names
-
-- name: install jemalloc
-  apt:
-    pkg: libjemalloc1
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    update_cache: yes
-  when: nfs_group_name in group_names
-
-- name: install NFS gateway
-  apt:
-    pkg: nfs-ganesha
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    update_cache: yes
-  when: nfs_group_name in group_names
+- name: include install_debian_rhcs_packages.yml
+  include: install_debian_rhcs_packages.yml
+  when:
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
+    - ceph_repository == 'rhcs'

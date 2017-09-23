@@ -12,13 +12,15 @@ Summary:        Ansible playbooks for Ceph
 License:        ASL 2.0 and GPLv3+
 URL:            https://github.com/ceph/ceph-ansible
 Source0:        %{name}-%{version}-%{shortcommit}.tar.gz
+Obsoletes:      ceph-iscsi-ansible <= 1.5
 
 BuildArch:      noarch
 
-BuildRequires: ansible >= 2.2.0.0
+BuildRequires: ansible >= 2.3.1.0
 BuildRequires: python2-devel
 
-Requires: ansible >= 2.2.0.0
+Requires: ansible >= 2.3.1.0
+Requires: python-netaddr
 
 %description
 Ansible playbooks for Ceph
@@ -35,12 +37,26 @@ for f in ansible.cfg *.yml *.sample group_vars roles library plugins infrastruct
   cp -a $f %{buildroot}%{_datarootdir}/ceph-ansible
 done
 
+pushd %{buildroot}%{_datarootdir}/ceph-ansible
+  # Strip coreos files.
+  # These are unneeded on RPM-based distros, and the playbooks download random
+  # things from around the internet.
+  rm -r roles/ceph-common-coreos
+  rm group_vars/common-coreoss.yml.sample
+  # These untested playbooks are too unstable for users.
+  rm -r infrastructure-playbooks/untested-by-ci
+  %if ! 0%{?fedora} && ! 0%{?centos}
+    # Ship only the Red Hat Ceph Storage config (overwrite upstream settings)
+    cp group_vars/rhcs.yml.sample group_vars/all.yml.sample
+  %endif
+popd
+
 %check
 # Borrowed from upstream's .travis.yml:
 ansible-playbook -i dummy-ansible-hosts test.yml --syntax-check
 
 %files
-%doc README.md
+%doc README.rst
 %license LICENSE
 %{_datarootdir}/ceph-ansible
 

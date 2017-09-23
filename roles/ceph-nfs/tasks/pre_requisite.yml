@@ -1,5 +1,5 @@
 ---
-- name: create nfs gateway directories
+- name: create rados gateway and ganesha directories
   file:
     path: "{{ item }}"
     state: directory
@@ -7,37 +7,51 @@
     group: "ceph"
     mode: "0755"
   with_items:
+    - /var/lib/ceph/bootstrap-rgw
+    - /var/lib/ceph/radosgw
+    - /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}
+    - "{{ rbd_client_admin_socket_path }}"
     - /var/lib/nfs/ganesha
     - /var/run/ganesha
+  when:
+    - nfs_obj_gw
 
-- name: create rgw nfs user
-  command: radosgw-admin user create --uid={{ ceph_nfs_rgw_user }} --display-name="RGW NFS User"
-  register: rgwuser
-  when: nfs_obj_gw
+- name: copy rados gateway bootstrap key
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}{{ item.name }}"
+    dest: "{{ item.name }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0600"
+  with_items:
+    - { name: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring", copy_key: true }
+    - { name: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}" }
+  when:
+    - nfs_obj_gw
+    - cephx
+    - item.copy_key|bool
 
-- name: set access key
-  set_fact:
-    ceph_nfs_rgw_access_key: "{{ (rgwuser.stdout | from_json)['keys'][0]['access_key'] }}"
-  when: nfs_obj_gw
-
-- name: set secret key
-  set_fact:
-    ceph_nfs_rgw_secret_key: "{{(rgwuser.stdout | from_json)['keys'][0]['secret_key']}}"
-  when: nfs_obj_gw
-
-- name: generate ganesha configuration file
-  action: config_template
+- name: create rados gateway keyring
+  command: ceph --cluster {{ cluster }} --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
   args:
-    src: "{{ playbook_dir }}/roles/ceph-common/templates/ganesha.conf.j2"
-    dest: /etc/ganesha/ganesha.conf
-    owner: "root"
-    group: "root"
-    mode: "0644"
-    config_overrides: "{{ ganesha_conf_overrides }}"
-    config_type: ini
+    creates: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
+  changed_when: false
+  when:
+    - nfs_obj_gw
+    - cephx
 
-- name: start nfs gateway service
-  service:
-    name: nfs-ganesha
-    state: started
-    enabled: yes
+- name: set rados gateway key permissions
+  file:
+    path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
+    owner: "ceph"
+    group: "ceph"
+    mode: "0600"
+  when:
+    - cephx
+
+- name: change ownership on /var/log/ganesha
+  file:
+    path: '/var/log/ganesha'
+    owner: 'root'
+    group: 'root'
+    mode: '0755'

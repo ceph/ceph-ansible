@@ -1,0 +1,17 @@
+---
+- name: include stat_ceph_files.yml
+  include: stat_ceph_files.yml
+
+- name: try to fetch ceph config and keys
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/{{ item.0 }}"
+    dest: "{{ item.0 }}"
+    owner: root
+    group: root
+    mode: 0600
+  changed_when: false
+  with_together:
+    - "{{ ceph_config_keys }}"
+    - "{{ statconfig.results | default([]) }}"
+  when:
+    - item.1.stat.exists == true

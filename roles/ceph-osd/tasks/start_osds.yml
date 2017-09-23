@@ -1,0 +1,36 @@
+---
+- name: get osd id
+  shell: |
+    ls /var/lib/ceph/osd/ | sed 's/.*-//'
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: osd_id
+  until: osd_id.stdout_lines|length == devices|unique|length
+  retries: 10
+
+- name: ensure systemd service override directory exists
+  file:
+    state: directory
+    path: "/etc/systemd/system/ceph-osd@.service.d/"
+  when:
+    - ceph_osd_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
+- name: add ceph-osd systemd service overrides
+  config_template:
+    src: "ceph-osd.service.d-overrides.j2"
+    dest: "/etc/systemd/system/ceph-osd@.service.d/ceph-osd-systemd-overrides.conf"
+    config_overrides: "{{ ceph_osd_systemd_overrides | default({}) }}"
+    config_type: "ini"
+  when:
+    - ceph_osd_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
+- name: ensure osd daemons are started
+  service:
+    name: ceph-osd@{{ item }}
+    state: started
+    enabled: true
+  with_items: "{{ (osd_id|default({})).stdout_lines|default([]) }}"
+  changed_when: false

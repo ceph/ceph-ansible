@@ -1,0 +1,555 @@
+---
+# This playbook was meant to upgrade a node from Ubuntu to RHEL.
+# We are performing a set of actions prior to reboot the node.
+# The node reboots via PXE and gets its new operating system.
+# This playbook only works for monitors and OSDs.
+# Note that some of the checks are ugly:
+#   ie: the when migration_completed.stat.exists
+# can be improved with includes, however I wanted to keep a single file...
+#
+
+- hosts: mons
+  serial: 1
+  sudo: True
+
+  vars:
+    backup_dir: /tmp/
+
+  tasks:
+
+    - name: Check if the node has be migrated already
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/migration_completed
+      register: migration_completed
+      failed_when: false
+
+    - name: Check for failed run
+      stat: >
+        path=/var/lib/ceph/{{ ansible_hostname }}.tar
+      register: mon_archive_leftover
+
+    - fail: msg="Looks like an archive is already there, please remove it!"
+      when: migration_completed.stat.exists == False and mon_archive_leftover.stat.exists == True
+
+    - name: Compress the store as much as possible
+      command: ceph tell mon.{{ ansible_hostname }} compact
+      when: migration_completed.stat.exists == False
+
+    - name: Check if sysvinit
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/sysvinit
+      register: monsysvinit
+      changed_when: False
+
+    - name: Check if upstart
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/upstart
+      register: monupstart
+      changed_when: False
+
+    - name: Check if init does what it is supposed to do (Sysvinit)
+      shell: >
+        ps faux|grep -sq [c]eph-mon && service ceph status mon >> /dev/null
+      register: ceph_status_sysvinit
+      changed_when: False
+
+    # can't complete the condition since the previous taks never ran...
+    - fail: msg="Something is terribly wrong here, sysvinit is configured, the service is started BUT the init script does not return 0, GO FIX YOUR SETUP!"
+      when: ceph_status_sysvinit.rc != 0 and migration_completed.stat.exists == False and monsysvinit.stat.exists == True
+
+    - name: Check if init does what it is supposed to do (upstart)
+      shell: >
+        ps faux|grep -sq [c]eph-mon && status ceph-mon-all >> /dev/null
+      register: ceph_status_upstart
+      changed_when: False
+
+    - fail: msg="Something is terribly wrong here, upstart is configured, the service is started BUT the init script does not return 0, GO FIX YOUR SETUP!"
+      when: ceph_status_upstart.rc != 0 and migration_completed.stat.exists == False and monupstart.stat.exists == True
+
+    - name: Restart the Monitor after compaction (Upstart)
+      service: >
+        name=ceph-mon
+        state=restarted
+        args=id={{ ansible_hostname }}
+      when: monupstart.stat.exists == True and migration_completed.stat.exists == False
+
+    - name: Restart the Monitor after compaction (Sysvinit)
+      service: >
+        name=ceph
+        state=restarted
+        args=mon
+      when: monsysvinit.stat.exists == True and migration_completed.stat.exists == False
+
+    - name: Wait for the monitor to be up again
+      local_action: >
+        wait_for
+        host={{ ansible_ssh_host | default(inventory_hostname) }}
+        port=6789
+        timeout=10
+      when: migration_completed.stat.exists == False
+
+    - name: Stop the monitor (Upstart)
+      service: >
+        name=ceph-mon
+        state=stopped
+        args=id={{ ansible_hostname }}
+      when: monupstart.stat.exists == True and migration_completed.stat.exists == False
+
+    - name: Stop the monitor (Sysvinit)
+      service: >
+        name=ceph
+        state=stopped
+        args=mon
+      when: monsysvinit.stat.exists == True and migration_completed.stat.exists == False
+
+    - name: Wait for the monitor to be down
+      local_action: >
+        wait_for
+        host={{ ansible_ssh_host | default(inventory_hostname) }}
+        port=6789
+        timeout=10
+        state=stopped
+      when: migration_completed.stat.exists == False
+
+    - name: Create a backup directory
+      file: >
+        path={{ backup_dir }}/monitors-backups
+        state=directory
+        owner=root
+        group=root
+        mode=0644
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups.backup[0] }}"
+      when: migration_completed.stat.exists == False
+
+    # NOTE (leseb): should we convert upstart to sysvinit here already?
+    - name: Archive monitor stores
+      shell: >
+        tar -cpvzf - --one-file-system . /etc/ceph/* | cat > {{ ansible_hostname }}.tar
+        chdir=/var/lib/ceph/
+        creates={{ ansible_hostname }}.tar
+      when: migration_completed.stat.exists == False
+
+    - name: Scp the Monitor store
+      fetch: >
+        src=/var/lib/ceph/{{ ansible_hostname }}.tar
+        dest={{ backup_dir }}/monitors-backups/{{ ansible_hostname }}.tar
+        flat=yes
+      when: migration_completed.stat.exists == False
+
+    - name: Reboot the server
+      command: reboot
+      when: migration_completed.stat.exists == False
+
+    - name: Wait for the server to come up
+      local_action: >
+        wait_for
+        port=22
+        delay=10
+        timeout=3600
+      when: migration_completed.stat.exists == False
+
+    - name: Wait a bit more to be sure that the server is ready
+      pause: seconds=20
+      when: migration_completed.stat.exists == False
+
+    - name: Check if sysvinit
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/sysvinit
+      register: monsysvinit
+      changed_when: False
+
+    - name: Check if upstart
+      stat: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/upstart
+      register: monupstart
+      changed_when: False
+
+    - name: Make sure the monitor is stopped (Upstart)
+      service: >
+        name=ceph-mon
+        state=stopped
+        args=id={{ ansible_hostname }}
+      when: monupstart.stat.exists == True and migration_completed.stat.exists == False
+
+    - name: Make sure the monitor is stopped (Sysvinit)
+      service: >
+        name=ceph
+        state=stopped
+        args=mon
+      when: monsysvinit.stat.exists == True and migration_completed.stat.exists == False
+
+    # NOTE (leseb): 'creates' was added in Ansible 1.6
+    - name: Copy and unarchive the monitor store
+      unarchive: >
+        src={{ backup_dir }}/monitors-backups/{{ ansible_hostname }}.tar
+        dest=/var/lib/ceph/
+        copy=yes
+        mode=0600
+        creates=etc/ceph/ceph.conf
+      when: migration_completed.stat.exists == False
+
+    - name: Copy keys and configs
+      shell: >
+        cp etc/ceph/* /etc/ceph/
+        chdir=/var/lib/ceph/
+      when: migration_completed.stat.exists == False
+
+    - name: Configure RHEL7 for sysvinit
+      shell: find -L /var/lib/ceph/mon/ -mindepth 1 -maxdepth 1 -regextype posix-egrep -regex '.*/[A-Za-z0-9]+-[A-Za-z0-9._-]+' -exec touch {}/sysvinit \; -exec rm {}/upstart \;
+      when: migration_completed.stat.exists == False
+
+    # NOTE (leseb): at this point the upstart and sysvinit checks are not necessary
+    # so we directly call sysvinit
+    - name: Start the monitor
+      service: >
+        name=ceph
+        state=started
+        args=mon
+      when: migration_completed.stat.exists == False
+
+    - name: Wait for the Monitor to be up again
+      local_action: >
+        wait_for
+        host={{ ansible_ssh_host | default(inventory_hostname) }}
+        port=6789
+        timeout=10
+      when: migration_completed.stat.exists == False
+
+    - name: Waiting for the monitor to join the quorum...
+      shell: >
+        ceph -s | grep monmap | sed 's/.*quorum//' | egrep -q {{ ansible_hostname }}
+      register: result
+      until: result.rc == 0
+      retries: 5
+      delay: 10
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups.backup[0] }}"
+      when: migration_completed.stat.exists == False
+
+    - name: Done moving to the next monitor
+      file: >
+        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/migration_completed
+        state=touch
+        owner=root
+        group=root
+        mode=0600
+      when: migration_completed.stat.exists == False
+
+- hosts: osds
+  serial: 1
+  sudo: True
+
+  vars:
+    backup_dir: /tmp/
+
+  tasks:
+    - name: Check if the node has be migrated already
+      stat: >
+        path=/var/lib/ceph/migration_completed
+      register: migration_completed
+      failed_when: false
+
+    - name: Check for failed run
+      stat: >
+        path=/var/lib/ceph/{{ ansible_hostname }}.tar
+      register: osd_archive_leftover
+
+    - fail: msg="Looks like an archive is already there, please remove it!"
+      when: migration_completed.stat.exists == False and osd_archive_leftover.stat.exists == True
+
+    - name: Check if init does what it is supposed to do (Sysvinit)
+      shell: >
+        ps faux|grep -sq [c]eph-osd && service ceph status osd >> /dev/null
+      register: ceph_status_sysvinit
+      changed_when: False
+
+    # can't complete the condition since the previous taks never ran...
+    - fail: msg="Something is terribly wrong here, sysvinit is configured, the services are started BUT the init script does not return 0, GO FIX YOUR SETUP!"
+      when: ceph_status_sysvinit.rc != 0 and migration_completed.stat.exists == False and monsysvinit.stat.exists == True
+
+    - name: Check if init does what it is supposed to do (upstart)
+      shell: >
+        ps faux|grep -sq [c]eph-osd && initctl list|egrep -sq "ceph-osd \(ceph/.\) start/running, process [0-9][0-9][0-9][0-9]"
+      register: ceph_status_upstart
+      changed_when: False
+
+    - fail: msg="Something is terribly wrong here, upstart is configured, the services are started BUT the init script does not return 0, GO FIX YOUR SETUP!"
+      when: ceph_status_upstart.rc != 0 and migration_completed.stat.exists == False and monupstart.stat.exists == True
+
+    - name: Set the noout flag
+      command: ceph osd set noout
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups[mon_group_name][0] }}"
+      when: migration_completed.stat.exists == False
+
+    - name: Check if sysvinit
+      shell: stat /var/lib/ceph/osd/ceph-*/sysvinit
+      register: osdsysvinit
+      failed_when: false
+      changed_when: False
+
+    - name: Check if upstart
+      shell: stat /var/lib/ceph/osd/ceph-*/upstart
+      register: osdupstart
+      failed_when: false
+      changed_when: False
+
+    - name: Archive ceph configs
+      shell: >
+        tar -cpvzf - --one-file-system . /etc/ceph/ceph.conf | cat > {{ ansible_hostname }}.tar
+        chdir=/var/lib/ceph/
+        creates={{ ansible_hostname }}.tar
+      when: migration_completed.stat.exists == False
+
+    - name: Create backup directory
+      file: >
+        path={{ backup_dir }}/osds-backups
+        state=directory
+        owner=root
+        group=root
+        mode=0644
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups.backup[0] }}"
+      when: migration_completed.stat.exists == False
+
+    - name: Scp OSDs dirs and configs
+      fetch: >
+        src=/var/lib/ceph/{{ ansible_hostname }}.tar
+        dest={{ backup_dir }}/osds-backups/
+        flat=yes
+      when: migration_completed.stat.exists == False
+
+    - name: Collect OSD ports
+      shell: netstat -tlpn | awk -F ":" '/ceph-osd/ { sub (" .*", "", $2); print $2 }' | uniq
+      register: osd_ports
+      when: migration_completed.stat.exists == False
+
+    - name: Gracefully stop the OSDs (Upstart)
+      service: >
+        name=ceph-osd-all
+        state=stopped
+      when: osdupstart.rc == 0 and migration_completed.stat.exists == False
+
+    - name: Gracefully stop the OSDs (Sysvinit)
+      service: >
+        name=ceph
+        state=stopped
+        args=mon
+      when: osdsysvinit.rc == 0 and migration_completed.stat.exists == False
+
+    - name: Wait for the OSDs to be down
+      local_action: >
+        wait_for
+        host={{ ansible_ssh_host | default(inventory_hostname) }}
+        port={{ item }}
+        timeout=10
+        state=stopped
+      with_items: "{{ osd_ports.stdout_lines }}"
+      when: migration_completed.stat.exists == False
+
+    - name: Configure RHEL with sysvinit
+      shell: find -L /var/lib/ceph/osd/ -mindepth 1 -maxdepth 1 -regextype posix-egrep -regex '.*/[A-Za-z0-9]+-[A-Za-z0-9._-]+' -exec touch {}/sysvinit \; -exec rm {}/upstart \;
+      when: migration_completed.stat.exists == False
+
+    - name: Reboot the server
+      command: reboot
+      when: migration_completed.stat.exists == False
+
+    - name: Wait for the server to come up
+      local_action: >
+        wait_for
+        port=22
+        delay=10
+        timeout=3600
+      when: migration_completed.stat.exists == False
+
+    - name: Wait a bit to be sure that the server is ready for scp
+      pause: seconds=20
+      when: migration_completed.stat.exists == False
+
+    # NOTE (leseb): 'creates' was added in Ansible 1.6
+    - name: Copy and unarchive the OSD configs
+      unarchive: >
+        src={{ backup_dir }}/osds-backups/{{ ansible_hostname }}.tar
+        dest=/var/lib/ceph/
+        copy=yes
+        mode=0600
+        creates=etc/ceph/ceph.conf
+      when: migration_completed.stat.exists == False
+
+    - name: Copy keys and configs
+      shell: >
+        cp etc/ceph/* /etc/ceph/
+        chdir=/var/lib/ceph/
+      when: migration_completed.stat.exists == False
+
+    # NOTE (leseb): at this point the upstart and sysvinit checks are not necessary
+    # so we directly call sysvinit
+    - name: Start all the OSDs
+      service: >
+        name=ceph-osd-all
+        state=started
+        args=osd
+      when: migration_completed.stat.exists == False
+
+    # NOTE (leseb): this is tricky unless this is set into the ceph.conf
+    # listened ports can be predicted, thus they will change after each restart
+#    - name: Wait for the OSDs to be up again
+#      local_action: >
+#        wait_for
+#        host={{ ansible_ssh_host | default(inventory_hostname) }}
+#        port={{ item }}
+#        timeout=30
+#      with_items:
+#        - "{{ osd_ports.stdout_lines }}"
+
+    - name: Waiting for clean PGs...
+      shell: >
+        test "[""$(ceph -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" = "$(ceph -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
+      register: result
+      until: result.rc == 0
+      retries: 10
+      delay: 10
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups.backup[0] }}"
+      when: migration_completed.stat.exists == False
+
+    - name: Done moving to the next OSD
+      file: >
+        path=/var/lib/ceph/migration_completed
+        state=touch
+        owner=root
+        group=root
+        mode=0600
+      when: migration_completed.stat.exists == False
+
+    - name: Unset the noout flag
+      command: ceph osd unset noout
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups[mon_group_name][0] }}"
+      when: migration_completed.stat.exists == False
+
+- hosts: rgws
+  serial: 1
+  sudo: True
+
+  vars:
+    backup_dir: /tmp/
+
+  tasks:
+    - name: Check if the node has be migrated already
+      stat: >
+        path=/var/lib/ceph/radosgw/migration_completed
+      register: migration_completed
+      failed_when: false
+
+    - name: Check for failed run
+      stat: >
+        path=/var/lib/ceph/{{ ansible_hostname }}.tar
+      register: rgw_archive_leftover
+
+    - fail: msg="Looks like an archive is already there, please remove it!"
+      when: migration_completed.stat.exists == False and rgw_archive_leftover.stat.exists == True
+
+    - name: Archive rados gateway configs
+      shell: >
+        tar -cpvzf - --one-file-system . /etc/ceph/* | cat > {{ ansible_hostname }}.tar
+        chdir=/var/lib/ceph/
+        creates={{ ansible_hostname }}.tar
+      when: migration_completed.stat.exists == False
+
+    - name: Create backup directory
+      file: >
+        path={{ backup_dir }}/rgws-backups
+        state=directory
+        owner=root
+        group=root
+        mode=0644
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups.backup[0] }}"
+      when: migration_completed.stat.exists == False
+
+    - name: Scp RGWs dirs and configs
+      fetch: >
+        src=/var/lib/ceph/{{ ansible_hostname }}.tar
+        dest={{ backup_dir }}/rgws-backups/
+        flat=yes
+      when: migration_completed.stat.exists == False
+
+    - name: Gracefully stop the rados gateway
+      service: >
+        name={{ item }}
+        state=stopped
+      with_items:
+        - radosgw
+      when: migration_completed.stat.exists == False
+
+    - name: Wait for radosgw to be down
+      local_action: >
+        wait_for
+        host={{ ansible_ssh_host | default(inventory_hostname) }}
+        path=/tmp/radosgw.sock
+        state=absent
+        timeout=30
+      when: migration_completed.stat.exists == False
+
+    - name: Reboot the server
+      command: reboot
+      when: migration_completed.stat.exists == False
+
+    - name: Wait for the server to come up
+      local_action: >
+        wait_for
+        port=22
+        delay=10
+        timeout=3600
+      when: migration_completed.stat.exists == False
+
+    - name: Wait a bit to be sure that the server is ready for scp
+      pause: seconds=20
+      when: migration_completed.stat.exists == False
+
+    # NOTE (leseb): 'creates' was added in Ansible 1.6
+    - name: Copy and unarchive the OSD configs
+      unarchive: >
+        src={{ backup_dir }}/rgws-backups/{{ ansible_hostname }}.tar
+        dest=/var/lib/ceph/
+        copy=yes
+        mode=0600
+        creates=etc/ceph/ceph.conf
+      when: migration_completed.stat.exists == False
+
+    - name: Copy keys and configs
+      shell: >
+        {{ item }}
+        chdir=/var/lib/ceph/
+      with_items:
+        - cp etc/ceph/* /etc/ceph/
+      when: migration_completed.stat.exists == False
+
+    - name: Start rados gateway
+      service: >
+        name={{ item }}
+        state=started
+      with_items:
+        - radosgw
+      when: migration_completed.stat.exists == False
+
+    - name: Wait for radosgw to be up again
+      local_action: >
+        wait_for
+        host={{ ansible_ssh_host | default(inventory_hostname) }}
+        path=/tmp/radosgw.sock
+        state=present
+        timeout=30
+      when: migration_completed.stat.exists == False
+
+    - name: Done moving to the next rados gateway
+      file: >
+        path=/var/lib/ceph/radosgw/migration_completed
+        state=touch
+        owner=root
+        group=root
+        mode=0600
+      when: migration_completed.stat.exists == False

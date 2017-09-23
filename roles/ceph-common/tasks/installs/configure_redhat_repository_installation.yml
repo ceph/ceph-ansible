@@ -1,0 +1,27 @@
+---
+- name: include redhat_community_repository.yml
+  include: redhat_community_repository.yml
+  when:
+    - ceph_repository == 'community'
+
+- name: include redhat_rhcs_repository.yml
+  include: redhat_rhcs_repository.yml
+  when:
+    - ceph_repository == 'rhcs'
+
+- name: include redhat_dev_repository.yml
+  include: redhat_dev_repository.yml
+  when:
+    - ceph_repository == 'dev'
+
+- name: include redhat_custom_repository.yml
+  include: redhat_custom_repository.yml
+  when:
+    - ceph_repository == 'custom'
+
+# Remove yum caches so yum doesn't get confused if we are reinstalling a different ceph version
+- name: purge yum cache
+  command: yum clean all
+  changed_when: false
+  when:
+    ansible_pkg_mgr == 'yum'

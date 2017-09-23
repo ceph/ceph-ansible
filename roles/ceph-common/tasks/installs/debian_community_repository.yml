@@ -1,0 +1,20 @@
+---
+- name: configure debian ceph community repository stable key
+  apt_key:
+    data: "{{ lookup('file', role_path+'/files/cephstable.asc') }}"
+    state: present
+
+- name: configure debian ceph stable community repository
+  apt_repository:
+    repo: "deb {{ ceph_stable_repo }} {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
+    state: present
+  changed_when: false
+
+- name: add nfs-ganesha stable repository
+  apt_repository:
+    repo: "deb {{ nfs_ganesha_stable_deb_repo }} {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
+    state: present
+  changed_when: false
+  when:
+    - nfs_group_name in group_names
+    - nfs_ganesha_stable

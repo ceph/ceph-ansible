@@ -1,7 +1,34 @@
 ---
+- name: ensure systemd service override directory exists
+  file:
+    state: directory
+    path: "/etc/systemd/system/ceph-mon@.service.d/"
+  when:
+    - ceph_mon_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
+- name: add ceph-mon systemd service overrides
+  config_template:
+    src: "ceph-mon.service.d-overrides.j2"
+    dest: "/etc/systemd/system/ceph-mon@.service.d/ceph-mon-systemd-overrides.conf"
+    config_overrides: "{{ ceph_mon_systemd_overrides | default({}) }}"
+    config_type: "ini"
+  when:
+    - ceph_mon_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
 - name: start the monitor service
   service:
     name: ceph-mon@{{ monitor_name }}
     state: started
     enabled: yes
+  changed_when: false
+
+# NOTE: This patch only affects Kraken. This fixes a bug when the monitor service
+# does not start automatically after a reboot. Fix proposed upstream: ceph/ceph#14226
+- name: enable the ceph-mon.target service
+  systemd:
+    name: ceph-mon.target
+    enabled: yes
+    masked: no
   changed_when: false

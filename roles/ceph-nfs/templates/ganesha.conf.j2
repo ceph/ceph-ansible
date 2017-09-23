@@ -1,0 +1,75 @@
+#jinja2: trim_blocks: "true", lstrip_blocks: "true"
+# {{ ansible_managed }}
+
+{% if nfs_file_gw %}
+EXPORT
+{
+	Export_id={{ ceph_nfs_ceph_export_id }};
+
+	Path = "/";
+
+	Pseudo = {{ ceph_nfs_ceph_pseudo_path }};
+
+	Access_Type = {{ ceph_nfs_ceph_access_type }};
+
+	Protocols = {{ ceph_nfs_ceph_protocols }};
+
+	Transports = TCP;
+
+	SecType = sys,krb5,krb5i,krb5p;
+
+	FSAL {
+		Name = CEPH;
+		User_Id = "{{ ceph_nfs_ceph_user }}";
+	}
+
+        {{ ganesha_ceph_export_overrides | default(None) }}
+}
+{% endif %}
+{% if nfs_obj_gw %}
+EXPORT
+{
+	Export_id={{ ceph_nfs_rgw_export_id }};
+
+	Path = "/";
+
+	Pseudo = {{ ceph_nfs_rgw_pseudo_path }};
+
+	Access_Type = {{ ceph_nfs_rgw_access_type }};
+
+	Protocols = {{ ceph_nfs_rgw_protocols }};
+
+	Transports = TCP;
+
+	SecType = sys,krb5,krb5i,krb5p;
+
+	FSAL {
+		Name = RGW;
+		User_Id = "{{ ceph_nfs_rgw_user }}";
+		Access_Key_Id ="{{ ceph_nfs_rgw_access_key }}";
+		Secret_Access_Key = "{{ ceph_nfs_rgw_secret_key }}";
+	}
+
+        {{ ganesha_rgw_export_overrides | default(None) }}
+
+}
+
+RGW {
+        ceph_conf = "/etc/ceph/{{ cluster }}.conf";
+        cluster = "{{ cluster }}";
+        name = "{{ rgw_client_name }}";
+        {{ ganesha_rgw_section_overrides | default(None) }}
+}
+{% endif %}
+
+LOG {
+        Facility {
+                name = FILE;
+                destination = "{{ ceph_nfs_log_file }}";
+                enable = active;
+        }
+
+        {{ ganesha_log_overrides | default(None) }}
+}
+
+{{ ganesha_conf_overrides | default(None) }}
