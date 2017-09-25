@@ -3,46 +3,16 @@
 
 
 #############
-# VARIABLES #
-#############
-
-REGEX="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-
-
-#############
 # FUNCTIONS #
 #############
 
 
-function expose_devices {
-  local disks
-  # we use the prepare container to find the partitions to expose
-  disks=$(docker logs ceph-osd-prepare-{{ ansible_hostname }}-devdev${1} |& grep -Eo /dev/disk/by-partuuid/${REGEX} | uniq)
-  for disk in $disks; do
-    DEVICES="--device=$disk "
-  done
+function expose_partitions () {
+  DOCKER_ENV=$(docker run --name expose_partitions_${1} --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph -e OSD_DEVICE=/dev/${1} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list)
+  docker rm -f expose_partitions_${1}
 }
 
-function expose_partitions {
-  local partition
-  for partition in Block.wal Block.db Journal; do
-    if docker logs ceph-osd-prepare-{{ ansible_hostname }}-devdev${1} |& grep -Eo "$partition is GPT partition"; then
-      if [[ "$partition" == "Block.wal" ]]; then
-        part=$(docker logs ceph-osd-prepare-{{ ansible_hostname }}-devdev${1} |& grep "$partition is GPT partition" | grep -Eo /dev/disk/by-partuuid/${REGEX} | uniq)
-        DOCKER_ENV="$DOCKER_ENV -e OSD_BLUESTORE_BLOCK_WAL=$part"
-      elif [[ "$partition" == "Block.db" ]]; then
-        part=$(docker logs ceph-osd-prepare-{{ ansible_hostname }}-devdev${1} |& grep "$partition is GPT partition" | grep -Eo /dev/disk/by-partuuid/${REGEX} | uniq)
-        DOCKER_ENV="$DOCKER_ENV -e OSD_BLUESTORE_BLOCK_DB=$part"
-      elif [[ "$partition" == "Journal" ]]; then
-        part=$(docker logs ceph-osd-prepare-{{ ansible_hostname }}-devdev${1} |& grep "$partition is GPT partition" | grep -Eo /dev/disk/by-partuuid/${REGEX} | uniq)
-        DOCKER_ENV="$DOCKER_ENV -e OSD_JOURNAL=$part"
-      fi
-    fi
-  done
-}
-
-#expose_devices $1
-expose_partitions $1
+expose_partitions "$1"
 
 
 ########
