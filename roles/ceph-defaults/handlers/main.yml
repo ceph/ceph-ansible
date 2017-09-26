@@ -20,8 +20,8 @@
     listen: "restart ceph mons"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-    - mon_socket_stat.rc == 0
     - mon_group_name in group_names
+    - mon_socket_stat.rc == 0
 
 # This does not just restart OSDs but everything else too. Unfortunately
 # at this time the ansible role does not have an OSD id list to use
@@ -35,8 +35,8 @@
     mode: 0750
   listen: "restart ceph osds"
   when:
-    - inventory_hostname in play_hosts
     - osd_group_name in group_names
+    - inventory_hostname in play_hosts
 
 - name: restart containerized ceph osds daemon(s)
   command: /tmp/restart_osd_daemon.sh
@@ -45,17 +45,18 @@
   when:
     # We do not want to run these checks on initial deployment (`socket_osd_container_stat.results[n].rc == 0`)
     # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
+    - osd_group_name in group_names
     - containerized_deployment
     - ((crush_location is defined and crush_location) or item.get('rc') == 0)
     - handler_health_osd_check
     # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
     - inventory_hostname in play_hosts
-    - osd_group_name in group_names
 
 - name: restart non-containerized ceph osds daemon(s)
   command: /tmp/restart_osd_daemon.sh
   listen: "restart ceph osds"
   when:
+    - osd_group_name in group_names
     - not containerized_deployment
     # We do not want to run these checks on initial deployment (`socket_osd_container.results[n].rc == 0`)
     # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
@@ -64,27 +65,27 @@
     - handler_health_osd_check
     # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
     - inventory_hostname in play_hosts
-    - osd_group_name in group_names
 
-- name: copy mds restart script
-  template:
-    src: restart_mds_daemon.sh.j2
-    dest: /tmp/restart_mds_daemon.sh
-    owner: root
-    group: root
-    mode: 0750
-  listen: "restart ceph mdss"
-  when:
-    - inventory_hostname in play_hosts
-    - mds_group_name in group_names
+- block:
+  - name: copy mds restart script
+    template:
+      src: restart_mds_daemon.sh.j2
+      dest: /tmp/restart_mds_daemon.sh
+      owner: root
+      group: root
+      mode: 0750
+    listen: "restart ceph mdss"
+    when:
+      - mds_group_name in group_names
+      - inventory_hostname in play_hosts
 
-- name: restart ceph mds daemon(s)
-  command: /tmp/restart_mds_daemon.sh
-  listen: "restart ceph mdss"
+  - name: restart ceph mds daemon(s)
+    command: /tmp/restart_mds_daemon.sh
+    listen: "restart ceph mdss"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-    - mds_socket_stat.rc == 0
     - mds_group_name in group_names
+    - mds_socket_stat.rc == 0
 
 - name: copy rgw restart script
   template:
@@ -95,20 +96,33 @@
     mode: 0750
   listen: "restart ceph rgws"
   when:
-    - inventory_hostname in play_hosts
     - rgw_group_name in group_names
+    - inventory_hostname in play_hosts
 
 - name: restart ceph rgw daemon(s)
   command: /tmp/restart_rgw_daemon.sh
   listen: "restart ceph rgws"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-    - rgw_socket_stat.rc == 0
     - rgw_group_name in group_names
+    - rgw_socket_stat.rc == 0
 
-- name: restart ceph nfss
-  service:
-    name: nfs-ganesha
-    state: restarted
+- name: copy nfs restart script
+  template:
+    src: restart_nfs_daemon.sh.j2
+    dest: /tmp/restart_nfs_daemon.sh
+    owner: root
+    group: root
+    mode: 0750
+  listen: "restart ceph nfss"
   when:
     - nfs_group_name in group_names
+    - inventory_hostname in play_hosts
+
+- name: restart ceph nfs daemon(s)
+  command: /tmp/restart_nfs_daemon.sh
+  listen: "restart ceph nfss"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - nfs_group_name in group_names
+    - nfs_socket_stat.rc == 0

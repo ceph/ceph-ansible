@@ -4,6 +4,7 @@
   set_fact:
     docker_exec_cmd: "docker exec ceph-mon-{{ ansible_hostname }}"
   when:
+    - inventory_hostname in groups.get(mon_group_name, [])
     - containerized_deployment
 
 - name: check for a ceph mon socket
@@ -13,6 +14,8 @@
   failed_when: false
   always_run: true
   register: mon_socket_stat
+  when:
+    - inventory_hostname in groups.get(mon_group_name, [])
 
 - name: check if the ceph mon socket is in-use
   shell: |
@@ -22,6 +25,7 @@
   always_run: true
   register: mon_socket
   when:
+    - inventory_hostname in groups.get(mon_group_name, [])
     - mon_socket_stat.rc == 0
 
 - name: remove ceph mon socket if exists and not used by a process
@@ -29,6 +33,7 @@
     name: "{{ mon_socket_stat.stdout }}"
     state: absent
   when:
+    - inventory_hostname in groups.get(mon_group_name, [])
     - not containerized_deployment
     - mon_socket_stat.rc == 0
     - mon_socket.rc != 0
@@ -41,6 +46,7 @@
   always_run: true
   register: osd_socket_stat
   when:
+    - inventory_hostname in groups.get(osd_group_name, [])
     - not containerized_deployment
 
 - name: check if the ceph osd socket is in-use
@@ -51,6 +57,7 @@
   always_run: true
   register: osd_socket
   when:
+    - inventory_hostname in groups.get(osd_group_name, [])
     - not containerized_deployment
     - osd_socket_stat.rc == 0
 
@@ -59,6 +66,7 @@
     name: "{{ osd_socket_stat.stdout }}"
     state: absent
   when:
+    - inventory_hostname in groups.get(osd_group_name, [])
     - not containerized_deployment
     - osd_socket_stat.rc == 0
     - osd_socket.rc != 0
@@ -67,6 +75,7 @@
   set_fact:
     docker_exec_cmd: "docker exec ceph-mds-{{ ansible_hostname }}"
   when:
+    - inventory_hostname in groups.get(mds_group_name, [])
     - containerized_deployment
 
 - name: check for a ceph mds socket
@@ -76,6 +85,8 @@
   failed_when: false
   always_run: true
   register: mds_socket_stat
+  when:
+    - inventory_hostname in groups.get(mds_group_name, [])
 
 - name: check if the ceph mds socket is in-use
   shell: |
@@ -85,6 +96,7 @@
   always_run: true
   register: mds_socket
   when:
+    - inventory_hostname in groups.get(mds_group_name, [])
     - mds_socket_stat.rc == 0
 
 - name: remove ceph mds socket if exists and not used by a process
@@ -92,6 +104,7 @@
     name: "{{ mds_socket_stat.stdout }}"
     state: absent
   when:
+    - inventory_hostname in groups.get(mds_group_name, [])
     - not containerized_deployment
     - mds_socket_stat.rc == 0
     - mds_socket.rc != 0
@@ -100,6 +113,7 @@
   set_fact:
     docker_exec_cmd: "docker exec ceph-rgw-{{ ansible_hostname }}"
   when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
     - containerized_deployment
 
 - name: check for a ceph rgw socket
@@ -109,6 +123,8 @@
   failed_when: false
   always_run: true
   register: rgw_socket_stat
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
 
 - name: check if the ceph rgw socket is in-use
   shell: |
@@ -118,6 +134,7 @@
   always_run: true
   register: rgw_socket
   when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
     - rgw_socket_stat.rc == 0
 
 - name: remove ceph rgw socket if exists and not used by a process
@@ -125,6 +142,7 @@
     name: "{{ rgw_socket_stat.stdout }}"
     state: absent
   when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
     - not containerized_deployment
     - rgw_socket_stat.rc == 0
     - rgw_socket.rc != 0
@@ -133,6 +151,7 @@
   set_fact:
     docker_exec_cmd: "docker exec ceph-mgr-{{ ansible_hostname }}"
   when:
+    - inventory_hostname in groups.get(mgr_group_name, [])
     - containerized_deployment
 
 - name: check for a ceph mgr socket
@@ -142,6 +161,8 @@
   failed_when: false
   always_run: true
   register: mgr_socket_stat
+  when:
+    - inventory_hostname in groups.get(mgr_group_name, [])
 
 - name: check if the ceph mgr socket is in-use
   shell: |
@@ -151,6 +172,7 @@
   always_run: true
   register: mgr_socket
   when:
+    - inventory_hostname in groups.get(mgr_group_name, [])
     - mgr_socket_stat.rc == 0
 
 - name: remove ceph mgr socket if exists and not used by a process
@@ -158,6 +180,7 @@
     name: "{{ mgr_socket_stat.stdout }}"
     state: absent
   when:
+    - inventory_hostname in groups.get(mgr_group_name, [])
     - not containerized_deployment
     - mgr_socket_stat.rc == 0
     - mgr_socket.rc != 0
@@ -166,6 +189,7 @@
   set_fact:
     docker_exec_cmd: "docker exec ceph-rbd-mirror-{{ ansible_hostname }}"
   when:
+    - inventory_hostname in groups.get(rbdmirror_group_name, [])
     - containerized_deployment
 
 - name: check for a ceph rbd mirror socket
@@ -175,6 +199,8 @@
   failed_when: false
   always_run: true
   register: rbd_mirror_socket_stat
+  when:
+    - inventory_hostname in groups.get(rbdmirror_group_name, [])
 
 - name: check if the ceph rbd mirror socket is in-use
   shell: |
@@ -184,6 +210,7 @@
   always_run: true
   register: rbd_mirror_socket
   when:
+    - inventory_hostname in groups.get(rbdmirror_group_name, [])
     - rbd_mirror_socket_stat.rc == 0
 
 - name: remove ceph rbd mirror socket if exists and not used by a process
@@ -191,9 +218,48 @@
     name: "{{ rbd_mirror_socket_stat.stdout }}"
     state: absent
   when:
+    - inventory_hostname in groups.get(rbdmirror_group_name, [])
     - not containerized_deployment
     - rbd_mirror_socket_stat.rc == 0
     - rbd_mirror_socket.rc != 0
+
+- name: set_fact docker_exec_cmd nfs ganesha
+  set_fact:
+    docker_exec_cmd: "docker exec ceph-rbd-mirror-{{ ansible_hostname }}"
+  when:
+    - inventory_hostname in groups.get(nfs_group_name, [])
+    - containerized_deployment
+
+- name: check for a ceph nfs ganesha socket
+  shell: |
+    {{ docker_exec_cmd | default('') }} bash -c 'stat --printf=%n /var/run/ganesha.pid'
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: nfs_socket_stat
+  when:
+    - inventory_hostname in groups.get(nfs_group_name, [])
+
+- name: check if the ceph nfs ganesha socket is in-use
+  shell: |
+    {{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ nfs_socket_stat.stdout }}'
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: nfs_socket
+  when:
+    - inventory_hostname in groups.get(nfs_group_name, [])
+    - nfs_socket_stat.rc == 0
+
+- name: remove ceph nfs ganesha socket if exists and not used by a process
+  file:
+    name: "{{ nfs_socket_stat.stdout }}"
+    state: absent
+  when:
+    - inventory_hostname in groups.get(nfs_group_name, [])
+    - not containerized_deployment
+    - nfs_socket_stat.rc == 0
+    - nfs_socket.rc != 0
 
 - name: check for a ceph socket in containerized deployment (osds)
   shell: |
@@ -206,3 +272,4 @@
   when:
     - containerized_deployment
     - inventory_hostname in groups.get(osd_group_name, [])
+
