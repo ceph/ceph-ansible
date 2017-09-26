@@ -1,18 +1,24 @@
 ---
-- name: include pre_requisite.yml
-  include: pre_requisite.yml
+- name: include pre_requisite_non_container.yml
+  include: pre_requisite_non_container.yml
   when:
     - not containerized_deployment
+
+- name: include pre_requisite_container.yml
+  include: pre_requisite_container.yml
+  when:
+    - containerized_deployment
 
 - name: include create_rgw_nfs_user.yml
   include: create_rgw_nfs_user.yml
 
-- name: include start_nfs.yml
-  include: start_nfs.yml
+# NOTE (leseb): workaround for issues with ganesha and librgw
+- name: include ganesha_selinux_fix.yml
+  include: ganesha_selinux_fix.yml
   when:
     - not containerized_deployment
+    - ansible_os_family == 'RedHat'
+    - ansible_distribution_version >= '7.4'
 
-- name: include docker/main.yml
-  include: docker/main.yml
-  when:
-    - containerized_deployment
+- name: include start_nfs.yml
+  include: start_nfs.yml

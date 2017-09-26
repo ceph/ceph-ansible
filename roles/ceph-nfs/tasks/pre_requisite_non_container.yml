@@ -1,4 +1,6 @@
 ---
+# NOTE (leseb): we use root:ceph for permissions since ganesha
+# does not have the right selinux context to read ceph directories.
 - name: create rados gateway and ganesha directories
   file:
     path: "{{ item }}"
@@ -11,8 +13,8 @@
     - /var/lib/ceph/radosgw
     - /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}
     - "{{ rbd_client_admin_socket_path }}"
-    - /var/lib/nfs/ganesha
-    - /var/run/ganesha
+    - /var/log/ceph
+    - /var/run/ceph/
   when:
     - nfs_obj_gw
 
@@ -51,7 +53,7 @@
 
 - name: change ownership on /var/log/ganesha
   file:
-    path: '/var/log/ganesha'
-    owner: 'root'
-    group: 'root'
-    mode: '0755'
+    path: /var/log/ganesha
+    owner: "root"
+    group: "root"
+    mode: "0755"

@@ -1,0 +1,28 @@
+---
+- name: check if selinux is enabled
+  command: getenforce
+  register: selinuxstatus
+  changed_when: false
+  failed_when: false
+  always_run: true
+
+- name: install policycoreutils-python to get semanage
+  package:
+    name: policycoreutils-python
+    state: present
+  when:
+    - selinuxstatus.stdout != 'Disabled'
+
+- name: test if ganesha_t is already permissive
+  shell: |
+    semanage permissive -l | grep -soq ganesha_t
+  changed_when: false
+  failed_when: false
+  register: ganesha_t_permissive
+
+- name: run semanage permissive -a ganesha_t
+  command: semanage permissive -a ganesha_t
+  changed_when: false
+  when:
+    - selinuxstatus.stdout != 'Disabled'
+    - ganesha_t_permissive.rc != 0
