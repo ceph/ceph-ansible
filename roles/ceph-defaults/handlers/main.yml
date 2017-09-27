@@ -5,23 +5,35 @@
   when:
     - ansible_os_family == 'Debian'
 
-- block:
-  - name: copy mon restart script
-    template:
-      src: restart_mon_daemon.sh.j2
-      dest: /tmp/restart_mon_daemon.sh
-      owner: root
-      group: root
-      mode: 0750
-    listen: "restart ceph mons"
+- name: copy mon restart script
+  template:
+    src: restart_mon_daemon.sh.j2
+    dest: /tmp/restart_mon_daemon.sh
+    owner: root
+    group: root
+    mode: 0750
+  listen: "restart ceph mons"
+  when:
+    - mon_group_name in group_names
+    - inventory_hostname in play_hosts
 
-  - name: restart ceph mon daemon(s)
-    command: /tmp/restart_mon_daemon.sh
-    listen: "restart ceph mons"
+- name: restart ceph mon daemon(s) - non container
+  command: /tmp/restart_mon_daemon.sh
+  listen: "restart ceph mons"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - mon_group_name in group_names
+    - not containerized_deployment
     - mon_socket_stat.rc == 0
+
+- name: restart ceph mon daemon(s) - container
+  command: /tmp/restart_mon_daemon.sh
+  listen: "restart ceph mons"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - mon_group_name in group_names
+    - containerized_deployment
+    - ceph_mon_container_stat.stdout_lines|length != 0
 
 # This does not just restart OSDs but everything else too. Unfortunately
 # at this time the ansible role does not have an OSD id list to use
@@ -38,21 +50,7 @@
     - osd_group_name in group_names
     - inventory_hostname in play_hosts
 
-- name: restart containerized ceph osds daemon(s)
-  command: /tmp/restart_osd_daemon.sh
-  listen: "restart ceph osds"
-  with_items: "{{ socket_osd_container_stat.results | default([]) }}"
-  when:
-    # We do not want to run these checks on initial deployment (`socket_osd_container_stat.results[n].rc == 0`)
-    # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
-    - osd_group_name in group_names
-    - containerized_deployment
-    - ((crush_location is defined and crush_location) or item.get('rc') == 0)
-    - handler_health_osd_check
-    # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
-    - inventory_hostname in play_hosts
-
-- name: restart non-containerized ceph osds daemon(s)
+- name: restart ceph osds daemon(s) - non container
   command: /tmp/restart_osd_daemon.sh
   listen: "restart ceph osds"
   when:
@@ -66,26 +64,48 @@
     # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
     - inventory_hostname in play_hosts
 
-- block:
-  - name: copy mds restart script
-    template:
-      src: restart_mds_daemon.sh.j2
-      dest: /tmp/restart_mds_daemon.sh
-      owner: root
-      group: root
-      mode: 0750
-    listen: "restart ceph mdss"
-    when:
-      - mds_group_name in group_names
-      - inventory_hostname in play_hosts
+- name: restart ceph osds daemon(s) - container
+  command: /tmp/restart_osd_daemon.sh
+  listen: "restart ceph osds"
+  when:
+    # We do not want to run these checks on initial deployment (`socket_osd_container_stat.results[n].rc == 0`)
+    # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
+    - osd_group_name in group_names
+    - containerized_deployment
+    - ((crush_location is defined and crush_location) or ceph_osd_container_stat.stdout_lines|length != 0)
+    - handler_health_osd_check
+    # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
+    - inventory_hostname in play_hosts
 
-  - name: restart ceph mds daemon(s)
-    command: /tmp/restart_mds_daemon.sh
-    listen: "restart ceph mdss"
+- name: copy mds restart script
+  template:
+    src: restart_mds_daemon.sh.j2
+    dest: /tmp/restart_mds_daemon.sh
+    owner: root
+    group: root
+    mode: 0750
+  listen: "restart ceph mdss"
+  when:
+    - mds_group_name in group_names
+    - inventory_hostname in play_hosts
+
+- name: restart ceph mds daemon(s) - non container
+  command: /tmp/restart_mds_daemon.sh
+  listen: "restart ceph mdss"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - mds_group_name in group_names
+    - not containerized_deployment
     - mds_socket_stat.rc == 0
+
+- name: restart ceph mds daemon(s) - container
+  command: /tmp/restart_mds_daemon.sh
+  listen: "restart ceph mdss"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - mds_group_name in group_names
+    - containerized_deployment
+    - ceph_mds_container_stat.stdout_lines|length != 0
 
 - name: copy rgw restart script
   template:
@@ -99,13 +119,23 @@
     - rgw_group_name in group_names
     - inventory_hostname in play_hosts
 
-- name: restart ceph rgw daemon(s)
+- name: restart ceph rgw daemon(s) - non container
   command: /tmp/restart_rgw_daemon.sh
   listen: "restart ceph rgws"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - rgw_group_name in group_names
+    - not containerized_deployment
     - rgw_socket_stat.rc == 0
+
+- name: restart ceph rgw daemon(s) - container
+  command: /tmp/restart_rgw_daemon.sh
+  listen: "restart ceph rgws"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - rgw_group_name in group_names
+    - containerized_deployment
+    - ceph_rgw_container_stat.stdout_lines|length != 0
 
 - name: copy nfs restart script
   template:
@@ -119,13 +149,23 @@
     - nfs_group_name in group_names
     - inventory_hostname in play_hosts
 
-- name: restart ceph nfs daemon(s)
+- name: restart ceph nfs daemon(s) - non container
   command: /tmp/restart_nfs_daemon.sh
   listen: "restart ceph nfss"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - nfs_group_name in group_names
+    - not containerized_deployment
     - nfs_socket_stat.rc == 0
+
+- name: restart ceph nfs daemon(s) - container
+  command: /tmp/restart_nfs_daemon.sh
+  listen: "restart ceph nfss"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - nfs_group_name in group_names
+    - containerized_deployment
+    - ceph_nfs_container_stat.stdout_lines|length != 0
 
 - name: copy rbd mirror restart script
   template:
@@ -139,13 +179,23 @@
     - rbdmirror_group_name in group_names
     - inventory_hostname in play_hosts
 
-- name: restart ceph rbd mirror daemon(s)
+- name: restart ceph rbd mirror daemon(s) - non container
   command: /tmp/restart_rbd_mirror_daemon.sh
   listen: "restart ceph rbdmirrors"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - rbdmirror_group_name in group_names
+    - not containerized_deployment
     - rbd_mirror_socket_stat.rc == 0
+
+- name: restart ceph rbd mirror daemon(s) - container
+  command: /tmp/restart_rbd_mirror_daemon.sh
+  listen: "restart ceph rbdmirrors"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - rbdmirror_group_name in group_names
+    - containerized_deployment
+    - ceph_rbd_mirror_container_stat.stdout_lines|length != 0
 
 - name: copy mgr restart script
   template:
@@ -159,10 +209,20 @@
     - mgr_group_name in group_names
     - inventory_hostname in play_hosts
 
-- name: restart ceph mgr daemon(s)
+- name: restart ceph mgr daemon(s) - non container
   command: /tmp/restart_mgr_daemon.sh
   listen: "restart ceph mgrs"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - mgr_group_name in group_names
+    - not containerized_deployment
     - mgr_socket_stat.rc == 0
+
+- name: restart ceph mgr daemon(s) - container
+  command: /tmp/restart_mgr_daemon.sh
+  listen: "restart ceph mgrs"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - mgr_group_name in group_names
+    - containerized_deployment
+    - ceph_mgr_container_stat.stdout_lines|length != 0

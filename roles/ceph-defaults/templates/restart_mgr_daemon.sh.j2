@@ -4,6 +4,9 @@ RETRIES="{{ handler_health_mgr_check_retries }}"
 DELAY="{{ handler_health_mgr_check_delay }}"
 MGR_NAME="{{ ansible_hostname }}"
 SOCKET=/var/run/ceph/{{ cluster }}-mgr.${MGR_NAME}.asok
+{% if containerized_deployment %}
+DOCKER_EXEC="docker exec ceph-mgr-{{ ansible_hostname }}"
+{% endif %}
 
 # First, restart the daemon
 systemctl restart ceph-mgr@${MGR_NAME}
@@ -11,7 +14,7 @@ systemctl restart ceph-mgr@${MGR_NAME}
 COUNT=10
 # Wait and ensure the socket exists after restarting the daemds
 while [ $RETRIES -ne 0 ]; do
-  {{ docker_exec_cmd }} test -S $SOCKET && exit 0
+  $DOCKER_EXEC test -S $SOCKET && exit 0
   sleep $DELAY
   let RETRIES=RETRIES-1
 done
