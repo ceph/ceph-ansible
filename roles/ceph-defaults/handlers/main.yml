@@ -126,3 +126,43 @@
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - nfs_group_name in group_names
     - nfs_socket_stat.rc == 0
+
+- name: copy rbd mirror restart script
+  template:
+    src: restart_rbd_mirror_daemon.sh.j2
+    dest: /tmp/restart_rbd_mirror_daemon.sh
+    owner: root
+    group: root
+    mode: 0750
+  listen: "restart ceph rbdmirrors"
+  when:
+    - rbdmirror_group_name in group_names
+    - inventory_hostname in play_hosts
+
+- name: restart ceph rbd mirror daemon(s)
+  command: /tmp/restart_rbd_mirror_daemon.sh
+  listen: "restart ceph rbdmirrors"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - rbdmirror_group_name in group_names
+    - rbd_mirror_socket_stat.rc == 0
+
+- name: copy mgr restart script
+  template:
+    src: restart_mgr_daemon.sh.j2
+    dest: /tmp/restart_mgr_daemon.sh
+    owner: root
+    group: root
+    mode: 0750
+  listen: "restart ceph mgrs"
+  when:
+    - mgr_group_name in group_names
+    - inventory_hostname in play_hosts
+
+- name: restart ceph mgr daemon(s)
+  command: /tmp/restart_mgr_daemon.sh
+  listen: "restart ceph mgrs"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - mgr_group_name in group_names
+    - mgr_socket_stat.rc == 0
