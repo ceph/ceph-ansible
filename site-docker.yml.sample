@@ -13,15 +13,43 @@
   - clients
   - iscsigws
   - mgrs
-
   gather_facts: false
-
-  tasks:
+  become: True
+  pre_tasks:
     - name: gather and delegate facts
       setup:
       delegate_to: "{{ item }}"
       delegate_facts: True
       with_items: "{{ groups['all'] }}"
+
+    - name: check if it is atomic host
+      stat:
+        path: /run/ostree-booted
+      register: stat_ostree
+      tags:
+        - always
+
+    - name: set_fact is_atomic
+      set_fact:
+        atomic: '{{ stat_ostree.stat.exists }}'
+      tags:
+        - always
+
+  roles:
+    - { role: ceph-defaults,
+        tags: [with_pkg, fetch_container_image],
+        when: "(containerized_deployment | bool) and not (atomic | bool)" }
+    - { role: ceph-docker-common,
+        tags: [with_pkg, fetch_container_image],
+        when: "(containerized_deployment | bool) and not (atomic | bool)" }
+
+  post_tasks:
+    - name: "pull {{ ceph_docker_image }} image"
+      command: "docker pull {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      changed_when: false
+      when:
+        - atomic
+        - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
 
 - hosts: mons
   become: True
