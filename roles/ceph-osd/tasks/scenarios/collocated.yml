@@ -7,7 +7,7 @@
     docker run --net=host \
     --pid=host \
     --privileged=true \
-    --name=ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item.1 | regex_replace('/', '') }} \
+    --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.1 | regex_replace('/dev/', '') }} \
     -v /etc/ceph:/etc/ceph \
     -v /var/lib/ceph/:/var/lib/ceph/ \
     -v /dev:/dev \
@@ -22,17 +22,17 @@
     - "{{ parted_results.results | default([]) }}"
     - "{{ devices }}"
   when:
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
     - not osd_auto_discovery
     - containerized_deployment
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
 
 - name: automatic prepare ceph containerized osd disk collocated
   shell: |
     docker run --net=host \
     --pid=host \
     --privileged=true \
-    --name=ceph-osd-prepare-{{ ansible_hostname }}-devdev{{ item.key }} \
+    --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.key }} \
     -v /etc/ceph:/etc/ceph \
     -v /var/lib/ceph/:/var/lib/ceph/ \
     -v /dev:/dev \
@@ -45,12 +45,12 @@
     {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
   with_dict: "{{ ansible_devices }}"
   when:
+    - osd_auto_discovery
+    - containerized_deployment
     - ansible_devices is defined
     - item.value.removable == "0"
     - item.value.partitions|count == 0
     - item.value.holders|count == 0
-    - osd_auto_discovery
-    - containerized_deployment
 
 - name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with collocated osd data and journal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }}"
@@ -58,6 +58,6 @@
     - "{{ parted_results.results | default([]) }}"
     - "{{ devices }}"
   when:
+    - not containerized_deployment
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0
-    - not containerized_deployment

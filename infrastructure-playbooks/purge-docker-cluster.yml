@@ -278,10 +278,21 @@
     with_items: "{{ devices }}"
     ignore_errors: true
 
+  - name: resolve device link
+    command: readlink -f {{ item }}
+    changed_when: false
+    with_items: "{{ devices }}"
+    register: purge_devices_links
+
+  - name: set_fact devices generate device list when osd_auto_discovery
+    set_fact:
+      devices: "{{ devices | default([]) + [ item.stdout ] }}"
+    with_items: "{{ purge_devices_links.results }}"
+
   - name: remove ceph osd prepare container
     docker:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
+      name: "ceph-osd-prepare-{{ ansible_hostname }}{{ item | regex_replace('/dev/', '') }}"
       state: absent
     with_items: "{{ devices }}"
     ignore_errors: true
@@ -289,7 +300,7 @@
   - name: remove ceph osd container
     docker:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-osd-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
+      name: "ceph-osd-{{ ansible_hostname }}-{{ item | regex_replace('/dev/', '') }}"
       state: absent
     with_items: "{{ devices }}"
     ignore_errors: true
@@ -298,7 +309,7 @@
     shell: |
       docker run \
       --privileged=true \
-      --name ceph-osd-zap-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }} \
+      --name ceph-osd-zap-{{ ansible_hostname }}-{{ item | regex_replace('/dev/', '') }} \
       -v /dev/:/dev/ \
       -e OSD_DEVICE={{ item }} \
       {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
@@ -309,7 +320,7 @@
 
   - name: wait until the zap containers die
     shell: |
-      docker ps | grep -sq ceph-osd-zap-{{ ansible_hostname }}-dev
+      docker ps | grep -sq ceph-osd-zap-{{ ansible_hostname }}
     register: zap_alive
     failed_when: false
     until: zap_alive.rc != 0
@@ -319,7 +330,7 @@
   - name: remove ceph osd zap disk container
     docker:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-osd-zap-{{ ansible_hostname }}-dev{{ item | regex_replace('/', '') }}"
+      name: "ceph-osd-zap-{{ ansible_hostname }}-{{ item | regex_replace('/dev/', '') }}"
       state: absent
     with_items:
       - "{{ devices }}"

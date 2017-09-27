@@ -10,6 +10,27 @@
 # allow 2-digit partition numbers so fast SSDs can be shared by > 9 disks
 # for SSD journals.
 
+- name: resolve dedicated device link(s)
+  command: readlink -f {{ item }}
+  changed_when: false
+  with_items: "{{ dedicated_devices }}"
+  register: dedicated_devices_prepare_canonicalize
+  when:
+    - osd_scenario == 'non-collocated'
+
+- name: set_fact build dedicated_devices from resolved symlinks
+  set_fact:
+    dedicated_devices: "{{ dedicated_devices | default([]) + [ item.stdout ] }}"
+  with_items: "{{ dedicated_devices_prepare_canonicalize.results }}"
+  when:
+    - osd_scenario == 'non-collocated'
+
+- name: set_fact build final dedicated_devices list
+  set_fact:
+    dedicated_devices: "{{ dedicated_devices | reject('search','/dev/disk') | list | unique }}"
+  when:
+    - osd_scenario == 'non-collocated'
+
 - name: include check_devices_static.yml
   include: check_devices_static.yml
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
@@ -33,10 +54,10 @@
     - "{{ dedicated_devices|unique }}"
   changed_when: false
   when:
+    - not containerized_deployment
+    - osd_scenario == 'non-collocated'
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0
-    - osd_scenario == 'non-collocated'
-    - not containerized_deployment
 
 - name: create gpt disk label of the journal device(s)
   command: parted --script {{ item.1 }} mklabel gpt
@@ -45,7 +66,7 @@
     - "{{ dedicated_devices|unique }}"
   changed_when: false
   when:
+    - containerized_deployment
+    - osd_scenario == 'non-collocated'
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0
-    - osd_scenario == 'non-collocated'
-    - containerized_deployment
