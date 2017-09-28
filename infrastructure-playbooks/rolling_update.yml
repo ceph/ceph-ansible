@@ -273,46 +273,31 @@
         - ansible_service_mgr == 'systemd'
         - containerized_deployment
 
-    - name: get pg num
-      shell: |
-        ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])'
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      register: num_pgs
-      when:
-        - not containerized_deployment
-
     - name: waiting for clean pgs...
-      shell: |
-        test "[""$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" = "$(ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
-      register: result
-      until: result.rc == 0
+      command: ceph --cluster "{{ cluster }}" -s --format json
+      register: ceph_health_post
+      until: >
+        ((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) == 1
+        and
+        (ceph_health_post.stdout | from_json).pgmap.pgs_by_state.0.state_name == "active+clean"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       when:
         - not containerized_deployment
-        - num_pgs.stdout != "0"
-
-    - name: container - get pg num
-      shell: |
-        docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])'
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      register: container_num_pgs
-      when:
-        - containerized_deployment
 
     - name: container - waiting for clean pgs...
-      shell: |
-        test "[""$(docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" = "$(docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
-      register: result
-      until: result.rc == 0
+      command: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json"
+      register: ceph_health_post
+      until: >
+        ((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) == 1
+        and
+        (ceph_health_post.stdout | from_json).pgmap.pgs_by_state.0.state_name == "active+clean"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       when:
         - containerized_deployment
-        - container_num_pgs.stdout != "0"
-
 
 - name: unset osd flags
 
@@ -343,6 +328,25 @@
         - nodeep-scrub
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when: containerized_deployment
+
+    - name: get osd versions
+      command: ceph --cluster {{ cluster }} versions
+      register: ceph_versions
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: set_fact ceph_versions_osd
+      set_fact:
+        ceph_versions_osd: "{{ (ceph_versions.stdout|from_json).osd }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    # length == 1 means there is a single osds versions entry
+    # thus all the osds are running the same version
+    - name: complete osds upgrade
+      command: ceph --cluster {{ cluster }} osd require-osd-release luminous
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when:
+        - (ceph_versions.stdout|from_json).osd | length == 1
+        - ceph_versions_osd | string | search("ceph version 12")
 
 
 - name: upgrade ceph mdss cluster
