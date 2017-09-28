@@ -287,7 +287,7 @@
         - not containerized_deployment
 
     - name: container - waiting for clean pgs...
-      command: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json"
+      command: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json"
       register: ceph_health_post
       until: >
         ((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) == 1
@@ -297,7 +297,7 @@
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
       when:
-        - not containerized_deployment
+        - containerized_deployment
 
 - name: unset osd flags
 
@@ -328,6 +328,25 @@
         - nodeep-scrub
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when: containerized_deployment
+
+    - name: get osd versions
+      command: ceph --cluster {{ cluster }} versions
+      register: ceph_versions
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: set_fact ceph_versions_osd
+      set_fact:
+        ceph_versions_osd: "{{ (ceph_versions.stdout|from_json).osd }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    # length == 1 means there is a single osds versions entry
+    # thus all the osds are running the same version
+    - name: complete osds upgrade
+      command: ceph --cluster {{ cluster }} osd require-osd-release luminous
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when:
+        - (ceph_versions.stdout|from_json).osd | length == 1
+        - ceph_versions_osd | string | search("ceph version 12")
 
 
 - name: upgrade ceph mdss cluster
