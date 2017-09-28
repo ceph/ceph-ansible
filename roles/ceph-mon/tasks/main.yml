@@ -2,37 +2,26 @@
 - name: include check_mandatory_vars.yml
   include: check_mandatory_vars.yml
 
-- name: include deploy_monitors.yml
-  include: deploy_monitors.yml
-  when: not containerized_deployment
+- name: include pre_requisite_containerized.yml
+  include: pre_requisite_containerized.yml
+  when: containerized_deployment
 
-- name: include start_monitor.yml
-  include: start_monitor.yml
+- name: include pre_requisite_non_containerized.yml
+  include: pre_requisite_non_containerized.yml
   when: not containerized_deployment
-
-- name: include ceph_keys.yml
-  include: ceph_keys.yml
-  when: not containerized_deployment
-  # this avoids the bug mentioned here: https://github.com/ansible/ansible/issues/18206
-  static: no
 
 - name: include create_mds_filesystems.yml
   include: create_mds_filesystems.yml
   when:
-    - not containerized_deployment
-    - groups[mds_group_name] is defined
-    - "{{ groups[mds_group_name]|length > 0 }}"
-    - "{{ inventory_hostname == groups[mon_group_name] | last }}"
+    - groups.get(mds_group_name, []) | length > 0
+    - inventory_hostname == groups.get(mon_group_name) | last
 
-- name: include secure_cluster.yml
-  include: secure_cluster.yml
+# create openstack pools only when all mons are up.
+- name: include ceph-mon/tasks/openstack_config.yml
+  include: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-mon/tasks/openstack_config.yml"
   when:
-    - secure_cluster
-    - not containerized_deployment
-
-- name: include docker/main.yml
-  include: docker/main.yml
-  when: containerized_deployment
+    - openstack_config
+    - inventory_hostname == groups[mon_group_name] | last
 
 - name: include calamari.yml
   include: calamari.yml

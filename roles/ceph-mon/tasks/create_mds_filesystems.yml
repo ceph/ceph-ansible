@@ -4,32 +4,32 @@
 # the role 'ceph-common' doesn't get inherited so the condition can not be evaluate
 # since those check are performed by the ceph-common role
 - name: create filesystem pools
-  command: ceph --cluster {{ cluster }} osd pool create {{ item }} {{ osd_pool_default_pg_num }}
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd pool create {{ item }} {{ osd_pool_default_pg_num }}"
   with_items:
     - cephfs_data
     - cephfs_metadata
   changed_when: false
 
 - name: check if ceph filesystem already exists
-  command: ceph --cluster {{ cluster }} fs get {{ cephfs }}
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} fs get {{ cephfs }}"
   register: check_existing_cephfs
   changed_when: false
   failed_when: false
 
 - name: create ceph filesystem
-  command: ceph --cluster {{ cluster }} fs new {{ cephfs }} {{ cephfs_metadata }} {{ cephfs_data }}
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} fs new {{ cephfs }} {{ cephfs_metadata }} {{ cephfs_data }}"
   changed_when: false
   when: check_existing_cephfs.rc != 0
 
 - name: allow multimds
-  command: ceph --cluster {{ cluster }} fs set {{ cephfs }} allow_multimds true --yes-i-really-mean-it
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} fs set {{ cephfs }} allow_multimds true --yes-i-really-mean-it"
   changed_when: false
   when:
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.jewel
     - mds_allow_multimds
 
 - name: set max_mds
-  command: ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds {{ mds_max_mds }}
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds {{ mds_max_mds }}"
   changed_when: false
   when:
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.jewel
