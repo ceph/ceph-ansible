@@ -1,18 +1,42 @@
 ---
 - name: collect admin and bootstrap keys
-  command: ceph-create-keys --cluster {{ cluster }} -i {{ monitor_name }}
-  failed_when: false
+  command: ceph-create-keys --cluster {{ cluster }} -i {{ monitor_name }} -t 30
+  args:
+    creates: /etc/ceph/{{ cluster }}.client.admin.keyring
   changed_when: false
   always_run: true
   when:
     - cephx
+    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+
+- name: collect admin and bootstrap keys
+  command: ceph-create-keys --cluster {{ cluster }} -i {{ monitor_name }}
+  changed_when: false
+  always_run: true
+  when:
+    - cephx
+    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
 
 # NOTE (leseb): wait for mon discovery and quorum resolution
 # the admin key is not instantaneously created so we have to wait a bit
+# msg: is only supported as of Ansible 2.4.
 - name: "wait for {{ cluster }}.client.admin.keyring exists"
   wait_for:
     path: /etc/ceph/{{ cluster }}.client.admin.keyring
-  when: cephx
+    timeout: 30
+    msg: "Timed out while waiting for keyring creation. Check network settings on mon nodes."
+  when:
+    - cephx
+    - (ansible_version.major == 2 and ansible_version.minor >= 4) or
+      ansible_version.major > 2
+
+- name: "wait for {{ cluster }}.client.admin.keyring exists"
+  wait_for:
+    path: /etc/ceph/{{ cluster }}.client.admin.keyring
+    timeout: 30
+  when:
+    - cephx
+    - ansible_version.major == 2 and ansible_version.minor < 4
 
 - name: test if initial mon keyring is in mon kv store
   command: ceph --cluster {{ cluster }} config-key get initial_mon_keyring
