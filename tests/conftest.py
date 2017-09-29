@@ -71,7 +71,11 @@ def node(host, request):
             osd_ids = cmd.stdout.rstrip("\n").split("\n")
             osds = osd_ids
             if docker:
-                osds = [device.split("/")[-1] for device in ansible_vars.get("devices", [])]
+                osds = []
+                for device in ansible_vars.get("devices", []):
+                    real_dev = host.run("sudo readlink -f %s" % device)
+                    real_dev_split = real_dev.stdout.split("/")[-1]
+                    osds.append(real_dev_split)
 
     data = dict(
         address=address,

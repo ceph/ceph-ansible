@@ -7,4 +7,4 @@ class TestOSD(object):
         if osd_auto_discovery:
             node["vars"]["devices"] = ["/dev/sda", "/dev/sdb", "/dev/sdc"] # Hardcoded since we can't retrieve the devices list generated during playbook run
         for device in node["vars"]["devices"]:
-            assert host.check_output("sudo blkid -s PARTLABEL -o value %s2" % device) in ["ceph journal", "ceph block"]
+            assert host.check_output("sudo blkid -s PARTLABEL -o value $(readlink -f %s)2" % device) in ["ceph journal", "ceph block"]
