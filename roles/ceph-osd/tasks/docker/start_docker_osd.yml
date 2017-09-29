@@ -28,19 +28,11 @@
     group: "root"
     mode: "0644"
 
-- name: enable systemd unit file for osd instance
-  shell: systemctl enable ceph-osd@{{ item | basename }}.service
-  changed_when: false
-  with_items: "{{ devices }}"
-
-- name: reload systemd unit files
-  shell: systemctl daemon-reload
-  changed_when: false
-
 - name: systemd start osd container
-  service:
+  systemd:
     name: ceph-osd@{{ item | basename }}
     state: started
     enabled: yes
+    daemon_reload: yes
   changed_when: false
   with_items: "{{ devices }}"
