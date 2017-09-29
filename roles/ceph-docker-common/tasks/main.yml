@@ -6,7 +6,7 @@
   stat:
     path: /run/ostree-booted
   register: stat_ostree
-  always_run: true
+  check_mode: no
 
 - name: set_fact is_atomic
   set_fact:
@@ -33,7 +33,7 @@
 - name: get docker version
   command: docker --version
   changed_when: false
-  always_run: yes
+  check_mode: no
   register: docker_version
 
 - name: set_fact docker_version docker_version.stdout.split
@@ -51,7 +51,7 @@
   register: ceph_health
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
 
 - name: include checks.yml
   include: checks.yml
@@ -89,7 +89,7 @@
 - name: get ceph version
   command: docker run --entrypoint /usr/bin/ceph {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} --version
   changed_when: false
-  always_run: yes
+  check_mode: no
   register: ceph_version
 
 - name: set_fact ceph_version ceph_version.stdout.split

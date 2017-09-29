@@ -12,17 +12,16 @@
     {{ docker_exec_cmd | default('') }} bash -c 'stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mon*.asok'
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: mon_socket_stat
   when:
     - inventory_hostname in groups.get(mon_group_name, [])
 
 - name: check if the ceph mon socket is in-use
-  shell: |
-    {{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ mon_socket_stat.stdout }}'
+  command: "{{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ mon_socket_stat.stdout }}'"
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: mon_socket
   when:
     - inventory_hostname in groups.get(mon_group_name, [])
@@ -43,18 +42,17 @@
     stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-osd*.asok
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: osd_socket_stat
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     - not containerized_deployment
 
 - name: check if the ceph osd socket is in-use
-  shell: |
-    fuser --silent {{ osd_socket_stat.stdout }}
+  command: "fuser --silent {{ osd_socket_stat.stdout }}"
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: osd_socket
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
@@ -83,17 +81,16 @@
     {{ docker_exec_cmd | default('') }} bash -c 'stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mds*.asok'
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: mds_socket_stat
   when:
     - inventory_hostname in groups.get(mds_group_name, [])
 
 - name: check if the ceph mds socket is in-use
-  shell: |
-    {{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ mds_socket_stat.stdout }}'
+  command: "{{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ mds_socket_stat.stdout }}'"
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: mds_socket
   when:
     - inventory_hostname in groups.get(mds_group_name, [])
@@ -121,17 +118,16 @@
     {{ docker_exec_cmd | default('') }} bash -c 'stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-client.rgw*.asok'
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: rgw_socket_stat
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
 
 - name: check if the ceph rgw socket is in-use
-  shell: |
-    {{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ rgw_socket_stat.stdout }}'
+  command: "{{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ rgw_socket_stat.stdout }}'"
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: rgw_socket
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
@@ -159,17 +155,16 @@
     {{ docker_exec_cmd | default('') }} bash -c 'stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mgr*.asok'
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: mgr_socket_stat
   when:
     - inventory_hostname in groups.get(mgr_group_name, [])
 
 - name: check if the ceph mgr socket is in-use
-  shell: |
-    {{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ mgr_socket_stat.stdout }}'
+  command: "{{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ mgr_socket_stat.stdout }}'"
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: mgr_socket
   when:
     - inventory_hostname in groups.get(mgr_group_name, [])
@@ -197,17 +192,16 @@
     {{ docker_exec_cmd | default('') }} bash -c 'stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-client.rbd-mirror*.asok'
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: rbd_mirror_socket_stat
   when:
     - inventory_hostname in groups.get(rbdmirror_group_name, [])
 
 - name: check if the ceph rbd mirror socket is in-use
-  shell: |
-    {{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ rbd_mirror_socket_stat.stdout }}'
+  command: "{{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ rbd_mirror_socket_stat.stdout }}'"
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: rbd_mirror_socket
   when:
     - inventory_hostname in groups.get(rbdmirror_group_name, [])
@@ -231,21 +225,19 @@
     - containerized_deployment
 
 - name: check for a ceph nfs ganesha socket
-  shell: |
-    {{ docker_exec_cmd | default('') }} bash -c 'stat --printf=%n /var/run/ganesha.pid'
+  command: "{{ docker_exec_cmd | default('') }} bash -c 'stat --printf=%n /var/run/ganesha.pid'"
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: nfs_socket_stat
   when:
     - inventory_hostname in groups.get(nfs_group_name, [])
 
 - name: check if the ceph nfs ganesha socket is in-use
-  shell: |
-    {{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ nfs_socket_stat.stdout }}'
+  command: "{{ docker_exec_cmd | default('') }} bash -c 'fuser --silent {{ nfs_socket_stat.stdout }}'"
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: nfs_socket
   when:
     - inventory_hostname in groups.get(nfs_group_name, [])
@@ -266,7 +258,7 @@
     docker exec ceph-osd-"{{ ansible_hostname }}"-"{{ item | replace('/', '') }}" bash -c 'stat --printf=%n /var/run/ceph/*.asok'
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: socket_osd_container_stat
   with_items: "{{ devices }}"
   when:
