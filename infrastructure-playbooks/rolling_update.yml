@@ -147,24 +147,26 @@
         - mon_host_count | int == 1
 
     - name: waiting for the monitor to join the quorum...
-      shell: |
-        ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["quorum_names"])'
-      register: result
-      until: "{{ ansible_hostname in result.stdout }}"
+      command: ceph --cluster "{{ cluster }}" -s --format json
+      register: ceph_health_raw
+      until: >
+        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
-      when: not containerized_deployment
+      when:
+        - not containerized_deployment
 
     - name: waiting for the containerized monitor to join the quorum...
-      shell: |
-        docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["quorum_names"])'
-      register: result
-      until: "{{ ansible_hostname in result.stdout }}"
+      command: docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
+      register: ceph_health_raw
+      until: >
+        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
-      when: containerized_deployment
+      when:
+        - containerized_deployment
 
     - name: set osd flags
       command: ceph osd set {{ item }} --cluster {{ cluster }}
@@ -333,6 +335,14 @@
       command: ceph --cluster {{ cluster }} versions
       register: ceph_versions
       delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: not containerized_deployment
+
+    - name: containers - get osd versions
+      command: |
+        docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} versions
+      register: ceph_versions
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: containerized_deployment
 
     - name: set_fact ceph_versions_osd
       set_fact:
@@ -345,9 +355,18 @@
       command: ceph --cluster {{ cluster }} osd require-osd-release luminous
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when:
+        - not containerized_deployment
         - (ceph_versions.stdout|from_json).osd | length == 1
         - ceph_versions_osd | string | search("ceph version 12")
 
+    - name: containers - complete osds upgrade
+      command: |
+        docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd require-osd-release luminous
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when:
+        - containerized_deployment
+        - (ceph_versions.stdout|from_json).osd | length == 1
+        - ceph_versions_osd | string | search("ceph version 12")
 
 - name: upgrade ceph mdss cluster
 
