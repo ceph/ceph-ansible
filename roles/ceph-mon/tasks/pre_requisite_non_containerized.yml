@@ -1,0 +1,26 @@
+---
+- name: include deploy_monitors.yml
+  include: deploy_monitors.yml
+
+- name: include start_monitor.yml
+  include: start_monitor.yml
+
+- name: include ceph_keys.yml
+  include: ceph_keys.yml
+  # this avoids the bug mentioned here: https://github.com/ansible/ansible/issues/18206
+  static: no
+
+- name: include secure_cluster.yml
+  include: secure_cluster.yml
+  when:
+    - secure_cluster
+
+- name: drop in a motd script to report status when logging in
+  copy:
+    src: precise/92-ceph
+    dest: /etc/update-motd.d/92-ceph
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - ansible_distribution_release == 'precise'

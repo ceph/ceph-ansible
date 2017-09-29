@@ -84,20 +84,12 @@
   changed_when: false
   when:
     - cephx
-    - containerized_deployment
     - groups[restapi_group_name] is defined
     - "{{ inventory_hostname == groups[mon_group_name] | last }}"
     - not containerized_deployment_with_kv
 
 - name: include ceph-mon/tasks/set_osd_pool_default_pg_num.yml
   include: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-mon/tasks/set_osd_pool_default_pg_num.yml"
-
-# create openstack pools only when all mons are up.
-- name: include ceph-mon/tasks/set_osd_pool_default_pg_num.yml
-  include: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-mon/tasks/openstack_config.yml"
-  when:
-    - openstack_config
-    - "{{ inventory_hostname == groups[mon_group_name] | last }}"
 
 - block:
   - name: create ceph mgr keyring(s) when mon is containerized
@@ -107,8 +99,7 @@
     changed_when: false
     when:
       - cephx
-      - containerized_deployment
-      - "{{ groups.get(mgr_group_name, []) | length > 0 }}"
+      - groups.get(mgr_group_name, []) | length > 0
       - not containerized_deployment_with_kv
     with_items: "{{ groups.get(mgr_group_name, []) }}"
 
@@ -122,7 +113,7 @@
     register: stat_mgr_keys
     always_run: true
     when:
-      - "{{ groups.get(mgr_group_name, []) | length > 0 }}"
+      - groups.get(mgr_group_name, []) | length > 0
 
   - name: fetch ceph mgr key(s)
     fetch:
