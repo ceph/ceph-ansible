@@ -8,20 +8,22 @@ EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/docker rm ceph-nfs-%i
 ExecStartPre=/usr/bin/mkdir -p /etc/ceph /etc/ganesha /var/lib/nfs/ganesha
 ExecStart=/usr/bin/docker run --rm --net=host \
-   {% if not containerized_deployment_with_kv -%}
-   -v /etc/ceph:/etc/ceph \
-   -v /etc/ganesha:/etc/ganesha \
-   {% else -%}
-   -e KV_TYPE={{kv_type}} \
-   -e KV_IP={{kv_endpoint}}\
-   -e KV_PORT={{kv_port}} \
-   {% endif -%}
-   -v /etc/localtime:/etc/localtime:ro \
-   --privileged \
-   -e CEPH_DAEMON=NFS \
-   {{ ceph_nfs_docker_extra_env }} \
-   --name=ceph-nfs-{{ ansible_hostname }} \
-   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  {% if not containerized_deployment_with_kv -%}
+  -v /var/lib/ceph:/var/lib/ceph \
+  -v /etc/ceph:/etc/ceph \
+  -v /var/lib/ganesha:/var/lib/ganesha \
+  -v /etc/ganesha:/etc/ganesha \
+  {% else -%}
+  -e KV_TYPE={{kv_type}} \
+  -e KV_IP={{kv_endpoint}}\
+  -e KV_PORT={{kv_port}} \
+  {% endif -%}
+  -v /etc/localtime:/etc/localtime:ro \
+  -e CLUSTER={{ cluster }} \
+  -e CEPH_DAEMON=NFS \
+  {{ ceph_nfs_docker_extra_env }} \
+  --name=ceph-nfs-{{ ansible_hostname }} \
+  {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
 ExecStopPost=-/usr/bin/docker stop ceph-nfs-%i
 Restart=always
 RestartSec=10s

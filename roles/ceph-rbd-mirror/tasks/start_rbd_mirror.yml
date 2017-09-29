@@ -35,6 +35,17 @@
   when:
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
 
+# This task is a workaround for rbd-mirror not starting after reboot
+# The upstream fix is: https://github.com/ceph/ceph/pull/17969
+# It's affecting, ceph version 12.2.0 (32ce2a3ae5239ee33d6150705cdb24d43bab910c) luminous (rc) and before
+- name: enable ceph-rbd-mirror.target
+  service:
+    name: "ceph-rbd-mirror.target"
+    enabled: yes
+  changed_when: false
+  when:
+    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+
 - name: start and add the rbd-mirror service instance
   service:
     name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"

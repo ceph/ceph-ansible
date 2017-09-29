@@ -1,4 +1,12 @@
 ---
+- name: create /etc/ganesha
+  file:
+    path: /etc/ganesha
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: generate ganesha configuration file
   action: config_template
   args:
@@ -11,6 +19,27 @@
   notify:
     - restart ceph nfss
 
+- name: generate systemd unit file
+  become: true
+  template:
+    src: "{{ role_path }}/templates/ceph-nfs.service.j2"
+    dest: /etc/systemd/system/ceph-nfs@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  when:
+    - containerized_deployment
+
+- name: systemd start nfs container
+  systemd:
+    name: "ceph-nfs@{{ ansible_hostname }}.service"
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  when:
+    - ceph_nfs_enable_service
+    - containerized_deployment
+
 - name: start nfs gateway service
   service:
     name: nfs-ganesha
@@ -18,3 +47,4 @@
     enabled: yes
   when:
     - ceph_nfs_enable_service
+    - not containerized_deployment
