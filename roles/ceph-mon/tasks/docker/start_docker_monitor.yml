@@ -49,19 +49,10 @@
     group: "root"
     mode: "0644"
 
-- name: enable systemd unit file for mon instance
-  shell: systemctl enable ceph-mon@{{ ansible_hostname }}.service
-  failed_when: false
-  changed_when: false
-
-- name: reload systemd unit files
-  shell: systemctl daemon-reload
-  changed_when: false
-  failed_when: false
-
 - name: systemd start mon container
-  service:
+  systemd:
     name: ceph-mon@{{ ansible_hostname }}
     state: started
     enabled: yes
+    daemon_reload: yes
   changed_when: false
