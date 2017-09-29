@@ -1,0 +1,14 @@
+---
+
+- assert:
+    that: rbd_pool_exist.rc == 0
+    msg: "rbd pool does not exist in rbd_pool_df"
+
+- name: check rbd pool usage
+  shell: |
+    ceph --connect-timeout 5 --cluster {{ cluster }} df | awk '/rbd/ {print $3}'
+  changed_when: false
+  failed_when: false
+  check_mode: true
+  run_once: true
+  register: rbd_pool_df
