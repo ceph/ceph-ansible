@@ -262,6 +262,12 @@
     failed_when: false
     register: ceph_data_partlabels
 
+  - name: see if ceph-disk-created block partitions are present
+    shell: |
+      ls /dev/disk/by-partlabel | grep -q "ceph.*block$"
+    failed_when: false
+    register: ceph_block_partlabels
+
   - name: see if ceph-disk-created journal partitions are present
     shell: |
       ls /dev/disk/by-partlabel | grep -q "ceph.*.journal"
@@ -403,6 +409,13 @@
       - osd_scenario == "lvm"
       - item.journal_vg is defined
 
+  - name: get ceph block partitions
+    shell: |
+      blkid | awk '/ceph block"/ { sub (":", "", $1); print $1 }'
+    when: ceph_block_partlabels.rc == 0
+    failed_when: false
+    register: ceph_block_partition_to_erase_path
+
   - name: get ceph journal partitions
     shell: |
       blkid | awk '/ceph journal/ { sub (":", "", $1); print $1 }'
@@ -437,11 +450,12 @@
       partition_nb=$(echo "{{ item }}" | egrep -o '[0-9]{1,2}$')
       sgdisk --delete $partition_nb $raw_device
     with_items:
+      - "{{ ceph_block_partition_to_erase_path.stdout_lines | default([]) }}"
       - "{{ ceph_journal_partition_to_erase_path.stdout_lines | default([]) }}"
       - "{{ ceph_db_partition_to_erase_path.stdout_lines | default([]) }}"
       - "{{ ceph_wal_partition_to_erase_path.stdout_lines | default([]) }}"
     when:
-      - (ceph_journal_partlabels.rc == 0 or ceph_db_partlabels.rc == 0 or ceph_wal_partlabels.rc == 0)
+      - (ceph_block_partlabels.rc == 0 or ceph_journal_partlabels.rc == 0 or ceph_db_partlabels.rc == 0 or ceph_wal_partlabels.rc == 0)
       - osd_scenario == 'non-collocated'
 
 - name: purge ceph mon cluster
