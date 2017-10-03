@@ -2,40 +2,30 @@
 # so people that had 'pool_default_pg_num' declared will get
 # the same behaviour
 #
-- name: check if does global key exist in ceph_conf_overrides
-  set_fact:
-    global_in_ceph_conf_overrides: "{{ 'global' in ceph_conf_overrides }}"
-
-- name: check if ceph_conf_overrides.global.osd_pool_default_pg_num is set
-  set_fact:
-    osd_pool_default_pg_num_in_overrides: "{{ 'osd_pool_default_pg_num' in ceph_conf_overrides.global }}"
-  when: global_in_ceph_conf_overrides
-
 - name: get default value for osd_pool_default_pg_num
   shell: |
-   {{ docker_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ monitor_name }} config get osd_pool_default_pg_num | grep -Po '(?<="osd_pool_default_pg_num": ")[^"]*'
+   {{ docker_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ monitor_name }} config get osd_pool_default_pg_num
   failed_when: false
   changed_when: false
   run_once: true
   register: default_pool_default_pg_num
-  when: pool_default_pg_num is not defined or not global_in_ceph_conf_overrides
+  when:
+    - pool_default_pg_num is not defined
+    - ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', False) == False
 
-- name: set_fact osd_pool_default_pg_num pool_default_pg_num
+- name: set_fact osd_pool_default_pg_num with pool_default_pg_num (backward compatibility)
   set_fact:
     osd_pool_default_pg_num: "{{ pool_default_pg_num }}"
   when: pool_default_pg_num is defined
 
-- name: set_fact osd_pool_default_pg_num default_pool_default_pg_num.stdout
+- name: set_fact osd_pool_default_pg_num with default_pool_default_pg_num.stdout
   set_fact:
-    osd_pool_default_pg_num: "{{ default_pool_default_pg_num.stdout }}"
+    osd_pool_default_pg_num: "{{ (default_pool_default_pg_num.stdout | from_json).osd_pool_default_pg_num }}"
   when:
-    - pool_default_pg_num is not defined
-    - default_pool_default_pg_num.rc == 0
-    - (osd_pool_default_pg_num_in_overrides is not defined or not osd_pool_default_pg_num_in_overrides)
+    - default_pool_default_pg_num.get('rc') == 0
 
 - name: set_fact osd_pool_default_pg_num ceph_conf_overrides.global.osd_pool_default_pg_num
   set_fact:
     osd_pool_default_pg_num: "{{ ceph_conf_overrides.global.osd_pool_default_pg_num }}"
   when:
-    - global_in_ceph_conf_overrides
-    - ceph_conf_overrides.global.osd_pool_default_pg_num is defined
+    - ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', False) != False

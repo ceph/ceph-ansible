@@ -6,7 +6,7 @@
 
 - name: check size for rbd pool
   shell: |
-    ceph --connect-timeout 5 --cluster {{ cluster }} osd pool get rbd size | awk '{print $2}'
+    "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool get rbd size | awk '{print $2}'"
   changed_when: false
   failed_when: false
   check_mode: true
@@ -14,7 +14,7 @@
   register: rbd_pool_size
 
 - name: change rbd pool size if osd_pool_default_size is not honoured
-  command: ceph --connect-timeout 5 --cluster {{ cluster }} osd pool set rbd size {{ ceph_conf_overrides.global.osd_pool_default_size }}
+  command: "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool set rbd size {{ ceph_conf_overrides.global.osd_pool_default_size }}"
   changed_when: false
   failed_when: false
   run_once: true

@@ -1,7 +1,7 @@
 ---
 - name: test if rbd exists
   shell: |
-    ceph --cluster {{ cluster }} osd pool ls | grep -sq rbd
+    "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd pool ls | grep -sq rbd"
   changed_when: false
   failed_when: false
   run_once: true
@@ -16,14 +16,10 @@
   include: rbd_pool_pgs.yml
   when:
     - rbd_pool_exist.rc == 0
-    - global_in_ceph_conf_overrides
-    - ceph_conf_overrides.global.osd_pool_default_pg_num is defined
+    - ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', False) != False
 
 - name: include rbd_pool_size.yml
   include: rbd_pool_size.yml
   when:
     - rbd_pool_exist.rc == 0
-    - global_in_ceph_conf_overrides
-    - ceph_conf_overrides.global.osd_pool_default_size is defined
-
-# In luminous release, ceph does not create the rbd pool by default.
+    - ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', False) != False

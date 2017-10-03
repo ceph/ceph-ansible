@@ -32,6 +32,23 @@
   include: docker/main.yml
   when: containerized_deployment
 
+- name: include set_osd_pool_default_pg_num.yml
+  include: set_osd_pool_default_pg_num.yml
+
+# Create the pools listed in openstack_pools
+- name: include openstack_config.yml
+  include: openstack_config.yml
+  when:
+    - openstack_config
+    - inventory_hostname == groups[mon_group_name] | last
+
+# CEPH creates the rbd pool during the ceph cluster initialization in
+# releases prior to luminous.  If the rbd_pool.yml playbook is called too
+# early, the rbd pool does not exist yet.
+- name: include rbd_pool.yml
+  include: rbd_pool.yml
+  when: ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
+
 - name: include create_mds_filesystems.yml
   include: create_mds_filesystems.yml
   when:

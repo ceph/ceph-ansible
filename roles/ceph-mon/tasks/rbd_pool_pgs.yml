@@ -6,7 +6,7 @@
 
 - name: check pg num for rbd pool
   shell: |
-    ceph --connect-timeout 5 --cluster {{ cluster }} osd pool get rbd pg_num | awk '{print $2}'
+    "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool get rbd pg_num | awk '{print $2}'"
   changed_when: false
   failed_when: false
   check_mode: true
@@ -15,8 +15,8 @@
 
 - name: destroy and recreate rbd pool if osd_pool_default_pg_num is not honoured
   shell: |
-    ceph --connect-timeout 5 --cluster {{ cluster }} osd pool delete rbd rbd --yes-i-really-really-mean-it
-    ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create rbd {{ ceph_conf_overrides.global.osd_pool_default_pg_num }}
+    "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool delete rbd rbd --yes-i-really-really-mean-it"
+    "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create rbd {{ ceph_conf_overrides.global.osd_pool_default_pg_num }}"
   changed_when: false
   failed_when: false
   run_once: true
