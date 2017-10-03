@@ -11,7 +11,7 @@
   changed_when: false
   become: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: statconfig
 
 - name: try to fetch ceph config and keys
@@ -30,7 +30,7 @@
 - name: "copy mgr key to /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring"
   command: cp /etc/ceph/{{ cluster }}.mgr.{{ ansible_hostname }}.keyring /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring
   changed_when: false
-  always_run: true
+  check_mode: no
   with_items: "{{ statconfig.results }}"
   when: item.stat.exists == true
 
@@ -43,8 +43,7 @@
   when: cephx
 
 - name: set selinux permissions
-  shell: |
-    chcon -Rt svirt_sandbox_file_t {{ item }}
+  command: "chcon -Rt svirt_sandbox_file_t {{ item }}"
   with_items:
     - "{{ ceph_conf_key_directory }}"
     - /var/lib/ceph
@@ -52,3 +51,5 @@
   when:
     - ansible_os_family == 'RedHat'
     - sestatus.stdout != 'Disabled'
+  tags:
+    - skip_ansible_lint

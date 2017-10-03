@@ -4,9 +4,11 @@
   changed_when: false
   failed_when: false
   register: rhcs_mon_repo
-  always_run: true
+  check_mode: no
   when:
     - mon_group_name in group_names
+  tags:
+    - skip_ansible_lint
 
 - name: enable red hat storage monitor repository
   command: subscription-manager repos --enable rhel-7-server-rhceph-{{ ceph_rhcs_version }}-mon-rpms
@@ -14,15 +16,19 @@
   when:
     - mon_group_name in group_names
     - rhcs_mon_repo.rc != 0
+  tags:
+    - skip_ansible_lint
 
 - name: check if the red hat storage osd repo is already present
   shell: yum --noplugins --cacheonly repolist | grep -sq rhel-7-server-rhceph-{{ ceph_rhcs_version }}-osd-rpms
   changed_when: false
   failed_when: false
   register: rhcs_osd_repo
-  always_run: true
+  check_mode: no
   when:
     - osd_group_name in group_names
+  tags:
+    - skip_ansible_lint
 
 - name: enable red hat storage osd repository
   command: subscription-manager repos --enable rhel-7-server-rhceph-{{ ceph_rhcs_version }}-osd-rpms
@@ -30,15 +36,19 @@
   when:
     - osd_group_name in group_names
     - rhcs_osd_repo.rc != 0
+  tags:
+    - skip_ansible_lint
 
 - name: check if the red hat storage rados gateway / mds repo is already present
   shell: yum --noplugins --cacheonly repolist | grep -sq rhel-7-server-rhceph-{{ ceph_rhcs_version }}-tools-rpms
   changed_when: false
   failed_when: false
   register: rhcs_rgw_mds_nfs_repo
-  always_run: true
+  check_mode: no
   when:
     - (rgw_group_name in group_names or mds_group_name in group_names or nfs_group_name in group_names)
+  tags:
+    - skip_ansible_lint
 
 - name: enable red hat storage rados gateway / mds repository
   command: subscription-manager repos --enable rhel-7-server-rhceph-{{ ceph_rhcs_version }}-tools-rpms
