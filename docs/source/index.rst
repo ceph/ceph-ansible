@@ -25,6 +25,34 @@ You can install directly from the source on github by following these steps:
 
       git checkout $branch
 
+
+Ansible on RHEL and CentOS
+--------------------------
+You can acquire Ansible on RHEL and CentOS by installing from
+`"Extras"<https://access.redhat.com/solutions/912213>`_.
+
+On RHEL::
+
+    subscription-manager repos --enable=rhel-7-server-extras-rpms
+
+(CentOS does not use subscription-manager and already has "Extras" enabled by default.)
+
+::
+
+    sudo yum install ansible
+
+Ansible on Ubuntu
+-----------------
+You can acquire Ansible on Ubuntu by using the `Ansible
+PPA<https://launchpad.net/~ansible/+archive/ubuntu/ansible>`_.
+
+::
+
+    sudo add-apt-repository ppa:ansible/ansible
+    sudo apt-get update
+    sudo apt-get install ansible
+
+
 Releases
 ========
 
