@@ -15,7 +15,7 @@
 # because it blindly picks a mon, which may be down because
 # of the rolling update
 - name: is ceph running already?
-  command: ceph --connect-timeout 3 --cluster {{ cluster }} fsid
+  command: "{{ docker_exec_cmd }} ceph --connect-timeout 3 --cluster {{ cluster }} fsid"
   changed_when: false
   failed_when: false
   always_run: yes
@@ -91,12 +91,6 @@
     fsid: "{{ cluster_uuid.stdout }}"
   when:
     - generate_fsid
-
-- name: set_fact docker_exec_cmd
-  set_fact:
-    docker_exec_cmd: "docker exec ceph-mon-{{ ansible_hostname }}"
-  when:
-    - containerized_deployment
 
 - name: set_fact mds_name ansible_hostname
   set_fact:
