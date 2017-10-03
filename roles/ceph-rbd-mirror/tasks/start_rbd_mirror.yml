@@ -4,7 +4,7 @@
     state: directory
     path: "/etc/systemd/system/ceph-rbd-mirror@.service.d/"
   when:
-    - ceph_rbd_mirror_systemd_overrides is defined
+    - not containerized_deployment
     - ansible_service_mgr == 'systemd'
 
 - name: add ceph-rbd-mirror systemd service overrides
@@ -14,10 +14,10 @@
     config_overrides: "{{ ceph_rbd_mirror_systemd_overrides | default({}) }}"
     config_type: "ini"
   when:
+    - not containerized_deployment
     - ceph_rbd_mirror_systemd_overrides is defined
-    - ansible_service_mgr == 'systemd'
 
-- name: start and add that the rbd mirror service to the init sequence
+- name: systemd start rbd mirror (before luminous)
   service:
     name: "ceph-rbd-mirror@{{ ceph_rbd_mirror_local_user }}"
     state: started
@@ -25,6 +25,7 @@
   changed_when: false
   when:
     - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
+    - not containerized_deployment
 
 - name: stop and remove the generic rbd-mirror service instance
   service:
@@ -34,6 +35,7 @@
   changed_when: false
   when:
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - not containerized_deployment
 
 # This task is a workaround for rbd-mirror not starting after reboot
 # The upstream fix is: https://github.com/ceph/ceph/pull/17969
@@ -45,12 +47,25 @@
   changed_when: false
   when:
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - not containerized_deployment
 
-- name: start and add the rbd-mirror service instance
-  service:
-    name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
+- name: generate systemd unit file
+  become: true
+  template:
+    src: "{{ role_path }}/templates/ceph-rbd-mirror.service.j2"
+    dest: /etc/systemd/system/ceph-rbd-mirror@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  when:
+    - containerized_deployment
+
+- name: systemd start rbd mirror (for and after luminous)
+  systemd:
+    name: ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}
     state: started
     enabled: yes
+    daemon_reload: yes
   changed_when: false
   when:
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
