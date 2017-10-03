@@ -124,3 +124,24 @@
   when:
     - rbd_client_directory_mode is not defined
       or not rbd_client_directory_mode
+
+- name: resolve device link(s)
+  command: readlink -f {{ item }}
+  changed_when: false
+  with_items: "{{ devices }}"
+  register: devices_prepare_canonicalize
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+
+- name: set_fact build devices from resolved symlinks
+  set_fact:
+    devices: "{{ devices | default([]) + [ item.stdout ] }}"
+  with_items: "{{ devices_prepare_canonicalize.results }}"
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+
+- name: set_fact build final devices list
+  set_fact:
+    devices: "{{ devices | reject('search','/dev/disk') | list | unique }}"
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])

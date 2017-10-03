@@ -7,7 +7,7 @@
     docker run --net=host \
     --pid=host \
     --privileged=true \
-    --name=ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item.1 | regex_replace('/', '') }} \
+    --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.1 | regex_replace('/dev/', '') }} \
     -v /etc/ceph:/etc/ceph \
     -v /var/lib/ceph/:/var/lib/ceph/ \
     -v /dev:/dev \
@@ -24,18 +24,17 @@
     - "{{ devices }}"
     - "{{ dedicated_devices }}"
   when:
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
-    - not osd_auto_discovery
     - containerized_deployment
     - osd_objectstore == 'filestore'
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
 
 - name: prepare ceph "{{ osd_objectstore }}" containerized osd disk(s) non-collocated with a dedicated device for db and wal
   shell: |
     docker run --net=host \
     --pid=host \
     --privileged=true \
-    --name=ceph-osd-prepare-{{ ansible_hostname }}-dev{{ item.1 | regex_replace('/', '') }} \
+    --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.1 | regex_replace('/dev/', '') }} \
     -v /etc/ceph:/etc/ceph \
     -v /var/lib/ceph/:/var/lib/ceph/ \
     -v /dev:/dev \
@@ -54,11 +53,10 @@
     - "{{ dedicated_devices }}"
     - "{{ bluestore_wal_devices }}"
   when:
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
-    - not osd_auto_discovery
     - containerized_deployment
     - osd_objectstore == 'bluestore'
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
 
 - name: prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) non-collocated
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }} {{ item.2 }}"
@@ -68,10 +66,10 @@
     - "{{ dedicated_devices }}"
   changed_when: false
   when:
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
     - osd_objectstore == 'filestore'
     - not containerized_deployment
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0
 
 - name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with a dedicated device for db and wal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.1 }} --block.wal {{ item.2 }} {{ item.3 }}"
@@ -79,9 +77,9 @@
     - "{{ parted_results.results | default([]) }}"
     - "{{ dedicated_devices }}"
     - "{{ bluestore_wal_devices }}"
-    - "{{ devices }}"
+    - "{{ devices | unique }}"
   when:
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
     - osd_objectstore == 'bluestore'
     - not containerized_deployment
+    - not item.0.get("skipped")
+    - item.0.get("rc", 0) != 0

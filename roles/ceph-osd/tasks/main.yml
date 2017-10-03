@@ -17,14 +17,25 @@
     devices: "{{ devices | default([]) + [ item.key | regex_replace('^', '/dev/') ] }}"
   with_dict: "{{ ansible_devices }}"
   when:
+    - osd_auto_discovery
     - ansible_devices is defined
     - item.value.removable == "0"
     - item.value.partitions|count == 0
     - item.value.holders|count == 0
-    - osd_auto_discovery
 
 - name: include check_devices.yml
   include: check_devices.yml
+  when:
+    - not osd_auto_discovery
+
+- name: check if a partition named 'ceph' exists
+  shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"
+  with_items:
+    - "{{ devices }}"
+  changed_when: false
+  failed_when: false
+  always_run: true
+  register: parted_results
 
 - name: include copy_configs.yml
   include: copy_configs.yml
@@ -42,6 +53,7 @@
 - name: include scenarios/non-collocated.yml
   include: scenarios/non-collocated.yml
   when:
+    - not osd_auto_discovery
     - osd_scenario == 'non-collocated'
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
