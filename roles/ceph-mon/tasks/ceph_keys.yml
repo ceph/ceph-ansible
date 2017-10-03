@@ -86,46 +86,19 @@
   when:
     - crush_rule_config
 
-- name: test if rbd exists
-  shell: |
-    ceph --cluster {{ cluster }} osd pool ls | grep -sq rbd
-  changed_when: false
-  failed_when: false
-  register: rbd_pool_exist
-
-- name: include rbd_pool.yml
-  include: rbd_pool.yml
-  when: rbd_pool_exist.rc == 0
-
-- name: include rbd_pool_pgs.yml
-  include: rbd_pool_pgs.yml
-  when:
-    - rbd_pool_exist.rc == 0
-    - global_in_ceph_conf_overrides
-    - ceph_conf_overrides.global.osd_pool_default_pg_num is defined
-
-- name: include rbd_pool_size.yml
-  include: rbd_pool_size.yml
-  when:
-    - rbd_pool_exist.rc == 0
-    - global_in_ceph_conf_overrides
-    - ceph_conf_overrides.global.osd_pool_default_size is defined
-
-- name: create rbd pool on luminous
-  shell: ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create rbd {{ ceph_conf_overrides.global.osd_pool_default_pg_num }}
-  changed_when: false
-  failed_when: false
-  when:
-    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
-    - global_in_ceph_conf_overrides
-    - ceph_conf_overrides.global.osd_pool_default_pg_num is defined
-    - rbd_pool_exist.rc != 0
-
+# Create the pools listed in openstack_pools
 - name: include openstack_config.yml
   include: openstack_config.yml
   when:
     - openstack_config
     - inventory_hostname == groups[mon_group_name] | last
+
+# CEPH creates the rbd pool during the ceph cluster initialization in
+# releases prior to luminous.  If the rbd_pool.yml playbook is called too
+# early, the rbd pool does not exist yet.
+- name: include rbd_pool.yml
+  include: rbd_pool.yml
+  when: ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
 
 - name: find ceph keys
   shell: ls -1 /etc/ceph/*.keyring
