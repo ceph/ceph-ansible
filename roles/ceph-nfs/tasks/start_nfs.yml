@@ -19,6 +19,25 @@
   notify:
     - restart ceph nfss
 
+- name: create exports directory
+  file:
+    path: /etc/ganesha/export.d
+    state: directory
+    owner: "root"
+    group: "root"
+    mode: "0755"
+  when: ceph_nfs_include_exports_dir
+
+- name: create exports dir index file
+  copy:
+    content: ""
+    force: no
+    dest: /etc/ganesha/export.d/INDEX.conf
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  when: ceph_nfs_include_exports_dir
+
 - name: generate systemd unit file
   become: true
   template:
