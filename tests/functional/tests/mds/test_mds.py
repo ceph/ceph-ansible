@@ -30,7 +30,6 @@ class TestMDSs(object):
     @pytest.mark.docker
     def test_docker_mds_is_up(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
-        hostname = node["groups"]["mons"][0]["inventory_hostname"]
         cmd = "sudo docker exec ceph-mds-{hostname} ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
             hostname=node["vars"]["inventory_hostname"],
             cluster=node["cluster_name"]
