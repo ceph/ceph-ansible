@@ -1,17 +1,25 @@
 ---
-- name: check rbd pool usage
+- name: test if rbd exists
   shell: |
-    ceph --connect-timeout 5 --cluster {{ cluster }} df | awk '/rbd/ {print $3}'
+    "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd pool ls | grep -sq rbd"
   changed_when: false
   failed_when: false
-  always_run: true
-  register: rbd_pool_df
+  run_once: true
+  check_mode: true
+  register: rbd_pool_exist
 
-- name: check pg num for rbd pool
-  shell: |
-    ceph --connect-timeout 5 --cluster {{ cluster }} osd pool get rbd pg_num | awk '{print $2}'
-  changed_when: false
-  failed_when: false
-  always_run: true
-  register: rbd_pool_pgs
+- name: include rbd_pool_df.yml
+  include: rbd_pool_df.yml
+  when: rbd_pool_exist.rc == 0
 
+- name: include rbd_pool_pgs.yml
+  include: rbd_pool_pgs.yml
+  when:
+    - rbd_pool_exist.rc == 0
+    - ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', False) != False
+
+- name: include rbd_pool_size.yml
+  include: rbd_pool_size.yml
+  when:
+    - rbd_pool_exist.rc == 0
+    - ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', False) != False

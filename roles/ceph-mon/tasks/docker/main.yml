@@ -89,16 +89,6 @@
     - "{{ inventory_hostname == groups[mon_group_name] | last }}"
     - not containerized_deployment_with_kv
 
-- name: include ceph-mon/tasks/set_osd_pool_default_pg_num.yml
-  include: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-mon/tasks/set_osd_pool_default_pg_num.yml"
-
-# create openstack pools only when all mons are up.
-- name: include ceph-mon/tasks/set_osd_pool_default_pg_num.yml
-  include: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-mon/tasks/openstack_config.yml"
-  when:
-    - openstack_config
-    - "{{ inventory_hostname == groups[mon_group_name] | last }}"
-
 - block:
   - name: create ceph mgr keyring(s) when mon is containerized
     command: docker exec ceph-mon-{{ ansible_hostname }} ceph --cluster {{ cluster }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring
