@@ -61,8 +61,7 @@ osd_crush_location: "\"root={{ ceph_crush_root }} rack={{ ceph_crush_rack }} hos
 #
 
 
-# Declare devices to be used as OSDs
-# All scenario(except 3rd) inherit from the following device declaration
+# Declare the list of devices to be used as OSDs
 
 #devices:
 #  - /dev/sdb
@@ -70,33 +69,60 @@ osd_crush_location: "\"root={{ ceph_crush_root }} rack={{ ceph_crush_rack }} hos
 #  - /dev/sdd
 #  - /dev/sde
 
+# All scenarios (except 3rd) inherit from the following device declaration
 devices: []
 
 
-#'osd_auto_discovery'  mode prevents you from filling out the 'devices' variable above.
-#  You can use this option with First and Forth and Fifth OSDS scenario.
-# Device discovery is based on the Ansible fact 'ansible_devices'
-# which reports all the devices on a system. If chosen all the disks
-# found will be passed to ceph-disk. You should not be worried on using
-# this option since ceph-disk has a built-in check which looks for empty devices.
+# The osd_auto_discovery when set to True would perform auto device discovery
+# and populate the devices and dedicated_devices lists.
+#
+# Auto device discovery is based on the Ansible fact 'ansible_devices' which
+# reports all the devices on a system. For the disks that are selected, they
+# will be passed to ceph-disk.  You should not be worried on using this
+# variable since ceph-disk has a built-in check which looks for empty devices.
 # Thus devices with existing partition tables will not be used.
 #
+# The devices in devices and dedicated_devices variables must be manually
+# populated when osd_auto_discovery is set to False.
+#
+# Set osd_auto_discovery to True in the I and II OSD scenarios to discover
+# the list of available disks.
 osd_auto_discovery: false
+
+# The number of OSDs with their journals on one SSD disk.  If the default
+# is not right, change it here.
+osd_data_journal_ratio: "{{ 5 if osd_scenario == 'non-collocated' else 0 }}"
+
+# The default is to provision a ceph cluster.  This boolean is also used to
+# ensure idempotent when running the roles/ceph-* over-and-over-again.
+osd_provision: true
 
 # Encrypt your OSD device using dmcrypt
 # If set to True, no matter which osd_objecstore and osd_scenario you use the data will be encrypted
 dmcrypt: "{{ True if dmcrytpt_journal_collocation or dmcrypt_dedicated_journal else False }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
 
+osd_scenario: "{{ 'collocated' if journal_collocation or dmcrytpt_journal_collocation else 'non-collocated' if raw_multi_journal or dmcrypt_dedicated_journal else 'dummy' }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
+valid_osd_scenarios:
+  - collocated
+  - non-collocated
+  - lvm
+
 
 # I. First scenario: collocated
 #
-# To enable this scenario do: osd_scenario: collocated
+# To enable this scenario, set osd_scenario to 'collocated'.  The collocated
+# boolean variable is set to 'True' and used throughout.
 #
+# The collected scenario places the OSD's data and journal on the same disk.
+# This scenario works well on environment with all HDD or all SSD disks.  Two
+# partitions are created from the beginning of the disk with the first
+# partition for the data and the second partition for the journal.
 #
-# If osd_objectstore: filestore is enabled both 'ceph data' and 'ceph journal' partitions
-# will be stored on the same device.
+# If osd_objectstore: filestore is enabled both 'ceph data' and 'ceph journal'
+# partitions will be stored on the same device.
 #
-# If osd_objectstore: bluestore is enabled 'ceph data', 'ceph block', 'ceph block.db', 'ceph block.wal' will be stored
+# If osd_objectstore: bluestore is enabled 'ceph data', 'ceph block',
+# 'ceph block.db', 'ceph block.wal' will be stored
 # on the same device. The device will get 2 partitions:
 # - One for 'data', called 'ceph data'
 # - One for 'ceph block', 'ceph block.db', 'ceph block.wal' called 'ceph block'
@@ -107,24 +133,32 @@ dmcrypt: "{{ True if dmcrytpt_journal_collocation or dmcrypt_dedicated_journal e
 # /dev/sda1: UUID="9c43e346-dd6e-431f-92d8-cbed4ccb25f6" TYPE="xfs" PARTLABEL="ceph data" PARTUUID="749c71c9-ed8f-4930-82a7-a48a3bcdb1c7"
 # /dev/sda2: PARTLABEL="ceph block" PARTUUID="e6ca3e1d-4702-4569-abfa-e285de328e9d"
 #
+collocated: "{{ True if osd_scenario == 'collocated' else False }}"
 
-osd_scenario: "{{ 'collocated' if journal_collocation or dmcrytpt_journal_collocation else 'non-collocated' if raw_multi_journal or dmcrypt_dedicated_journal else 'dummy' }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
-valid_osd_scenarios:
-  - collocated
-  - non-collocated
-  - lvm
-
-
-# II.  Second scenario: non-collocated
+# II. Second scenario: non-collocated - M journal devices for N OSDs
 #
-# To enable this scenario do: osd_scenario: non-collocated
+# To enable this scenario, set osd_scenario to 'non-collocated'.  The non_collocated
+# boolean variable is set to True and used throughout.
+#
+# The non-collocated scenario places each OSD data on a HDD disk by itself and
+# the OSD journal on a SSD disk that is shared with other OSDs.  This scenario
+# works well on environment with mixture of HDD and SSD disks.  The disks for the
+# OSD data are assigned to the 'devices' list.  The disks for the OSD journals
+# are assigned to the 'dedicated_devices' list.
+#
+# NOTE: If a system has exclusive HDD or SSD disks, the non-collocated
+#       scenario is converted to use the collocated scenario.
+#
+# In the following example: M is 2 (sdf sdg in dedicated_devices)
+#                           N is 4 (sdb sdc sdd sde in devices)
 #
 # If osd_objectstore: filestore is enabled 'ceph data' and 'ceph journal' partitions
 # will be stored on different devices:
 # - 'ceph data' will be stored on the device listed in 'devices'
 # - 'ceph journal' will be stored on the device listed in 'dedicated_devices'
 #
-# Let's take an example, imagine 'devices' was declared like this:
+# Let's take an example, imagine 'devices' was declared like this (either
+# through auto discovery or manually filled):
 #
 # devices:
 #   - /dev/sda
@@ -136,19 +170,32 @@ valid_osd_scenarios:
 #
 # dedicated_devices:
 #   - /dev/sdf
+#   - /dev/sdg
+#
+# The dedicated_devices list is filled with additional devices to match
+# the number of entries in the devices list.
+#
+# dedicated_devices:
 #   - /dev/sdf
 #   - /dev/sdg
+#   - /dev/sdf
 #   - /dev/sdg
 #
 # This will result in the following mapping:
 # - /dev/sda will have /dev/sdf1 as a journal
-# - /dev/sdb will have /dev/sdf2 as a journal
-# - /dev/sdc will have /dev/sdg1 as a journal
+# - /dev/sdb will have /dev/sdg1 as a journal
+# - /dev/sdc will have /dev/sdf2 as a journal
 # - /dev/sdd will have /dev/sdg2 as a journal
 #
+# Instead of manually assigning disks to devices and dedicated_devices
+# lists, the discover_devices.yml is automated to select the M SSD disks
+# for the journal and the N HDD disks for the data.
 #
-# If osd_objectstore: bluestore is enabled, both 'ceph block.db' and 'ceph block.wal' partitions will be stored
-# on a dedicated device.
+# In auto discovery, M and N are set to the respective discovered devices
+# on a system.
+#
+# If osd_objectstore: bluestore is enabled, both 'ceph block.db' and
+# 'ceph block.wal' partitions will be stored on a dedicated device.
 #
 # So the following will happen:
 # - The devices listed in 'devices' will get 2 partitions, one for 'block' and one for 'data'.
@@ -167,7 +214,13 @@ valid_osd_scenarios:
 # /dev/sdb: PTTYPE="gpt"
 # /dev/sdb1: PARTLABEL="ceph block.db" PARTUUID="af5b2d74-4c08-42cf-be57-7248c739e217"
 # /dev/sdb2: PARTLABEL="ceph block.wal" PARTUUID="af3f8327-9aa9-4c2b-a497-cf0fe96d126a"
+
+non_collocated: "{{ True if osd_scenario == 'non-collocated' else False }}"
 dedicated_devices: []
+
+# Use this boolean variable instead of checking for non_collocated and
+# osd_auto_discovery
+non_collo_auto_disco: "{{ True if osd_auto_discovery and non_collocated else False }}"
 
 
 # More device granularity for Bluestore
@@ -234,6 +287,8 @@ bluestore_wal_devices: "{{ dedicated_devices }}"
 #     data_vg: vg4
 
 lvm_volumes: []
+
+lvm: "{{ True if osd_scenario == 'lvm' else False }}"
 
 
 ##########

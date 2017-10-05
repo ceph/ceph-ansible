@@ -1,0 +1,46 @@
+---
+- name: verifies devices and osd_auto_discovery for collocated scenario
+  fail:
+    msg: "collocated has a mismatch in auto discovery and devices list"
+  when:
+    - collocated
+    - (osd_auto_discovery and devices|length > 0) or (not osd_auto_discovery and devices|length == 0)
+
+- name: verifies devices, dedicated_devices, osd_auto_discovery for non-collocated scenario
+  fail:
+    msg: "non-collocated scenario has a mismatch in auto discovery and devices/dedicated_devices lists"
+  when:
+    - non_collocated
+    - (osd_auto_discovery and (devices|length > 0 or dedicated_devices|length > 0)) or (not osd_auto_discovery and (devices|length == 0 or dedicated_devices|length == 0))
+
+- name: populating the devices list with devices from auto discovery
+  set_fact:
+    devices: "{{ devices | default([]) }} + [ '/dev/{{ item.key }}' ]"
+  with_dict: "{{ ansible_devices }}"
+  when:
+    - osd_auto_discovery
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.partitions|count == 0
+    - item.value.holders|count == 0
+
+# Cannot modify the devices list while iterating over the list.
+# In non-collocated scenario, the non rotational SSD disks are sought for
+# storing the ceph journals.
+- name: populating the dedicated_devices list with devices from auto discovery
+  set_fact:
+    dedicated_devices: "{{ dedicated_devices|default([]) }} + [ '{{ item }}' ]"
+  with_items: "{{ devices }}"
+  when:
+    - ansible_devices.{{ item | basename }}.rotational == "0"
+    - devices|length > 0
+    - non_collo_auto_disco
+
+# Update the list devices
+- name: remove dedicated devices from devices list
+  set_fact:
+    devices: "{{ devices | difference(dedicated_devices) }}"
+  when:
+    - devices|length > 0
+    - dedicated_devices|length > 0
+    - non_collo_auto_disco

@@ -18,16 +18,8 @@
 - name: include ceph_disk_cli_options_facts.yml
   include: ceph_disk_cli_options_facts.yml
 
-- name: set_fact devices generate device list when osd_auto_discovery
-  set_fact:
-    devices: "{{ devices | default([]) + [ item.key | regex_replace('^', '/dev/') ] }}"
-  with_dict: "{{ ansible_devices }}"
-  when:
-    - osd_auto_discovery
-    - ansible_devices is defined
-    - item.value.removable == "0"
-    - item.value.partitions|count == 0
-    - item.value.holders|count == 0
+- name: include discover_devices.yml
+  include: discover_devices.yml
 
 - name: include check_devices.yml
   include: check_devices.yml
@@ -49,26 +41,9 @@
     - containerized_deployment
     - not containerized_deployment_with_kv
 
-- name: include scenarios/collocated.yml
-  include: scenarios/collocated.yml
-  when:
-    - osd_scenario == 'collocated'
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
-
-- name: include scenarios/non-collocated.yml
-  include: scenarios/non-collocated.yml
-  when:
-    - not osd_auto_discovery
-    - osd_scenario == 'non-collocated'
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
-
-- name: include scenarios/lvm.yml
-  include: scenarios/lvm.yml
-  when:
-    - osd_scenario == 'lvm'
-    - not containerized_deployment
+# osd_scenario's value was verified in check_mandatory_vars.yml
+- name: include scenarios/{{ osd_scenario }}.yml
+  include: scenarios/{{ osd_scenario }}.yml
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 

@@ -12,6 +12,16 @@
   when:
     - not osd_auto_discovery
 
+- name: automatically activate osd disk(s) without partitions
+  command: ceph-disk activate "{{ item | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1"
+  with_items: "{{ devices|unique }}"
+  changed_when: false
+  failed_when: false
+  register: activate_osd_disk
+  when:
+    - collocated
+    - osd_auto_discovery
+
 - name: activate osd(s) when device is a disk (dmcrypt)
   command: ceph-disk activate --dmcrypt {{ item | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\\1p') }}1
   with_items:

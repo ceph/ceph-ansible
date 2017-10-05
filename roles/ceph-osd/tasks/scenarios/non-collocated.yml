@@ -1,4 +1,71 @@
 ---
+- name: scenario 2 - osds round-robin their journals on dedicated devices
+  fail:
+    msg: "OSD scenario {{ osd_scenario }} is not non-collocated"
+  when: not non_collocated
+
+# ceph.service does not appear to be configured anymore.  Need to find a
+# way to ensure idempotency on the devices and dedicated_devices with
+# respect to osd_provision boolean variable.
+
+# Each OSD device in the devices list has a corresponding journal device in
+# the dedicated_devices list.  Use round-robin to fill up the remaining
+# entries in the dedicated_devices to match the entries in the devices list.
+#
+# For example, assuming the devices list has these entries on a system
+# devices: [ /dev/sdt, /dev/sdu, /dev/sdv, /dev/sdw, /dev/sdx ]
+# On this system, it has two SSD disks
+# dedicated_devices: [ /dev/sdb, /dev/sdc ]
+#
+# In this use case, we need to add three more entries to dedicated_devices:
+# dedicated_devices: [ /dev/sdb, /dev/sdc, /dev/sdb, /dev/sdc, /dev/sdb ]
+#
+# Each distinct device in dedicated_devices can only be used up to the ratio
+# set in the osd_data_journal_ratio tunable.
+- name: set_fact journal_cnt temporary variable for populating dedicated_devices list
+  set_fact:
+    journal_cnt: "{{ dedicated_devices|length|int }}"
+
+# These devices in the devices list are used to create file systems that
+# store the OSD data.
+# devices:
+#   - "/dev/sdt"
+#   - "/dev/sdu"
+#   - "/dev/sdv"
+#   - "/dev/sdw"
+#   - "/dev/sdx"
+#
+# The dedicated_devices list has the list of devices for the OSD journals.
+# A journal disk is shared with certain number of OSD data.  Assuming that
+# there are two SSD disks that are picked as journal disks.
+# dedicated_devices:
+#   - "/dev/sdb"
+#   - "/dev/sdc"
+#
+# The 'ceph-disk prepare' handles the creation of a journal partition with
+# the size specified by the journal_size tunable in the ceph.conf file.
+#
+# This task loops over the devices list and fill in the missing journal disk
+# in the dedicated_devices.  The round-robin method is used.
+# dedicated_devices:
+#   - "/dev/sdb"
+#   - "/dev/sdc"
+#   - "/dev/sdb"
+#   - "/dev/sdc"
+#   - "/dev/sdb"
+- name: set_fact dedicated_devices assign a journal device to each osd
+  set_fact:
+    dedicated_devices: "{{ dedicated_devices }} + [ '{{ dedicated_devices[ item.0 % journal_cnt|int ] }}' ]"
+  with_indexed_items: "{{ devices }}"
+  when:
+    - dedicated_devices|length < devices|length
+
+- name: entries in devices and dedicated_devices lists are the same
+  fail:
+    msg: "Entries in devices and dedicated_devices are not the same"
+  when:
+    - devices|length != dedicated_devices|length
+
 # use shell rather than docker module
 # to ensure osd disk prepare finishes before
 # starting the next task
@@ -8,7 +75,7 @@
     --rm \
     --pid=host \
     --privileged=true \
-    --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.1 | regex_replace('/dev/', '') }} \
+    --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.1 | basename }} \
     -v /etc/ceph:/etc/ceph \
     -v /var/lib/ceph/:/var/lib/ceph/ \
     -v /dev:/dev \
@@ -37,7 +104,7 @@
     --rm \
     --pid=host \
     --privileged=true \
-    --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.1 | regex_replace('/dev/', '') }} \
+    --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.1 | basename }} \
     -v /etc/ceph:/etc/ceph \
     -v /var/lib/ceph/:/var/lib/ceph/ \
     -v /dev:/dev \

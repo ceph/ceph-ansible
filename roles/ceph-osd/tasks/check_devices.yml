@@ -42,10 +42,11 @@
     - "{{ dedicated_devices|unique }}"
   changed_when: false
   failed_when: false
-  check_mode: no
   register: journal_partition_status
   when:
-    - osd_scenario == 'non-collocated'
+    - non_collocated
+  tags:
+    - always
 
 - name: fix partitions gpt header or labels of the journal device(s)
   shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }}"
@@ -55,7 +56,7 @@
   changed_when: false
   when:
     - not containerized_deployment
-    - osd_scenario == 'non-collocated'
+    - non_collocated
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0
 
@@ -67,6 +68,6 @@
   changed_when: false
   when:
     - containerized_deployment
-    - osd_scenario == 'non-collocated'
+    - non_collocated
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0

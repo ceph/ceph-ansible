@@ -1,4 +1,10 @@
 ---
+- name: verify the osd_group_name is valid
+  fail:
+    msg: "osd_group_name is either not defined or not a member of group_names"
+  when:
+    - osd_group_name is not defined or osd_group_name not in group_names
+
 - name: make sure public_network configured
   fail:
     msg: "public_network must be configured. Ceph public network"
@@ -18,51 +24,34 @@
   when:
     - journal_size|int < 5120
     - osd_objectstore == 'filestore'
-    - osd_group_name in group_names
 
-- name: make sure an osd scenario was chosen
+- name: verify a valid osd scenario was chosen
   fail:
-    msg: "please choose an osd scenario"
+    msg: "The scenario {{ osd_scenario }} is invalid or not supported, valid scenarios are {{ valid_osd_scenarios }}"
   when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - osd_scenario == 'dummy'
+    - osd_scenario not in valid_osd_scenarios
 
-- name: make sure a valid osd scenario was chosen
+- name: verify devices have been populated in non-auto discovery
   fail:
-    msg: "please choose an osd scenario, valid scenarios are {{ valid_osd_scenarios }}"
+    msg: "specify discovery option or pre-populate devices for your osd scenario"
   when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - not osd_scenario in valid_osd_scenarios
-
-- name: verify devices have been provided
-  fail:
-    msg: "please provide devices to your osd scenario"
-  when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
+    - collocated or non_collocated
     - not osd_auto_discovery
-    - not osd_scenario == "lvm"
     - devices|length == 0
 
 - name: check if osd_scenario lvm is supported by the selected ceph version
   fail:
     msg: "osd_scenario lvm is not supported by the selected Ceph version, use Luminous or newer."
   when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
     - not containerized_deployment
-    - osd_scenario == "lvm"
+    - lvm
     - ceph_release_num[ceph_release] < ceph_release_num.luminous
 
 - name: verify lvm_volumes have been provided
   fail:
     msg: "please provide lvm_volumes to your osd scenario"
   when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - osd_scenario == "lvm"
+    - lvm
     - not osd_auto_discovery
     - lvm_volumes|length == 0
 
@@ -70,47 +59,43 @@
   fail:
     msg: "lvm_volumes: must be a list"
   when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
+    - lvm
     - not osd_auto_discovery
-    - osd_scenario == "lvm"
     - lvm_volumes is string
 
 - name: make sure the devices variable is a list
   fail:
     msg: "devices: must be a list, not a string, i.e. [ \"/dev/sda\" ]"
   when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - not osd_auto_discovery
+    - collocated or non_collocated
     - devices is string
-
-- name: verify dedicated devices have been provided
-  fail:
-    msg: "please provide devices and dedicated_devices to your osd scenario"
-  when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - osd_scenario == 'non-collocated'
-    - dedicated_devices|length == 0
-      or devices|length == 0
 
 - name: make sure the dedicated_devices variable is a list
   fail:
-    msg: "dedicated_devices: must be a list, not a string, i.e. [ \"/dev/sda\" ]"
+    msg: "dedicated_devices: must be a list, not a string, i.e. [ \"/dev/sdj\" ]"
   when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - osd_scenario == 'non-collocated'
+    - non_collocated
     - dedicated_devices is string
+
+- name: verify journal devices have been populated in non-auto discovery
+  fail:
+    msg: "specify discovery option or pre-populate ceph journal devices in non-collocated osd scenario"
+  when:
+    - non_collocated
+    - not osd_auto_discovery
     - dedicated_devices|length == 0
-      or devices|length == 0
+
+- name: verify auto discovery populates devices and journal devices
+  fail:
+    msg: "auto discovery did not populate devices and journal devices"
+  when:
+    - osd_auto_discovery
+    - (collocated and devices|length == 0) or
+      (non_collocated and devices|length == 0 and dedicated_devices|length == 0)
 
 - name: check if bluestore is supported by the selected ceph version
   fail:
     msg: "bluestore is not supported by the selected Ceph version, use Luminous or above."
   when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
     - osd_objectstore == 'bluestore'
     - ceph_release_num[ceph_release] < ceph_release_num.luminous
