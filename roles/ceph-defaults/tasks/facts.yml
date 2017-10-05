@@ -134,6 +134,7 @@
   register: devices_prepare_canonicalize
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
 
 - name: set_fact build devices from resolved symlinks
   set_fact:
@@ -141,10 +142,11 @@
   with_items: "{{ devices_prepare_canonicalize.results }}"
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
 
 - name: set_fact build final devices list
   set_fact:
     devices: "{{ devices | reject('search','/dev/disk') | list | unique }}"
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
-
+    - not osd_auto_discovery|default(False)
