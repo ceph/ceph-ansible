@@ -1,5 +1,5 @@
 ---
-- name: create red hat storage package directories for redhat systems
+- name: create red hat storage package directories for debian systems
   file:
     path: "{{ item }}"
     state: directory
@@ -7,7 +7,7 @@
     - "{{ ceph_rhcs_mount_path }}"
     - "{{ ceph_rhcs_repository_path }}"
 
-- name: ensure destination iso directory exists for redhat systems
+- name: ensure destination iso directory exists for debian systems
   file:
     path: "{{ ceph_rhcs_iso_path | dirname }}"
     state: directory
@@ -15,14 +15,14 @@
   when:
     - ceph_rhcs_iso_path | dirname != '/'
 
-- name: fetch the red hat storage iso from the ansible server for redhat systems
+- name: fetch the red hat storage iso from the ansible server for debian systems
   copy:
     src: "{{ ceph_rhcs_iso_path }}"
     dest: "{{ ceph_rhcs_iso_path }}"
 
 # assumption: ceph_rhcs_mount_path does not specify directory
 
-- name: mount red hat storage iso file for redhat systems
+- name: mount red hat storage iso file for debian systems
   mount:
     name: "{{ ceph_rhcs_mount_path }}"
     src: "{{ ceph_rhcs_iso_path }}"
@@ -31,27 +31,27 @@
     passno: 2
     state: mounted
 
-- name: copy red hat storage iso content for redhat systems
+- name: copy red hat storage iso content for debian systems
   shell: cp -r {{ ceph_rhcs_mount_path }}/* {{ ceph_rhcs_repository_path }}
   args:
     creates: "{{ ceph_rhcs_repository_path }}/README"
 
-- name: unmount red hat storage iso file for redhat systems
+- name: unmount red hat storage iso file
   mount:
     name: "{{ ceph_rhcs_mount_path }}"
     src: "{{ ceph_rhcs_iso_path }}"
     fstype: iso9660
     state: unmounted
 
-- name: install red hat storage repository key for redhat systems
-  rpm_key:
-    key: "{{ ceph_rhcs_repository_path }}/RPM-GPG-KEY-redhat-release"
+- name: install red hat storage repository key for debian systems
+  apt_key:
+    file: "{{ ceph_rhcs_repository_path }}/RPM-GPG-KEY-redhat-release"
     state: present
 
-- name: add red hat storage repository for redhat systems
+- name: add red hat storage repository for debian systems
   template:
     src: "{{ role_path }}/templates/redhat_storage_repo.j2"
-    dest: /etc/yum.repos.d/rh_storage.repo
+    dest: /etc/apt/sources.list.d/rh_storage.list
     owner: root
     group: root
     mode: 0644
