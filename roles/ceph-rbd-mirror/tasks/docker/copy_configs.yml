@@ -9,7 +9,7 @@
   set_fact:
     ceph_config_keys:
       - /etc/ceph/{{ cluster }}.client.admin.keyring
-      - "{{ bootstrap_rbd_keyring | default([]) }}"
+      - "{{ bootstrap_rbd_keyring | default('') }}"
 
 - name: stat for ceph config and keys
   local_action: stat path={{ fetch_directory }}/{{ fsid }}/{{ item }}
@@ -19,6 +19,7 @@
   failed_when: false
   always_run: true
   register: statconfig
+  when: "item | length > 0"
 
 - name: try to fetch ceph config and keys
   copy:
@@ -32,6 +33,7 @@
     - "{{ ceph_config_keys }}"
     - "{{ statconfig.results }}"
   when:
+    - not item.1.get('skipped')
     - item.1.stat.exists == true
 
 - name: set selinux permissions
