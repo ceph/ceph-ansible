@@ -20,14 +20,14 @@
 
 - name: set_fact build dedicated_devices from resolved symlinks
   set_fact:
-    dedicated_devices: "{{ dedicated_devices | default([]) + [ item.stdout ] }}"
+    dedicated_devices_tmp: "{{ dedicated_devices_tmp | default([]) + [ item.stdout ] }}"
   with_items: "{{ dedicated_devices_prepare_canonicalize.results }}"
   when:
     - osd_scenario == 'non-collocated'
 
 - name: set_fact build final dedicated_devices list
   set_fact:
-    dedicated_devices: "{{ dedicated_devices | reject('search','/dev/disk') | list }}"
+    dedicated_devices: "{{ dedicated_devices_tmp | reject('search','/dev/disk') | list }}"
   when:
     - osd_scenario == 'non-collocated'
 
