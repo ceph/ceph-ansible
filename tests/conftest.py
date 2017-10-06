@@ -39,6 +39,9 @@ def node(host, request):
     if node_type == "mgrs" and ceph_stable_release == "jewel":
         pytest.skip("mgr nodes can not be tested with ceph release jewel")
 
+    if node_type == "nfss" and ceph_stable_release == "jewel":
+        pytest.skip("nfs nodes can not be tested with ceph release jewel")
+
     journal_collocation_test = ansible_vars.get("osd_scenario") == "collocated"
     if request.node.get_marker("journal_collocation") and not journal_collocation_test:
         pytest.skip("Scenario is not using journal collocation")
