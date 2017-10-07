@@ -5,6 +5,10 @@ DELAY="{{ handler_health_osd_check_delay }}"
 CEPH_CLI="--name client.bootstrap-osd --keyring /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring --cluster {{ cluster }}"
 
 check_pgs() {
+  num_pgs=$($docker_exec ceph $CEPH_CLI -s -f json|python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')
+  if [[ "$num_pgs" == "0" ]]; then
+    return 0
+  fi
   while [ $RETRIES -ne 0 ]; do
     test "[""$($docker_exec ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')""]" = "$($docker_exec ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if i["state_name"] == "active+clean"]')"
     RET=$?

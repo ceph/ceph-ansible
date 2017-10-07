@@ -91,13 +91,16 @@
       with_items: "{{ osd_hosts }}"
       delegate_to: "{{ item }}"
       failed_when: false
+      when:
+        - not containerized_deployment
 
     - name: fail when admin key is not present
       fail:
         msg: "The Ceph admin key is not present on the OSD node, please add it and remove it after the playbook is done."
       with_items: "{{ ceph_admin_key.results }}"
       when:
-        -  item.stat.exists == false
+        - not containerized_deployment
+        - item.stat.exists == false
 
     # NOTE(leseb): using '>' is the only way I could have the command working
     - name: find osd device based on the id
@@ -127,8 +130,6 @@
 
     - name: deactivating osd(s)
       command: ceph-disk deactivate --cluster {{ cluster }} --deactivate-by-id {{ item.0 }} --mark-out
-      register: deactivate
-      ignore_errors: yes
       run_once: true
       with_together:
         - "{{ osd_to_kill.split(',') }}"
@@ -137,21 +138,8 @@
       when:
         - not containerized_deployment
 
-    - name: set osd(s) out when ceph-disk deactivating fail
-      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd out osd.{{ item.0 }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      with_together:
-        - "{{ osd_to_kill.split(',') }}"
-        - "{{ deactivate.results }}"
-      when:
-        - not containerized_deployment
-        - not item.1.get("skipped")
-        - item.1.stderr|length > 0
-
     - name: destroying osd(s)
       command: ceph-disk destroy --cluster {{ cluster }} --destroy-by-id {{ item.0 }} --zap
-      register: destroy
-      ignore_errors: yes
       run_once: true
       with_together:
         - "{{ osd_to_kill.split(',') }}"
@@ -161,32 +149,20 @@
         - not containerized_deployment
 
     - name: remove osd(s) from crush_map when ceph-disk destroy fail
-      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush remove osd.{{ item.0 }}"
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush remove osd.{{ item }}"
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      with_together:
-        - "{{ osd_to_kill.split(',') }}"
-        - "{{ destroy.results }}"
-      when:
-        - (item.1.get("skipped") or item.1.stderr|length > 0)
+      with_items: "{{ osd_to_kill.split(',') }}"
 
     - name: delete osd(s) auth key when ceph-disk destroy fail
-      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth del osd.{{ item.0 }}"
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth del osd.{{ item }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      with_together:
-        - "{{ osd_to_kill.split(',') }}"
-        - "{{ destroy.results }}"
-      when:
-        - (item.1.get("skipped") or item.1.stderr|length > 0)
+      with_items: "{{ osd_to_kill.split(',') }}"
 
     - name: deallocate osd(s) id when ceph-disk destroy fail
-      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd rm {{ item.0 }}"
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd rm {{ item }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      with_together:
-        - "{{ osd_to_kill.split(',') }}"
-        - "{{ destroy.results }}"
-      when:
-        - (item.1.get("skipped") or item.1.stderr|length > 0)
+      with_items: "{{ osd_to_kill.split(',') }}"
 
     - name: show ceph health
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s"

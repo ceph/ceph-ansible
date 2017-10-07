@@ -270,53 +270,135 @@
 
   tasks:
 
+  - name: get all the running osds
+    shell: |
+      systemctl list-units | grep "loaded active" | grep -oE "ceph-osd@([0-9]{1,2}|[a-z]+).service"
+    register: osd_units
+
   - name: disable ceph osd service
     service:
-      name: "ceph-osd@{{ item | basename }}"
+      name: "ceph-osd@{{ item }}"
       state: stopped
       enabled: no
-    with_items: "{{ devices }}"
-    ignore_errors: true
+    with_items: "{{ osd_units.stdout_lines }}"
 
-  - name: resolve device link
-    command: readlink -f {{ item }}
-    changed_when: false
-    with_items: "{{ devices }}"
-    register: purge_devices_links
-
-  - name: set_fact devices generate device list when osd_auto_discovery
-    set_fact:
-      devices: "{{ devices | default([]) + [ item.stdout ] }}"
-    with_items: "{{ purge_devices_links.results }}"
+  - name: get prepare container
+    command: "docker ps -a -q --filter='name=ceph-osd-prepare'"
+    register: prepare_containers
 
   - name: remove ceph osd prepare container
-    docker:
-      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-osd-prepare-{{ ansible_hostname }}{{ item | regex_replace('/dev/', '') }}"
+    command: "docker rm -f {{ item }}"
+    with_items: "{{ prepare_containers.stdout_lines }}"
+
+  - name: see if ceph-disk-created data partitions are present
+    shell: |
+      ls /dev/disk/by-partlabel | grep -q "ceph.*.data"
+    failed_when: false
+    register: ceph_data_partlabels
+
+  - name: see if ceph-disk-created block partitions are present
+    shell: |
+      ls /dev/disk/by-partlabel | grep -q "ceph.*block$"
+    failed_when: false
+    register: ceph_block_partlabels
+
+  - name: see if ceph-disk-created journal partitions are present
+    shell: |
+      ls /dev/disk/by-partlabel | grep -q "ceph.*.journal"
+    failed_when: false
+    register: ceph_journal_partlabels
+
+  - name: see if ceph-disk-created block db partitions are present
+    shell: |
+      ls /dev/disk/by-partlabel | grep -q "ceph.*.block.db"
+    failed_when: false
+    register: ceph_db_partlabels
+
+  - name: see if ceph-disk-created block wal partitions are present
+    shell: |
+      ls /dev/disk/by-partlabel | grep -q "ceph.*.block.wal"
+    failed_when: false
+    register: ceph_wal_partlabels
+
+  - name: see if ceph-disk-created lockbox partitions are present
+    shell: |
+      ls /dev/disk/by-partlabel | grep -q "ceph.*.lockbox"
+    failed_when: false
+    register: ceph_lockbox_partlabels
+
+  # NOTE(leseb): hope someone will find a more elegant way one day...
+  - name: see if encrypted partitions are present
+    shell: |
+      blkid -t TYPE=crypto_LUKS -s PARTLABEL -s PARTUUID | grep "ceph.*." | grep -o PARTUUID.* | cut -d '"' -f 2
+    register: encrypted_ceph_partuuid
+
+  - name: remove osd mountpoint tree
+    file:
+      path: /var/lib/ceph/osd/
       state: absent
-    with_items: "{{ devices }}"
+    register: remove_osd_mountpoints
     ignore_errors: true
 
-  - name: remove ceph osd container
-    docker:
-      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-osd-{{ ansible_hostname }}-{{ item | regex_replace('/dev/', '') }}"
-      state: absent
-    with_items: "{{ devices }}"
-    ignore_errors: true
+  - name: get ceph data partitions
+    shell: |
+      blkid | awk -F: '/ceph data/ { print $1 }'
+    when: ceph_data_partlabels.rc == 0
+    failed_when: false
+    register: ceph_data_partition_to_erase_path
+
+  - name: get ceph lockbox partitions
+    shell: |
+      blkid | awk '/ceph lockbox/ { sub (":", "", $1); print $1 }'
+    when: ceph_lockbox_partlabels.rc == 0
+    failed_when: false
+    register: ceph_lockbox_partition_to_erase_path
+
+  - name: get ceph block partitions
+    shell: |
+      blkid | awk '/ceph block"/ { sub (":", "", $1); print $1 }'
+    when: ceph_block_partlabels.rc == 0
+    failed_when: false
+    register: ceph_block_partition_to_erase_path
+
+  - name: get ceph journal partitions
+    shell: |
+      blkid | awk '/ceph journal/ { sub (":", "", $1); print $1 }'
+    when: ceph_journal_partlabels.rc == 0
+    failed_when: false
+    register: ceph_journal_partition_to_erase_path
+
+  - name: get ceph db partitions
+    shell: |
+      blkid | awk '/ceph block.db/ { sub (":", "", $1); print $1 }'
+    when: ceph_db_partlabels.rc == 0
+    failed_when: false
+    register: ceph_db_partition_to_erase_path
+
+  - name: get ceph wal partitions
+    shell: |
+      blkid | awk '/ceph block.wal/ { sub (":", "", $1); print $1 }'
+    when: ceph_wal_partlabels.rc == 0
+    failed_when: false
+    register: ceph_wal_partition_to_erase_path
 
   - name: zap ceph osd disks
     shell: |
-      docker run \
+      docker run --rm \
       --privileged=true \
-      --name ceph-osd-zap-{{ ansible_hostname }}-{{ item | regex_replace('/dev/', '') }} \
+      --name ceph-osd-zap-{{ ansible_hostname }}-{{ item[:-1] | regex_replace('/dev/', '') }} \
       -v /dev/:/dev/ \
-      -e OSD_DEVICE={{ item }} \
+      -e OSD_DEVICE={{ item[:-1] }} \
       {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
       zap_device
     with_items:
-      - "{{ devices }}"
-      - "{{ dedicated_devices|default([]) }}"
+      - "{{ ceph_data_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_lockbox_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_block_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_journal_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_db_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_wal_partition_to_erase_path.stdout_lines | default([]) }}"
+    when:
+      - (ceph_data_partlabels.rc == 0 or ceph_block_partlabels.rc == 0 or ceph_journal_partlabels.rc == 0 or ceph_db_partlabels.rc == 0 or ceph_wal_partlabels.rc == 0)
 
   - name: wait until the zap containers die
     shell: |
@@ -330,11 +412,15 @@
   - name: remove ceph osd zap disk container
     docker:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-osd-zap-{{ ansible_hostname }}-{{ item | regex_replace('/dev/', '') }}"
+      name: "ceph-osd-zap-{{ ansible_hostname }}-{{ item[:-1] | regex_replace('/dev/', '') }}"
       state: absent
     with_items:
-      - "{{ devices }}"
-      - "{{ dedicated_devices|default([]) }}"
+      - "{{ ceph_data_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_lockbox_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_block_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_journal_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_db_partition_to_erase_path.stdout_lines | default([]) }}"
+      - "{{ ceph_wal_partition_to_erase_path.stdout_lines | default([]) }}"
 
   - name: remove ceph osd service
     file:

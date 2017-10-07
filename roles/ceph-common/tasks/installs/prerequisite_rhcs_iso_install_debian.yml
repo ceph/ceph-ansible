@@ -45,13 +45,15 @@
 
 - name: install red hat storage repository key for debian systems
   apt_key:
-    file: "{{ ceph_rhcs_repository_path }}/RPM-GPG-KEY-redhat-release"
+    file: "{{ ceph_rhcs_repository_path }}/MON/release.asc"
     state: present
 
 - name: add red hat storage repository for debian systems
-  template:
-    src: "{{ role_path }}/templates/redhat_storage_repo.j2"
-    dest: /etc/apt/sources.list.d/rh_storage.list
-    owner: root
-    group: root
-    mode: 0644
+  apt_repository:
+    repo: "deb file://{{ ceph_rhcs_repository_path }}/{{ item }} {{ ansible_lsb.codename }} main"
+    state: present
+  changed_when: false
+  with_items:
+    - MON
+    - OSD
+    - Tools

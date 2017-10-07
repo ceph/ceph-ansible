@@ -147,7 +147,21 @@
       when:
         - mon_host_count | int == 1
 
-    - name: waiting for the monitor to join the quorum...
+    - name: get num_pgs - non container
+      command: ceph --cluster "{{ cluster }}" -s --format json
+      register: ceph_pgs
+      delegate_to: "{{ mon_host }}"
+      when:
+        - not containerized_deployment
+
+    - name: get num_pgs - container
+      command: docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
+      register: ceph_pgs
+      delegate_to: "{{ mon_host }}"
+      when:
+        - containerized_deployment
+
+    - name: non container | waiting for the monitor to join the quorum...
       command: ceph --cluster "{{ cluster }}" -s --format json
       register: ceph_health_raw
       until: >
@@ -157,8 +171,9 @@
       delegate_to: "{{ mon_host }}"
       when:
         - not containerized_deployment
+        - (ceph_pgs.stdout | from_json).pgmap.num_pgs != "0"
 
-    - name: waiting for the containerized monitor to join the quorum...
+    - name: container | waiting for the containerized monitor to join the quorum...
       command: docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
       register: ceph_health_raw
       until: >
@@ -168,6 +183,7 @@
       delegate_to: "{{ mon_host }}"
       when:
         - containerized_deployment
+        - (ceph_pgs.stdout | from_json).pgmap.num_pgs != "0"
 
     - name: set osd flags
       command: ceph osd set {{ item }} --cluster {{ cluster }}
