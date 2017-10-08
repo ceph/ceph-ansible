@@ -147,20 +147,6 @@
       when:
         - mon_host_count | int == 1
 
-    - name: get num_pgs - non container
-      command: ceph --cluster "{{ cluster }}" -s --format json
-      register: ceph_pgs
-      delegate_to: "{{ mon_host }}"
-      when:
-        - not containerized_deployment
-
-    - name: get num_pgs - container
-      command: docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
-      register: ceph_pgs
-      delegate_to: "{{ mon_host }}"
-      when:
-        - containerized_deployment
-
     - name: non container | waiting for the monitor to join the quorum...
       command: ceph --cluster "{{ cluster }}" -s --format json
       register: ceph_health_raw
@@ -171,7 +157,6 @@
       delegate_to: "{{ mon_host }}"
       when:
         - not containerized_deployment
-        - (ceph_pgs.stdout | from_json).pgmap.num_pgs != "0"
 
     - name: container | waiting for the containerized monitor to join the quorum...
       command: docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
@@ -183,7 +168,6 @@
       delegate_to: "{{ mon_host }}"
       when:
         - containerized_deployment
-        - (ceph_pgs.stdout | from_json).pgmap.num_pgs != "0"
 
     - name: set osd flags
       command: ceph osd set {{ item }} --cluster {{ cluster }}
@@ -293,31 +277,30 @@
         - ansible_service_mgr == 'systemd'
         - containerized_deployment
 
-    - name: waiting for clean pgs...
-      command: ceph --cluster "{{ cluster }}" -s --format json
-      register: ceph_health_post
-      until: >
-        ((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) == 1
-        and
-        (ceph_health_post.stdout | from_json).pgmap.pgs_by_state.0.state_name == "active+clean"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      retries: "{{ health_osd_check_retries }}"
-      delay: "{{ health_osd_check_delay }}"
-      when:
-        - not containerized_deployment
-
-    - name: container - waiting for clean pgs...
-      command: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json"
-      register: ceph_health_post
-      until: >
-        ((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) == 1
-        and
-        (ceph_health_post.stdout | from_json).pgmap.pgs_by_state.0.state_name == "active+clean"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      retries: "{{ health_osd_check_retries }}"
-      delay: "{{ health_osd_check_delay }}"
+    - name: set_fact docker_exec_cmd_osd
+      set_fact:
+        docker_exec_cmd_update_osd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when:
         - containerized_deployment
+
+    - name: get num_pgs - non container
+      command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} -s --format json"
+      register: ceph_pgs
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: waiting for clean pgs...
+      command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} -s --format json"
+      register: ceph_health_post
+      until: >
+        ((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) == 1
+        and
+        (ceph_health_post.stdout | from_json).pgmap.pgs_by_state.0.state_name == "active+clean"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      retries: "{{ health_osd_check_retries }}"
+      delay: "{{ health_osd_check_delay }}"
+      when:
+        - (ceph_pgs.stdout | from_json).pgmap.num_pgs != 0
+
 
 - name: unset osd flags
 
