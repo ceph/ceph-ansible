@@ -1,4 +1,21 @@
 ---
+- name: install ceph mds for debian
+  apt:
+    name: ceph-mds
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    default_release: "{{ ceph_stable_release_uca | default(omit) }}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
+  when:
+    - mds_group_name in group_names
+    - ansible_os_family == 'Debian'
+
+- name: install redhat ceph-mds package
+  package:
+    name: "ceph-mds"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - mds_group_name in group_names
+    - ansible_os_family == 'RedHat'
+
 - name: create bootstrap-mds directory
   file:
     path: /var/lib/ceph/bootstrap-mds/
