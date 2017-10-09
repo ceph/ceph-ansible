@@ -34,6 +34,8 @@ class TestMDSs(object):
             hostname=node["vars"]["inventory_hostname"],
             cluster=node["cluster_name"]
         )
-        output = host.check_output(cmd)
-        daemons = json.loads(output)["fsmap"]["by_rank"][0]["name"]
-        assert hostname in daemons
+        output_raw = host.check_output(cmd)
+        output_json = json.loads(output_raw)
+        active_daemon = output_json["fsmap"]["by_rank"][0]["name"]
+        if active_daemon != hostname:
+            assert output_json['fsmap']['up:standby'] == 1

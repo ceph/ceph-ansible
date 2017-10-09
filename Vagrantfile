@@ -135,6 +135,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.provider :libvirt do |lv|
     lv.cpu_mode = 'host-passthrough'
     lv.volume_cache = 'unsafe'
+    lv.graphics_type = 'none'
   end
 
   # Faster bootup. Disables mounting the sync folder for libvirt and virtualbox

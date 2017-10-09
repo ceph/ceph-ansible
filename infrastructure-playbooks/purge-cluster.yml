@@ -509,38 +509,6 @@
       - /var/lib/ceph/tmp
 
 
-- name: purge iscsi gateway(s)
-
-  vars:
-    igw_purge_type: all
-
-  hosts:
-    - "{{ iscsi_gw_group_name|default('iscsi-gws') }}"
-
-  gather_facts: false # already gathered previously
-
-  become: true
-
-  tasks:
-
-  - name: igw_purge | purging the gateway configuration
-    igw_purge:
-      mode: "gateway"
-
-  - name: igw_purge | deleting configured rbd devices
-    igw_purge:
-      mode: "disks"
-    when:
-      - igw_purge_type == 'all'
-
-  - name: restart rbd-target-gw daemons
-    service:
-      name: rbd-target-gw
-      state: restarted
-    when:
-      - ansible_service_mgr == 'systemd'
-
-
 - name: final cleanup - check any running ceph, purge ceph packages, purge config and remove data
 
   vars:

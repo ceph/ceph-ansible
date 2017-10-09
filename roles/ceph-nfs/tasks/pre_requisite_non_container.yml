@@ -1,4 +1,87 @@
 ---
+- name: install redhat nfs-ganesha-ceph package
+  package:
+    name: nfs-ganesha-ceph
+  when:
+    - nfs_file_gw
+    - ansible_os_family == 'RedHat'
+
+- name: install nfs cephfs gateway
+  package:
+    name: nfs-ganesha-ceph
+  when:
+    - nfs_file_gw
+    - ansible_os_family == 'RedHat'
+
+- name: install redhat nfs-ganesha-rgw and ceph-radosgw packages
+  package:
+    name: "{{ item }}"
+  with_items:
+    - nfs-ganesha-rgw
+    - ceph-radosgw
+  when:
+    - nfs_obj_gw
+    - ansible_os_family == 'RedHat'
+
+- name: install jemalloc for debian
+  apt:
+    name: libjemalloc1
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    update_cache: yes
+  when:
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
+    - ceph_repository != 'rhcs'
+    - ansible_os_family == 'Debian'
+
+# debian installation
+- name: install nfs cephfs gateway
+  package:
+    name: nfs-ganesha-ceph
+  when:
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
+    - ceph_repository != 'rhcs'
+    - ansible_os_family == 'Debian'
+    - nfs_file_gw
+
+- name: install nfs rgw gateway
+  package:
+    name: "{{ item }}"
+  with_items:
+    - nfs-ganesha-rgw
+    - radosgw
+  when:
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
+    - ceph_repository != 'rhcs'
+    - ansible_os_family == 'Debian'
+    - nfs_obj_gw
+
+# debian_rhcs installation
+- name: install red hat storage nfs gateway for debian
+  apt:
+    name: nfs-ganesha
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
+    - ceph_repository == 'rhcs'
+
+- name: install red hat storage nfs file gateway
+  apt:
+    name: nfs-ganesha-ceph
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
+    - ceph_repository == 'rhcs'
+    - nfs_file_gw
+
+- name: install red hat storage nfs obj gateway
+  apt:
+    name: nfs-ganesha-rgw
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
+    - ceph_repository == 'rhcs'
+    - nfs_obj_gw
+
 # NOTE (leseb): we use root:ceph for permissions since ganesha
 # does not have the right selinux context to read ceph directories.
 - name: create rados gateway and ganesha directories

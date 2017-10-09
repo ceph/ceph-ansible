@@ -8,7 +8,7 @@
     - ansible_distribution == 'RedHat'
 
 - name: install centos dependencies
-  package:
+  yum:
     name: "{{ item }}"
     state: present
   with_items: "{{ centos_package_dependencies }}"
@@ -33,13 +33,6 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - osd_group_name in group_names
-
-- name: install redhat ceph-mds package
-  package:
-    name: "ceph-mds"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - mds_group_name in group_names
 
 - name: install redhat ceph-fuse package
   package:
@@ -69,45 +62,3 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - rgw_group_name in group_names
-
-- name: install redhat nfs-ganesha-ceph package
-  package:
-    name: nfs-ganesha-ceph
-  when:
-    - nfs_group_name in group_names
-    - nfs_file_gw
-
-- name: install nfs cephfs gateway
-  package:
-    name: nfs-ganesha-ceph
-  when:
-    - nfs_group_name in group_names
-    - nfs_file_gw
-
-- name: install redhat nfs-ganesha-rgw and ceph-radosgw packages
-  package:
-    name: "{{ item }}"
-  with_items:
-    - nfs-ganesha-rgw
-    - ceph-radosgw
-  when:
-    - nfs_group_name in group_names
-    - nfs_obj_gw
-
-- name: install redhat ceph-mgr package
-  package:
-    name: ceph-mgr
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - mgr_group_name in group_names
-
-- name: install redhat ceph iscsi package
-  package:
-    name: "{{ item }}"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  with_items:
-    - tcmu-runner
-    - ceph-iscsi-config
-    - targetcli
-  when:
-    - iscsi_gw_group_name in group_names
