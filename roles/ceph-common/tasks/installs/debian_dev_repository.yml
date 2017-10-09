@@ -11,23 +11,3 @@
     state: present
   changed_when: false
 
-- name: fetch nfs-ganesha development repository
-  uri:
-    url: https://shaman.ceph.com/api/repos/nfs-ganesha/next/latest/{{ ansible_distribution | lower }}/{{ ansible_distribution_release }}/flavors/{{ nfs_ganesha_flavor }}/repo
-    return_content: yes
-  register: nfs_ganesha_apt_repo
-  when:
-    - nfs_group_name in group_names
-    - nfs_ganesha_dev
-
-- name: add nfs-ganesha development repository
-  copy:
-    content: "{{ nfs_ganesha_dev_apt_repo.content }}"
-    dest: /etc/apt/sources.list.d/nfs-ganesha-dev.list
-    owner: root
-    group: root
-    backup: yes
-  when:
-    - nfs_group_name in group_names
-    - nfs_ganesha_dev
-
