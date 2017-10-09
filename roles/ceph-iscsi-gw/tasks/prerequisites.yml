@@ -1,4 +1,15 @@
 ---
+- name: install redhat ceph iscsi package
+  package:
+    name: "{{ item }}"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  with_items:
+    - tcmu-runner
+    - ceph-iscsi-config
+    - targetcli
+  when:
+    - ansible_os_family == 'RedHat'
+
 - name: check the status of the target.service override
   stat:
     path: /etc/systemd/system/target.service
