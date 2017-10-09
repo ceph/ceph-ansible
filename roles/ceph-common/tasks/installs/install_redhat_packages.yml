@@ -8,7 +8,7 @@
     - ansible_distribution == 'RedHat'
 
 - name: install centos dependencies
-  package:
+  yum:
     name: "{{ item }}"
     state: present
   with_items: "{{ centos_package_dependencies }}"
@@ -62,27 +62,3 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - rgw_group_name in group_names
-
-- name: install redhat nfs-ganesha-ceph package
-  package:
-    name: nfs-ganesha-ceph
-  when:
-    - nfs_group_name in group_names
-    - nfs_file_gw
-
-- name: install nfs cephfs gateway
-  package:
-    name: nfs-ganesha-ceph
-  when:
-    - nfs_group_name in group_names
-    - nfs_file_gw
-
-- name: install redhat nfs-ganesha-rgw and ceph-radosgw packages
-  package:
-    name: "{{ item }}"
-  with_items:
-    - nfs-ganesha-rgw
-    - ceph-radosgw
-  when:
-    - nfs_group_name in group_names
-    - nfs_obj_gw

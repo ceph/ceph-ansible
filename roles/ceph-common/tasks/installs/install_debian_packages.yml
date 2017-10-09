@@ -27,28 +27,3 @@
     update_cache: yes
   when:
     - rgw_group_name in group_names
-
-- name: install jemalloc for debian
-  apt:
-    name: libjemalloc1
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    update_cache: yes
-  when:
-    - nfs_group_name in group_names
-
-- name: install nfs cephfs gateway
-  package:
-    name: nfs-ganesha-ceph
-  when:
-    - nfs_group_name in group_names
-    - nfs_file_gw
-
-- name: install nfs rgw gateway
-  package:
-    name: "{{ item }}"
-  with_items:
-    - nfs-ganesha-rgw
-    - radosgw
-  when:
-    - nfs_group_name in group_names
-    - nfs_obj_gw
