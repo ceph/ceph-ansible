@@ -39,6 +39,11 @@ class TestMGRs(object):
             hostname=node["vars"]["inventory_hostname"],
             cluster=node["cluster_name"]
         )
-        output = host.check_output(cmd)
-        daemons = json.loads(output)["mgrmap"]["active_name"]
-        assert hostname in daemons
+        output_raw = host.check_output(cmd)
+        output_json = json.loads(output_raw)
+        daemons = output_json['mgrmap']['active_name']
+        standbys = [i['name'] for i in output_json['mgrmap']['standbys']]
+        result = hostname in daemons
+        if not result:
+            result = hostname in standbys
+        assert result
