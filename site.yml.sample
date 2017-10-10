@@ -1,58 +1,26 @@
 ---
-# Defines deployment design and assigns role to server groups
-
-- hosts:
-  - mons
-  - agents
-  - osds
-  - mdss
-  - rgws
-  - nfss
-  - restapis
-  - rbdmirrors
-  - clients
-  - mgrs
-  - iscsi-gws
-
+- name: run prechecks, gather and delegate facts
+  hosts:
+    - mons
+    - agents
+    - osds
+    - mdss
+    - rgws
+    - nfss
+    - restapis
+    - rbdmirrors
+    - clients
+    - mgrs
+    - iscsi-gws
   gather_facts: false
-
   tags:
     - always
+  roles:
+    - ceph-prechecks
 
-  tasks:
-    # If we can't get python2 installed before any module is used we will fail
-    # so just try what we can to get it installed
-    - name: check for python2
-      stat:
-        path: /usr/bin/python
-      ignore_errors: yes
-      register: systempython2
-
-    - name: install python2 for debian based systems
-      raw: sudo apt-get -y install python-simplejson
-      ignore_errors: yes
-      when:
-        - systempython2.stat.exists is undefined or systempython2.stat.exists == false
-
-    - name: install python2 for fedora
-      raw: sudo dnf -y install python creates=/usr/bin/python
-      ignore_errors: yes
-      when:
-        - systempython2.stat.exists is undefined or systempython2.stat.exists == false
-
-    - name: gather and delegate facts
-      setup:
-      delegate_to: "{{ item }}"
-      delegate_facts: True
-      with_items: "{{ groups['all'] }}"
-
-    - name: install required packages for fedora > 23
-      raw: sudo dnf -y install python2-dnf libselinux-python ntp
-      when:
-        - ansible_distribution == 'Fedora'
-        - ansible_distribution_major_version|int >= 23
-
-- hosts: mons
+- name: deploy ceph monitor(s)
+  hosts: mons
+  serial: '{{ serial|default("0") }}'
   gather_facts: false
   become: True
   roles:
@@ -61,7 +29,9 @@
     - ceph-config
     - ceph-mon
 
-- hosts: mgrs
+- name: deploy ceph manager(s)
+  hosts: mgrs
+  serial: '{{ serial|default("0") }}'
   gather_facts: false
   become: True
   roles:
@@ -70,7 +40,9 @@
     - { role: ceph-config, when: "ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous" }
     - { role: ceph-mgr, when: "ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous" }
 
-- hosts: agents
+- name: deploy ceph agent(s)
+  hosts: agents
+  serial: '{{ serial|default("0") }}'
   gather_facts: false
   become: True
   roles:
@@ -79,7 +51,9 @@
     - ceph-config
     - ceph-agent
 
-- hosts: osds
+- name: deploy ceph osd(s)
+  hosts: osds
+  serial: '{{ serial|default("0") }}'
   gather_facts: false
   become: True
   roles:
@@ -88,7 +62,9 @@
     - ceph-config
     - ceph-osd
 
-- hosts: mdss
+- name: deploy ceph medata server(s)
+  hosts: mdss
+  serial: '{{ serial|default("0") }}'
   gather_facts: false
   become: True
   roles:
@@ -97,7 +73,9 @@
     - ceph-config
     - ceph-mds
 
-- hosts: rgws
+- name: deploy ceph rados gateway(s)
+  hosts: rgws
+  serial: '{{ serial|default("0") }}'
   gather_facts: false
   become: True
   roles:
@@ -106,7 +84,9 @@
     - ceph-config
     - ceph-rgw
 
-- hosts: nfss
+- name: deploy ceph nfs(s)
+  hosts: nfss
+  serial: '{{ serial|default("0") }}'
   gather_facts: false
   become: True
   roles:
@@ -115,7 +95,9 @@
     - { role: ceph-config, when: "ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous" }
     - { role: ceph-nfs, when: "ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous" }
 
-- hosts: restapis
+- name: deploy ceph restapi(s)
+  hosts: restapis
+  serial: '{{ serial|default("0") }}'
   gather_facts: false
   become: True
   roles:
@@ -124,7 +106,9 @@
     - ceph-config
     - ceph-restapi
 
-- hosts: rbdmirrors
+- name: deploy ceph rbd mirror(s)
+  hosts: rbdmirrors
+  serial: '{{ serial|default("0") }}'
   gather_facts: false
   become: True
   roles:
@@ -133,7 +117,9 @@
     - ceph-config
     - ceph-rbd-mirror
 
-- hosts: clients
+- name: deploy ceph client(s)
+  hosts: clients
+  serial: '{{ serial|default("0") }}'
   gather_facts: false
   become: True
   roles:
@@ -142,7 +128,9 @@
     - ceph-config
     - ceph-client
 
-- hosts: iscsi-gws
+- name: deploy ceph iscsi gateway(s)
+  hosts: iscsi-gws
+  serial: '{{ serial|default("0") }}'
   gather_facts: false
   become: True
   roles:
@@ -150,4 +138,3 @@
     - ceph-common
     - { role: ceph-config, when: "ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous" }
     - { role: ceph-iscsi-gw, when: "ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous" }
-
