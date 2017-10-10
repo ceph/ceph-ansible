@@ -25,11 +25,11 @@ You can install directly from the source on github by following these steps:
 
       git checkout $branch
 
+.. _ansible-on-rhel-family:
 
 Ansible on RHEL and CentOS
 --------------------------
-You can acquire Ansible on RHEL and CentOS by installing from
-`"Extras"<https://access.redhat.com/solutions/912213>`_.
+You can acquire Ansible on RHEL and CentOS by installing from `Extras <https://access.redhat.com/solutions/912213>`_.
 
 On RHEL::
 
@@ -43,8 +43,7 @@ On RHEL::
 
 Ansible on Ubuntu
 -----------------
-You can acquire Ansible on Ubuntu by using the `Ansible
-PPA<https://launchpad.net/~ansible/+archive/ubuntu/ansible>`_.
+You can acquire Ansible on Ubuntu by using the `Ansible PPA <https://launchpad.net/~ansible/+archive/ubuntu/ansible>`_.
 
 ::
 
