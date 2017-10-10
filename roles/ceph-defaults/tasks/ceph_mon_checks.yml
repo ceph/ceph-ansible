@@ -1,0 +1,17 @@
+---
+- name: include ceph-mon variables
+  include_vars:
+    file: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-mon/defaults/main.yml"
+  when:
+    - mon_group_name is defined
+    - mon_group_name in group_names
+
+- name: make sure pg num is set for cephfs pools
+  fail:
+    msg: "You must set pg num for your cephfs pools, see the cephfs_pools variable."
+  with_items: "{{ cephfs_pools }}"
+  when:
+    - groups.get(mds_group_name, []) | length > 0
+    - mon_group_name is defined
+    - mon_group_name in group_names
+    - item.pgs == ''
