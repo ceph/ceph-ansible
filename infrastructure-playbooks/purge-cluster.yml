@@ -394,7 +394,7 @@
       - "{{ ceph_lockbox_partition_to_erase_path.stdout_lines | default([]) }}"
     when:
       - ceph_disk_present.rc == 0
-      - ceph_data_partlabels.rc == 0
+      - (ceph_data_partlabels.rc == 0 or ceph_lockbox_partlabels.rc == 0)
 
   # this should go away once 'ceph-volume lvm zap' is available
   - name: remove osd logical volumes
@@ -461,7 +461,6 @@
       - "{{ ceph_wal_partition_to_erase_path.stdout_lines | default([]) }}"
     when:
       - (ceph_block_partlabels.rc == 0 or ceph_journal_partlabels.rc == 0 or ceph_db_partlabels.rc == 0 or ceph_wal_partlabels.rc == 0)
-      - osd_scenario == 'non-collocated'
 
 - name: purge ceph mon cluster
 
