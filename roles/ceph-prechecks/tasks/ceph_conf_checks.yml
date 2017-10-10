@@ -1,0 +1,22 @@
+---
+- name: make sure public_network configured
+  fail:
+    msg: "public_network must be configured. Ceph public network"
+  when:
+    - public_network == '0.0.0.0/0'
+
+- name: make sure monitor_interface or monitor_address or monitor_address_block is defined
+  fail:
+    msg: "you must set monitor_interface or monitor_address or monitor_address_block"
+  when:
+    - monitor_interface == 'interface'
+    - monitor_address == '0.0.0.0'
+    - (monitor_address_block == '0.0.0.0/0' or monitor_address_block | length == 0)
+
+- name: make sure radosgw_interface or radosgw_address or radosgw_address_block is defined
+  fail:
+    msg: "you must set radosgw_interface or radosgw_address or radosgw_address_block"
+  when:
+    - radosgw_interface == 'interface'
+    - radosgw_address == '0.0.0.0'
+    - (radosgw_address_block == '0.0.0.0/0' or radosgw_address_block | length == 0)
