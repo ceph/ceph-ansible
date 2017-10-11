@@ -46,18 +46,10 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- name: include misc/ntp_redhat.yml
-  include: misc/ntp_redhat.yml
+- name: include ntp setup tasks
+  include: "misc/ntp_{{ ansible_os_family | lower }}.yml"
   when:
-    - ansible_os_family == 'RedHat'
-    - ntp_service_enabled
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
-
-- name: include misc/ntp_debian.yml
-  include: misc/ntp_debian.yml
-  when:
-    - ansible_os_family == 'Debian'
+    - ansible_os_family in ['RedHat', 'Debian']
     - ntp_service_enabled
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
