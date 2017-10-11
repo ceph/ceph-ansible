@@ -60,7 +60,7 @@ push () {
 }
 
 create_pr () {
-  hub pull-request -h "$bkp_branch" -h origin:"$bkp_branch" -b origin:"$stable_branch" -m "[skip ci]"
+  hub pull-request -h ceph/ceph-ansible:"$bkp_branch" -b "$stable_branch" -m "[skip ci] $bkp_branch"
 }
 
 cleanup () {
