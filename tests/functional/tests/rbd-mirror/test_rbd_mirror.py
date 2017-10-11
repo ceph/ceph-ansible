@@ -1,5 +1,6 @@
 import pytest
 import json
+import os
 
 class TestRbdMirrors(object):
 
@@ -7,19 +8,51 @@ class TestRbdMirrors(object):
     def test_rbd_mirror_is_installed(self, node, host):
         assert host.package("rbd-mirror").is_installed
 
-    def test_rbd_mirror_service_is_running(self, node, host):
+    @pytest.mark.no_docker
+    @pytest.mark.before_luminous
+    def test_rbd_mirror_service_is_running_before_luminous(self, node, host):
+        service_name = "ceph-rbd-mirror@admin"
+        assert host.service(service_name).is_running
+
+    @pytest.mark.docker
+    @pytest.mark.before_luminous
+    def test_rbd_mirror_service_is_running_docker_before_luminous(self, node, host):
         service_name = "ceph-rbd-mirror@rbd-mirror.{hostname}".format(
             hostname=node["vars"]["inventory_hostname"]
         )
         assert host.service(service_name).is_running
 
-    def test_rbd_mirror_service_is_enabled(self, node, host):
+    @pytest.mark.docker
+    @pytest.mark.from_luminous
+    def test_rbd_mirror_service_is_running_docker_from_luminous(self, node, host):
+        service_name = "ceph-rbd-mirror@rbd-mirror.{hostname}".format(
+            hostname=node["vars"]["inventory_hostname"]
+        )
+        assert host.service(service_name).is_running
+
+    @pytest.mark.no_docker
+    @pytest.mark.before_luminous
+    def test_rbd_mirror_service_is_enabled_before_luminous(self, node, host):
+        service_name = "ceph-rbd-mirror@admin"
+        assert host.service(service_name).is_enabled
+
+    @pytest.mark.docker
+    @pytest.mark.before_luminous
+    def test_rbd_mirror_service_is_enabled_docker_before_luminous(self, node, host):
+        service_name = "ceph-rbd-mirror@rbd-mirror.{hostname}".format(
+            hostname=node["vars"]["inventory_hostname"]
+        )
+        assert host.service(service_name).is_enabled
+
+    @pytest.mark.from_luminous
+    def test_rbd_mirror_service_is_enabled_from_luminous(self, node, host):
         service_name = "ceph-rbd-mirror@rbd-mirror.{hostname}".format(
             hostname=node["vars"]["inventory_hostname"]
         )
         assert host.service(service_name).is_enabled
 
     @pytest.mark.no_docker
+    @pytest.mark.from_luminous
     def test_rbd_mirror_is_up(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
         cluster = node['cluster_name']
@@ -32,6 +65,7 @@ class TestRbdMirrors(object):
         assert hostname in daemons
 
     @pytest.mark.docker
+    @pytest.mark.from_luminous
     def test_docker_rbd_mirror_is_up(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
         cluster = node['cluster_name']

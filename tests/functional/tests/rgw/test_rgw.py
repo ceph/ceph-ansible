@@ -23,6 +23,7 @@ class TestRGWs(object):
         assert host.service(service_name).is_enabled
 
     @pytest.mark.no_docker
+    @pytest.mark.from_luminous
     def test_rgw_is_up(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
         cluster = node['cluster_name']
@@ -42,6 +43,7 @@ class TestRGWs(object):
 
 
     @pytest.mark.docker
+    @pytest.mark.from_luminous
     def test_docker_rgw_is_up(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
         cluster = node['cluster_name']
