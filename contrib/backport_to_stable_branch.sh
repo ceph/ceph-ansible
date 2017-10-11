@@ -59,6 +59,10 @@ push () {
   git push origin "$bkp_branch"
 }
 
+create_pr () {
+  hub pull-request -h "$bkp_branch" -h origin:"$bkp_branch" -b origin:"$stable_branch" -m "[skip ci]"
+}
+
 cleanup () {
   echo "Moving back to previous branch"
   git checkout -
@@ -84,4 +88,5 @@ verify_commit
 checkout
 cherry_pick
 push
+create_pr
 cleanup
