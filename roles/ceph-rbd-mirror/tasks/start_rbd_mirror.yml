@@ -24,7 +24,7 @@
     enabled: yes
   changed_when: false
   when:
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
+    - current_ceph_release_num < ceph_release_num.luminous
 
 - name: stop and remove the generic rbd-mirror service instance
   service:
@@ -33,7 +33,7 @@
     enabled: no
   changed_when: false
   when:
-    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - current_ceph_release_num >= ceph_release_num.luminous
 
 # This task is a workaround for rbd-mirror not starting after reboot
 # The upstream fix is: https://github.com/ceph/ceph/pull/17969
@@ -44,7 +44,7 @@
     enabled: yes
   changed_when: false
   when:
-    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - current_ceph_release_num >= ceph_release_num.luminous
 
 - name: start and add the rbd-mirror service instance
   service:
@@ -53,4 +53,4 @@
     enabled: yes
   changed_when: false
   when:
-    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - current_ceph_release_num >= ceph_release_num.luminous
