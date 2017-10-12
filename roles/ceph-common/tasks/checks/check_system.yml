@@ -15,7 +15,7 @@
   fail:
     msg: "Distribution not supported {{ ansible_os_family }}"
   when:
-    - ansible_os_family not in ['Debian', 'RedHat', 'ClearLinux']
+    - ansible_os_family not in ['Debian', 'RedHat', 'ClearLinux', 'Suse']
 
 - name: fail on unsupported distribution for red hat ceph storage
   fail:
@@ -51,6 +51,13 @@
   when:
     - ceph_repository == 'uca'
     - ansible_distribution != 'Ubuntu'
+
+- name: fail on unsupported openSUSE distribution
+  fail:
+    msg: "Distribution not supported: {{ ansible_distribution }}"
+  when:
+    - ansible_distribution == 'openSUSE Leap'
+    - ansible_distribution_version | version_compare('42.3', '<')
 
 - name: fail on unsupported ansible version
   fail:

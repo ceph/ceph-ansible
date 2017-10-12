@@ -28,6 +28,15 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
+- name: include installs/install_on_suse.yml
+  include: installs/install_on_suse.yml
+  when:
+    - ansible_os_family == 'Suse'
+  tags:
+    - package-install
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
+
 - name: include installs/install_on_debian.yml
   include: installs/install_on_debian.yml
   when:
@@ -46,10 +55,18 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- name: include ntp setup tasks
-  include: "misc/ntp_{{ ansible_os_family | lower }}.yml"
+- name: include ntp debian setup tasks
+  include: "misc/ntp_debian.yml"
   when:
-    - ansible_os_family in ['RedHat', 'Debian']
+    - ansible_os_family == 'Debian'
+    - ntp_service_enabled
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
+
+- name: include ntp rpm setup tasks
+  include: "misc/ntp_rpm.yml"
+  when:
+    - ansible_os_family in ['RedHat', 'Suse']
     - ntp_service_enabled
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
