@@ -7,7 +7,7 @@
   always_run: true
   when:
     - cephx
-    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - current_ceph_release_num >= ceph_release_num.luminous
 
 - name: collect admin and bootstrap keys
   command: ceph-create-keys --cluster {{ cluster }} -i {{ monitor_name }}
@@ -15,7 +15,7 @@
   always_run: true
   when:
     - cephx
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
+    - current_ceph_release_num < ceph_release_num.luminous
 
 # NOTE (leseb): wait for mon discovery and quorum resolution
 # the admin key is not instantaneously created so we have to wait a bit
@@ -75,7 +75,7 @@
     - cephx
     - groups.get(mgr_group_name, []) | length > 0
     - inventory_hostname == groups[mon_group_name]|last
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.jewel
+    - current_ceph_release_num > ceph_release_num.jewel
   with_items: "{{ groups.get(mgr_group_name, []) }}"
 
 - name: crush_rules.yml
@@ -106,7 +106,7 @@
   set_fact:
     bootstrap_rbd_keyring: "/var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring"
   when:
-    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - current_ceph_release_num >= ceph_release_num.luminous
 
 - name: copy keys to the ansible server
   fetch:
