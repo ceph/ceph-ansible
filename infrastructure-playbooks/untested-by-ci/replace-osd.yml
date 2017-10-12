@@ -1,0 +1,201 @@
+---
+# This playbook replaces Ceph OSDs.
+# It can replace any number of OSD(s) from the cluster and ALL THEIR DATA
+#
+# When disks fail, or if an admnistrator wants to reprovision OSDs with a new backend,
+# for instance, for switching from FileStore to BlueStore, OSDs need to be replaced.
+# Unlike Removing the OSD, replaced OSD’s id and CRUSH map entry need to be keep intact after the OSD is destroyed for replacement.
+#
+# Use it like this:
+# ansible-playbook replace-osd.yml -e osd_to_replace=0,2,6
+#     Prompts for confirmation to replace, defaults to no and
+#     doesn't replace the osd(s). yes replaces the osd(s).
+#
+# ansible-playbook -e ireallymeanit=yes|no replace-osd.yml
+#     Overrides the prompt using -e option. Can be used in
+#     automation scripts to avoid interactive prompt.
+
+- name: gather facts and check the init system
+
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+
+  become: True
+  tasks:
+    - debug: msg="gather facts on all Ceph hosts for following reference"
+
+- name: confirm whether user really meant to replace osd(s)
+
+  hosts:
+    - localhost
+
+  become: true
+
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to replace the osd(s)?
+      default: 'no'
+      private: no
+
+  vars:
+    mon_group_name: mons
+    osd_group_name: osds
+
+  pre_tasks:
+    - name: exit playbook, if user did not mean to replace the osd(s)
+      fail:
+        msg: "Exiting replace-osd playbook, no osd(s) was/were replaced..
+           To replace the osd(s), either say 'yes' on the prompt or
+           or use `-e ireallymeanit=yes` on the command line when
+           invoking the playbook"
+      when: ireallymeanit != 'yes'
+
+    - name: exit playbook, if no osd(s) was/were given
+      fail:
+        msg: "osd_to_replace must be declared
+          Exiting replace-osd playbook, no OSD(s) was/were replaced.
+           On the command line when invoking the playbook, you can use
+           -e osd_to_replace=0,1,2,3 argument."
+      when: osd_to_replace is not defined
+
+  roles:
+    - ceph-defaults
+
+  post_tasks:
+
+    - name: set_fact docker_exec_cmd build docker exec command (containerized)
+      set_fact:
+        docker_exec_cmd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+      when: containerized_deployment
+
+    - name: exit playbook, if can not connect to the cluster
+      command: "{{ docker_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} health"
+      register: ceph_health
+      until: ceph_health.stdout.find("HEALTH") > -1
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      retries: 5
+      delay: 2
+
+    - name: find the host(s) where the osd(s) is/are running on
+      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd find {{ item }}"
+      with_items: "{{ osd_to_replace.split(',') }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      register: find_osd_hosts
+
+    - name: set_fact osd_hosts
+      set_fact:
+        osd_hosts: "{{ osd_hosts | default([]) + [ (item.stdout | from_json).crush_location.host ] }}"
+      with_items: "{{ find_osd_hosts.results }}"
+
+    - name: check if ceph admin key exists on the osd nodes
+      stat:
+        path: "/etc/ceph/{{ cluster }}.client.admin.keyring"
+      register: ceph_admin_key
+      with_items: "{{ osd_hosts }}"
+      delegate_to: "{{ item }}"
+      failed_when: false
+      when:
+        - not containerized_deployment
+
+    - name: fail when admin key is not present
+      fail:
+        msg: "The Ceph admin key is not present on the OSD node, please add it and remove it after the playbook is done."
+      with_items: "{{ ceph_admin_key.results }}"
+      when:
+        - not containerized_deployment
+        - item.stat.exists == false
+
+    # NOTE(leseb): using '>' is the only way I could have the command working
+    - name: find osd device based on the id
+      shell: >
+        docker run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
+        {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+        list | awk  -v pattern=osd.{{ item.1 }} '$0 ~ pattern {print $1}'
+      with_together:
+        - "{{ osd_hosts }}"
+        - "{{ osd_to_replace.split(',') }}"
+      register: osd_to_replace_disks
+      delegate_to: "{{ item.0 }}"
+      when:
+        - containerized_deployment
+
+    - name: zapping osd(s) - container
+      shell: >
+        docker run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
+        {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+        zap {{ item.1 }}
+      run_once: true
+      with_together:
+        - "{{ osd_hosts }}"
+        - "{{ osd_to_replace_disks.results }}"
+      delegate_to: "{{ item.0 }}"
+      when:
+        - containerized_deployment
+
+    - name: zapping osd(s) - non container
+      command: ceph-disk zap --cluster {{ cluster }} {{ item.1 }}
+      run_once: true
+      with_together:
+        - "{{ osd_hosts }}"
+        - "{{ osd_to_replace_disks.results }}"
+      delegate_to: "{{ item.0 }}"
+      when:
+        - not containerized_deployment
+
+    - name: destroying osd(s)
+      command: ceph-disk destroy --cluster {{ cluster }} --destroy-by-id {{ item.1 }} --zap
+      run_once: true
+      with_together:
+        - "{{ osd_hosts }}"
+        - "{{ osd_to_replace.split(',') }}"
+      delegate_to: "{{ item.0 }}"
+      when:
+        - not containerized_deployment
+
+    - name: replace osd(s) - prepare - non container
+      command: ceph-disk prepare {{ item.1 }}  --osd-id {{ item.2 }} --osd-uuid $(uuidgen)
+      run_once: true
+      delegate_to: "{{ item.0 }}"
+      with_together:
+        - "{{ osd_hosts }}"
+        - "{{ osd_to_replace_disks.results }}"
+        - "{{ osd_to_replace.split(',') }}"
+
+    - name: replace osd(s) - prepare - container
+      shell: >
+        docker run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
+        {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+        prepare {{ item.1 }}
+      run_once: true
+      delegate_to: "{{ item.0 }}"
+      with_together:
+        - "{{ osd_hosts }}"
+        - "{{ osd_to_replace_disks.results }}"
+
+    - name: replace osd(s) - activate - non container
+      command: ceph-disk activate {{ item.1 }}1
+      run_once: true
+      delegate_to: "{{ item.0 }}"
+      with_together:
+        - "{{ osd_hosts }}"
+        - "{{ osd_to_replace_disks.results }}"
+
+    - name: replace osd(s) - activate - container
+      shell: >
+        docker run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
+        {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+        activate {{ item.1 }}1
+      run_once: true
+      delegate_to: "{{ item.0 }}"
+      with_together:
+        - "{{ osd_hosts }}"
+        - "{{ osd_to_replace_disks.results }}"
+
+    - name: show ceph health
+      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: show ceph osd tree
+      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd tree"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
