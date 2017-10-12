@@ -4,18 +4,20 @@
   args:
     creates: /etc/ceph/{{ cluster }}.client.admin.keyring
   changed_when: false
-  always_run: true
   when:
     - cephx
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+  tags:
+    - always
 
 - name: collect admin and bootstrap keys
   command: ceph-create-keys --cluster {{ cluster }} -i {{ monitor_name }}
   changed_when: false
-  always_run: true
   when:
     - cephx
     - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
+  tags:
+    - always
 
 # NOTE (leseb): wait for mon discovery and quorum resolution
 # the admin key is not instantaneously created so we have to wait a bit
@@ -42,19 +44,21 @@
   command: ceph --cluster {{ cluster }} config-key get initial_mon_keyring
   changed_when: false
   ignore_errors: true
-  always_run: true
   run_once: true
   failed_when: false
   register: is_initial_mon_keyring_in_kv
+  tags:
+    - always
 
 - name: put initial mon keyring in mon kv store
   command: ceph --cluster {{ cluster }} config-key put initial_mon_keyring {{ monitor_keyring.stdout }}
   changed_when: false
-  always_run: true
   run_once: true
   when:
     - is_initial_mon_keyring_in_kv.rc != 0
     - cephx
+  tags:
+    - always
 
 - name: create ceph rest api keyring when mon is not containerized
   command: ceph --cluster {{ cluster }} auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/{{ cluster }}.client.restapi.keyring
@@ -87,9 +91,10 @@
   shell: ls -1 /etc/ceph/*.keyring
   changed_when: false
   register: ceph_keys
-  always_run: true
   when:
     - cephx
+  tags:
+    - always
 
 - name: set keys permissions
   file:

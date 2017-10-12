@@ -42,10 +42,11 @@
     - "{{ dedicated_devices|unique }}"
   changed_when: false
   failed_when: false
-  always_run: true
   register: journal_partition_status
   when:
     - osd_scenario == 'non-collocated'
+  tags:
+    - always
 
 - name: fix partitions gpt header or labels of the journal device(s)
   shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }} || sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }}"

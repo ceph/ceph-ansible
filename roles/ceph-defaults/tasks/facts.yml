@@ -18,12 +18,13 @@
   command: "{{ docker_exec_cmd }} ceph --connect-timeout 3 --cluster {{ cluster }} fsid"
   changed_when: false
   failed_when: false
-  always_run: yes
   register: ceph_current_fsid
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
     - not rolling_update
     - groups.get(mon_group_name, []) | length > 0
+  tags:
+    - always
 
 # We want this check to be run only on the first node
 - name: check if {{ fetch_directory }} directory exists
@@ -82,9 +83,10 @@
   changed_when: false
   register: cluster_uuid
   become: false
-  always_run: true
   when:
     - generate_fsid
+  tags:
+    - always
 
 - name: set_fact fsid
   set_fact:

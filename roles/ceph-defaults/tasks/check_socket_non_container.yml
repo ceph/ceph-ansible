@@ -3,20 +3,22 @@
   shell: stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mon*.asok
   changed_when: false
   failed_when: false
-  always_run: true
   register: mon_socket_stat
   when:
     - inventory_hostname in groups.get(mon_group_name, [])
+  tags:
+    - always
 
 - name: check if the ceph mon socket is in-use
   command: fuser --silent {{ mon_socket_stat.stdout }}
   changed_when: false
   failed_when: false
-  always_run: true
   register: mon_socket
   when:
     - inventory_hostname in groups.get(mon_group_name, [])
     - mon_socket_stat.rc == 0
+  tags:
+    - always
 
 - name: remove ceph mon socket if exists and not used by a process
   file:
@@ -32,20 +34,22 @@
     stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-osd*.asok
   changed_when: false
   failed_when: false
-  always_run: true
   register: osd_socket_stat
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
+  tags:
+    - always
 
 - name: check if the ceph osd socket is in-use
   command: fuser --silent {{ osd_socket_stat.stdout }}
   changed_when: false
   failed_when: false
-  always_run: true
   register: osd_socket
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     - osd_socket_stat.rc == 0
+  tags:
+    - always
 
 - name: remove ceph osd socket if exists and not used by a process
   file:
@@ -61,20 +65,22 @@
     stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mds*.asok
   changed_when: false
   failed_when: false
-  always_run: true
   register: mds_socket_stat
   when:
     - inventory_hostname in groups.get(mds_group_name, [])
+  tags:
+    - always
 
 - name: check if the ceph mds socket is in-use
   command: fuser --silent {{ mds_socket_stat.stdout }}
   changed_when: false
   failed_when: false
-  always_run: true
   register: mds_socket
   when:
     - inventory_hostname in groups.get(mds_group_name, [])
     - mds_socket_stat.rc == 0
+  tags:
+    - always
 
 - name: remove ceph mds socket if exists and not used by a process
   file:
@@ -90,20 +96,22 @@
     stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-client.rgw*.asok
   changed_when: false
   failed_when: false
-  always_run: true
   register: rgw_socket_stat
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
+  tags:
+    - always
 
 - name: check if the ceph rgw socket is in-use
   command: fuser --silent {{ rgw_socket_stat.stdout }}
   changed_when: false
   failed_when: false
-  always_run: true
   register: rgw_socket
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
     - rgw_socket_stat.rc == 0
+  tags:
+    - always
 
 - name: remove ceph rgw socket if exists and not used by a process
   file:
@@ -119,20 +127,22 @@
     stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mgr*.asok
   changed_when: false
   failed_when: false
-  always_run: true
   register: mgr_socket_stat
   when:
     - inventory_hostname in groups.get(mgr_group_name, [])
+  tags:
+    - always
 
 - name: check if the ceph mgr socket is in-use
   command: fuser --silent {{ mgr_socket_stat.stdout }}
   changed_when: false
   failed_when: false
-  always_run: true
   register: mgr_socket
   when:
     - inventory_hostname in groups.get(mgr_group_name, [])
     - mgr_socket_stat.rc == 0
+  tags:
+    - always
 
 - name: remove ceph mgr socket if exists and not used by a process
   file:
@@ -148,20 +158,22 @@
     stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-client.rbd-mirror*.asok
   changed_when: false
   failed_when: false
-  always_run: true
   register: rbd_mirror_socket_stat
   when:
     - inventory_hostname in groups.get(rbdmirror_group_name, [])
+  tags:
+    - always
 
 - name: check if the ceph rbd mirror socket is in-use
   command: fuser --silent {{ rbd_mirror_socket_stat.stdout }}
   changed_when: false
   failed_when: false
-  always_run: true
   register: rbd_mirror_socket
   when:
     - inventory_hostname in groups.get(rbdmirror_group_name, [])
     - rbd_mirror_socket_stat.rc == 0
+  tags:
+    - always
 
 - name: remove ceph rbd mirror socket if exists and not used by a process
   file:
@@ -176,20 +188,22 @@
   command: stat --printf=%n /var/run/ganesha.pid
   changed_when: false
   failed_when: false
-  always_run: true
   register: nfs_socket_stat
   when:
     - inventory_hostname in groups.get(nfs_group_name, [])
+  tags:
+    - always
 
 - name: check if the ceph nfs ganesha socket is in-use
   command: fuser --silent {{ nfs_socket_stat.stdout }}
   changed_when: false
   failed_when: false
-  always_run: true
   register: nfs_socket
   when:
     - inventory_hostname in groups.get(nfs_group_name, [])
     - nfs_socket_stat.rc == 0
+  tags:
+    - always
 
 - name: remove ceph nfs ganesha socket if exists and not used by a process
   file:
