@@ -12,17 +12,11 @@ dummy:
 ###########
 # GENERAL #
 ###########
-
 #mon_group_name: mons
 
 # ACTIVATE BOTH FSID AND MONITOR_SECRET VARIABLES FOR NON-VAGRANT DEPLOYMENT
 #monitor_secret: "{{ monitor_keyring.stdout }}"
 #admin_secret: 'admin_secret'
-
-# CephFS
-#cephfs_data: cephfs_data
-#cephfs_metadata: cephfs_metadata
-#cephfs: cephfs
 
 # Secure your cluster
 # This will set the following flags on all the pools:
@@ -43,9 +37,21 @@ dummy:
 #calamari_debug: false
 
 
-#############
-# crush rules
-#############
+##########
+# CEPHFS #
+##########
+#cephfs: cephfs # name of the ceph filesystem
+#cephfs_data: cephfs_data # name of the data pool for a given filesystem
+#cephfs_metadata: cephfs_metadata # name of the metadata pool for a given filesystem
+
+#cephfs_pools:
+#  - { name: "{{ cephfs_data }}", pgs: "" }
+#  - { name: "{{ cephfs_metadata }}", pgs: "" }
+
+
+###############
+# CRUSH RULES #
+###############
 #crush_rule_config: false
 
 #crush_rule_hdd:
@@ -63,10 +69,11 @@ dummy:
 #crush_rules:
 #  - "{{ crush_rule_hdd }}"
 #  - "{{ crush_rule_ssd }}"
+
+
 #############
 # OPENSTACK #
 #############
-
 #openstack_config: false
 #openstack_glance_pool:
 #  name: images
@@ -109,6 +116,7 @@ dummy:
 #  - { name: client.cinder-backup, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_backup_pool.name }}", mode: "0600", acls: [] }
 #  - { name: client.gnocchi, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_gnocchi_pool.name }}", mode: "0600", acls: [] }
 #  - { name: client.openstack, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool=images, allow rwx pool=vms, allow rwx pool=volumes, allow rwx pool=backups", mode: "0600", acls: [] }
+
 
 ##########
 # DOCKER #
