@@ -30,18 +30,18 @@
       shell: |
         basename $(grep -R fsid /etc/ceph/ | egrep -o '^[^.]*')
       changed_when: false
-      register: ceph_conf
+      register: cluster_name
 
-    - name: stat ceph.conf
+    - name: "stat {{ cluster_name.stdout }}.conf"
       stat:
-        path: "{{ ceph_conf.stdout }}"
+        path: "/etc/ceph/{{ cluster_name.stdout }}.conf"
       register: ceph_conf_stat
 
     - name: generate ceph configuration file
       action: config_template
       args:
         src: "roles/ceph-common/templates/ceph.conf.j2"
-        dest: "{{ ceph_conf.stdout }}"
+        dest: "/etc/ceph/{{ cluster_name.stdout }}.conf"
         owner: "{{ ceph_conf_stat.stat.pw_name }}"
         group: "{{ ceph_conf_stat.stat.gr_name }}"
         mode: "{{ ceph_conf_stat.stat.mode }}"
