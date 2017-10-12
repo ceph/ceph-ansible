@@ -11,8 +11,9 @@
   changed_when: false
   become: false
   failed_when: false
-  always_run: true
   register: statconfig
+  tags:
+    - always
 
 - name: try to fetch ceph config and keys
   copy:
@@ -30,9 +31,10 @@
 - name: "copy mgr key to /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring"
   command: cp /etc/ceph/{{ cluster }}.mgr.{{ ansible_hostname }}.keyring /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring
   changed_when: false
-  always_run: true
   with_items: "{{ statconfig.results }}"
   when: item.stat.exists == true
+  tags:
+    - always
 
 - name: set ceph mgr key permission
   file:
