@@ -15,7 +15,6 @@
   listen: "restart ceph mons"
   when:
     - mon_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph mon daemon(s) - non container
   command: /tmp/restart_mon_daemon.sh
@@ -54,7 +53,6 @@
   listen: "restart ceph osds"
   when:
     - osd_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph osds daemon(s) - non container
   command: /tmp/restart_osd_daemon.sh
@@ -68,7 +66,6 @@
     - ceph_current_fsid.rc == 0
     - handler_health_osd_check
     # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
-    - inventory_hostname in play_hosts
   with_items: "{{ ansible_play_batch }}"
   run_once: true
   delegate_to: "{{ item }}"
@@ -84,7 +81,6 @@
     - ((crush_location is defined and crush_location) or ceph_osd_container_stat.get('stdout_lines', [])|length != 0)
     - handler_health_osd_check
     # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
-    - inventory_hostname in play_hosts
   with_items: "{{ ansible_play_batch }}"
   run_once: true
   delegate_to: "{{ item }}"
@@ -99,7 +95,6 @@
   listen: "restart ceph mdss"
   when:
     - mds_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph mds daemon(s) - non container
   command: /tmp/restart_mds_daemon.sh
@@ -135,7 +130,6 @@
   listen: "restart ceph rgws"
   when:
     - rgw_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph rgw daemon(s) - non container
   command: /tmp/restart_rgw_daemon.sh
@@ -171,7 +165,6 @@
   listen: "restart ceph nfss"
   when:
     - nfs_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph nfs daemon(s) - non container
   command: /tmp/restart_nfs_daemon.sh
@@ -207,7 +200,6 @@
   listen: "restart ceph rbdmirrors"
   when:
     - rbdmirror_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph rbd mirror daemon(s) - non container
   command: /tmp/restart_rbd_mirror_daemon.sh
@@ -243,7 +235,6 @@
   listen: "restart ceph mgrs"
   when:
     - mgr_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph mgr daemon(s) - non container
   command: /tmp/restart_mgr_daemon.sh
