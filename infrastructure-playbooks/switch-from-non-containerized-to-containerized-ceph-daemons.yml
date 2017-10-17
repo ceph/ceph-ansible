@@ -126,15 +126,14 @@
   post_tasks:
     # We don't do a container test by running 'docker exec ...' since not all the monitors have switched to containers yet.
     # Thus, we continue to use the 'ceph' binary from the host, there is no issue with that.
-    - name: waiting for the containerized monitor to join the quorum...
-      shell: |
-        ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["quorum_names"])'
-      register: result
-      until: "{{ ansible_hostname in result.stdout }}"
+    - name: non container | waiting for the monitor to join the quorum...
+      command: ceph --cluster "{{ cluster }}" -s --format json
+      register: ceph_health_raw
+      until: >
+        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
-
 
 - name: switching from non-containerized to containerized ceph mgr
 

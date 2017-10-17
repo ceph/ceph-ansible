@@ -42,6 +42,8 @@
     - "{{ mds_group_name|default('mdss') }}"
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ rbd_mirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
 
   become: True
@@ -70,26 +72,19 @@
     - debug: msg="WARNING - upgrading a ceph cluster with only one monitor node ({{ inventory_hostname }})"
       when: mon_host_count | int == 1
 
-    - name: stop ceph mons with upstart
-      service:
-        name: ceph-mon
-        state: stopped
-        args: id={{ ansible_hostname }}
-      when: ansible_service_mgr == 'upstart'
+    - name: fail when single containerized monitor
+      fail:
+        msg: "Upgrades of a single monitor are not supported, also running 1 monitor is not recommended always use 3."
+      when:
+        - containerized_deployment
+        - mon_host_count | int == 1
 
-    - name: stop ceph mons with sysvinit
-      service:
-        name: ceph
-        state: stopped
-      when: ansible_service_mgr == 'sysvinit'
-
-    - name: stop ceph mons with systemd
-      service:
+    - name: stop ceph mon
+      systemd:
         name: ceph-mon@{{ ansible_hostname }}
         state: stopped
         enabled: yes
       when:
-        - ansible_service_mgr == 'systemd'
         - not containerized_deployment
 
   roles:
@@ -100,35 +95,21 @@
     - ceph-mon
 
   post_tasks:
-    - name: start ceph mons with upstart
-      service:
-        name: ceph-mon
-        state: started
-        args: id={{ ansible_hostname }}
-      when: ansible_service_mgr == 'upstart'
-
-    - name: start ceph mons with sysvinit
-      service:
-        name: ceph
-        state: started
-      when: ansible_service_mgr == 'sysvinit'
-
-    - name: start ceph mons with systemd
-      service:
+    - name: start ceph mon
+      systemd:
         name: ceph-mon@{{ ansible_hostname }}
         state: started
         enabled: yes
       when:
-        - ansible_service_mgr == 'systemd'
         - not containerized_deployment
 
-    - name: restart containerized ceph mons with systemd
-      service:
+    - name: restart containerized ceph mon
+      systemd:
         name: ceph-mon@{{ ansible_hostname }}
         state: restarted
         enabled: yes
+        daemon_reload: yes
       when:
-        - ansible_service_mgr == 'systemd'
         - containerized_deployment
 
     - name: set mon_host_count
@@ -169,8 +150,56 @@
       when:
         - containerized_deployment
 
+
+- name: upgrade ceph mgr node
+
+  vars:
+    upgrade_ceph_packages: True
+
+  hosts:
+    - "{{ mgr_group_name|default('mgrs') }}"
+
+  serial: 1
+  become: True
+
+  pre_tasks:
+    # this task has a failed_when: false to handle the scenario where no mgr existed before the upgrade
+    - name: stop ceph mgr
+      systemd:
+        name: ceph-mgr@{{ ansible_hostname }}
+        state: stopped
+        enabled: yes
+      failed_when: false
+      when:
+        - not containerized_deployment
+
+  roles:
+    - ceph-defaults
+    - ceph-config
+    - { role: ceph-common, when: not containerized_deployment }
+    - { role: ceph-docker-common, when: containerized_deployment }
+    - { role: ceph-mgr, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
+
+  post_tasks:
+    - name: start ceph mgr
+      systemd:
+        name: ceph-mgr@{{ ansible_hostname }}
+        state: started
+        enabled: yes
+      when:
+        - not containerized_deployment
+
+    - name: restart containerized ceph mgr
+      systemd:
+        name: ceph-mgr@{{ ansible_hostname }}
+        state: restarted
+        enabled: yes
+        daemon_reload: yes
+      when:
+        - containerized_deployment
+
     - name: set osd flags
-      command: ceph osd set {{ item }} --cluster {{ cluster }}
+      command: ceph --cluster {{ cluster }} osd set {{ item }}
       with_items:
         - noout
         - noscrub
@@ -180,7 +209,7 @@
 
     - name: set containerized osd flags
       command: |
-          docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph osd set {{ item }} --cluster {{ cluster }}
+        docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
       with_items:
         - noout
         - noscrub
@@ -209,26 +238,13 @@
       changed_when: false
       when: not containerized_deployment
 
-    - name: stop ceph osds with upstart
-      service:
-        name: ceph-osd-all
-        state: stopped
-      when: ansible_service_mgr == 'upstart'
-
-    - name: stop ceph osds with sysvinit
-      service:
-        name: ceph
-        state: stopped
-      when: ansible_service_mgr == 'sysvinit'
-
-    - name: stop ceph osds with systemd
-      service:
-        name: ceph-osd@{{item}}
+    - name: stop ceph osd
+      systemd:
+        name: ceph-osd@{{ item }}
         state: stopped
         enabled: yes
       with_items: "{{ osd_ids.stdout_lines }}"
       when:
-        - ansible_service_mgr == 'systemd'
         - not containerized_deployment
 
   roles:
@@ -245,36 +261,23 @@
       changed_when: false
       when: not containerized_deployment
 
-    - name: start ceph osds with upstart
-      service:
-        name: ceph-osd-all
-        state: started
-      when: ansible_service_mgr == 'upstart'
-
-    - name: start ceph osds with sysvinit
-      service:
-        name: ceph
-        state: started
-      when: ansible_service_mgr == 'sysvinit'
-
-    - name: start ceph osds with systemd
-      service:
-        name: ceph-osd@{{item}}
+    - name: start ceph osd
+      systemd:
+        name: ceph-osd@{{ item }}
         state: started
         enabled: yes
       with_items: "{{ osd_ids.stdout_lines }}"
       when:
-        - ansible_service_mgr == 'systemd'
         - not containerized_deployment
 
-    - name: restart containerized ceph osds with systemd
-      service:
+    - name: restart containerized ceph osd
+      systemd:
         name: ceph-osd@{{ item | basename }}
         state: restarted
         enabled: yes
+        daemon_reload: yes
       with_items: "{{ devices }}"
       when:
-        - ansible_service_mgr == 'systemd'
         - containerized_deployment
 
     - name: set_fact docker_exec_cmd_osd
@@ -359,27 +362,12 @@
   become: True
 
   pre_tasks:
-    - name: stop ceph mdss with upstart
-      service:
-        name: ceph-mds
-        state: stopped
-        args: id={{ ansible_hostname }}
-      when: ansible_service_mgr == 'upstart'
-
-    - name: stop ceph mdss with sysvinit
-      service:
-        name: ceph
-        state: stopped
-        args: mds
-      when: ansible_service_mgr == 'sysvinit'
-
-    - name: stop ceph mdss with systemd
-      service:
+    - name: stop ceph mds
+      systemd:
         name: ceph-mds@{{ ansible_hostname }}
         state: stopped
         enabled: yes
       when:
-        - ansible_service_mgr == 'systemd'
         - not containerized_deployment
 
   roles:
@@ -390,36 +378,21 @@
     - ceph-mds
 
   post_tasks:
-    - name: start ceph mdss with upstart
-      service:
-        name: ceph-mds
-        state: started
-        args: id={{ ansible_hostname }}
-      when: ansible_service_mgr == 'upstart'
-
-    - name: start ceph mdss with sysvinit
-      service:
-        name: ceph
-        state: started
-        args: mds
-      when: ansible_service_mgr == 'sysvinit'
-
-    - name: start ceph mdss with systemd
-      service:
+    - name: start ceph mds
+      systemd:
         name: ceph-mds@{{ ansible_hostname }}
         state: started
         enabled: yes
       when:
-        - ansible_service_mgr == 'systemd'
         - not containerized_deployment
 
-    - name: restart ceph mdss
-      service:
+    - name: restart ceph mds
+      systemd:
         name: ceph-mds@{{ ansible_hostname }}
         state: restarted
         enabled: yes
+        daemon_reload: yes
       when:
-        - ansible_service_mgr == 'systemd'
         - containerized_deployment
 
 
@@ -435,25 +408,12 @@
   become: True
 
   pre_tasks:
-    - name: stop ceph rgws with upstart
-      service:
-        name: ceph-radosgw
-        state: stopped
-      when: ansible_service_mgr == 'upstart'
-
-    - name: stop ceph rgws with sysvinit
-      service:
-        name: radosgw
-        state: stopped
-      when: ansible_service_mgr == 'sysvinit'
-
-    - name: stop ceph rgws with systemd
-      service:
+    - name: stop ceph rgw
+      systemd:
         name: ceph-radosgw@rgw.{{ ansible_hostname }}
         state: stopped
         enabled: yes
       when:
-        - ansible_service_mgr == 'systemd'
         - not containerized_deployment
 
   roles:
@@ -464,34 +424,123 @@
     - ceph-rgw
 
   post_tasks:
-    - name: start ceph rgws with upstart
-      service:
-        name: ceph-radosgw
-        state: started
-      when: ansible_service_mgr == 'upstart'
-
-    - name: start ceph rgws with sysvinit
-      service:
-        name: radosgw
-        state: started
-      when: ansible_service_mgr == 'sysvinit'
-
-    - name: start ceph rgws with systemd
-      service:
+    - name: start ceph rgw
+      systemd:
         name: ceph-radosgw@rgw.{{ ansible_hostname }}
         state: started
         enabled: yes
       when:
-        - ansible_service_mgr == 'systemd'
         - not containerized_deployment
 
-    - name: restart containerized ceph rgws with systemd
-      service:
+    - name: restart containerized ceph rgw
+      systemd:
         name: ceph-radosgw@rgw.{{ ansible_hostname }}
         state: restarted
         enabled: yes
+        daemon_reload: yes
       when:
-        - ansible_service_mgr == 'systemd'
+        - containerized_deployment
+
+
+- name: upgrade ceph rbd mirror node
+
+  vars:
+    upgrade_ceph_packages: True
+
+  hosts:
+    - "{{ rbd_mirror_group_name|default('rbdmirrors') }}"
+
+  serial: 1
+  become: True
+
+  pre_tasks:
+    # NOTE(leseb): these tasks have a 'failed_when: false'
+    # in case we run before luminous or after
+    - name: stop ceph rbd mirror before luminous
+      systemd:
+        name: "ceph-rbd-mirror@{{ ceph_rbd_mirror_local_user }}"
+        state: stopped
+        enabled: no
+      failed_when: false
+
+    - name: stop ceph rbd mirror for and after luminous
+      systemd:
+        name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
+        state: stopped
+        enabled: yes
+      failed_when: false
+
+  roles:
+    - ceph-defaults
+    - ceph-config
+    - { role: ceph-common, when: not containerized_deployment }
+    - { role: ceph-docker-common, when: containerized_deployment }
+    - ceph-rbd-mirror
+
+  post_tasks:
+    - name: start ceph rbd mirror
+      systemd:
+        name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
+        state: started
+        enabled: yes
+      when:
+        - not containerized_deployment
+
+    - name: restart containerized ceph rbd mirror
+      systemd:
+        name: ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}
+        state: restarted
+        enabled: yes
+        daemon_reload: yes
+      when:
+        - containerized_deployment
+
+
+- name: upgrade ceph nfs node
+
+  vars:
+    upgrade_ceph_packages: True
+
+  hosts:
+    - "{{ nfs_group_name|default('nfss') }}"
+
+  serial: 1
+  become: True
+
+  pre_tasks:
+    - name: stop ceph nfs
+      systemd:
+        name: nfs-ganesha
+        state: stopped
+        enabled: yes
+      when:
+        - not containerized_deployment
+
+  roles:
+    - ceph-defaults
+    - ceph-config
+    - { role: ceph-common, when: not containerized_deployment }
+    - { role: ceph-docker-common, when: containerized_deployment }
+    - ceph-nfs
+
+  post_tasks:
+    - name: start nfs gateway
+      systemd:
+        name: nfs-ganesha
+        state: started
+        enabled: yes
+      when:
+        - not containerized_deployment
+        - ceph_nfs_enable_service
+
+    - name: systemd restart nfs container
+      systemd:
+        name: ceph-nfs@{{ ceph_nfs_service_suffix | default(ansible_hostname) }}
+        state: restarted
+        enabled: yes
+        daemon_reload: yes
+      when:
+        - ceph_nfs_enable_service
         - containerized_deployment
 
 
@@ -512,53 +561,6 @@
     - { role: ceph-common, when: not containerized_deployment }
     - { role: ceph-docker-common, when: containerized_deployment }
     - ceph-client
-
-
-- name: upgrade ceph mgr node
-
-  vars:
-    upgrade_ceph_packages: True
-
-  hosts:
-    - "{{ mgr_group_name|default('mgrs') }}"
-
-  serial: 1
-  become: True
-
-  pre_tasks:
-    # this task has a failed_when: false to handle the scenario where no mgr existed before the upgrade
-    - name: stop ceph mgrs
-      service:
-        name: ceph-mgr@{{ ansible_hostname }}
-        state: stopped
-        enabled: yes
-      failed_when: false
-      when:
-        - not containerized_deployment
-
-  roles:
-    - ceph-defaults
-    - ceph-config
-    - { role: ceph-common, when: not containerized_deployment }
-    - { role: ceph-docker-common, when: containerized_deployment }
-    - { role: ceph-mgr, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
-
-  post_tasks:
-    - name: start ceph mgrs
-      service:
-        name: ceph-mgr@{{ ansible_hostname }}
-        state: started
-        enabled: yes
-      when:
-        - not containerized_deployment
-
-    - name: restart containerized ceph mgrs
-      service:
-        name: ceph-mgr@{{ ansible_hostname }}
-        state: restarted
-        enabled: yes
-      when:
-        - containerized_deployment
 
 
 - name: show ceph status
