@@ -182,7 +182,7 @@ An example::
 
 .. note::
     We will no longer accept pull requests that modify the ceph.conf template unless it helps the deployment. For simple configuration tweaks
-    please use the `ceph_conf_overrides` variable.
+    please use the ``ceph_conf_overrides`` variable.
 
 Full documentation for configuring each of the ceph daemon types are in the following sections.
 
