@@ -39,11 +39,9 @@ mon initial members = {% for host in groups[mon_group_name] %}
 mon host = {% if nb_mon > 0 %}
   {% for host in groups[mon_group_name] -%}
     {% if monitor_address_block | length > 0 %}
-      {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}
-      {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}]
-      {%- endif %}
+      {%- set host_addrs = hostvars[host]['ansible_all_' + ip_version + '_addresses'] -%}
+      {%- set monitor_address_block = monitor_address_block | ipaddr('address') -%}
+      {{ monitor_address_block | difference(monitor_address_block | difference(host_addrs)) | first | ipwrap }}
     {% elif hostvars[host]['monitor_address'] is defined and hostvars[host]['monitor_address'] != '0.0.0.0' -%}
       {% if ip_version == 'ipv4' -%}
         {{ hostvars[host]['monitor_address'] }}
@@ -69,11 +67,9 @@ fsid = {{ fsid }}
 mon host = {% if nb_mon > 0 %}
 {% for host in groups[mon_group_name] -%}
     {% if monitor_address_block | length > 0 %}
-      {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}
-      {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}]
-      {%- endif %}
+      {%- set host_addrs = hostvars[host]['ansible_all_' + ip_version + '_addresses'] -%}
+      {%- set monitor_address_block = monitor_address_block | ipaddr('address') -%}
+      {{ monitor_address_block | difference(monitor_address_block | difference(host_addrs)) | first | ipwrap }}
     {% elif hostvars[host]['monitor_address'] is defined and hostvars[host]['monitor_address'] != '0.0.0.0' -%}
       {% if ip_version == 'ipv4' -%}
         {{ hostvars[host]['monitor_address'] }}
