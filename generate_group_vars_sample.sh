@@ -49,7 +49,11 @@ generate_group_vars_file () {
 
 rhcs_edits () {
   tail -n +1 rhcs_edits.txt | while IFS= read -r option; do
-    sed -i "s|#${option% *} .*|${option}|" group_vars/rhcs.yml.sample
+    if [ "$(uname)" == "Darwin" ]; then
+        sed -i "" "s|#${option% *} .*|${option}|" group_vars/rhcs.yml.sample
+    elif [ "$(uname -s)" == "Linux" ]; then
+        sed -i "s|#${option% *} .*|${option}|" group_vars/rhcs.yml.sample
+    fi
   done
 }
 
