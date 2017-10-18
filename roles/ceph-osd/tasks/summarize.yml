@@ -1,0 +1,11 @@
+---
+- name: get osd up and in count
+  shell: |
+    ceph --name client.bootstrap-osd --keyring /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_up_osds"])'
+  changed_when: false
+  failed_when: false
+  register: osd_count
+
+- debug:
+    msg: "The number of OSDs UP is different than the given number of devices, please check your cluster!"
+  when: devices|length != osd_count.stdout
