@@ -10,26 +10,41 @@
 # allow 2-digit partition numbers so fast SSDs can be shared by > 9 disks
 # for SSD journals.
 
+# After devices discovery, sanity check the devices, dedicated_devices, osd_scenario
+- name: verify devices and dedicaed_devices in non-collocation scenario
+  fail:
+    msg: "non-collocation needs devices in devices and dedicated_devices lists"
+  when:
+    - non_collocated
+    - devices|length == 0 or dedicated_devices|length == 0
+
+- name: verify devices in collocation scenario
+  fail:
+    msg: "collocation needs devices in devices list"
+  when:
+    - collocated
+    - devices|length == 0
+
 - name: resolve dedicated device link(s)
   command: readlink -f {{ item }}
   changed_when: false
   with_items: "{{ dedicated_devices }}"
   register: dedicated_devices_prepare_canonicalize
   when:
-    - osd_scenario == 'non-collocated'
+    - non_collocated
 
 - name: set_fact build dedicated_devices from resolved symlinks
   set_fact:
     dedicated_devices_tmp: "{{ dedicated_devices_tmp | default([]) + [ item.stdout ] }}"
   with_items: "{{ dedicated_devices_prepare_canonicalize.results }}"
   when:
-    - osd_scenario == 'non-collocated'
+    - non_collocated
 
 - name: set_fact build final dedicated_devices list
   set_fact:
     dedicated_devices: "{{ dedicated_devices_tmp | reject('search','/dev/disk') | list }}"
   when:
-    - osd_scenario == 'non-collocated'
+    - non_collocated
 
 - name: include check_devices_static.yml
   include: check_devices_static.yml

@@ -85,13 +85,19 @@
     - not osd_auto_discovery
     - dedicated_devices|length == 0
 
-- name: verify auto discovery populates devices and journal devices
+- name: verify non-collocation scenario and the devices and dedicated_devices lists
   fail:
-    msg: "auto discovery did not populate devices and journal devices"
+    msg: "non-collocation scenario has mismatch in osd_auto_discovery, devices, and dedicated_devices lists"
   when:
-    - osd_auto_discovery
-    - (collocated and devices|length == 0) or
-      (non_collocated and devices|length == 0 and dedicated_devices|length == 0)
+    - non_collocated
+    - (osd_auto_discovery and (devices|length > 0 or dedicated_devices|length > 0)) or (not osd_auto_discovery and (devices|length == 0 or dedicated_devices|length == 0))
+
+- name: verify collocation scenario and the devices list
+  fail:
+    msg: "collocation scenario has mismatch in osd_auto_discovery and devices list"
+  when:
+    - collocated
+    - (osd_auto_discovery and devices|length > 0) or (not osd_auto_discovery and devices|length == 0)
 
 - name: check if bluestore is supported by the selected ceph version
   fail:
