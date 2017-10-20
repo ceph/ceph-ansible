@@ -16,6 +16,8 @@
 
 - name: confirm whether user really meant to upgrade the cluster
   hosts: localhost
+  vars:
+    - mgr_group_name: mgrs
 
   vars_prompt:
     - name: ireallymeanit
@@ -24,14 +26,20 @@
       private: no
 
   tasks:
-  - name: exit playbook, if user did not mean to upgrade cluster
-    fail:
-      msg: >
-        "Exiting rolling_update.yml playbook, cluster was NOT upgraded.
-         To upgrade the cluster, either say 'yes' on the prompt or
-         use `-e ireallymeanit=yes` on the command line when
-         invoking the playbook"
-    when: ireallymeanit != 'yes'
+    - name: exit playbook, if user did not mean to upgrade cluster
+      fail:
+        msg: >
+          "Exiting rolling_update.yml playbook, cluster was NOT upgraded.
+           To upgrade the cluster, either say 'yes' on the prompt or
+           use `-e ireallymeanit=yes` on the command line when
+           invoking the playbook"
+      when: ireallymeanit != 'yes'
+
+    - name: fail if no mgr host is present in the inventory
+      fail:
+        msg: "Please add a mgr host to your inventory."
+      when:
+        - groups.get(mgr_group_name, []) | length == 0
 
 
 - name: gather facts and check the init system
@@ -47,8 +55,24 @@
     - "{{ client_group_name|default('clients') }}"
 
   become: True
+  gather_facts: False
+  vars:
+    delegate_facts_host: True
   tasks:
     - debug: msg="gather facts on all Ceph hosts for following reference"
+
+    - name: gather facts
+      setup:
+      when:
+        - not delegate_facts_host | bool
+
+    - name: gather and delegate facts
+      setup:
+      delegate_to: "{{ item }}"
+      delegate_facts: True
+      with_items: "{{ groups['all'] }}"
+      when:
+        - delegate_facts_host | bool
 
     - set_fact: rolling_update=true
 
@@ -89,9 +113,9 @@
 
   roles:
     - ceph-defaults
-    - ceph-config
     - { role: ceph-common, when: not containerized_deployment }
     - { role: ceph-docker-common, when: containerized_deployment }
+    - ceph-config
     - ceph-mon
 
   post_tasks:
@@ -175,10 +199,12 @@
 
   roles:
     - ceph-defaults
-    - ceph-config
     - { role: ceph-common, when: not containerized_deployment }
     - { role: ceph-docker-common, when: containerized_deployment }
-    - { role: ceph-mgr, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
+    - ceph-config
+    - { role: ceph-mgr,
+        when: "(ceph_release_num[ceph_release] >= ceph_release_num.luminous) or
+               (ceph_release_num[ceph_release] < ceph_release_num.luminous and rolling_update)" }
 
   post_tasks:
     - name: start ceph mgr
@@ -249,9 +275,9 @@
 
   roles:
     - ceph-defaults
-    - ceph-config
     - { role: ceph-common, when: not containerized_deployment }
     - { role: ceph-docker-common, when: containerized_deployment }
+    - ceph-config
     - ceph-osd
 
   post_tasks:
@@ -372,9 +398,9 @@
 
   roles:
     - ceph-defaults
-    - ceph-config
     - { role: ceph-common, when: not containerized_deployment }
     - { role: ceph-docker-common, when: containerized_deployment }
+    - ceph-config
     - ceph-mds
 
   post_tasks:
@@ -418,9 +444,9 @@
 
   roles:
     - ceph-defaults
-    - ceph-config
     - { role: ceph-common, when: not containerized_deployment }
     - { role: ceph-docker-common, when: containerized_deployment }
+    - ceph-config
     - ceph-rgw
 
   post_tasks:
@@ -472,9 +498,9 @@
 
   roles:
     - ceph-defaults
-    - ceph-config
     - { role: ceph-common, when: not containerized_deployment }
     - { role: ceph-docker-common, when: containerized_deployment }
+    - ceph-config
     - ceph-rbd-mirror
 
   post_tasks:
@@ -518,10 +544,12 @@
 
   roles:
     - ceph-defaults
-    - ceph-config
     - { role: ceph-common, when: not containerized_deployment }
     - { role: ceph-docker-common, when: containerized_deployment }
-    - ceph-nfs
+    - ceph-config
+    - { role: ceph-nfs,
+        when: "(ceph_release_num[ceph_release] >= ceph_release_num.luminous) or
+               (ceph_release_num[ceph_release] < ceph_release_num.luminous and rolling_update)" }
 
   post_tasks:
     - name: start nfs gateway
@@ -557,9 +585,9 @@
 
   roles:
     - ceph-defaults
-    - ceph-config
     - { role: ceph-common, when: not containerized_deployment }
     - { role: ceph-docker-common, when: containerized_deployment }
+    - ceph-config
     - ceph-client
 
 
