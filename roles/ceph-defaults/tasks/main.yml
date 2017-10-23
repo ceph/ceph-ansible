@@ -1,6 +1,49 @@
 ---
 - name: include check_socket.yml
   include: check_socket.yml
+  static: False
+  when:
+    - not prechecks|default(false)
 
 - name: include facts.yml
   include: facts.yml
+  static: False
+  when:
+    - not prechecks|default(false)
+
+- name: include ansible_checks.yml
+  include: ansible_checks.yml
+  static: False
+  when:
+    - prechecks|default(false)
+
+- name: include system_checks.yml
+  include: system_checks.yml
+  static: False
+  when:
+    - prechecks|default(false)
+
+- name: include firewall_checks.yml
+  include: firewall_checks.yml
+  static: False
+  when:
+    - prechecks|default(false)
+
+- name: include ceph_install_checks.yml
+  include: ceph_install_checks.yml
+  static: False
+  when:
+    - prechecks|default(false)
+    - not containerized_deployment
+
+- name: include ceph_conf_checks.yml
+  include: ceph_conf_checks.yml
+  static: False
+  when:
+    - prechecks|default(false)
+
+- name: include ceph_osd_checks.yml
+  include: ceph_osd_checks.yml
+  static: False
+  when:
+    - prechecks|default(false)
