@@ -1,0 +1,25 @@
+---
+- name: configure TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES for debian
+  lineinfile:
+    dest: "{{ etc_default_ceph.stat.isdir | ternary('/etc/default/ceph/ceph', '/etc/default/ceph') }}"
+    insertafter: EOF
+    create: yes
+    regexp: "^TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES="
+    line: "TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }}"
+  when:
+    - ansible_os_family == 'Debian'
+    - etc_default_ceph.stat.exists
+  notify:
+    - restart ceph osds
+
+- name: configure TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES for redhat
+  lineinfile:
+    dest: "/etc/sysconfig/ceph"
+    insertafter: EOF
+    create: yes
+    regexp: "^TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES="
+    line: "TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }}"
+  when:
+    - ansible_os_family == 'RedHat'
+  notify:
+    - restart ceph osds
