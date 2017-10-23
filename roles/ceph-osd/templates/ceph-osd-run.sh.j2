@@ -62,6 +62,9 @@ expose_partitions "$1"
   {% endif -%}
   -e CLUSTER={{ cluster }} \
   -e OSD_DEVICE=/dev/${1} \
+  {% if (ceph_tcmalloc_max_total_thread_cache | int) > 0 and osd_objectstore == 'filestore' -%}
+  -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
+  {% endif -%}
   -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE \
   {{ ceph_osd_docker_extra_env }} \
   --name=ceph-osd-{{ ansible_hostname }}-${1} \
