@@ -1,0 +1,50 @@
+---
+- name: install jemalloc for debian
+  apt:
+    name: "libjemalloc1"
+    update_cache: no
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - ansible_os_family == 'Debian'
+
+- name: install jemalloc for redhat
+  package:
+    name: "jemalloc"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - ansible_os_family == 'RedHat'
+
+- name: configure LD_PRELOAD for jemalloc for debian
+  lineinfile:
+    dest: "{{ etc_default_ceph.stat.isdir | ternary('/etc/default/ceph/ceph', '/etc/default/ceph') }}"
+    insertafter: EOF
+    create: yes
+    regexp: "^LD_PRELOAD="
+    line: "LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
+  when:
+    - etc_default_ceph.stat.exists
+    - ansible_os_family == 'Debian'
+  notify:
+    - restart ceph mons
+    - restart ceph osds
+    - restart ceph mdss
+    - restart ceph rgws
+    - restart ceph mgrs
+    - restart ceph rbdmirrors
+
+- name: configure LD_PRELOAD for jemalloc for redhat
+  lineinfile:
+    dest: "/etc/sysconfig/ceph"
+    insertafter: EOF
+    create: yes
+    regexp: "^LD_PRELOAD="
+    line: "LD_PRELOAD=/usr/lib64/libjemalloc.so.1"
+  when:
+    - ansible_os_family == 'RedHat'
+  notify:
+    - restart ceph mons
+    - restart ceph osds
+    - restart ceph mdss
+    - restart ceph rgws
+    - restart ceph mgrs
+    - restart ceph rbdmirrors
