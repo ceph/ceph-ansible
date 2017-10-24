@@ -4,9 +4,51 @@
   with_items: "{{ lvm_volumes }}"
   when:
     - item.journal_vg is not defined
+    - osd_objectstore == 'filestore'
 
 - name: use ceph-volume to create filestore osds with dedicated lv journals
   command: "ceph-volume lvm create --filestore --data {{ item.data_vg }}/{{ item.data }} --journal {{item.journal_vg }}/{{ item.journal }}"
   with_items: "{{ lvm_volumes }}"
   when:
     - item.journal_vg is defined
+    - osd_objectstore == 'filestore'
+
+- name: use ceph-volume to create bluestore osds with db and wal
+  command: "ceph-volume lvm create --bluestore --data {{ item.data_vg }}/{{ item.data }} --block.wal {{ item.wal_vg }}/{{ item.wal }} --block.db {{ item.block_vg }}/{{ item.block }}"
+  with_items: "{{ lvm_volumes }}"
+  when:
+    - osd_objectstore == 'bluestore'
+    - item.wal is defined
+    - item.wal_vg is defined
+    - item.db is defined
+    - item.db_vg is defined
+
+- name: use ceph-volume to create bluestore osds with db only
+  command: "ceph-volume lvm create --bluestore --data {{ item.data_vg }}/{{ item.data }} --block.db {{ item.block_vg }}/{{ item.block }}"
+  with_items: "{{ lvm_volumes }}"
+  when:
+    - osd_objectstore == 'bluestore'
+    - item.wal is not defined
+    - item.wal_vg is not defined
+    - item.db is defined
+    - item.db_vg is defined
+
+- name: use ceph-volume to create bluestore osds with wal only
+  command: "ceph-volume lvm create --bluestore --data {{ item.data_vg }}/{{ item.data }} --block.wal {{ item.wal_vg }}/{{ item.wal }}"
+  with_items: "{{ lvm_volumes }}"
+  when:
+    - osd_objectstore == 'bluestore'
+    - item.wal is defined
+    - item.wal_vg is defined
+    - item.db is not defined
+    - item.db_vg is not defined
+
+- name: use ceph-volume to create bluestore osds with just a data device
+  command: "ceph-volume lvm create --bluestore --data {{ item.data_vg }}/{{ item.data }}"
+  with_items: "{{ lvm_volumes }}"
+  when:
+    - osd_objectstore == 'bluestore'
+    - item.wal is not defined
+    - item.wal_vg is not defined
+    - item.db is not defined
+    - item.db_vg is not defined
