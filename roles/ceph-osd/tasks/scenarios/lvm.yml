@@ -1,6 +1,6 @@
 ---
 - name: use ceph-volume to create filestore osds with dedicated journals
-  command: "ceph-volume lvm create --filestore --data {{ item.data_vg }}/{{ item.data }} --journal {{ item.journal }}"
+  command: "ceph-volume --cluster {{ cluster }} lvm create --filestore --data {{ item.data_vg }}/{{ item.data }} --journal {{ item.journal }}"
   environment:
     CEPH_VOLUME_DEBUG: 1
   with_items: "{{ lvm_volumes }}"
@@ -9,7 +9,7 @@
     - osd_objectstore == 'filestore'
 
 - name: use ceph-volume to create filestore osds with dedicated lv journals
-  command: "ceph-volume lvm create --filestore --data {{ item.data_vg }}/{{ item.data }} --journal {{item.journal_vg }}/{{ item.journal }}"
+  command: "ceph-volume --cluster {{ cluster }} lvm create --filestore --data {{ item.data_vg }}/{{ item.data }} --journal {{item.journal_vg }}/{{ item.journal }}"
   environment:
     CEPH_VOLUME_DEBUG: 1
   with_items: "{{ lvm_volumes }}"
@@ -18,7 +18,7 @@
     - osd_objectstore == 'filestore'
 
 - name: use ceph-volume to create bluestore osds with db and wal
-  command: "ceph-volume lvm create --bluestore --data {{ item.data_vg }}/{{ item.data }} --block.wal {{ item.wal_vg }}/{{ item.wal }} --block.db {{ item.block_vg }}/{{ item.block }}"
+  command: "ceph-volume --cluster {{ cluster }} lvm create --bluestore --data {{ item.data_vg }}/{{ item.data }} --block.wal {{ item.wal_vg }}/{{ item.wal }} --block.db {{ item.db_vg }}/{{ item.db }}"
   environment:
     CEPH_VOLUME_DEBUG: 1
   with_items: "{{ lvm_volumes }}"
@@ -30,7 +30,7 @@
     - item.db_vg is defined
 
 - name: use ceph-volume to create bluestore osds with db only
-  command: "ceph-volume lvm create --bluestore --data {{ item.data_vg }}/{{ item.data }} --block.db {{ item.block_vg }}/{{ item.block }}"
+  command: "ceph-volume --cluster {{ cluster }} lvm create --bluestore --data {{ item.data_vg }}/{{ item.data }} --block.db {{ item.db_vg }}/{{ item.db }}"
   environment:
     CEPH_VOLUME_DEBUG: 1
   with_items: "{{ lvm_volumes }}"
@@ -42,7 +42,7 @@
     - item.db_vg is defined
 
 - name: use ceph-volume to create bluestore osds with wal only
-  command: "ceph-volume lvm create --bluestore --data {{ item.data_vg }}/{{ item.data }} --block.wal {{ item.wal_vg }}/{{ item.wal }}"
+  command: "ceph-volume --cluster {{ cluster }} lvm create --bluestore --data {{ item.data_vg }}/{{ item.data }} --block.wal {{ item.wal_vg }}/{{ item.wal }}"
   environment:
     CEPH_VOLUME_DEBUG: 1
   with_items: "{{ lvm_volumes }}"
@@ -54,7 +54,7 @@
     - item.db_vg is not defined
 
 - name: use ceph-volume to create bluestore osds with just a data device
-  command: "ceph-volume lvm create --bluestore --data {{ item.data_vg }}/{{ item.data }}"
+  command: "ceph-volume --cluster {{ cluster }} lvm create --bluestore --data {{ item.data_vg }}/{{ item.data }}"
   environment:
     CEPH_VOLUME_DEBUG: 1
   with_items: "{{ lvm_volumes }}"
