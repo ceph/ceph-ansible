@@ -70,6 +70,15 @@
     docker_exec_client_cmd:
   when: docker_exec_client_cmd == 'ceph'
 
+- name: chmod key(s)
+  file:
+    path: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
+    mode: "{{ item.mode|default(omit) }}" # if mode not in list, uses mode from ps umask
+  with_items: "{{ keys }}"
+  when:
+    - cephx
+    - keys | length > 0
+
 - name: setfacl for key(s)
   acl:
     path: "/etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
@@ -79,15 +88,6 @@
     - "{{ keys }}"
     - acls
     - skip_missing: true
-  when:
-    - cephx
-    - keys | length > 0
-
-- name: chmod key(s)
-  file:
-    path: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
-    mode: "{{ item.mode }}"
-  with_items: "{{ keys }}"
   when:
     - cephx
     - keys | length > 0
