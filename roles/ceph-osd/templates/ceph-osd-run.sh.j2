@@ -33,6 +33,11 @@ expose_partitions "$1"
   -v /dev:/dev \
   -v /etc/localtime:/etc/localtime:ro \
   -v /var/lib/ceph:/var/lib/ceph \
+  {% if docker image contains centos -%}
+  -v /etc/sysconfig/ceph:/etc/sysconfig/ceph
+  {% elif docker image contains ubuntu -%}
+  -v /etc/default/ceph:/etc/default/ceph
+  {% endif -%}
   -v /etc/ceph:/etc/ceph \
   $DOCKER_ENV \
   {% if ansible_distribution == 'Ubuntu' -%}
