@@ -50,6 +50,15 @@
     - openstack_config
     - item.0 != groups[mon_group_name] | last
 
+- name: chmod openstack key(s)
+  file:
+    path: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
+    mode: "{{ item.mode|default(omit) }}" # if mode not in list, uses mode from ps umask
+  with_items: "{{ openstack_keys }}"
+  when:
+    - openstack_config
+    - cephx
+    
 - name: setfacl for openstack key(s)
   acl:
     path: "/etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
@@ -59,15 +68,6 @@
     - "{{ openstack_keys }}"
     - acls
     - skip_missing: true
-  when:
-    - openstack_config
-    - cephx
-
-- name: chmod openstack key(s)
-  file:
-    path: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
-    mode: "{{ item.mode }}"
-  with_items: "{{ openstack_keys }}"
   when:
     - openstack_config
     - cephx
