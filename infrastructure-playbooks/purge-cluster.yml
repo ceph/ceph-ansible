@@ -195,6 +195,7 @@
 
   vars:
     osd_group_name: osds
+    reboot_osd_node: False
 
   hosts:
     - "{{ osd_group_name|default('osds') }}"
@@ -352,7 +353,9 @@
       - restart machine
       - wait for server to boot
       - remove data
-    when: remove_osd_mountpoints.failed is defined
+    when:
+      - reboot_osd_node
+      - remove_osd_mountpoints.failed is defined
 
   - name: see if ceph-disk is installed
     shell: "which ceph-disk"
