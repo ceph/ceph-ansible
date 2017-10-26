@@ -21,6 +21,7 @@ def node(host, request):
     docker = ansible_vars.get("docker")
     osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
     lvm_scenario = ansible_vars.get("osd_scenario") == 'lvm'
+    actual_ceph_release = host.ansible('command', 'ceph --version', check=False)['stdout'].split(' ')[4]
     ceph_release_num = {
       'jewel': 10,
       'kraken': 11,
@@ -48,10 +49,10 @@ def node(host, request):
     if node_type == "nfss" and ceph_stable_release == "jewel":
         pytest.skip("nfs nodes can not be tested with ceph release jewel")
 
-    if request.node.get_marker("from_luminous") and ceph_release_num[ceph_stable_release] < ceph_release_num['luminous']:
+    if request.node.get_marker("from_luminous") and ceph_release_num[actual_ceph_release] < ceph_release_num['luminous']:
         pytest.skip("This test is only valid for releases starting from Luminous and above")
 
-    if request.node.get_marker("before_luminous") and ceph_release_num[ceph_stable_release] >= ceph_release_num['luminous']:
+    if request.node.get_marker("before_luminous") and ceph_release_num[actual_ceph_release] >= ceph_release_num['luminous']:
         pytest.skip("This test is only valid for release before Luminous")
 
     journal_collocation_test = ansible_vars.get("osd_scenario") == "collocated"
