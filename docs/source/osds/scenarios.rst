@@ -170,14 +170,16 @@ is only available when the ceph release is Luminous or newer.
    The creation of the logical volumes is not supported by ``ceph-ansible``, ``ceph-volume``
    only creates OSDs from existing logical volumes.
 
-Use ``osd_scenario: lvm`` to enable this scenario. Currently we only support dedicated journals
-when using lvm, not collocated journals.
 
-To configure this scenario use the ``lvm_volumes`` config option. ``lvm_volumes``  is a list of dictionaries which can
-contain a ``data``, ``journal``, ``data_vg`` and ``journal_vg`` key. The ``data`` key represents the logical volume name that is to be used for your OSD
-data. The ``journal`` key represents the logical volume name, device or partition that will be used for your OSD journal. The ``data_vg``
-key represents the volume group name that your ``data`` logical volume resides on. This key is required for purging of OSDs created
-by this scenario. The ``journal_vg`` key is optional and should be the volume group name that your journal lv resides on, if applicable.
+``lvm_volumes`` is the config option that needs to be defined to configure the
+mappings for devices to be deployed. It is a list of dictionaries which expects
+a volume name and a volume group for logical volumes, but can also accept
+a device in the case of ``filestore`` for the ``journal``.
+
+The ``data`` key represents the logical volume name that is to be used for your
+OSD data.  The ``data_vg`` key represents the volume group name that your
+``data`` logical volume resides on. This key is required for purging of OSDs
+created by this scenario.
 
 .. note::
    Any logical volume or logical group used in ``lvm_volumes`` must be a name and not a path.
@@ -185,8 +187,30 @@ by this scenario. The ``journal_vg`` key is optional and should be the volume gr
 .. note::
    You can not use the same journal for many OSDs.
 
+
+``filestore``
+^^^^^^^^^^^^^
+There is filestore support which can be enabled with::
+
+        osd_objectstore: filestore
+
+To configure this scenario use the ``lvm_volumes`` config option.
+``lvm_volumes``  is a list of dictionaries which expects a volume name and
+a volume group for logical volumes, but can also accept a device in the case of
+``filestore`` for the ``journal``.
+
+The following keys are accepted for a ``filestore`` deployment:
+
+* ``data``
+* ``data_vg``
+* ``journal``
+* ``journal_vg`` (not required if ``journal`` is a device and not a logical volume)
+
+The ``journal`` key represents the logical volume name, device or partition that will be used for your OSD journal.
+
 For example, a configuration to use the ``lvm`` osd scenario would look like::
-    
+
+    osd_objectstore: filestore
     osd_scenario: lvm
     lvm_volumes:
       - data: data-lv1
@@ -199,3 +223,43 @@ For example, a configuration to use the ``lvm`` osd scenario would look like::
       - data: data-lv3
         journal: /dev/sdb1
         data_vg: vg2
+
+
+``bluestore``
+^^^^^^^^^^^^^
+This scenario allows a combination of devices to be used in an OSD.
+``bluestore`` can work just with a single "block" device (specified by the
+``data`` and ``data_vg``) or additionally with a ``block.wal`` and ``block.db``
+(interchangeably)
+
+The following keys are accepted for a ``bluestore`` deployment:
+
+* ``data`` (required)
+* ``data_vg`` (required)
+* ``db`` (optional for ``block.db``)
+* ``db_vg`` (optional for ``block.db``)
+* ``wal`` (optional for ``block.wal``)
+* ``wal_vg`` (optional for ``block.wal``)
+
+A ``bluestore`` lvm deployment, for all four different combinations supported
+could look like::
+
+    osd_objectstore: bluestore
+    osd_scenario: lvm
+    lvm_volumes:
+      - data: data-lv1
+        data_vg: vg1
+      - data: data-lv2
+        data_vg: vg1
+        wal: wal-lv1
+        wal_vg: vg2
+      - data: data-lv3
+        data_vg: vg2
+        db: db-lv1
+        db_vg: vg2
+      - data: data-lv4
+        data_vg: vg4
+        db: db-lv4
+        db_vg: vg4
+        wal: wal-lv4
+        wal_vg: vg4
