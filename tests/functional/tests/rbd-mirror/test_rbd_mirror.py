@@ -30,6 +30,13 @@ class TestRbdMirrors(object):
         )
         assert host.service(service_name).is_running
 
+    @pytest.mark.from_luminous
+    def test_rbd_mirror_service_is_running_from_luminous(self, node, host):
+        service_name = "ceph-rbd-mirror@rbd-mirror.{hostname}".format(
+            hostname=node["vars"]["inventory_hostname"]
+        )
+        assert host.service(service_name).is_running
+
     @pytest.mark.no_docker
     @pytest.mark.before_luminous
     def test_rbd_mirror_service_is_enabled_before_luminous(self, node, host):
