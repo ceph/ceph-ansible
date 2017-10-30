@@ -154,14 +154,14 @@ from the root of the project) will list them, shortened for brevity::
 
     $ tox -l
     ...
-    jewel-ansible2.2-centos7_cluster
+    luminous-ansible2.4-centos7_cluster
     ...
 
  These scenarios are made from different variables, in the above command there
  are 3:
 
 * jewel: the Ceph version to test
-* ansible2.2: the Ansible version to install
+* ansible2.4: the Ansible version to install
 * ``centos7_cluster``: the name of the scenario
 
 The last one is important in the *wiring up* of the scenario. It is a variable

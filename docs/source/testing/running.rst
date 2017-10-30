@@ -36,15 +36,15 @@ To run a single scenario, make sure it is available (should be defined from
 
     tox -l
 
-In this example, we will use the ``kraken-ansible2.2-xenial_cluster`` one.  The
+In this example, we will use the ``luminous-ansible2.4-xenial_cluster`` one.  The
 harness defaults to ``VirtualBox`` as the backend, so if you have that
 installed in your system then this command should just work::
 
-    tox -e kraken-ansible2.2-xenial_cluster
+    tox -e luminous-ansible2.4-xenial_cluster
 
 And for libvirt it would be::
 
-    tox -e kraken-ansible2.2-xenial_cluster -- --provider=libvirt
+    tox -e luminous-ansible2.4-xenial_cluster -- --provider=libvirt
 
 
 .. warning:: Depending on the type of scenario and resources available, running
@@ -60,9 +60,9 @@ end.
 
 The output would look something similar to this trimmed version::
 
-    kraken-ansible2.2-xenial_cluster create: /Users/alfredo/python/upstream/ceph-ansible/.tox/kraken-ansible2.2-xenial_cluster
-    kraken-ansible2.2-xenial_cluster installdeps: ansible==2.2.2, -r/Users/alfredo/python/upstream/ceph-ansible/tests/requirements.txt
-    kraken-ansible2.2-xenial_cluster runtests: commands[0] | vagrant up --no-provision --provider=virtualbox
+    luminous-ansible2.4-xenial_cluster create: /Users/alfredo/python/upstream/ceph-ansible/.tox/luminous-ansible2.4-xenial_cluster
+    luminous-ansible2.4-xenial_cluster installdeps: ansible==2.4.1, -r/Users/alfredo/python/upstream/ceph-ansible/tests/requirements.txt
+    luminous-ansible2.4-xenial_cluster runtests: commands[0] | vagrant up --no-provision --provider=virtualbox
     Bringing machine 'client0' up with 'virtualbox' provider...
     Bringing machine 'rgw0' up with 'virtualbox' provider...
     Bringing machine 'mds0' up with 'virtualbox' provider...
@@ -91,9 +91,9 @@ playbook(s)::
 Once the whole environment is all running the tests will be sent out to the
 hosts, with output similar to this::
 
-    kraken-ansible2.2-xenial_cluster runtests: commands[4] | testinfra -n 4 --sudo -v --connection=ansible --ansible-inventory=/Users/alfredo/python/upstream/ceph-ansible/tests/functional/ubuntu/16.04/cluster/hosts /Users/alfredo/python/upstream/ceph-ansible/tests/functional/tests
+    luminous-ansible2.4-xenial_cluster runtests: commands[4] | testinfra -n 4 --sudo -v --connection=ansible --ansible-inventory=/Users/alfredo/python/upstream/ceph-ansible/tests/functional/ubuntu/16.04/cluster/hosts /Users/alfredo/python/upstream/ceph-ansible/tests/functional/tests
     ============================ test session starts ===========================
-    platform darwin -- Python 2.7.8, pytest-3.0.7, py-1.4.33, pluggy-0.4.0 -- /Users/alfredo/python/upstream/ceph-ansible/.tox/kraken-ansible2.2-xenial_cluster/bin/python
+    platform darwin -- Python 2.7.8, pytest-3.0.7, py-1.4.33, pluggy-0.4.0 -- /Users/alfredo/python/upstream/ceph-ansible/.tox/luminous-ansible2.4-xenial_cluster/bin/python
     cachedir: ../../../../.cache
     rootdir: /Users/alfredo/python/upstream/ceph-ansible/tests, inifile: pytest.ini
     plugins: testinfra-1.5.4, xdist-1.15.0
@@ -122,7 +122,7 @@ hosts, with output similar to this::
 
 Finally the whole environment gets torn down::
 
-    kraken-ansible2.2-xenial_cluster runtests: commands[5] | vagrant destroy --force
+    luminous-ansible2.4-xenial_cluster runtests: commands[5] | vagrant destroy --force
     ==> osd0: Forcing shutdown of VM...
     ==> osd0: Destroying VM and associated drives...
     ==> mon2: Forcing shutdown of VM...
@@ -142,6 +142,6 @@ Finally the whole environment gets torn down::
 And a brief summary of the scenario(s) that ran is displayed::
 
     ________________________________________________ summary _________________________________________________
-      kraken-ansible2.2-xenial_cluster: commands succeeded
+      luminous-ansible2.4-xenial_cluster: commands succeeded
       congratulations :)
 
