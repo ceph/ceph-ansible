@@ -60,7 +60,7 @@ push () {
 }
 
 create_pr () {
-  hub pull-request -h ceph/ceph-ansible:"$bkp_branch" -b "$stable_branch" -m "[skip ci] $bkp_branch"
+  hub pull-request -h ceph/ceph-ansible:"$bkp_branch" -b "$stable_branch" -F -
 }
 
 cleanup () {
@@ -88,5 +88,9 @@ verify_commit
 checkout
 cherry_pick
 push
-create_pr
+create_pr <<MSG
+[skip ci] backport of ${3}
+
+Backport of #${3}
+MSG
 cleanup
