@@ -66,9 +66,9 @@ If a change should be backported to a ``stable-*`` Git branch:
 - Determine the latest available stable branch:
   ``git branch -r --list "origin/stable-[0-9].[0-9]" | sort -r | sed 1q``
 - Create a new local branch for your PR, based on the stable branch:
-  ``git checkout --no-track -b my-backported-change origin/stable-2.2``
+  ``git checkout --no-track -b my-backported-change origin/stable-3.0``
 - Cherry-pick your change: ``git cherry-pick -x (your-sha1)``
-- Create a new pull request against the ``stable-2.2`` branch.
+- Create a new pull request against the ``stable-3.0`` branch.
 - Ensure that your PR's title has the prefix "backport:", so it's clear
   to reviewers what this is about.
 - Add a comment in your backport PR linking to the original (master) PR.
@@ -79,7 +79,7 @@ regressions.
 Once this is done, one of the project maintainers will tag the tip of the
 stable branch with your change. For example::
 
-   git checkout stable-2.2
+   git checkout stable-3.0
    git pull --ff-only
-   git tag v2.2.5
-   git push origin v2.2.5
+   git tag v3.0.12
+   git push origin v3.0.12

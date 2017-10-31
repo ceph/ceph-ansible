@@ -17,7 +17,7 @@ has the following required configuration options:
 This scenario has the following optional configuration options:
 
 - ``osd_objectstore``: defaults to ``filestore`` if not set. Available options are ``filestore`` or ``bluestore``.
-  You can only select ``bluestore`` with the ceph release is Luminous or greater.
+  You can only select ``bluestore`` if the ceph release is Luminous or greater.
 
 - ``dmcrypt``: defaults to ``false`` if not set.
 
