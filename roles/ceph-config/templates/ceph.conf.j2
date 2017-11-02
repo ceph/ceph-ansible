@@ -50,11 +50,19 @@ mon host = {% if nb_mon > 0 %}
       {%- elif ip_version == 'ipv6' -%}
         [{{ hostvars[host]['monitor_address'] }}]
       {%- endif %}
-    {%- else -%}
+    {%- elif hostvars[host]['monitor_interface'] is defined -%}
+      {% set interface = 'ansible_' + hostvars[host]['monitor_interface'] %}
       {% if ip_version == 'ipv4' -%}
-       {{ hostvars[host]['ansible_' + hostvars[host]['monitor_interface']][ip_version]['address'] }}
+        {{ hostvars[host][interface][ip_version]['address'] }}
       {%- elif ip_version == 'ipv6' -%}
-       [{{ hostvars[host]['ansible_' + hostvars[host]['monitor_interface']][ip_version][0]['address'] }}]
+        [{{ hostvars[host][interface][ip_version][0]['address'] }}]
+      {%- endif %}
+    {%- else -%}
+      {% set interface = 'ansible_' + monitor_interface %}
+      {% if ip_version == 'ipv4' -%}
+        {{ hostvars[host][interface][ip_version]['address'] }}
+      {%- elif ip_version == 'ipv6' -%}
+        [{{ hostvars[host][interface][ip_version][0]['address'] }}]
       {%- endif %}
     {%- endif %}
    {% if not loop.last -%},{%- endif %}
@@ -80,12 +88,19 @@ mon host = {% if nb_mon > 0 %}
       {%- elif ip_version == 'ipv6' -%}
         [{{ hostvars[host]['monitor_address'] }}]
       {%- endif %}
-    {%- else -%}
+    {%- elif hostvars[host]['monitor_interface'] is defined -%}
       {% set interface = 'ansible_' + hostvars[host]['monitor_interface'] %}
       {% if ip_version == 'ipv4' -%}
         {{ hostvars[host][interface][ip_version]['address'] }}
       {%- elif ip_version == 'ipv6' -%}
         [{{ hostvars[host][interface][ip_version][0]['address'] }}]
+      {%- endif %}
+    {%- else -%}
+      {% set interface = 'ansible_' + monitor_interface %}
+      {% if ip_version == 'ipv4' -%}
+        {{ [interface][ip_version]['address'] }}
+      {%- elif ip_version == 'ipv6' -%}
+        [{{ [interface][ip_version][0]['address'] }}]
       {%- endif %}
     {%- endif %}
     {% if not loop.last -%},{%- endif %}
