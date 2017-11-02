@@ -7,7 +7,7 @@
 #############
 {% if disk_list.get("rc", 1) == 0 -%}
 function expose_partitions () {
-DOCKER_ENV=$(docker run --name expose_partitions_${1} --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph -e CLUSTER={{ cluster }} -e OSD_DEVICE=/dev/${1} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list)
+DOCKER_ENV=$(docker run --rm --name expose_partitions_${1} --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph -e CLUSTER={{ cluster }} -e OSD_DEVICE=/dev/${1} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list)
   docker rm -f expose_partitions_${1}
 }
 {% else -%}
@@ -15,9 +15,22 @@ DOCKER_ENV=$(docker run --name expose_partitions_${1} --privileged=true -v /dev/
 # Jewel images prior to https://github.com/ceph/ceph-docker/pull/797
 REGEX="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 function expose_partitions {
-  local partition
-  if docker logs ceph-osd-prepare-{{ ansible_hostname }}-devdev${1} |& grep -Eo "$partition is GPT partition"; then
-    part=$(docker logs ceph-osd-prepare-{{ ansible_hostname }}-devdev${1} |& grep "$partition is GPT partition" | grep -Eo /dev/disk/by-partuuid/${REGEX} | uniq)
+  if docker ps -a | grep -sq ceph-osd-prepare-{{ ansible_hostname }}-devdev${1}; then
+    if [[ ! -f {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-devdev${1}.log ]]; then
+      docker logs ceph-osd-prepare-{{ ansible_hostname }}-devdev${1} &> {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-devdev${1}.log
+    fi
+  fi
+  if docker ps -a | grep -sq ceph-osd-prepare-{{ ansible_hostname }}-${1}; then
+    if [[ ! -f {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-${1}.log ]]; then
+      docker logs ceph-osd-prepare-{{ ansible_hostname }}-${1} &> {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-${1}.log
+    fi
+  fi
+  if [[ -f {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-devdev${1}.log ]]; then
+    part=$(grep "Journal is GPT partition" {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-devdev${1}.log | grep -Eo /dev/disk/by-partuuid/${REGEX} | uniq)
+    DOCKER_ENV="$DOCKER_ENV -e OSD_JOURNAL=$part"
+  fi
+  if [[ -f {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-${1}.log ]]; then
+    part=$(grep "Journal is GPT partition" {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-${1}.log | grep -Eo /dev/disk/by-partuuid/${REGEX} | uniq)
     DOCKER_ENV="$DOCKER_ENV -e OSD_JOURNAL=$part"
   fi
 }
