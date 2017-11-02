@@ -8,48 +8,54 @@ ExecStartPre=-/usr/bin/docker rm ceph-mon-%i
 ExecStartPre=$(command -v mkdir) -p /etc/ceph /var/lib/ceph/mon
 ExecStart=/usr/bin/docker run --rm --name ceph-mon-%i --net=host \
   --memory={{ ceph_mon_docker_memory_limit }} \
-  {% if docker_version.split('.')[0] | version_compare('13', '>=') -%}
+{% if docker_version.split('.')[0] | version_compare('13', '>=') -%}
   --cpus={{ ceph_mon_docker_cpu_limit }} \
-  {% else -%}
+{% else -%}
   --cpu-quota={{ ceph_mon_docker_cpu_limit * 100000 }} \
-  {% endif -%}
-  {% if not containerized_deployment_with_kv -%}
+{% endif -%}
+{% if not containerized_deployment_with_kv -%}
   -v /var/lib/ceph:/var/lib/ceph \
   -v /etc/ceph:/etc/ceph \
-  {% else -%}
+{% else -%}
   -e KV_TYPE={{kv_type}} \
   -e KV_IP={{kv_endpoint}}\
   -e KV_PORT={{kv_port}} \
-  {% endif -%}
+{% endif -%}
   -v /etc/localtime:/etc/localtime:ro \
-  {% if mon_docker_privileged -%}
+{% if mon_docker_privileged -%}
   --privileged \
-  {% endif -%}
-  {% if mon_docker_net_host -%}
+{% endif -%}
+{% if mon_docker_net_host -%}
   --net=host \
-  {% endif -%}
+{% endif -%}
   -e IP_VERSION={{ ip_version[-1:] }} \
-  {% if monitor_address_block != 'subnet' %}
+{% if monitor_address_block != 'subnet' %}
     {% if ip_version == 'ipv4' -%}
   -e MON_IP={{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }} \
     {% elif ip_version == 'ipv6' -%}
   -e MON_IP=[{{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}] \
     {% endif -%}
-  {% elif hostvars[inventory_hostname]['monitor_address'] is defined and hostvars[inventory_hostname]['monitor_address'] != '0.0.0.0' -%}
+{% elif hostvars[inventory_hostname]['monitor_address'] is defined and hostvars[inventory_hostname]['monitor_address'] != '0.0.0.0' %}
     {% if ip_version == 'ipv4' -%}
   -e MON_IP={{ hostvars[inventory_hostname]['monitor_address'] }} \
     {% elif ip_version == 'ipv6' -%}
   -e MON_IP=[{{ hostvars[inventory_hostname]['monitor_address'] }}] \
     {% endif -%}
-  {% else -%}
+{% elif hostvars[inventory_hostname]['monitor_interface'] is defined %}
     {% set interface = 'ansible_' + hostvars[inventory_hostname]['monitor_interface'] %}
-      {% if ip_version == 'ipv6' -%}
-  -e MON_IP=[{{ hostvars[inventory_hostname][interface][ip_version][0]['address'] }}] \
-      {% elif ip_version == 'ipv4' -%}
+    {% if ip_version == 'ipv4' -%}
   -e MON_IP={{ hostvars[inventory_hostname][interface][ip_version]['address'] }} \
-      {% endif -%}
-  {% endif -%}
-
+    {% elif ip_version == 'ipv6' -%}
+  -e MON_IP=[{{ hostvars[inventory_hostname][interface][ip_version][0]['address'] }}] \
+    {% endif -%}
+{% else %}
+    {% set interface = 'ansible_' + monitor_interface %}
+    {% if ip_version == 'ipv4' -%}
+  -e MON_IP={{ [interface][ip_version]['address'] }} \
+    {% elif ip_version == 'ipv6' -%}
+  -e MON_IP=[{{ [interface][ip_version][0]['address'] }}] \
+    {% endif -%}
+{%- endif %}
   -e CLUSTER={{ cluster }} \
   -e FSID={{ fsid }} \
   -e CEPH_PUBLIC_NETWORK={{ public_network }} \
