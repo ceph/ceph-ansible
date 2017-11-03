@@ -16,20 +16,33 @@
   vars_files:
     - roles/ceph-defaults/defaults/main.yml
     - group_vars/all.yml
+    - "host_vars/{{ ansible_hostname }}.yml"
   roles:
     - ceph-defaults
     - ceph-fetch-keys
 
-- hosts: all
+- hosts:
+  - mons
+  - agents
+  - osds
+  - mdss
+  - rgws
+  - nfss
+  - restapis
+  - rbdmirrors
+  - clients
+  - mgrs
+  - iscsi-gw
   become: true
 
   tasks:
     - include_vars: roles/ceph-defaults/defaults/main.yml
     - include_vars: group_vars/all.yml
+    - include_vars: "host_vars/{{ ansible_hostname }}.yml"
 
     - name: get the name of the existing ceph cluster
       shell: |
-        basename $(grep --exclude '*.bak' -R fsid /etc/ceph/ | egrep -o '^[^.]*')
+        basename $(grep --exclude '*.bak' -R fsid /etc/ceph/ | egrep -o '^[^.]*' | head -n 1)
       changed_when: false
       register: cluster_name
 
@@ -51,7 +64,7 @@
     - name: generate ceph configuration file
       action: config_template
       args:
-        src: "roles/ceph-common/templates/ceph.conf.j2"
+        src: "roles/ceph-config/templates/ceph.conf.j2"
         dest: "/etc/ceph/{{ cluster_name.stdout }}.conf"
         owner: "{{ ceph_conf_stat.stat.pw_name }}"
         group: "{{ ceph_conf_stat.stat.gr_name }}"
