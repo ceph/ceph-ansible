@@ -33,7 +33,7 @@
     docker run --net=host \
     --pid=host \
     --privileged=true \
-    --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.key }} \
+    --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.split('/')[-1] }} \
     -v /etc/ceph:/etc/ceph \
     -v /var/lib/ceph/:/var/lib/ceph/ \
     -v /dev:/dev \
@@ -41,18 +41,15 @@
     -e DEBUG=verbose \
     -e CLUSTER={{ cluster }} \
     -e CEPH_DAEMON=OSD_CEPH_DISK_PREPARE \
-    -e OSD_DEVICE=/dev/{{ item.key }} \
+    -e OSD_DEVICE={{ item }} \
     {{ docker_env_args }} \
     {{ ceph_osd_docker_prepare_env }} \
     {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-  with_dict: "{{ ansible_devices }}"
+  with_items: "{{ devices }}"
   when:
     - osd_auto_discovery
     - containerized_deployment
-    - ansible_devices is defined
-    - item.value.removable == "0"
-    - item.value.partitions|count == 0
-    - item.value.holders|count == 0
+    - devices is defined
 
 - name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with collocated osd data and journal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }}"
