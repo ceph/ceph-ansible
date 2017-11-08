@@ -98,9 +98,9 @@ mon host = {% if nb_mon > 0 %}
     {%- else -%}
       {% set interface = 'ansible_' + monitor_interface %}
       {% if ip_version == 'ipv4' -%}
-        {{ [interface][ip_version]['address'] }}
+        {{ hostvars[host][interface][ip_version]['address'] }}
       {%- elif ip_version == 'ipv6' -%}
-        [{{ [interface][ip_version][0]['address'] }}]
+        [{{ hostvars[host][interface][ip_version][0]['address'] }}]
       {%- endif %}
     {%- endif %}
     {% if not loop.last -%},{%- endif %}
@@ -195,16 +195,18 @@ rgw frontends = civetweb port={{ radosgw_address }}:{{ radosgw_civetweb_port }} 
 rgw frontends = civetweb port=[{{ radosgw_address }}]:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
     {% endif %}
 {% elif hostvars[host]['radosgw_interface'] is defined -%}
+    {% set interface='ansible_' + hostvars[host]['radosgw_interface'] %}
     {% if ip_version == 'ipv4' %}
-rgw frontends = civetweb port={{ hostvars[host]['ansible_' + hostvars[host]['radosgw_interface']][ip_version]['address'] }}:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
+rgw frontends = civetweb port={{ hostvars[host][interface][ip_version]['address'] }}:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
     {% elif ip_version == 'ipv6' %}
-rgw frontends = civetweb port=[{{ hostvars[host]['ansible_' + hostvars[host]['radosgw_interface']][ip_version][0]['address'] }}]:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
+rgw frontends = civetweb port=[{{ hostvars[host][interface][ip_version][0]['address'] }}]:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
     {% endif %}
 {% else %}
+    {% set interface='ansible_' + radosgw_interface %}
     {% if ip_version == 'ipv4' %}
-rgw frontends = civetweb port={{ ['ansible_' + radosgw_interface][ip_version]['address'] }}:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
+rgw frontends = civetweb port={{ hostvars[host][interface][ip_version]['address'] }}:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
     {% elif ip_version == 'ipv6' %}
-rgw frontends = civetweb port=[{{ ['ansible_' + radosgw_interface][ip_version][0]['address'] }}]:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
+rgw frontends = civetweb port=[{{ hostvars[host][interface][ip_version][0]['address'] }}]:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
     {% endif %}
 {% endif %}
 {% endif %}
