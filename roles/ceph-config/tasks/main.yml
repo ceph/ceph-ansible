@@ -13,19 +13,28 @@
       - /etc/ceph/ceph.d/
 
   - name: template ceph_conf_overrides
-    local_action: copy content="{{ ceph_conf_overrides }}" dest="{{ fetch_directory }}/ceph_conf_overrides_temp"
-    become: false
-    run_once: true
+    copy:
+      content: "{{ ceph_conf_overrides }}"
+      dest: "/tmp/ceph_conf_overrides_temp_{{ ansible_hostname }}"
+
+  - name: copy tmp template file for ceph_conf_overrides to the ansible server
+    fetch:
+      src: "/tmp/ceph_conf_overrides_temp_{{ ansible_hostname }}"
+      dest: "{{ fetch_directory }}/{{ fsid }}/ceph_conf_overrides_temp_{{ ansible_hostname }}"
+      flat: yes
 
   - name: get rendered ceph_conf_overrides
-    local_action: set_fact ceph_conf_overrides_rendered="{{ lookup('template', '{{ fetch_directory }}/ceph_conf_overrides_temp') | from_yaml }}"
-    become: false
-    run_once: true
+    set_fact:
+      ceph_conf_overrides_rendered: "{{ lookup('template', '{{ fetch_directory }}/{{ fsid }}/ceph_conf_overrides_temp_{{ ansible_hostname }}') | from_yaml }}"
 
   - name: remove tmp template file for ceph_conf_overrides
-    local_action: file path="{{ fetch_directory }}/ceph_conf_overrides_temp" state=absent
+    file:
+      path: "/tmp/ceph_conf_overrides_temp_{{ ansible_hostname }}"
+      state: absent
+
+  - name: remove tmp template file for ceph_conf_overrides (localhost)
+    local_action: file path="{{ fetch_directory }}/{{ fsid }}/ceph_conf_overrides_temp_{{ ansible_hostname }}" state=absent
     become: false
-    run_once: true
 
   - name: "generate ceph configuration file: {{ cluster }}.conf"
     action: config_template
