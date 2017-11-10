@@ -437,6 +437,21 @@
     tags:
       remove_img
 
+  - name: include vars from group_vars/osds.yml
+    include_vars:
+      file: "{{ item }}"
+    with_first_found:
+      - files:
+        - "{{ playbook_dir }}/group_vars/osds"
+        - "{{ playbook_dir }}/group_vars/osds.yml"
+        skip: true
+
+  - name: ensure all osd_disk_prepare logs are removed
+    file:
+      path: "{{ item }}"
+      state: absent
+    with_fileglob:
+      - "{{ ceph_osd_docker_run_script_path | default('/usr/share') }}/ceph-osd-prepare-*.log"
 
 - name: purge ceph mon cluster
 
