@@ -16,9 +16,9 @@ RGW_IP=[{{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresse
     {% endif %}
 {% elif radosgw_address_block is defined and radosgw_address_block != 'subnet' -%}
     {% if ip_version == 'ipv4' %}
-RGW_IP={{ ['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }} \
+RGW_IP={{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }} \
     {% elif ip_version == 'ipv6' %}
-RGW_IP=[{{ ['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }}] \
+RGW_IP=[{{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }}] \
     {% endif %}
 {% elif hostvars[inventory_hostname]['radosgw_address'] is defined and hostvars[inventory_hostname]['radosgw_address'] != 'address' -%}
     {% if ip_version == 'ipv4' %}
@@ -42,9 +42,9 @@ RGW_IP=[{{ hostvars[inventory_hostname][interface][ip_version][0]['address'] }}]
 {% else %}
     {% set interface = 'ansible_' + radosgw_interface %}
     {% if ip_version == 'ipv4' %}
-RGW_IP={{ [interface][ip_version]['address'] }} \
+RGW_IP={{ hostvars[inventory_hostname][interface][ip_version]['address'] }} \
     {% elif ip_version == 'ipv6' %}
-RGW_IP=[{{ [interface][ip_version][0]['address'] }}] \
+RGW_IP=[{{ hostvars[inventory_hostname][interface][ip_version][0]['address'] }}] \
     {% endif %}
 {% endif %}
 
