@@ -195,9 +195,9 @@ bluestore_wal_devices: "{{ dedicated_devices }}"
 #
 # Filestore: Each dictionary must contain a data, journal and vg_name key. Any
 # logical volume or logical group used must be a name and not a path.  data
-# must be a logical volume. journal can be either a lv, device or partition.
+# can be a logical volume, device or partition. journal can be either a lv or partition.
 # You can not use the same journal for many data lvs.
-# data_vg must be the volume group name of the data lv
+# data_vg must be the volume group name of the data lv, only applicable when data is an lv.
 # journal_vg is optional and must be the volume group name of the journal lv, if applicable.
 # For example:
 # lvm_volumes:
@@ -206,11 +206,15 @@ bluestore_wal_devices: "{{ dedicated_devices }}"
 #     journal: journal-lv1
 #     journal_vg: vg2
 #   - data: data-lv2
-#     journal: /dev/sda
+#     journal: /dev/sda1
 #     data_vg: vg1
 #   - data: data-lv3
 #     journal: /dev/sdb1
 #     data_vg: vg2
+#   - data: /dev/sda
+#     journal: /dev/sdb1
+#   - data: /dev/sda1
+#     journal: /dev/sdb1
 #
 # Bluestore: Each dictionary must contain at least data. When defining wal or
 # db, it must have both the lv name and vg group (db and wal are not required).
@@ -232,6 +236,8 @@ bluestore_wal_devices: "{{ dedicated_devices }}"
 #     db_vg: vg3
 #   - data: data-lv4
 #     data_vg: vg4
+#   - data: /dev/sda
+#   - data: /dev/sdb1
 
 lvm_volumes: []
 

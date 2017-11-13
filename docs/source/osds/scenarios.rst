@@ -174,9 +174,9 @@ is only available when the ceph release is Luminous or newer.
 ``lvm_volumes`` is the config option that needs to be defined to configure the
 mappings for devices to be deployed. It is a list of dictionaries which expects
 a volume name and a volume group for logical volumes, but can also accept
-a device in the case of ``filestore`` for the ``journal``.
+a partition in the case of ``filestore`` for the ``journal``.
 
-The ``data`` key represents the logical volume name that is to be used for your
+The ``data`` key represents the logical volume name, raw device or partition that is to be used for your
 OSD data.  The ``data_vg`` key represents the volume group name that your
 ``data`` logical volume resides on. This key is required for purging of OSDs
 created by this scenario.
@@ -196,17 +196,17 @@ There is filestore support which can be enabled with::
 
 To configure this scenario use the ``lvm_volumes`` config option.
 ``lvm_volumes``  is a list of dictionaries which expects a volume name and
-a volume group for logical volumes, but can also accept a device in the case of
+a volume group for logical volumes, but can also accept a parition in the case of
 ``filestore`` for the ``journal``.
 
 The following keys are accepted for a ``filestore`` deployment:
 
 * ``data``
-* ``data_vg``
+* ``data_vg`` (not required if ``data`` is a raw device or partition)
 * ``journal``
-* ``journal_vg`` (not required if ``journal`` is a device and not a logical volume)
+* ``journal_vg`` (not required if ``journal`` is a partition and not a logical volume)
 
-The ``journal`` key represents the logical volume name, device or partition that will be used for your OSD journal.
+The ``journal`` key represents the logical volume name or partition that will be used for your OSD journal.
 
 For example, a configuration to use the ``lvm`` osd scenario would look like::
 
@@ -223,19 +223,24 @@ For example, a configuration to use the ``lvm`` osd scenario would look like::
       - data: data-lv3
         journal: /dev/sdb1
         data_vg: vg2
+      - data: /dev/sda
+        journal: /dev/sdb1
+      - data: /dev/sda1
+        journal: journal-lv1
+        journal_vg: vg2
 
 
 ``bluestore``
 ^^^^^^^^^^^^^
 This scenario allows a combination of devices to be used in an OSD.
 ``bluestore`` can work just with a single "block" device (specified by the
-``data`` and ``data_vg``) or additionally with a ``block.wal`` and ``block.db``
+``data`` and optionally ``data_vg``) or additionally with a ``block.wal`` and ``block.db``
 (interchangeably)
 
 The following keys are accepted for a ``bluestore`` deployment:
 
 * ``data`` (required)
-* ``data_vg`` (required)
+* ``data_vg`` (not required if ``data`` is a raw device or partition)
 * ``db`` (optional for ``block.db``)
 * ``db_vg`` (optional for ``block.db``)
 * ``wal`` (optional for ``block.wal``)
@@ -263,3 +268,4 @@ could look like::
         db_vg: vg4
         wal: wal-lv4
         wal_vg: vg4
+      - data: /dev/sda
