@@ -14,6 +14,7 @@
   with_items: "{{ lvm_volumes }}"
   when:
     - item.journal_vg is not defined
+    - item.data_vg is defined
     - osd_objectstore == 'filestore'
     - "'{{ item.data_vg }}/{{ item.data }}' not in ceph_volume_lvm_list.stdout"
 
@@ -24,6 +25,7 @@
   with_items: "{{ lvm_volumes }}"
   when:
     - item.journal_vg is defined
+    - item.data_vg is defined
     - osd_objectstore == 'filestore'
     - "'{{ item.data_vg }}/{{ item.data }}' not in ceph_volume_lvm_list.stdout"
 
@@ -34,6 +36,7 @@
   with_items: "{{ lvm_volumes }}"
   when:
     - osd_objectstore == 'bluestore'
+    - item.data_vg is defined
     - item.wal is defined
     - item.wal_vg is defined
     - item.db is defined
@@ -47,6 +50,7 @@
   with_items: "{{ lvm_volumes }}"
   when:
     - osd_objectstore == 'bluestore'
+    - item.data_vg is defined
     - item.wal is not defined
     - item.wal_vg is not defined
     - item.db is defined
@@ -61,6 +65,7 @@
   when:
     - osd_objectstore == 'bluestore'
     - item.wal is defined
+    - item.data_vg is defined
     - item.wal_vg is defined
     - item.db is not defined
     - item.db_vg is not defined
@@ -74,6 +79,7 @@
   when:
     - osd_objectstore == 'bluestore'
     - item.wal is not defined
+    - item.data_vg is defined
     - item.wal_vg is not defined
     - item.db is not defined
     - item.db_vg is not defined
