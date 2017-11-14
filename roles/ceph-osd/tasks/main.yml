@@ -18,23 +18,8 @@
 - name: include ceph_disk_cli_options_facts.yml
   include: ceph_disk_cli_options_facts.yml
 
-- name: set_fact devices generate device list when osd_auto_discovery
-  set_fact:
-    devices: "{{ devices | default([]) + [ item.key | regex_replace('^', '/dev/') ] }}"
-  with_dict: "{{ ansible_devices }}"
-  when:
-    - osd_auto_discovery
-    - ansible_devices is defined
-    - item.value.removable == "0"
-    - item.value.sectors != "0"
-    - item.value.partitions|count == 0
-    - item.value.holders|count == 0
-    - "'dm-' not in item.key"
-
-- name: include check_devices.yml
-  include: check_devices.yml
-  when:
-    - not osd_auto_discovery
+- name: include build_devices.yml
+  include: build_devices.yml
 
 - name: check if a partition named 'ceph' exists
   shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"
