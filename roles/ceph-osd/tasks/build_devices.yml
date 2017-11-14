@@ -1,0 +1,37 @@
+---
+- name: set_fact devices generate device list when osd_auto_discovery
+  set_fact:
+    devices: "{{ devices | default([]) + [ item.key | regex_replace('^', '/dev/') ] }}"
+  with_dict: "{{ ansible_devices }}"
+  when:
+    - osd_auto_discovery
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.sectors != "0"
+    - item.value.partitions|count == 0
+    - item.value.holders|count == 0
+    - "'dm-' not in item.key"
+
+- name: resolve dedicated device link(s)
+  command: readlink -f {{ item }}
+  changed_when: false
+  with_items: "{{ dedicated_devices }}"
+  register: dedicated_devices_prepare_canonicalize
+  when:
+    - osd_scenario == 'non-collocated'
+    - not osd_auto_discovery
+
+- name: set_fact build dedicated_devices from resolved symlinks
+  set_fact:
+    dedicated_devices_tmp: "{{ dedicated_devices_tmp | default([]) + [ item.stdout ] }}"
+  with_items: "{{ dedicated_devices_prepare_canonicalize.results }}"
+  when:
+    - osd_scenario == 'non-collocated'
+    - not osd_auto_discovery
+
+- name: set_fact build final dedicated_devices list
+  set_fact:
+    dedicated_devices: "{{ dedicated_devices_tmp | reject('search','/dev/disk') | list }}"
+  when:
+    - osd_scenario == 'non-collocated'
+    - not osd_auto_discovery
