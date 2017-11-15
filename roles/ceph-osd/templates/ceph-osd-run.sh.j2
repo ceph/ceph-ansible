@@ -1,50 +1,51 @@
 #!/bin/bash
 # {{ ansible_managed }}
 
-if [[ "$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID /dev/${1}* | wc -l)" -gt 0 ]] ; then
-  for part in /dev/${1}*; do
-    if [[ "$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID ${part} | wc -l)" -gt 0 ]]; then
-DEVICES="${DEVICES} --device=/dev/disk/by-partuuid/$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID ${part}) "
+REGEX="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+function expose_partitions {
+  if docker ps -a | grep -sq ceph-osd-prepare-{{ ansible_hostname }}-devdev${1}; then
+    if [[ ! -f {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-devdev${1}.log ]]; then
+      docker logs ceph-osd-prepare-{{ ansible_hostname }}-devdev${1} &> {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-devdev${1}.log
     fi
-  done
-  # we test if the dm exist, if it does we add it to --device list
-  # if not we don't add it, the first activation will fail
-  # however the dm will be created, on the second run it'll added to the device list
-  # the second run will succeed
-  blkid -t TYPE=crypto_LUKS -o value -s PARTUUID /dev/${1}1
-  # make sure blkid returns 0 otherwise we will test /dev/mapper/ which always exists
-	if [[ -e /dev/mapper/$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID /dev/${1}1) && "$?" -eq 0 ]]; then
-    DEVICES="${DEVICES} --device=/dev/disk/by-partuuid/$(blkid -t PARTLABEL="ceph lockbox" -o value -s PARTUUID /dev/${1}3) --device=/dev/${1}3 --device=/dev/mapper/control --device=/dev/mapper/$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID /dev/${1}2) --device=/dev/mapper/$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID /dev/${1}1)"
-  else
-    DEVICES="${DEVICES} --device=/dev/disk/by-partuuid/$(blkid -t PARTLABEL="ceph lockbox" -o value -s PARTUUID /dev/${1}3) --device=/dev/${1}3 --device=/dev/mapper/control --device=/dev/mapper/$(blkid -t TYPE=crypto_LUKS -o value -s PARTUUID /dev/${1}2)"
   fi
-fi
+  if docker ps -a | grep -sq ceph-osd-prepare-{{ ansible_hostname }}-${1}; then
+    if [[ ! -f {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-${1}.log ]]; then
+      docker logs ceph-osd-prepare-{{ ansible_hostname }}-${1} &> {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-${1}.log
+    fi
+  fi
+  if [[ -f {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-devdev${1}.log ]]; then
+    part=$(grep "Journal is GPT partition" {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-devdev${1}.log | grep -Eo /dev/disk/by-partuuid/${REGEX} | uniq)
+    DOCKER_ENV="$DOCKER_ENV -e OSD_JOURNAL=$part"
+  fi
+  if [[ -f {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-${1}.log ]]; then
+    part=$(grep "Journal is GPT partition" {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-${1}.log | grep -Eo /dev/disk/by-partuuid/${REGEX} | uniq)
+    DOCKER_ENV="$DOCKER_ENV -e OSD_JOURNAL=$part"
+  fi
+}
+
+expose_partitions "$1"
 
 /usr/bin/docker run \
   --rm \
   --net=host \
-  --cap-add SYS_ADMIN \
   --pid=host \
+  --privileged=true \
   {% if not osd_containerized_deployment_with_kv -%}
   -v /var/lib/ceph:/var/lib/ceph \
   -v /etc/ceph:/etc/ceph \
+  -v /dev:/dev \
   {% else -%}
   -e KV_TYPE={{kv_type}} \
   -e KV_IP={{kv_endpoint}} \
   -e KV_PORT={{kv_port}} \
   {% endif -%}
   -v /etc/localtime:/etc/localtime:ro \
-  --device=/dev/${1} \
-  --device=/dev/${1}1 \
   {% if raw_journal_devices|length > 0 -%}
   -e OSD_JOURNAL={{ raw_journal_devices[0] }} \
-  --device={{ raw_journal_devices[0] }} \
-  {% else -%}
-  --device=/dev/${1}2 \
   {% endif -%}
-  --device=/dev/disk/by-partuuid/$(python -c "import uuid; f = open('/etc/machine-id', 'r').read(); print uuid.uuid5(uuid.NAMESPACE_DNS, f.strip() + '/dev/$1')") ${DEVICES} \
   -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE \
   -e OSD_DEVICE=/dev/${1} \
+  ${DOCKER_ENV} \
   {{ ceph_osd_docker_extra_env }} \
   --name=ceph-osd-{{ ansible_hostname }}-dev${1} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
