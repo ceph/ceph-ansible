@@ -1,7 +1,7 @@
 #jinja2: trim_blocks: "true", lstrip_blocks: "true"
 # {{ ansible_managed }}
 
-{% if ceph_nfs_dynamic_exports %}
+{% if ceph_nfs_dynamic_exports and not ceph_nfs_rados_backend %}
 %include /etc/ganesha/export.d/INDEX.conf
 {% endif %}
 
@@ -12,6 +12,22 @@ NFS_Core_Param
 {% endif %}
 }
 
+{% if ceph_nfs_rados_backend %}
+RADOS_URLS {
+   ceph_conf = '/etc/ceph/{{ cluster }}.conf';
+   userid = "{{ ceph_nfs_ceph_user }}";
+}
+%url rados://{{ cephfs_data }}/{{ ceph_nfs_rados_export_index }}
+
+NFSv4 {
+	RecoveryBackend = 'rados_kv';
+}
+RADOS_KV {
+	ceph_conf = '/etc/ceph/{{ cluster }}.conf';
+	userid = "{{ ceph_nfs_ceph_user }}";
+	pool = "{{ cephfs_data }}";
+}
+{% endif %}
 
 {% if nfs_file_gw %}
 EXPORT

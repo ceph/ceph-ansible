@@ -1,4 +1,19 @@
 ---
+- name: check if rados index object exists
+  shell: "rados -p {{ cephfs_data }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
+  changed_when: false
+  failed_when: false
+  register: rados_index_exists
+  check_mode: no
+  when:
+    - ceph_nfs_rados_backend
+
+- name: create an empty rados index object
+  shell: "echo | rados -p {{ cephfs_data }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} -"
+  when:
+    - ceph_nfs_rados_backend
+    - rados_index_exists.rc != 0
+
 - name: create /etc/ganesha
   file:
     path: /etc/ganesha
