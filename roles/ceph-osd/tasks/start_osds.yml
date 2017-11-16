@@ -3,15 +3,44 @@
   include: osd_fragment.yml
   when: crush_location
 
-- name: get osd id
+- name: get osd id collocated
   shell: |
     ls /var/lib/ceph/osd/ | sed 's/.*-//'
   changed_when: false
   failed_when: false
   check_mode: no
   register: osd_id
-  until: osd_id.stdout_lines|length == devices|unique|length
+  until: osd_id.stdout_lines|length == collocated.devices|unique|length
   retries: 10
+  when:
+    - "'collocated' in osd_scenarios"
+    - "not 'non-collocated' in osd_scenarios"
+
+- name: get osd id non-collocated
+  shell: |
+    ls /var/lib/ceph/osd/ | sed 's/.*-//'
+  changed_when: false
+  failed_when: false
+  check_mode: no
+  register: osd_id
+  until: osd_id.stdout_lines|length == non_collocated.devices|unique|length
+  retries: 10
+  when:
+    - "not 'collocated' in osd_scenarios"
+    - "'non-collocated' in osd_scenarios"
+
+- name: get osd id collocated and non-collocated
+  shell: |
+    ls /var/lib/ceph/osd/ | sed 's/.*-//'
+  changed_when: false
+  failed_when: false
+  check_mode: no
+  register: osd_id
+  until: osd_id.stdout_lines|length == (non_collocated.devices|unique|length + collocated.devices|unique|length)
+  retries: 10
+  when:
+    - "'collocated' in osd_scenarios"
+    - "'non-collocated' in osd_scenarios"
 
 - name: ensure systemd service override directory exists
   file:
@@ -31,7 +60,7 @@
     - ceph_osd_systemd_overrides is defined
     - ansible_service_mgr == 'systemd'
 
-- name: ensure osd daemons are started
+- name: ensure osd daemons are started collocated
   service:
     name: ceph-osd@{{ item }}
     state: started

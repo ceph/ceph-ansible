@@ -140,7 +140,7 @@
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
-    - osd_scenario != 'lvm'
+    - devices is defined
 
 - name: set_fact build devices from resolved symlinks
   set_fact:
@@ -149,7 +149,7 @@
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
-    - osd_scenario != 'lvm'
+    - devices is defined
 
 - name: set_fact build final devices list
   set_fact:
@@ -157,7 +157,7 @@
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
-    - osd_scenario != 'lvm'
+    - devices is defined
 
 - name: set_fact ceph_uid for Debian based system
   set_fact:
@@ -172,3 +172,99 @@
   when:
     - containerized_deployment
     - ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph") or ceph_docker_image_tag | search("fedora")
+
+- name: set_fact temp var for non_collocated symlink resolving
+  set_fact:
+    temp_devices: "{{ non_collocated.devices }}"
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - non_collocated is defined
+    - non_collocated.devices is defined
+
+- name: resolve device link(s)
+  command: readlink -f {{ item }}
+  changed_when: false
+  with_items: "{{ temp_devices }}"
+  register: non_collocated_devices_prepare_canonicalize
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - non_collocated is defined
+    - non_collocated.devices is defined
+
+- name: set_fact build devices from resolved symlinks
+  set_fact:
+    temp_devices: "{{ temp_devices | default([]) + [ item.stdout ] }}"
+  with_items: "{{ non_collocated_devices_prepare_canonicalize.results }}"
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - non_collocated is defined
+    - non_collocated.devices is defined
+
+- name: set_fact build final devices list
+  set_fact:
+    temp_devices: "{{ temp_devices | reject('search','/dev/disk') | list | unique }}"
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - non_collocated is defined
+    - non_collocated.devices is defined
+
+- name: set_fact set non_collocated devices to temp_devices
+  set_fact:
+    non_collocated: "{{ non_collocated | combine( {'devices': temp_devices} ) }}"
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - non_collocated is defined
+    - non_collocated.devices is defined
+
+- name: set_fact temp var for non_collocated symlink resolving
+  set_fact:
+    temp_devices: "{{ collocated.devices }}"
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - non_collocated is defined
+    - non_collocated.devices is defined
+
+- name: resolve device link(s)
+  command: readlink -f {{ item }}
+  changed_when: false
+  with_items: "{{ temp_devices }}"
+  register: collocated_devices_prepare_canonicalize
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - collocated is defined
+    - collocated.devices is defined
+
+- name: set_fact build devices from resolved symlinks
+  set_fact:
+    temp_devices: "{{ temp_devices | default([]) + [ item.stdout ] }}"
+  with_items: "{{ collocated_devices_prepare_canonicalize.results }}"
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - collocated is defined
+    - collocated.devices is defined
+
+- name: set_fact build final devices list
+  set_fact:
+    temp_devices: "{{ temp_devices | reject('search','/dev/disk') | list | unique }}"
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - collocated is defined
+    - collocated.devices is defined
+
+- name: set_fact set collocated.devices to temp_devices
+  set_fact:
+    collocated: "{{ collocated | combine( {'devices': temp_devices} ) }}"
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - collocated is defined
+    - collocated.devices is defined

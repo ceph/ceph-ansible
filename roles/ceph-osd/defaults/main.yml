@@ -114,7 +114,6 @@ valid_osd_scenarios:
   - non-collocated
   - lvm
 
-
 # II.  Second scenario: non-collocated
 #
 # To enable this scenario do: osd_scenario: non-collocated
@@ -241,8 +240,21 @@ bluestore_wal_devices: "{{ dedicated_devices }}"
 #   - data: /dev/sda
 #   - data: /dev/sdb1
 
-lvm_volumes: []
+# This maintains backwards compatibility with single osd_scenario use case
+# If you wish to Use multiple osd_scenarios, add each osd_scenario as an item
+# in the list "osd_scenarios", then fill out the necessary variables for each
+# scenario, for example, non_collocated requires non_collocated.devices and
+# non_collocated.dedicated_devices.
 
+osd_scenarios: "{{ [ osd_scenario ] }}"
+
+collocated:
+  devices: "{{ devices if osd_scenario == 'collocated' else [] }}"
+non_collocated:
+  devices: "{{ devices if osd_scenario == 'non-collocated' else [] }}"
+  dedicated_devices: "{{ dedicated_devices if osd_scenario == 'non-collocated' else [] }}"
+  bluestore_wal_devices: "{{ bluestore_wal_devices if osd_scenario == 'non-collocated' else [] }}"
+lvm_volumes: []
 
 ##########
 # DOCKER #
