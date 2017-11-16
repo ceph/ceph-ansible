@@ -1,0 +1,54 @@
+---
+- name: install suse dependencies
+  package:
+    name: "{{ suse_package_dependencies }}"
+    state: present
+  when:
+    - ansible_distribution == 'Suse'
+
+- name: install suse ceph-common
+  package:
+    name: "ceph-common"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+
+- name: install suse ceph-mon package
+  package:
+    name: "ceph-mon"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - mon_group_name in group_names
+
+- name: install suse ceph-osd package
+  package:
+    name: "ceph-osd"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - osd_group_name in group_names
+
+- name: install suse ceph-fuse package
+  package:
+    name: "ceph-fuse"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - client_group_name in group_names
+
+- name: install suse ceph-base package
+  package:
+    name: "ceph-base"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - client_group_name in group_names
+
+- name: install suse ceph-test package
+  package:
+    name: ceph-test
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - ceph_test
+
+- name: install suse ceph-radosgw package
+  package:
+    name: ceph-radosgw
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - rgw_group_name in group_names
