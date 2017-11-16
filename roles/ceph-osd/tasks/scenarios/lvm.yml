@@ -14,6 +14,7 @@
   with_items: "{{ lvm_volumes }}"
   when:
     - item.journal_vg is not defined
+    - item.data_vg is defined
     - osd_objectstore == 'filestore'
     - "'{{ item.data_vg }}/{{ item.data }}' not in ceph_volume_lvm_list.stdout"
 
@@ -24,6 +25,7 @@
   with_items: "{{ lvm_volumes }}"
   when:
     - item.journal_vg is defined
+    - item.data_vg is defined
     - osd_objectstore == 'filestore'
     - "'{{ item.data_vg }}/{{ item.data }}' not in ceph_volume_lvm_list.stdout"
 
@@ -34,6 +36,7 @@
   with_items: "{{ lvm_volumes }}"
   when:
     - osd_objectstore == 'bluestore'
+    - item.data_vg is defined
     - item.wal is defined
     - item.wal_vg is defined
     - item.db is defined
@@ -47,6 +50,7 @@
   with_items: "{{ lvm_volumes }}"
   when:
     - osd_objectstore == 'bluestore'
+    - item.data_vg is defined
     - item.wal is not defined
     - item.wal_vg is not defined
     - item.db is defined
@@ -61,6 +65,7 @@
   when:
     - osd_objectstore == 'bluestore'
     - item.wal is defined
+    - item.data_vg is defined
     - item.wal_vg is defined
     - item.db is not defined
     - item.db_vg is not defined
@@ -74,7 +79,86 @@
   when:
     - osd_objectstore == 'bluestore'
     - item.wal is not defined
+    - item.data_vg is defined
     - item.wal_vg is not defined
     - item.db is not defined
     - item.db_vg is not defined
     - "'{{ item.data_vg }}/{{ item.data }}' not in ceph_volume_lvm_list.stdout"
+
+- name: use ceph-volume to create filestore osds with dedicated journals and a raw device or partition for data
+  command: "ceph-volume --cluster {{ cluster }} lvm create --filestore --data {{ item.data }} --journal {{ item.journal }}"
+  environment:
+    CEPH_VOLUME_DEBUG: 1
+  with_items: "{{ lvm_volumes }}"
+  when:
+    - item.journal_vg is not defined
+    - item.data_vg is not defined
+    - osd_objectstore == 'filestore'
+    - "'{{ item.data }}' not in ceph_volume_lvm_list.stdout"
+
+- name: use ceph-volume to create filestore osds with dedicated lv journals and a raw device or partition for data
+  command: "ceph-volume --cluster {{ cluster }} lvm create --filestore --data {{ item.data }} --journal {{item.journal_vg }}/{{ item.journal }}"
+  environment:
+    CEPH_VOLUME_DEBUG: 1
+  with_items: "{{ lvm_volumes }}"
+  when:
+    - item.journal_vg is defined
+    - item.data_vg is not defined
+    - osd_objectstore == 'filestore'
+    - "'{{ item.data }}' not in ceph_volume_lvm_list.stdout"
+
+- name: use ceph-volume to create bluestore osds with db and wal and a raw device or partition for data
+  command: "ceph-volume --cluster {{ cluster }} lvm create --bluestore --data {{ item.data }} --block.wal {{ item.wal_vg }}/{{ item.wal }} --block.db {{ item.db_vg }}/{{ item.db }}"
+  environment:
+    CEPH_VOLUME_DEBUG: 1
+  with_items: "{{ lvm_volumes }}"
+  when:
+    - osd_objectstore == 'bluestore'
+    - item.data_vg is not defined
+    - item.wal is defined
+    - item.wal_vg is defined
+    - item.db is defined
+    - item.db_vg is defined
+    - "'{{ item.data }}' not in ceph_volume_lvm_list.stdout"
+
+- name: use ceph-volume to create bluestore osds with db only and a raw device or partition for data
+  command: "ceph-volume --cluster {{ cluster }} lvm create --bluestore --data {{ item.data }} --block.db {{ item.db_vg }}/{{ item.db }}"
+  environment:
+    CEPH_VOLUME_DEBUG: 1
+  with_items: "{{ lvm_volumes }}"
+  when:
+    - osd_objectstore == 'bluestore'
+    - item.data_vg is not defined
+    - item.wal is not defined
+    - item.wal_vg is not defined
+    - item.db is defined
+    - item.db_vg is defined
+    - "'{{ item.data }}' not in ceph_volume_lvm_list.stdout"
+
+- name: use ceph-volume to create bluestore osds with wal only and a raw device or partition for data
+  command: "ceph-volume --cluster {{ cluster }} lvm create --bluestore --data {{ item.data }} --block.wal {{ item.wal_vg }}/{{ item.wal }}"
+  environment:
+    CEPH_VOLUME_DEBUG: 1
+  with_items: "{{ lvm_volumes }}"
+  when:
+    - osd_objectstore == 'bluestore'
+    - item.wal is defined
+    - item.data_vg is not defined
+    - item.wal_vg is defined
+    - item.db is not defined
+    - item.db_vg is not defined
+    - "'{{ item.data }}' not in ceph_volume_lvm_list.stdout"
+
+- name: use ceph-volume to create bluestore osds with just a data device and a raw device or partition for data
+  command: "ceph-volume --cluster {{ cluster }} lvm create --bluestore --data {{ item.data }}"
+  environment:
+    CEPH_VOLUME_DEBUG: 1
+  with_items: "{{ lvm_volumes }}"
+  when:
+    - osd_objectstore == 'bluestore'
+    - item.wal is not defined
+    - item.data_vg is not defined
+    - item.wal_vg is not defined
+    - item.db is not defined
+    - item.db_vg is not defined
+    - "'{{ item.data }}' not in ceph_volume_lvm_list.stdout"
