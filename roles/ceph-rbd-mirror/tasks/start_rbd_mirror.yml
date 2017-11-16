@@ -24,7 +24,7 @@
     enabled: yes
   changed_when: false
   when:
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.luminous
+    - ceph_release_num[ceph_release] < ceph_release_num.luminous
 
 - name: stop and remove the generic rbd-mirror service instance
   service:
@@ -39,12 +39,13 @@
 # The upstream fix is: https://github.com/ceph/ceph/pull/17969
 # It's affecting, ceph version 12.2.0 (32ce2a3ae5239ee33d6150705cdb24d43bab910c) luminous (rc) and before
 - name: enable ceph-rbd-mirror.target
-  service:
+  systemd:
     name: "ceph-rbd-mirror.target"
+    state: started
     enabled: yes
   changed_when: false
   when:
-    - ceph_release_num.{{ ceph_release }} >= ceph_release_num.luminous
+    - ceph_release_num[ceph_release] <= ceph_release_num.luminous
 
 - name: start and add the rbd-mirror service instance
   service:
