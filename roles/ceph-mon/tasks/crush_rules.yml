@@ -5,6 +5,31 @@
   changed_when: false
   failed_when: false
   run_once: true
+  when: create_crush_tree
+
+- name: create rack type buckets needed for configured crush rules
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush add-bucket {{ hostvars[item]['ceph_crush_rack']|default('default_rack_' + hostvars[item]['ceph_crush_root']) }} rack"
+  with_items: "{{ groups[osd_group_name] }}"
+  changed_when: false
+  failed_when: false
+  run_once: true
+  when: create_crush_tree
+
+- name: move rack type buckets to created corresponding crush roots
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush move {{ hostvars[item]['ceph_crush_rack']|default('default_rack_' + hostvars[item]['ceph_crush_root']) }} root={{ hostvars[item]['ceph_crush_root'] }}"
+  with_items: "{{ groups[osd_group_name] }}"
+  changed_when: false
+  failed_when: false
+  run_once: true
+  when: create_crush_tree
+
+- name: move host type buckets to rack type ones
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush move {{ hostvars[item]['ansible_hostname'] }} rack={{ hostvars[item]['ceph_crush_rack']|default('default_rack_' + hostvars[item]['ceph_crush_root']) }}"
+  with_items: "{{ groups[osd_group_name] }}"
+  changed_when: false
+  failed_when: false
+  run_once: true
+  when: create_crush_tree
 
 - name: create configured crush rules
   command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush rule create-simple {{ item.name }} {{ item.root }} {{ item.type }}"
