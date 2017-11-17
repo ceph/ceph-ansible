@@ -1,0 +1,57 @@
+---
+- name: check firewalld installation on redhat
+  command: rpm -q firewalld
+  register: firewalld
+  ignore_errors: true
+  always_run: true
+  changed_when: false
+  when: ansible_os_family == 'RedHat'
+  tags:
+    - firewall
+
+- name: open monitor ports
+  firewalld:
+    service: ceph-mon
+    zone: "{{ ceph_mon_firewall_zone }}"
+    permanent: true
+    immediate: false # if true then fails in case firewalld is stopped
+    state: enabled
+  notify: restart firewalld
+  when:
+    - mon_group_name is defined
+    - mon_group_name in group_names
+    - firewalld.rc == 0
+  tags:
+    - firewall
+
+- name: open osd ports
+  firewalld:
+    service: ceph
+    zone: "{{ ceph_osd_firewall_zone }}"
+    permanent: true
+    immediate: false # if true then fails in case firewalld is stopped
+    state: enabled
+  notify: restart firewalld
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - firewalld.rc == 0
+  tags:
+    - firewall
+
+- name: open rgw ports
+  firewalld:
+    port: "{{ radosgw_civetweb_port }}/tcp"
+    zone: "{{ ceph_rgw_firewall_zone }}"
+    permanent: true
+    immediate: false # if true then fails in case firewalld is stopped
+    state: enabled
+  notify: restart firewalld
+  when:
+    - rgw_group_name is defined
+    - rgw_group_name in group_names
+    - firewalld.rc == 0
+  tags:
+    - firewall
+
+- meta: flush_handlers
