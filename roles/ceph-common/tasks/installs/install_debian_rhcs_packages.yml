@@ -1,4 +1,9 @@
 ---
+- name: install red hat storage ceph-common for debian
+  apt:
+    pkg: ceph-common
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+
 - name: install red hat storage ceph mon for debian
   apt:
     name: ceph-mon
@@ -30,13 +35,6 @@
 - name: install red hat storage ceph-fuse client for debian
   apt:
     pkg: ceph-fuse
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - client_group_name in group_names
-
-- name: install red hat storage ceph-common for debian
-  apt:
-    pkg: ceph-common
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - client_group_name in group_names
