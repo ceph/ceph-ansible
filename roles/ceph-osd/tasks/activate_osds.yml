@@ -3,7 +3,7 @@
 # partition.
 
 - name: activate osd(s) when device is a disk
-  command: ceph-disk activate "{{ item | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\1p') | regex_replace('^(\/dev\/loop[0-9]{1})$', '\1p') }}1"
+  command: ceph-disk activate "{{ item }}{%- if 'nvme' in item or 'cciss' in item or 'loop' in item %}{{ 'p' }}{%- endif %}{{ '1' }}"
   with_items:
     - "{{ devices|unique }}"
   changed_when: false
@@ -12,8 +12,9 @@
     - not osd_auto_discovery
     - not dmcrypt
 
+
 - name: activate osd(s) when device is a disk (dmcrypt)
-  command: ceph-disk activate --dmcrypt "{{ item | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\1p') | regex_replace('^(\/dev\/loop[0-9]{1})$', '\1p') }}1"
+  command: ceph-disk activate --dmcrypt "{{ item }}{%- if 'nvme' in item or 'cciss' in item or 'loop' in item %}{{ 'p' }}{%- endif %}{{ '1' }}"
   with_items:
     - "{{ devices|unique }}"
   changed_when: false
