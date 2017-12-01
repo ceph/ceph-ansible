@@ -105,6 +105,30 @@ EXAMPLES = '''
 from ansible.module_utils.basic import AnsibleModule
 
 
+def get_data(data, data_vg):
+    if data_vg:
+        data = "{0}/{1}".format(data_vg, data)
+    return data
+
+
+def get_journal(journal, journal_vg):
+    if journal_vg:
+        journal = "{0}/{1}".format(journal_vg, journal)
+    return journal
+
+
+def get_db(db, db_vg):
+    if db_vg:
+        db = "{0}/{1}".format(db_vg, db)
+    return db
+
+
+def get_wal(wal, wal_vg):
+    if wal_vg:
+        wal = "{0}/{1}".format(wal_vg, wal)
+    return wal
+
+
 def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
@@ -147,24 +171,19 @@ def run_module():
         '--data',
     ]
 
-    if data_vg:
-        data = "{0}/{1}".format(data_vg, data)
-
+    data = get_data(data, data_vg)
     cmd.append(data)
 
     if journal:
-        if journal_vg:
-            journal = "{0}/{1}".format(journal_vg, journal)
+        journal = get_journal(journal, journal_vg)
         cmd.extend(["--journal", journal])
 
     if db:
-        if db_vg:
-            db = "{0}/{1}".format(db_vg, db)
+        db = get_db(db, db_vg)
         cmd.extend(["--block.db", db])
 
     if wal:
-        if wal_vg:
-            wal = "{0}/{1}".format(wal_vg, wal)
+        wal = get_wal(wal, wal_vg)
         cmd.extend(["--block.wal", wal])
 
     result = dict(
