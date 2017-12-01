@@ -1,0 +1,212 @@
+#!/usr/bin/python
+import datetime
+
+ANSIBLE_METADATA = {
+    'metadata_version': '1.0',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
+
+DOCUMENTATION = '''
+---
+module: ceph_volume
+
+short_description: Create ceph OSDs with ceph-volume
+
+description:
+    - Using the ceph-volume utility available in Ceph this module
+      can be used to create ceph OSDs that are backed by logical volumes.
+    - Only available in ceph versions luminous or greater.
+
+options:
+    subcommand:
+        description:
+            - The ceph-volume subcommand to use.
+        required: false
+        default: lvm
+        choices: ['lvm']
+    objectstore:
+        description:
+            - The objectstore of the OSD, either filestore or bluestore
+        required: true
+        choices: ['bluestore', 'filestore']
+    data:
+        description:
+            - The logical volume name or device to use for the OSD data.
+        required: true
+    data_vg:
+        description:
+            - If data is a lv, this must be the name of the volume group it belongs to.
+        required: false
+    journal:
+        description:
+            - The logical volume name or partition to use as a filestore journal.
+            - Only applicable if objectstore is 'filestore'.
+        required: false
+    journal_vg:
+        description:
+            - If journal is a lv, this must be the name of the volume group it belongs to.
+            - Only applicable if objectstore is 'filestore'.
+        required: false
+    db:
+        description:
+            - A partition or logical volume name to use for block.db.
+            - Only applicable if objectstore is 'bluestore'.
+        required: false
+    db_vg:
+        description:
+            - If db is a lv, this must be the name of the volume group it belongs to.
+            - Only applicable if objectstore is 'bluestore'.
+        required: false
+    wal:
+        description:
+            - A partition or logical volume name to use for block.wal.
+            - Only applicable if objectstore is 'bluestore'.
+        required: false
+    wal_vg:
+        description:
+            - If wal is a lv, this must be the name of the volume group it belongs to.
+            - Only applicable if objectstore is 'bluestore'.
+        required: false
+
+
+author:
+    - Andrew Schoen (@andrewschoen)
+'''
+
+EXAMPLES = '''
+- name: set up a filestore osd with an lv data and a journal partition
+  ceph_volume:
+    objectstore: filestore
+    data: data-lv
+    data_vg: data-vg
+    journal: /dev/sdc1
+
+- name: set up a bluestore osd with a raw device for data
+  ceph_volume:
+    objectstore: bluestore
+    data: /dev/sdc
+
+- name: set up a bluestore osd with an lv for data and partitions for block.wal and block.db
+  ceph_volume:
+    objectstore: bluestore
+    data: data-lv
+    data_vg: data-vg
+    db: /dev/sdc1
+    wal: /dev/sdc2
+'''
+
+
+from ansible.module_utils.basic import AnsibleModule
+
+
+def run_module():
+    module_args = dict(
+        subcommand=dict(type='str', required=False, default='lvm'),
+        objectstore=dict(type='str', required=True),
+        data=dict(type='str', required=True),
+        data_vg=dict(type='str', required=False),
+        journal=dict(type='str', required=False),
+        journal_vg=dict(type='str', required=False),
+        db=dict(type='str', required=False),
+        db_vg=dict(type='str', required=False),
+        wal=dict(type='str', required=False),
+        wal_vg=dict(type='str', required=False),
+    )
+
+    module = AnsibleModule(
+        argument_spec=module_args,
+        supports_check_mode=True
+    )
+
+    subcommand = module.params['subcommand']
+    objectstore = module.params['objectstore']
+    data = module.params['data']
+    data_vg = module.params.get('data_vg', None)
+    journal = module.params.get('journal', None)
+    journal_vg = module.params.get('journal_vg', None)
+    db = module.params.get('db', None)
+    db_vg = module.params.get('db_vg', None)
+    wal = module.params.get('wal', None)
+    wal_vg = module.params.get('wal_vg', None)
+
+    cmd = [
+        'ceph-volume',
+        subcommand,
+        'create',
+        '--%s' % objectstore,
+        '--data',
+    ]
+
+    if data_vg:
+        data = "{0}/{1}".format(data_vg, data)
+
+    cmd.append(data)
+
+    if journal:
+        if journal_vg:
+            journal = "{0}/{1}".format(journal_vg, journal)
+        cmd.extend(["--journal", journal])
+
+    if db:
+        if db_vg:
+            db = "{0}/{1}".format(db_vg, db)
+        cmd.extend(["--block.db", db])
+
+    if wal:
+        if wal_vg:
+            wal = "{0}/{1}".format(wal_vg, wal)
+        cmd.extend(["--block.wal", wal])
+
+    result = dict(
+        changed=False,
+        cmd=cmd,
+        stdout='',
+        stderr='',
+        rc='',
+        start='',
+        end='',
+        delta='',
+    )
+
+    if module.check_mode:
+        return result
+
+    # check to see if osd already exists
+    # FIXME: this does not work when data is a raw device
+    rc, out, err = module.run_command(["ceph-volume", "lvm", "list", data], encoding=None)
+    if rc == 0:
+        result["stdout"] = "skipped, since {0} is already used for an osd".format(data)
+        result['rc'] = 0
+        module.exit_json(**result)
+
+    startd = datetime.datetime.now()
+
+    rc, out, err = module.run_command(cmd, encoding=None)
+
+    endd = datetime.datetime.now()
+    delta = endd - startd
+
+    result = dict(
+        cmd=cmd,
+        stdout=out.rstrip(b"\r\n"),
+        stderr=err.rstrip(b"\r\n"),
+        rc=rc,
+        start=str(startd),
+        end=str(endd),
+        delta=str(delta),
+        changed=True,
+    )
+
+    if rc != 0:
+        module.fail_json(msg='non-zero return code', **result)
+
+    module.exit_json(**result)
+
+
+def main():
+    run_module()
+
+
+if __name__ == '__main__':
+    main()
