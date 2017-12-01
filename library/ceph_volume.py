@@ -19,6 +19,11 @@ description:
     - Only available in ceph versions luminous or greater.
 
 options:
+    cluster:
+        description:
+            - The ceph cluster name.
+        required: false
+        default: ceph
     subcommand:
         description:
             - The ceph-volume subcommand to use.
@@ -102,6 +107,7 @@ from ansible.module_utils.basic import AnsibleModule
 
 def run_module():
     module_args = dict(
+        cluster=dict(type='str', required=False, default='ceph'),
         subcommand=dict(type='str', required=False, default='lvm'),
         objectstore=dict(type='str', required=True),
         data=dict(type='str', required=True),
@@ -119,6 +125,7 @@ def run_module():
         supports_check_mode=True
     )
 
+    cluster = module.params['cluster']
     subcommand = module.params['subcommand']
     objectstore = module.params['objectstore']
     data = module.params['data']
@@ -132,6 +139,8 @@ def run_module():
 
     cmd = [
         'ceph-volume',
+        '--cluster',
+        cluster,
         subcommand,
         'create',
         '--%s' % objectstore,
