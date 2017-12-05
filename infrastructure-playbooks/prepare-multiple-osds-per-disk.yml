@@ -1,0 +1,135 @@
+---
+# This playbook prepares any drives to host more than one OSD.
+# We know that currently a single OSD hosted on a NVMe can not take advantage of the entire device.
+# As a result, hosting multiple OSDs help taking the best out your NVMe drive.
+#
+# To use:
+# Define "osds_per_device" in group_vars/osds.yml
+# This will automatically partition your devices into equally-sized partitions
+#
+
+- name: confirm whether user really meant to partition devices
+  hosts: localhost
+  gather_facts: false
+
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to partition your devices?
+      default: 'no'
+      private: no
+
+  tasks:
+    - name: exit playbook, if user did not mean to partition any device(s)
+      fail:
+        msg: "Exiting prepare-multiple-osd-per-disk playbook, no device(s) was/were partitioned...
+         To prepare your drives, either say 'yes' on the prompt or 
+         use `-e ireallymeanit=yes` on the command line when invoking the playbook"
+      when: ireallymeanit != 'yes'
+
+- name: prepare multi-osd devices
+  vars:
+    osd_group_name: osds
+    osds_per_device: 0
+    journal_size: "{{ 5120|default('journal_size') }}"
+  hosts:
+    - "{{ osd_group_name|default('osds') }}"
+  
+  tasks:
+    - include_vars: ../roles/ceph-common/defaults/main.yml
+    - include_vars: ../group_vars/all.yml
+    - include_vars: ../group_vars/osds.yml
+
+    - name: exit playbook, if no number of OSDs per device were given
+      fail:
+        msg: "Specify how many OSDs you wish to host on each device!"
+      when: osds_per_device == 0
+
+    - name: exit playbook, if no devices are defined
+      fail:
+        msg: "Give me a device list! As a dictionary"
+      when: devices|length == 0
+
+    - name: test if sgdisk command exist
+      shell: "command -v sgdisk"
+      changed_when: false
+      failed_when: false
+      register: sgdisk_command
+      
+    - name: exit playbook, if sgdisk is not installed
+      fail:
+        msg: "The sgdisk command is not available, please install it :("
+      run_once: true
+      when: sgdisk_command.rc != 0
+
+    - name: check the partition status of the device(s)
+      shell: "parted --script {{ item }} print > /dev/null 2>&1"
+      with_items: "{{ devices|default([])|unique }}"
+      changed_when: false
+      failed_when: false
+      register: devices_partition_status
+
+    - name: check if a partition named 'ceph' exists
+      shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"
+      with_items: "{{ devices }}"
+      changed_when: false
+      failed_when: false
+      register: parted_results
+
+    - name: fix partitions gpt header or labels of the journal devices
+      shell: "sgdisk --zap-all --clear --mbrtogpt -- {{ item.1 }} && sgdisk --zap-all --clear --mbrtogpt -- {{ item.2 }}"
+      with_together:
+        - "{{ devices_partition_status.results }}"
+        - "{{ devices|default([])|unique }}"
+        - "{{ dedicated_devices|default([])|unique }}"
+      changed_when: false
+      when: item.0.rc != 1
+
+    - name: exit playbook, if Ceph partition exists
+      fail:
+        msg: "Looks like a Ceph partition is present, would you like to remove it so we can proceed?"
+      with_items: "{{parted_results.results}}"
+      when: item.get("rc", 0) != 1
+
+    - name: get disk size in GiB
+      shell: "parted {{ item }} unit GiB print  | grep Disk | grep -v Flags | awk {'print $3'} | egrep -o '[0-9]+'"
+      with_items: "{{ devices|default([])|unique }}"
+      changed_when: false
+      failed_when: false
+      register: devices_size
+
+    - name: calculate collocated OSD partition size in GiB
+      set_fact:
+        osd_size: "{{ osd_size | default([]) + [ ((item.stdout|int - (journal_size|int / 1024) * osds_per_device) / osds_per_device)|round(0,'floor')|int ]  }}"
+      with_items: "{{ devices_size.results }}"
+      when:
+        - osd_scenario == 'collocated'
+
+    - name: calculate non-collocated OSD partition size in GiB
+      set_fact:
+        osd_size: "{{ osd_size | default([]) + [ (item.stdout|int / osds_per_device)|round(0,'floor')|int ]  }}"
+      with_items: "{{ devices_size.results }}"
+      when:
+        - osd_scenario == 'non-collocated'
+
+    - name: partition collocated journals
+      shell: "for i in `seq 1 {{ osds_per_device }}`;do sgdisk -n 0:0:+{{ (journal_size|int / 1024)|round(0)|int }}G -t 0:F802 -c 0:\"ceph journal\" {{ item.1 }};done"
+      with_together:
+        - "{{ osd_size|default([]) }}"
+        - "{{ devices|default([])|unique }}"
+      when:
+        - osd_scenario == 'collocated'
+
+    - name: partition non-collocated journals
+      shell: "for i in `seq 1 {{ osds_per_device }}`;do sgdisk -n 0:0:+{{ (journal_size|int / 1024)|round(0)|int }}G -t 0:F802 -c 0:\"ceph journal\" {{ item.1 }};done"
+      with_together:
+        - "{{ osd_size|default([]) }}"
+        - "{{ dedicated_devices|default([]) }}"
+      when:
+        - osd_scenario == 'non-collocated'
+
+    - name: partition OSDs
+      shell: "for i in `seq 1 {{ osds_per_device }}`;do sgdisk -n 0:0:+{{ item.0 }}G -t 0:F800 -c 0:\"ceph data\" {{ item.1 }};done"
+      with_together:
+        - "{{ osd_size|default([]) }}"
+        - "{{ devices|default([])|unique }}"
+
