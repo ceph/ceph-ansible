@@ -60,6 +60,16 @@
     - not item.0.get("skipped")
     - item.0.get("rc", 0) != 0
 
+- name: prepare ceph "{{ osd_objectstore }}" non-containerisze multi-osd disk(s) non-collocated
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.0 }} {{ item.1 }} "
+  with_together:
+    - "{{ osd_data_partitions.stdout_lines }}"
+    - "{{ osd_journal_partitions.stdout_lines }}"
+  when:
+    - osds_per_device > 1
+    - not containerized_deployment
+    - osd_objectstore == 'filestore'
+
 - name: prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) non-collocated
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }} {{ item.2 }}"
   with_together:
