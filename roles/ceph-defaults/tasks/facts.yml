@@ -151,3 +151,17 @@
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
     - osd_scenario != 'lvm'
+
+- name: set_fact ceph_uid for Debian based system
+  set_fact:
+    ceph_uid: 64045
+  when:
+    - containerized_deployment
+    - ceph_docker_image_tag | match("latest") or ceph_docker_image_tag | search("ubuntu")
+
+- name: set_fact ceph_uid for Red Hat based system
+  set_fact:
+    ceph_uid: 167
+  when:
+    - containerized_deployment
+    - ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph") or ceph_docker_image_tag | search("fedora")
