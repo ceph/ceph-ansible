@@ -42,14 +42,14 @@ ExecStart=/usr/bin/docker run --rm --name ceph-mon-%i --net=host \
   -e MON_IP=[{{ hostvars[inventory_hostname]['monitor_address'] }}] \
     {% endif -%}
 {% elif hostvars[inventory_hostname]['monitor_interface'] is defined %}
-    {% set interface = 'ansible_' + hostvars[inventory_hostname]['monitor_interface'] %}
+    {% set interface = 'ansible_' + (hostvars[inventory_hostname]['monitor_interface'] | replace('-', '_')) %}
     {% if ip_version == 'ipv4' -%}
   -e MON_IP={{ hostvars[inventory_hostname][interface][ip_version]['address'] }} \
     {% elif ip_version == 'ipv6' -%}
   -e MON_IP=[{{ hostvars[inventory_hostname][interface][ip_version][0]['address'] }}] \
     {% endif -%}
 {% else %}
-    {% set interface = 'ansible_' + monitor_interface %}
+    {% set interface = 'ansible_' + (monitor_interface | replace('-', '_')) %}
     {% if ip_version == 'ipv4' -%}
   -e MON_IP={{ hostvars[inventory_hostname][interface][ip_version]['address'] }} \
     {% elif ip_version == 'ipv6' -%}
