@@ -661,12 +661,18 @@
     register: check_for_running_ceph
     failed_when: check_for_running_ceph.rc == 0
 
+  - name: find ceph systemd unit files to remove
+    find:
+      paths: "/etc/systemd/system"
+      pattern: "ceph*"
+    register: systemd_files
+
   - name: remove ceph systemd unit files
     file:
-      path: "{{ item }}"
+      path: "{{ item.path }}"
       state: absent
-    with_fileglob: /etc/systemd/system/ceph*
-    changed_when: false
+    with_items:
+      - "{{ systemd_files.files }}"
     when: ansible_service_mgr == 'systemd'
 
 
