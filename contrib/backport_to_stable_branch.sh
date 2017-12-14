@@ -89,7 +89,7 @@ checkout
 cherry_pick
 push
 create_pr <<MSG
-[skip ci] backport of ${3}
+Backport of ${3}
 
 Backport of #${3}
 MSG
