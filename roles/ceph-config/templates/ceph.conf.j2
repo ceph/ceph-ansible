@@ -53,9 +53,19 @@ mon host = {% if nb_mon > 0 %}
     {%- elif hostvars[host]['monitor_interface'] is defined -%}
       {% set interface = 'ansible_' + (hostvars[host]['monitor_interface'] | replace('-', '_')) %}
       {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host][interface][ip_version]['address'] }}
+        {% set test_int = hostvars[host][interface][ip_version]['address'] %}
+        {% if test_int | length > 0 %}
+          {{ hostvars[host][interface][ip_version]['address'] }}
+        {% else %}
+          {{ "The provided interface does not have any IP."/0 }}
+        {% endif %}
       {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host][interface][ip_version][0]['address'] }}]
+        {% set test_int = hostvars[host][interface][ip_version][0]['address'] %}
+        {% if test_int | length > 0 %}
+          [{{ hostvars[host][interface][ip_version][0]['address'] }}]
+        {% else %}
+          {{ "The provided interface does not have any IP."/0 }}
+        {% endif %}
       {%- endif %}
     {%- else -%}
       {% set interface = 'ansible_' + (monitor_interface | replace('-', '_')) %}
@@ -91,16 +101,36 @@ mon host = {% if nb_mon > 0 %}
     {%- elif hostvars[host]['monitor_interface'] is defined -%}
       {% set interface = 'ansible_' + (hostvars[host]['monitor_interface'] | replace('-', '_')) %}
       {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host][interface][ip_version]['address'] }}
+      {% set test_int == hostvars[host][interface][ip_version]['address'] %}
+        {% if test_int | length > 0 %}
+          {{ hostvars[host][interface][ip_version]['address'] }}
+        {% else %}
+          {{ "The provided interface does not have any IP."/0 }}
+        {% endif %}
       {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host][interface][ip_version][0]['address'] }}]
+        {% set test_int == hostvars[host][interface][ip_version][0]['address'] %}
+          {% if test_int | length > 0 %}
+            [{{ hostvars[host][interface][ip_version][0]['address'] }}]
+          {% else %}
+            {{ "The provided interface does not have any IP."/0 }}
+          {% endif %}
       {%- endif %}
     {%- else -%}
       {% set interface = 'ansible_' + (monitor_interface | replace('-', '_')) %}
       {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host][interface][ip_version]['address'] }}
+      {% set test_int == hostvars[host][interface][ip_version]['address'] %}
+        {% if test_int | length > 0 %}
+          {{ hostvars[host][interface][ip_version]['address'] }}
+        {% else %}
+          {{ "The provided interface does not have any IP."/0 }}
+        {% endif %}
       {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host][interface][ip_version][0]['address'] }}]
+        {% set test_int == hostvars[host][interface][ip_version][0]['address'] %}
+          {% if test_int | length > 0 %}
+            [{{ hostvars[host][interface][ip_version][0]['address'] }}]
+          {% else %}
+            {{ "The provided interface does not have any IP."/0 }}
+          {% endif %}
       {%- endif %}
     {%- endif %}
     {% if not loop.last -%},{%- endif %}
@@ -197,17 +227,37 @@ rgw frontends = civetweb port=[{{ radosgw_address }}]:{{ radosgw_civetweb_port }
 {% elif hostvars[host]['radosgw_interface'] is defined -%}
     {% set interface='ansible_' + (hostvars[host]['radosgw_interface'] | replace('-', '_')) %}
     {% if ip_version == 'ipv4' %}
+      {% set test_int == hostvars[host][interface][ip_version]['address'] %}
+        {% if test_int | length > 0 %}
 rgw frontends = civetweb port={{ hostvars[host][interface][ip_version]['address'] }}:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
+        {% else %}
+          {{ "The provided interface does not have any IP."/0 }}
+        {% endif %}
     {% elif ip_version == 'ipv6' %}
+      {% set test_int == hostvars[host][interface][ip_version][0]['address'] %}
+        {% if test_int | length > 0 %}
 rgw frontends = civetweb port=[{{ hostvars[host][interface][ip_version][0]['address'] }}]:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
+        {% else %}
+          {{ "The provided interface does not have any IP."/0 }}
+        {% endif %}
     {% endif %}
 {% else %}
-    {% set interface='ansible_' + (radosgw_interface | replace('-', '_')) %}
-    {% if ip_version == 'ipv4' %}
+  {% set interface='ansible_' + (radosgw_interface | replace('-', '_')) %}
+  {% if ip_version == 'ipv4' %}
+    {% set test_int == hostvars[host][interface][ip_version]['address'] %}
+      {% if test_int | length > 0 %}
 rgw frontends = civetweb port={{ hostvars[host][interface][ip_version]['address'] }}:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
-    {% elif ip_version == 'ipv6' %}
+      {% else %}
+        {{ "The provided interface does not have any IP."/0 }}
+      {% endif %}
+  {% elif ip_version == 'ipv6' %}
+    {% set test_int == hostvars[host][interface][ip_version][0]['address'] %}
+      {% if test_int | length > 0 %}
 rgw frontends = civetweb port=[{{ hostvars[host][interface][ip_version][0]['address'] }}]:{{ radosgw_civetweb_port }} {{ radosgw_civetweb_options }}
-    {% endif %}
+      {% else %}
+        {{ "The provided interface does not have any IP."/0 }}
+      {% endif %}
+  {% endif %}
 {% endif %}
 {% endif %}
 {% endfor %}
