@@ -33,7 +33,7 @@
     - monportstate.rc == 0
 
 - name: check if osd and mds range is not filtered (osd hosts)
-  local_action: shell set -o pipefail && nmap -p 6800-7300 {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} | grep -sqo -e filtered -e '0 hosts up'
+  local_action: shell set -o pipefail && nmap -p 6800-7300 {{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(public_network) | first }} | grep -sqo -e filtered -e '0 hosts up'
   changed_when: false
   failed_when: false
   register: osdrangestate
@@ -51,7 +51,7 @@
     - osdrangestate.rc == 0
 
 - name: check if osd and mds range is not filtered (mds hosts)
-  local_action: shell set -o pipefail && nmap -p 6800-7300 {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} | grep -sqo -e filtered -e '0 hosts up'
+  local_action: shell set -o pipefail && nmap -p 6800-7300 {{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(public_network) | first }} | grep -sqo -e filtered -e '0 hosts up'
   changed_when: false
   failed_when: false
   register: mdsrangestate
