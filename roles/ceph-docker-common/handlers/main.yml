@@ -1,0 +1,115 @@
+---
+- name: restart ceph container mon daemon(s) because new image
+  command: /usr/bin/env bash /tmp/restart_mon_daemon.sh
+  listen: "restart ceph mons container"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - mon_group_name in group_names
+    - ceph_mon_container_stat.get('rc') == 0
+    - inventory_hostname == groups.get(mon_group_name) | last
+    - inventory_hostname in play_hosts
+    - ceph_mon_container_stat.get('stdout_lines', [])|length != 0
+    - container_inspect_before_pull.rc == 0
+    - (container_inspect_before_pull.stdout | from_json)[0].RepoDigests[0] != (container_inspect_after_pull.stdout | from_json)[0].RepoDigests[0]
+  with_items: "{{ groups[mon_group_name] }}"
+  run_once: true
+  delegate_to: "{{ item }}"
+
+- name: restart ceph container osds daemon(s) because new image
+  command: /usr/bin/env bash /tmp/restart_osd_daemon.sh
+  listen: "restart ceph osds container"
+  when:
+    # We do not want to run these checks on initial deployment (`socket_osd_container_stat.results[n].rc == 0`)
+    # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
+    - osd_group_name in group_names
+    - ceph_osd_container_stat.get('rc') == 0
+    - inventory_hostname == groups.get(osd_group_name) | last
+    - ((crush_location is defined and crush_location) or ceph_osd_container_stat.get('stdout_lines', [])|length != 0)
+    - handler_health_osd_check
+    # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
+    - inventory_hostname in play_hosts
+    - container_inspect_before_pull.rc == 0
+    - (container_inspect_before_pull.stdout | from_json)[0].RepoDigests[0] != (container_inspect_after_pull.stdout | from_json)[0].RepoDigests[0]
+  with_items: "{{ groups[osd_group_name] }}"
+  run_once: true
+  delegate_to: "{{ item }}"
+
+- name: restart ceph container mds daemon(s) because new image
+  command: /usr/bin/env bash /tmp/restart_mds_daemon.sh
+  listen: "restart ceph mdss container"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - mds_group_name in group_names
+    - ceph_mds_container_stat.get('rc') == 0
+    - inventory_hostname == groups.get(mds_group_name) | last
+    - inventory_hostname in play_hosts
+    - ceph_mds_container_stat.get('stdout_lines', [])|length != 0
+    - container_inspect_before_pull.rc == 0
+    - (container_inspect_before_pull.stdout | from_json)[0].RepoDigests[0] != (container_inspect_after_pull.stdout | from_json)[0].RepoDigests[0]
+  with_items: "{{ groups[mds_group_name] }}"
+  run_once: true
+  delegate_to: "{{ item }}"
+
+- name: restart ceph container rgw daemon(s) because new image
+  command: /usr/bin/env bash /tmp/restart_rgw_daemon.sh
+  listen: "restart ceph rgws container"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - rgw_group_name in group_names
+    - ceph_rgw_container_stat.get('rc') == 0
+    - inventory_hostname == groups.get(rgw_group_name) | last
+    - inventory_hostname in play_hosts
+    - ceph_rgw_container_stat.get('stdout_lines', [])|length != 0
+    - container_inspect_before_pull.rc == 0
+    - (container_inspect_before_pull.stdout | from_json)[0].RepoDigests[0] != (container_inspect_after_pull.stdout | from_json)[0].RepoDigests[0]
+  with_items: "{{ groups[rgw_group_name] }}"
+  run_once: true
+  delegate_to: "{{ item }}"
+
+- name: restart ceph container nfs daemon(s) because new image
+  command: /usr/bin/env bash /tmp/restart_nfs_daemon.sh
+  listen: "restart ceph nfss container"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - nfs_group_name in group_names
+    - ceph_nfs_container_stat.get('rc') == 0
+    - inventory_hostname == groups.get(nfs_group_name) | last
+    - inventory_hostname in play_hosts
+    - ceph_nfs_container_stat.get('stdout_lines', [])|length != 0
+    - container_inspect_before_pull.rc == 0
+    - (container_inspect_before_pull.stdout | from_json)[0].RepoDigests[0] != (container_inspect_after_pull.stdout | from_json)[0].RepoDigests[0]
+  with_items: "{{ groups[nfs_group_name] }}"
+  run_once: true
+  delegate_to: "{{ item }}"
+
+- name: restart ceph container rbd mirror daemon(s) because new image
+  command: /usr/bin/env bash /tmp/restart_rbd_mirror_daemon.sh
+  listen: "restart ceph rbdmirrors container"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - rbdmirror_group_name in group_names
+    - ceph_rbd_mirror_container_stat.get('rc') == 0
+    - inventory_hostname == groups.get(rbdmirror_group_name) | last
+    - inventory_hostname in play_hosts
+    - ceph_rbd_mirror_container_stat.get('stdout_lines', [])|length != 0
+    - container_inspect_before_pull.rc == 0
+    - (container_inspect_before_pull.stdout | from_json)[0].RepoDigests[0] != (container_inspect_after_pull.stdout | from_json)[0].RepoDigests[0]
+  with_items: "{{ groups[rbdmirror_group_name] }}"
+  run_once: true
+  delegate_to: "{{ item }}"
+
+- name: restart ceph container mgr daemon(s) because new image
+  command: /usr/bin/env bash /tmp/restart_mgr_daemon.sh
+  listen: "restart ceph mgrs container"
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - mgr_group_name in group_names
+    - ceph_mgr_container_stat.get('rc') == 0
+    - inventory_hostname == groups.get(mgr_group_name) | last
+    - inventory_hostname in play_hosts
+    - ceph_mgr_container_stat.get('stdout_lines', [])|length != 0
+    - container_inspect_before_pull.rc == 0
+    - (container_inspect_before_pull.stdout | from_json)[0].RepoDigests[0] != (container_inspect_after_pull.stdout | from_json)[0].RepoDigests[0]
+  with_items: "{{ groups[mgr_group_name] }}"
+  run_once: true
+  delegate_to: "{{ item }}"
