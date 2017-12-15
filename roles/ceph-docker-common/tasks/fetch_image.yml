@@ -1,6 +1,12 @@
 ---
-# Normal case - pull image from registry
-- name: "pull {{ ceph_docker_image }} image"
+# NOTE(leseb): using failed_when to handle the case when the image is not present yet
+- name: "inspecting {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image before pulling"
+  command: "docker inspect {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+  changed_when: false
+  failed_when: false
+  register: container_inspect_before_pull
+
+- name: "pulling {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image"
   command: "timeout {{ docker_pull_timeout }} docker pull {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
   changed_when: false
   register: docker_image
@@ -10,7 +16,18 @@
   when:
     - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
 
-# Dev case - export local dev image and send it across
+- name: "inspecting {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image after pulling"
+  command: "docker inspect {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+  failed_when: false
+  register: container_inspect_after_pull
+  notify:
+    - restart ceph mons container
+    - restart ceph osds container
+    - restart ceph mdss container
+    - restart ceph rgws container
+    - restart ceph mgrs container
+    - restart ceph rbdmirrors container
+
 - name: export local ceph dev image
   local_action: command docker save -o "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar" "{{ ceph_docker_username }}/{{ ceph_docker_imagename }}:{{ ceph_docker_image_tag }}"
   when:
