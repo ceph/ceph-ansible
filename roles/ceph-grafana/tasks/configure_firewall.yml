@@ -1,0 +1,20 @@
+---
+- name: Check firewalld status
+  shell: "systemctl show firewalld | grep UnitFileState"
+  register: firewalld_status
+  failed_when: false
+  changed_when: false
+  tags:
+    - skip_ansible_lint
+
+- name: Open ports for Grafana and Carbon
+  firewalld:
+    port: "{{ item }}"
+    zone: "{{ firewalld_zone }}"
+    state: enabled
+    immediate: true
+    permanent: true
+  with_items:
+    - 3000/tcp
+    - 2003/tcp
+  when: "'enabled' in firewalld_status.stdout"

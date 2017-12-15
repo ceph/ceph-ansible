@@ -68,6 +68,12 @@
         - ansible_distribution == 'Fedora'
         - ansible_distribution_major_version|int >= 23
 
+- hosts: ceph-grafana
+  gather_facts: false
+  become: true
+  roles:
+		- ceph-grafana
+
 - hosts: mons
   gather_facts: false
   become: True
@@ -76,6 +82,7 @@
     - ceph-common
     - ceph-config
     - ceph-mon
+    - ceph-collectd
 
 - hosts: mgrs
   gather_facts: false
@@ -85,6 +92,8 @@
     - ceph-common
     - { role: ceph-config, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
     - { role: ceph-mgr, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
+    - ceph-collectd
+
 
 - hosts: agents
   gather_facts: false
@@ -94,6 +103,8 @@
     - ceph-common
     - ceph-config
     - ceph-agent
+    - ceph-collectd
+
 
 - hosts: osds
   gather_facts: false
@@ -103,6 +114,8 @@
     - ceph-common
     - ceph-config
     - ceph-osd
+    - ceph-collectd
+
 
 - hosts: mdss
   gather_facts: false
@@ -112,6 +125,8 @@
     - ceph-common
     - ceph-config
     - ceph-mds
+    - ceph-collectd
+
 
 - hosts: rgws
   gather_facts: false
@@ -121,6 +136,8 @@
     - ceph-common
     - ceph-config
     - ceph-rgw
+    - ceph-collectd
+
 
 - hosts: nfss
   gather_facts: false
@@ -130,6 +147,8 @@
     - ceph-common
     - { role: ceph-config, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
     - { role: ceph-nfs, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
+    - ceph-collectd
+
 
 - hosts: restapis
   gather_facts: false
@@ -139,6 +158,8 @@
     - ceph-common
     - ceph-config
     - ceph-restapi
+    - ceph-collectd
+
 
 - hosts: rbdmirrors
   gather_facts: false
@@ -148,6 +169,8 @@
     - ceph-common
     - ceph-config
     - ceph-rbd-mirror
+    - ceph-collectd
+
 
 - hosts: clients
   gather_facts: false
@@ -157,6 +180,8 @@
     - ceph-common
     - ceph-config
     - ceph-client
+    - ceph-collectd
+
 
 - hosts: iscsi-gws
   gather_facts: false
@@ -166,4 +191,4 @@
     - ceph-common
     - { role: ceph-config, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
     - { role: ceph-iscsi-gw, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
-
+    - ceph-collectd

@@ -1,0 +1,15 @@
+[Unit]
+Description=Graphite-API service
+Requires=graphite-api.socket
+
+[Service]
+ExecStart=/usr/bin/gunicorn3 -w2 graphite_api.app:app
+Restart=on-failure
+User={{ graphite.unix_user[ansible_pkg_mgr] }}
+Group={{ graphite.unix_user[ansible_pkg_mgr] }}
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

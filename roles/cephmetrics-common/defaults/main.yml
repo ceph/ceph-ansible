@@ -1,0 +1,65 @@
+---
+defaults:
+  containerized_deployment: false
+  use_epel: false
+  devel_mode: true
+  graphite:
+    service: graphite-web
+    web_port: "{{ graphite_port | default('8080') }}"
+    api_port: 8888
+    user: admin
+    password: admin
+    # The unix account running the graphite-web process
+    unix_user:
+      yum: apache
+      apt: _graphite
+    build_index:
+      yum: '/usr/bin/graphite-build-index'
+      apt: '/usr/bin/graphite-build-search-index'
+    apache_name:
+      yum: 'httpd'
+      apt: 'apache2'
+    apache_conf:
+      yum: '/etc/httpd/conf/httpd.conf'
+      apt: '/etc/apache2/apache2.conf'
+    site_conf:
+      yum: '/etc/httpd/conf.d/graphite-web.conf'
+      apt: '/etc/apache2/sites-available/graphite-web.conf'
+    app_conf:
+      yum: '/etc/graphite-web/local_settings.py'
+      apt: '/etc/graphite/local_settings.py'
+  carbon:
+    unix_user:
+      yum: carbon
+      apt: _graphite
+    storage_dir:
+      yum: /var/lib/carbon
+      apt: /var/lib/graphite
+  whisper:
+    retention:
+      - ['10s', '7d']
+      - ['1m', '30d']
+      - ['15m', '5y']
+  # The firewalld zone that carbon and grafana will use
+  firewalld_zone: public
+  devel_packages:
+    yum:
+      # unzip is needed to extract the Vonage plugin
+      - unzip
+      - graphite-web
+      - python-carbon
+      - grafana
+      # for dashUpdater.py
+      - PyYAML
+      - python-requests
+    apt:
+      # unzip is needed to extract the Vonage plugin
+      - unzip
+      - graphite-web
+      - apache2
+      - libapache2-mod-wsgi
+      - graphite-carbon
+      - grafana
+      # for dashUpdater.py
+      - python-yaml
+      - python-requests

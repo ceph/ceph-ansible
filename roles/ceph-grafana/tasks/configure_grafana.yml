@@ -1,0 +1,148 @@
+---
+- name: Make sure grafana is down
+  service:
+    name: grafana-server
+    state: stopped
+
+- name: Wait for grafana to be stopped
+  wait_for:
+    port: 3000
+    state: stopped
+
+- name: Write grafana.ini
+  copy:
+    src: files/grafana.ini
+    dest: /etc/grafana/grafana.ini
+    owner: root
+    group: grafana
+    mode: 0640
+  tags: [ini]
+
+- name: Set domain in grafana.ini
+  lineinfile:
+    dest: /etc/grafana/grafana.ini
+    regexp: "^domain = .*"
+    insertafter: "^;domain = .*"
+    line: "domain = {{ ansible_fqdn }}"
+  tags: [ini]
+
+- name: Set admin_password in grafana.ini
+  lineinfile:
+    dest: /etc/grafana/grafana.ini
+    regexp: "^admin_password = .*"
+    insertafter: "^;admin_password = .*"
+    line: "admin_password = {{ grafana.admin_password }}"
+  no_log: true
+  tags: [ini]
+
+- include: grafana_plugins.yml
+  when: devel_mode
+
+- name: Enable and start grafana
+  service:
+    name: grafana-server
+    state: started
+    enabled: true
+
+- name: Wait for grafana to start
+  wait_for:
+    port: 3000
+
+- name: Set grafana_data_source
+  set_fact:
+    grafana_data_source: >
+      {
+        "name":"{{ grafana.datasource }}",
+        "type":"graphite",
+        "url":"http://localhost:{{ graphite.web_port if graphite.service == 'graphite-web' else graphite.api_port }}",
+        "access":"proxy",
+        "basicAuth":false,
+        "isDefault":true
+      }
+
+- name: Add data source
+  uri:
+    url: http://localhost:3000/api/datasources
+    method: POST
+    user: admin
+    password: "{{ grafana.admin_password }}"
+    force_basic_auth: yes
+    body_format: json
+    body: "{{ grafana_data_source }}"
+    # If we get a 409 Conflict, it means we're already set up. We'll update
+    # after this.
+    status_code: 200,409
+  register: grafana_data_source_result
+
+- name: Get datasource ID
+  uri:
+    url: "http://localhost:3000/api/datasources/id/{{ grafana.datasource }}"
+    method: GET
+    user: "{{ graphite.user }}"
+    password: "{{ grafana.admin_password }}"
+    force_basic_auth: yes
+  register: grafana_data_source_id
+  when: grafana_data_source_result is defined and grafana_data_source_result.status == 409
+
+- name: Update datasource
+  uri:
+    url: "http://localhost:3000/api/datasources/{{ grafana_data_source_id.json.id }}"
+    method: PUT
+    user: "{{ graphite.user }}"
+    password: "{{ grafana.admin_password }}"
+    force_basic_auth: yes
+    body_format: json
+    body: "{{ grafana_data_source }}"
+    status_code: 200
+  when: grafana_data_source_result is defined and grafana_data_source_result.status == 409
+
+- name: Ship dashboard templates
+  copy:
+    src: files/dashboards
+    dest: /tmp/
+  when: devel_mode
+  tags:
+    - dashboards
+
+- name: Ship dashUpdater.py
+  copy:
+    src: files/dashUpdater.py
+    dest: /tmp/dashUpdater.py
+  when: devel_mode
+  tags:
+    - dashboards
+
+- name: Write dashboard.yml
+  template:
+    src: dashboard.yml
+    dest: /tmp/dashboard.yml
+    mode: 0600
+  tags:
+    - dashboards
+
+- name: Set dashupdate_cmd and dashboard_dir
+  set_fact:
+    dashupdate_cmd: "python /tmp/dashUpdater.py"
+    dashboard_dir: "/tmp/dashboards"
+  when: devel_mode
+  tags:
+    - dashboards
+
+- name: Set dashupdate_cmd and dashboard_dir
+  set_fact:
+    dashupdate_cmd: "/usr/libexec/cephmetrics/dashUpdater.py"
+    dashboard_dir: "/usr/share/cephmetrics/dashboards"
+  when: not devel_mode
+  tags:
+    - dashboards
+
+- name: Set dashupdate_mode
+  set_fact:
+    dashupdate_mode: "{{ 'refresh' if replace_dashboards else 'update' }}"
+  tags:
+    - dashboards
+
+- name: Push dashboards to Grafana
+  command: "{{ dashupdate_cmd }} -m {{ dashupdate_mode }} -c /tmp/dashboard.yml -D {{ dashboard_dir }}{{ ' -A' if update_alerts else '' }}"
+  tags:
+    - dashboards

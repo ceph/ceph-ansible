@@ -1,0 +1,54 @@
+---
+- include: merge_vars.yml
+  tags:
+    - always
+
+
+- include: sanity.yml
+  tags:
+    - sanity
+
+- include: setup_repos.yml
+  when:
+    - not containerized_deployment
+  tags:
+    - packages
+    - repos
+
+- include: install_packages.yml
+  when: not containerized_deployment
+  tags:
+    - packages
+
+- include: configure_firewall.yml
+  tags:
+    - firewall
+
+- include: configure_carbon.yml
+  when: not containerized_deployment
+  tags:
+    - carbon
+
+- include: configure_graphite.yml
+  when: not containerized_deployment
+  tags:
+    - graphite
+
+- include: configure_grafana.yml
+  when: not containerized_deployment
+  tags:
+    - grafana
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+    # Even when just calling daemon-reload, ansible < 2.4 requires a name for this call
+    name: grafana-server
+  tags:
+    - packages
+    - services
+
+- include: start_services.yml
+  when: not containerized_deployment
+  tags:
+    - services

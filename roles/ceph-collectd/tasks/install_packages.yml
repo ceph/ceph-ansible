@@ -1,0 +1,36 @@
+---
+- name: Install collectd
+  package:
+    name: collectd
+    state: latest
+  when:
+    - devel_mode
+  notify: Restart collectd
+
+- name: Install collectd-python
+  package:
+    name: collectd-python
+    state: latest
+  when:
+    - ansible_pkg_mgr == "yum"
+    - devel_mode
+    - not use_epel
+  notify: Restart collectd
+
+- name: Install cephmetrics-collectors
+  package:
+    name: cephmetrics-collectors
+    state: latest
+  when:
+    - ansible_pkg_mgr == "yum"
+    - not devel_mode
+  notify: Restart collectd
+
+- name: Install dependencies for collector plugins
+  package:
+    name: "{{ item }}"
+    state: latest
+  with_items: "{{ collector_dependencies[ansible_pkg_mgr] }}"
+  when:
+    - devel_mode
+  notify: Restart collectd

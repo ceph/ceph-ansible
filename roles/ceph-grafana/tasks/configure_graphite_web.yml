@@ -1,0 +1,94 @@
+---
+# Older versions of Django use the 'syncdb' method for DB creation/migration.
+# Newer versions use 'migrate' but still have 'syncdb' available and
+# deprecated. We should be able to auto-discover the correct method.
+- name: Determine how to initialize Django DB
+  command: django-admin --help
+  register: django_cmd
+  no_log: true
+
+- name: Set django_init_method
+  set_fact:
+    django_init_method: "{% if 'migrate' in django_cmd.stdout_lines|map('trim')|list %}migrate{% else %}syncdb{% endif %}"
+
+- name: Create Graphite DB tables
+  command: "/usr/bin/graphite-manage {{ django_init_method }} --noinput"
+  become_user: "{{ graphite.unix_user[ansible_pkg_mgr] }}"
+  register: migrate_cmd
+  failed_when: migrate_cmd.rc != 0 and 'table "django_content_type" already exists' not in migrate_cmd.stderr
+
+- name: Run Graphite migrations if necessary
+  command: /usr/bin/graphite-manage migrate --noinput --fake-initial
+  become_user: "{{ graphite.unix_user[ansible_pkg_mgr] }}"
+  when:
+    - django_init_method == 'migrate'
+    - migrate_cmd.rc != 0
+
+- name: Build Graphite index
+  command: "{{ graphite.build_index[ansible_pkg_mgr] }}"
+  become_user: "{{ graphite.unix_user[ansible_pkg_mgr] }}"
+
+- name: Set or unset port in main apache config
+  lineinfile:
+    dest: "/{{ graphite.apache_conf[ansible_pkg_mgr] }}"
+    regexp: "^Listen .*"
+    line: "Listen 80"
+    insertafter: "^#Listen .*"
+    state: "{{ 'present' if graphite.web_port == '80' else 'absent' }}"
+  notify: Restart graphite-web
+
+# This is done automatically during package install on RPM-based distros
+- name: Copy graphite-web config on Ubuntu
+  copy:
+    src: /usr/share/graphite-web/apache2-graphite.conf
+    dest: "{{ graphite.site_conf[ansible_pkg_mgr] }}"
+    remote_src: yes
+    backup: yes
+  when: ansible_pkg_mgr == "apt"
+  notify: Restart graphite-web
+
+- name: Set port in graphite apache config
+  lineinfile:
+    dest: "{{ graphite.site_conf[ansible_pkg_mgr] }}"
+    regexp: "^Listen .*"
+    line: "Listen {{ graphite.web_port }}"
+    insertbefore: "^<VirtualHost .*"
+  notify: Restart graphite-web
+
+- name: Symlink graphite apache config on Ubuntu
+  file:
+    src: "{{ graphite.site_conf[ansible_pkg_mgr] }}"
+    dest: "/etc/apache2/sites-enabled/graphite-web.conf"
+    state: link
+    force: yes
+  when: ansible_pkg_mgr == "apt"
+  notify: Restart graphite-web
+
+- name: Set VirtualHost port in graphite apache config
+  replace:
+    dest: "{{ graphite.site_conf[ansible_pkg_mgr] }}"
+    regexp: "^<VirtualHost \\*:.+>$"
+    replace: "<VirtualHost *:{{ graphite.web_port }}>"
+  notify: Restart graphite-web
+
+- name: Allow connecting to graphite without auth
+  lineinfile:
+    dest: "{{ graphite.site_conf[ansible_pkg_mgr] }}"
+    line: "	Require all granted"
+    insertafter: '<Directory "/usr/share/graphite/">'
+    state: present
+  when: ansible_pkg_mgr == "yum"
+  notify: Restart graphite-web
+
+- name: Get timezone
+  shell: "timedatectl | grep 'Time zone'"
+  register: timezone
+
+- name: Set timezone in local_settings.py
+  lineinfile:
+    dest: "{{ graphite.app_conf[ansible_pkg_mgr] }}"
+    line: "TIME_ZONE = '{{ timezone.stdout.strip().split(' ')[2] }}'"
+    regexp: "^TIME_ZONE = .*"
+    insertafter: '^#TIME_ZONE = .*'
+    state: present
+  notify: Restart graphite-web

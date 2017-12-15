@@ -1,0 +1,30 @@
+---
+- name: Create Grafana plugins directory
+  file:
+    name: /var/lib/grafana/plugins
+    state: directory
+
+- name: Set grafana_plugins
+  set_fact:
+    grafana_plugins: "['vonage-status-panel', 'grafana-piechart-panel']"
+
+- name: Install Grafana plugins
+  command: "grafana-cli plugins install {{ item }}"
+  with_items: "{{ grafana_plugins }}"
+
+- name: Update Grafana plugins
+  command: "grafana-cli plugins update {{ item }}"
+  with_items: "{{ grafana_plugins }}"
+
+- name: Update status-panel for readability within the 'light' theme (older versions)
+  command: "sed -i.bak -e 's/green/rgb(1,167,1)/g' /var/lib/grafana/plugins/vonage-status-panel/dist/css/status_panel.css"
+  tags:
+    - skip_ansible_lint
+
+- name: Update status-panel for readability within the 'light' theme (newer versions)
+  replace:
+    path: "/var/lib/grafana/plugins/vonage-status-panel/dist/status_ctrl.js"
+    regexp:  "ok: 'rgba\\(50, 128, 45, 0\\.9\\)',"
+    replace: "ok: 'rgb(1,167,1)',"
+    backup: no
+  failed_when: false

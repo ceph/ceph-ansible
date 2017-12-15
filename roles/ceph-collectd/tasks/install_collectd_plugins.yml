@@ -1,0 +1,17 @@
+---
+- name: Create collectors directory
+  file:
+    name: "{{ collectd_cephmetrics_dir }}/collectors"
+    state: directory
+
+- name: Ship collector plugins
+  copy:
+    src: files/collectors/
+    dest: "{{ collectd_cephmetrics_dir }}/collectors"
+  notify: Restart collectd
+
+- name: Ship cephmetrics.py
+  copy:
+    src: files/cephmetrics.py
+    dest: "{{ collectd_cephmetrics_dir }}"
+  notify: Restart collectd

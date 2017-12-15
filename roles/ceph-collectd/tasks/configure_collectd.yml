@@ -1,0 +1,55 @@
+---
+- name: Ship collectd.conf
+  copy:
+    src: files/etc/collectd.conf
+    dest: "{{ collectd_conf }}"
+  notify: Restart collectd
+
+- name: Set PluginDir in collectd.conf
+  replace:
+    dest: "{{ collectd_conf }}"
+    regexp: 'PluginDir ".*"'
+    replace: 'PluginDir "{{ collectd_dir }}"'
+  notify: Restart collectd
+
+- name: Set Include path in collectd.conf
+  replace:
+    dest: "{{ collectd_conf }}"
+    regexp: 'Include ".*"'
+    replace: 'Include "{{ collectd_conf_d }}/*.conf"'
+  notify: Restart collectd
+
+- name: Ship /etc/collectd.d or /etc/collectd/collectd.conf.d
+  copy:
+    src: files/etc/collectd.d/
+    dest: "{{ collectd_conf_d }}"
+  notify: Restart collectd
+
+- name: Set hostname in write_graphite.conf
+  replace:
+    dest: "{{ collectd_conf_d }}/write_graphite.conf"
+    regexp: 'Host ".*"'
+    replace: "Host \"{{ groups['ceph-grafana'][0] }}\""
+  notify: Restart collectd
+
+- name: Set cluster name in cephmetrics.conf
+  replace:
+    dest: "{{ collectd_conf_d }}/cephmetrics.conf"
+    regexp: 'ClusterName ".*"'
+    replace: 'ClusterName "{{ cluster }}"'
+  notify: Restart collectd
+
+- name: Set EventURL in cephmetrics.conf
+  lineinfile:
+    dest: "{{ collectd_conf_d }}/cephmetrics.conf"
+    regexp: 'EventURL ".*"'
+    insertafter: 'ClusterName ".*"'
+    line: "        EventURL \"http://{{ groups['ceph-grafana'][0] }}:{{ graphite.web_port if graphite.service == 'graphite-web' else graphite.api_port }}/events/\""
+  notify: Restart collectd
+
+- name: Set ModulePath in cephmetrics.conf
+  replace:
+    dest: "{{ collectd_conf_d }}/cephmetrics.conf"
+    regexp: 'ModulePath ".*"'
+    replace: 'ModulePath "{{ collectd_cephmetrics_dir }}"'
+  notify: Restart collectd
