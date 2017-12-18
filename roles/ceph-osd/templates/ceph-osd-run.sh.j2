@@ -1,6 +1,7 @@
 #!/bin/bash
 # {{ ansible_managed }}
 
+DOCKER_ENV=""
 
 #############
 # FUNCTIONS #
@@ -27,11 +28,23 @@ function expose_partitions {
   fi
   if [[ -f {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-devdev${1}.log ]]; then
     part=$(grep "Journal is GPT partition" {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-devdev${1}.log | grep -Eo /dev/disk/by-partuuid/${REGEX} | uniq)
-    DOCKER_ENV="$DOCKER_ENV -e OSD_JOURNAL=$part"
+    DOCKER_ENV="-e OSD_JOURNAL=$part"
   fi
   if [[ -f {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-${1}.log ]]; then
     part=$(grep "Journal is GPT partition" {{ ceph_osd_docker_run_script_path }}/ceph-osd-prepare-{{ ansible_hostname }}-${1}.log | grep -Eo /dev/disk/by-partuuid/${REGEX} | uniq)
-    DOCKER_ENV="$DOCKER_ENV -e OSD_JOURNAL=$part"
+    DOCKER_ENV="-e OSD_JOURNAL=$part"
+  fi
+  if [[ -z $DOCKER_ENV ]]; then
+    # NOTE(leseb): if we arrive here this probably means we just switched from non-containers to containers.
+    # This is tricky as we don't have any info on the type of OSD, this is 'only' a problem for non-collocated scenarios
+    # We can't assume that the 'ceph' is still present so calling Docker exec instead
+    part=$(docker run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} list /dev/${1} | awk '/journal / {print $1}')
+    DOCKER_ENV="-e OSD_JOURNAL=$part"
+  fi
+  # if empty, the previous command didn't find anything so we fail
+  if [[ -z $DOCKER_ENV ]]; then
+    echo "ERROR: could not discover ceph partitions"
+    exit 1
   fi
 }
 {% endif -%}
