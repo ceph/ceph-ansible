@@ -11,6 +11,7 @@
   when:
     - not osd_auto_discovery
     - not dmcrypt
+    - item != '/dev/dead'
 
 - name: activate osd(s) when device is a disk (dmcrypt)
   command: ceph-disk activate --dmcrypt "{{ item | regex_replace('^(\/dev\/cciss\/c[0-9]{1}d[0-9]{1})$', '\1p') | regex_replace('^(\/dev\/loop[0-9]{1})$', '\1p') }}1"
@@ -21,6 +22,7 @@
   when:
     - not osd_auto_discovery
     - dmcrypt
+    - item != '/dev/dead'
 
 # NOTE (leseb): we must do this because of
 # https://github.com/ansible/ansible/issues/4297
