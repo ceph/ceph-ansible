@@ -1,6 +1,6 @@
 ---
 - name: check the partition status of the osd disks
-  command: "parted --script {{ item }} print"
+  command: "blkid -t PTTYPE=\"gpt\" {{ item }}"
   with_items:
     - "{{ devices }}"
   changed_when: false
@@ -9,9 +9,7 @@
   register: osd_partition_status_results
 
 - name: create gpt disk label
-  parted:
-    device: "{{ item.1 }}"
-    label: gpt
+  command: "parted -s {{ item.1 }} mklabel gpt"
   with_together:
     - "{{ osd_partition_status_results.results }}"
     - "{{ devices }}"
