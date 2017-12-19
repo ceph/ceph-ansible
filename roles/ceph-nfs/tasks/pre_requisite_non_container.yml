@@ -109,16 +109,30 @@
     - ansible_os_family in ['Debian', 'Suse']
     - nfs_file_gw
 
-- name: install nfs rgw gateway
-  package:
+- name: install nfs rgw gateway - suse
+  zypper:
     name: "{{ item }}"
+    disable_gpg_check: yes
   with_items:
     - nfs-ganesha-rgw
     - radosgw
   when:
     - (ceph_origin == 'repository' or ceph_origin == 'distro')
     - ceph_repository != 'rhcs'
-    - ansible_os_family in ['Debian', 'Suse']
+    - ansible_os_family == 'Suse'
+    - nfs_obj_gw
+
+- name: install nfs rgw gateway - debian
+  apt:
+    name: "{{ item }}"
+    allow_unauthenticated: yes
+  with_items:
+    - nfs-ganesha-rgw
+    - radosgw
+  when:
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
+    - ceph_repository != 'rhcs'
+    - ansible_os_family == 'Debian'
     - nfs_obj_gw
 
 # debian_rhcs installation
