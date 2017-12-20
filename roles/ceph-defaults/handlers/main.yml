@@ -5,6 +5,14 @@
   when:
     - ansible_os_family == 'Debian'
 
+# We only want to restart on hosts that have called the handler.
+# This var is set when he handler is called, and unset after the
+# restart to ensure only the correct hosts are restarted.
+- name: set _mon_handler_called before restart
+  set_fact:
+     _mon_handler_called: True
+  listen: "restart ceph mons"
+
 - name: copy mon restart script
   template:
     src: restart_mon_daemon.sh.j2
@@ -15,7 +23,6 @@
   listen: "restart ceph mons"
   when:
     - mon_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph mon daemon(s) - non container
   command: /tmp/restart_mon_daemon.sh
@@ -24,11 +31,11 @@
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - mon_group_name in group_names
     - not containerized_deployment
-    - inventory_hostname == groups.get(mon_group_name) | last
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_mon_handler_called'] | default(False)
     - mon_socket_stat.rc == 0
   with_items: "{{ groups[mon_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
 
 - name: restart ceph mon daemon(s) - container
   command: /tmp/restart_mon_daemon.sh
@@ -38,11 +45,21 @@
     - mon_group_name in group_names
     - containerized_deployment
     - ceph_mon_container_stat.get('rc') == 0
-    - inventory_hostname == groups.get(mon_group_name) | last
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_mon_handler_called'] | default(False)
     - ceph_mon_container_stat.get('stdout_lines', [])|length != 0
   with_items: "{{ groups[mon_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _mon_handler_called after restart
+  set_fact:
+     _mon_handler_called: False
+  listen: "restart ceph mons"
+
+- name: set _osd_handler_called before restart
+  set_fact:
+     _osd_handler_called: True
+  listen: "restart ceph osds"
 
 # This does not just restart OSDs but everything else too. Unfortunately
 # at this time the ansible role does not have an OSD id list to use
@@ -57,7 +74,6 @@
   listen: "restart ceph osds"
   when:
     - osd_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph osds daemon(s) - non container
   command: /tmp/restart_osd_daemon.sh
@@ -65,16 +81,15 @@
   when:
     - osd_group_name in group_names
     - not containerized_deployment
-    - inventory_hostname == groups.get(osd_group_name) | last
     # We do not want to run these checks on initial deployment (`socket_osd_container.results[n].rc == 0`)
     # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
     - ((crush_location is defined and crush_location) or osd_socket_stat.rc == 0)
     - ceph_current_fsid.rc == 0
     - handler_health_osd_check
-    # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_osd_handler_called'] | default(False)
   with_items: "{{ groups[osd_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
 
 - name: restart ceph osds daemon(s) - container
   command: /tmp/restart_osd_daemon.sh
@@ -85,13 +100,22 @@
     - osd_group_name in group_names
     - containerized_deployment
     - ceph_osd_container_stat.get('rc') == 0
-    - inventory_hostname == groups.get(osd_group_name) | last
     - ((crush_location is defined and crush_location) or ceph_osd_container_stat.get('stdout_lines', [])|length != 0)
     - handler_health_osd_check
-    # See https://github.com/ceph/ceph-ansible/issues/1457 for the condition below
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_osd_handler_called'] | default(False)
   with_items: "{{ groups[osd_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _osd_handler_called after restart
+  set_fact:
+     _osd_handler_called: False
+  listen: "restart ceph osds"
+
+- name: set _mds_handler_called before restart
+  set_fact:
+     _mds_handler_called: True
+  listen: "restart ceph mdss"
 
 - name: copy mds restart script
   template:
@@ -103,7 +127,6 @@
   listen: "restart ceph mdss"
   when:
     - mds_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph mds daemon(s) - non container
   command: /tmp/restart_mds_daemon.sh
@@ -112,11 +135,11 @@
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - mds_group_name in group_names
     - not containerized_deployment
-    - inventory_hostname == groups.get(mds_group_name) | last
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_mds_handler_called'] | default(False)
     - mds_socket_stat.rc == 0
   with_items: "{{ groups[mds_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
 
 - name: restart ceph mds daemon(s) - container
   command: /tmp/restart_mds_daemon.sh
@@ -126,11 +149,21 @@
     - mds_group_name in group_names
     - containerized_deployment
     - ceph_mds_container_stat.get('rc') == 0
-    - inventory_hostname == groups.get(mds_group_name) | last
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_mds_handler_called'] | default(False)
     - ceph_mds_container_stat.get('stdout_lines', [])|length != 0
   with_items: "{{ groups[mds_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _mds_handler_called after restart
+  set_fact:
+     _mds_handler_called: False
+  listen: "restart ceph mdss"
+
+- name: set _rgw_handler_called before restart
+  set_fact:
+     _rgw_handler_called: True
+  listen: "restart ceph rgws"
 
 - name: copy rgw restart script
   template:
@@ -142,7 +175,6 @@
   listen: "restart ceph rgws"
   when:
     - rgw_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph rgw daemon(s) - non container
   command: /tmp/restart_rgw_daemon.sh
@@ -151,11 +183,11 @@
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - rgw_group_name in group_names
     - not containerized_deployment
-    - inventory_hostname == groups.get(rgw_group_name) | last
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_rgw_handler_called'] | default(False)
     - rgw_socket_stat.rc == 0
   with_items: "{{ groups[rgw_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
 
 - name: restart ceph rgw daemon(s) - container
   command: /tmp/restart_rgw_daemon.sh
@@ -165,11 +197,21 @@
     - rgw_group_name in group_names
     - containerized_deployment
     - ceph_rgw_container_stat.get('rc') == 0
-    - inventory_hostname == groups.get(rgw_group_name) | last
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_rgw_handler_called'] | default(False)
     - ceph_rgw_container_stat.get('stdout_lines', [])|length != 0
   with_items: "{{ groups[rgw_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _rgw_handler_called after restart
+  set_fact:
+     _rgw_handler_called: False
+  listen: "restart ceph rgws"
+
+- name: set _nfs_handler_called before restart
+  set_fact:
+     _nfs_handler_called: True
+  listen: "restart ceph nfss"
 
 - name: copy nfs restart script
   template:
@@ -181,7 +223,6 @@
   listen: "restart ceph nfss"
   when:
     - nfs_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph nfs daemon(s) - non container
   command: /tmp/restart_nfs_daemon.sh
@@ -190,11 +231,11 @@
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - nfs_group_name in group_names
     - not containerized_deployment
-    - inventory_hostname == groups.get(nfs_group_name) | last
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_nfs_handler_called'] | default(False)
     - nfs_socket_stat.rc == 0
   with_items: "{{ groups[nfs_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
 
 - name: restart ceph nfs daemon(s) - container
   command: /tmp/restart_nfs_daemon.sh
@@ -204,11 +245,21 @@
     - nfs_group_name in group_names
     - containerized_deployment
     - ceph_nfs_container_stat.get('rc') == 0
-    - inventory_hostname == groups.get(nfs_group_name) | last
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_nfs_handler_called'] | default(False)
     - ceph_nfs_container_stat.get('stdout_lines', [])|length != 0
   with_items: "{{ groups[nfs_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _nfs_handler_called after restart
+  set_fact:
+     _nfs_handler_called: False
+  listen: "restart ceph nfss"
+
+- name: set _rbdmirror_handler_called before restart
+  set_fact:
+     _rbdmirror_handler_called: True
+  listen: "restart ceph rbdmirrors"
 
 - name: copy rbd mirror restart script
   template:
@@ -220,7 +271,6 @@
   listen: "restart ceph rbdmirrors"
   when:
     - rbdmirror_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph rbd mirror daemon(s) - non container
   command: /tmp/restart_rbd_mirror_daemon.sh
@@ -229,11 +279,11 @@
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - rbdmirror_group_name in group_names
     - not containerized_deployment
-    - inventory_hostname == groups.get(rbdmirror_group_name) | last
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_rbdmirror_handler_called'] | default(False)
     - rbd_mirror_socket_stat.rc == 0
   with_items: "{{ groups[rbdmirror_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
 
 - name: restart ceph rbd mirror daemon(s) - container
   command: /tmp/restart_rbd_mirror_daemon.sh
@@ -243,11 +293,21 @@
     - rbdmirror_group_name in group_names
     - containerized_deployment
     - ceph_rbd_mirror_container_stat.get('rc') == 0
-    - inventory_hostname == groups.get(rbdmirror_group_name) | last
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_rbdmirror_handler_called'] | default(False)
     - ceph_rbd_mirror_container_stat.get('stdout_lines', [])|length != 0
   with_items: "{{ groups[rbdmirror_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _rbdmirror_handler_called after restart
+  set_fact:
+     _rbdmirror_handler_called: False
+  listen: "restart ceph rbdmirrors"
+
+- name: set _mgr_handler_called before restart
+  set_fact:
+     _mgr_handler_called: True
+  listen: "restart ceph mgrs"
 
 - name: copy mgr restart script
   template:
@@ -259,7 +319,6 @@
   listen: "restart ceph mgrs"
   when:
     - mgr_group_name in group_names
-    - inventory_hostname in play_hosts
 
 - name: restart ceph mgr daemon(s) - non container
   command: /tmp/restart_mgr_daemon.sh
@@ -268,11 +327,11 @@
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - mgr_group_name in group_names
     - not containerized_deployment
-    - inventory_hostname == groups.get(mgr_group_name) | last
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_mgr_handler_called'] | default(False)
     - mgr_socket_stat.rc == 0
   with_items: "{{ groups[mgr_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
 
 - name: restart ceph mgr daemon(s) - container
   command: /tmp/restart_mgr_daemon.sh
@@ -282,8 +341,13 @@
     - mgr_group_name in group_names
     - containerized_deployment
     - ceph_mgr_container_stat.get('rc') == 0
-    - inventory_hostname == groups.get(mgr_group_name) | last
-    - inventory_hostname in play_hosts
+    - hostvars[item]['_mgr_handler_called'] | default(False)
     - ceph_mgr_container_stat.get('stdout_lines', [])|length != 0
   with_items: "{{ groups[mgr_group_name] }}"
   delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _mgr_handler_called after restart
+  set_fact:
+     _mgr_handler_called: False
+  listen: "restart ceph mgrs"
