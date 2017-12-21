@@ -61,7 +61,7 @@ end.
 The output would look something similar to this trimmed version::
 
     luminous-ansible2.4-xenial_cluster create: /Users/alfredo/python/upstream/ceph-ansible/.tox/luminous-ansible2.4-xenial_cluster
-    luminous-ansible2.4-xenial_cluster installdeps: ansible==2.4.1, -r/Users/alfredo/python/upstream/ceph-ansible/tests/requirements.txt
+    luminous-ansible2.4-xenial_cluster installdeps: ansible==2.4.2, -r/Users/alfredo/python/upstream/ceph-ansible/tests/requirements.txt
     luminous-ansible2.4-xenial_cluster runtests: commands[0] | vagrant up --no-provision --provider=virtualbox
     Bringing machine 'client0' up with 'virtualbox' provider...
     Bringing machine 'rgw0' up with 'virtualbox' provider...
