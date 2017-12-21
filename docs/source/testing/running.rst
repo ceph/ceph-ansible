@@ -60,9 +60,9 @@ end.
 
 The output would look something similar to this trimmed version::
 
-    kraken-ansible2.2-xenial_cluster create: /Users/alfredo/python/upstream/ceph-ansible/.tox/kraken-ansible2.2-xenial_cluster
-    kraken-ansible2.2-xenial_cluster installdeps: ansible==2.2.2, -r/Users/alfredo/python/upstream/ceph-ansible/tests/requirements.txt
-    kraken-ansible2.2-xenial_cluster runtests: commands[0] | vagrant up --no-provision --provider=virtualbox
+    luminous-ansible2.4-xenial_cluster create: /Users/alfredo/python/upstream/ceph-ansible/.tox/luminous-ansible2.4-xenial_cluster
+    luminous-ansible2.4-xenial_cluster installdeps: ansible==2.4.2, -r/Users/alfredo/python/upstream/ceph-ansible/tests/requirements.txt
+    luminous-ansible2.4-xenial_cluster runtests: commands[0] | vagrant up --no-provision --provider=virtualbox
     Bringing machine 'client0' up with 'virtualbox' provider...
     Bringing machine 'rgw0' up with 'virtualbox' provider...
     Bringing machine 'mds0' up with 'virtualbox' provider...

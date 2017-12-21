@@ -66,9 +66,9 @@ The ``master`` branch should be considered experimental and used with caution.
   ``2.1`` and ``2.2.2``.
 
 - ``stable-3.0`` Support for ceph versions ``jewel`` and ``luminous``. This branch supports ansible versions
-  ``2.3.1``, ``2.3.2`` and ``2.4.1``.
+  ``2.3.1``, ``2.3.2`` and ``2.4.2``.
 
-- ``master`` Support for ceph versions ``jewel``, and ``luminous``. This branch supports ansible version ``2.4.1``.
+- ``master`` Support for ceph versions ``jewel``, and ``luminous``. This branch supports ansible version ``2.4.2``.
 
 Configuration and Usage
 =======================
