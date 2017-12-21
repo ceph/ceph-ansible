@@ -9,7 +9,7 @@
     mode: "0644"
 
 # For backward compatibility
-- name: disable old systemd unit ('ceph-rgw@') if present
+- name: disable old systemd unit ('ceph-rgw@'|'ceph-radosgw@radosgw.'|'ceph-radosgw@') if present
   systemd:
     name: "{{ item }}"
     state: stopped
@@ -18,6 +18,7 @@
   with_items:
     - "ceph-rgw@{{ ansible_hostname }}"
     - "ceph-radosgw@{{ ansible_hostname }}.service"
+    - "ceph-radosgw@radosgw.{{ ansible_hostname }}.service"
   ignore_errors: true
 
 - name: systemd start rgw container
