@@ -52,7 +52,7 @@ non-collocated
 --------------
 
 This OSD scenario uses ``ceph-disk`` to create OSDs from raw devices with journals that
-exit on a dedicated device.
+exist on a dedicated device.
 
 Use ``osd_scenario: non-collocated`` to enable this scenario. This scenario also
 has the following required configuration options:
