@@ -1,4 +1,33 @@
 ---
+- name: set_fact ceph_config_keys
+  set_fact:
+    ceph_config_keys:
+      - /etc/ceph/{{ cluster }}.mgr.{{ ansible_hostname }}.keyring
+      - /etc/ceph/{{ cluster }}.client.admin.keyring
+
+- name: stat for ceph config and keys
+  local_action: stat path={{ fetch_directory }}/{{ fsid }}/{{ item }}
+  with_items: "{{ ceph_config_keys }}"
+  changed_when: false
+  become: false
+  failed_when: false
+  register: statconfig
+  tags:
+    - always
+
+- name: try to fetch ceph config and keys
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/{{ item.0 }}"
+    dest: "{{ item.0 }}"
+    owner: "ceph"
+    group: "ceph"
+    mode: "0600"
+  changed_when: false
+  with_together:
+    - "{{ ceph_config_keys }}"
+    - "{{ statconfig.results }}"
+  when: item.1.stat.exists == true
+
 - name: install redhat ceph-mgr package
   package:
     name: ceph-mgr
@@ -15,6 +44,14 @@
     - ansible_os_family == 'Debian'
 
 - name: create mgr directory
+  file:
+    path: /var/lib/ceph/mgr/
+    state: directory
+    owner: "ceph"
+    group: "ceph"
+    mode: "0755"
+
+- name: create mgr subdirectory
   file:
     path: /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}
     state: directory
