@@ -148,11 +148,15 @@
   become: true
 
   pre_tasks:
+    # failed_when: false is here because if we're
+    # working with a jewel cluster then ceph mgr
+    # will not exist
     - name: stop non-containerized ceph mgr(s)
       service:
         name: "ceph-mgr@{{ ansible_hostname }}"
         state: stopped
         enabled: no
+      failed_when: false
 
     - set_fact:
         ceph_uid: 64045
