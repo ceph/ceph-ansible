@@ -535,11 +535,15 @@
   become: True
 
   pre_tasks:
+    # failed_when: false is here so that if we upgrade
+    # from a version of ceph that does not have nfs-ganesha
+    # then this task will not fail
     - name: stop ceph nfs
       systemd:
         name: nfs-ganesha
         state: stopped
         enabled: yes
+      failed_when: false
       when:
         - not containerized_deployment
 
