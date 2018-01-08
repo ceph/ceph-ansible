@@ -438,11 +438,15 @@
   become: true
 
   pre_tasks:
+    # failed_when: false is here because if we're
+    # working with a jewel cluster then ceph nfs
+    # will not exist
     - name: stop non-containerized ceph nfs(s)
       service:
         name: nfs-ganesha
         state: stopped
         enabled: no
+      failed_when: false
 
     - set_fact:
         ceph_uid: 64045
