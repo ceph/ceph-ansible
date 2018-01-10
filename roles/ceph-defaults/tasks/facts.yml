@@ -11,6 +11,13 @@
   when:
     - mon_use_fqdn
 
+- name: set_fact docker_exec_cmd
+  set_fact:
+    docker_exec_cmd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - containerized_deployment
+
 # this task shouldn't run in a rolling_update situation
 # because it blindly picks a mon, which may be down because
 # of the rolling update
