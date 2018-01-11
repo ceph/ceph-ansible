@@ -73,6 +73,10 @@ options:
             - If wal is a lv, this must be the name of the volume group it belongs to.
             - Only applicable if objectstore is 'bluestore'.
         required: false
+    crush_device_class:
+        description:
+            - Will set the crush device class for the OSD.
+        required: false
 
 
 author:
@@ -142,6 +146,7 @@ def run_module():
         db_vg=dict(type='str', required=False),
         wal=dict(type='str', required=False),
         wal_vg=dict(type='str', required=False),
+        crush_device_class=dict(type='str', required=False),
     )
 
     module = AnsibleModule(
@@ -160,6 +165,7 @@ def run_module():
     db_vg = module.params.get('db_vg', None)
     wal = module.params.get('wal', None)
     wal_vg = module.params.get('wal_vg', None)
+    crush_device_class = module.params.get('crush_device_class', None)
 
     cmd = [
         'ceph-volume',
@@ -185,6 +191,9 @@ def run_module():
     if wal:
         wal = get_wal(wal, wal_vg)
         cmd.extend(["--block.wal", wal])
+
+    if crush_device_class:
+        cmd.extend(["--crush-device-class", crush_device_class])
 
     result = dict(
         changed=False,
