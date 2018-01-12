@@ -205,6 +205,7 @@ The following keys are accepted for a ``filestore`` deployment:
 * ``data_vg`` (not required if ``data`` is a raw device or partition)
 * ``journal``
 * ``journal_vg`` (not required if ``journal`` is a partition and not a logical volume)
+* ``crush_device_class`` (optional, sets the crush device class for the OSD)
 
 The ``journal`` key represents the logical volume name or partition that will be used for your OSD journal.
 
@@ -217,6 +218,7 @@ For example, a configuration to use the ``lvm`` osd scenario would look like::
         data_vg: vg1
         journal: journal-lv1
         journal_vg: vg2
+        crush_device_class: foo
       - data: data-lv2
         journal: /dev/sda
         data_vg: vg1
@@ -245,6 +247,7 @@ The following keys are accepted for a ``bluestore`` deployment:
 * ``db_vg`` (optional for ``block.db``)
 * ``wal`` (optional for ``block.wal``)
 * ``wal_vg`` (optional for ``block.wal``)
+* ``crush_device_class`` (optional, sets the crush device class for the OSD)
 
 A ``bluestore`` lvm deployment, for all four different combinations supported
 could look like::
@@ -254,6 +257,7 @@ could look like::
     lvm_volumes:
       - data: data-lv1
         data_vg: vg1
+        crush_device_class: foo
       - data: data-lv2
         data_vg: vg1
         wal: wal-lv1
