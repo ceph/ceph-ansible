@@ -176,6 +176,9 @@ mappings for devices to be deployed. It is a list of dictionaries which expects
 a volume name and a volume group for logical volumes, but can also accept
 a partition in the case of ``filestore`` for the ``journal``.
 
+This scenario supports encrypting your OSDs by setting ``dmcrypt: True``. If set,
+all OSDs defined in ``lvm_volumes`` will be encrypted.
+
 The ``data`` key represents the logical volume name, raw device or partition that is to be used for your
 OSD data.  The ``data_vg`` key represents the volume group name that your
 ``data`` logical volume resides on. This key is required for purging of OSDs
@@ -230,6 +233,18 @@ For example, a configuration to use the ``lvm`` osd scenario would look like::
       - data: /dev/sda1
         journal: journal-lv1
         journal_vg: vg2
+
+For example, a configuration to use the ``lvm`` osd scenario with encryption would look like::
+
+    osd_objectstore: filestore
+    osd_scenario: lvm
+    dmcrypt: True
+    lvm_volumes:
+      - data: data-lv1
+        data_vg: vg1
+        journal: journal-lv1
+        journal_vg: vg2
+        crush_device_class: foo
 
 
 ``bluestore``
