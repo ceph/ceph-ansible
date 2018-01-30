@@ -69,9 +69,14 @@ def node(host, request):
     if osd_auto_discovery:
         num_devices = 3
     else:
-        num_devices = len(ansible_vars.get("devices", []))
-    if not num_devices:
-        num_devices = len(ansible_vars.get("lvm_volumes", []))
+        num_devices = len(
+                ansible_vars.get("collocated", {}).get("devices", []) +
+                ansible_vars.get("non_collocated", {}).get("devices", []) +
+                ansible_vars.get("lvm_volumes", []))
+        if num_devices == 0:
+            num_devices = len(ansible_vars.get("devices", []) +
+                    ansible_vars.get("lvm_volumes", []))
+
     num_osd_hosts = len(ansible_vars["groups"]["osds"])
     total_osds = num_devices * num_osd_hosts
     cluster_name = ansible_vars.get("cluster", "ceph")

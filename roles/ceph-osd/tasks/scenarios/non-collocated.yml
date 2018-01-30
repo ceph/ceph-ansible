@@ -21,9 +21,9 @@
     {{ ceph_osd_docker_prepare_env }} \
     {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
   with_together:
-    - "{{ parted_results.results | default([]) }}"
-    - "{{ devices }}"
-    - "{{ dedicated_devices }}"
+    - "{{ non_collocated_parted_results.results | default([]) }}"
+    - "{{ non_collocated.devices }}"
+    - "{{ non_collocated.dedicated_devices }}"
   when:
     - containerized_deployment
     - osd_objectstore == 'filestore'
@@ -50,10 +50,10 @@
     {{ ceph_osd_docker_prepare_env }} \
     {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
   with_together:
-    - "{{ parted_results.results | default([]) }}"
-    - "{{ devices }}"
-    - "{{ dedicated_devices }}"
-    - "{{ bluestore_wal_devices }}"
+    - "{{ non_collocated_parted_results.results | default([]) }}"
+    - "{{ non_collocated.devices }}"
+    - "{{ non_collocated.dedicated_devices }}"
+    - "{{ non_collocated.bluestore_wal_devices }}"
   when:
     - containerized_deployment
     - osd_objectstore == 'bluestore'
@@ -63,9 +63,9 @@
 - name: prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) non-collocated
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }} {{ item.2 }}"
   with_together:
-    - "{{ parted_results.results | default([]) }}"
-    - "{{ devices }}"
-    - "{{ dedicated_devices }}"
+    - "{{ non_collocated_parted_results.results | default([]) }}"
+    - "{{ non_collocated.devices }}"
+    - "{{ non_collocated.dedicated_devices }}"
   changed_when: false
   when:
     - osd_objectstore == 'filestore'
@@ -76,10 +76,10 @@
 - name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with a dedicated device for db and wal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.1 }} --block.wal {{ item.2 }} {{ item.3 }}"
   with_together:
-    - "{{ parted_results.results | default([]) }}"
-    - "{{ dedicated_devices }}"
-    - "{{ bluestore_wal_devices }}"
-    - "{{ devices | unique }}"
+    - "{{ non_collocated_parted_results.results | default([]) }}"
+    - "{{ non_collocated.dedicated_devices }}"
+    - "{{ non_collocated.bluestore_wal_devices }}"
+    - "{{ non_collocated.devices | unique }}"
   when:
     - osd_objectstore == 'bluestore'
     - not containerized_deployment

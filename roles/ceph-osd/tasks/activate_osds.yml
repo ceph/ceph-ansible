@@ -2,37 +2,103 @@
 # NOTE (leseb) : this task is for disk devices only because of the explicit use of the first
 # partition.
 
-- name: activate osd(s) when device is a disk
+- name: activate osd(s) when device is a disk collocated
   command: ceph-disk activate "{{ item }}{%- if 'nvme' in item or 'cciss' in item or 'loop' in item %}{{ 'p' }}{%- endif %}{{ '1' }}"
   with_items:
-    - "{{ devices|unique }}"
+    - "{{ collocated.devices|unique }}"
   changed_when: false
-  register: activate_osd_disk
+  register: collocated_activate_osd_disk
   when:
+    - "'collocated' in osd_scenarios"
     - not osd_auto_discovery
     - not dmcrypt
     - item != '/dev/dead'
 
-- name: activate osd(s) when device is a disk (dmcrypt)
+- name: activate osd(s) when device is a disk (dmcrypt) collocated
   command: ceph-disk activate --dmcrypt "{{ item }}{%- if 'nvme' in item or 'cciss' in item or 'loop' in item %}{{ 'p' }}{%- endif %}{{ '1' }}"
   with_items:
-    - "{{ devices|unique }}"
+    - "{{ collocated.devices|unique }}"
   changed_when: false
-  register: activate_osd_disk_dmcrypt
+  register: collocated_activate_osd_disk_dmcrypt
   when:
+    - "'collocated' in osd_scenarios"
+    - not osd_auto_discovery
+    - dmcrypt
+
+# NOTE (leseb): we must do this because of
+# https://github.com/ansible/ansible/issues/4297
+- name: set_fact combined_collocated_activate_osd_disk_results collocated
+  set_fact:
+    combined_collocated_activate_osd_disk_results: "{{ collocated_activate_osd_disk if dmcrypt is not defined else collocated_activate_osd_disk_dmcrypt }}"
+  when:
+    - "'collocated' in osd_scenarios"
+
+- name: fail if ceph-disk cannot create an OSD
+  fail:
+    msg: "ceph-disk failed to create an OSD"
+  when:
+    - " 'ceph-disk: Error: ceph osd create failed' in item.get('stderr', '') "
+    - "'collocated' in osd_scenarios"
+  with_items: "{{ (combined_collocated_activate_osd_disk_results|default({})).results|default([]) }}"
+
+# NOTE (leseb): this task is for partitions because we don't explicitly use a partition.
+- name: activate osd(s) when device is a partition collocated
+  command: "ceph-disk activate {{ item }}"
+  with_items:
+    - "{{ collocated.devices|unique }}"
+  changed_when: false
+  failed_when: false
+  when:
+    - not osd_auto_discovery
+    - "'collocated' in osd_scenarios"
+
+- name: activate osd(s) when device is a disk non_collocated
+  command: ceph-disk activate "{{ item }}{%- if 'nvme' in item or 'cciss' in item or 'loop' in item %}{{ 'p' }}{%- endif %}{{ '1' }}"
+  with_items:
+    - "{{ non_collocated.devices|unique }}"
+  changed_when: false
+  failed_when: false
+  register: non_collocated_activate_osd_disk
+  when:
+    - "'non-collocated' in osd_scenarios"
+    - not osd_auto_discovery
+
+- name: activate osd(s) when device is a disk non_collocated (dmcrypt)
+  command: ceph-disk activate --dmcrypt "{{ item }}{%- if 'nvme' in item or 'cciss' in item or 'loop' in item %}{{ 'p' }}{%- endif %}{{ '1' }}"
+  with_items:
+    - "{{ non_collocated.devices|unique }}"
+  changed_when: false
+  failed_when: false
+  register: non_collocated_activate_osd_disk_dmcrypt
+  when:
+    - "'non-collocated' in osd_scenarios"
     - not osd_auto_discovery
     - dmcrypt
     - item != '/dev/dead'
 
 # NOTE (leseb): we must do this because of
 # https://github.com/ansible/ansible/issues/4297
-- name: set_fact combined_activate_osd_disk_results
+- name: set_fact combined_activate_osd_disk_results non_collocated
   set_fact:
-    combined_activate_osd_disk_results: "{{ activate_osd_disk if osd_scenario != 'collocated' else activate_osd_disk_dmcrypt }}"
+    combined_non_collocated_activate_osd_disk_results: "{{ non_collocated_activate_osd_disk if dmcrypt is not defined else non_collocated_activate_osd_disk_dmcrypt }}"
+  when:
+    - "'non-collocated' in osd_scenarios"
 
 - name: fail if ceph-disk cannot create an OSD
   fail:
     msg: "ceph-disk failed to create an OSD"
   when:
-    " 'ceph-disk: Error: ceph osd create failed' in item.get('stderr', '') "
-  with_items: "{{ (combined_activate_osd_disk_results|default({})).results|default([]) }}"
+    - " 'ceph-disk: Error: ceph osd create failed' in item.get('stderr', '') "
+    - "'non-collocated' in osd_scenarios"
+  with_items: "{{ (combined_non_collocated_activate_osd_disk_results|default({})).results|default([]) }}"
+
+# NOTE (leseb): this task is for partitions because we don't explicitly use a partition.
+- name: activate osd(s) when device is a partition non_collocated
+  command: "ceph-disk activate {{ item }}"
+  with_items:
+    - "{{ non_collocated.devices|unique }}"
+  changed_when: false
+  failed_when: false
+  when:
+    - not osd_auto_discovery
+    - "'non-collocated' in osd_scenarios"

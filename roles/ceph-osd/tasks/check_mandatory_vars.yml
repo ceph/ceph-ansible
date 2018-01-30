@@ -26,25 +26,8 @@
   when:
     - osd_group_name is defined
     - osd_group_name in group_names
-    - osd_scenario == 'dummy'
-
-- name: make sure a valid osd scenario was chosen
-  fail:
-    msg: "please choose an osd scenario, valid scenarios are {{ valid_osd_scenarios }}"
-  when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - not osd_scenario in valid_osd_scenarios
-
-- name: verify devices have been provided
-  fail:
-    msg: "please provide devices to your osd scenario"
-  when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - not osd_auto_discovery
-    - not osd_scenario == "lvm"
-    - devices|length == 0
+    - not osd_scenarios|length > 0
+    - not osd_scenario is defined or osd_scenario == "dummy"
 
 - name: check if osd_scenario lvm is supported by the selected ceph version
   fail:
@@ -53,18 +36,8 @@
     - osd_group_name is defined
     - osd_group_name in group_names
     - not containerized_deployment
-    - osd_scenario == "lvm"
+    - osd_scenario == "lvm" or "lvm" in osd_scenarios
     - ceph_release_num[ceph_release] < ceph_release_num.luminous
-
-- name: verify lvm_volumes have been provided
-  fail:
-    msg: "please provide lvm_volumes to your osd scenario"
-  when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - osd_scenario == "lvm"
-    - not osd_auto_discovery
-    - lvm_volumes|length == 0
 
 - name: make sure the lvm_volumes variable is a list
   fail:
@@ -73,8 +46,8 @@
     - osd_group_name is defined
     - osd_group_name in group_names
     - not osd_auto_discovery
-    - osd_scenario == "lvm"
     - lvm_volumes is string
+    - osd_scenario == "lvm" or "lvm" in osd_scenarios
 
 - name: make sure the devices variable is a list
   fail:
@@ -83,7 +56,9 @@
     - osd_group_name is defined
     - osd_group_name in group_names
     - not osd_auto_discovery
-    - devices is string
+    - "osd_scenario == 'collocated' or 'collocated' in osd_scenarios"
+    - collocated.devices is string
+      or non_collocated.devices is string
 
 - name: verify dedicated devices have been provided
   fail:
@@ -91,7 +66,9 @@
   when:
     - osd_group_name is defined
     - osd_group_name in group_names
-    - osd_scenario == 'non-collocated'
+    - "osd_scenario == 'non-collocated' or 'non-collocated' in osd_scenarios"
+    - non_collocated.dedicated_devices|length == 0
+      or non_collocated.devices|length == 0
     - dedicated_devices|length == 0
       or devices|length == 0
 
@@ -101,10 +78,8 @@
   when:
     - osd_group_name is defined
     - osd_group_name in group_names
-    - osd_scenario == 'non-collocated'
-    - dedicated_devices is string
-    - dedicated_devices|length == 0
-      or devices|length == 0
+    - "osd_scenario == 'non-collocated' or 'non-collocated' in osd_scenarios"
+    - non_collocated.dedicated_devices is string
 
 - name: check if bluestore is supported by the selected ceph version
   fail:

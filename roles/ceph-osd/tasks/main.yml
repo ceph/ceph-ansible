@@ -21,14 +21,27 @@
 - name: include build_devices.yml
   include: build_devices.yml
 
-- name: check if a partition named 'ceph' exists
+- name: check if a partition named 'ceph' exists for collocated osds
   shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"
   with_items:
-    - "{{ devices }}"
+    - "{{ collocated.devices }}"
   changed_when: false
   failed_when: false
   check_mode: no
-  register: parted_results
+  when:
+    - "'collocated' in osd_scenarios"
+  register: collocated_parted_results
+
+- name: check if a partition named 'ceph' exists for non-collocated osds
+  shell: "parted --script {{ item }} print | egrep -sq '^ 1.*ceph'"
+  with_items:
+    - "{{ non_collocated.devices }}"
+  changed_when: false
+  failed_when: false
+  check_mode: no
+  when:
+    - "'non-collocated' in osd_scenarios"
+  register: non_collocated_parted_results
 
 - name: include copy_configs.yml
   include: copy_configs.yml
@@ -42,7 +55,7 @@
 - name: include scenarios/collocated.yml
   include: scenarios/collocated.yml
   when:
-    - osd_scenario == 'collocated'
+    - "'collocated' in osd_scenarios"
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
@@ -50,14 +63,14 @@
   include: scenarios/non-collocated.yml
   when:
     - not osd_auto_discovery
-    - osd_scenario == 'non-collocated'
+    - "'non-collocated' in osd_scenarios"
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
 - name: include scenarios/lvm.yml
   include: scenarios/lvm.yml
   when:
-    - osd_scenario == 'lvm'
+    - "'lvm' in osd_scenarios"
     - not containerized_deployment
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
