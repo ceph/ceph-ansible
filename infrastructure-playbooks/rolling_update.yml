@@ -79,6 +79,26 @@
 
     - set_fact: rolling_update=true
 
+- name: move old fetch dir
+  hosts: localhost
+  become: false
+  tasks:
+    - name: check if old fetch dir exists
+      stat: "fetch"
+      register: old_fetch_dir
+
+    - name: check if new fetch dir exists
+      stat: "{{ inventory_dir }}/fetch"
+      register: new_fetch_dir
+      when: old_fetch_dir.stat.exists
+
+    - name: move data from old fetch dir to new
+      shell: |
+        mv fetch {{ inventory_dir }}/fetch
+      args:
+        creates: "{{ inventory_dir }}/fetch"
+      when: old_fetch_dir.stat.exists and not new_fetch_dir.stat.exists
+
 - name: upgrade ceph mon cluster
 
   vars:

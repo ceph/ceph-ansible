@@ -43,3 +43,34 @@
     - containerized_deployment
     - cephx
     - copy_admin_key
+
+- name: copy artifacts to ansible host
+  fetch:
+    src: "/etc/ceph/{{ item }}"
+    dest: "{{ artifacts_directory }}/{{ item }}"
+    flat: yes
+    validate_checksum: no
+  become: no
+  run_once: yes
+  with_items:
+    - "{{ cluster }}.conf"
+    - "{{ cluster }}.client.admin.keyring"
+  when:
+    - cephx
+    - copy_admin_key
+
+- name: create helper script ceph.sh on ansible host
+  copy:
+    content: |
+      #!/bin/bash
+      ceph -c {{ cluster }}.conf -k {{ cluster }}.client.admin.keyring $@
+    dest: "{{ artifacts_directory }}/ceph.sh"
+    owner: root
+    group: root
+    mode: 0755
+  become: no
+  run_once: yes
+  delegate_to: localhost
+  when:
+    - cephx
+    - copy_admin_key
