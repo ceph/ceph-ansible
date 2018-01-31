@@ -1,0 +1,22 @@
+---
+- hosts: all
+  gather_facts: true
+  tasks:
+    # why sleep 2? see here: https://github.com/ansible/ansible/issues/14413
+    - name: reboot the machines
+      shell: sleep 2 && shutdown -r now
+      become: yes
+      async: 1
+      poll: 0
+
+    - name: waiting 3 minutes for the machines to come back
+      local_action:
+        module: wait_for
+        host: "{{ ansible_default_ipv4.address }}"
+        port: 22
+        state: started
+        delay: 30
+        timeout: 180
+
+    - name: uptime
+      command: uptime
