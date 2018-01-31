@@ -33,7 +33,10 @@
       state: absent
 
   - name: remove tmp template file for ceph_conf_overrides (localhost)
-    local_action: file path="{{ fetch_directory }}/{{ fsid }}/ceph_conf_overrides_temp_{{ ansible_hostname }}" state=absent
+    local_action:
+      module: file
+      path: "{{ fetch_directory }}/{{ fsid }}/ceph_conf_overrides_temp_{{ ansible_hostname }}"
+      state: absent
     become: false
 
   - name: "generate ceph configuration file: {{ cluster }}.conf"
@@ -72,7 +75,10 @@
 # we are not population kv_store with default ceph.conf AND there at least 1 nfs in nfs group AND host is the first nfs
 - block:
   - name: create a local fetch directory if it does not exist
-    local_action: file path={{ fetch_directory }} state=directory
+    local_action:
+      module: file
+      path: "{{ fetch_directory }}"
+      state: directory
     changed_when: false
     become: false
     run_once: true
@@ -85,16 +91,20 @@
             and (inventory_hostname == groups.get(nfs_group_name, [])[0])))
 
   - name: generate cluster uuid
-    local_action: shell python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
-      creates="{{ fetch_directory }}/ceph_cluster_uuid.conf"
+    local_action:
+      module: shell
+        python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
+      creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
     register: cluster_uuid
     become: false
     when:
       - generate_fsid
 
   - name: read cluster uuid if it already exists
-    local_action: command cat {{ fetch_directory }}/ceph_cluster_uuid.conf
-      removes="{{ fetch_directory }}/ceph_cluster_uuid.conf"
+    local_action:
+      module: command
+        cat {{ fetch_directory }}/ceph_cluster_uuid.conf
+      removes: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
     changed_when: false
     register: cluster_uuid
     check_mode: no

@@ -6,11 +6,16 @@
   raw: "{{pypy_binary_directory}}/python $HOME/get-pip.py --proxy='{{ lookup('env', 'https_proxy') }}'"
 
 - name: create local temp directory
-  local_action: raw mkdir -p {{local_temp_directory}}
+  local_action:
+    module: raw
+      mkdir -p {{local_temp_directory}}
   become: no
 
 - name: prepare install_pip.sh
-  local_action: template src=install_pip.sh.j2 dest={{local_temp_directory}}/install_pip.sh
+  local_action:
+    module: template
+    src: install_pip.sh.j2
+    dest: "{{local_temp_directory}}/install_pip.sh"
   become: no
 
 - name: run pip.sh
@@ -29,5 +34,8 @@
   raw: touch $HOME/.pip
 
 - name: remove pip.sh
-  local_action: file path="{{local_temp_directory}}/pip.sh" state=absent
+  local_action:
+    module: file
+    path: "{{local_temp_directory}}/pip.sh"
+    state: absent
   become: no
