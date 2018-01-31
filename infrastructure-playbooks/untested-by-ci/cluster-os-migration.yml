@@ -81,11 +81,11 @@
       when: monsysvinit.stat.exists == True and migration_completed.stat.exists == False
 
     - name: Wait for the monitor to be up again
-      local_action: >
-        wait_for
-        host={{ ansible_ssh_host | default(inventory_hostname) }}
-        port=6789
-        timeout=10
+      local_action:
+        module: wait_for
+        host: "{{ ansible_ssh_host | default(inventory_hostname) }}"
+        port: 6789
+        timeout: 10
       when: migration_completed.stat.exists == False
 
     - name: Stop the monitor (Upstart)
@@ -103,12 +103,12 @@
       when: monsysvinit.stat.exists == True and migration_completed.stat.exists == False
 
     - name: Wait for the monitor to be down
-      local_action: >
-        wait_for
-        host={{ ansible_ssh_host | default(inventory_hostname) }}
-        port=6789
-        timeout=10
-        state=stopped
+      local_action:
+        module: wait_for
+        host: "{{ ansible_ssh_host | default(inventory_hostname) }}"
+        port: 6789
+        timeout: 10
+        state: stopped
       when: migration_completed.stat.exists == False
 
     - name: Create a backup directory
@@ -142,11 +142,11 @@
       when: migration_completed.stat.exists == False
 
     - name: Wait for the server to come up
-      local_action: >
-        wait_for
-        port=22
-        delay=10
-        timeout=3600
+      local_action:
+        module: wait_for
+        port: 22
+        delay: 10
+        timeout: 3600
       when: migration_completed.stat.exists == False
 
     - name: Wait a bit more to be sure that the server is ready
@@ -209,11 +209,11 @@
       when: migration_completed.stat.exists == False
 
     - name: Wait for the Monitor to be up again
-      local_action: >
-        wait_for
-        host={{ ansible_ssh_host | default(inventory_hostname) }}
-        port=6789
-        timeout=10
+      local_action:
+        module: wait_for
+        host: "{{ ansible_ssh_host | default(inventory_hostname) }}"
+        port: 6789
+        timeout: 10
       when: migration_completed.stat.exists == False
 
     - name: Waiting for the monitor to join the quorum...
@@ -339,12 +339,12 @@
       when: osdsysvinit.rc == 0 and migration_completed.stat.exists == False
 
     - name: Wait for the OSDs to be down
-      local_action: >
-        wait_for
-        host={{ ansible_ssh_host | default(inventory_hostname) }}
-        port={{ item }}
-        timeout=10
-        state=stopped
+      local_action:
+        module: wait_for
+        host: "{{ ansible_ssh_host | default(inventory_hostname) }}"
+        port: {{ item }}
+        timeout: 10
+        state: stopped
       with_items: "{{ osd_ports.stdout_lines }}"
       when: migration_completed.stat.exists == False
 
@@ -357,11 +357,11 @@
       when: migration_completed.stat.exists == False
 
     - name: Wait for the server to come up
-      local_action: >
-        wait_for
-        port=22
-        delay=10
-        timeout=3600
+      local_action:
+        module: wait_for
+        port: 22
+        delay: 10
+        timeout: 3600
       when: migration_completed.stat.exists == False
 
     - name: Wait a bit to be sure that the server is ready for scp
@@ -486,12 +486,12 @@
       when: migration_completed.stat.exists == False
 
     - name: Wait for radosgw to be down
-      local_action: >
-        wait_for
-        host={{ ansible_ssh_host | default(inventory_hostname) }}
-        path=/tmp/radosgw.sock
-        state=absent
-        timeout=30
+      local_action:
+        module: wait_for
+        host: "{{ ansible_ssh_host | default(inventory_hostname) }}"
+        path: /tmp/radosgw.sock
+        state: absent
+        timeout: 30
       when: migration_completed.stat.exists == False
 
     - name: Reboot the server
@@ -499,11 +499,11 @@
       when: migration_completed.stat.exists == False
 
     - name: Wait for the server to come up
-      local_action: >
-        wait_for
-        port=22
-        delay=10
-        timeout=3600
+      local_action:
+        module: wait_for
+        port: 22
+        delay: 10
+        timeout: 3600
       when: migration_completed.stat.exists == False
 
     - name: Wait a bit to be sure that the server is ready for scp
@@ -537,12 +537,12 @@
       when: migration_completed.stat.exists == False
 
     - name: Wait for radosgw to be up again
-      local_action: >
-        wait_for
-        host={{ ansible_ssh_host | default(inventory_hostname) }}
-        path=/tmp/radosgw.sock
-        state=present
-        timeout=30
+      local_action:
+        module: wait_for
+        host: "{{ ansible_ssh_host | default(inventory_hostname) }}"
+        path: /tmp/radosgw.sock
+        state: present
+        timeout: 30
       when: migration_completed.stat.exists == False
 
     - name: Done moving to the next rados gateway
