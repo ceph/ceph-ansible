@@ -67,7 +67,7 @@ for role in "$basedir"/roles/ceph-*; do
   elif [[ $rolename == "ceph-fetch-keys" ]]; then
     output="ceph-fetch-keys.yml.sample"
   else
-    output="${rolename:5}s.yml.sample"
+    output="ceph-${rolename:5}s.yml.sample"
   fi
 
   defaults="$role"/defaults/main.yml

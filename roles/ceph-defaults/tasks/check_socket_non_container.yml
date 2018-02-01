@@ -151,7 +151,7 @@
   check_mode: no
   register: rbd_mirror_socket_stat
   when:
-    - inventory_hostname in groups.get(rbdmirror_group_name, [])
+    - inventory_hostname in groups.get(rbd_mirror_group_name, [])
 
 - name: check if the ceph rbd mirror socket is in-use
   command: fuser --silent {{ rbd_mirror_socket_stat.stdout }}
@@ -160,7 +160,7 @@
   check_mode: no
   register: rbd_mirror_socket
   when:
-    - inventory_hostname in groups.get(rbdmirror_group_name, [])
+    - inventory_hostname in groups.get(rbd_mirror_group_name, [])
     - rbd_mirror_socket_stat.rc == 0
 
 - name: remove ceph rbd mirror socket if exists and not used by a process
@@ -168,7 +168,7 @@
     name: "{{ rbd_mirror_socket_stat.stdout }}"
     state: absent
   when:
-    - inventory_hostname in groups.get(rbdmirror_group_name, [])
+    - inventory_hostname in groups.get(rbd_mirror_group_name, [])
     - rbd_mirror_socket_stat.rc == 0
     - rbd_mirror_socket.rc == 1
 

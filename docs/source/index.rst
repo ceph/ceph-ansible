@@ -86,12 +86,12 @@ The ansible inventory file defines the hosts in your cluster and what roles each
 location for an inventory file is ``/etc/ansible/hosts`` but this file can be placed anywhere and used with the ``-i`` flag of
 ansible-playbook. An example inventory file would look like::
 
-    [mons]
+    [ceph-mons]
     mon1
     mon2
     mon3
 
-    [osds]
+    [ceph-osds]
     osd1
     osd2
     osd3
@@ -132,7 +132,7 @@ ceph-ansible Configuration
 The configuration for your ceph cluster will be set by the use of ansible variables that ``ceph-ansible`` provides. All of these options and their default
 values are defined in the ``group_vars/`` directory at the root of the ``ceph-ansible`` project. Ansible will use configuration in a ``group_vars/`` directory
 that is relative to your inventory file or your playbook. Inside of the ``group_vars/`` directory there are many sample ansible configuration files that relate
-to each of the ceph daemon groups by their filename. For example, the ``osds.yml.sample`` contains all the default configuation for the OSD daemons. The ``all.yml.sample``
+to each of the ceph daemon groups by their filename. For example, the ``ceph-osds.yml.sample`` contains all the default configuation for the OSD daemons. The ``all.yml.sample``
 file is a special ``group_vars`` file that applies to all hosts in your cluster.
 
 .. note::

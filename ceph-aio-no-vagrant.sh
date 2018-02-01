@@ -112,13 +112,13 @@ function ssh_setup {
 
 function cp_var {
   cp group_vars/all.yml.sample group_vars/all.yml
-  cp group_vars/osds.yml.sample group_vars/osds.yml
+  cp group_vars/ceph-osds.yml.sample group_vars/ceph-osds.yml
   cp site.yml.sample site.yml
 }
 
 function populate_vars {
-  sed -i "s/[#]*osd_auto_discovery: .*/osd_auto_discovery: true/" group_vars/osds.yml
-  sed -i "s/[#]*osd_scenario: .*/osd_scenario: collocated/" group_vars/osds.yml
+  sed -i "s/[#]*osd_auto_discovery: .*/osd_auto_discovery: true/" group_vars/ceph-osds.yml
+  sed -i "s/[#]*osd_scenario: .*/osd_scenario: collocated/" group_vars/ceph-osds.yml
   sed -i "s/[#]*monitor_address: .*/monitor_address: ${IP}/" group_vars/all.yml
   sed -i "s/[#]*journal_size: .*/journal_size: 100/" group_vars/all.yml
   sed -i "s|[#]*public_network: .*|public_network: ${SUBNET}|" group_vars/all.yml
@@ -144,20 +144,20 @@ EOF
 
 function create_inventory {
   cat > hosts <<EOF
-[mons]
+[ceph-mons]
 localhost
-[osds]
+[ceph-osds]
 localhost
 EOF
   if [ "$INSTALL_MDS" = true ] ; then
     cat >> hosts <<EOF
-[mdss]
+[ceph-mdss]
 localhost
 EOF
   fi
   if [ "$INSTALL_RGW" = true ] ; then
     cat >> hosts <<EOF
-[rgws]
+[ceph-rgws]
 localhost
 EOF
   fi

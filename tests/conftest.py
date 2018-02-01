@@ -42,10 +42,10 @@ def node(host, request):
     if request.node.get_marker("docker") and not docker:
         pytest.skip("Not a valid test for non-containerized deployments or atomic hosts")
 
-    if node_type == "mgrs" and ceph_stable_release == "jewel":
+    if node_type == "ceph-mgrs" and ceph_stable_release == "jewel":
         pytest.skip("mgr nodes can not be tested with ceph release jewel")
 
-    if node_type == "nfss" and ceph_stable_release == "jewel":
+    if node_type == "ceph-nfss" and ceph_stable_release == "jewel":
         pytest.skip("nfs nodes can not be tested with ceph release jewel")
 
     if request.node.get_marker("from_luminous") and ceph_release_num[ceph_stable_release] < ceph_release_num['luminous']:
@@ -65,18 +65,18 @@ def node(host, request):
     # boxes we test with use that interface
     address = host.interface("eth1").addresses[0]
     subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
-    num_mons = len(ansible_vars["groups"]["mons"])
+    num_mons = len(ansible_vars["groups"]["ceph-mons"])
     if osd_auto_discovery:
         num_devices = 3
     else:
         num_devices = len(ansible_vars.get("devices", []))
     if not num_devices:
         num_devices = len(ansible_vars.get("lvm_volumes", []))
-    num_osd_hosts = len(ansible_vars["groups"]["osds"])
+    num_osd_hosts = len(ansible_vars["groups"]["ceph-osds"])
     total_osds = num_devices * num_osd_hosts
     cluster_name = ansible_vars.get("cluster", "ceph")
     conf_path = "/etc/ceph/{}.conf".format(cluster_name)
-    if node_type == "osds":
+    if node_type == "ceph-osds":
         # I can assume eth2 because I know all the vagrant
         # boxes we test with use that interface. OSDs are the only
         # nodes that have this interface.
@@ -115,19 +115,19 @@ def pytest_collection_modifyitems(session, config, items):
     for item in items:
         test_path = item.location[0]
         if "mon" in test_path:
-            item.add_marker(pytest.mark.mons)
+            item.add_marker(pytest.mark.ceph-mons)
         elif "osd" in test_path:
-            item.add_marker(pytest.mark.osds)
+            item.add_marker(pytest.mark.ceph-osds)
         elif "mds" in test_path:
-            item.add_marker(pytest.mark.mdss)
+            item.add_marker(pytest.mark.ceph-mdss)
         elif "mgr" in test_path:
-            item.add_marker(pytest.mark.mgrs)
+            item.add_marker(pytest.mark.ceph-mgrs)
         elif "rbd-mirror" in test_path:
-            item.add_marker(pytest.mark.rbdmirrors)
+            item.add_marker(pytest.mark.ceph-rbd-mirrors)
         elif "rgw" in test_path:
-            item.add_marker(pytest.mark.rgws)
+            item.add_marker(pytest.mark.ceph-rgws)
         elif "nfs" in test_path:
-            item.add_marker(pytest.mark.nfss)
+            item.add_marker(pytest.mark.ceph-nfss)
         else:
             item.add_marker(pytest.mark.all)
 

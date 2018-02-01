@@ -29,13 +29,13 @@
 - name: make sure docker is present and started
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ mon_group_name|default('ceph-mons') }}"
+    - "{{ mgr_group_name|default('ceph-mgrs') }}"
+    - "{{ osd_group_name|default('ceph-osds') }}"
+    - "{{ mds_group_name|default('ceph-mdss') }}"
+    - "{{ rgw_group_name|default('ceph-rgws') }}"
+    - "{{ rbd_mirror_group_name|default('ceph-rbd-mirrors') }}"
+    - "{{ nfs_group_name|default('ceph-nfss') }}"
 
   become: true
 
@@ -68,11 +68,11 @@
     health_mon_check_retries: 5
     health_mon_check_delay: 15
     containerized_deployment: true
-    mon_group_name:       mons
-    restapi_group_name:   restapis
+    mon_group_name:       ceph-mons
+    restapi_group_name:   ceph-restapis
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
+    - "{{ mon_group_name|default('ceph-mons') }}"
 
   serial: 1
   become: true
@@ -138,11 +138,11 @@
 - name: switching from non-containerized to containerized ceph mgr
 
   hosts:
-    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ mgr_group_name|default('ceph-mgrs') }}"
 
   vars:
     containerized_deployment: true
-    mgr_group_name: mgrs
+    mgr_group_name: ceph-mgrs
 
   serial: 1
   become: true
@@ -187,17 +187,17 @@
     health_osd_check_retries: 5
     health_osd_check_delay: 15
     containerized_deployment: true
-    osd_group_name: osds
+    osd_group_name: ceph-osds
 
   hosts:
-    - "{{ osd_group_name|default('osds') }}"
+    - "{{ osd_group_name|default('ceph-osds') }}"
 
   serial: 1
   become: true
 
 
   pre_tasks:
-    - name: collect running osds
+    - name: collect running ceph-osds
       shell: |
         systemctl list-units | grep "loaded active" | grep -Eo 'ceph-osd@[0-9]{1,2}.service'
       register: running_osds
@@ -259,7 +259,7 @@
       when:
         - ldb_files.rc == 0
 
-    - name: check if containerized osds are already running
+    - name: check if containerized ceph-osds are already running
       shell: |
         docker ps | grep -sq {{ item | regex_replace('/', '') }}
       changed_when: false
@@ -305,11 +305,11 @@
 - name: switching from non-containerized to containerized ceph mds
 
   hosts:
-    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ mds_group_name|default('ceph-mdss') }}"
 
   vars:
     containerized_deployment: true
-    mds_group_name: mdss
+    mds_group_name: ceph-mdss
 
   serial: 1
   become: true
@@ -347,11 +347,11 @@
 - name: switching from non-containerized to containerized ceph rgw
 
   hosts:
-    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rgw_group_name|default('ceph-rgws') }}"
 
   vars:
     containerized_deployment: true
-    rgw_group_name: rgws
+    rgw_group_name: ceph-rgws
 
   serial: 1
   become: true
@@ -389,11 +389,11 @@
 - name: switching from non-containerized to containerized ceph rbd-mirror
 
   hosts:
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ rbd_mirror_group_name|default('ceph-rbd-mirrors') }}"
 
   vars:
     containerized_deployment: true
-    rbdmirror_group_name: rbdmirrors
+    rbd_mirror_group_name: ceph-rbd-mirrors
 
   serial: 1
   become: true
@@ -431,11 +431,11 @@
 - name: switching from non-containerized to containerized ceph nfs
 
   hosts:
-    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ nfs_group_name|default('ceph-nfss') }}"
 
   vars:
     containerized_deployment: true
-    nfs_group_name: nfss
+    nfs_group_name: ceph-nfss
 
   serial: 1
   become: true

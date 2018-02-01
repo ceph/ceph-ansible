@@ -23,7 +23,7 @@ At the very least, a scenario will need these files:
   cluster
 * ``group_vars/all``: if any modifications are needed for deployment, this
   would override them. Additionally, further customizations can be done. For
-  example, for OSDs that would mean adding ``group_vars/osds``
+  example, for OSDs that would mean adding ``group_vars/ceph-osds``
 * ``vagrant_variables.yml``: Defines the actual environment for the test, where
   machines, networks, disks, linux distro/version, can be defined.
 

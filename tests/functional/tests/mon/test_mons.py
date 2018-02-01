@@ -33,7 +33,7 @@ class TestMons(object):
 
     def test_initial_members_line_has_correct_value(self, node, File):
         mons = ",".join("%s" % host
-                        for host in node["vars"]["groups"]["mons"])
+                        for host in node["vars"]["groups"]["ceph-mons"])
         line = "mon initial members = {}".format(mons)
         assert File(node["conf_path"]).contains(line)
 

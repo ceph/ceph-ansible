@@ -52,7 +52,7 @@
 - name: purge ceph mds cluster
 
   hosts:
-    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ mds_group_name|default('ceph-mdss') }}"
 
   become: true
 
@@ -90,7 +90,7 @@
 - name: purge ceph mgr cluster
 
   hosts:
-    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ mgr_group_name|default('ceph-mgrs') }}"
   become: true
   tasks:
 
@@ -126,7 +126,7 @@
 - name: purge ceph rgw cluster
 
   hosts:
-    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rgw_group_name|default('ceph-rgws') }}"
 
   become: true
 
@@ -177,7 +177,7 @@
 - name: purge ceph rbd-mirror cluster
 
   hosts:
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ rbd_mirror_group_name|default('ceph-rbd-mirrors') }}"
 
   become: true
 
@@ -216,7 +216,7 @@
 - name: purge ceph nfs cluster
 
   hosts:
-    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ nfs_group_name|default('ceph-nfss') }}"
 
   become: true
 
@@ -264,13 +264,13 @@
 - name: purge ceph osd cluster
 
   hosts:
-    - "{{ osd_group_name|default('osds') }}"
+    - "{{ osd_group_name|default('ceph-osds') }}"
 
   become: true
 
   tasks:
 
-  - name: get all the running osds
+  - name: get all the running ceph-osds
     shell: |
       systemctl list-units | grep "loaded active" | grep -oE "ceph-osd@([0-9]{1,2}|[a-z]+).service"
     register: osd_units
@@ -402,13 +402,13 @@
     tags:
       remove_img
 
-  - name: include vars from group_vars/osds.yml
+  - name: include vars from group_vars/ceph-osds.yml
     include_vars:
       file: "{{ item }}"
     with_first_found:
       - files:
-        - "{{ playbook_dir }}/group_vars/osds"
-        - "{{ playbook_dir }}/group_vars/osds.yml"
+        - "{{ playbook_dir }}/group_vars/ceph-osds"
+        - "{{ playbook_dir }}/group_vars/ceph-osds.yml"
         skip: true
 
   - name: find all osd_disk_prepare logs
@@ -427,7 +427,7 @@
 - name: purge ceph mon cluster
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
+    - "{{ mon_group_name|default('ceph-mons') }}"
 
   become: true
 
@@ -473,13 +473,13 @@
 - name: remove installed packages
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ mon_group_name|default('ceph-mons') }}"
+    - "{{ osd_group_name|default('ceph-osds') }}"
+    - "{{ mds_group_name|default('ceph-mdss') }}"
+    - "{{ rgw_group_name|default('ceph-rgws') }}"
+    - "{{ rbd_mirror_group_name|default('ceph-rbd-mirrors') }}"
+    - "{{ nfs_group_name|default('ceph-nfss') }}"
+    - "{{ mgr_group_name|default('ceph-mgrs') }}"
 
   become: true
 
@@ -634,13 +634,13 @@
 - name: purge ceph directories
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ mon_group_name|default('ceph-mons') }}"
+    - "{{ osd_group_name|default('ceph-osds') }}"
+    - "{{ mds_group_name|default('ceph-mdss') }}"
+    - "{{ rgw_group_name|default('ceph-rgws') }}"
+    - "{{ rbd_mirror_group_name|default('ceph-rbd-mirrors') }}"
+    - "{{ nfs_group_name|default('ceph-nfss') }}"
+    - "{{ mgr_group_name|default('ceph-mgrs') }}"
 
   gather_facts: false # Already gathered previously
 

@@ -8,7 +8,7 @@
 # can be improved with includes, however I wanted to keep a single file...
 #
 
-- hosts: mons
+- hosts: ceph-mons
   serial: 1
   sudo: True
 
@@ -236,7 +236,7 @@
         mode=0600
       when: migration_completed.stat.exists == False
 
-- hosts: osds
+- hosts: ceph-osds
   serial: 1
   sudo: True
 
@@ -304,7 +304,7 @@
 
     - name: Create backup directory
       file: >
-        path={{ backup_dir }}/osds-backups
+        path={{ backup_dir }}/ceph-osds-backups
         state=directory
         owner=root
         group=root
@@ -316,7 +316,7 @@
     - name: Scp OSDs dirs and configs
       fetch: >
         src=/var/lib/ceph/{{ ansible_hostname }}.tar
-        dest={{ backup_dir }}/osds-backups/
+        dest={{ backup_dir }}/ceph-osds-backups/
         flat=yes
       when: migration_completed.stat.exists == False
 
@@ -371,7 +371,7 @@
     # NOTE (leseb): 'creates' was added in Ansible 1.6
     - name: Copy and unarchive the OSD configs
       unarchive: >
-        src={{ backup_dir }}/osds-backups/{{ ansible_hostname }}.tar
+        src={{ backup_dir }}/ceph-osds-backups/{{ ansible_hostname }}.tar
         dest=/var/lib/ceph/
         copy=yes
         mode=0600
@@ -430,7 +430,7 @@
       with_items: "{{ groups[mon_group_name][0] }}"
       when: migration_completed.stat.exists == False
 
-- hosts: rgws
+- hosts: ceph-rgws
   serial: 1
   sudo: True
 
@@ -461,7 +461,7 @@
 
     - name: Create backup directory
       file: >
-        path={{ backup_dir }}/rgws-backups
+        path={{ backup_dir }}/ceph-rgws-backups
         state=directory
         owner=root
         group=root
@@ -473,7 +473,7 @@
     - name: Scp RGWs dirs and configs
       fetch: >
         src=/var/lib/ceph/{{ ansible_hostname }}.tar
-        dest={{ backup_dir }}/rgws-backups/
+        dest={{ backup_dir }}/ceph-rgws-backups/
         flat=yes
       when: migration_completed.stat.exists == False
 
@@ -513,7 +513,7 @@
     # NOTE (leseb): 'creates' was added in Ansible 1.6
     - name: Copy and unarchive the OSD configs
       unarchive: >
-        src={{ backup_dir }}/rgws-backups/{{ ansible_hostname }}.tar
+        src={{ backup_dir }}/ceph-rgws-backups/{{ ansible_hostname }}.tar
         dest=/var/lib/ceph/
         copy=yes
         mode=0600

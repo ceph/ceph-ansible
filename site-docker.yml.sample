@@ -2,17 +2,17 @@
 # Defines deployment design and assigns role to server groups
 
 - hosts:
-  - mons
-  - agents
-  - osds
-  - mdss
-  - rgws
-  - nfss
-  - restapis
-  - rbdmirrors
-  - clients
-  - iscsigws
-  - mgrs
+  - ceph-mons
+  - ceph-agents
+  - ceph-osds
+  - ceph-mdss
+  - ceph-rgws
+  - ceph-nfss
+  - ceph-restapis
+  - ceph-rbd-mirrors
+  - ceph-clients
+  - ceph-iscsi-gws
+  - ceph-mgrs
 
   gather_facts: false
   become: True
@@ -63,7 +63,7 @@
         - atomic
         - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
 
-- hosts: mons
+- hosts: ceph-mons
   become: True
   gather_facts: false
   roles:
@@ -73,7 +73,7 @@
     - ceph-mon
   serial: 1 # MUST be '1' WHEN DEPLOYING MONITORS ON DOCKER CONTAINERS
 
-- hosts: mgrs
+- hosts: ceph-mgrs
   become: True
   gather_facts: false
   roles:
@@ -82,7 +82,7 @@
     - { role: ceph-config, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
     - { role: ceph-mgr, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
 
-- hosts: osds
+- hosts: ceph-osds
   become: True
   gather_facts: false
   roles:
@@ -91,7 +91,7 @@
     - ceph-config
     - ceph-osd
 
-- hosts: mdss
+- hosts: ceph-mdss
   become: True
   gather_facts: false
   roles:
@@ -100,7 +100,7 @@
     - ceph-config
     - ceph-mds
 
-- hosts: rgws
+- hosts: ceph-rgws
   become: True
   gather_facts: false
   roles:
@@ -109,7 +109,7 @@
     - ceph-config
     - ceph-rgw
 
-- hosts: nfss
+- hosts: ceph-nfss
   become: True
   gather_facts: false
   roles:
@@ -118,7 +118,7 @@
     - { role: ceph-config, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
     - { role: ceph-nfs, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
 
-- hosts: rbdmirrors
+- hosts: ceph-rbd-mirrors
   become: True
   gather_facts: false
   roles:
@@ -127,7 +127,7 @@
     - ceph-config
     - ceph-rbd-mirror
 
-- hosts: restapis
+- hosts: ceph-restapis
   become: True
   gather_facts: false
   roles:
@@ -136,7 +136,7 @@
     - ceph-config
     - ceph-restapi
 
-- hosts: clients
+- hosts: ceph-clients
   become: True
   gather_facts: false
   roles:

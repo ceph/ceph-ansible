@@ -125,7 +125,7 @@ defining an interface vs. an IP on a monitor) which can help catch issues in
 ceph-ansible configuration. For example::
 
 
-    [mons]
+    [ceph-mons]
     mon0 monitor_address=192.168.5.10
     mon1 monitor_address=192.168.5.11
     mon2 monitor_interface=eth1

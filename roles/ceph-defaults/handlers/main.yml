@@ -227,37 +227,37 @@
     owner: root
     group: root
     mode: 0750
-  listen: "restart ceph rbdmirrors"
+  listen: "restart ceph rbd-mirrors"
   when:
-    - rbdmirror_group_name in group_names
+    - rbd_mirror_group_name in group_names
     - inventory_hostname in play_hosts
 
 - name: restart ceph rbd mirror daemon(s) - non container
   command: /usr/bin/env bash /tmp/restart_rbd_mirror_daemon.sh
-  listen: "restart ceph rbdmirrors"
+  listen: "restart ceph rbd-mirrors"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-    - rbdmirror_group_name in group_names
+    - rbd_mirror_group_name in group_names
     - not containerized_deployment
-    - inventory_hostname == groups.get(rbdmirror_group_name) | last
+    - inventory_hostname == groups.get(rbd_mirror_group_name) | last
     - inventory_hostname in play_hosts
     - rbd_mirror_socket_stat.rc == 0
-  with_items: "{{ groups[rbdmirror_group_name] }}"
+  with_items: "{{ groups[rbd_mirror_group_name] }}"
   run_once: true
   delegate_to: "{{ item }}"
 
 - name: restart ceph rbd mirror daemon(s) - container
   command: /usr/bin/env bash /tmp/restart_rbd_mirror_daemon.sh
-  listen: "restart ceph rbdmirrors"
+  listen: "restart ceph rbd-mirrors"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-    - rbdmirror_group_name in group_names
+    - rbd_mirror_group_name in group_names
     - containerized_deployment
     - ceph_rbd_mirror_container_stat.get('rc') == 0
-    - inventory_hostname == groups.get(rbdmirror_group_name) | last
+    - inventory_hostname == groups.get(rbd_mirror_group_name) | last
     - inventory_hostname in play_hosts
     - ceph_rbd_mirror_container_stat.get('stdout_lines', [])|length != 0
-  with_items: "{{ groups[rbdmirror_group_name] }}"
+  with_items: "{{ groups[rbd_mirror_group_name] }}"
   run_once: true
   delegate_to: "{{ item }}"
 

@@ -21,7 +21,7 @@ This will setup the realm, zonegroup and master zone and make them the defaults.
 1. Edit the Inventory File
 
 ```
-[rgws]
+[ceph-rgws]
 cluster0-rgw0 rgw_zone=us-east rgw_zonemaster=true
 ```
 1. Generate System Access and System Secret Keys
@@ -51,7 +51,7 @@ Note: If you have already installed a cluster with ceph-ansible, you can use the
 ## Configuring the Secondary Zone in a Separate Cluster
 
 ```
-[rgws]
+[ceph-rgws]
 cluster1-rgw0 rgw_zone=us-west rgw_zonesecondary=true
 ```
 

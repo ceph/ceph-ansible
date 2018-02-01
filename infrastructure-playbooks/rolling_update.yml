@@ -18,7 +18,7 @@
   hosts: localhost
   become: false
   vars:
-    - mgr_group_name: mgrs
+    - mgr_group_name: ceph-mgrs
     - jewel_minor_update: False
 
   vars_prompt:
@@ -48,14 +48,14 @@
 - name: gather facts and check the init system
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
-    - "{{ rbd_mirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ client_group_name|default('clients') }}"
+    - "{{ mon_group_name|default('ceph-mons') }}"
+    - "{{ osd_group_name|default('ceph-osds') }}"
+    - "{{ mds_group_name|default('ceph-mdss') }}"
+    - "{{ rgw_group_name|default('ceph-rgws') }}"
+    - "{{ mgr_group_name|default('ceph-mgrs') }}"
+    - "{{ rbd_mirror_group_name|default('ceph-rbd-mirrors') }}"
+    - "{{ nfs_group_name|default('ceph-nfss') }}"
+    - "{{ client_group_name|default('ceph-clients') }}"
 
   become: True
   gather_facts: False
@@ -87,7 +87,7 @@
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
+    - "{{ mon_group_name|default('ceph-mons') }}"
 
   serial: 1
   become: True
@@ -184,7 +184,7 @@
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ mgr_group_name|default('ceph-mgrs') }}"
 
   serial: 1
   become: True
@@ -247,7 +247,7 @@
       when: containerized_deployment
 
 
-- name: upgrade ceph osds cluster
+- name: upgrade ceph ceph-osds cluster
 
   vars:
     health_osd_check_retries: 40
@@ -255,7 +255,7 @@
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ osd_group_name|default('osds') }}"
+    - "{{ osd_group_name|default('ceph-osds') }}"
 
   serial: 1
   become: True
@@ -337,7 +337,7 @@
 - name: unset osd flags
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
+    - "{{ mon_group_name|default('ceph-mons') }}"
 
   become: True
 
@@ -384,13 +384,13 @@
         - not jewel_minor_update
 
 
-- name: upgrade ceph mdss cluster
+- name: upgrade ceph ceph-mdss cluster
 
   vars:
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ mds_group_name|default('ceph-mdss') }}"
 
   serial: 1
   become: True
@@ -430,13 +430,13 @@
         - containerized_deployment
 
 
-- name: upgrade ceph rgws cluster
+- name: upgrade ceph ceph-rgws cluster
 
   vars:
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rgw_group_name|default('ceph-rgws') }}"
 
   serial: 1
   become: True
@@ -482,7 +482,7 @@
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ rbd_mirror_group_name|default('rbdmirrors') }}"
+    - "{{ rbd_mirror_group_name|default('ceph-rbd-mirrors') }}"
 
   serial: 1
   become: True
@@ -536,7 +536,7 @@
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ nfs_group_name|default('ceph-nfss') }}"
 
   serial: 1
   become: True
@@ -590,7 +590,7 @@
     upgrade_ceph_packages: True
 
   hosts:
-    - "{{ client_group_name|default('clients') }}"
+    - "{{ client_group_name|default('ceph-clients') }}"
 
   serial: 1
   become: True
@@ -606,7 +606,7 @@
 - name: show ceph status
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
+    - "{{ mon_group_name|default('ceph-mons') }}"
 
   become: True
 

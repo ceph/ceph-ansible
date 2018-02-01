@@ -34,14 +34,14 @@
 - name: gather facts on all hosts
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ client_group_name|default('clients') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ mon_group_name|default('ceph-mons') }}"
+    - "{{ osd_group_name|default('ceph-osds') }}"
+    - "{{ mds_group_name|default('ceph-mdss') }}"
+    - "{{ rgw_group_name|default('ceph-rgws') }}"
+    - "{{ rbd_mirror_group_name|default('ceph-rbd-mirrors') }}"
+    - "{{ nfs_group_name|default('ceph-nfss') }}"
+    - "{{ client_group_name|default('ceph-clients') }}"
+    - "{{ mgr_group_name|default('ceph-mgrs') }}"
 
   become: true
 
@@ -51,10 +51,10 @@
 - name: purge ceph mds cluster
 
   vars:
-    mds_group_name: mdss
+    mds_group_name: ceph-mdss
 
   hosts:
-    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ mds_group_name|default('ceph-mdss') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -62,7 +62,7 @@
 
   tasks:
 
-  - name: stop ceph mdss with systemd
+  - name: stop ceph ceph-mdss with systemd
     service:
       name: ceph-mds@{{ ansible_hostname }}
       state: stopped
@@ -70,11 +70,11 @@
     failed_when: false
     when: ansible_service_mgr == 'systemd'
 
-  - name: stop ceph mdss
+  - name: stop ceph ceph-mdss
     shell: "service ceph status mds ; if [ $? == 0 ] ; then service ceph stop mds ; else echo ; fi"
     when: ansible_service_mgr == 'sysvinit'
 
-  - name: stop ceph mdss on ubuntu
+  - name: stop ceph ceph-mdss on ubuntu
     command: initctl stop ceph-mds cluster={{ cluster }} id={{ ansible_hostname }}
     failed_when: false
     when: ansible_service_mgr == 'upstart'
@@ -82,10 +82,10 @@
 - name: purge ceph mgr cluster
 
   vars:
-    mgr_group_name: mgrs
+    mgr_group_name: ceph-mgrs
 
   hosts:
-    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ mgr_group_name|default('ceph-mgrs') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -93,7 +93,7 @@
 
   tasks:
 
-  - name: stop ceph mgrs with systemd
+  - name: stop ceph ceph-mgrs with systemd
     service:
       name: ceph-mgr@{{ ansible_hostname}}
       state: stopped
@@ -104,10 +104,10 @@
 - name: purge ceph rgw cluster
 
   vars:
-    rgw_group_name: rgws
+    rgw_group_name: ceph-rgws
 
   hosts:
-    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rgw_group_name|default('ceph-rgws') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -115,7 +115,7 @@
 
   tasks:
 
-  - name: stop ceph rgws with systemd
+  - name: stop ceph ceph-radosgw with systemd
     service:
       name: ceph-radosgw@rgw.{{ ansible_hostname }}
       state: stopped
@@ -123,11 +123,11 @@
     failed_when: false
     when: ansible_service_mgr == 'systemd'
 
-  - name: stop ceph rgws
+  - name: stop ceph ceph-radosgw
     shell: "service ceph-radosgw status ; if [ $? == 0 ] ; then service ceph-radosgw stop ; else echo ; fi"
     when: ansible_service_mgr == 'sysvinit'
 
-  - name: stop ceph rgws on ubuntu
+  - name: stop ceph ceph-radosgw on ubuntu
     command: initctl stop radosgw cluster={{ cluster }} id={{ ansible_hostname }}
     failed_when: false
     when: ansible_service_mgr == 'upstart'
@@ -136,10 +136,10 @@
 - name: purge ceph rbd-mirror cluster
 
   vars:
-    rbdmirror_group_name: rbd-mirrors
+    rbd_mirror_group_name: rbd-mirrors
 
   hosts:
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ rbd_mirror_group_name|default('ceph-rbd-mirrors') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -163,10 +163,10 @@
 - name: purge ceph nfs cluster
 
   vars:
-    nfs_group_name: nfss
+    nfs_group_name: ceph-nfss
 
   hosts:
-    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ nfs_group_name|default('ceph-nfss') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -174,18 +174,18 @@
 
   tasks:
 
-  - name: stop ceph nfss with systemd
+  - name: stop ceph ceph-nfss with systemd
     service:
       name: nfs-ganesha
       state: stopped
     failed_when: false
     when: ansible_service_mgr == 'systemd'
 
-  - name: stop ceph nfss
+  - name: stop ceph ceph-nfss
     shell: "service nfs-ganesha status ; if [ $? == 0 ] ; then service nfs-ganesha stop ; else echo ; fi"
     when: ansible_service_mgr == 'sysvinit'
 
-  - name: stop ceph nfss on ubuntu
+  - name: stop ceph ceph-nfss on ubuntu
     command: initctl stop nfs-ganesha
     failed_when: false
     when: ansible_service_mgr == 'upstart'
@@ -194,11 +194,11 @@
 - name: purge ceph osd cluster
 
   vars:
-    osd_group_name: osds
+    osd_group_name: ceph-osds
     reboot_osd_node: False
 
   hosts:
-    - "{{ osd_group_name|default('osds') }}"
+    - "{{ osd_group_name|default('ceph-osds') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -250,11 +250,11 @@
   # we use this test so we do not have to know which RPM contains the boot script
   # or where it is placed.
 
-  - name: stop ceph osds
+  - name: stop ceph ceph-osds
     shell: "service ceph status osd ; if [ $? == 0 ] ; then service ceph stop osd ; else echo ; fi"
     when: ansible_service_mgr == 'sysvinit'
 
-  - name: stop ceph osds on ubuntu
+  - name: stop ceph ceph-osds on ubuntu
     command: initctl stop ceph-osd cluster={{ cluster }} id={{ item }}
     failed_when: false
     when: ansible_service_mgr == 'upstart'
@@ -407,11 +407,11 @@
 - name: purge ceph mon cluster
 
   vars:
-    mon_group_name:       mons
-    restapi_group_name:   restapis
+    mon_group_name:       ceph-mons
+    restapi_group_name:   ceph-restapis
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
+    - "{{ mon_group_name|default('ceph-mons') }}"
 
   gather_facts: false # already gathered previously
 
@@ -419,7 +419,7 @@
 
   tasks:
 
-  - name: stop ceph mons with systemd
+  - name: stop ceph ceph-mons with systemd
     service:
       name: ceph-mon@{{ ansible_hostname }}
       state: stopped
@@ -427,11 +427,11 @@
     failed_when: false
     when: ansible_service_mgr == 'systemd'
 
-  - name: stop ceph mons
+  - name: stop ceph ceph-mons
     shell: "service ceph status mon ; if [ $? == 0 ] ; then service ceph stop mon ; else echo ; fi"
     when: ansible_service_mgr == 'sysvinit'
 
-  - name: stop ceph mons on ubuntu
+  - name: stop ceph ceph-mons on ubuntu
     command: initctl stop ceph-mon cluster={{ cluster }} id={{ ansible_hostname }}
     failed_when: false
     when: ansible_service_mgr == 'upstart'
@@ -479,14 +479,14 @@
       - python-rbd
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ client_group_name|default('clients') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ mon_group_name|default('ceph-mons') }}"
+    - "{{ osd_group_name|default('ceph-osds') }}"
+    - "{{ mds_group_name|default('ceph-mdss') }}"
+    - "{{ rgw_group_name|default('ceph-rgws') }}"
+    - "{{ rbd_mirror_group_name|default('ceph-rbd-mirrors') }}"
+    - "{{ nfs_group_name|default('ceph-nfss') }}"
+    - "{{ client_group_name|default('ceph-clients') }}"
+    - "{{ mgr_group_name|default('ceph-mgrs') }}"
 
   gather_facts: false # Already gathered previously
 
