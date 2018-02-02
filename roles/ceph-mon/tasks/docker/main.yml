@@ -7,7 +7,7 @@
   include: start_docker_monitor.yml
 
 - name: wait for monitor socket to exist
-  command: docker exec ceph-mon-{{ ansible_hostname }} stat /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok
+  command: "docker exec ceph-mon-{{ ansible_hostname }} sh -c 'stat /var/run/ceph/{{ cluster }}-mon.{{ ansible_hostname }}.asok || stat /var/run/ceph/{{ cluster }}-mon.{{ ansible_fqdn }}.asok'"
   register: monitor_socket
   retries: 5
   delay: 15
