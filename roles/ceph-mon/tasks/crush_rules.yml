@@ -46,16 +46,18 @@
   with_items: "{{ crush_rules }}"
   when: item.default
 
+# If multiple rules are set as default (should not be) then the last one is taken as actual default.
 - name: set_fact info_ceph_default_crush_rule_yaml
   set_fact:
-    info_ceph_default_crush_rule_yaml: "{{ info_ceph_default_crush_rule.results[0].stdout|from_json() }}"
-  when: info_ceph_default_crush_rule.results|length > 0
+    info_ceph_default_crush_rule_yaml: "{{ item.stdout|from_json() }}"
+  with_items: "{{ info_ceph_default_crush_rule.results }}"
+  when: not item.get('skipped', false)
 
 - name: insert new default crush rule into daemon to prevent restart
   command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ monitor_name }} config set osd_pool_default_crush_replicated_ruleset {{ info_ceph_default_crush_rule_yaml.rule_id }}"
   changed_when: false
   failed_when: false
-  when: info_ceph_default_crush_rule.results|length > 0
+  when: info_ceph_default_crush_rule_yaml|default('')|length > 0
 
 - name: add new default crush rule to ceph.conf
   ini_file:
@@ -63,5 +65,5 @@
     section: "global"
     option: "osd pool default crush replicated ruleset"
     value: "{{ info_ceph_default_crush_rule_yaml.rule_id }}"
-  when: info_ceph_default_crush_rule.results|length > 0
+  when: info_ceph_default_crush_rule_yaml|default('')|length > 0
 
