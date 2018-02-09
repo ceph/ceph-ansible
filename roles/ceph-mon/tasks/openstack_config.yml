@@ -5,6 +5,14 @@
   changed_when: false
   failed_when: false
 
+- name: assign rbd application to pool(s)
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} rbd"
+  with_items: "{{ openstack_pools | unique }}"
+  changed_when: false
+  failed_when: false
+  when:
+    - ceph_release_num[ceph_release] >= ceph_release_num['luminous']
+
 # A future version could use "--caps CAPSFILE"
 # which will set all of capabilities associated with a given key, for all subsystems
 - name: create openstack key(s)
