@@ -43,24 +43,24 @@
 
     - name: set_fact is_atomic
       set_fact:
-        atomic: '{{ stat_ostree.stat.exists }}'
+        is_atomic: '{{ stat_ostree.stat.exists }}'
       tags:
         - always
 
   roles:
     - { role: ceph-defaults,
         tags: [with_pkg, fetch_container_image],
-        when: "(containerized_deployment | bool) and not (atomic | bool)" }
+        when: "(containerized_deployment | bool) and not (is_atomic | bool)" }
     - { role: ceph-docker-common,
         tags: [with_pkg, fetch_container_image],
-        when: "(containerized_deployment | bool) and not (atomic | bool)" }
+        when: "(containerized_deployment | bool) and not (is_atomic | bool)" }
 
   post_tasks:
     - name: "pull {{ ceph_docker_image }} image"
       command: "docker pull {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       changed_when: false
       when:
-        - atomic
+        - is_atomic
         - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
 
 - hosts: mons
