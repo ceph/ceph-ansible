@@ -6,6 +6,15 @@
   when:
     - osd_objectstore == 'filestore'
 
+- name: disable osd directory path in updatedb.conf
+  replace:
+    dest: /etc/updatedb.conf
+    regexp: '^(PRUNEPATHS(?!.*/var/lib/ceph).*)"$'
+    replace: '\1 /var/lib/ceph"'
+  failed_when: false
+  when:
+    - osd_objectstore == 'filestore'
+
 - name: create tmpfiles.d directory
   file:
     path: "/etc/tmpfiles.d"
