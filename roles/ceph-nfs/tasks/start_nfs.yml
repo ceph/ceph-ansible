@@ -68,6 +68,13 @@
   notify:
     - restart ceph nfss
 
+- name: copy over nfs-ganesha-lock.service file
+  shell: "cp /lib/systemd/system/nfs-ganesha-lock.service.debian8 /lib/systemd/system/nfs-ganesha-lock.service"
+  when:
+    - ansible_distribution == 'Ubuntu'
+    - not containerized_deployment
+    - ceph_nfs_enable_service
+
 - name: systemd start nfs container
   systemd:
     name: ceph-nfs@{{ ceph_nfs_service_suffix | default(ansible_hostname) }}
