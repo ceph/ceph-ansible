@@ -1,16 +1,13 @@
 ---
 # ceph-common
 - block:
-  - name: create ceph conf directory and assemble directory
+  - name: create ceph conf directory
     file:
-      path: "{{ item }}"
+      path: "/etc/ceph"
       state: directory
       owner: "ceph"
       group: "ceph"
       mode: "0755"
-    with_items:
-      - /etc/ceph/
-      - /etc/ceph/ceph.d/
 
   - name: template ceph_conf_overrides
     copy:
@@ -43,21 +40,12 @@
     action: config_template
     args:
       src: ceph.conf.j2
-      dest: /etc/ceph/ceph.d/{{ cluster }}.conf
+      dest: /etc/ceph/{{ cluster }}.conf
       owner: "ceph"
       group: "ceph"
       mode: "0644"
       config_overrides: "{{ ceph_conf_overrides_rendered }}"
       config_type: ini
-
-  - name: assemble {{ cluster }}.conf and fragments
-    assemble:
-      src: /etc/ceph/ceph.d/
-      dest: /etc/ceph/{{ cluster }}.conf
-      regexp: "^(({{cluster}})|(osd)).conf$"
-      owner: "ceph"
-      group: "ceph"
-      mode: "0644"
     notify:
       - restart ceph mons
       - restart ceph osds
