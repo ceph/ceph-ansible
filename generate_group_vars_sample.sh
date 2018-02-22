@@ -6,7 +6,7 @@ set -euo pipefail
 # VARIABLES #
 #############
 
-basedir="$(dirname "$0")/inventory/sample"
+basedir=$(dirname "$0")
 do_not_generate="ceph-common$|ceph-docker-common$" # pipe separated list of roles we don't want to generate sample file, MUST end with '$', e.g: 'foo$|bar$'
 
 
@@ -49,7 +49,7 @@ generate_group_vars_file () {
 
 rhcs_edits () {
   tail -n +1 rhcs_edits.txt | while IFS= read -r option; do
-    sed -i "s|#${option% *} .*|${option}|" "$basedir"/group_vars/rhcs.yml
+    sed -i "s|#${option% *} .*|${option}|" group_vars/rhcs.yml.sample
   done
 }
 
@@ -57,17 +57,17 @@ rhcs_edits () {
 # MAIN #
 ########
 
-for role in "$(dirname "$0")"/roles/ceph-*; do
+for role in "$basedir"/roles/ceph-*; do
   rolename=$(basename "$role")
 
   if [[ $rolename == "ceph-defaults" ]]; then
-    output="all.yml rhcs.yml"
+    output="all.yml.sample rhcs.yml.sample"
   elif [[ $rolename == "ceph-agent" ]]; then
-    output="agent.yml"
+    output="agent.yml.sample"
   elif [[ $rolename == "ceph-fetch-keys" ]]; then
-    output="ceph-fetch-keys.yml"
+    output="ceph-fetch-keys.yml.sample"
   else
-    output="${rolename:5}s.yml"
+    output="${rolename:5}s.yml.sample"
   fi
 
   defaults="$role"/defaults/main.yml

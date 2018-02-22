@@ -73,8 +73,16 @@ The ``master`` branch should be considered experimental and used with caution.
 Quick Start
 ===========
 
-    # Copy ``inventory/sample`` as ``inventory/mycluster``
-    cp -rfp inventory/sample inventory/mycluster
+    # Create your own inventory folder structure
+    mkdir -p inventory/mycluster
+
+    # Copy sample assets to your own inventory folder structure
+    cp -rfp hosts.ini.sample inventory/mycluster/hosts.ini
+    cp -rfp group_vars inventory/mycluster/group_vars
+
+    # Basic tweak before your own configuration customization
+    mv inventory/mycluster/group_vars/all.yml.sample inventory/mycluster/group_vars/all.yml
+    sed -i 's/^#fetch_directory:.*/fetch_directory: "{{ inventory_dir }}\/fetch"/g' inventory/mycluster/group_vars/all.yml
 
     # Review and change Ansible inventory file under ``inventory/mycluster/hosts.ini``
     cat inventory/mycluster/hosts.ini
@@ -101,13 +109,6 @@ The ansible inventory file defines the hosts in your cluster and what roles each
 location for an inventory file is ``/etc/ansible/hosts`` but this file can be placed anywhere and used with the ``-i`` flag of
 ansible-playbook. An example inventory file would look like::
 
-    mon1 ansible_ssh_host=10.3.0.1
-    mon2 ansible_ssh_host=10.3.0.2
-    mon3 ansible_ssh_host=10.3.0.3
-    osd1 ansible_ssh_host=10.3.0.4
-    osd2 ansible_ssh_host=10.3.0.5
-    osd3 ansible_ssh_host=10.3.0.6
-
     [mons]
     mon1
     mon2
@@ -121,8 +122,6 @@ ansible-playbook. An example inventory file would look like::
 .. note::
 
     For more information on ansible inventories please refer to the ansible documentation: http://docs.ansible.com/ansible/latest/intro_inventory.html
-
-To begin copy entire ``inventory/sample`` directory as another directory, e.g. ``inventory/mycluster``, then start your configuration.
 
 Playbook
 --------
@@ -140,8 +139,8 @@ appropriate for your cluster setup. Perform the following steps to prepare your 
    It's important the playbook you use is placed at the root of the ``ceph-ansible`` project. This is how ansible will be able to find the roles that
    ``ceph-ansible`` provides.
 
-Choose Installation Method
---------------------------
+ceph-ansible - choose installation method
+-----------------------------------------
 
 Ceph can be installed through several methods.
 
@@ -150,13 +149,13 @@ Ceph can be installed through several methods.
 
    installation/methods
 
-Configuration
--------------
+ceph-ansible Configuration
+--------------------------
 
 The configuration for your ceph cluster will be set by the use of ansible variables that ``ceph-ansible`` provides. All of these options and their default
-values are defined in the ``inventory/sample/group_vars/`` directory at the root of the ``ceph-ansible`` project. Ansible will use configuration in a ``group_vars/`` directory
-that is relative to your inventory file. Inside of the ``group_vars/`` directory there are many sample ansible configuration files that relate
-to each of the ceph daemon groups by their filename. For example, the ``osds.yml`` contains all the default configuation for the OSD daemons. The ``all.yml``
+values are defined in the ``group_vars/`` directory at the root of the ``ceph-ansible`` project. Ansible will use configuration in a ``group_vars/`` directory
+that is relative to your inventory file or your playbook. Inside of the ``group_vars/`` directory there are many sample ansible configuration files that relate
+to each of the ceph daemon groups by their filename. For example, the ``osds.yml.sample`` contains all the default configuation for the OSD daemons. The ``all.yml.sample``
 file is a special ``group_vars`` file that applies to all hosts in your cluster.
 
 .. note::
@@ -164,7 +163,8 @@ file is a special ``group_vars`` file that applies to all hosts in your cluster.
     For more information on setting group or host specific configuration refer to the ansible documentation: http://docs.ansible.com/ansible/latest/intro_inventory.html#splitting-out-host-and-group-specific-data
 
 At the most basic level you must tell ``ceph-ansible`` what version of ceph you wish to install, the method of installation, your clusters network settings and
-how you want your OSDs configured. To begin your configuration uncomment the options you wish to change and provide your own value inside each file in ``group/vars/``.
+how you want your OSDs configured. To begin your configuration rename each file in ``group_vars/`` you wish to use so that it does not include the ``.sample``
+at the end of the filename, uncomment the options you wish to change and provide your own value.
 
 An example configuration that deploys the upstream ``jewel`` version of ceph with OSDs that have collocated journals would look like this in ``group_vars/all.yml``::
 
@@ -211,20 +211,6 @@ An example::
     please use the ``ceph_conf_overrides`` variable.
 
 Full documentation for configuring each of the ceph daemon types are in the following sections.
-
-Accessing Ceph API
-==================
-
-The main client of Ceph is ``ceph``. It is installed on each Ceph node and can optionally be deployed
-with ansible group ``clients``. Moreover, if specify your ansible host into ansible group ``clients``,
-it will also download corresponding artifacts of your cluster, e.g. ``ceph.conf`` and 
-``ceph.client.admin.keyring``, onto ``inventory/mycluster/artifacts/`` directory after deployment. A
-helper script ``inventory/mycluster/artifacts/ceph.sh`` also created for setup with correct config and keyring.
-
-You can show cluster status by running following commands:
-
-    cd inventory/mycluster/artifacts
-    ./ceph.sh -s
 
 OSD Configuration
 =================

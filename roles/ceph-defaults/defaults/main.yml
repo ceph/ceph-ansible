@@ -20,8 +20,22 @@ ceph_release_num:
   luminous: 12
   mimic: 13
 
-# Directory to fetch cluster fsid, keys etc...
-fetch_directory: "{{ inventory_dir }}/fetch/"
+# The `fetch_directory` store cluster fsid, keys, etc across multiple
+# ansible playbook execution.
+#
+# With default value `fetch/` it will be generated as a relative path to
+# your playbook file location, so if you are running multiple deployments
+# with individual inventory files, it will be a shared folder which result
+# as all deployments shared with identical cluster fsid, keys, etc.
+#
+# If you hope to have different cluster fsid, keys, etc among different
+# deployments, you should update this as `{{ inventory_dir }}/fetch`,
+# therefore no longer as a shared folder but relative to your inventory
+# file location.
+fetch_directory: fetch/
+valid_fetch_directory:
+ - fetch/
+ - "{{ inventory_dir }}/fetch"
 
 # The 'cluster' variable determines the name of the cluster.
 # Changing the default value to something else means that you will
