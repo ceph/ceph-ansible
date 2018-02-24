@@ -159,7 +159,8 @@
       command: ceph --cluster "{{ cluster }}" -s --format json
       register: ceph_health_raw
       until: >
-        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
+        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"] or
+        hostvars[mon_host]['ansible_fqdn'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
@@ -170,7 +171,8 @@
       command: docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
       register: ceph_health_raw
       until: >
-        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
+        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"] or
+        hostvars[mon_host]['ansible_fqdn'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
@@ -335,6 +337,8 @@
 
 
 - name: unset osd flags
+  vars:
+    - jewel_minor_update: False
 
   hosts:
     - "{{ mon_group_name|default('mons') }}"
@@ -363,11 +367,15 @@
       command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
       register: ceph_versions
       delegate_to: "{{ groups[mon_group_name][0] }}"
+      when:
+        - not jewel_minor_update
 
     - name: set_fact ceph_versions_osd
       set_fact:
         ceph_versions_osd: "{{ (ceph_versions.stdout|from_json).osd }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
+      when:
+        - not jewel_minor_update
 
     # length == 1 means there is a single osds versions entry
     # thus all the osds are running the same version
@@ -375,8 +383,9 @@
       command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} osd require-osd-release luminous"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when:
-        - (ceph_versions.stdout|from_json).osd | length == 1
+        - (ceph_versions.get('stdout', '{}')|from_json).get('osd', {}) | length == 1
         - ceph_versions_osd | string | search("ceph version 12")
+        - not jewel_minor_update
 
 
 - name: upgrade ceph mdss cluster

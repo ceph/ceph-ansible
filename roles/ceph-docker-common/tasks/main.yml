@@ -5,18 +5,6 @@
 - name: include check_mandatory_vars.yml
   include: check_mandatory_vars.yml
 
-- name: check if it is atomic host
-  stat:
-    path: /run/ostree-booted
-  register: stat_ostree
-  check_mode: no
-
-- name: set_fact is_atomic
-  set_fact:
-    is_atomic: '{{ stat_ostree.stat.exists }}'
-  tags:
-    - always
-
 - name: include pre_requisites/prerequisites.yml
   include: pre_requisites/prerequisites.yml
   when:
@@ -88,9 +76,6 @@
     - ansible_os_family == 'Debian'
     - ntp_service_enabled
 
-- name: include check_socket_container.yml
-  include: check_socket_container.yml
-  
 - name: include fetch_image.yml
   include: fetch_image.yml
   tags:

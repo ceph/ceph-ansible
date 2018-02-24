@@ -22,7 +22,7 @@
 # because it blindly picks a mon, which may be down because
 # of the rolling update
 - name: is ceph running already?
-  command: "{{ docker_exec_cmd }} ceph --connect-timeout 3 --cluster {{ cluster }} fsid"
+  command: "timeout 5 {{ docker_exec_cmd }} ceph --cluster {{ cluster }} fsid"
   changed_when: false
   failed_when: false
   check_mode: no
@@ -34,7 +34,9 @@
 
 # We want this check to be run only on the first node
 - name: check if {{ fetch_directory }} directory exists
-  local_action: stat path="{{ fetch_directory }}/monitor_keyring.conf"
+  local_action:
+    module: stat
+    path: "{{ fetch_directory }}/monitor_keyring.conf"
   become: false
   register: monitor_keyring_conf
   run_once: true
@@ -49,7 +51,10 @@
     - rolling_update or groups.get(mon_group_name, []) | length == 0
 
 - name: create a local fetch directory if it does not exist
-  local_action: file path={{ fetch_directory }} state=directory
+  local_action:
+    module: file
+    path: "{{ fetch_directory }}"
+    state: directory
   changed_when: false
   become: false
   run_once: true
@@ -68,8 +73,10 @@
     ceph_release: "{{ ceph_stable_release }}"
 
 - name: generate cluster fsid
-  local_action: shell python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
-    creates="{{ fetch_directory }}/ceph_cluster_uuid.conf"
+  local_action:
+    module: shell
+      python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
+    creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
   register: cluster_uuid
   become: false
   when:
@@ -77,15 +84,19 @@
     - ceph_current_fsid.rc != 0
 
 - name: reuse cluster fsid when cluster is already running
-  local_action: shell echo {{ fsid }} | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
-    creates="{{ fetch_directory }}/ceph_cluster_uuid.conf"
+  local_action:
+    module: shell
+      echo {{ fsid }} | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
+    creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
   become: false
   when:
     - ceph_current_fsid.rc == 0
 
 - name: read cluster fsid if it already exists
-  local_action: command cat {{ fetch_directory }}/ceph_cluster_uuid.conf
-    removes="{{ fetch_directory }}/ceph_cluster_uuid.conf"
+  local_action:
+    module: command
+      cat {{ fetch_directory }}/ceph_cluster_uuid.conf
+    removes: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
   changed_when: false
   register: cluster_uuid
   become: false
@@ -140,7 +151,7 @@
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
-    - osd_scenario != 'lvm'
+    - osd_scenario|default('dummy') != 'lvm'
 
 - name: set_fact build devices from resolved symlinks
   set_fact:
@@ -149,7 +160,7 @@
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
-    - osd_scenario != 'lvm'
+    - osd_scenario|default('dummy') != 'lvm'
 
 - name: set_fact build final devices list
   set_fact:
@@ -157,7 +168,7 @@
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
-    - osd_scenario != 'lvm'
+    - osd_scenario|default('dummy') != 'lvm'
 
 - name: set_fact ceph_uid for Debian based system
   set_fact:

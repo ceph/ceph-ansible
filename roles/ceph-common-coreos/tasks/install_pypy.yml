@@ -9,11 +9,16 @@
   raw:  mv $HOME/pypy-{{coreos_pypy_version}}-{{coreos_pypy_arch}} {{pypy_directory}}
 
 - name: create local temp directory
-  local_action: raw mkdir -p {{local_temp_directory}}
+  local_action:
+    module: raw
+      mkdir -p {{local_temp_directory}}
   become: no
 
 - name: prepare python executable
-  local_action: template src=install_python.sh.j2 dest={{local_temp_directory}}/install_python.sh
+  local_action:
+    module: template
+    src: install_python.sh.j2
+    dest: "{{local_temp_directory}}/install_python.sh"
   become: no
 
 - name: fix library
@@ -32,5 +37,8 @@
   raw: touch $HOME/.python
 
 - name: remove install_python.sh
-  local_action: file path="{{local_temp_directory}}/install_python.sh" state=absent
+  local_action:
+    module: file
+    path: "{{local_temp_directory}}/install_python.sh"
+    state: absent
   become: no

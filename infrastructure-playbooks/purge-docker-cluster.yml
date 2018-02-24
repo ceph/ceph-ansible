@@ -349,7 +349,7 @@
                                  ceph_wal_partition_to_erase_path.get('stdout_lines', []) }}"
 
   - name: resolve parent device
-    shell: $(lsblk --nodeps -no pkname "{{ item }}")
+    command: lsblk --nodeps -no pkname "{{ item }}"
     register: tmp_resolved_parent_device
     with_items:
       - "{{ combined_devices_list }}"
@@ -368,7 +368,7 @@
       {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
       zap_device
     with_items:
-      - "{{ combined_devices_list }}"
+      - "{{ resolved_parent_device }}"
 
   - name: wait until the zap containers die
     shell: |
@@ -385,7 +385,7 @@
       name: "ceph-osd-zap-{{ ansible_hostname }}-{{ item }}"
       state: absent
     with_items:
-      - "{{ combined_devices_list }}"
+      - "{{ resolved_parent_device }}"
 
   - name: remove ceph osd service
     file:

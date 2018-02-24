@@ -77,6 +77,10 @@ options:
         description:
             - Will set the crush device class for the OSD.
         required: false
+    dmcrypt:
+        description:
+            - If set to True the OSD will be encrypted with dmcrypt.
+        required: false
 
 
 author:
@@ -147,6 +151,7 @@ def run_module():
         wal=dict(type='str', required=False),
         wal_vg=dict(type='str', required=False),
         crush_device_class=dict(type='str', required=False),
+        dmcrypt=dict(type='bool', required=False, default=False),
     )
 
     module = AnsibleModule(
@@ -166,6 +171,7 @@ def run_module():
     wal = module.params.get('wal', None)
     wal_vg = module.params.get('wal_vg', None)
     crush_device_class = module.params.get('crush_device_class', None)
+    dmcrypt = module.params['dmcrypt']
 
     cmd = [
         'ceph-volume',
@@ -194,6 +200,9 @@ def run_module():
 
     if crush_device_class:
         cmd.extend(["--crush-device-class", crush_device_class])
+
+    if dmcrypt:
+        cmd.append("--dmcrypt")
 
     result = dict(
         changed=False,

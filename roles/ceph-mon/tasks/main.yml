@@ -22,11 +22,6 @@
   # this avoids the bug mentioned here: https://github.com/ansible/ansible/issues/18206
   static: no
 
-- name: crush_rules.yml
-  include: crush_rules.yml
-  when:
-    - crush_rule_config
-
 - name: include secure_cluster.yml
   include: secure_cluster.yml
   when:
@@ -36,6 +31,12 @@
 - name: include docker/main.yml
   include: docker/main.yml
   when: containerized_deployment
+
+- name: crush_rules.yml
+  include: crush_rules.yml
+  when:
+    - crush_rule_config
+    - inventory_hostname == groups.get(mon_group_name) | last
 
 - name: include set_osd_pool_default_pg_num.yml
   include: set_osd_pool_default_pg_num.yml
