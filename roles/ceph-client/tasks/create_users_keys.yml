@@ -46,12 +46,11 @@
     - copy_admin_key
 
 - name: create pools
-  command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pgs }}"
+  command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.get('pgs', hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num']) }}"
   with_items: "{{ pools }}"
   changed_when: false
   failed_when: false
   when:
-    - ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', False) != False
     - pools | length > 0
     - copy_admin_key
 
