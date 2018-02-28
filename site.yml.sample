@@ -71,99 +71,274 @@
 - hosts: mons
   gather_facts: false
   become: True
+  pre_tasks:
+    - name: set ceph monitor install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_mon:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
     - ceph-common
     - { role: ceph-config, tags: ['ceph_update_config'] }
     - ceph-mon
+  post_tasks:
+    - name: set ceph monitor install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_mon:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: mgrs
   gather_facts: false
   become: True
+  pre_tasks:
+    - name: set ceph manager install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_mgr:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
     - ceph-common
     - { role: ceph-config, tags: ['ceph_update_config'], when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
     - { role: ceph-mgr, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
+  post_tasks:
+    - name: set ceph manager install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_mgr:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: agents
   gather_facts: false
   become: True
+  pre_tasks:
+    - name: set ceph agent install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_agent:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
     - ceph-common
     - { role: ceph-config, tags: ['ceph_update_config'] }
     - ceph-agent
+  post_tasks:
+    - name: set ceph agent install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_agent:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: osds
   gather_facts: false
   become: True
+  pre_tasks:
+    - name: set ceph osd install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_osd:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
     - ceph-common
     - { role: ceph-config, tags: ['ceph_update_config'] }
     - ceph-osd
+  post_tasks:
+    - name: set ceph osd install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_osd:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: mdss
   gather_facts: false
   become: True
+  pre_tasks:
+    - name: set ceph mds install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_mds:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
     - ceph-common
     - { role: ceph-config, tags: ['ceph_update_config'] }
     - ceph-mds
+  post_tasks:
+    - name: set ceph mds install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_mds:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: rgws
   gather_facts: false
   become: True
+  pre_tasks:
+    - name: set ceph rgw install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_rgw:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
     - ceph-common
     - { role: ceph-config, tags: ['ceph_update_config'] }
     - ceph-rgw
+  post_tasks:
+    - name: set ceph rgw install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_rgw:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: nfss
   gather_facts: false
   become: True
+  pre_tasks:
+    - name: set ceph nfs install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_nfs:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
     - ceph-common
     - { role: ceph-config, tags: ['ceph_update_config'], when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
     - { role: ceph-nfs, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
+  post_tasks:
+    - name: set ceph nfs install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_nfs:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: restapis
   gather_facts: false
   become: True
+  pre_tasks:
+    - name: set ceph rest api install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_restapi:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
     - ceph-common
     - { role: ceph-config, tags: ['ceph_update_config'] }
     - ceph-restapi
+  post_tasks:
+    - name: set ceph rest api install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_restapi:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: rbdmirrors
   gather_facts: false
   become: True
+  pre_tasks:
+    - name: set ceph rbd mirror install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_rbdmirror:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
     - ceph-common
     - { role: ceph-config, tags: ['ceph_update_config'] }
     - ceph-rbd-mirror
+  post_tasks:
+    - name: set ceph rbd mirror install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_rbdmirror:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: clients
   gather_facts: false
   become: True
+  pre_tasks:
+    - name: set ceph client install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_client:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
     - ceph-common
     - { role: ceph-config, tags: ['ceph_update_config'] }
     - ceph-client
+  post_tasks:
+    - name: set ceph client install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_client:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: iscsi-gws
   gather_facts: false
   become: True
+  pre_tasks:
+    - name: set ceph iscsi gateway install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_iscsi_gw:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
     - ceph-common
     - { role: ceph-config, tags: ['ceph_update_config'], when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
     - { role: ceph-iscsi-gw, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
-
+  post_tasks:
+    - name: set ceph iscsi gw install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_iscsi_gw:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
