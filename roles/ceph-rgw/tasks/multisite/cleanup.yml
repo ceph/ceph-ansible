@@ -1,0 +1,28 @@
+---
+- name: remove default zone group
+  command: radosgw-admin zonegroup remove --rgw-zonegroup=default --rgw-zone=default
+  run_once: true
+  notify:
+    - update period
+
+- name: delete default zone
+  command: radosgw-admin zone delete --rgw-zone=default
+  run_once: true
+  notify:
+    - update period
+
+- name: delete default zone group
+  command: radosgw-admin zonegroup delete --rgw-zonegroup=default
+  run_once: true
+  notify:
+    - update period
+
+- name: delete default rgw zone group pools
+  commnad: "rados rmpool {{ item }} {{ item }} --yes-i-really-really-mean-it"
+  run_once: true
+  with_items:
+    - default.rgw.control
+    - default.rgw.data.root
+    - default.rgw.gc
+    - default.rgw.log
+    - default.rgw.users.uid
