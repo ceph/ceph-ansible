@@ -31,15 +31,20 @@
   with_items: "{{ info_ceph_default_crush_rule.results }}"
   when: not item.get('skipped', false)
 
-- name: insert new default crush rule into daemon to prevent restart
-  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ monitor_name }} config set osd_pool_default_crush_replicated_ruleset {{ info_ceph_default_crush_rule_yaml.rule_id }}"
-  changed_when: false
-  when: info_ceph_default_crush_rule_yaml|default('')|length > 0
+- name: set_fact osd_pool_default_crush_rule to osd_pool_default_crush_replicated_ruleset if release < luminous else osd_pool_default_crush_rule
+  set_fact:
+    osd_pool_default_crush_rule: "{{ 'osd_pool_default_crush_replicated_ruleset' if ceph_release_num[ceph_release] < ceph_release_num.luminous else 'osd_pool_default_crush_rule' }}"
 
-- name: add new default crush rule to ceph.conf
+- name: insert new default crush rule into daemon to prevent restart
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ monitor_name }} config set {{ osd_pool_default_crush_rule }} {{ info_ceph_default_crush_rule_yaml.rule_id }}"
+  changed_when: false
+  when:
+    - info_ceph_default_crush_rule_yaml|default('')|length > 0
+
+- name: "add new default crush rule to {{ cluster }}.conf"
   ini_file:
     dest: "/etc/ceph/{{ cluster }}.conf"
     section: "global"
-    option: "osd pool default crush replicated ruleset"
+    option: "{{ osd_pool_default_crush_rule }}"
     value: "{{ info_ceph_default_crush_rule_yaml.rule_id }}"
   when: info_ceph_default_crush_rule_yaml|default('')|length > 0
