@@ -12,6 +12,48 @@
     - item.value.holders|count == 0
     - "'dm-' not in item.key"
 
+- name: test if devices are devices
+  parted:
+    device: "{{ item }}"
+    unit: MiB
+  with_items:
+    - "{{ devices }}"
+  register: device_exists
+  when:
+    - not osd_auto_discovery
+    - osd_scenario != 'lvm'
+
+- name: fail if one of the devices does not exist
+  fail:
+    msg: "{{ item.err }}"
+  with_items:
+    - "{{ device_exists.results }}"
+  when:
+    - not osd_auto_discovery
+    - osd_scenario != 'lvm'
+    - item.failed
+
+- name: test if dedicated_devices are devices
+  parted:
+    device: "{{ item }}"
+    unit: MiB
+  with_items:
+    - "{{ dedicated_devices }}"
+  register: dedicated_devices_exists
+  when:
+    - not osd_auto_discovery
+    - osd_scenario != 'lvm'
+
+- name: fail if one of the dedicated_devices does not exist
+  fail:
+    msg: "{{ item.err }}"
+  with_items:
+    - "{{ dedicated_devices_exists.results }}"
+  when:
+    - not osd_auto_discovery
+    - osd_scenario != 'lvm'
+    - item.failed
+
 - name: resolve dedicated device link(s)
   command: readlink -f {{ item }}
   changed_when: false
