@@ -1,0 +1,90 @@
+---
+- name: purge grafana host
+  hosts:
+    - ceph-grafana
+  become: true
+  tasks:
+  - name: stop and disable services
+    service:
+      name: "{{ item }}"
+      enabled: no
+      state: stopped
+    with_items:
+      - grafana-server
+      - carbon-cache
+      - httpd
+    failed_when: false
+
+  - name: remove packages
+    package:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - graphite-web
+      - python-carbon
+      - grafana
+      - cephmetrics
+
+  - name: remove files
+    file:
+      dest: "{{ item }}"
+      state: absent
+    with_items:
+      - /var/lib/graphite
+      - /var/lig/graphite-web
+      - /var/lib/grafana
+      - /var/lib/carbon
+      - /etc/grafana/grafana.ini
+      - /etc/carbon/storage-schemas.conf
+      - /etc/httpd/conf.d/graphite-web.conf
+      - /etc/yum.repos.d/cephmetrics.repo
+      - /etc/yum.repos.d/grafana.repo
+      - /tmp/dashboard.yml
+      - /tmp/dashUpdater.py
+      - /tmp/dashboards
+
+- name: purge collectd hosts
+  hosts:
+    # These are roles used by ceph-ansible
+    - mons
+    - agents
+    - osds
+    - mdss
+    - rgws
+    - nfss
+    - restapis
+    - rbdmirrors
+    - clients
+    - mgrs
+    # This role is (so far) only used for testing
+    - cluster
+  become: true
+  tasks:
+  - name: stop and disable collectd
+    service:
+      name: collectd
+      enabled: no
+      state: stopped
+    failed_when: false
+
+  - name: remove packages
+    package:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - cephmetrics-collectors
+      - collectd
+
+  - name: remove files
+    file:
+      dest: "{{ item }}"
+      state: absent
+    with_items:
+      - /etc/collectd.d/cephmetrics.conf
+      - /etc/collectd.d/cpu.conf
+      - /etc/collectd.d/memory.conf
+      - /etc/collectd.d/nics.conf
+      - /etc/collectd.d/write_graphite.conf
+      - /etc/collectd.conf
+      - /etc/yum.repos.d/cephmetrics.repo
+      - /usr/lib64/collectd

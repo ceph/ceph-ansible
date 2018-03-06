@@ -1,0 +1,37 @@
+---
+- name: Set WHISPER_AUTOFLUSH to True
+  lineinfile:
+    dest: /etc/carbon/carbon.conf
+    regexp: "^WHISPER_AUTOFLUSH = .*"
+    insertafter: "^#.*buffering writes from the kernel.*"
+    line: "WHISPER_AUTOFLUSH = True"
+  notify:
+    - Restart carbon-cache
+
+- name: Fail when the the first whisper retention value is not 10s
+  fail:
+    msg: "The first whisper retention value must be '10s', not '{{ whisper.retention[0][0] }}' in order to match collectd's interval"
+  failed_when: whisper.retention[0][0] != '10s'
+  any_errors_fatal: true
+
+- name: Set whisper_retention
+  set_fact:
+    whisper_retention: "{{ whisper.retention|map('join', ':')|join(',') }}"
+
+- name: Configure retention for collectd stats
+  template:
+    src: storage-schemas.conf
+    dest: /etc/carbon/storage-schemas.conf
+  notify:
+    - Resize whisper databases
+    - Restart carbon-cache
+
+- name: Ensure carbon storage has the right ownership
+  file:
+    path: "{{ carbon.storage_dir[ansible_pkg_mgr] }}"
+    state: directory
+    owner: "{{ carbon.unix_user[ansible_pkg_mgr] }}"
+    group: "{{ carbon.unix_user[ansible_pkg_mgr] }}"
+    recurse: yes
+  notify:
+    - Restart carbon-cache

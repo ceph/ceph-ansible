@@ -1,0 +1,93 @@
+---
+- name: Enable EPEL
+  yum:
+    name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm"
+    state: "{{ 'present' if use_epel else 'absent' }}"
+  when:
+    - ansible_pkg_mgr == "yum"
+    - devel_mode
+
+- name: Install cephmetrics development repo
+  copy:
+    src: files/cephmetrics-devel.repo
+    dest: /etc/yum.repos.d/cephmetrics.repo
+  when:
+    - ansible_pkg_mgr == "yum"
+    - not use_epel
+    - devel_mode
+
+- name: Remove cephmetrics repo
+  file:
+    path: /etc/yum.repos.d/cephmetrics.repo
+    state: absent
+  when:
+    - ansible_pkg_mgr == "yum"
+    - use_epel
+    - devel_mode
+
+- name: Add Grafana repo
+  template:
+    src: grafana.repo
+    dest: /etc/yum.repos.d/grafana.repo
+  when:
+    - ansible_pkg_mgr == 'yum'
+    - use_epel
+    - devel_mode
+
+- name: Remove Grafana repo
+  file:
+    path: /etc/yum.repos.d/grafana.repo
+    state: absent
+  when:
+    - ansible_pkg_mgr == "yum"
+    - not use_epel
+    - devel_mode
+
+- name: Install grafana repo
+  copy:
+    src: files/grafana.list
+    dest: /etc/apt/sources.list.d/grafana.list
+  when:
+    - ansible_pkg_mgr == "apt"
+    - devel_mode
+
+- name: Add packagecloud GPG key to apt
+  apt_key:
+    # This is the key used by the grafana repo
+    url: https://packagecloud.io/gpg.key
+    id: D59097AB
+    state: present
+  when:
+    - ansible_pkg_mgr == "apt"
+    - devel_mode
+
+- name: Update apt cache
+  apt:
+    update_cache: true
+  when:
+    - ansible_pkg_mgr == 'apt'
+    - devel_mode
+
+- name: Remove old cephmetrics production repo
+  file:
+    path: /etc/yum.repos.d/cephmetrics.repo
+    state: absent
+  when:
+    - ansible_pkg_mgr == "yum"
+    - not devel_mode
+
+- name: Add custom repos
+  template:
+    src: cephmetrics-custom.repo
+    dest: /etc/yum.repos.d/cephmetrics-custom.repo
+  when:
+    - ansible_pkg_mgr == "yum"
+    - custom_repos is defined
+
+- name: Remove custom repos
+  file:
+    path: /etc/yum.repos.d/cephmetrics-custom.repo
+    state: absent
+  when:
+    - ansible_pkg_mgr == "yum"
+    - custom_repos is not defined

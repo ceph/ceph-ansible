@@ -1,0 +1,36 @@
+---
+- name: Restart Grafana
+  service:
+    name: grafana-server
+    state: restarted
+    enabled: true
+
+- name: Resize whisper databases
+  # xargs -P parallelizes execution; scale it to the number of cores on the system
+  shell: "find /var/lib/carbon/whisper -name '*.wsp' -print0 | xargs -n1 -0 -P {{ ansible_processor_vcpus }} -I {} whisper-resize {} {{ whisper_retention.replace(',', ' ') }}"
+  register: whisper_resize
+  failed_when: "'Traceback' in whisper_resize.stdout"
+  no_log: true
+
+- name: Restart graphite-web
+  service:
+    # graphite-web is served by apache
+    name: "{{ graphite.apache_name[ansible_pkg_mgr] }}"
+    state: restarted
+    enabled: true
+  when:
+    - "{{ graphite.service == 'graphite-web' }}"
+
+- name: Restart graphite-api
+  service:
+    name: graphite-api
+    state: restarted
+    enabled: true
+  when:
+    - "{{ graphite.service == 'graphite-api' }}"
+
+- name: Restart carbon-cache
+  service:
+    name: carbon-cache
+    state: restarted
+    enabled: true

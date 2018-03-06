@@ -1,0 +1,5 @@
+---
+- name: Combine default settings and user-defined variables
+  set_fact: {"{{ item }}": "{% if vars[item] is not defined %}{{ defaults[item] }}{% elif vars[item] is mapping %}{{ defaults[item]|combine(vars[item]|default({})) }}{% else %}{{ vars[item] }}{% endif %}"}
+  with_items: "{{ defaults.keys() }}"
+  no_log: true
