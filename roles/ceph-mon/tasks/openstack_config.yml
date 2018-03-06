@@ -1,13 +1,16 @@
 ---
 - name: create openstack pool(s)
   command: >
-    "{{ docker_exec_cmd }} ceph --cluster {{ cluster }}
+    {{ docker_exec_cmd }} ceph --cluster {{ cluster }}
     osd pool create {{ item.name }}
     {{ item.pg_num }}
     {{ item.pgp_num | default(item.pg_num) }}
-    {{ item.rule_name|default("0") }}
-    {{ item.type|default("replicated") }}
-    {{ item.size|default('') }}"
+    {{ item.rule_name | default("replicated_rule") }}
+    {{ item.type | default("replicated") }}
+    {%- if item.type | default("replicated") == 'erasure' and item.erasure_profile != '' %}
+    {{ item.erasure_profile }}
+    {%- endif %}
+    {{ item.size | default('') }}
   with_items: "{{ openstack_pools | unique }}"
   changed_when: false
 
