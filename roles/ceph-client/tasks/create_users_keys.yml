@@ -45,11 +45,20 @@
   when:
     - copy_admin_key
 
-- name: create pools
-  command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.get('pgs', hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num']) }}"
+- name: create pool(s)
+  command: >
+    {{ docker_exec_client_cmd }} --cluster {{ cluster }}
+    osd pool create {{ item.name }}
+    {{ item.get('pg_num', hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num']) }}
+    {{ item.pgp_num | default(item.pg_num) }}
+    {{ item.rule_name | default("replicated_rule") }}
+    {{ item.type | default("replicated") }}
+    {%- if item.type | default("replicated") == 'erasure' and item.erasure_profile != '' %}
+    {{ item.erasure_profile }}
+    {%- endif %}
+    {{ item.size | default('') }}
   with_items: "{{ pools }}"
   changed_when: false
-  failed_when: false
   when:
     - pools | length > 0
     - copy_admin_key
