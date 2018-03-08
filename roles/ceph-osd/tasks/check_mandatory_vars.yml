@@ -114,3 +114,23 @@
     - osd_group_name in group_names
     - osd_objectstore == 'bluestore'
     - ceph_release_num[ceph_release] < ceph_release_num.luminous
+
+- name: fail if one of the devices does not exist
+  fail:
+    msg: "{{ item.err }}"
+  with_items:
+    - "{{ device_exists.results }}"
+  when:
+    - not osd_auto_discovery
+    - osd_scenario != 'lvm'
+    - item.failed
+
+- name: fail if one of the dedicated_devices does not exist
+  fail:
+    msg: "{{ item.err }}"
+  with_items:
+    - "{{ dedicated_devices_exists.results }}"
+  when:
+    - not osd_auto_discovery
+    - osd_scenario != 'lvm'
+    - item.failed
