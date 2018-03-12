@@ -9,33 +9,6 @@
       group: "ceph"
       mode: "0755"
 
-  - name: template ceph_conf_overrides
-    copy:
-      content: "{{ ceph_conf_overrides }}"
-      dest: "/tmp/ceph_conf_overrides_temp_{{ ansible_hostname }}"
-
-  - name: copy tmp template file for ceph_conf_overrides to the ansible server
-    fetch:
-      src: "/tmp/ceph_conf_overrides_temp_{{ ansible_hostname }}"
-      dest: "{{ fetch_directory }}/{{ fsid }}/ceph_conf_overrides_temp_{{ ansible_hostname }}"
-      flat: yes
-
-  - name: get rendered ceph_conf_overrides
-    set_fact:
-      ceph_conf_overrides_rendered: "{{ lookup('template', '{{ fetch_directory }}/{{ fsid }}/ceph_conf_overrides_temp_{{ ansible_hostname }}') | from_yaml }}"
-
-  - name: remove tmp template file for ceph_conf_overrides
-    file:
-      path: "/tmp/ceph_conf_overrides_temp_{{ ansible_hostname }}"
-      state: absent
-
-  - name: remove tmp template file for ceph_conf_overrides (localhost)
-    local_action:
-      module: file
-      path: "{{ fetch_directory }}/{{ fsid }}/ceph_conf_overrides_temp_{{ ansible_hostname }}"
-      state: absent
-    become: false
-
   - name: "generate ceph configuration file: {{ cluster }}.conf"
     action: config_template
     args:
@@ -44,7 +17,7 @@
       owner: "ceph"
       group: "ceph"
       mode: "0644"
-      config_overrides: "{{ ceph_conf_overrides_rendered }}"
+      config_overrides: "{{ ceph_conf_overrides }}"
       config_type: ini
     notify:
       - restart ceph mons
