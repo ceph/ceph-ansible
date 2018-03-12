@@ -143,6 +143,9 @@
     - rbd_client_directory_mode is not defined
       or not rbd_client_directory_mode
 
+- debug: msg="{{ osd_auto_discovery }}"
+- debug: msg="{{ osd_scenario }}"
+
 - name: resolve device link(s)
   command: readlink -f {{ item }}
   changed_when: false
@@ -150,8 +153,8 @@
   register: devices_prepare_canonicalize
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
-    - not osd_auto_discovery|default(False)
-    - osd_scenario|default('dummy') != 'lvm'
+    - not osd_auto_discovery
+    - osd_scenario != 'lvm'
 
 - name: set_fact build devices from resolved symlinks
   set_fact:
