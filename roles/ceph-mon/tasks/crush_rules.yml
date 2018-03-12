@@ -12,7 +12,7 @@
     - hostvars[item]['osd_crush_location'] is defined
 
 - name: create configured crush rules
-  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush rule create-simple {{ item.name }} {{ item.root }} {{ item.type }}"
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush rule create-replicated {{ item.name }} {{ item.root }} {{ item.type }} {{ item.device_class | default('') }}"
   with_items: "{{ crush_rules | unique }}"
   changed_when: false
   when:
