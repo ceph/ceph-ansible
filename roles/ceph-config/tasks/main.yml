@@ -78,28 +78,6 @@
           ((groups.get(nfs_group_name, []) | length > 0)
             and (inventory_hostname == groups.get(nfs_group_name, [])[0])))
 
-  - name: generate cluster uuid
-    local_action:
-      module: shell
-        python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
-      creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-    register: cluster_uuid
-    become: false
-    when:
-      - generate_fsid
-
-  - name: read cluster uuid if it already exists
-    local_action:
-      module: command
-        cat {{ fetch_directory }}/ceph_cluster_uuid.conf
-      removes: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-    changed_when: false
-    register: cluster_uuid
-    check_mode: no
-    become: false
-    when:
-      - generate_fsid
-
   - name: ensure /etc/ceph exists
     file:
       path: /etc/ceph
@@ -127,11 +105,5 @@
       - restart ceph rgws
       - restart ceph mgrs
       - restart ceph rbdmirrors
-
-  - name: set fsid fact when generate_fsid = true
-    set_fact:
-      fsid: "{{ cluster_uuid.stdout }}"
-    when:
-      - generate_fsid
   when:
     - containerized_deployment|bool
