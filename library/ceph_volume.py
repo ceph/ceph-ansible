@@ -362,6 +362,7 @@ def run_module():
         wal_vg=dict(type='str', required=False),
         crush_device_class=dict(type='str', required=False),
         dmcrypt=dict(type='bool', required=False, default=False),
+        zap=dict(type='bool', required=False, default=False),
     )
 
     module = AnsibleModule(
