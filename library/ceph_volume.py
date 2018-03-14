@@ -24,12 +24,6 @@ options:
             - The ceph cluster name.
         required: false
         default: ceph
-    subcommand:
-        description:
-            - The ceph-volume subcommand to use.
-        required: false
-        default: lvm
-        choices: ['lvm']
     objectstore:
         description:
             - The objectstore of the OSD, either filestore or bluestore
@@ -140,7 +134,6 @@ def get_wal(wal, wal_vg):
 def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
-        subcommand=dict(type='str', required=False, default='lvm'),
         objectstore=dict(type='str', required=True),
         data=dict(type='str', required=True),
         data_vg=dict(type='str', required=False),
@@ -160,7 +153,6 @@ def run_module():
     )
 
     cluster = module.params['cluster']
-    subcommand = module.params['subcommand']
     objectstore = module.params['objectstore']
     data = module.params['data']
     data_vg = module.params.get('data_vg', None)
@@ -177,7 +169,7 @@ def run_module():
         'ceph-volume',
         '--cluster',
         cluster,
-        subcommand,
+        'lvm',
         'create',
         '--%s' % objectstore,
         '--data',
