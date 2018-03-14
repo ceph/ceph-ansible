@@ -311,12 +311,12 @@ def remove_osd(module):
         result = dict(
             changed=False,
             stdout='There was no OSD to destroy and zap was set to False.',
-            rc=1,
+            rc=0,
         )
     else:
         result = dict(
             changed=True,
-            rc=1,
+            rc=0,
         )
         command_results = []
         for cmd in commands:
