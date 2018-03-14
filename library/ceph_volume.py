@@ -351,7 +351,7 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         objectstore=dict(type='str', required=False, choices=['bluestore', 'filestore']),
-        state=dict(type='str', required=True, choices=['present', 'absent'], default='present'),
+        state=dict(type='str', required=False, choices=['present', 'absent'], default='present'),
         data=dict(type='str', required=True),
         data_vg=dict(type='str', required=False),
         journal=dict(type='str', required=False),
