@@ -28,7 +28,8 @@ options:
     objectstore:
         description:
             - The objectstore of the OSD, either filestore or bluestore
-        required: true
+            - Required if state is 'present'
+        required: false
         choices: ['bluestore', 'filestore']
     state:
         description:
@@ -145,7 +146,7 @@ def get_wal(wal, wal_vg):
 
 def create_osd(module):
     cluster = module.params['cluster']
-    objectstore = module.params['objectstore']
+    objectstore = module.params.get('objectstore')
     data = module.params['data']
     data_vg = module.params.get('data_vg', None)
     journal = module.params.get('journal', None)
@@ -156,6 +157,9 @@ def create_osd(module):
     wal_vg = module.params.get('wal_vg', None)
     crush_device_class = module.params.get('crush_device_class', None)
     dmcrypt = module.params['dmcrypt']
+
+    if not objectstore:
+        module.fail_json(msg="The objectstore param is required if state is 'present'. Choices are 'bluestore' or 'filestore'.", changed=False)
 
     cmd = [
         'ceph-volume',
@@ -346,7 +350,7 @@ def remove_osd(module):
 def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
-        objectstore=dict(type='str', required=True),
+        objectstore=dict(type='str', required=False, choices=['bluestore', 'filestore']),
         state=dict(type='str', required=True, choices=['present', 'absent'], default='present'),
         data=dict(type='str', required=True),
         data_vg=dict(type='str', required=False),
