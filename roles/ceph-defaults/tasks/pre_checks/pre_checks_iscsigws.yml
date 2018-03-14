@@ -1,0 +1,19 @@
+---
+- name: make sure gateway_ip_list is configured
+  fail:
+    msg: "you must set a list of IPs (comma separated) for gateway_ip_list"
+  when:
+    - gateway_ip_list == "0.0.0.0"
+
+- name: fail on unsupported distribution for iscsi gateways
+  fail:
+    msg: "iSCSI gateways can only be deployed on Red Hat Enterprise Linux or CentOS"
+  when:
+    - ansible_distribution not in ['RedHat', 'CentOS']
+
+- name: fail on unsupported distribution version for iscsi gateways
+  fail:
+    msg: "iSCSI gateways can only be deployed on Red Hat Enterprise Linux or CentOS >= 7.4"
+  when:
+    - ansible_distribution in ['RedHat', 'CentOS']
+    - ansible_distribution_version < '7.4'

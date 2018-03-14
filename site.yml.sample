@@ -22,7 +22,7 @@
   vars:
     delegate_facts_host: True
 
-  tasks:
+  pre_tasks:
     # If we can't get python2 installed before any module is used we will fail
     # so just try what we can to get it installed
     - name: check for python2
@@ -67,6 +67,14 @@
       when:
         - ansible_distribution == 'Fedora'
         - ansible_distribution_major_version|int >= 23
+
+  roles:
+# This is a fake include of the role ceph-osd, we don't play it, we load its variable.
+# The goal is to load ceph-osd's variables so they can be used in the ceph-defaults role for the precheck sequence.
+# It's a trick so we can call the pre_checks tasks in ceph-defaults role which needs some variables present in ceph-osd
+# The idea here is to run all checks before we start to deploy the cluster. That way, if something is wrong like
+# a bad variable definition or any requirement not met, it will fail before the deployment has started.
+    - { role: ceph-defaults, run_pre_checks: true }
 
 - hosts: mons
   gather_facts: false
