@@ -328,23 +328,24 @@
     failed_when: false
     register: ceph_lockbox_partition_to_erase_path
 
-  # this should go away once 'ceph-volume lvm zap' is available
-  - name: remove osd logical volumes
-    command: "lvremove -f {{ item.data_vg }}/{{ item.data }}"
+  - name: zap and destroy OSDs created by ceph-volume
+    ceph_volume:
+      objectstore: "{{ osd_objectstore }}"
+      data: "{{ item.data }}"
+      data_vg: "{{ item.data_vg|default(omit) }}"
+      journal: "{{ item.journal|default(omit) }}"
+      journal_vg: "{{ item.journal_vg|default(omit) }}"
+      db: "{{ item.db|default(omit) }}"
+      db_vg: "{{ item.db_vg|default(omit) }}"
+      wal: "{{ item.wal|default(omit) }}"
+      wal_vg: "{{ item.wal_vg|default(omit) }}"
+      zap: True
+      state: absent
+    environment:
+      CEPH_VOLUME_DEBUG: 1
     with_items: "{{ lvm_volumes }}"
     when:
       - osd_scenario == "lvm"
-
-  # this should go away once 'ceph-volume lvm zap' is available
-  - name: remove osd lvm journals
-    command: "lvremove -f {{ item.journal_vg }}/{{ item.journal }}"
-    with_items: "{{ lvm_volumes }}"
-    # journals might be logical volumes, but they could also be
-    # devices so fail silently if this doesn't work
-    failed_when: false
-    when:
-      - osd_scenario == "lvm"
-      - item.journal_vg is defined
 
   - name: get ceph block partitions
     shell: |
