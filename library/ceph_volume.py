@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import datetime
+import json
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
@@ -81,6 +82,11 @@ options:
         description:
             - If set to True the OSD will be encrypted with dmcrypt.
         required: false
+    zap:
+        description:
+            - If set to True the devices used to create the OSD will be zapped with 'ceph-volume lvm zap'.
+            - Only applicable if state is 'absent'.
+        required: false
 
 
 author:
@@ -137,31 +143,9 @@ def get_wal(wal, wal_vg):
     return wal
 
 
-def run_module():
-    module_args = dict(
-        cluster=dict(type='str', required=False, default='ceph'),
-        objectstore=dict(type='str', required=True),
-        state=dict(type='str', required=True, choices=['present', 'absent'], default='present'),
-        data=dict(type='str', required=True),
-        data_vg=dict(type='str', required=False),
-        journal=dict(type='str', required=False),
-        journal_vg=dict(type='str', required=False),
-        db=dict(type='str', required=False),
-        db_vg=dict(type='str', required=False),
-        wal=dict(type='str', required=False),
-        wal_vg=dict(type='str', required=False),
-        crush_device_class=dict(type='str', required=False),
-        dmcrypt=dict(type='bool', required=False, default=False),
-    )
-
-    module = AnsibleModule(
-        argument_spec=module_args,
-        supports_check_mode=True
-    )
-
+def create_osd(module):
     cluster = module.params['cluster']
     objectstore = module.params['objectstore']
-    state = module.params['state']
     data = module.params['data']
     data_vg = module.params.get('data_vg', None)
     journal = module.params.get('journal', None)
@@ -220,6 +204,8 @@ def run_module():
 
     # check to see if osd already exists
     # FIXME: this does not work when data is a raw device
+    # support for 'lvm list' and raw devices was added with https://github.com/ceph/ceph/pull/20620 but
+    # has not made it to a luminous release as of 12.2.4
     rc, out, err = module.run_command(["ceph-volume", "lvm", "list", data], encoding=None)
     if rc == 0:
         result["stdout"] = "skipped, since {0} is already used for an osd".format(data)
@@ -248,6 +234,145 @@ def run_module():
         module.fail_json(msg='non-zero return code', **result)
 
     module.exit_json(**result)
+
+
+def remove_osd(module):
+    """
+    If the OSD exists, it will 'ceph osd destroy' the
+    OSD. If zap is set to True then the devices, lvs and
+    partitions used to create the OSD will be zapped with
+    'ceph-volume lvm zap' even if the OSD using the data
+    device is not still active.
+    """
+    data = module.params['data']
+    data_vg = module.params.get('data_vg', None)
+    journal = module.params.get('journal', None)
+    journal_vg = module.params.get('journal_vg', None)
+    db = module.params.get('db', None)
+    db_vg = module.params.get('db_vg', None)
+    wal = module.params.get('wal', None)
+    wal_vg = module.params.get('wal_vg', None)
+    zap = module.params.get('zap', False)
+
+    base_zap_cmd = [
+        'ceph-volume',
+        'lvm',
+        'zap',
+        # for simplicity always --destroy. It will be needed
+        # for raw devices and will noop for lvs.
+        '--destroy',
+    ]
+
+    commands = []
+
+    data = get_data(data, data_vg)
+
+    # check to see if osd already exists
+    # FIXME: this does not work when data is a raw device
+    # support for 'lvm list' and raw devices was added with https://github.com/ceph/ceph/pull/20620 but
+    # has not made it to a luminous release as of 12.2.4
+    rc, out, err = module.run_command(["ceph-volume", "lvm", "list", "--format=json", data], encoding=None)
+    if rc != 0:
+        # OSD exists and we need to get it's osd_id and run 'ceph osd destroy'
+        osd_json = json.loads(out)
+        # the first key should be the osd_id
+        osd_id = osd_json.keys()[0]
+        destroy_cmd = [
+            'ceph',
+            'osd',
+            'destroy',
+            osd_id,
+            '--yes-i-really-mean-it',
+        ]
+        commands.append(destroy_cmd)
+
+    if zap:
+        # zap data device
+        commands.append(base_zap_cmd + [data])
+
+        if journal:
+            journal = get_journal(journal, journal_vg)
+            commands.append(base_zap_cmd + [journal])
+
+        if db:
+            db = get_db(db, db_vg)
+            commands.append(base_zap_cmd + [db])
+
+        if wal:
+            wal = get_wal(wal, wal_vg)
+            commands.append(base_zap_cmd + [wal])
+
+    if not commands:
+        # There was no OSD to destroy and nothing to zap
+        result = dict(
+            changed=False,
+            stdout='There was no OSD to destroy and zap was set to False.',
+            rc=1,
+        )
+    else:
+        result = dict(
+            changed=True,
+            rc=1,
+        )
+        command_results = []
+        for cmd in commands:
+            startd = datetime.datetime.now()
+
+            rc, out, err = module.run_command(cmd, encoding=None)
+
+            endd = datetime.datetime.now()
+            delta = endd - startd
+
+            cmd_result = dict(
+                cmd=cmd,
+                stdout=out.rstrip(b"\r\n"),
+                stderr=err.rstrip(b"\r\n"),
+                rc=rc,
+                start=str(startd),
+                end=str(endd),
+                delta=str(delta),
+            )
+
+            if rc != 0:
+                module.fail_json(msg='non-zero return code', **cmd_result)
+
+            command_results.append(cmd_result)
+
+        result["commands"] = command_results
+
+    module.exit_json(**result)
+
+
+def run_module():
+    module_args = dict(
+        cluster=dict(type='str', required=False, default='ceph'),
+        objectstore=dict(type='str', required=True),
+        state=dict(type='str', required=True, choices=['present', 'absent'], default='present'),
+        data=dict(type='str', required=True),
+        data_vg=dict(type='str', required=False),
+        journal=dict(type='str', required=False),
+        journal_vg=dict(type='str', required=False),
+        db=dict(type='str', required=False),
+        db_vg=dict(type='str', required=False),
+        wal=dict(type='str', required=False),
+        wal_vg=dict(type='str', required=False),
+        crush_device_class=dict(type='str', required=False),
+        dmcrypt=dict(type='bool', required=False, default=False),
+    )
+
+    module = AnsibleModule(
+        argument_spec=module_args,
+        supports_check_mode=True
+    )
+
+    state = module.params['state']
+
+    if state == "present":
+        create_osd(module)
+    elif state == "absent":
+        remove_osd(module)
+
+    module.fail_json(msg='State must either be "present" or "absent".', changed=False, rc=1)
 
 
 def main():
