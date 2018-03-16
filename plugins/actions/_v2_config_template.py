@@ -37,7 +37,6 @@ from ansible.plugins.action import ActionBase
 from ansible.utils.unicode import to_bytes, to_unicode
 from ansible import constants as C
 from ansible import errors
-from collections import OrderedDict
 
 CONFIG_TYPES = {
     'ini': 'return_config_overrides_ini',
@@ -173,14 +172,14 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
     def write(self, fp):
         if self._defaults:
             fp.write("[%s]\n" % 'DEFAULT')
-            for key, value in OrderedDict(sorted(self._defaults.items())).items():
+            for key, value in sorted(self._defaults.items()):
                 self._write_check(fp, key=key, value=value)
             else:
                 fp.write("\n")
 
-        for section in self._sections:
+        for section in sorted(self._sections):
             fp.write("[%s]\n" % section)
-            for key, value in OrderedDict(sorted(self._sections[section].items())).items():
+            for key, value in sorted(self._sections[section].items()):
                 self._write_check(fp, key=key, value=value, section=True)
             else:
                 fp.write("\n")
