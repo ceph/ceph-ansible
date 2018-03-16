@@ -64,6 +64,9 @@
 # This does not just restart OSDs but everything else too. Unfortunately
 # at this time the ansible role does not have an OSD id list to use
 # for restarting them specifically.
+# This does not need to run during a rolling update as the playbook will
+# restart all OSDs using the tasks "start ceph osd" or
+# "restart containerized ceph osd"
 - name: copy osd restart script
   template:
     src: restart_osd_daemon.sh.j2
@@ -74,6 +77,7 @@
   listen: "restart ceph osds"
   when:
     - osd_group_name in group_names
+    - not rolling_update
 
 - name: restart ceph osds daemon(s) - non container
   command: /usr/bin/env bash /tmp/restart_osd_daemon.sh
@@ -81,6 +85,7 @@
   when:
     - osd_group_name in group_names
     - not containerized_deployment
+    - not rolling_update
     # We do not want to run these checks on initial deployment (`socket_osd_container.results[n].rc == 0`)
     # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
     - ((crush_location is defined and crush_location) or osd_socket_stat.rc == 0)
@@ -99,6 +104,7 @@
     # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
     - osd_group_name in group_names
     - containerized_deployment
+    - not rolling_update
     - ceph_osd_container_stat.get('rc') == 0
     - ((crush_location is defined and crush_location) or ceph_osd_container_stat.get('stdout_lines', [])|length != 0)
     - handler_health_osd_check
