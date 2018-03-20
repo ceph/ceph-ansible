@@ -1,0 +1,33 @@
+---
+- name: include pre_checks_common.yml
+  include: pre_checks_common.yml
+
+- name: include pre_checks_non_container_common.yml
+  include: pre_checks_non_container_common.yml
+  when:
+    - not containerized_deployment
+
+- name: include pre_checks_container_common.yml
+  include: pre_checks_container_common.yml
+  when:
+    - containerized_deployment
+
+- name: include pre_checks_iscsigws.yml
+  include: pre_checks_iscsigws.yml
+  when:
+    - inventory_hostname in groups.get(iscsi_gw_group_name, '')
+
+- name: include pre_checks_mons.yml
+  include: pre_checks_mons.yml
+  when:
+    - inventory_hostname in groups.get(mon_group_name, '')
+
+- name: include pre_checks_osds.yml
+  include: pre_checks_osds.yml
+  when:
+    - inventory_hostname in groups.get(osd_group_name, '')
+
+- name: include pre_checks_rgws.yml
+  include: pre_checks_rgws.yml
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, '')

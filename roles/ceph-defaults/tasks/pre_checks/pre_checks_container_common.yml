@@ -1,0 +1,21 @@
+---
+# when :
+# we are deploying containers without kv AND host is either a mon OR a nfs OR an osd,
+# AND
+# a cluster is not already running,
+# AND
+# we are not playing rolling-update.yml playbook.
+- name: fail if we find existing cluster files
+  fail:
+    msg: "looks like no cluster is running but ceph files are present, please remove them"
+  with_together:
+    - "{{ ceph_config_keys }}"
+    - "{{ statconfig.results }}"
+  when:
+    - item.1.stat.exists == true
+    - ceph_current_fsid.rc != 0
+    - (not containerized_deployment_with_kv and
+       ((inventory_hostname == groups.get(mon_group_name, [])|last) or
+        (inventory_hostname in groups.get(nfs_group_name, [])) or
+        (inventory_hostname in groups.get(osd_group_name, []))))
+    - not rolling_update | default(false)
