@@ -23,7 +23,21 @@
   register: statconfig
   when: "item | length > 0"
 
-- name: try to fetch ceph config and keys
+- name: try to fetch ceph keys
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/{{ item.0 }}"
+    dest: "{{ item.0 }}"
+    owner: "{{ ceph_uid }}"
+    mode: 0600
+  changed_when: false
+  with_together:
+    - "{{ ceph_config_keys }}"
+    - "{{ statconfig.results }}"
+  when:
+    - item.1.stat.exists == true
+    - item.0 | search("keyring")
+
+- name: try to fetch ceph config
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/{{ item.0 }}"
     dest: "{{ item.0 }}"
@@ -35,8 +49,8 @@
     - "{{ ceph_config_keys }}"
     - "{{ statconfig.results }}"
   when:
-    - not item.1.get('skipped')
     - item.1.stat.exists == true
+    - not (item.0 | search("keyring"))
 
 - name: set selinux permissions
   shell: |
