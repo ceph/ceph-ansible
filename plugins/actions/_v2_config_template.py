@@ -564,8 +564,13 @@ class ActionModule(ActionBase):
         new_module_args.pop('list_extend', None)
 
         # Run the copy module
-        return self._execute_module(
+        rc = self._execute_module(
             module_name='copy',
             module_args=new_module_args,
             task_vars=task_vars
         )
+        if self._play_context.diff:
+            rc['diff'] = []
+            rc['diff'].append(self._get_diff_data(_vars['dest'],
+                              transferred_data, task_vars))
+        return rc
