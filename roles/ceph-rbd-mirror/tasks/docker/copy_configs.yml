@@ -27,15 +27,13 @@
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/{{ item.0 }}"
     dest: "{{ item.0 }}"
-    owner: root
-    group: root
-    mode: 0644
+    owner: "{{ ceph_uid }}"
+    mode: "{{ (item.0 | search('keyring')) | ternary('0600', '0644') }}"
   changed_when: false
   with_together:
     - "{{ ceph_config_keys }}"
     - "{{ statconfig.results }}"
   when:
-    - not item.1.get('skipped')
     - item.1.stat.exists == true
 
 - name: set selinux permissions
