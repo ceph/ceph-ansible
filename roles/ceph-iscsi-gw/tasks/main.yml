@@ -1,15 +1,11 @@
 ---
-- name: set_fact docker_exec_cmd
-  set_fact:
-    docker_exec_cmd: "docker exec ceph-iscsi-gw-{{ ansible_hostname }}"
+- name: include common.yml
+  include: common.yml
+
+- name: include non-container/prerequisites.yml
+  include: non-container/prerequisites.yml
   when:
-    - containerized_deployment
-
-- name: include check_mandatory_vars.yml
-  include: check_mandatory_vars.yml
-
-- name: include prerequisites.yml
-  include: prerequisites.yml
+    - not containerized_deployment
 
 # deploy_ssl_keys used the ansible controller to create self-signed crt/key/pub files
 # and transfers them to /etc/ceph directory on each controller. SSL certs are used by
@@ -19,5 +15,12 @@
   when:
     - generate_crt|bool
 
-- name: include configure_iscsi.yml
-  include: configure_iscsi.yml
+- name: include non-container/configure_iscsi.yml
+  include: non-container/configure_iscsi.yml
+  when:
+    - not containerized_deployment
+
+- name: include containerized.yml
+  include: container/containerized.yml
+  when:
+    - containerized_deployment

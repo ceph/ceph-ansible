@@ -1,0 +1,33 @@
+[Unit]
+Description=RBD Target API Service
+After=docker.service
+
+[Service]
+EnvironmentFile=-/etc/environment
+ExecStartPre=-/usr/bin/docker stop rbd-target-api
+ExecStartPre=-/usr/bin/docker rm rbd-target-api
+ExecStart=/usr/bin/docker run --rm \
+  --memory={{ ceph_rbd_target_api_docker_memory_limit }} \
+  {% if ceph_docker_version.split('.')[0] | version_compare('13', '>=') -%}
+  --cpus={{ ceph_rbd_target_api_docker_cpu_limit }} \
+  {% else -%}
+  --cpu-quota={{ ceph_rbd_target_api_docker_cpu_limit * 100000 }} \
+  {% endif -%}
+  -v /etc/localtime:/etc/localtime:ro \
+  --privileged \
+  --cap-add=ALL \
+  -v /dev:/dev \
+  -v /lib/modules:/lib/modules \
+  -v /etc/ceph:/etc/ceph \
+  -e CLUSTER={{ cluster }} \
+  -e CEPH_DAEMON=RBD_TARGET_API \
+  --name=rbd-target-api \
+  {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+ExecStopPost=-/usr/bin/docker stop rbd-target-api
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target
