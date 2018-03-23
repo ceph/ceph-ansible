@@ -36,6 +36,11 @@
     - not containerized_deployment
     - docker_exec_client_cmd == 'ceph-authtool'
 
+- name: set docker_exec_client_cmd for containers
+  set_fact:
+    docker_exec_client_cmd: docker run --rm -v /etc/ceph:/etc/ceph --entrypoint /usr/bin/{{ docker_exec_client_cmd_binary }} {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  when: containerized_deployment
+
 - name: check if key(s) already exist(s)
   command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} auth get {{ item.name }}"
   changed_when: false
