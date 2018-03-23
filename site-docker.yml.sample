@@ -326,3 +326,28 @@
           installer_phase_ceph_client:
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts: iscsi-gws
+  gather_facts: false
+  become: True
+  pre_tasks:
+    - name: set ceph iscsi gateway install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_iscsi_gw:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+  roles:
+    - { role: ceph-defaults, tags: ['ceph_update_config'] }
+    - ceph-docker-common
+    - { role: ceph-config, tags: ['ceph_update_config'], when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
+    - { role: ceph-iscsi-gw, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
+  post_tasks:
+    - name: set ceph iscsi gw install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_iscsi_gw:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
