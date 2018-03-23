@@ -1,19 +1,4 @@
 ---
-- name: check if a rbd pool exists
-  command: ceph --cluster {{ cluster }} osd pool ls --format json
-  register: rbd_pool_exists
-
-- name: get default value for osd_pool_default_pg_num
-  command: ceph --cluster {{ cluster }} daemon mon.{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} config get osd_pool_default_pg_num
-  register: osd_pool_default_pg_num
-  when: "'rbd' not in (rbd_pool_exists.stdout | from_json)"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-
-- name: create a rbd pool if it doesn't exist
-  command: ceph --cluster {{ cluster }} osd pool create rbd {{ (osd_pool_default_pg_num.stdout | from_json).osd_pool_default_pg_num }}
-  when: "'rbd' not in (rbd_pool_exists.stdout | from_json)"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-
 - name: igw_gateway (tgt) | configure iscsi target (gateway)
   igw_gateway:
     mode: "target"

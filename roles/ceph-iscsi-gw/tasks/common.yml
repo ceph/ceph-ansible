@@ -1,0 +1,46 @@
+---
+- name: make sure gateway_ip_list is configured
+  fail:
+    msg: "you must set a list of IPs (comma separated) for gateway_ip_list"
+  when:
+    - gateway_ip_list == "0.0.0.0"
+
+- name: copy admin key
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.client.admin.keyring"
+    dest: "/etc/ceph/{{ cluster }}.client.admin.keyring"
+    owner: "root"
+    group: "root"
+    mode: "0600"
+  when:
+    - cephx
+
+- name: deploy gateway settings, used by the ceph_iscsi_config modules
+  template:
+    src: "{{ role_path }}/templates/iscsi-gateway.cfg.j2"
+    dest: /etc/ceph/iscsi-gateway.cfg
+
+- name: set_fact docker_exec_cmd
+  set_fact:
+    docker_exec_cmd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when: containerized_deployment
+
+- name: check if a rbd pool exists
+  command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool ls --format json"
+  changed_when: false
+  register: rbd_pool_exists
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+
+- name: get default value for osd_pool_default_pg_num
+  command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} config get osd_pool_default_pg_num"
+  changed_when: false
+  register: osd_pool_default_pg_num
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when: "'rbd' not in (rbd_pool_exists.stdout | from_json)"
+
+- name: create a rbd pool if it doesn't exist
+  command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool create rbd {{ (osd_pool_default_pg_num.stdout | from_json).osd_pool_default_pg_num }}"
+  changed_when: false
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when: "'rbd' not in (rbd_pool_exists.stdout | from_json)"

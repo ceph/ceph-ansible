@@ -358,3 +358,102 @@
   set_fact:
      _mgr_handler_called: False
   listen: "restart ceph mgrs"
+
+- name: set _tcmu_runner_handler_called before restart
+  set_fact:
+     _tcmu_runner_handler_called: True
+  listen: "restart ceph tcmu-runner"
+
+- name: copy tcmu-runner restart script
+  template:
+    src: restart_tcmu_runner.sh.j2
+    dest: /tmp/restart_tcmu_runner.sh
+    owner: root
+    group: root
+    mode: 0750
+  listen: "restart ceph tcmu-runner"
+  when:
+    - iscsi_gw_group_name in group_names
+
+- name: restart tcmu-runner
+  command: /usr/bin/env bash /tmp/restart_tcmu_runner.sh
+  listen: "restart ceph tcmu-runner"
+  when:
+    - iscsi_gw_group_name in group_names
+    - ceph_tcmu_runner_stat.get('rc') == 0
+    - hostvars[item]['_tcmu_runner_handler_called'] | default(False)
+    - ceph_tcmu_runner_stat.get('stdout_lines', [])|length != 0
+  with_items: "{{ groups[iscsi_gw_group_name] }}"
+  delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _tcmu_runner_handler_called after restart
+  set_fact:
+     _tcmu_runner_handler_called: False
+  listen: "restart ceph tcmu-runner"
+
+- name: set _rbd_target_gw_handler_called before restart
+  set_fact:
+     _rbd_target_gw_handler_called: True
+  listen: "restart ceph rbd-target-gw"
+
+- name: copy rbd-target-gw restart script
+  template:
+    src: restart_rbd_target_gw.sh.j2
+    dest: /tmp/restart_rbd_target_gw.sh
+    owner: root
+    group: root
+    mode: 0750
+  listen: "restart ceph rbd-target-gw"
+  when:
+    - iscsi_gw_group_name in group_names
+
+- name: restart rbd-target-gw
+  command: /usr/bin/env bash /tmp/restart_rbd_target_gw.sh
+  listen: "restart ceph rbd-target-gw"
+  when:
+    - iscsi_gw_group_name in group_names
+    - ceph_rbd_target_gw_stat.get('rc') == 0
+    - hostvars[item]['_rbd_target_gw_handler_called'] | default(False)
+    - ceph_rbd_target_gw_stat.get('stdout_lines', [])|length != 0
+  with_items: "{{ groups[iscsi_gw_group_name] }}"
+  delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _rbd_target_gw_handler_called after restart
+  set_fact:
+     _rbd_target_gw_handler_called: False
+  listen: "restart ceph rbd-target-gw"
+
+- name: set _rbd_target_api_handler_called before restart
+  set_fact:
+     _rbd_target_api_handler_called: True
+  listen: "restart ceph rbd-target-api"
+
+- name: copy rbd-target-api restart script
+  template:
+    src: restart_rbd_target_api.sh.j2
+    dest: /tmp/restart_rbd_target_api.sh
+    owner: root
+    group: root
+    mode: 0750
+  listen: "restart ceph rbd-target-api"
+  when:
+    - iscsi_gw_group_name in group_names
+
+- name: restart rbd-target-api
+  command: /usr/bin/env bash /tmp/restart_rbd_target_api.sh
+  listen: "restart ceph rbd-target-api"
+  when:
+    - iscsi_gw_group_name in group_names
+    - ceph_rbd_target_api_stat.get('rc') == 0
+    - hostvars[item]['_rbd_target_api_handler_called'] | default(False)
+    - ceph_rbd_target_api_stat.get('stdout_lines', [])|length != 0
+  with_items: "{{ groups[iscsi_gw_group_name] }}"
+  delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _rbd_target_api_handler_called after restart
+  set_fact:
+     _rbd_target_api_handler_called: False
+  listen: "restart ceph rbd-target-api"
