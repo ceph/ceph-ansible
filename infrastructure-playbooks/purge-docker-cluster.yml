@@ -11,13 +11,9 @@
 
   vars_prompt:
     - name: ireallymeanit
-      prompt: Are you sure you want to purge the cluster?
-      default: 'no'
-      private: no
-
-    - name: remove_packages
       prompt: >
-        If --skip-tags=with_pkg is not set docker packages
+        Are you sure you want to purge the cluster?
+        Note that if with_pkg is not set docker packages
         and more will be uninstalled from non-atomic hosts.
         Do you want to continue?
       default: 'no'
@@ -32,16 +28,6 @@
          or use `-e ireallymeanit=yes` on the command line when
          invoking the playbook"
     when: ireallymeanit != 'yes'
-
-  - name: exit playbook, if user did not mean to remove packages
-    fail:
-      msg: >
-        "Exiting purge-docker-cluster playbook. No packages were removed.
-         To skip removing packages use --skip-tag=with_pkg. To continue
-         with removing packages, do not specify --skip-tag=with_pkg and
-         either say 'yes' on the prompt or use `-e remove_packages=yes`
-         on the command line when invoking the playbook"
-    when: remove_packages != 'yes'
 
   - name: set ceph_docker_registry value if not set
     set_fact:
