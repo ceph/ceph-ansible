@@ -329,8 +329,8 @@ def remove_osd(module):
 
             cmd_result = dict(
                 cmd=cmd,
-                stdout=out.rstrip(b"\r\n"),
-                stderr=err.rstrip(b"\r\n"),
+                stdout_lines=out.split("\n"),
+                stderr_lines=err.split("\n"),
                 rc=rc,
                 start=str(startd),
                 end=str(endd),
