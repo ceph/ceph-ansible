@@ -34,7 +34,8 @@ import yaml
 
 
 from ansible.plugins.action import ActionBase
-from ansible.utils.unicode import to_bytes, to_unicode
+#from ansible.utils.unicode import to_unicode # ansible.utils.unicode. is deprecated, use ansible.module_utils._text instead
+from ansible.module_utils._text import to_bytes, to_text as to_unicode
 from ansible import constants as C
 from ansible import errors
 
