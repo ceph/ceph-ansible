@@ -48,7 +48,6 @@
       ceph_docker_registry: "docker.io"
     when: ceph_docker_registry is not defined
 
-
 - name: purge ceph mds cluster
 
   hosts:
@@ -86,6 +85,7 @@
       force: yes
     tags:
       remove_img
+    ignore_errors: true
 
 - name: purge ceph mgr cluster
 
@@ -122,6 +122,7 @@
       force: yes
     tags:
       remove_img
+    ignore_errors: true
 
 - name: purge ceph rgw cluster
 
@@ -172,6 +173,7 @@
       force: yes
     tags:
       remove_img
+    ignore_errors: true
 
 
 - name: purge ceph rbd-mirror cluster
@@ -272,8 +274,9 @@
 
   - name: get all the running osds
     shell: |
-      systemctl list-units | grep "loaded active" | grep -oE "ceph-osd@([0-9]{1,2}|[a-z]+).service"
+      systemctl list-units | grep 'loaded[[:space:]]\+active' | grep -oE "ceph-osd@([0-9]{1,2}|[a-z]+).service"
     register: osd_units
+    ignore_errors: true
 
   - name: disable ceph osd service
     service:
@@ -285,10 +288,12 @@
   - name: get prepare container
     command: "docker ps -a -q --filter='name=ceph-osd-prepare'"
     register: prepare_containers
+    ignore_errors: true
 
   - name: remove ceph osd prepare container
     command: "docker rm -f {{ item }}"
     with_items: "{{ prepare_containers.stdout_lines }}"
+    ignore_errors: true
 
   # NOTE(leseb): hope someone will find a more elegant way one day...
   - name: see if encrypted partitions are present
@@ -401,6 +406,7 @@
       force: yes
     tags:
       remove_img
+    ignore_errors: true
 
   - name: include vars from group_vars/osds.yml
     include_vars:
@@ -468,6 +474,7 @@
       force: yes
     tags:
       remove_img
+    ignore_errors: true
 
 
 - name: remove installed packages
@@ -501,6 +508,7 @@
       state: stopped
       enabled: no
     when: not is_atomic
+    ignore_errors: true
 
   - name: remove docker-py on Debian
     pip:
@@ -665,5 +673,5 @@
 
   - name: purge fetch directory for localhost
     file:
-      path: "{{ fetch_directory }}"
+      path: "{{ fetch_directory }}/"
       state: absent
