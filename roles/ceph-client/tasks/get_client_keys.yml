@@ -8,6 +8,10 @@
   when:
     - not item.get('skipped', False)
 
+- name: debug slurp_client_keys
+  debug:
+    msg: "{{ hostvars[groups.get(mon_group_name, [])|last]['slurp_client_keys']['results'] }}"
+
 - name: chmod key(s)
   file:
     path: "/etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
@@ -17,6 +21,10 @@
     - "{{ hostvars[groups.get(mon_group_name, [])[0]]['slurp_client_keys']['results'] }}"
   when:
     - not item.1.get('skipped', False)
+
+- name: print {{ hostvars[groups.get(mon_group_name, [])[0]]['keys'] }}
+  debug:
+    msg: "{{ hostvars[groups.get(mon_group_name, [])[0]]['keys'] }}"
 
 - name: setfacl for key(s)
   acl:
