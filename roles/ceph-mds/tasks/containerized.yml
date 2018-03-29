@@ -68,16 +68,3 @@
   retries: 5
   delay: 15
   until: multi_mds_socket.rc == 0
-
-- name: enable multimds if requested when mon is containerized
-  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} fs set {{ cephfs }} allow_multimds true --yes-i-really-mean-it"
-  changed_when: false
-  when:
-    - mds_allow_multimds
-
-- name: set max_mds when mon is containerized
-  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds {{ mds_max_mds }}"
-  changed_when: false
-  when:
-    - mds_allow_multimds
-    - mds_max_mds > 1
