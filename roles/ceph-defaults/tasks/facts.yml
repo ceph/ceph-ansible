@@ -193,4 +193,19 @@
     ceph_uid: 167
   when:
     - containerized_deployment
-    - ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph") or ceph_docker_image_tag | search("fedora")
+    - ceph_docker_image_tag | search("latest") or ceph_docker_image_tag | search("centos") or ceph_docker_image_tag | search("fedora")
+
+- name: set_fact ceph_uid for Red Hat
+  set_fact:
+    ceph_uid: 167
+  when:
+    - containerized_deployment
+    - ceph_docker_image | search("rhceph")
+
+- name: check if selinux is enabled
+  command: getenforce
+  register: sestatus
+  changed_when: false
+  check_mode: no
+  when:
+    - ansible_os_family == 'RedHat'
