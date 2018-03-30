@@ -1,0 +1,63 @@
+---
+- name: create client key(s)
+  shell: "{{ docker_exec_cmd }} ceph-authtool -C /etc/ceph/{{ cluster }}.{{ item.name }}.keyring --name {{ item.name }} --add-key {{ item.key }} --cap mon \"{{ item.mon_cap|default('') }}\" --cap osd \"{{ item.osd_cap|default('') }}\" --cap mds \"{{ item.mds_cap|default('') }}\""
+  args:
+    creates: /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
+  with_items: "{{ keys }}"
+  changed_when: false
+  register: created_client_keys
+  when:
+    - cephx
+    - keys | length > 0
+    - inventory_hostname in groups.get(mon_group_name) | last
+
+- name: slurp client key(s)
+  slurp:
+    src: "{{ ceph_conf_key_directory }}/{{ cluster }}.{{ item.name }}.keyring"
+  with_items:
+    - "{{ keys }}"
+  register: slurp_client_keys
+  when:
+    - cephx
+    - keys | length > 0
+    - inventory_hostname in groups.get(mon_group_name) | last
+
+- name: check if key(s) already exist(s)
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
+  changed_when: false
+  failed_when: false
+  with_items: "{{ keys }}"
+  register: keys_exist
+  when:
+    - cephx
+    - inventory_hostname in groups.get(mon_group_name) | last
+
+- name: add key(s) to ceph
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth import -i /etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
+  changed_when: false
+  with_together:
+    - "{{ keys }}"
+    - "{{ keys_exist.results | default([]) }}"
+  when:
+    - not item.1.get("skipped")
+    - item.1.rc != 0
+    - inventory_hostname in groups.get(mon_group_name) | last
+
+- name: create pool(s)
+  command: >
+    {{ docker_exec_cmd }} ceph --cluster {{ cluster }}
+    osd pool create {{ item.name }}
+    {{ item.get('pg_num', hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num']) }}
+    {{ item.pgp_num | default(item.pg_num) }}
+    {{ item.rule_name | default("replicated_rule") }}
+    {{ item.type | default("replicated") }}
+    {%- if item.type | default("replicated") == 'erasure' and item.erasure_profile != '' %}
+    {{ item.erasure_profile }}
+    {%- endif %}
+    {{ item.expected_num_objects | default('') }}
+  with_items: "{{ pools }}"
+  changed_when: false
+  run_once: true
+  when:
+    - pools | length > 0
+    - inventory_hostname in groups.get(mon_group_name) | last

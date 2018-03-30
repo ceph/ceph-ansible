@@ -53,7 +53,7 @@
         when: "(containerized_deployment | bool) and not (is_atomic | bool)" }
     - { role: ceph-docker-common,
         tags: [with_pkg, fetch_container_image],
-        when: "(containerized_deployment | bool) and not (is_atomic | bool)" }
+        when: "(containerized_deployment | bool) and not (is_atomic | bool) and (inventory_hostname not in groups.get('clients', []))" }
 
   post_tasks:
     - name: "pull {{ ceph_docker_image }} image"
@@ -281,7 +281,6 @@
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - ceph-docker-common
     - { role: ceph-config, tags: ['ceph_update_config'] }
     - ceph-client
   post_tasks:
