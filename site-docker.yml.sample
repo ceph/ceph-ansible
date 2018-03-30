@@ -50,18 +50,16 @@
   roles:
     - { role: ceph-defaults,
         tags: [with_pkg, fetch_container_image],
-        when: "(containerized_deployment | bool) and not (is_atomic | bool)" }
+        when: "(((containerized_deployment | bool) and not (is_atomic | bool) and not (inventory_hostname in groups.get('clients', [False]))) or ((inventory_hostname == groups.get('clients', [False])|first) and (containerized_deployment | bool) and not (is_atomic | bool)))" }
     - { role: ceph-docker-common,
         tags: [with_pkg, fetch_container_image],
-        when: "(containerized_deployment | bool) and not (is_atomic | bool)" }
+        when: "(((containerized_deployment | bool) and not (is_atomic | bool) and not (inventory_hostname in groups.get('clients', [False]))) or ((inventory_hostname == groups.get('clients', [False])|first) and (containerized_deployment | bool) and not (is_atomic | bool)))" }
 
   post_tasks:
     - name: "pull {{ ceph_docker_image }} image"
       command: "docker pull {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       changed_when: false
-      when:
-        - is_atomic
-        - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
+      when: "((is_atomic and (ceph_docker_dev_image is undefined or not ceph_docker_dev_image) and not (inventory_hostname in groups.get('clients', [False]))) or (is_atomic and ((ceph_docker_dev_image is undefined) or not (ceph_docker_dev_image)) and (inventory_hostname == groups.get('clients', [False])|first)))"
 
 - hosts: mons
   tasks:
@@ -281,7 +279,7 @@
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - ceph-docker-common
+    - { role: ceph-docker-common, when: "inventory_hostname == groups.get('clients', []) | first" }
     - { role: ceph-config, tags: ['ceph_update_config'] }
     - ceph-client
   post_tasks:
