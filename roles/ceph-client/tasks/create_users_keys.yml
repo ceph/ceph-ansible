@@ -20,9 +20,11 @@
     creates: /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
   with_items: "{{ keys }}"
   changed_when: false
+  run_once: true
   when:
     - cephx
     - keys | length > 0
+    - inventory_hostname in groups.get(client_group_name) | first
 
 - name: set docker_exec_client_cmd_binary to ceph
   set_fact:
@@ -36,28 +38,44 @@
     - not containerized_deployment
     - docker_exec_client_cmd == 'ceph-authtool'
 
+- name: slurp client key(s)
+  slurp:
+    src: "{{ ceph_conf_key_directory }}/{{ cluster }}.{{ item.name }}.keyring"
+  with_items:
+    - "{{ keys }}"
+  register: slurp_client_keys
+  run_once: true
+  when:
+    - cephx
+    - keys | length > 0
+    - inventory_hostname in groups.get(client_group_name) | first
+
 - name: check if key(s) already exist(s)
   command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} auth get {{ item.name }}"
   changed_when: false
   failed_when: false
   with_items: "{{ keys }}"
   register: keys_exist
+  run_once: true
   when:
     - copy_admin_key
+    - inventory_hostname in groups.get(client_group_name) | first
 
 - name: create pools
   command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pgs }}"
   with_items: "{{ pools }}"
   changed_when: false
-  failed_when: false
+  run_once: true
   when:
     - ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', False) != False
     - pools | length > 0
     - copy_admin_key
+    - inventory_hostname in groups.get(client_group_name) | first
 
 - name: add key(s) to ceph
   command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} auth import -i /etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
   changed_when: false
+  run_once: true
   with_together:
     - "{{ keys }}"
     - "{{ keys_exist.results | default([]) }}"
@@ -65,11 +83,22 @@
     - not item.1.get("skipped")
     - copy_admin_key
     - item.1.rc != 0
+    - inventory_hostname in groups.get(client_group_name) | first
 
 - name: put docker_exec_client_cmd back to normal with a none value
   set_fact:
     docker_exec_client_cmd:
   when: docker_exec_client_cmd == 'ceph'
+
+- name: get client keys
+  copy:
+    dest: "{{ item.source }}"
+    content: "{{ item.content | b64decode }}"
+  with_items:
+    - "{{ slurp_client_keys.results }}"
+  when:
+    - not item.get('skipped', False)
+    - not inventory_hostname == groups.get(client_group_name, []) | first
 
 - name: chmod key(s)
   file:
