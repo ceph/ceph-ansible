@@ -114,7 +114,7 @@
   become: True
   gather_facts: false
   roles:
-  - ceph-defaults
-  - ceph-docker-common
-  - ceph-config
-  - ceph-client
+    - { role: ceph-defaults, tags: ['ceph_update_config'] }
+    - { role: ceph-docker-common, when: "inventory_hostname == groups.get('clients', []) | first" }
+    - { role: ceph-config, tags: ['ceph_update_config'] }
+    - ceph-client
