@@ -16,27 +16,32 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
 
 try:
     import ConfigParser
 except ImportError:
     import configparser as ConfigParser
-
 import datetime
-import io
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 import json
 import os
 import pwd
 import re
 import time
 import yaml
-
+import tempfile as tmpfilelib
 
 from ansible.plugins.action import ActionBase
-from ansible.utils.unicode import to_bytes, to_unicode
+from ansible.module_utils._text import to_bytes, to_text
 from ansible import constants as C
 from ansible import errors
+from ansible.parsing.yaml.dumper import AnsibleDumper
+
+__metaclass__ = type
+
 
 CONFIG_TYPES = {
     'ini': 'return_config_overrides_ini',
@@ -45,37 +50,16 @@ CONFIG_TYPES = {
 }
 
 
-def _convert_2_string(item):
-    """Return byte strings for all items.
-
-    This will convert everything within a dict, list or unicode string such
-    that the values will be encode('utf-8') where applicable.
-    """
-
-    if isinstance(item, dict):
-        # Old style dict comprehension for legacy python support
-        return dict(
-            (_convert_2_string(key), _convert_2_string(value))
-            for key, value in item.iteritems()
-        )
-    elif isinstance(item, list):
-        return [_convert_2_string(i) for i in item]
-    elif isinstance(item, tuple):
-        return tuple([_convert_2_string(i) for i in item])
-    elif isinstance(item, set):
-        return item
-    else:
-        try:
-            return item.encode('utf-8')
-        except AttributeError:
-            return str(item)
+class IDumper(AnsibleDumper):
+    def increase_indent(self, flow=False, indentless=False):
+        return super(IDumper, self).increase_indent(flow, False)
 
 
 class MultiKeyDict(dict):
     """Dictionary class which supports duplicate keys.
     This class allows for an item to be added into a standard python dictionary
     however if a key is created more than once the dictionary will convert the
-    singular value to a python set. This set type forces all values to be a
+    singular value to a python tuple. This tuple type forces all values to be a
     string.
     Example Usage:
     >>> z = MultiKeyDict()
@@ -86,17 +70,19 @@ class MultiKeyDict(dict):
     ... {'a': 1, 'b': ['a', 'b', 'c'], 'c': {'a': 1}}
     >>> z['a'] = 2
     >>> print(z)
-    ... {'a': set(['1', '2']), 'c': {'a': 1}, 'b': ['a', 'b', 'c']}
+    ... {'a': tuple(['1', '2']), 'c': {'a': 1}, 'b': ['a', 'b', 'c']}
     """
     def __setitem__(self, key, value):
         if key in self:
-            if isinstance(self[key], set):
+            if isinstance(self[key], tuple):
                 items = self[key]
-                items.add(str(value))
-                super(MultiKeyDict, self).__setitem__(key, items)
+                if str(value) not in items:
+                    items += tuple([str(value)])
+                    super(MultiKeyDict, self).__setitem__(key, items)
             else:
-                items = [str(value), str(self[key])]
-                super(MultiKeyDict, self).__setitem__(key, set(items))
+                if str(self[key]) != str(value):
+                    items = tuple([str(self[key]), str(value)])
+                    super(MultiKeyDict, self).__setitem__(key, items)
         else:
             return dict.__setitem__(self, key, value)
 
@@ -148,43 +134,62 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
     key = var3
     key = var2
     """
-    def _write(self, fp, section, item, entry):
+    def __init__(self, *args, **kwargs):
+        self._comments = {}
+        self.ignore_none_type = bool(kwargs.pop('ignore_none_type', True))
+        ConfigParser.RawConfigParser.__init__(self, *args, **kwargs)
+
+    def _write(self, fp, section, key, item, entry):
         if section:
-            if (item is not None) or (self._optcre == self.OPTCRE):
+            # If we are not ignoring a none type value, then print out
+            # the option name only if the value type is None.
+            if not self.ignore_none_type and item is None:
+                fp.write(key + '\n')
+            elif (item is not None) or (self._optcre == self.OPTCRE):
                 fp.write(entry)
         else:
             fp.write(entry)
 
     def _write_check(self, fp, key, value, section=False):
-        if isinstance(value, set):
+        if isinstance(value, (tuple, set)):
             for item in value:
                 item = str(item).replace('\n', '\n\t')
                 entry = "%s = %s\n" % (key, item)
-                self._write(fp, section, item, entry)
+                self._write(fp, section, key, item, entry)
         else:
             if isinstance(value, list):
                 _value = [str(i.replace('\n', '\n\t')) for i in value]
                 entry = '%s = %s\n' % (key, ','.join(_value))
             else:
                 entry = '%s = %s\n' % (key, str(value).replace('\n', '\n\t'))
-            self._write(fp, section, value, entry)
+            self._write(fp, section, key, value, entry)
 
     def write(self, fp):
+        def _write_comments(section, optname=None):
+            comsect = self._comments.get(section, {})
+            if optname in comsect:
+                fp.write(''.join(comsect[optname]))
+
         if self._defaults:
+            _write_comments('DEFAULT')
             fp.write("[%s]\n" % 'DEFAULT')
             for key, value in sorted(self._defaults.items()):
+                _write_comments('DEFAULT', optname=key)
                 self._write_check(fp, key=key, value=value)
             else:
                 fp.write("\n")
 
         for section in sorted(self._sections):
+            _write_comments(section)
             fp.write("[%s]\n" % section)
             for key, value in sorted(self._sections[section].items()):
+                _write_comments(section, optname=key)
                 self._write_check(fp, key=key, value=value, section=True)
             else:
                 fp.write("\n")
 
     def _read(self, fp, fpname):
+        comments = []
         cursect = None
         optname = None
         lineno = 0
@@ -194,14 +199,21 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
             if not line:
                 break
             lineno += 1
-            if line.strip() == '' or line[0] in '#;':
+            if line.strip() == '':
+                if comments:
+                    comments.append('')
                 continue
+
+            if line[0] in '#;':
+                comments.append(line)
+                continue
+
             if line.split(None, 1)[0].lower() == 'rem' and line[0] in "rR":
                 continue
             if line[0].isspace() and cursect is not None and optname:
                 value = line.strip()
                 if value:
-                    if isinstance(cursect[optname], set):
+                    if isinstance(cursect[optname], (tuple, set)):
                         _temp_item = list(cursect[optname])
                         del cursect[optname]
                         cursect[optname] = _temp_item
@@ -222,6 +234,13 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
                         cursect = self._dict()
                         self._sections[sectname] = cursect
                     optname = None
+
+                    comsect = self._comments.setdefault(sectname, {})
+                    if comments:
+                        # NOTE(flaper87): Using none as the key for
+                        # section level comments
+                        comsect[None] = comments
+                        comments = []
                 elif cursect is None:
                     raise ConfigParser.MissingSectionHeaderError(
                         fpname,
@@ -242,6 +261,9 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
                             if optval == '""':
                                 optval = ''
                         cursect[optname] = optval
+                        if comments:
+                            comsect[optname] = comments
+                            comments = []
                     else:
                         if not e:
                             e = ConfigParser.ParsingError(fpname)
@@ -261,7 +283,11 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
 class ActionModule(ActionBase):
     TRANSFERS_FILES = True
 
-    def return_config_overrides_ini(self, config_overrides, resultant, list_extend=True):
+    def return_config_overrides_ini(self,
+                                    config_overrides,
+                                    resultant,
+                                    list_extend=True,
+                                    ignore_none_type=True):
         """Returns string value from a modified config file.
 
         :param config_overrides: ``dict``
@@ -274,24 +300,25 @@ class ActionModule(ActionBase):
         try:
             config = ConfigTemplateParser(
                 allow_no_value=True,
-                dict_type=MultiKeyDict
+                dict_type=MultiKeyDict,
+                ignore_none_type=ignore_none_type
             )
             config.optionxform = str
         except Exception:
             config = ConfigTemplateParser(dict_type=MultiKeyDict)
 
-        config_object = io.BytesIO(str(resultant))
+        config_object = StringIO(resultant)
         config.readfp(config_object)
         for section, items in config_overrides.items():
             # If the items value is not a dictionary it is assumed that the
             #  value is a default item for this config type.
             if not isinstance(items, dict):
                 if isinstance(items, list):
-                    items = ','.join(_convert_2_string(items))
+                    items = ','.join(to_text(i) for i in items)
                 self._option_write(
                     config,
                     'DEFAULT',
-                    str(section),
+                    section,
                     items
                 )
             else:
@@ -299,7 +326,7 @@ class ActionModule(ActionBase):
                 #  an error is raised that is related to the section
                 #  already existing.
                 try:
-                    config.add_section(section.encode('utf-8'))
+                    config.add_section(section)
                 except (ConfigParser.DuplicateSectionError, ValueError):
                     pass
                 for key, value in items.items():
@@ -315,29 +342,35 @@ class ActionModule(ActionBase):
         else:
             config_object.close()
 
-        resultant_bytesio = io.BytesIO()
+        resultant_stringio = StringIO()
         try:
-            config.write(resultant_bytesio)
-            return resultant_bytesio.getvalue()
+            config.write(resultant_stringio)
+            return resultant_stringio.getvalue()
         finally:
-            resultant_bytesio.close()
+            resultant_stringio.close()
 
     @staticmethod
     def _option_write(config, section, key, value):
         config.remove_option(str(section), str(key))
         try:
-            if not any(i for i in value.values()):
-                value = set(value)
+            if not any(list(value.values())):
+                value = tuple(value.keys())
         except AttributeError:
             pass
-        if isinstance(value, set):
+        if isinstance(value, (tuple, set)):
+            config.set(str(section), str(key), value)
+        elif isinstance(value, set):
             config.set(str(section), str(key), value)
         elif isinstance(value, list):
             config.set(str(section), str(key), ','.join(str(i) for i in value))
         else:
             config.set(str(section), str(key), str(value))
 
-    def return_config_overrides_json(self, config_overrides, resultant, list_extend=True):
+    def return_config_overrides_json(self,
+                                     config_overrides,
+                                     resultant,
+                                     list_extend=True,
+                                     ignore_none_type=True):
         """Returns config json
 
         Its important to note that file ordering will not be preserved as the
@@ -359,7 +392,11 @@ class ActionModule(ActionBase):
             sort_keys=True
         )
 
-    def return_config_overrides_yaml(self, config_overrides, resultant, list_extend=True):
+    def return_config_overrides_yaml(self,
+                                     config_overrides,
+                                     resultant,
+                                     list_extend=True,
+                                     ignore_none_type=True):
         """Return config yaml.
 
         :param config_overrides: ``dict``
@@ -372,8 +409,9 @@ class ActionModule(ActionBase):
             new_items=config_overrides,
             list_extend=list_extend
         )
-        return yaml.safe_dump(
+        return yaml.dump(
             merged_resultant,
+            Dumper=IDumper,
             default_flow_style=False,
             width=1000,
         )
@@ -385,19 +423,27 @@ class ActionModule(ActionBase):
         :param new_items: ``dict``
         :returns: ``dict``
         """
-        for key, value in new_items.iteritems():
+        for key, value in new_items.items():
             if isinstance(value, dict):
                 base_items[key] = self._merge_dict(
                     base_items=base_items.get(key, {}),
                     new_items=value,
                     list_extend=list_extend
                 )
-            elif not isinstance(value, int) and (',' in value or '\n' in value):
+            elif (not isinstance(value, int) and
+                  (',' in value or '\n' in value)):
                 base_items[key] = re.split(',|\n', value)
                 base_items[key] = [i.strip() for i in base_items[key] if i]
             elif isinstance(value, list):
                 if isinstance(base_items.get(key), list) and list_extend:
                     base_items[key].extend(value)
+                else:
+                    base_items[key] = value
+            elif isinstance(value, (tuple, set)):
+                if isinstance(base_items.get(key), tuple) and list_extend:
+                    base_items[key] += tuple(value)
+                elif isinstance(base_items.get(key), list) and list_extend:
+                    base_items[key].extend(list(value))
                 else:
                     base_items[key] = value
             else:
@@ -426,16 +472,41 @@ class ActionModule(ActionBase):
             file_path = self._loader.get_basedir()
 
         user_source = self._task.args.get('src')
+        # (alextricity25) It's possible that the user could pass in a datatype
+        # and not always a string. In this case we don't want the datatype
+        # python representation to be printed out to the file, but rather we
+        # want the serialized version.
+        _user_content = self._task.args.get('content')
+
+        # If the data type of the content input is a dictionary, it's
+        # converted dumped as json if config_type is 'json'.
+        if isinstance(_user_content, dict):
+            if self._task.args.get('config_type') == 'json':
+                _user_content = json.dumps(_user_content)
+
+        user_content = str(_user_content)
         if not user_source:
-            return False, dict(
-                failed=True,
-                msg="No user provided [ src ] was provided"
+            if not user_content:
+                return False, dict(
+                    failed=True,
+                    msg="No user [ src ] or [ content ] was provided"
+                )
+            else:
+                tmp_content = None
+                fd, tmp_content = tmpfilelib.mkstemp()
+                try:
+                    with open(tmp_content, 'wb') as f:
+                        f.write(user_content.encode())
+                except Exception as err:
+                    os.remove(tmp_content)
+                    raise Exception(err)
+                self._task.args['src'] = source = tmp_content
+        else:
+            source = self._loader.path_dwim_relative(
+                file_path,
+                'templates',
+                user_source
             )
-        source = self._loader.path_dwim_relative(
-            file_path,
-            'templates',
-            user_source
-        )
         searchpath.insert(1, os.path.dirname(source))
 
         _dest = self._task.args.get('dest')
@@ -451,13 +522,23 @@ class ActionModule(ActionBase):
             if user_dest.endswith(os.sep):
                 user_dest = os.path.join(user_dest, os.path.basename(source))
 
+        # Get ignore_none_type
+        # In some situations(i.e. my.cnf files), INI files can have valueless
+        # options that don't have a '=' or ':' suffix. In these cases,
+        # ConfigParser gives these options a "None" value. If ignore_none_type
+        # is set to true, these key/value options will be ignored, if it's set
+        # to false, then ConfigTemplateParser will write out only the option
+        # name with out the '=' or ':' suffix. The default is true.
+        ignore_none_type = self._task.args.get('ignore_none_type', True)
+
         return True, dict(
             source=source,
             dest=user_dest,
             config_overrides=self._task.args.get('config_overrides', dict()),
             config_type=config_type,
             searchpath=searchpath,
-            list_extend=list_extend
+            list_extend=list_extend,
+            ignore_none_type=ignore_none_type
         )
 
     def run(self, tmp=None, task_vars=None):
@@ -509,7 +590,7 @@ class ActionModule(ActionBase):
         temp_vars['template_run_date'] = datetime.datetime.now()
 
         with open(source, 'r') as f:
-            template_data = to_unicode(f.read())
+            template_data = to_text(f.read())
 
         self._templar.environment.loader.searchpath = _vars['searchpath']
         self._templar.set_available_variables(temp_vars)
@@ -530,7 +611,8 @@ class ActionModule(ActionBase):
             resultant = type_merger(
                 config_overrides=_vars['config_overrides'],
                 resultant=resultant,
-                list_extend=_vars.get('list_extend', True)
+                list_extend=_vars.get('list_extend', True),
+                ignore_none_type=_vars.get('ignore_none_type', True)
             )
 
         # Re-template the resultant object as it may have new data within it
@@ -562,6 +644,9 @@ class ActionModule(ActionBase):
         new_module_args.pop('config_overrides', None)
         new_module_args.pop('config_type', None)
         new_module_args.pop('list_extend', None)
+        new_module_args.pop('ignore_none_type', None)
+        # Content from config_template is converted to src
+        new_module_args.pop('content', None)
 
         # Run the copy module
         rc = self._execute_module(
@@ -573,4 +658,6 @@ class ActionModule(ActionBase):
             rc['diff'] = []
             rc['diff'].append(self._get_diff_data(_vars['dest'],
                               transferred_data, task_vars))
+        if self._task.args.get('content'):
+            os.remove(_vars['source'])
         return rc
