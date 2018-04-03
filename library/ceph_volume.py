@@ -28,15 +28,15 @@ options:
     objectstore:
         description:
             - The objectstore of the OSD, either filestore or bluestore
-            - Required if state is 'present'
+            - Required if action is 'create'
         required: false
         choices: ['bluestore', 'filestore']
-    state:
+    action:
         description:
-            - The objectstore of the OSD, either filestore or bluestore
+            - The action to take. Either creating OSDs or zapping devices.
         required: true
-        choices: ['present', 'absent']
-        default: present
+        choices: ['create', 'zap']
+        default: create
     data:
         description:
             - The logical volume name or device to use for the OSD data.
@@ -82,11 +82,6 @@ options:
     dmcrypt:
         description:
             - If set to True the OSD will be encrypted with dmcrypt.
-        required: false
-    zap:
-        description:
-            - If set to True the devices used to create the OSD will be zapped with 'ceph-volume lvm zap'.
-            - Only applicable if state is 'absent'.
         required: false
 
 
@@ -159,7 +154,7 @@ def create_osd(module):
     dmcrypt = module.params['dmcrypt']
 
     if not objectstore:
-        module.fail_json(msg="The objectstore param is required if state is 'present'. Choices are 'bluestore' or 'filestore'.", changed=False)
+        module.fail_json(msg="The objectstore param is required if action is 'create'. Choices are 'bluestore' or 'filestore'.", changed=False)
 
     cmd = [
         'ceph-volume',
@@ -240,13 +235,12 @@ def create_osd(module):
     module.exit_json(**result)
 
 
-def remove_osd(module):
+def zap_devices(module):
     """
-    If the OSD exists, it will 'ceph osd destroy' the
-    OSD. If zap is set to True then the devices, lvs and
-    partitions used to create the OSD will be zapped with
-    'ceph-volume lvm zap' even if the OSD using the data
-    device is not still active.
+    Will run 'ceph-volume lvm zap' on all devices, lvs and partitions
+    used to create the OSD. The --destroy flag is always passed so that
+    if an OSD was originally created with a raw device or partition for
+    'data' then any lvs that were created by ceph-volume are removed.
     """
     data = module.params['data']
     data_vg = module.params.get('data_vg', None)
@@ -256,7 +250,6 @@ def remove_osd(module):
     db_vg = module.params.get('db_vg', None)
     wal = module.params.get('wal', None)
     wal_vg = module.params.get('wal_vg', None)
-    zap = module.params.get('zap', False)
 
     base_zap_cmd = [
         'ceph-volume',
@@ -271,78 +264,49 @@ def remove_osd(module):
 
     data = get_data(data, data_vg)
 
-    # check to see if osd already exists
-    # FIXME: this does not work when data is a raw device
-    # support for 'lvm list' and raw devices was added with https://github.com/ceph/ceph/pull/20620 but
-    # has not made it to a luminous release as of 12.2.4
-    rc, out, err = module.run_command(["ceph-volume", "lvm", "list", "--format=json", data], encoding=None)
-    if rc != 0:
-        # OSD exists and we need to get it's osd_id and run 'ceph osd destroy'
-        osd_json = json.loads(out)
-        # the first key should be the osd_id
-        osd_id = osd_json.keys()[0]
-        destroy_cmd = [
-            'ceph',
-            'osd',
-            'destroy',
-            osd_id,
-            '--yes-i-really-mean-it',
-        ]
-        commands.append(destroy_cmd)
+    commands.append(base_zap_cmd + [data])
 
-    if zap:
-        # zap data device
-        commands.append(base_zap_cmd + [data])
+    if journal:
+        journal = get_journal(journal, journal_vg)
+        commands.append(base_zap_cmd + [journal])
 
-        if journal:
-            journal = get_journal(journal, journal_vg)
-            commands.append(base_zap_cmd + [journal])
+    if db:
+        db = get_db(db, db_vg)
+        commands.append(base_zap_cmd + [db])
 
-        if db:
-            db = get_db(db, db_vg)
-            commands.append(base_zap_cmd + [db])
+    if wal:
+        wal = get_wal(wal, wal_vg)
+        commands.append(base_zap_cmd + [wal])
 
-        if wal:
-            wal = get_wal(wal, wal_vg)
-            commands.append(base_zap_cmd + [wal])
+    result = dict(
+        changed=True,
+        rc=0,
+    )
+    command_results = []
+    for cmd in commands:
+        startd = datetime.datetime.now()
 
-    if not commands:
-        # There was no OSD to destroy and nothing to zap
-        result = dict(
-            changed=False,
-            stdout='There was no OSD to destroy and zap was set to False.',
-            rc=0,
+        rc, out, err = module.run_command(cmd, encoding=None)
+
+        endd = datetime.datetime.now()
+        delta = endd - startd
+
+        cmd_result = dict(
+            cmd=cmd,
+            stdout_lines=out.split("\n"),
+            stderr_lines=err.split("\n"),
+            rc=rc,
+            start=str(startd),
+            end=str(endd),
+            delta=str(delta),
         )
-    else:
-        result = dict(
-            changed=True,
-            rc=0,
-        )
-        command_results = []
-        for cmd in commands:
-            startd = datetime.datetime.now()
 
-            rc, out, err = module.run_command(cmd, encoding=None)
+        if rc != 0:
+            module.fail_json(msg='non-zero return code', **cmd_result)
 
-            endd = datetime.datetime.now()
-            delta = endd - startd
+        command_results.append(cmd_result)
 
-            cmd_result = dict(
-                cmd=cmd,
-                stdout_lines=out.split("\n"),
-                stderr_lines=err.split("\n"),
-                rc=rc,
-                start=str(startd),
-                end=str(endd),
-                delta=str(delta),
-            )
-
-            if rc != 0:
-                module.fail_json(msg='non-zero return code', **cmd_result)
-
-            command_results.append(cmd_result)
-
-        result["commands"] = command_results
+    result["commands"] = command_results
 
     module.exit_json(**result)
 
@@ -351,7 +315,7 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         objectstore=dict(type='str', required=False, choices=['bluestore', 'filestore']),
-        state=dict(type='str', required=False, choices=['present', 'absent'], default='present'),
+        action=dict(type='str', required=False, choices=['create', 'zap'], default='create'),
         data=dict(type='str', required=True),
         data_vg=dict(type='str', required=False),
         journal=dict(type='str', required=False),
@@ -362,7 +326,6 @@ def run_module():
         wal_vg=dict(type='str', required=False),
         crush_device_class=dict(type='str', required=False),
         dmcrypt=dict(type='bool', required=False, default=False),
-        zap=dict(type='bool', required=False, default=False),
     )
 
     module = AnsibleModule(
@@ -370,12 +333,12 @@ def run_module():
         supports_check_mode=True
     )
 
-    state = module.params['state']
+    action = module.params['action']
 
-    if state == "present":
+    if action == "create":
         create_osd(module)
-    elif state == "absent":
-        remove_osd(module)
+    elif action == "zap":
+        zap_devices(module)
 
     module.fail_json(msg='State must either be "present" or "absent".', changed=False, rc=1)
 
