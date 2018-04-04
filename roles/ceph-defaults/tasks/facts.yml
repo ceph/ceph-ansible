@@ -66,7 +66,6 @@
     state: directory
   changed_when: false
   become: false
-  run_once: true
   when:
     - (cephx or generate_fsid)
 
@@ -192,3 +191,11 @@
   when:
     - containerized_deployment
     - ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph") or ceph_docker_image_tag | search("fedora")
+
+- name: check if selinux is enabled
+  command: getenforce
+  register: sestatus
+  changed_when: false
+  check_mode: no
+  when:
+    - ansible_os_family == 'RedHat'
