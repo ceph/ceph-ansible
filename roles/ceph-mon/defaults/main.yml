@@ -134,11 +134,11 @@ openstack_pools:
 # To have have ansible setfacl the generated key, set the acls var like so:
 # acls: ["u:nova:r--", "u:cinder:r--", "u:glance:r--", "u:gnocchi:r--"]
 openstack_keys:
-  - { name: client.glance, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_glance_pool.name }}", mode: "0600", acls: [] }
-  - { name: client.cinder, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_pool.name }}, allow rwx pool={{ openstack_nova_pool.name }}, allow rx pool={{ openstack_glance_pool.name }}", mode: "0600", acls: []  }
-  - { name: client.cinder-backup, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_backup_pool.name }}", mode: "0600", acls: [] }
-  - { name: client.gnocchi, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_gnocchi_pool.name }}", mode: "0600", acls: [] }
-  - { name: client.openstack, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_glance_pool.name }}, allow rwx pool={{ openstack_nova_pool.name }}, allow rwx pool={{ openstack_cinder_pool.name }}, allow rwx pool={{ openstack_cinder_backup_pool.name }}", mode: "0600", acls: [] }
+  - { name: client.glance, caps: { mon: "profile rbd", osd: "profile rbd pool=volumes, profile rbd pool={{ openstack_glance_pool.name }}"}, mode: "0600", acls: [] }
+  - { name: client.cinder, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_glance_pool.name }}"}, mode: "0600", acls: [] }
+  - { name: client.cinder-backup, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_backup_pool.name }}"}, mode: "0600", acls: [] }
+  - { name: client.gnocchi, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_gnocchi_pool.name }}"}, mode: "0600", acls: [] }
+  - { name: client.openstack, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_glance_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_cinder_backup_pool.name }}"}, mode: "0600", acls: [] }
 
 
 ##########

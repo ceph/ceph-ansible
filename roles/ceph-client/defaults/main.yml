@@ -35,6 +35,10 @@ pools:
 #  $ ceph-authtool --gen-print-key
 #  or
 #  $ python2 -c "import os ; import struct ; import time; import base64 ; key = os.urandom(16) ; header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ; print base64.b64encode(header + key)"
+#
+# To use a particular secret, you have to add 'key' to the dict below, so something like:
+# - { name: client.test, key: "AQAin8tUMICVFBAALRHNrV0Z4MXupRw4v9JQ6Q==" ...
+#
 keys:
-  - { name: client.test, key: "ADD-KEYRING-HERE==", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool=test", mode: "0600", acls: [] }
-  - { name: client.test2, key: "ADD-KEYRING-HERE==", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool=test2", mode: "0600", acls: [] }
+  - { name: client.test, caps: { mon: "allow r", osd: "allow class-read object_prefix rbd_children, allow rwx pool=test" },  mode: "0600", acls: [] }
+  - { name: client.test2, caps: { mon: "allow r", osd: "allow class-read object_prefix rbd_children, allow rwx pool=test2" },  mode: "0600", acls: [] }
