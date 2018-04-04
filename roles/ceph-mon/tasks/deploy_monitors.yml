@@ -20,14 +20,20 @@
   when: cephx
 
 - name: create monitor initial keyring
-  command: ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }} --create-keyring --name=mon. --add-key={{ monitor_secret }} --cap mon 'allow *'
-  args:
-    creates: /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
+  ceph_key:
+    name: mon.
+    state: present
+    dest: "/var/lib/ceph/tmp/"
+    secret: "{{ monitor_secret }}"
+    cluster: "{{ cluster }}"
+    caps:
+      mon: allow *
+    import_key: False
   when: cephx
 
 - name: set initial monitor key permissions
   file:
-    path: /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
+    path: "/var/lib/ceph/tmp/{{ cluster }}.mon..keyring"
     owner: "ceph"
     group: "ceph"
     mode: "0600"
@@ -42,26 +48,38 @@
     mode: "0755"
     recurse: true
 
-- name: set_fact ceph_authtool_cap >= ceph_release_num.luminous
+- name: set_fact client_admin_ceph_authtool_cap >= ceph_release_num.luminous
   set_fact:
-    ceph_authtool_cap: "--cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow' --cap mgr 'allow *'"
+    client_admin_ceph_authtool_cap:
+      mon: allow *
+      osd: allow *
+      mds: allow
+      mgr: allow *
   when:
     - ceph_release_num[ceph_release] >= ceph_release_num.luminous
     - cephx
     - admin_secret != 'admin_secret'
 
-- name: set_fact ceph_authtool_cap < ceph_release_num.luminous
+- name: set_fact client_admin_ceph_authtool_cap < ceph_release_num.luminous
   set_fact:
-    ceph_authtool_cap: "--cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'"
+    client_admin_ceph_authtool_cap:
+      mon: allow *
+      osd: allow *
+      mds: allow
   when:
     - ceph_release_num[ceph_release] < ceph_release_num.luminous
     - cephx
     - admin_secret != 'admin_secret'
 
 - name: create custom admin keyring
-  command: "ceph-authtool /etc/ceph/{{ cluster }}.client.admin.keyring --create-keyring --name=client.admin --add-key={{ admin_secret }} --set-uid=0 {{ ceph_authtool_cap }}"
-  args:
-    creates: /etc/ceph/{{ cluster }}.client.admin.keyring
+  ceph_key:
+    name: client.admin
+    state: present
+    secret: "{{ admin_secret }}"
+    auid: 0
+    caps: "{{ client_admin_ceph_authtool_cap }}"
+    import_key: False
+    cluster: "{{ cluster }}"
   register: create_custom_admin_secret
   when:
     - cephx
@@ -79,14 +97,14 @@
     - admin_secret != 'admin_secret'
 
 - name: import admin keyring into mon keyring
-  command: ceph-authtool /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }} --import-keyring /etc/ceph/{{ cluster }}.client.admin.keyring
+  command: ceph-authtool /var/lib/ceph/tmp/{{ cluster }}.mon..keyring --import-keyring /etc/ceph/{{ cluster }}.client.admin.keyring
   when:
     - not create_custom_admin_secret.get('skipped')
     - cephx
     - admin_secret != 'admin_secret'
 
 - name: ceph monitor mkfs with keyring
-  command: ceph-mon --cluster {{ cluster }} --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/keyring.mon.{{ monitor_name }}
+  command: ceph-mon --cluster {{ cluster }} --setuser ceph --setgroup ceph --mkfs -i {{ monitor_name }} --fsid {{ fsid }} --keyring /var/lib/ceph/tmp/{{ cluster }}.mon..keyring
   args:
     creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring
   when:

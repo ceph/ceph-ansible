@@ -55,20 +55,27 @@
     - cephx
 
 - name: create ceph rest api keyring when mon is not containerized
-  command: ceph --cluster {{ cluster }} auth get-or-create client.restapi osd 'allow *' mon 'allow *' -o /etc/ceph/{{ cluster }}.client.restapi.keyring
-  args:
-    creates: /etc/ceph/{{ cluster }}.client.restapi.keyring
-  changed_when: false
+  ceph_key:
+    name: client.restapi
+    state: present
+    caps:
+      mon: allow *
+      osd: allow *
+    cluster: "{{ cluster }}"
   when:
     - cephx
     - groups.get(restapi_group_name, []) | length > 0
     - inventory_hostname == groups[mon_group_name]|last
 
 - name: create ceph mgr keyring(s) when mon is not containerized
-  command: ceph --cluster {{ cluster }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring
-  args:
-    creates: /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring
-  changed_when: false
+  ceph_key:
+    name: "mgr.{{ hostvars[item]['ansible_hostname'] }}"
+    state: present
+    caps:
+      mon: allow profile mgr
+      osd: allow *
+      mds: allow *
+    cluster: "{{ cluster }}"
   when:
     - cephx
     - groups.get(mgr_group_name, []) | length > 0
@@ -76,6 +83,8 @@
     - ceph_release_num[ceph_release] > ceph_release_num.jewel
   with_items: "{{ groups.get(mgr_group_name, []) }}"
 
+# once this gets backported github.com/ceph/ceph/pull/20983
+# we will be able to remove these 2 tasks below
 - name: find ceph keys
   shell: ls -1 /etc/ceph/*.keyring
   changed_when: false

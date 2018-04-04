@@ -1,44 +1,40 @@
 ---
-- name: set docker_exec_client_cmd_binary to ceph-authtool
-  set_fact:
-    docker_exec_client_cmd_binary: ceph-authtool
+- name: run a dummy container (sleep 300) from where we can create pool(s)/key(s)
+  command: >
+    docker run \
+    -d \
+    -v {{ ceph_conf_key_directory }}:{{ ceph_conf_key_directory }} \
+    --name ceph-create-keys \
+    --entrypoint=sleep \
+    {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+    300
+  changed_when: false
+  run_once: true
   when: containerized_deployment
 
 - name: set docker_exec_client_cmd for containers
   set_fact:
-    docker_exec_client_cmd: docker run --rm -v /etc/ceph:/etc/ceph --entrypoint /usr/bin/{{ docker_exec_client_cmd_binary }} {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+    docker_exec_client_cmd: "docker exec ceph-create-keys"
+  run_once: true
   when: containerized_deployment
 
-- name: set docker_exec_client_cmd for non-containers
-  set_fact:
-    docker_exec_client_cmd: ceph-authtool
-  when: not containerized_deployment
-
-- name: create key(s)
-  shell: "{{ docker_exec_client_cmd }} -C /etc/ceph/{{ cluster }}.{{ item.name }}.keyring --name {{ item.name }} --add-key {{ item.key }} --cap mon \"{{ item.mon_cap|default('') }}\" --cap osd \"{{ item.osd_cap|default('') }}\" --cap mds \"{{ item.mds_cap|default('') }}\""
-  args:
-    creates: /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
+- name: create cephx key(s)
+  ceph_key:
+    state: present
+    name: "{{ item.name }}"
+    caps: "{{ item.caps }}"
+    secret: "{{ item.key | default('') }}"
+    containerized: "{{ docker_exec_client_cmd | default('') }}"
+    cluster: "{{ cluster }}"
+    dest: "{{ ceph_conf_key_directory }}"
   with_items: "{{ keys }}"
-  changed_when: false
   run_once: true
   when:
     - cephx
     - keys | length > 0
     - inventory_hostname in groups.get(client_group_name) | first
 
-- name: set docker_exec_client_cmd_binary to ceph
-  set_fact:
-    docker_exec_client_cmd_binary: ceph
-  when: containerized_deployment
-
-- name: replace docker_exec_client_cmd by ceph
-  set_fact:
-    docker_exec_client_cmd: ceph
-  when:
-    - not containerized_deployment
-    - docker_exec_client_cmd == 'ceph-authtool'
-
-- name: slurp client key(s)
+- name: slurp client cephx key(s)
   slurp:
     src: "{{ ceph_conf_key_directory }}/{{ cluster }}.{{ item.name }}.keyring"
   with_items:
@@ -50,20 +46,9 @@
     - keys | length > 0
     - inventory_hostname in groups.get(client_group_name) | first
 
-- name: check if key(s) already exist(s)
-  command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} auth get {{ item.name }}"
-  changed_when: false
-  failed_when: false
-  with_items: "{{ keys }}"
-  register: keys_exist
-  run_once: true
-  when:
-    - copy_admin_key
-    - inventory_hostname in groups.get(client_group_name) | first
-
-- name: create pool(s)
+- name: create ceph pool(s)
   command: >
-    {{ docker_exec_client_cmd }} --cluster {{ cluster }}
+    {{ docker_exec_client_cmd | default('') }} ceph --cluster {{ cluster }}
     osd pool create {{ item.name }}
     {{ item.get('pg_num', hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num']) }}
     {{ item.pgp_num | default(item.pg_num) }}
@@ -81,25 +66,13 @@
     - copy_admin_key
     - inventory_hostname in groups.get(client_group_name) | first
 
-- name: add key(s) to ceph
-  command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} auth import -i /etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
+- name: kill a dummy container that created pool(s)/key(s)
+  command: docker rm -f ceph-create-keys
   changed_when: false
   run_once: true
-  with_together:
-    - "{{ keys }}"
-    - "{{ keys_exist.results | default([]) }}"
-  when:
-    - not item.1.get("skipped")
-    - copy_admin_key
-    - item.1.rc != 0
-    - inventory_hostname in groups.get(client_group_name) | first
+  when: containerized_deployment
 
-- name: put docker_exec_client_cmd back to normal with a none value
-  set_fact:
-    docker_exec_client_cmd:
-  when: docker_exec_client_cmd == 'ceph'
-
-- name: get client keys
+- name: get client cephx keys
   copy:
     dest: "{{ item.source }}"
     content: "{{ item.content | b64decode }}"
@@ -109,18 +82,18 @@
     - not item.get('skipped', False)
     - not inventory_hostname == groups.get(client_group_name, []) | first
 
-- name: chmod key(s)
+- name: chmod cephx key(s)
   file:
-    path: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
+    path: "{{ ceph_conf_key_directory }}/{{ cluster }}.{{ item.name }}.keyring"
     mode: "{{ item.mode|default(omit) }}" # if mode not in list, uses mode from ps umask
   with_items: "{{ keys }}"
   when:
     - cephx
     - keys | length > 0
 
-- name: setfacl for key(s)
+- name: setfacl for cephx key(s)
   acl:
-    path: "/etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
+    path: "{{ ceph_conf_key_directory }}/{{ cluster }}.{{ item.0.name }}.keyring"
     entry: "{{ item.1 }}"
     state: present
   with_subelements:

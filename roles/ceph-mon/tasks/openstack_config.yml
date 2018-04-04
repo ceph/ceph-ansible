@@ -21,39 +21,25 @@
   when:
     - ceph_release_num[ceph_release] >= ceph_release_num['luminous']
 
-# A future version could use "--caps CAPSFILE"
-# which will set all of capabilities associated with a given key, for all subsystems
-- name: create openstack key(s)
-  shell: "{{ docker_exec_cmd }} bash -c 'ceph-authtool -C /etc/ceph/{{ cluster }}.{{ item.name }}.keyring --name {{ item.name }} --add-key {{ item.key }} --cap mon \"{{ item.mon_cap|default('') }}\" --cap osd \"{{ item.osd_cap|default('') }}\" --cap mds \"{{ item.mds_cap|default('') }}\"'"
-  args:
-    creates: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
+- name: create openstack cephx key(s)
+  ceph_key:
+    state: present
+    name: "{{ item.name }}"
+    caps: "{{ item.caps }}"
+    secret: "{{ item.key | default('') }}"
+    containerized: "{{ docker_exec_cmd | default(False) }}"
+    cluster: "{{ cluster }}"
   with_items: "{{ openstack_keys }}"
-  changed_when: false
   when: cephx
 
-- name: check if openstack key(s) already exist(s)
-  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
-  changed_when: false
-  failed_when: false
-  with_items: "{{ openstack_keys }}"
-  register: openstack_key_exist
-
-- name: add openstack key(s) to ceph
-  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth import -i /etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
-  changed_when: false
-  with_together:
-    - "{{ openstack_keys }}"
-    - "{{ openstack_key_exist.results }}"
-  when: item.1.rc != 0
-
-- name: fetch openstack key(s)
+- name: fetch openstack cephx key(s)
   fetch:
     src: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
     dest: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
     flat: yes
   with_items: "{{ openstack_keys }}"
 
-- name: copy to other mons the openstack key(s)
+- name: copy to other mons the openstack cephx key(s)
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
     dest: "/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
@@ -66,7 +52,7 @@
     - openstack_config
     - item.0 != groups[mon_group_name] | last
 
-- name: chmod openstack key(s) on the other mons and this mon
+- name: chmod openstack cephx key(s) on the other mons and this mon
   file:
     path: "/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
     mode: "{{ item.1.mode|default(omit) }}" # if mode not in list, uses mode from ps umask
@@ -78,7 +64,7 @@
     - openstack_config
     - cephx
 
-- name: setfacl for openstack key(s) on the other mons and this mon
+- name: setfacl for openstack cephx key(s) on the other mons and this mon
   command: "setfacl -m {{ item.1.acls | join(',') }} /etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
   with_nested:
     - "{{ groups[mon_group_name] }}"
