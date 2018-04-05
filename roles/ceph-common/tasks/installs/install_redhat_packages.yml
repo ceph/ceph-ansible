@@ -13,6 +13,13 @@
   when:
     - ansible_distribution == 'CentOS'
 
+- name: install redhat ceph-test package
+  package:
+    name: ceph-test
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - ceph_test
+
 - name: install redhat ceph-common
   package:
     name: "ceph-common"
@@ -45,13 +52,6 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - client_group_name in group_names
-
-- name: install redhat ceph-test package
-  package:
-    name: ceph-test
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - ceph_test
 
 - name: install redhat ceph-radosgw package
   package:
