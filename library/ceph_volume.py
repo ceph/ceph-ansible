@@ -31,6 +31,7 @@ options:
             - Required if action is 'create'
         required: false
         choices: ['bluestore', 'filestore']
+        default: bluestore
     action:
         description:
             - The action to take. Either creating OSDs or zapping devices.
@@ -141,7 +142,7 @@ def get_wal(wal, wal_vg):
 
 def create_osd(module):
     cluster = module.params['cluster']
-    objectstore = module.params.get('objectstore')
+    objectstore = module.params['objectstore']
     data = module.params['data']
     data_vg = module.params.get('data_vg', None)
     journal = module.params.get('journal', None)
@@ -152,9 +153,6 @@ def create_osd(module):
     wal_vg = module.params.get('wal_vg', None)
     crush_device_class = module.params.get('crush_device_class', None)
     dmcrypt = module.params['dmcrypt']
-
-    if not objectstore:
-        module.fail_json(msg="The objectstore param is required if action is 'create'. Choices are 'bluestore' or 'filestore'.", changed=False)
 
     cmd = [
         'ceph-volume',
@@ -314,7 +312,7 @@ def zap_devices(module):
 def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
-        objectstore=dict(type='str', required=False, choices=['bluestore', 'filestore']),
+        objectstore=dict(type='str', required=False, choices=['bluestore', 'filestore'], default='bluestore'),
         action=dict(type='str', required=False, choices=['create', 'zap'], default='create'),
         data=dict(type='str', required=True),
         data_vg=dict(type='str', required=False),
