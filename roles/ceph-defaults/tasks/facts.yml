@@ -37,6 +37,7 @@
   failed_when: false
   always_run: yes
   register: ceph_current_fsid
+  run_once: true
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
     - not rolling_update
@@ -75,7 +76,7 @@
   set_fact:
     fsid: "{{ ceph_current_fsid.stdout }}"
   when:
-    - ceph_current_fsid.rc == 0
+    - ceph_current_fsid.get('rc', 1) == 0
 
 # Set ceph_release to ceph_stable by default
 - name: set_fact ceph_release ceph_stable_release
@@ -100,7 +101,7 @@
     creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
   become: false
   when:
-    - ceph_current_fsid.rc == 0
+    - ceph_current_fsid.get('rc', 1) == 0
 
 - name: read cluster fsid if it already exists
   local_action:
