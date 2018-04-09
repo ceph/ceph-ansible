@@ -12,6 +12,18 @@ NFS_Core_Param
 {% endif %}
 }
 
+{% if ceph_nfs_disable_caching or nfs_file_gw %}
+CACHEINODE {
+	Dir_Max = 1;
+	Dir_Chunk = 0;
+
+	Cache_FDs = false;
+
+	NParts = 1;
+	Cache_Size = 1;
+}
+{% endif %}
+
 {% if ceph_nfs_rados_backend %}
 RADOS_URLS {
    ceph_conf = '/etc/ceph/{{ cluster }}.conf';
@@ -45,6 +57,8 @@ EXPORT
 	Transports = TCP;
 
 	SecType = sys,krb5,krb5i,krb5p;
+
+	Attr_Expiration_Time = 0;
 
 	FSAL {
 		Name = CEPH;
