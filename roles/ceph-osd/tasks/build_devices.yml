@@ -35,3 +35,36 @@
   when:
     - osd_scenario == 'non-collocated'
     - not osd_auto_discovery
+
+- name: get OSD journal partitions
+  shell: blkid | awk '/ceph journal"/ { sub (":", "", $1); print $1 }'
+  when:
+    - osds_per_device > 1
+    - osd_objectstore == 'filestore'
+  failed_when: false
+  register: osd_journal_partitions
+
+- name: get OSD block partitions
+  shell: blkid | awk '/ceph block"/ { sub (":", "", $1); print $1 }'
+  when:
+    - osds_per_device > 1
+    - osd_objectstore == 'bluestore'
+  failed_when: false
+  register: osd_block_partitions
+
+- name: get OSD db partitions
+  shell: blkid | awk '/ceph block.db"/ { sub (":", "", $1); print $1 }'
+  when:
+    - osds_per_device > 1
+    - osd_objectstore == 'bluestore'
+  failed_when: false
+  register: osd_db_partitions
+
+- name: get OSD wal partitions
+  shell: blkid | awk '/ceph block.wal"/ { sub (":", "", $1); print $1 }'
+  when:
+    - osds_per_device > 1
+    - osd_objectstore == 'bluestore'
+  failed_when: false
+  register: osd_wal_partitions
+  

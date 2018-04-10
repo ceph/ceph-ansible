@@ -24,6 +24,16 @@
     - dmcrypt
     - item != '/dev/dead'
 
+- name: activate osd(s) when device is a partition
+  command: ceph-disk activate {{ item }}
+  with_items:
+    - "{{ osd_data_partitions.stdout_lines }}"
+  when:
+    - not osd_auto_discovery
+    - not dmcrypt
+    - osds_per_device > 1
+  register: activate_osd_disk
+
 # NOTE (leseb): we must do this because of
 # https://github.com/ansible/ansible/issues/4297
 - name: set_fact combined_activate_osd_disk_results
