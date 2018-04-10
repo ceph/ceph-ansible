@@ -1,8 +1,21 @@
 ---
-- name: set config and keys paths
+- name: set_fact admin_keyring
+  set_fact:
+    admin_keyring:
+      - "/etc/ceph/{{ cluster }}.client.admin.keyring"
+  when:
+    - copy_admin_key
+
+- name: set_fact ceph_config_keys
   set_fact:
     ceph_config_keys:
       - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
+
+- name: merge ceph_config_keys and admin_keyring
+  set_fact:
+    ceph_config_keys: "{{ ceph_config_keys + admin_keyring }}"
+  when:
+    - copy_admin_key
 
 - name: wait for ceph.conf and keys
   local_action:
