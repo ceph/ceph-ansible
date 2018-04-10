@@ -48,18 +48,27 @@
         - always
 
   roles:
-    - { role: ceph-defaults,
-        tags: [with_pkg, fetch_container_image],
-        when: "(((containerized_deployment | bool) and not (is_atomic | bool) and not (inventory_hostname in groups.get('clients', []))) or ((inventory_hostname == groups.get('clients', [''])|first) and (containerized_deployment | bool) and not (is_atomic | bool)))" }
-    - { role: ceph-docker-common,
-        tags: [with_pkg, fetch_container_image],
-        when: "(((containerized_deployment | bool) and not (is_atomic | bool) and not (inventory_hostname in groups.get('clients', []))) or ((inventory_hostname == groups.get('clients', [''])|first) and (containerized_deployment | bool) and not (is_atomic | bool)))" }
+    - role: ceph-defaults
+      tags: [with_pkg, fetch_container_image]
+      when:
+        - containerized_deployment | bool
+        - not (is_atomic | bool)
+        - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
+    - role: ceph-docker-common
+      tags: [with_pkg, fetch_container_image]
+      when:
+        - containerized_deployment | bool
+        - not (is_atomic | bool)
+        - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
 
   post_tasks:
     - name: "pull {{ ceph_docker_image }} image"
       command: "docker pull {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       changed_when: false
-      when: "((is_atomic and (ceph_docker_dev_image is undefined or not ceph_docker_dev_image) and not (inventory_hostname in groups.get('clients', []))) or (is_atomic and ((ceph_docker_dev_image is undefined) or not (ceph_docker_dev_image)) and (inventory_hostname == groups.get('clients', [''])|first)))"
+      when:
+        - is_atomic
+        - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
+        - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
 
 - hosts: mons
   tasks:
@@ -75,10 +84,12 @@
   become: True
   gather_facts: false
   roles:
-    - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - ceph-docker-common
-    - { role: ceph-config, tags: ['ceph_update_config'] }
-    - ceph-mon
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-docker-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-mon
   serial: 1 # MUST be '1' WHEN DEPLOYING MONITORS ON DOCKER CONTAINERS
 
 - hosts: mons
@@ -103,10 +114,16 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
-    - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - ceph-docker-common
-    - { role: ceph-config, tags: ['ceph_update_config'], when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
-    - { role: ceph-mgr, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
+    - role: ceph-defaults
+      tags: ['ceph_update_config'] 
+    - role: ceph-docker-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+      when:
+        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+    - role: ceph-mgr
+      when:
+        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
   post_tasks:
     - name: set ceph manager install 'Complete'
       run_once: true
@@ -128,10 +145,12 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
-    - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - ceph-docker-common
-    - { role: ceph-config, tags: ['ceph_update_config'] }
-    - ceph-osd
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-docker-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-osd
   post_tasks:
     - name: set ceph osd install 'Complete'
       run_once: true
@@ -153,9 +172,11 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
-    - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - ceph-docker-common
-    - { role: ceph-config, tags: ['ceph_update_config'] }
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-docker-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
     - ceph-mds
   post_tasks:
     - name: set ceph mds install 'Complete'
@@ -178,10 +199,12 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
-    - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - ceph-docker-common
-    - { role: ceph-config, tags: ['ceph_update_config'] }
-    - ceph-rgw
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-docker-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-rgw
   post_tasks:
     - name: set ceph rgw install 'Complete'
       run_once: true
@@ -203,10 +226,16 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
-    - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - ceph-docker-common
-    - { role: ceph-config, tags: ['ceph_update_config'], when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
-    - { role: ceph-nfs, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-docker-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+      when:
+        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+    - role: ceph-nfs
+      when:
+        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
   post_tasks:
     - name: set ceph nfs install 'Complete'
       run_once: true
@@ -228,10 +257,12 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
-    - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - ceph-docker-common
-    - { role: ceph-config, tags: ['ceph_update_config'] }
-    - ceph-rbd-mirror
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-docker-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-rbd-mirror
   post_tasks:
     - name: set ceph rbd mirror install 'Complete'
       run_once: true
@@ -253,10 +284,12 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
-    - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - ceph-docker-common
-    - { role: ceph-config, tags: ['ceph_update_config'] }
-    - ceph-restapi
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-docker-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-restapi
   post_tasks:
     - name: set ceph rest api install 'Complete'
       run_once: true
@@ -278,10 +311,14 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
-    - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - { role: ceph-docker-common, when: "inventory_hostname == groups.get('clients', ['']) | first" }
-    - { role: ceph-config, tags: ['ceph_update_config'] }
-    - ceph-client
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-docker-common
+      when:
+        - inventory_hostname == groups.get('clients', ['']) | first
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-client
   post_tasks:
     - name: set ceph client install 'Complete'
       run_once: true
