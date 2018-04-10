@@ -171,7 +171,7 @@ ceph.conf Configuration
 -----------------------
 
 The supported method for defining your ceph.conf is to use the ``ceph_conf_overrides`` variable. This allows you to specify configuration options using
-an INI format. This variable can be used to override sections already defined in ceph.conf (see: ``roles/ceph-common/templates/ceph.conf.j2``) or to provide
+an INI format. This variable can be used to override sections already defined in ceph.conf (see: ``roles/ceph-config/templates/ceph.conf.j2``) or to provide
 new configuration options. The following sections in ceph.conf are supported: [global], [mon], [osd], [mds] and [rgw].
 
 An example::
