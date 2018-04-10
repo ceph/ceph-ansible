@@ -15,11 +15,31 @@ all:
     ceph_repository: community
     ceph_release: luminous
     ceph_stable: true
-    cephfs_data: manila_data
-    cephfs_metadata: manila_metadata
+    cephfs_data_pool:
+      name: 'manila_data'
+      pg_num: "{{ osd_pool_default_pg_num }}"
+      pgp_num: "{{ osd_pool_default_pg_num }}"
+      rule_name: "replicated_rule"
+      type: 1
+      erasure_profile: ""
+      expected_num_objects: ""
+      application: "cephfs"
+      size: "{{ osd_pool_default_size }}"
+      min_size: "{{ osd_pool_default_min_size }}"
+    cephfs_metadata_pool:
+      name: 'manila_metadata'
+      pg_num: "{{ osd_pool_default_pg_num }}"
+      pgp_num: "{{ osd_pool_default_pg_num }}"
+      rule_name: "replicated_rule"
+      type: 1
+      erasure_profile: ""
+      expected_num_objects: ""
+      application: "cephfs"
+      size: "{{ osd_pool_default_size }}"
+      min_size: "{{ osd_pool_default_min_size }}"
     cephfs_pools:
-    - {name: manila_data, pgs: 8}
-    - {name: manila_metadata, pgs: 8}
+      - "{{ cephfs_data_pool }}"
+      - "{{ cephfs_metadata_pool }}"
     cluster_network: 192.168.96.0/24
     containerized_deployment: true
     devices: [/dev/sda, /dev/sdb, /dev/sdc]
