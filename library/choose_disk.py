@@ -404,9 +404,9 @@ def select_only_free_devices(physical_disks):
 
         if ceph_disk:
             selected_devices[physical_disk]['ceph_prepared'] = ceph_disk
-            logger.info('Adding %10s : Ceph disk detected (%s)', physical_disk, ceph_disk)
+            logger.info('Adding   %10s : Ceph disk detected (%s)', physical_disk, ceph_disk)
         else:
-            logger.info('Adding %10s : %s', physical_disk, selected_devices[physical_disk]['bdev'])
+            logger.info('Adding   %10s : %s', physical_disk, selected_devices[physical_disk]['bdev'])  # noqa E501
 
     return selected_devices
 
