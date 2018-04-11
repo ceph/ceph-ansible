@@ -34,7 +34,7 @@ description:
     The solution is using a descriptive language to define "what" we are looking
     for : then this module search for the give disks and reports their id path.
     The module works in :
-    - legacy mode where the module only make a few checks but doesn't search/rename the block devices.
+    - legacy mode where the module only make a few checks but doesn't search/rename the block devices. # noqa E501
     - native mode where user specify what disk to search base on its features
 '''
 
@@ -153,7 +153,7 @@ def get_keys_by_ceph_order(physical_disks, expected_type):
                 logger.debug("get_keys_by_ceph_order: Keeping %s", physical_disk)
                 ceph_disks.append(physical_disk)
             else:
-                logger.debug("get_keys_by_ceph_order: %s doesn't have the proper ceph type", physical_disk)
+                logger.debug("get_keys_by_ceph_order: %s doesn't have the proper ceph type", physical_disk)  # noqa E501
         else:
             non_ceph_disks.append(physical_disk)
 
@@ -201,8 +201,8 @@ def evaluate_operator(left, right, module=None):
                     # Typical case when we shall compare a 'value' with : 'and( gt(x), lt(y) )'
                     # The looking value always stays to the 'left' part of the expression
                     new_right = arguments.group(3)
-                    return OPERATORS[operator](evaluate_operator(left, right, module), evaluate_operator(left, new_right, module))
-                    #           and           (                  value,gt(x)        ),                  (value,lt(y)            )
+                    return OPERATORS[operator](evaluate_operator(left, right, module), evaluate_operator(left, new_right, module))  # noqa E501
+                    #           and           (                  value,gt(x)        ),                  (value,lt(y)            ) # noqa E501
             else:
                 fatal("Unsupported '%s' operator in: %s" % (new_operator, right), module)
     return OPERATORS[operator](left, right)
@@ -269,7 +269,8 @@ def find_match(physical_disks, lookup_disks, module=None):
             if match_count == len(current_lookup):
                 logger.info(" %50s matched", physical_disk)
 
-                # When looking for an infinite number of disks, we can have several disks per matching
+                # When looking for an infinite number of disks,
+                # we can have several disks per matching
                 if disk not in matched_devices:
                     matched_devices[disk] = []
 
@@ -277,7 +278,8 @@ def find_match(physical_disks, lookup_disks, module=None):
                 pdisk = dict(physical_disks[physical_disk])
                 pdisk["ceph_type"] = current_type
 
-                # The matching disk is saved and reported as one to be ignored for the next iterations
+                # The matching disk is saved and
+                # reported as one to be ignored for the next iterations
                 matched_devices[disk].append(pdisk)
                 ignored_devices.append(physical_disk)
 
@@ -288,7 +290,8 @@ def find_match(physical_disks, lookup_disks, module=None):
                     break
             elif match_count > 0:
                 # We only found a subset of the required features
-                logger.info(" %50s partially matched with %d/%d items", physical_disk, match_count, len(current_lookup))
+                logger.info(" %50s partially matched with %d/%d items",
+                            physical_disk, match_count, len(current_lookup))
             else:
                 logger.info(" %50s no devices matched", physical_disk)
 
@@ -296,7 +299,7 @@ def find_match(physical_disks, lookup_disks, module=None):
     final_disks = {}
 
     # Matching devices are named base on the user-provided name + incremental number
-    # If we look for {'storage_disks': {'count': 2, 'ceph_type': 'data', 'vendor': '0x1af4', 'size': 'gte(20 GB)'}}
+    # If we look for {'storage_disks': {'count': 2, 'ceph_type': 'data', 'vendor': '0x1af4', 'size': 'gte(20 GB)'}} # noqa E501
     # - first device will be named  : storage_disks_000
     # - second device will be named : storage_disks_001
     for matched_device in matched_devices:
@@ -326,9 +329,9 @@ def expand_disks(lookup_disks, ceph_type="", module=None):
             if 'count' not in lookup_disks[disk]:
                 fatal("disk '%s' should have a 'count' value defined" % disk, module)
             if 'ceph_type' not in lookup_disks[disk]:
-                fatal("disk '%s' should have a 'ceph_type' value defined : {data | journal}" % disk, module)
+                fatal("disk '%s' should have a 'ceph_type' value defined : {data | journal}" % disk, module)  # noqa E501
             if lookup_disks[disk]['ceph_type'] not in ['data', 'journal']:
-                fatal("disk '%s' doesn't have a valid 'ceph_type' defined, it should be : {data | journal}" % disk, module)
+                fatal("disk '%s' doesn't have a valid 'ceph_type' defined, it should be : {data | journal}" % disk, module)   # noqa E501
             if 'count' in lookup_disks[disk]:
                 count = lookup_disks[disk]['count']
                 del lookup_disks[disk]['count']
@@ -458,7 +461,8 @@ def fake_device(legacy_devices, ceph_type):
     devices = {}
     count = 0
     for device in legacy_devices:
-        devices["%s_%d" % (ceph_type, count)] = {"bdev": os.path.join(os.path.dirname(device), os.path.basename(device))}
+        devices["%s_%d" % (ceph_type, count)] = {"bdev": os.path.join(os.path.dirname(device),
+                                                                      os.path.basename(device))}
         count = count + 1
 
     return devices
@@ -486,7 +490,10 @@ def show_resulting_devices(matched_devices, physical_disks):
 
     logger.info("Matched devices   : %3d", len(matched_devices))
     for matched_device in sorted(matched_devices):
-        logger.info(" %s : %s%s", matched_device, matched_devices[matched_device]["bdev"], prepare_device_string(matched_devices[matched_device]))
+        logger.info(" %s : %s%s",
+                    matched_device,
+                    matched_devices[matched_device]["bdev"],
+                    prepare_device_string(matched_devices[matched_device]))
         bdev_matched.append(matched_devices[matched_device]["bdev"])
 
     for physical_disk in sorted(physical_disks):
@@ -587,15 +594,16 @@ def main():
         lookup_disks = expand_disks(fake_device(devices, "data"), "data", module)
         if raw_journal_devices:
             logger.info("raw_journal_devices : %s", raw_journal_devices)
-            lookup_disks.update(expand_disks(fake_device(raw_journal_devices, "journal"), "journal", module))
+            lookup_disks.update(expand_disks(fake_device(raw_journal_devices, "journal"), "journal", module))  # noqa E501
     else:
-        fatal("devices variable should be a dict for native syntax {...} or a list for legacy syntax [ ... ] : %s detected" % type(devices), module)
+        fatal("devices variable should be a dict for native syntax {...} or "
+              "a list for legacy syntax [ ... ] : %s detected" % type(devices), module)
 
     # Final checks between the lookup & the actual ansible configuration
     for disk in lookup_disks:
         if get_var(module, "journal_collocation") is True:
             if lookup_disks[disk]["ceph_type"] == "journal":
-                fatal("We cannot search for journal devices when 'journal_collocation' is set", module)
+                fatal("We cannot search for journal devices when 'journal_collocation' is set", module)  # noqa E501
 
     logger.debug("Looking for %s", lookup_disks)
 
@@ -604,7 +612,8 @@ def main():
     show_resulting_devices(matched_devices, physical_disks)
 
     if len(matched_devices) < len(lookup_disks):
-        fatal("Could only find %d of the %d expected devices" % (len(matched_devices), len(lookup_disks)), module)
+        fatal("Could only find %d of the %d expected devices" % (len(matched_devices),
+                                                                 len(lookup_disks)), module)
 
     # Preparing the final output by deivces in several categories
     # - data disks for ceph
@@ -643,10 +652,18 @@ def main():
 
     if legacy is True:
         # Reporting devices & raw_journal_devices for compatiblity
-        module.exit_json(msg=message, changed=changed, ansible_facts=dict(legacy_devices=ceph_data, journal_devices=journal, devices_to_activate=to_activate, storage_devices=[]))
+        module.exit_json(msg=message, changed=changed,
+                         ansible_facts=dict(legacy_devices=ceph_data,
+                                            journal_devices=journal,
+                                            devices_to_activate=to_activate,
+                                            storage_devices=[]))
     else:
         # Reporting storage_devices & journal_devices
-        module.exit_json(msg=message, changed=changed, ansible_facts=dict(storage_devices=ceph_data, journal_devices=journal, devices_to_activate=to_activate, legacy_devices=[]))
+        module.exit_json(msg=message, changed=changed,
+                         ansible_facts=dict(storage_devices=ceph_data,
+                                            journal_devices=journal,
+                                            devices_to_activate=to_activate,
+                                            legacy_devices=[]))
 
 
 if __name__ == '__main__':
