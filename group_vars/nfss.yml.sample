@@ -18,7 +18,8 @@ dummy:
 # distributed on RGW nodes. Setting 'copy_admin_key' to 'true'
 # will copy the admin key to the /etc/ceph/ directory
 #copy_admin_key: false
-# whether docker container or systemd service should be enabled
+
+# Whether docker container or systemd service should be enabled
 # and started, it's useful to set it to false if nfs-ganesha
 # service is managed by pacemaker
 #ceph_nfs_enable_service: true
@@ -35,6 +36,10 @@ dummy:
 #######################
 # These are currently in ceph-common defaults because nfs_obj_gw shared with ceph-rgw
 # Enable NFS File access
+# If set to true, then ganesha is set up to export the root of the
+# Ceph filesystem, and ganesha's attribute and directory caching is disabled
+# as much as possible since libcephfs clients also caches the same
+# information.
 #nfs_file_gw: false
 # Enable NFS Object access
 #nfs_obj_gw: true
@@ -56,6 +61,14 @@ dummy:
 # addresses. (Note: ganesha ignores this parameter in current version due to
 # this bug: https://github.com/nfs-ganesha/nfs-ganesha/issues/217)
 # ceph_nfs_bind_addr: 0.0.0.0
+
+# If set to true, then ganesha's attribute and directory caching is disabled
+# as much as possible. Currently, ganesha caches by default.
+# When using ganesha as CephFS's gateway, it is recommended to turn off
+# ganesha's caching as the libcephfs clients also cache the same information.
+# Note: Irrespective of this option's setting, ganesha's caching is disabled
+# when setting 'nfs_file_gw' option as true.
+#ceph_nfs_disable_caching: false
 
 ####################
 # FSAL Ceph Config #

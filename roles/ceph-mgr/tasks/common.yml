@@ -1,0 +1,31 @@
+---
+- name: create mgr directory
+  file:
+    path: /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}
+    state: directory
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: "0755"
+
+- name: copy ceph keyring(s) if needed
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/{{ item.name }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: "0600"
+  with_items:
+    - { name: "/etc/ceph/{{ cluster }}.mgr.{{ ansible_hostname }}.keyring", dest: "/var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring", copy_key: true }
+    - { name: "/etc/ceph/{{ cluster }}.client.admin.keyring", dest: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}" }
+  when:
+    - cephx
+    - item.copy_key|bool
+
+- name: set mgr key permissions
+  file:
+    path: /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: "0600"
+  when:
+    - cephx

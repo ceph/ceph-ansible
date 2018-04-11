@@ -1,0 +1,28 @@
+---
+- name: set_fact copy_admin_key -  true when ceph_release_num[ceph_release] < ceph_release_num.luminous
+  set_fact:
+    copy_admin_key: True
+  when:
+    - ceph_release_num[ceph_release] < ceph_release_num.luminous
+
+- name: copy ceph admin keyring when ceph_release_num[ceph_release] < ceph_release_num.luminous
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.client.admin.keyring"
+    dest: "/etc/ceph/"
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: "0600"
+  when:
+    - cephx
+    - copy_admin_key
+
+- name: copy rbd-mirror bootstrap key
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring"
+    dest: "/var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring"
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: "0600"
+  when:
+    - cephx
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous

@@ -13,10 +13,16 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- name: include pre_requisite.yml
-  include: pre_requisite.yml
+- name: install dependencies
+  package:
+    name: parted
+    state: present
   when:
     - not containerized_deployment
+    - ansible_os_family != 'ClearLinux'
+
+- name: include common.yml
+  include: common.yml
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
@@ -34,12 +40,6 @@
   failed_when: false
   check_mode: no
   register: parted_results
-
-- name: include copy_configs.yml
-  include: copy_configs.yml
-  when:
-    - containerized_deployment
-    - not containerized_deployment_with_kv
 
 - name: include check_gpt.yml
   include: check_gpt.yml
