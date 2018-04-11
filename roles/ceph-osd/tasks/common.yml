@@ -1,30 +1,23 @@
 ---
-- name: install dependencies
-  package:
-    name: parted
-    state: present
-  when:
-    - ansible_os_family != 'ClearLinux'
-
 - name: create bootstrap-osd and osd directories
   file:
     path: "{{ item }}"
     state: directory
-    owner: "ceph"
-    group: "ceph"
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     mode: "0755"
   when:
-    cephx
+    - cephx
   with_items:
     - /var/lib/ceph/bootstrap-osd/
     - /var/lib/ceph/osd/
 
-- name: copy osd bootstrap key
+- name: copy ceph key(s) if needed
   copy:
-    src: "{{ fetch_directory }}/{{ fsid }}{{ item.name }}"
+    src: "{{ fetch_directory }}/{{ fsid }}/{{ item.name }}"
     dest: "{{ item.name }}"
-    owner: "ceph"
-    group: "ceph"
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     mode: "0600"
   with_items:
     - { name: "/var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring", copy_key: true }
