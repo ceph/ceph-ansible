@@ -389,7 +389,7 @@ def select_only_free_devices(physical_disks):
         if len(current_physical_disk['partitions']) > 0:
             for partition in sorted(current_physical_disk['partitions']):
                 disk_type = disk_label("/dev/" + partition)
-                if disk_type:
+                if disk_type and disk_type not in ceph_disk:
                     if ceph_disk:
                         ceph_disk += " + "
                     # Saving the ceph type (journal and/or data)
