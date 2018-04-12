@@ -28,6 +28,8 @@ check_pgs() {
 }
 
 wait_for_socket_in_docker() {
+  osd_mount_point=$(docker exec "$1" df --output=target | grep '/var/lib/ceph/osd/')
+  whoami=$(docker exec "$1" cat $osd_mount_point/whoami)
   if ! docker exec "$1" timeout 10 bash -c "while [ ! -e /var/run/ceph/*.asok ]; do sleep 1 ; done"; then
     echo "Timed out while trying to look for a Ceph OSD socket."
     echo "Abort mission!"
@@ -68,7 +70,8 @@ for unit in $(systemctl list-units | grep "loaded active" | grep -oE "ceph-osd@(
   {% if containerized_deployment -%}
   id=$(get_dev_name "$unit")
   container_id=$(get_docker_id_from_dev_name "$id")
-  osd_id=$(get_docker_osd_id "$container_id")
+  wait_for_socket_in_docker "$container_id"
+  osd_id=$whoami
   docker_exec="docker exec $container_id"
   {% else %}
   osd_id=$(echo ${unit#ceph-osd@} | grep -oE '[0-9]{1,2}')
