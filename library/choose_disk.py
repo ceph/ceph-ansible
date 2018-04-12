@@ -380,6 +380,12 @@ def select_only_free_devices(physical_disks):
             logger.info('Ignoring %10s : device does not support partitioning', physical_disk)
             continue
 
+        # Does the disk belongs to a LVM ?
+        return_code = os.system("pvdisplay -c /dev/{}".format(physical_disk))
+        if return_code == 0:
+            logger.info('Ignoring %10s : device is already used by LVM', physical_disk)
+            continue
+
         # Don't consider the device if partition list is not empty,
         # A disk that is already partionned may contain important data
         # It's up to the admin to zap the device before using it in ceph-ansible
