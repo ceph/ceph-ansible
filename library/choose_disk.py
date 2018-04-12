@@ -380,6 +380,17 @@ def select_only_free_devices(physical_disks):
             logger.info('Ignoring %10s : device does not support partitioning', physical_disk)
             continue
 
+        # Removing Cdrom Devices
+        if physical_disk.startswith("sr") or physical_disk.startswith("cdrom"):
+            logger.info('Ignoring %10s : cdrom device', physical_disk)
+            continue
+
+        # Removing Read-only devices
+        stdout = subprocess.check_output(["blockdev", "--getro", "/dev/%s" % physical_disk])
+        if "1" in stdout:
+            logger.info('Ignoring %10s : read-only device', physical_disk)
+            continue
+
         # Does the disk belongs to a LVM ?
         return_code = os.system("pvdisplay -c /dev/{}".format(physical_disk))
         if return_code == 0:
