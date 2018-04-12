@@ -34,8 +34,7 @@ class TestMDSs(object):
             hostname=node["vars"]["inventory_hostname"],
             cluster=node["cluster_name"]
         )
+        num_mdss = len(host.ansible.get_variables()["groups"]["mdss"])
         output_raw = host.check_output(cmd)
         output_json = json.loads(output_raw)
-        active_daemon = output_json["fsmap"]["by_rank"][0]["name"]
-        if active_daemon != hostname:
-            assert output_json['fsmap']['up:standby'] == 1
+        assert output_json['fsmap']['up'] and output_json['fsmap']['in'] == num_mdss
