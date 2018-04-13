@@ -180,14 +180,28 @@
     - not osd_auto_discovery|default(False)
     - osd_scenario|default('dummy') != 'lvm'
 
-- name: set_fact ceph_uid for debian based system
+- name: set_fact ceph_uid for debian based system - non container
+  set_fact:
+    ceph_uid: 64045
+  when:
+    - not containerized_deployment
+    - ansible_os_family == 'Debian'
+
+- name: set_fact ceph_uid for red hat based system - non container
+  set_fact:
+    ceph_uid: 167
+  when:
+    - not containerized_deployment
+    - ansible_os_family == 'RedHat'
+
+- name: set_fact ceph_uid for debian based system - container
   set_fact:
     ceph_uid: 64045
   when:
     - containerized_deployment
     - ceph_docker_image_tag | search("ubuntu")
 
-- name: set_fact ceph_uid for red hat based system
+- name: set_fact ceph_uid for red hat based system - container
   set_fact:
     ceph_uid: 167
   when:
