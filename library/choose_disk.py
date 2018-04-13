@@ -385,7 +385,6 @@ def select_only_free_devices(physical_disks):
     logger.info('Detecting free devices')
 
     for physical_disk in sorted(physical_disks):
-        ceph_disk = ""
         current_physical_disk = physical_disks[physical_disk]
 
         # Don't consider devices that doesn't support partitions
@@ -404,11 +403,8 @@ def select_only_free_devices(physical_disks):
             logger.info('Ignoring %10s : read-only device', physical_disk)
             continue
 
-        # Does the disk belongs to a LVM ?
-        return_code = os.system("pvdisplay -c /dev/{}".format(physical_disk))
-        if return_code == 0:
-            logger.info('Ignoring %10s : device is already used by LVM', physical_disk)
-            continue
+        # First check if the block device have some metadata
+        ceph_disk = disk_label("/dev/{}".format(physical_disk))
 
         # Don't consider the device if partition list is not empty,
         # A disk that is already partionned may contain important data
@@ -425,10 +421,23 @@ def select_only_free_devices(physical_disks):
                     # Saving the ceph type (journal and/or data)
                     ceph_disk += disk_type
 
+            # If we reach this point, it means that no partition had ceph on it
+            # Having partitions is a show stopper
             if not ceph_disk:
                 logger.info('Ignoring %10s : device has existing partitions', physical_disk)
                 continue
 
+        # If we reach here and ceph_disk is not populated, it means it could be an LVM
+        # We didn't checked LVM before as some ceph disks could be under LVM
+        # disk_label is supposed to catch this case, so it only remain LVM made by the user
+        if not ceph_disk:
+            # Does the disk belongs to a LVM ?
+            return_code = os.system("pvdisplay -c /dev/{}".format(physical_disk))
+            if return_code == 0:
+                logger.info('Ignoring %10s : device is already used by LVM', physical_disk)
+                continue
+
+        # If we get here, it means that's a free device we can use
         selected_devices[physical_disk] = physical_disks[physical_disk]
         selected_devices[physical_disk]['bdev'] = '/dev/' + physical_disk
 
