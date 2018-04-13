@@ -353,6 +353,8 @@ def disk_label(partition):
     '''
     Reports if a partition is containing some ceph structures
     '''
+    import json
+    # First, let's search for legacy
     stdout = subprocess.check_output(["lsblk", "-no", "PARTLABEL", "%s" % partition])
 
     if "ceph data" in stdout:
@@ -361,6 +363,17 @@ def disk_label(partition):
     if "ceph journal" in stdout:
         return "journal"
 
+    # Then, let's search for metadata coming from ceph-volume
+    output_cmd = subprocess.Popen("ceph-volume lvm list --format=json {}".format(partition),
+                                  shell=True, stdout=subprocess.PIPE)
+    raw_json, _ = output_cmd.communicate()
+    json = json.loads(raw_json)
+    for item in json:
+        current_item = json[item]
+        if "type" in current_item[0]:
+            return current_item[0]["type"]
+        else:
+            return "undefined"
     return ""
 
 
