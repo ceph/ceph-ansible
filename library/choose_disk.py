@@ -355,7 +355,7 @@ def disk_label(partition):
     Reports if a partition is containing some ceph structures
     '''
     # 1) let's search for legacy metadata made by ceph-disk
-    stdout = subprocess.check_output(["lsblk", "-no", "PARTLABEL", "%s" % partition])
+    stdout = subprocess.check_output(["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)])
 
     if "ceph data" in stdout:
         return "data"
