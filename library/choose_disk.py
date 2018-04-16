@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # Copyright 2017, Red Hat, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +16,7 @@
 
 from ansible.module_utils.basic import AnsibleModule
 import logging
+import json
 import os
 import re
 import subprocess
@@ -353,8 +354,7 @@ def disk_label(partition):
     '''
     Reports if a partition is containing some ceph structures
     '''
-    import json
-    # First, let's search for legacy
+    # 1) let's search for legacy metadata made by ceph-disk
     stdout = subprocess.check_output(["lsblk", "-no", "PARTLABEL", "%s" % partition])
 
     if "ceph data" in stdout:
@@ -363,17 +363,30 @@ def disk_label(partition):
     if "ceph journal" in stdout:
         return "journal"
 
-    # Then, let's search for metadata coming from ceph-volume
-    output_cmd = subprocess.Popen("ceph-volume lvm list --format=json {}".format(partition),
-                                  shell=True, stdout=subprocess.PIPE)
+    # 2) let's search for metadata coming from ceph-volume
+    output_cmd = subprocess.Popen(["ceph-volume", "lvm", "list", "--format=json", partition],
+                                  stdout=subprocess.PIPE)
     raw_json, _ = output_cmd.communicate()
-    json = json.loads(raw_json)
-    for item in json:
-        current_item = json[item]
-        if "type" in current_item[0]:
-            return current_item[0]["type"]
+    try:
+        json_dict = json.loads(raw_json)
+    except (ValueError, TypeError) as e:
+        fatal("Cannot parse ceph-volume properly : {}".format(e))
+
+    # If the disk have some metadata, the json is filled with information
+    for key, value in json_dict.items():
+        # As we parse a partition it should only have a single entry unless that's an error
+        if (len(value) > 1):
+            fatal("Error while parsing ceph-volume")
+        if "type" in value[0]:
+            return value[0]["type"]
         else:
+            # ceph-volume should give a type
+            # If not, we don't really what it is _but_ the disks is used
+            # So we should ignore it, let's report it undefined
             return "undefined"
+
+    # 3) We were unable to find any trace of a metadata on this disk_label
+    # So we return an empty string
     return ""
 
 
@@ -432,8 +445,10 @@ def select_only_free_devices(physical_disks):
         # disk_label is supposed to catch this case, so it only remain LVM made by the user
         if not ceph_disk:
             # Does the disk belongs to a LVM ?
-            return_code = os.system("pvdisplay -c /dev/{}".format(physical_disk))
-            if return_code == 0:
+            output_cmd = subprocess.Popen(["pvdisplay", "-c", "/dev/{}".format(physical_disk)],
+                                          stdout=subprocess.PIPE)
+            raw_pvdisplay, _ = output_cmd.communicate()
+            if output_cmd.returncode == 0:
                 logger.info('Ignoring %10s : device is already used by LVM', physical_disk)
                 continue
 
