@@ -420,34 +420,45 @@ def select_only_free_devices(physical_disks):
             logger.info('Ignoring %10s : read-only device', physical_disk)
             continue
 
-        # First check if the block device have some metadata
-        ceph_disk = disk_label("/dev/{}".format(physical_disk))
-
         # Don't consider the device if partition list is not empty,
         # A disk that is already partionned may contain important data
         # It's up to the admin to zap the device before using it in ceph-ansible
         # There is only an exception :
         #    if the partitions are from ceph, it surely means that we have to
         #    reuse them
+        found_populated_partition = False
         if len(current_physical_disk['partitions']) > 0:
             for partition in sorted(current_physical_disk['partitions']):
-                disk_type = disk_label("/dev/" + partition)
-                if disk_type and disk_type not in ceph_disk:
-                    if ceph_disk:
-                        ceph_disk += " + "
-                    # Saving the ceph type (journal and/or data)
-                    ceph_disk += disk_type
+                partition_name = "/dev/{}".format(partition)
+                disk_type = disk_label(partition_name)
+                if disk_type:
+                    # This partition is populated, let's report a usable device of it
+                    found_populated_partition = True
+                    selected_devices[partition] = current_physical_disk['partitions'][partition]
+                    selected_devices[partition]['bdev'] = partition_name
+                    selected_devices[partition]['ceph_prepared'] = disk_type
+                    # Let's propagate basic raw level info to the partition
+                    for key in ["vendor", "model", "rotational"]:
+                        if key in current_physical_disk:
+                            selected_devices[partition][key] = current_physical_disk[key]
+                    logger.info('Adding   %10s : Ceph disk detected (%s)', partition, disk_type)
 
-            # If we reach this point, it means that no partition had ceph on it
-            # Having partitions is a show stopper
-            if not ceph_disk:
+            # If we find populated partitions, no need to go further
+            # As we couldn't use the complete disk or looking for anything else on it
+            if found_populated_partition:
+                continue
+            else:
+                # Having undefined populated partitions is a show stopper
                 logger.info('Ignoring %10s : device has existing partitions', physical_disk)
                 continue
 
-        # If we reach here and ceph_disk is not populated, it means it could be an LVM
+        # If we reach here, it could be a free or lvm-based block
         # We didn't checked LVM before as some ceph disks could be under LVM
         # disk_label is supposed to catch this case, so it only remain LVM made by the user
-        if not ceph_disk:
+        disk_type = disk_label("/dev/{}".format(physical_disk))
+
+        # If ceph_disk is not populated, maybe this is a system lvm
+        if not disk_type:
             # Does the disk belongs to a LVM ?
             output_cmd = subprocess.Popen(["pvdisplay", "-c", "/dev/{}".format(physical_disk)],
                                           stdout=subprocess.PIPE)
@@ -460,9 +471,9 @@ def select_only_free_devices(physical_disks):
         selected_devices[physical_disk] = physical_disks[physical_disk]
         selected_devices[physical_disk]['bdev'] = '/dev/' + physical_disk
 
-        if ceph_disk:
-            selected_devices[physical_disk]['ceph_prepared'] = ceph_disk
-            logger.info('Adding   %10s : Ceph disk detected (%s)', physical_disk, ceph_disk)
+        if disk_type:
+            selected_devices[physical_disk]['ceph_prepared'] = disk_type
+            logger.info('Adding   %10s : Ceph disk detected (%s)', physical_disk, disk_type)
         else:
             logger.info('Adding   %10s : %s', physical_disk, selected_devices[physical_disk]['bdev'])  # noqa E501
 
@@ -538,11 +549,13 @@ def show_resulting_devices(matched_devices, physical_disks):
     def prepare_device_string(device):
         device_string = ""
         if "ceph_prepared" in device:
-            device_string += " (ceph %s)" % device["ceph_prepared"]
+            device_string += " (ceph %-9s)" % device["ceph_prepared"]
+        else:
+            device_string = "  (free %9s)" % ""
         device_string += " : "
         for feature in ["vendor", "model", "size", "rotational"]:
             if feature in device:
-                device_string += "%s:%s " % (feature[0], device[feature])
+                device_string += "[%s:%s] " % (feature[0], device[feature])
 
         return device_string
 
@@ -610,7 +623,7 @@ def main():
     matched_devices = None
     lookup_disks = None
 
-    setup_logging()
+    setup_logging("/tmp/choose_disk.log")
 
     fields = {
         "vars": {"required": True, "type": "dict"},
