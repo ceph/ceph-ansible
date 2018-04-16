@@ -357,11 +357,10 @@ def disk_label(partition):
     # 1) let's search for legacy metadata made by ceph-disk
     stdout = subprocess.check_output(["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)])
 
-    if "ceph data" in stdout:
-        return "data"
-
-    if "ceph journal" in stdout:
-        return "journal"
+    # search for the known ceph partitions types
+    for ceph_type in ['data', 'journal', 'block.wal', 'block.db', 'block']:
+        if "ceph {}".format(ceph_type) in stdout:
+            return ceph_type
 
     # 2) let's search for metadata coming from ceph-volume
     output_cmd = subprocess.Popen(["ceph-volume", "lvm", "list", "--format=json", partition],
