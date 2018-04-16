@@ -399,6 +399,11 @@ def select_only_free_devices(physical_disks):
     for physical_disk in sorted(physical_disks):
         current_physical_disk = physical_disks[physical_disk]
 
+        # Removing DeviceMapper devices
+        if physical_disk.startswith("dm-"):
+            logger.info('Ignoring %10s : device is a DM', physical_disk)
+            continue
+
         # Don't consider devices that doesn't support partitions
         if 'partitions' not in current_physical_disk:
             logger.info('Ignoring %10s : device does not support partitioning', physical_disk)
