@@ -82,3 +82,20 @@
     - radosgw_interface == 'interface'
     - radosgw_address == 'address'
     - radosgw_address_block == 'subnet'
+
+- name: "make sure monitor_address_block is valid"
+  set_fact:
+    monitor_address_block_check: "{{ hostvars[item]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) }}"
+  when:
+    - not containerized_deployment
+    - not containerized_deployment_with_kv
+    - monitor_address_block is defined
+  with_items:
+    - "{{ groups[mon_group_name] }}"
+
+- name: "fail if monitor_address_block is invalid"
+  fail:
+    msg: "An IP address in the block {{ monitor_address_block }} was not found on one or more monitor nodes. Please check your monitor_address_block setting."
+  when:
+    - monitor_address_block_check is defined
+    - monitor_address_block_check | length == 0
