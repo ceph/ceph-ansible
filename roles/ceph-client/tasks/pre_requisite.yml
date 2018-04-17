@@ -1,15 +1,5 @@
 ---
-- name: set selinux permissions
-  shell: |
-    chcon -Rt svirt_sandbox_file_t /etc/ceph
-  changed_when: false
-  when:
-    - containerized_deployment
-    - ansible_os_family == 'RedHat'
-    - sestatus is defined
-    - sestatus.stdout != 'Disabled'
-
-- name: copy ceph admin keyring if needed
+- name: copy ceph admin keyring when non containerized deployment
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.client.admin.keyring"
     dest: "/etc/ceph/"
