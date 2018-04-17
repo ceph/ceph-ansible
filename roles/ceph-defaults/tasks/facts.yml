@@ -180,31 +180,23 @@
     - not osd_auto_discovery|default(False)
     - osd_scenario|default('dummy') != 'lvm'
 
-- name: set_fact ceph_uid for Debian based system
+- name: set_fact ceph_uid for debian based system
   set_fact:
     ceph_uid: 64045
   when:
     - containerized_deployment
     - ceph_docker_image_tag | search("ubuntu")
 
-- name: set_fact ceph_uid for Red Hat based system
+- name: set_fact ceph_uid for red hat based system
   set_fact:
     ceph_uid: 167
   when:
     - containerized_deployment
     - ceph_docker_image_tag | search("latest") or ceph_docker_image_tag | search("centos") or ceph_docker_image_tag | search("fedora")
 
-- name: set_fact ceph_uid for Red Hat
+- name: set_fact ceph_uid for red hat
   set_fact:
     ceph_uid: 167
   when:
     - containerized_deployment
     - ceph_docker_image | search("rhceph")
-
-- name: check if selinux is enabled
-  command: getenforce
-  register: sestatus
-  changed_when: false
-  check_mode: no
-  when:
-    - ansible_os_family == 'RedHat'

@@ -1,0 +1,46 @@
+---
+- name: set_fact admin_keyring
+  set_fact:
+    admin_keyring:
+      - "/etc/ceph/{{ cluster }}.client.admin.keyring"
+  when:
+    - copy_admin_key
+
+- name: set_fact ceph_config_keys
+  set_fact:
+    ceph_config_keys:
+      - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
+
+- name: merge ceph_config_keys and admin_keyring
+  set_fact:
+    ceph_config_keys: "{{ ceph_config_keys + admin_keyring }}"
+  when:
+    - copy_admin_key
+
+- name: wait for ceph.conf and keys
+  local_action:
+    module: wait_for
+    path: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
+  become: false
+  with_items: "{{ ceph_config_keys }}"
+
+- name: stat for ceph config and keys
+  local_action:
+    module: stat
+    path: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
+  with_items: "{{ ceph_config_keys }}"
+  changed_when: false
+  become: false
+  failed_when: false
+  check_mode: no
+  register: statconfig
+
+- name: try to copy ceph config and keys
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
+    dest: "{{ item }}"
+    owner: root
+    group: root
+    mode: 0644
+  changed_when: false
+  with_items: "{{ ceph_config_keys }}"

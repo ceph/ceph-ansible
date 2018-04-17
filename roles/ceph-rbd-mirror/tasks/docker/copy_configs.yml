@@ -1,8 +1,15 @@
 ---
+- name: set_fact bootstrap_rbd_keyring
+  set_fact:
+    bootstrap_rbd_keyring: "/var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring"
+  when:
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+
 - name: set_fact ceph_config_keys
   set_fact:
     ceph_config_keys:
       - /etc/ceph/{{ cluster }}.client.admin.keyring
+      - "{{ bootstrap_rbd_keyring | default('') }}"
 
 - name: stat for ceph config and keys
   local_action:
@@ -11,13 +18,14 @@
   with_items: "{{ ceph_config_keys }}"
   changed_when: false
   become: false
-  ignore_errors: true
-  register: statconfig
+  failed_when: false
   check_mode: no
+  register: statconfig
+  when: "item | length > 0"
 
 - name: try to fetch ceph config and keys
   copy:
-    src: "{{ playbook_dir }}/{{ fetch_directory }}/{{ fsid }}/{{ item.0 }}"
+    src: "{{ fetch_directory }}/{{ fsid }}/{{ item.0 }}"
     dest: "{{ item.0 }}"
     owner: root
     group: root
@@ -27,4 +35,5 @@
     - "{{ ceph_config_keys }}"
     - "{{ statconfig.results }}"
   when:
+    - not item.1.get('skipped')
     - item.1.stat.exists == true
