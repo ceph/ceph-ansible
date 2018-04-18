@@ -4,6 +4,7 @@ from ansible.plugins.action import ActionBase
 import notario
 from notario.exceptions import Invalid
 from notario.validators import types, chainable
+from notario.store import store as notario_store
 
 try:
     from __main__ import display
@@ -17,7 +18,6 @@ class ActionModule(ActionBase):
     def run(self, tmp=None, task_vars=None):
         # we must use vars, since task_vars will have un-processed variables
         host_vars = task_vars['vars']
-        display.warning(host_vars)
         host = host_vars['ansible_hostname']
         mode = self._task.args.get('mode', 'permissive')
 
@@ -42,13 +42,20 @@ class ActionModule(ActionBase):
                 if host_vars["ceph_repository"] == "dev":
                     notario.validate(host_vars, ceph_repository_dev, defined_keys=True)
 
+            # store these values because one must be defined and the validation method
+            # will need access to all three through the store
+            notario_store["monitor_address"] = host_vars.get("monitor_address", None)
+            notario_store["monitor_address_block"] = host_vars.get("monitor_address_block", None)
+            notario_store["monitor_interface"] = host_vars.get("monitor_interface", None)
+
+            notario.validate(host_vars, monitor_options, defined_keys=True)
+
         except Invalid as error:
             display.vvvv("Notario Failure: %s" % str(error))
-            display.warning(error)
-            display.warning("[%s] Validation failed for variable: %s" % (host, error.path))
+            display.warning("[%s] Validation failed for variable: %s" % (host, error.path[0]))
             msg = "Invalid variable assignment in host: %s\n" % host
-            msg += "    %s = %s\n" % (error.path[0], error.path[1])
-            msg += "    %s   %s\n" % (" " * len(str(error.path[0])), "^" * len(str(error.path[1])))
+            msg += "    %s = %s\n" % (error.path, error.path)
+            msg += "    %s   %s\n" % (" " * len(str(error.path)), "^" * len(str(error.path)))
             msg += "Reason: %s" % error.reason
             result['failed'] = mode == 'strict'
             result['msg'] = msg
@@ -75,6 +82,20 @@ def ceph_repository_type_choices(value):
     assert value in ['cdn', 'iso'], "ceph_repository_type must be either 'cdn' or 'iso'"
 
 
+def validate_monitor_options(value):
+    """
+    Either monitor_address, monitor_address_block or monitor_interface must
+    be defined.
+    """
+    monitor_address_given = notario_store["monitor_address"] != "0.0.0.0"
+    monitor_address_block_given = notario_store["monitor_address_block"] != "subnet"
+    monitor_interface_given = notario_store["monitor_interface"] != "interface"
+
+    msg = "Either monitor_address, monitor_address_block or monitor_interface must be provided"
+
+    assert any(monitor_address_given, monitor_address_block_given, monitor_interface_given), msg
+
+
 install_options = (
     ("ceph_origin", ceph_origin_choices),
     ('osd_objectstore', osd_objectstore_choices),
@@ -97,4 +118,13 @@ ceph_repository_rhcs = (
 ceph_repository_dev = (
     ("ceph_dev_branch", types.string),
     ("ceph_dev_sha1", types.string),
+)
+
+monitor_options = (
+    ("cluster_network", types.string),
+    ("fsid", types.string),
+    ("public_network", types.string),
+    ("monitor_address", validate_monitor_options),
+    ("monitor_address_block", validate_monitor_options),
+    ("monitor_interface", validate_monitor_options),
 )
