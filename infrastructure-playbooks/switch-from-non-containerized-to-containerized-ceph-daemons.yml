@@ -258,12 +258,18 @@
       with_items: "{{ devices }}"
       register: osd_running
 
+    - name: resolve device(s) path(s)
+      command: readlink -f {{ item }}
+      changed_when: false
+      with_items: "{{ devices }}"
+      register: devices_canonicalize
+
     - name: unmount all the osd directories
-      command: umount "{{ item.0 }}"1
+      command: umount "{{ item.0.stdout }}"1
       changed_when: false
       failed_when: false
       with_together:
-        - "{{ devices }}"
+        - "{{ devices_canonicalize.results }}"
         - "{{ osd_running.results }}"
       when:
         - item.1.get("rc", 0) != 0
