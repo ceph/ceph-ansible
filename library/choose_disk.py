@@ -395,6 +395,13 @@ def disk_label(partition):
 def select_only_free_devices(physical_disks):
     '''
     It's important reporting only devices that are not currently used.
+    This code is written by rejecting devices by successive tests.
+    We try to detect something on a given disk:
+        - if we do, we reject the disk and continue to the next one
+        - if we don't, we try another way of detecting something
+
+    So in this code, the 'continue' call means "We've found something, let's check the next disk'
+    This approach avoid avoid a cascade of if/elif where the free disk case would be the last else.
     '''
     selected_devices = {}
     logger.info('Detecting free devices')
@@ -428,7 +435,8 @@ def select_only_free_devices(physical_disks):
         # It's up to the admin to zap the device before using it in ceph-ansible
         # There is only an exception :
         #    if the partitions are from ceph, it surely means that we have to
-        #    reuse them
+        #    reuse them to get a match on an exisiting setup
+        # This is mandatory to inform ansible we found the proper configuration
         found_populated_partition = False
         if len(current_physical_disk['partitions']) > 0:
             for partition in sorted(current_physical_disk['partitions']):
@@ -467,19 +475,28 @@ def select_only_free_devices(physical_disks):
                                           stdout=subprocess.PIPE)
             raw_pvdisplay, _ = output_cmd.communicate()
             if output_cmd.returncode == 0:
+                # FIXME: Why not considering if there is some free space on it ?
                 logger.info('Ignoring %10s : device is already used by LVM', physical_disk)
                 continue
 
+        #############################################
+        # AFTER THIS LINE, NO MORE DEVICE EXCLUSION #
+        #############################################
         # If we get here, it means that's a free device we can use
+        # Everthing below that line should be about handling how to report a free disk
         selected_devices[physical_disk] = physical_disks[physical_disk]
         selected_devices[physical_disk]['bdev'] = '/dev/' + physical_disk
 
         if disk_type:
+            # The block device had some ceph metadata
             selected_devices[physical_disk]['ceph_prepared'] = disk_type
             logger.info('Adding   %10s : Ceph disk detected (%s)', physical_disk, disk_type)
         else:
+            # This is a totally free disk device, no lvm, no partitions, no ceph label
             logger.info('Adding   %10s : %s', physical_disk, selected_devices[physical_disk]['bdev'])  # noqa E501
+        # This is end of handling a single disk
 
+    # This is the end of handling all the disks
     return selected_devices
 
 
