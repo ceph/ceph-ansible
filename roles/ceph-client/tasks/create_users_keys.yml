@@ -97,16 +97,3 @@
   when:
     - not item.get('skipped', False)
     - not inventory_hostname == groups.get(client_group_name, []) | first
-
-- name: setfacl for cephx key(s)
-  acl:
-    path: "{{ ceph_conf_key_directory }}/{{ cluster }}.{{ item.0.name }}.keyring"
-    entry: "{{ item.1 }}"
-    state: present
-  with_subelements:
-    - "{{ keys }}"
-    - acls
-    - skip_missing: true
-  when:
-    - cephx
-    - keys | length > 0
