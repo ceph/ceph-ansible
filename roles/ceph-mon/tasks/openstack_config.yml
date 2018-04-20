@@ -29,6 +29,7 @@
     secret: "{{ item.key | default('') }}"
     containerized: "{{ docker_exec_cmd | default(False) }}"
     cluster: "{{ cluster }}"
+    mode: "{{ item.mode|default(omit) }}"
   with_items: "{{ openstack_keys }}"
   when: cephx
 
@@ -51,26 +52,3 @@
     - cephx
     - openstack_config
     - item.0 != groups[mon_group_name] | last
-
-- name: chmod openstack cephx key(s) on the other mons and this mon
-  file:
-    path: "/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
-    mode: "{{ item.1.mode|default(omit) }}" # if mode not in list, uses mode from ps umask
-  with_nested:
-    - "{{ groups[mon_group_name] }}"
-    - "{{ openstack_keys }}"
-  delegate_to: "{{ item.0 }}"
-  when:
-    - openstack_config
-    - cephx
-
-- name: setfacl for openstack cephx key(s) on the other mons and this mon
-  command: "setfacl -m {{ item.1.acls | join(',') }} /etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
-  with_nested:
-    - "{{ groups[mon_group_name] }}"
-    - "{{ openstack_keys }}"
-  delegate_to: "{{ item.0 }}"
-  when:
-    - item.1.get('acls', []) | length > 0
-    - openstack_config
-    - cephx
