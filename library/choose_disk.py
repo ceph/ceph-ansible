@@ -602,7 +602,7 @@ def main():
     matched_devices = None
     lookup_disks = None
 
-    setup_logging("/tmp/choose_disk.log")
+    setup_logging()
 
     fields = {
         "vars": {"required": True, "type": "dict"},
