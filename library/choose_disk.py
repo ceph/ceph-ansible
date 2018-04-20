@@ -353,46 +353,69 @@ def expand_disks(lookup_disks, ceph_type="", module=None):
     return final_disks
 
 
-def disk_label(partition):
+def disk_label(partition, current_fsid, ceph_disk):
     '''
     Reports if a partition is containing some ceph structures
     '''
-    # 1) let's search for legacy metadata made by ceph-disk
-    stdout = subprocess.check_output(["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)])
 
+    # 1) let's search for metadata coming from ceph-volume
+    try:
+        output_cmd = subprocess.Popen(["ceph-volume", "lvm", "list", "--format=json", partition],
+                                      stdout=subprocess.PIPE)
+        raw_json, _ = output_cmd.communicate()
+        try:
+            json_dict = json.loads(raw_json)
+        except (ValueError, TypeError) as e:
+            fatal("Cannot parse ceph-volume properly : {}".format(e))
+
+        # If the disk have some metadata, the json is filled with information
+        for key, value in json_dict.items():
+            # As we parse a partition it should only have a single entry unless that's an error
+            if (len(value) > 1):
+                fatal("Error while parsing ceph-volume")
+            if "tags" in value[0]:
+                if "ceph.cluster_fsid" in value[0]['tags']:
+                    if value[0]["tags"]["ceph.cluster_fsid"] != current_fsid:
+                        return "foreign : {}".format(value[0]["tags"]["ceph.cluster_fsid"])
+            if "type" in value[0]:
+                return value[0]["type"]
+            else:
+                # ceph-volume should give a type
+                # If not, we don't really what it is _but_ the disks is used
+                # So we should ignore it, let's report it undefined
+                return "undefined"
+
+    except subprocess.CalledProcessError:
+        pass
+
+    # 2) let's try with ceph-disk
+    # If the disk have some metadata, the json is filled with information
+    for item in ceph_disk:
+        if "partitions" in item:
+            for partition_iter in item['partitions']:
+                if "path" in partition_iter:
+                    if partition_iter["path"] == partition:
+                        if "ceph_fsid" in partition_iter:
+                            if partition_iter["ceph_fsid"] != current_fsid:
+                                return "foreign : {}".format(partition_iter["ceph_fsid"])
+
+    # 3) let's search directly from the partitions labels
+    try:
+        stdout = subprocess.check_output(["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)])
+    except subprocess.CalledProcessError:
+        # If we fail at blkid, we don't know the status of the disk
+        # Let's consider it's not free
+        return "failed"
     # search for the known ceph partitions types
     for ceph_type in CEPH_META_LIST:
         if "ceph {}".format(ceph_type) in stdout:
             return ceph_type
-
-    # 2) let's search for metadata coming from ceph-volume
-    output_cmd = subprocess.Popen(["ceph-volume", "lvm", "list", "--format=json", partition],
-                                  stdout=subprocess.PIPE)
-    raw_json, _ = output_cmd.communicate()
-    try:
-        json_dict = json.loads(raw_json)
-    except (ValueError, TypeError) as e:
-        fatal("Cannot parse ceph-volume properly : {}".format(e))
-
-    # If the disk have some metadata, the json is filled with information
-    for key, value in json_dict.items():
-        # As we parse a partition it should only have a single entry unless that's an error
-        if (len(value) > 1):
-            fatal("Error while parsing ceph-volume")
-        if "type" in value[0]:
-            return value[0]["type"]
-        else:
-            # ceph-volume should give a type
-            # If not, we don't really what it is _but_ the disks is used
-            # So we should ignore it, let's report it undefined
-            return "undefined"
-
-    # 3) We were unable to find any trace of a metadata on this disk_label
+    # 4) We were unable to find any trace of a metadata on this disk_label
     # So we return an empty string
     return ""
 
 
-def select_only_free_devices(physical_disks):
+def select_only_free_devices(physical_disks, current_fsid):
     '''
     It's important reporting only devices that are not currently used.
     This code is written by rejecting devices by successive tests.
@@ -404,7 +427,17 @@ def select_only_free_devices(physical_disks):
     This approach avoid avoid a cascade of if/elif where the free disk case would be the last else.
     '''
     selected_devices = {}
-    logger.info('Detecting free devices')
+    logger.info('Detecting free devices with fsid={}'.format(current_fsid))
+
+    # Let's collect ceph-disk output one for all
+    ceph_disk = {}
+    output_cmd = subprocess.Popen(["ceph-disk", "list", "--format=json"],
+                                  stdout=subprocess.PIPE)
+    raw_json, _ = output_cmd.communicate()
+    try:
+        ceph_disk = json.loads(raw_json)
+    except (ValueError, TypeError) as e:
+        fatal("Cannot parse ceph-disk properly : {}".format(e))
 
     for physical_disk in sorted(physical_disks):
         current_physical_disk = physical_disks[physical_disk]
@@ -441,8 +474,11 @@ def select_only_free_devices(physical_disks):
         if len(current_physical_disk['partitions']) > 0:
             for partition in sorted(current_physical_disk['partitions']):
                 partition_name = "/dev/{}".format(partition)
-                disk_type = disk_label(partition_name)
+                disk_type = disk_label(partition_name, current_fsid, ceph_disk)
                 if disk_type:
+                    if disk_type.startswith("foreign"):
+                        logger.info('Ignoring %10s : device has foreign Ceph metadata : %s', partition, disk_type.split(":")[1])
+                        continue
                     # This partition is populated, let's report a usable device of it
                     found_populated_partition = True
                     selected_devices[partition] = current_physical_disk['partitions'][partition]
@@ -466,7 +502,7 @@ def select_only_free_devices(physical_disks):
         # If we reach here, it could be a free or lvm-based block
         # We didn't checked LVM before as some ceph disks could be under LVM
         # disk_label is supposed to catch this case, so it only remain LVM made by the user
-        disk_type = disk_label("/dev/{}".format(physical_disk))
+        disk_type = disk_label("/dev/{}".format(physical_disk), current_fsid, ceph_disk)
 
         # If ceph_disk is not populated, maybe this is a system lvm
         if not disk_type:
@@ -478,7 +514,9 @@ def select_only_free_devices(physical_disks):
                 # FIXME: Why not considering if there is some free space on it ?
                 logger.info('Ignoring %10s : device is already used by LVM', physical_disk)
                 continue
-
+        elif disk_type.startswith("foreign"):
+            logger.info('Ignoring %10s : device has foreign Ceph metadata : %s', physical_disk, disk_type.split(":")[1])
+            continue
         #############################################
         # AFTER THIS LINE, NO MORE DEVICE EXCLUSION #
         #############################################
@@ -587,13 +625,16 @@ def fatal(message, module):
         exit(1)
 
 
-def get_var(module, variable):
+def get_var(module, variable, must_exist=False):
     '''
     Extract the ansible variable from the playbook
     If variable doesn't exist, let's return None
     '''
     if variable in module.params["vars"]:
         return module.params["vars"][variable]
+
+    if must_exist:
+        fatal("variable {} should exist in vars !".format(variable))
 
 
 def main():
@@ -614,11 +655,11 @@ def main():
     )
 
     # Loading variables from vars
-    ansible_devices = get_var(module, "ansible_devices")
-    if not ansible_devices:
-        fatal("Missing ansible_devices in vars !", module)
+    ansible_devices = get_var(module, "ansible_devices", True)
 
-    physical_disks = select_only_free_devices(ansible_devices)
+    current_fsid = get_var(module, "fsid", True)
+
+    physical_disks = select_only_free_devices(ansible_devices, current_fsid)
 
     devices = get_var(module, "devices")
 
