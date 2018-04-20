@@ -630,7 +630,6 @@ def main():
         # partitions, transform their device name in a persistent name
         lookup_disks = expand_disks(devices, "", module)
     elif isinstance(devices, list):
-        legacy = True
         logger.info("Legacy syntax")
         logger.info("devices : %s", devices)
 
@@ -665,26 +664,35 @@ def main():
                                                                  len(lookup_disks)), module)
 
     # Preparing the final output by deivces in several categories
-    # - data disks for ceph
-    # - disks to enable in ceph
-    # - journals
+    # This is CEPH_META_LIST + ceph_already_configured to report the already configured devices
     ceph_data = []
-    journal = []
-    to_activate = []
+    ceph_journal = []
+    ceph_block_wal = []
+    ceph_block_db = []
+    ceph_block = []
+    ceph_already_configured = []
     ceph_count = 0
     for matched_device in matched_devices:
         device = matched_devices[matched_device]
         device['name'] = matched_device
         if "ceph_prepared" in device:
-            if "data" in device["ceph_prepared"]:
+            # If the already prepared disk is not a journal
+            if (device["ceph_prepared"] in [x for x in CEPH_META_LIST if x != "journal"]):
                 ceph_count = ceph_count + 1
-                to_activate.append(device["bdev"])
+                ceph_already_configured.append(device["bdev"])
             continue
         if "data" in device["ceph_type"]:
                 ceph_data.append(device["bdev"])
                 continue
+        if "block.wal" in device["ceph_type"]:
+                ceph_block_wal.append(device['bdev'])
+                continue
+        if "block.db" in device["ceph_type"]:
+                ceph_block_db.append(device['bdev'])
+        if "block" in device["ceph_type"]:
+                ceph_block.append(device['bdev'])
         if "journal" in device["ceph_type"]:
-            journal.append(device["bdev"])
+            ceph_journal.append(device["bdev"])
 
     changed = True
     logger.info("%d/%d disks already configured", ceph_count, len(matched_devices))
@@ -699,20 +707,15 @@ def main():
     logger.info("# End #")
     logger.info("#######")
 
-    if legacy is True:
-        # Reporting devices & raw_journal_devices for compatiblity
-        module.exit_json(msg=message, changed=changed,
-                         ansible_facts=dict(legacy_devices=ceph_data,
-                                            journal_devices=journal,
-                                            devices_to_activate=to_activate,
-                                            storage_devices=[]))
-    else:
-        # Reporting storage_devices & journal_devices
-        module.exit_json(msg=message, changed=changed,
-                         ansible_facts=dict(storage_devices=ceph_data,
-                                            journal_devices=journal,
-                                            devices_to_activate=to_activate,
-                                            legacy_devices=[]))
+    # We report disks per categories regardingless if its a legacy or native syntax
+    module.exit_json(msg=message, changed=changed,
+                     ansible_facts=dict(data_devices=ceph_data,
+                                        journal_devices=ceph_journal,
+                                        wal_devices=ceph_block_wal,
+                                        db_devices=ceph_block_db,
+                                        block_devices=ceph_block,
+                                        devices_already_configured=ceph_already_configured,
+                                        ))
 
 
 if __name__ == '__main__':

@@ -46,42 +46,42 @@ Get the output of the ansible command on a node that have the disk type you are 
                 "ansible_facts": {
                     "ansible_devices": {
                         "sda": {
-                            "holders": [], 
-                            "host": "RAID bus controller: LSI Logic / Symbios Logic MegaRAID SAS 2208 [Thunderbolt] (rev 01)", 
-                            "model": "PERC H710P", 
+                            "holders": [],
+                            "host": "RAID bus controller: LSI Logic / Symbios Logic MegaRAID SAS 2208 [Thunderbolt] (rev 01)",
+                            "model": "PERC H710P",
                             "partitions": {
                                 "sda1": {
-                                    "holders": [], 
-                                    "sectors": "1024000", 
-                                    "sectorsize": 512, 
-                                    "size": "500.00 MB", 
-                                    "start": "2048", 
+                                    "holders": [],
+                                    "sectors": "1024000",
+                                    "sectorsize": 512,
+                                    "size": "500.00 MB",
+                                    "start": "2048",
                                     "uuid": "941138c1-7614-498a-911a-d20bd8a02223"
-                                }, 
+                                },
                                 "sda2": {
                                     "holders": [
-                                        "rhel_gprfs033-root", 
-                                        "rhel_gprfs033-swap", 
+                                        "rhel_gprfs033-root",
+                                        "rhel_gprfs033-swap",
                                         "rhel_gprfs033-home"
-                                    ], 
-                                    "sectors": "974673920", 
-                                    "sectorsize": 512, 
-                                    "size": "464.76 GB", 
-                                    "start": "1026048", 
+                                    ],
+                                    "sectors": "974673920",
+                                    "sectorsize": 512,
+                                    "size": "464.76 GB",
+                                    "start": "1026048",
                                     "uuid": null
                                 }
-                            }, 
-                            "removable": "0", 
-                            "rotational": "1", 
-                            "sas_address": null, 
-                            "sas_device_handle": null, 
-                            "scheduler_mode": "deadline", 
-                            "sectors": "975699968", 
-                            "sectorsize": "512", 
-                            "size": "465.25 GB", 
-                            "support_discard": "0", 
+                            },
+                            "removable": "0",
+                            "rotational": "1",
+                            "sas_address": null,
+                            "sas_device_handle": null,
+                            "scheduler_mode": "deadline",
+                            "sectors": "975699968",
+                            "sectorsize": "512",
+                            "size": "465.25 GB",
+                            "support_discard": "0",
                             "vendor": "DELL"
-                        }, 
+                        },
                      "sdb": {
             ....
     [root@host]
@@ -107,9 +107,9 @@ From the above hardware description, we can extract relevant information and put
 
 * **count** : mandatory option to define the number of devices you want, starting from 1. If you want to match all the disks without taking care of the number, then use the **'*'** amount.
 
-* **ceph_type**: mandatory option that defines the kind of disk type. Could be "data" or "journal".
+* **ceph_type**: mandatory option that defines the kind of disk type. Could be "data", "journal", "block", "block.db", "block.wal".
 
-A typical profile for this example could be : 
+A typical profile for this example could be :
 
        vars:
           devices: {'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 1, 'ceph_type' : 'data' }}
@@ -121,7 +121,6 @@ If for any reasons, users needs to use the legacy naming by using direct path na
             - /dev/sda
             - /dev/sdb
             - /dev/sdc
-          raw_journal_devices: [ '/dev/sdf' ]
 
 **Note:** Using this legacy naming kills most of the benefits of this module. That's mostly a workaround in case of issues. It will only filter out disks that have partitions.
 
@@ -149,17 +148,20 @@ Just define a yaml file with this setup :
             - name: choose disk
               choose_disk:
                 vars: "{{vars}}"
-            - debug: var=storage_devices
+            - debug: var=data_devices
             - debug: var=journal_devices
-            - debug: var=legacy_devices
-            - debug: var=devices_to_activate
+            - debug: var=wal_devices
+            - debug: var=db_devices
+            - debug: var=wal_devices
+            - debug: var=block_devices
+            - debug: var=devices_already_configured
 
 
 The resulting *devices* structure looks like :
 
             ok: [localhost] => {
-                "storage_devices": [
-                    "/dev/disk/by-id/scsi-36848f690e68a50001e428e4f1e211ba2"
+                "data_devices": [
+                    "/dev/sdb"
                 ]
             }
 
@@ -167,7 +169,7 @@ This structure reports the selected disks by using the *profile name* key padded
 
 The properties of each matched disks are reported, while two new properties are added :
 
-* bdev : the consistent *b*lock *dev*ice path : this path never change over time or reboots
+* bdev : the consistent block device path : this path never change over time or reboots
 * ceph : if this key is set, it means this disk is already having ceph partitions on it
 
 ## Step 4: using the disks
@@ -201,7 +203,7 @@ In addition, a set of functions helps at comparing the sizes :
 * between(x, y): gt(x) and lt(y)
 * between_e(x, y): gte(x) and lte(y)
 
-A typical usage looks like : 
+A typical usage looks like :
 
           devices:
             storage_disks:
@@ -229,7 +231,7 @@ The main idea behind this module is being able to select precisely the disks use
 ### Being to simple
 Having a too simple profile leads to a less accurate results and could lead to a wrong selection of disks like in :
 
-          devices: {'storage_disks': {'size' : 'gt(1MB)', 'count': '*', 'ceph_type': 'data'}}
+          devices: {'storage_disks': {'size' : 'gt(1MB)', 'count': '\*', 'ceph_type': 'data'}}
 
 This is grabbing any storage device, even like usb keys. That's really a lack of control.
 
@@ -241,64 +243,3 @@ Having a too precise profile leads to a lack of matching devices. Selecting a de
 You can run your ansible playbook with the '-vvv' option which is very verbose.
 
 To get a full history and persistent logging, the module is generating a log file located in `/var/log/choose_disk.log`
-
-A typical output looks like :
-
-            ############
-            # Starting #
-            ############
-            Detecting free devices
-             Ignoring        sda : Device have exisiting partitions
-             Adding          sdb : /dev/sdb
-             Adding          sdc : /dev/sdc
-             Adding          sdd : /dev/sdd
-             Adding          sde : /dev/sde
-             Adding          sdf : Ceph disk detected
-             Adding          sdg : Ceph disk detected
-             Adding          sdh : /dev/sdh
-             Adding          sdi : /dev/sdi
-             Adding          sdj : /dev/sdj
-             Adding          sdk : /dev/sdk
-             Adding          sdl : /dev/sdl
-             Adding          sdm : /dev/sdm
-            Native syntax
-             disks : {'storage_disks': {'count': 3, 'rotational': '1', 'size': 'gt(800 MB)', 'ceph_type': 'data'}}
-            Finding persistent disks name
-             Renaming        sdb to             scsi-36848f690e68a50001e428e4f1e211ba2
-             Renaming        sdc to             scsi-36848f690e68a50001e428e4f1e2b4baf
-             Renaming        sdd to             scsi-36848f690e68a50001e428e501e358d6f
-             Renaming        sde to             scsi-36848f690e68a50001e428e511e3fb33c
-             Renaming        sdf to             scsi-36848f690e68a50001e428e511e4a6c20
-             Renaming        sdg to             scsi-36848f690e68a50001e428e521e55c62b
-             Renaming        sdh to             scsi-36848f690e68a50001e428e531e60f90f
-             Renaming        sdi to             scsi-36848f690e68a50001e428e541e6c6027
-             Renaming        sdj to             scsi-36848f690e68a50001e428e541e778a3c
-             Renaming        sdk to             scsi-36848f690e68a50001e428e551e831be3
-             Renaming        sdl to             scsi-36848f690e68a50001e428e561e8e3478
-             Renaming        sdm to             scsi-36848f690e68a50001e428e571e9dccd1
-            Looking for matches
-             Inspecting storage_disks_000
-                          scsi-36848f690e68a50001e428e511e4a6c20 matched
-             Inspecting storage_disks_001
-                          scsi-36848f690e68a50001e428e521e55c62b matched
-             Inspecting storage_disks_002
-                          scsi-36848f690e68a50001e428e4f1e211ba2 matched
-            Matched devices   :   3 
-             storage_disks_000 : /dev/disk/by-id/scsi-36848f690e68a50001e428e511e4a6c20 (ceph)
-             storage_disks_001 : /dev/disk/by-id/scsi-36848f690e68a50001e428e521e55c62b (ceph)
-             storage_disks_002 : /dev/disk/by-id/scsi-36848f690e68a50001e428e4f1e211ba2
-            Unmatched devices :   9
-             /dev/disk/by-id/scsi-36848f690e68a50001e428e4f1e2b4baf
-             /dev/disk/by-id/scsi-36848f690e68a50001e428e501e358d6f
-             /dev/disk/by-id/scsi-36848f690e68a50001e428e511e3fb33c
-             /dev/disk/by-id/scsi-36848f690e68a50001e428e531e60f90f
-             /dev/disk/by-id/scsi-36848f690e68a50001e428e541e6c6027
-             /dev/disk/by-id/scsi-36848f690e68a50001e428e541e778a3c
-             /dev/disk/by-id/scsi-36848f690e68a50001e428e551e831be3
-             /dev/disk/by-id/scsi-36848f690e68a50001e428e561e8e3478
-             /dev/disk/by-id/scsi-36848f690e68a50001e428e571e9dccd1
-            2/3 disks already configured
-            All searched devices were found
-            #######
-            # End #
-            #######
