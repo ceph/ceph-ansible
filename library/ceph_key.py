@@ -57,8 +57,8 @@ options:
             If 'absent' is used, the module will simply delete the keyring.
             If 'list' is used, the module will list all the keys and will
             return a json output.
-            If 'update' is used, the module will **only** update the capabilities
-            of a given keyring.
+            If 'update' is used, the module will **only** update
+            the capabilities of a given keyring.
             If 'info' is used, the module will return in a json format the
             description of a given keyring.
         required: true
@@ -120,6 +120,7 @@ caps:
       osd: allow *
       mgr: allow *
       mds: allow
+    mode: 0400
     import_key: False
 
 - name: create monitor initial keyring
@@ -187,14 +188,6 @@ def fatal(message, module):
         raise(Exception(message))
 
 
-def key_mode(file_path, mode):
-    '''
-    Change mode file for a CephX key
-    Problem, how to do this on containerized deployment?
-    '''
-    os.chmod(file_path, mode)
-
-
 def generate_secret():
     '''
     Generate a CephX secret
@@ -213,7 +206,8 @@ def generate_caps(cmd, _type, caps):
     '''
 
     for k, v in caps.iteritems():
-        # makes sure someone didn't pass an empty var, we don't want to add an empty cap
+        # makes sure someone didn't pass an empty var,
+        # we don't want to add an empty cap
         if len(k) == 0:
             continue
         if _type == "ceph-authtool":
@@ -400,7 +394,8 @@ def run_module():
 
     module = AnsibleModule(
         argument_spec=module_args,
-        supports_check_mode=True
+        supports_check_mode=True,
+        add_file_common_args=True,
     )
 
     # Gather module parameters in variables
@@ -440,7 +435,9 @@ def run_module():
         if not caps:
             fatal("Capabilities must be provided when state is 'present'", module)
 
-        # We allow 'present' to override any existing key ONLY if a secret is provided, if not we skip the creation
+        # We allow 'present' to override any existing key
+        # ONLY if a secret is provided
+        # if not we skip the creation
         if import_key:
             if rc == 0 and not secret:
                 result["stdout"] = "skipped, since {0} already exists, if you want to update a key use 'state: update'".format(
@@ -451,6 +448,11 @@ def run_module():
         rc, cmd, out, err = exec_commands(module, create_key(
             module, result, cluster, name, secret, caps, import_key, auid, dest, containerized))
 
+        file_path = os.path.join(
+            dest + "/" + cluster + "." + name + ".keyring")
+        file_args = module.load_file_common_arguments(module.params)
+        file_args['path'] = file_path
+        module.set_fs_attributes_if_different(file_args, False)
     elif state == "update":
         if not caps:
             fatal("Capabilities must be provided when state is 'update'", module)
