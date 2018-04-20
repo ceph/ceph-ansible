@@ -102,8 +102,8 @@ options:
 EXAMPLES = '''
 
 keys_to_create:
-  - { name: client.key, key: "AQAin8tUUK84ExAA/QgBtI7gEMWdmnvKBzlXdQ==", caps: { mon: "allow rwx", mds: "allow *" } , mode: "0600", acls: [] }
-  - { name: client.cle, caps: { mon: "allow r", osd: "allow *" } , mode: "0600", acls: [] }
+  - { name: client.key, key: "AQAin8tUUK84ExAA/QgBtI7gEMWdmnvKBzlXdQ==", caps: { mon: "allow rwx", mds: "allow *" } , mode: "0600" }
+  - { name: client.cle, caps: { mon: "allow r", osd: "allow *" } , mode: "0600" }
 
 caps:
   mon: "allow rwx"
