@@ -116,9 +116,11 @@
       when:
         - containerized_deployment
 
+    # if nvme then osd_to_kill_disks is nvme0n1, we need nvme0
+    # if ssd or hdd then osd_to_kill_disks is sda1, we need sda
     - name: stop osd services (container)
       service:
-        name: "ceph-osd@{{ item.0.stdout[:-1] | regex_replace('/dev/', '') }}"
+        name: "ceph-osd@{{ item.0.stdout[:-2] | regex_replace('/dev/', '') if 'nvme' in item.0.stdout else item.0.stdout[:-1] | regex_replace('/dev/', '') }}"
         state: stopped
         enabled: no
       with_together:
