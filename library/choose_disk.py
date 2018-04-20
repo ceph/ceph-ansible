@@ -39,6 +39,8 @@ description:
     - native mode where user specify what disk to search base on its features
 '''
 
+CEPH_META_LIST = ['data', 'journal', 'block.wal', 'block.db', 'block']
+
 # The following set of functions are used to compare units
 # To insure we compare similar metrics, we convert them with to_bytes()
 # into the same unit (i.e to avoid comparing GB and MB)
@@ -330,9 +332,10 @@ def expand_disks(lookup_disks, ceph_type="", module=None):
             if 'count' not in lookup_disks[disk]:
                 fatal("disk '%s' should have a 'count' value defined" % disk, module)
             if 'ceph_type' not in lookup_disks[disk]:
-                fatal("disk '%s' should have a 'ceph_type' value defined : {data | journal}" % disk, module)  # noqa E501
-            if lookup_disks[disk]['ceph_type'] not in ['data', 'journal']:
-                fatal("disk '%s' doesn't have a valid 'ceph_type' defined, it should be : {data | journal}" % disk, module)   # noqa E501
+                fatal("disk '%s' should have a 'ceph_type' value defined" % disk, module)  # noqa E501
+            if lookup_disks[disk]['ceph_type'] not in CEPH_META_LIST:
+                fatal("disk '{}' doesn't have a valid 'ceph_type' defined "
+                       "it should be one of those:  {}".format(disk, CEPH_META_LIST), module)   # noqa E501
             if 'count' in lookup_disks[disk]:
                 count = lookup_disks[disk]['count']
                 del lookup_disks[disk]['count']
@@ -358,7 +361,7 @@ def disk_label(partition):
     stdout = subprocess.check_output(["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)])
 
     # search for the known ceph partitions types
-    for ceph_type in ['data', 'journal', 'block.wal', 'block.db', 'block']:
+    for ceph_type in CEPH_META_LIST:
         if "ceph {}".format(ceph_type) in stdout:
             return ceph_type
 
