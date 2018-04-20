@@ -270,7 +270,7 @@ def find_match(physical_disks, lookup_disks, module=None):
 
             # If all the features matched
             if match_count == len(current_lookup):
-                logger.info(" %50s matched", physical_disk)
+                logger.info(" %10s matched", physical_disk)
 
                 # When looking for an infinite number of disks,
                 # we can have several disks per matching
@@ -293,10 +293,10 @@ def find_match(physical_disks, lookup_disks, module=None):
                     break
             elif match_count > 0:
                 # We only found a subset of the required features
-                logger.info(" %50s partially matched with %d/%d items",
+                logger.info(" %10s partially matched with %d/%d items",
                             physical_disk, match_count, len(current_lookup))
             else:
-                logger.info(" %50s no devices matched", physical_disk)
+                logger.info(" %10s no devices matched", physical_disk)
 
     # Let's prepare the final output
     final_disks = {}
@@ -483,47 +483,6 @@ def select_only_free_devices(physical_disks):
     return selected_devices
 
 
-def get_block_devices_persistent_name(physical_disks):
-    '''
-    Replace the short name (sda) by the persistent naming 'by-id'
-    '''
-    directory = "/dev/disk/by-id/"
-
-    logger.info('Finding persistent disks name')
-
-    # If the directory doesn't exist, reports the list as-is
-    if not os.path.isdir(directory):
-        logger.info('Cannot open %s', directory)
-        return physical_disks
-
-    final_disks = {}
-    matching_devices = {}
-
-    # Searching in the /dev/disk/by-id/ which are the disks we look for
-    for root, dirs, files in os.walk(directory, topdown=False):
-        for f in files:
-            device_name = os.path.basename(os.readlink(os.path.join(root, f)))
-            if device_name in physical_disks:
-                if device_name not in matching_devices:
-                    matching_devices[device_name] = [f]
-                else:
-                    matching_devices[device_name].append(f)
-
-    # Saving matching disks and add the path of the block device
-    # Output is like : Renaming        vdb to                        virtio-e0b94c7d-75ca-4175-a
-    for physical_disk in sorted(physical_disks):
-        if physical_disk in matching_devices:
-            current_index = sorted(matching_devices[physical_disk])[0]
-            final_disks[current_index] = physical_disks[physical_disk]
-            final_disks[current_index]["bdev"] = "%s%s" % (directory, current_index)
-            logger.info('Renaming %10s to %50s', physical_disk, current_index)
-        else:
-            current_index = physical_disk
-            final_disks[current_index] = physical_disks[physical_disk]
-
-    return final_disks
-
-
 def fake_device(legacy_devices, ceph_type):
     '''
     In case of legacy block device names, let's create an internal faked
@@ -653,7 +612,6 @@ def main():
         # From the ansible facts, we only keep disks that doesn't have
         # partitions, transform their device name in a persistent name
         lookup_disks = expand_disks(devices, "", module)
-        physical_disks = get_block_devices_persistent_name(physical_disks)
     elif isinstance(devices, list):
         legacy = True
         logger.info("Legacy syntax")
