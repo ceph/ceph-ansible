@@ -3,7 +3,8 @@ from ansible.plugins.action import ActionBase
 
 import notario
 from notario.exceptions import Invalid
-from notario.validators import types, chainable
+from notario.validators import types, chainable, iterables, recursive
+from notario.decorators import optional
 from notario.store import store as notario_store
 
 try:
@@ -50,6 +51,18 @@ class ActionModule(ActionBase):
 
             notario.validate(host_vars, monitor_options, defined_keys=True)
 
+            # validate osd scenario setup
+            notario.validate(host_vars, osd_options, defined_keys=True)
+            notario_store['osd_objectstore'] = host_vars["osd_objectstore"]
+            if host_vars["osd_scenario"] == "collocated":
+                notario.validate(host_vars, collocated_osd_scenario, defined_keys=True)
+
+            if host_vars["osd_scenario"] == "non-collocated":
+                notario.validate(host_vars, non_collocated_osd_scenario, defined_keys=True)
+
+            if host_vars["osd_scenario"] == "lvm":
+                notario.validate(host_vars, lvm_osd_scenario, defined_keys=True)
+
         except Invalid as error:
             display.vvvv("Notario Failure: %s" % str(error))
             display.warning("[%s] Validation failed for variable: %s" % (host, error.path[0]))
@@ -93,7 +106,20 @@ def validate_monitor_options(value):
 
     msg = "Either monitor_address, monitor_address_block or monitor_interface must be provided"
 
-    assert any(monitor_address_given, monitor_address_block_given, monitor_interface_given), msg
+    assert any([monitor_address_given, monitor_address_block_given, monitor_interface_given]), msg
+
+
+def validate_osd_scenarios(value):
+    assert value in ["collocated", "non-collocated", "lvm"], "osd_scenario must be set to 'collocated', 'non-collocated' or 'lvm'"
+
+
+def validate_objectstore(value):
+    assert value in ["filestore", "bluestore"], "objectstore must be set to 'filestore' or 'bluestore'"
+
+
+def validate_lvm_volumes(value):
+    if notario_store['osd_objectstore'] == "filestore":
+        assert isinstance(value, basestring), "lvm_volumes must contain a 'journal' key when the objectstore is 'filestore'"
 
 
 install_options = (
@@ -123,8 +149,34 @@ ceph_repository_dev = (
 monitor_options = (
     ("cluster_network", types.string),
     ("fsid", types.string),
-    ("public_network", types.string),
     ("monitor_address", validate_monitor_options),
     ("monitor_address_block", validate_monitor_options),
     ("monitor_interface", validate_monitor_options),
+    ("public_network", types.string),
 )
+
+osd_options = (
+    (optional("dmcrypt"), types.boolean),
+    ("osd_scenario", validate_osd_scenarios),
+    (optional("objectstore"), validate_objectstore),
+)
+
+collocated_osd_scenario = ("devices", iterables.AllItems(types.string))
+
+non_collocated_osd_scenario = (
+    (optional("bluestore_wal_devices"), iterables.AllItems(types.string)),
+    ("devices", iterables.AllItems(types.string)),
+    (optional("dedicated_devices"), iterables.AllItems(types.string)),
+)
+
+lvm_osd_scenario = ("lvm_volumes", iterables.AllItems((
+    (optional('crush_device_class'), types.string),
+    ('data', types.string),
+    (optional('data_vg'), types.string),
+    (optional('db'), types.string),
+    (optional('db_vg'), types.string),
+    ('journal', optional(validate_lvm_volumes)),
+    (optional('journal_vg'), types.string),
+    (optional('wal'), types.string),
+    (optional('wal_vg'), types.string),
+)))
