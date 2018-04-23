@@ -62,7 +62,8 @@ def _gt(left, right):
 
 def _gte(left, right):
     '''
-    Function to test superiority (greater than or equal) when comparing features
+    Function to test superiority (greater than or equal)
+    when comparing features
     '''
     return float(to_bytes(left)) >= float(to_bytes(right))
 
@@ -76,7 +77,8 @@ def _lt(left, right):
 
 def _lte(left, right):
     '''
-    Function to test inferiority (greater than or equal) when comparing features
+    Function to test inferiority (greater than or equal)
+    when comparing features
     '''
     return float(to_bytes(left)) <= float(to_bytes(right))
 
@@ -112,7 +114,7 @@ logger = logging.getLogger('choose_disk')
 
 def to_bytes(value):
     '''
-    Convert storage units into bytes to ease comparaison between different units
+    Convert storage units into bytes to ease comparison between different units
     '''
     value = str(value).lower().strip()
 
@@ -149,11 +151,13 @@ def get_keys_by_ceph_order(physical_disks, expected_type):
         if "ceph_prepared" in physical_disks[physical_disk]:
             # We shall only return the ceph disks from the same type
             # If we search for journals, don't return data disks :
-            #   Note that we don't neither them into 'non_ceph_disks' as they are not free
+            # Note that we don't neither them into 'non_ceph_disks'
+            # as they are not free
             pdisk = dict(physical_disks[physical_disk])
 
             if expected_type in pdisk["ceph_prepared"]:
-                logger.debug("get_keys_by_ceph_order: Keeping %s", physical_disk)
+                logger.debug("get_keys_by_ceph_order: Keeping %s",
+                             physical_disk)
                 ceph_disks.append(physical_disk)
             else:
                 logger.debug("get_keys_by_ceph_order: %s doesn't have the proper ceph type", physical_disk)  # noqa E501
@@ -185,29 +189,29 @@ def evaluate_operator(left, right, module=None):
     # Test if we have another operator in the right operand
     arguments = _REGEXP.search(right)
     if arguments:
-            new_operator = arguments.group(1)
+        new_operator = arguments.group(1)
 
-            # Some operators are aliases to more complex commands.
-            # Let's make the substition in place and restart with it
-            alias = get_alias(new_operator, arguments.group(2), arguments.group(3))
-            if alias:
-                return evaluate_operator(left, alias, module)
+        # Some operators are aliases to more complex commands.
+        # Let's make the substition in place and restart with it
+        alias = get_alias(new_operator, arguments.group(2), arguments.group(3))
+        if alias:
+            return evaluate_operator(left, alias, module)
 
-            # Check if the associated function exists
-            if new_operator in OPERATORS:
-                # and assign operands with the new values
-                operator = new_operator
-                right = arguments.group(2)
-                new_arguments = _REGEXP.search(right)
-                if new_arguments:
-                    # Don't forget to evaluate the two sides of the expression
-                    # Typical case when we shall compare a 'value' with : 'and( gt(x), lt(y) )'
-                    # The looking value always stays to the 'left' part of the expression
-                    new_right = arguments.group(3)
-                    return OPERATORS[operator](evaluate_operator(left, right, module), evaluate_operator(left, new_right, module))  # noqa E501
-                    #           and           (                  value,gt(x)        ),                  (value,lt(y)            ) # noqa E501
-            else:
-                fatal("Unsupported '%s' operator in: %s" % (new_operator, right), module)
+        # Check if the associated function exists
+        if new_operator in OPERATORS:
+            # and assign operands with the new values
+            operator = new_operator
+            right = arguments.group(2)
+            new_arguments = _REGEXP.search(right)
+            if new_arguments:
+                # Don't forget to evaluate the two sides of the expression
+                # Typical case when we shall compare a 'value' with : 'and( gt(x), lt(y) )'
+                # The looking value always stays to the 'left' part of the expression
+                new_right = arguments.group(3)
+                return OPERATORS[operator](evaluate_operator(left, right, module), evaluate_operator(left, new_right, module))  # noqa E501
+                #           and           (                  value,gt(x)        ),                  (value,lt(y)            ) # noqa E501
+        else:
+            fatal("Unsupported '%s' operator in: %s" % (new_operator, right), module)
     return OPERATORS[operator](left, right)
 
 
@@ -286,7 +290,7 @@ def find_match(physical_disks, lookup_disks, module=None):
                 matched_devices[disk].append(pdisk)
                 ignored_devices.append(physical_disk)
 
-                # If we look for an inifinite list of those devices, let's
+                # If we look for an infinite list of those devices, let's
                 # continue looking for the same description unless let's go to
                 # the next device
                 if infinite is False:
@@ -335,7 +339,7 @@ def expand_disks(lookup_disks, ceph_type="", module=None):
                 fatal("disk '%s' should have a 'ceph_type' value defined" % disk, module)  # noqa E501
             if lookup_disks[disk]['ceph_type'] not in CEPH_META_LIST:
                 fatal("disk '{}' doesn't have a valid 'ceph_type' defined "
-                       "it should be one of those:  {}".format(disk, CEPH_META_LIST), module)   # noqa E501
+                           "it should be one of those:  {}".format(disk, CEPH_META_LIST), module)   # noqa E501
             if 'count' in lookup_disks[disk]:
                 count = lookup_disks[disk]['count']
                 del lookup_disks[disk]['count']
@@ -401,7 +405,8 @@ def disk_label(partition, current_fsid, ceph_disk):
 
     # 3) let's search directly from the partitions labels
     try:
-        stdout = subprocess.check_output(["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)])
+        stdout = subprocess.check_output(
+            ["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)])
     except subprocess.CalledProcessError:
         # If we fail at blkid, we don't know the status of the disk
         # Let's consider it's not free
@@ -477,7 +482,8 @@ def select_only_free_devices(physical_disks, current_fsid):
                 disk_type = disk_label(partition_name, current_fsid, ceph_disk)
                 if disk_type:
                     if disk_type.startswith("foreign"):
-                        logger.info('Ignoring %10s : device has foreign Ceph metadata : %s', partition, disk_type.split(":")[1])
+                        logger.info('Ignoring %10s : device has foreign Ceph metadata : %s',
+                                    partition, disk_type.split(":")[1])
                         continue
                     # This partition is populated, let's report a usable device of it
                     found_populated_partition = True
@@ -515,7 +521,8 @@ def select_only_free_devices(physical_disks, current_fsid):
                 logger.info('Ignoring %10s : device is already used by LVM', physical_disk)
                 continue
         elif disk_type.startswith("foreign"):
-            logger.info('Ignoring %10s : device has foreign Ceph metadata : %s', physical_disk, disk_type.split(":")[1])
+            logger.info('Ignoring %10s : device has foreign Ceph metadata : %s',
+                        physical_disk, disk_type.split(":")[1])
             continue
         #############################################
         # AFTER THIS LINE, NO MORE DEVICE EXCLUSION #
@@ -639,7 +646,6 @@ def get_var(module, variable, must_exist=False):
 
 def main():
     module = None
-    legacy = False
     matched_devices = None
     lookup_disks = None
 
@@ -723,15 +729,15 @@ def main():
                 ceph_already_configured.append(device["bdev"])
             continue
         if "data" in device["ceph_type"]:
-                ceph_data.append(device["bdev"])
-                continue
+            ceph_data.append(device["bdev"])
+            continue
         if "block.wal" in device["ceph_type"]:
-                ceph_block_wal.append(device['bdev'])
-                continue
+            ceph_block_wal.append(device['bdev'])
+            continue
         if "block.db" in device["ceph_type"]:
-                ceph_block_db.append(device['bdev'])
+            ceph_block_db.append(device['bdev'])
         if "block" in device["ceph_type"]:
-                ceph_block.append(device['bdev'])
+            ceph_block.append(device['bdev'])
         if "journal" in device["ceph_type"]:
             ceph_journal.append(device["bdev"])
 
@@ -760,4 +766,4 @@ def main():
 
 
 if __name__ == '__main__':
-        main()
+    main()
