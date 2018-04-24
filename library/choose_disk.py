@@ -403,6 +403,19 @@ def disk_label(partition, current_fsid, ceph_disk):
                             if partition_iter["ceph_fsid"] != current_fsid:
                                 return "foreign : {}".format(partition_iter["ceph_fsid"])
 
+    # 3) let's search a partition table
+    # if parted returns no partition label this means there is no partition BUT the device is usable
+    # however if parted fails with something else then we return failed
+    parted_stdout = subprocess.Popen(
+        ["parted", "-sm", "{}".format(partition), "print"], stderr=subprocess.PIPE, stdout=open(os.devnull, 'w'))
+    retcode = parted_stdout.poll()
+    stdout, stderr = parted_stdout.communicate()
+
+    if retcode != 0:
+        if 'unrecognised disk label' in stderr:
+            return ""
+
+    # 4) if the device has a partition table, we can look for potential partitions
     # 3) let's search directly from the partitions labels
     try:
         stdout = subprocess.check_output(
