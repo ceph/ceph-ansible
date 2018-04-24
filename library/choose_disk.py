@@ -537,6 +537,17 @@ def select_only_free_devices(physical_disks, current_fsid):
             logger.info('Ignoring %10s : device has foreign Ceph metadata : %s',
                         physical_disk, disk_type.split(":")[1])
             continue
+
+        # Removing accessed devices
+        open_flags = (os.O_RDONLY | os.O_EXCL)
+        open_mode = 0
+        open_disk = os.path.join("/dev/" + physical_disk)
+        try:
+            os.open(open_disk, open_flags, open_mode)
+        except OSError:
+            logger.info('Ignoring %10s : device is busy', physical_disk)
+            continue
+
         #############################################
         # AFTER THIS LINE, NO MORE DEVICE EXCLUSION #
         #############################################
