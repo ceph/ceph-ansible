@@ -526,7 +526,7 @@ def select_only_free_devices(physical_disks, current_fsid):
         # If ceph_disk is not populated, maybe this is a system lvm
         if not disk_type:
             # Does the disk belongs to a LVM ?
-            output_cmd = subprocess.Popen(["pvdisplay", "-c", "/dev/{}".format(physical_disk)],
+            output_cmd = subprocess.Popen(["pvdisplay", "--readonly", "-c", "/dev/{}".format(physical_disk)],
                                           stdout=subprocess.PIPE)
             raw_pvdisplay, _ = output_cmd.communicate()
             if output_cmd.returncode == 0:
