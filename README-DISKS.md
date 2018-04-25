@@ -132,13 +132,16 @@ Just define a yaml file with this setup :
         - hosts: localhost
           gather_facts: false
           vars:
-              devices:
-                storage_disks:
-                   vendor: 'DELL'
-                   rotational: '1'
-                   model: 'PERC H710P'
-                   count: 1
-                   ceph_type: 'data'
+            devices:
+              storage_disks:
+                vendor:
+                  eq: 'DELL'
+                rotational:
+                  eq: 1
+                model:
+                  eq: 'PERC H710P'
+                count: 1
+                ceph_type: 'data'
               # devices:[ '/dev/sda', '/dev/sdb', '/dev/sdc']
               raw_journal_devices: [ '/dev/sdf' ]
 
@@ -181,7 +184,7 @@ Any module that consume this 'devices' structure is now able to pick the right d
 ## Matching several disks types at a time
 A typical use case, is to use rotational disks for OSDs and SSDs/flash for journals. To do that the following can do it :
 
-          devices: {'storage_disks': {'vendor': 'DELL', 'rotational': '1', 'model': 'PERC H710P', 'count': 10, 'ceph_type': 'data' }, 'journal_disks' : {'vendor': 'Samsung', 'rotational: '0', 'count: 1, 'ceph_type': 'journal'}}
+          devices: {'storage_disks': {'vendor': {'eq': 'DELL'} , 'rotational': {'eq': 1}, 'model': {'eq': 'PERC H710P'}, 'count': 10, 'ceph_type': 'data' }, 'journal_disks' : {'vendor': {'eq': 'Samsung'}, 'rotational: {'eq': 0}, 'count: 1, 'ceph_type': 'journal'}}
 
 
 ## Matching disks by their size
@@ -196,19 +199,28 @@ The module does convert the units automatically to allow comparison between vari
 In addition, a set of functions helps at comparing the sizes :
 
 * and(x, y): (x) and (y)
+* or(x, y): (x) or (y)
+
+Note that and/or operators must be described as a dictionary and their content is a list (see example below).
+
 * gt(x) : greater than (x)
 * lt(x) : lower than (x)
-* gte(x) : greater than or equal (x)
-* lte(x) : lower than or equal(x)
-* between(x, y): gt(x) and lt(y)
-* between_e(x, y): gte(x) and lte(y)
+* ge(x) : greater than or equal (x)
+* le(x) : lower than or equal(x)
+* eq(x) : equal to (x)
+* ne(x): non equal to (x)
+
 
 A typical usage looks like :
 
           devices:
             storage_disks:
-               size: 'gt(800 MB)'
-               rotational: 1
+              size:
+                and:
+                  - gt: '80 GB'
+                  - lt: '100 GB'
+               rotational:
+                 eq: 1
                count: 3
                ceph_type: 'data'
 
