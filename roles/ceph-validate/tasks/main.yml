@@ -3,3 +3,11 @@
 - name: validate provided configuration
   validate:
     mode: permissive
+
+- name: make sure pg num is set for cephfs pools
+  fail:
+    msg: "You must set pg num for your cephfs pools, see the cephfs_pools variable."
+  with_items: "{{ cephfs_pools }}"
+  when:
+    - groups.get(mds_group_name, []) | length > 0
+    - item.pgs == ''
