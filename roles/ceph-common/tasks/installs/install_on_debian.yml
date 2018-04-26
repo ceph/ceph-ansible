@@ -4,17 +4,28 @@
   when:
     - ceph_origin == 'repository'
 
+- name: update apt cache if a repo was added
+  apt:
+    update_cache: yes
+  register: update_apt_cache
+  retries: 5
+  delay: 2
+  until: update_apt_cache | success
+  when:
+    - add_debian_apt_repo is defined
+    - add_debian_apt_repo.changed | default(false)
+
+- name: update apt cache if cache_valid_time has expired
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
 - name: install dependencies
   apt:
-    name: "{{ item }}"
+    name: "{{ debian_package_dependencies }}"
     state: present
     update_cache: yes
     cache_valid_time: 3600
-  with_items: "{{ debian_package_dependencies }}"
-
-- name: update apt cache
-  apt:
-    update_cache: yes
 
 - name: include install_debian_packages.yml
   include: install_debian_packages.yml

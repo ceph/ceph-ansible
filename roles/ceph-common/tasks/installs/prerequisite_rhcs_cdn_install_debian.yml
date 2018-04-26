@@ -6,24 +6,12 @@
 
 - name: enable red hat storage monitor repository for debian systems
   apt_repository:
-    repo: "deb {{ ceph_rhcs_cdn_debian_repo }}{{ ceph_rhcs_cdn_debian_repo_version }}/MON {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
+    repo: "deb {{ ceph_rhcs_cdn_debian_repo }}{{ ceph_rhcs_cdn_debian_repo_version }}/{{ item.repo }} {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
     state: present
-  changed_when: false
-  when:
-    - mon_group_name in group_names
-
-- name: enable red hat storage osd repository for debian systems
-  apt_repository:
-    repo: "deb {{ ceph_rhcs_cdn_debian_repo }}{{ ceph_rhcs_cdn_debian_repo_version }}/OSD {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
-    state: present
-  changed_when: false
-  when:
-    - osd_group_name in group_names
-
-- name: enable red hat storage rados gateway / mds repository for debian systems
-  apt_repository:
-    repo: "deb {{ ceph_rhcs_cdn_debian_repo }}{{ ceph_rhcs_cdn_debian_repo_version }}/Tools {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
-    state: present
-  changed_when: false
-  when:
-    - (rgw_group_name in group_names or mds_group_name in group_names)
+    update_cache: no
+  register: add_debian_apt_repo
+  with_items:
+    - { repo: "MON", configure: (mon_group_name in group_names) }
+    - { repo: "OSD", configure: (osd_group_name in group_names) }
+    - { repo: "Tools", configure: (rgw_group_name in group_names or mds_group_name in group_names) }
+  when: item.configure
