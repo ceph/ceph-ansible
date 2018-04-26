@@ -22,6 +22,8 @@ class ActionModule(ActionBase):
         host = host_vars['ansible_hostname']
         mode = self._task.args.get('mode', 'permissive')
 
+        print host_vars['groups']
+
         self._supports_check_mode = False # XXX ?
         self._supports_async = True
 
@@ -122,6 +124,10 @@ def validate_lvm_volumes(value):
         assert isinstance(value, basestring), "lvm_volumes must contain a 'journal' key when the objectstore is 'filestore'"
 
 
+def validate_ceph_stable_release(value):
+    assert value in ['jewel', 'kraken', 'luminous', 'mimic'], "ceph_stable_release must be set to 'jewel', 'kraken', 'lumious' or 'mimic'"
+
+
 install_options = (
     ("ceph_origin", ceph_origin_choices),
     ('osd_objectstore', osd_objectstore_choices),
@@ -132,7 +138,7 @@ ceph_origin_repository = ("ceph_repository", ceph_repository_choices)
 ceph_repository_community = (
     ("ceph_mirror", types.string),
     ("ceph_stable_key", types.string),
-    ("ceph_stable_release", types.string),
+    ("ceph_stable_release", validate_ceph_stable_release),
     ("ceph_stable_repo", types.string),
 )
 
