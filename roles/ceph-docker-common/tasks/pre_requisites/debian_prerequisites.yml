@@ -19,9 +19,20 @@
   apt_repository:
     repo: "{{ item }}"
     state: present
+    update_cache: no
+  register: add_docker_apt_repo
   with_items:
     - "deb https://apt.dockerproject.org/repo/ debian-{{ ansible_distribution_release }} main"
     - "deb http://http.us.debian.org/debian/ testing contrib main"
+
+- name: update apt cache
+  apt:
+    update_cache: yes
+  when: add_docker_apt_repo | changed
+  register: update_docker_apt_cache
+  until: update_docker_apt_cache | success
+  retries: 5
+  delay: 2
 
 - name: install pip from testing on debian
   package:
