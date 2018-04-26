@@ -11,3 +11,30 @@
   when:
     - groups.get(mds_group_name, []) | length > 0
     - item.pgs == ''
+
+- name: make sure journal_size configured
+  debug:
+    msg: "WARNING: journal_size is configured to {{ journal_size }}, which is less than 5GB. This is not recommended and can lead to severe issues."
+  when:
+    - journal_size|int < 5120
+    - osd_objectstore == 'filestore'
+    - osd_group_name in group_names
+
+- name: check if osd_scenario lvm is supported by the selected ceph version
+  fail:
+    msg: "osd_scenario lvm is not supported by the selected Ceph version, use Luminous or newer."
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - not containerized_deployment
+    - osd_scenario == "lvm"
+    - ceph_release_num[ceph_release] < ceph_release_num.luminous
+
+- name: check if bluestore is supported by the selected ceph version
+  fail:
+    msg: "bluestore is not supported by the selected Ceph version, use Luminous or above."
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - osd_objectstore == 'bluestore'
+    - ceph_release_num[ceph_release] < ceph_release_num.luminous
