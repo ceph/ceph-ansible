@@ -26,12 +26,13 @@
   when:
     - item.1.get('rc', 0) != 0
 
-- name: assign rbd application to pool(s)
-  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} rbd"
+- name: assign application to pool(s)
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
   with_items: "{{ openstack_pools | unique }}"
   changed_when: false
   when:
     - ceph_release_num[ceph_release] >= ceph_release_num['luminous']
+    - item.application is defined
 
 - name: create openstack cephx key(s)
   ceph_key:
