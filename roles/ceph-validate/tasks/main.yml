@@ -4,6 +4,47 @@
   validate:
     mode: permissive
 
+- name: fail if local scenario is enabled on debian
+  fail:
+    msg: "'local' installation scenario not supported on Debian systems"
+  when:
+    - ansible_os_family == 'Debian'
+    - ceph_origin == 'local'
+
+- name: make sure ceph_stable_release is set
+  fail:
+    msg: "make sure ceph_stable_release ( {{ ceph_stable_release }} ) is set to a release name (e.g: luminous), http://docs.ceph.com/docs/master/release-notes/"
+  when:
+    - ceph_origin != 'distro'
+    - ceph_stable_release == 'dummy'
+    - ceph_repository not in ['rhcs', 'dev', 'obs']
+
+- name: make sure ceph_stable_release is correct
+  fail:
+    msg: "wrong release name, see http://docs.ceph.com/docs/master/release-notes/"
+  when:
+    - ceph_stable_release not in ceph_release_num
+    - ceph_origin == 'repository'
+    - ceph_repository not in ['rhcs', 'dev', 'obs']
+
+- name: make sure ceph_stable_release is correct
+  fail:
+    msg: "wrong release name, see http://docs.ceph.com/docs/master/release-notes/"
+  when:
+    - ceph_stable_release not in ceph_release_num
+    - ceph_origin == 'repository'
+
+- name: verify that ceph_rhcs_cdn_debian_repo url is valid for red hat storage
+  fail:
+    msg: "ceph_rhcs_cdn_debian_repo url is invalid, please set your customername:customerpasswd"
+  when:
+    - ceph_origin == 'repository'
+    - ceph_repository == 'rhcs'
+    - ceph_repository_type == 'cdn'
+    - ansible_os_family == 'Debian'
+    - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
+    - ceph_repository not in ['rhcs', 'dev', 'obs']
+
 - name: make sure pg num is set for cephfs pools
   fail:
     msg: "You must set pg num for your cephfs pools, see the cephfs_pools variable."
@@ -38,3 +79,12 @@
     - osd_group_name in group_names
     - osd_objectstore == 'bluestore'
     - ceph_release_num[ceph_release] < ceph_release_num.luminous
+
+- name: make sure radosgw_interface, radosgw_address or radosgw_address_block is defined
+  fail:
+    msg: "you must set radosgw_interface, radosgw_address or radosgw_address_block"
+  when:
+    - rgw_group_name in group_names
+    - radosgw_interface == 'interface'
+    - radosgw_address == 'address'
+    - radosgw_address_block == 'subnet'
