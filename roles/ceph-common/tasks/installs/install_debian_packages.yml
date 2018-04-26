@@ -1,29 +1,18 @@
 ---
-- name: install ceph for debian
+- name: set fact for packages that are always installed
+  set_fact:
+    _apt_deb_pkg_install_list: [ "ceph", "ceph-common" ]
+
+- name: generate list of packages to install
+  set_fact:
+    _apt_deb_pkg_install_list: "{{ _apt_deb_pkg_install_list }} + [ {{ item.pkg_name }} ]"
+  when: item.install
+  with_items:
+    - { pkg_name: "ceph-test", install: "{{ ceph_test }}" }
+    - { pkg_name: "radosgw", install: "{{ rgw_group_name in group_names }}" }
+
+- name: install ceph packages for debian
   apt:
-    name: "ceph"
-    update_cache: no
+    pkg: "{{ _apt_deb_pkg_install_list }}"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
     default_release: "{{ ceph_stable_release_uca | default(omit) }}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-
-- name: install ceph-common for debian
-  apt:
-    name: ceph-common
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default(omit) }}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-
-- name: install ceph-test for debian
-  apt:
-    name: ceph-test
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default(omit) }}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-  when:
-    - ceph_test
-
-- name: install rados gateway for debian
-  apt:
-    name: radosgw
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    update_cache: yes
-  when:
-    - rgw_group_name in group_names
