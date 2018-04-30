@@ -50,13 +50,14 @@ class ActionModule(ActionBase):
             notario_store["monitor_address_block"] = host_vars.get("monitor_address_block", None)
             notario_store["monitor_interface"] = host_vars.get("monitor_interface", None)
 
-            notario.validate(host_vars, monitor_options, defined_keys=True)
+            if host_vars["mon_group_name"] in host_vars["group_names"]:
+                notario.validate(host_vars, monitor_options, defined_keys=True)
 
             notario_store["radosgw_address"] = host_vars.get("radosgw_address", None)
             notario_store["radosgw_address_block"] = host_vars.get("radosgw_address_block", None)
             notario_store["radosgw_interface"] = host_vars.get("radosgw_interface", None)
 
-            if host_vars["rgw_group_name"] in host_vars["groups"]:
+            if host_vars["rgw_group_name"] in host_vars["group_names"]:
                 notario.validate(host_vars, rados_options, defined_keys=True)
 
             # validate osd scenario setup
