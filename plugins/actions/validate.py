@@ -61,16 +61,17 @@ class ActionModule(ActionBase):
                 notario.validate(host_vars, rados_options, defined_keys=True)
 
             # validate osd scenario setup
-            notario.validate(host_vars, osd_options, defined_keys=True)
-            notario_store['osd_objectstore'] = host_vars["osd_objectstore"]
-            if host_vars["osd_scenario"] == "collocated":
-                notario.validate(host_vars, collocated_osd_scenario, defined_keys=True)
+            if host_vars["osd_group_name"] in host_vars["group_names"]:
+                notario.validate(host_vars, osd_options, defined_keys=True)
+                notario_store['osd_objectstore'] = host_vars["osd_objectstore"]
+                if host_vars["osd_scenario"] == "collocated":
+                    notario.validate(host_vars, collocated_osd_scenario, defined_keys=True)
 
-            if host_vars["osd_scenario"] == "non-collocated":
-                notario.validate(host_vars, non_collocated_osd_scenario, defined_keys=True)
+                if host_vars["osd_scenario"] == "non-collocated":
+                    notario.validate(host_vars, non_collocated_osd_scenario, defined_keys=True)
 
-            if host_vars["osd_scenario"] == "lvm":
-                notario.validate(host_vars, lvm_osd_scenario, defined_keys=True)
+                if host_vars["osd_scenario"] == "lvm":
+                    notario.validate(host_vars, lvm_osd_scenario, defined_keys=True)
 
         except Invalid as error:
             display.vvvv("Notario Failure: %s" % str(error))
