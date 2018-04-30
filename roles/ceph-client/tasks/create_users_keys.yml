@@ -32,6 +32,20 @@
   run_once: true
   when: containerized_deployment
 
+- name: set_fact delegated_node
+  set_fact:
+    delegated_node: "{{ groups[mon_group_name][0] if groups.get(mon_group_name, []) | length > 0 else inventory_hostname }}"
+
+- name: set_fact condition_copy_admin_key
+  set_fact:
+    condition_copy_admin_key: "{{ True if groups.get(mon_group_name, []) | length > 0 else copy_admin_key }}"
+
+- name: set_fact docker_exec_cmd
+  set_fact:
+    docker_exec_cmd: "docker exec {% if groups.get(mon_group_name, []) | length > 0 -%} ceph-mon-{{ hostvars[delegated_node]['ansible_hostname'] }} {% else %} ceph-client-{{ hostvars[delegated_node]['ansible_hostname'] }} {% endif %}"
+  when:
+    - containerized_deployment
+
 - name: create cephx key(s)
   ceph_key:
     state: present
@@ -64,19 +78,19 @@
 
 - name: list existing pool(s)
   command: >
-    {{ docker_exec_client_cmd | default('') }} ceph --cluster {{ cluster }}
+    {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
     osd pool get {{ item.name }} size
   with_items: "{{ pools }}"
   register: created_pools
   run_once: true
   failed_when: false
-  delegate_to: "{{ groups.get(client_group_name)[0] }}"
+  delegate_to: "{{ delegated_node }}"
   when:
-    - copy_admin_key
+    - condition_copy_admin_key
 
 - name: create ceph pool(s)
   command: >
-    {{ docker_exec_client_cmd | default('') }} ceph --cluster {{ cluster }}
+    {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
     osd pool create {{ item.0.name }}
     {{ item.0.get('pg_num', hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num']) }}
     {{ item.0.pgp_num | default(item.0.pg_num) }}
@@ -91,10 +105,10 @@
     - "{{ created_pools.results }}"
   changed_when: false
   run_once: true
-  delegate_to: "{{ groups.get(client_group_name)[0] }}"
+  delegate_to: "{{ delegated_node }}"
   when:
     - pools | length > 0
-    - copy_admin_key
+    - condition_copy_admin_key
     - inventory_hostname in groups.get(client_group_name) | first
     - item.1.rc != 0
 
