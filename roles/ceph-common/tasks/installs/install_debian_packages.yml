@@ -1,29 +1,7 @@
 ---
 - name: install ceph for debian
   apt:
-    name: "ceph"
+    name: "{{ _ceph_pkgs_to_install }}"
     update_cache: no
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
     default_release: "{{ ceph_stable_release_uca | default(omit) }}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-
-- name: install ceph-common for debian
-  apt:
-    name: ceph-common
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default(omit) }}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-
-- name: install ceph-test for debian
-  apt:
-    name: ceph-test
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default(omit) }}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else ''}}"
-  when:
-    - ceph_test
-
-- name: install rados gateway for debian
-  apt:
-    name: radosgw
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    update_cache: yes
-  when:
-    - rgw_group_name in group_names

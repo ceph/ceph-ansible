@@ -1,0 +1,32 @@
+---
+_debian_ceph_pkgs:
+  - { name: "ceph", install: (ceph_repository != 'rhcs') }
+  - { name: "ceph-common", install: true }
+  - { name: "ceph-mon", install: ((ceph_repository == 'rhcs') and (mon_group_name in group_names)) }
+  - { name: "ceph-osd", install: ((ceph_repository == 'rhcs') and (osd_group_name in group_names)) }
+  - { name: "ceph-test", install: ceph-test }
+  - { name: "radosgw", install: (rgw_group_name in group_names) }
+  - { name: "ceph-fuse", install: ((ceph_repository == 'rhcs') and (client_group_name in group_names)) }
+
+_redhat_ceph_pkgs:
+  - { name: "ceph-test", install: ceph-test }
+  - { name: "ceph-common", install: true }
+  - { name: "ceph-mon", install: (mon_group_name in group_names) }
+  - { name: "ceph-osd", install: (osd_group_name in group_names) }
+  - { name: "ceph-fuse", install: (client_group_name in group_names) }
+  - { name: "ceph-base", install: (client_group_name in group_names) }
+  - { name: "ceph-radosgw", install: (rgw_group_name in group_names) }
+
+_distro_pkg_map:
+  "Debian": "{{ _debian_ceph_pkgs }}"
+  "RedHat": "{{ _redhat_ceph_pkgs }}"
+  "Suse": "{{ _redhat_ceph_pkgs }}"
+
+_ceph_pkgs_to_install: |-
+  {% set _packages = [] %}
+  {% for pkg in _distro_pkg_map[ansible_os_family] %}
+  {%   if (pkg['install']) %}
+  {%     set _ = _packages.append(pkg['name']) %}
+  {%   endif %}
+  {% endfor %}
+  {{ _packages }}
