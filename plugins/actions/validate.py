@@ -75,13 +75,21 @@ class ActionModule(ActionBase):
 
         except Invalid as error:
             display.vvvv("Notario Failure: %s" % str(error))
-            display.warning("[%s] Validation failed for variable: %s" % (host, error.path[0]))
-            msg = "Invalid variable assignment in host: %s\n" % host
-            msg += "    %s = %s\n" % (error.path, error.path)
-            msg += "    %s   %s\n" % (" " * len(str(error.path)), "^" * len(str(error.path)))
-            msg += "Reason: %s" % error.reason
+            msg = "[{}] Validation failed for variable: {}".format(host, error.path[0])
+            display.error(msg)
+            reason = "[{}] Reason: {}".format(host, error.reason)
+            try:
+                if "schema is missing" not in error.message:
+                    given = "[{}] Given value for {}: {}".format(host, error.path[0], error.path[1])
+                    display.error(given)
+                else:
+                    given = ""
+                    reason = "[{}] Reason: {}".format(host, error.message)
+            except KeyError:
+                given = ""
+            display.error(reason)
             result['failed'] = mode == 'strict'
-            result['msg'] = msg
+            result['msg'] = "\n".join([msg, reason, given])
             result['stderr_lines'] = msg.split('\n')
 
         return result
@@ -199,8 +207,8 @@ collocated_osd_scenario = ("devices", iterables.AllItems(types.string))
 
 non_collocated_osd_scenario = (
     (optional("bluestore_wal_devices"), iterables.AllItems(types.string)),
-    ("devices", iterables.AllItems(types.string)),
     (optional("dedicated_devices"), iterables.AllItems(types.string)),
+    ("devices", iterables.AllItems(types.string)),
 )
 
 lvm_osd_scenario = ("lvm_volumes", iterables.AllItems((
