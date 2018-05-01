@@ -1,0 +1,29 @@
+---
+# ceph-common is always installed, if a package isn't to be installed we replace
+# it with 'ceph-common' and run the install with the | unique filter.
+debian_ceph_pkgs:
+  - "{{ (ceph_repository != 'rhcs') | ternary('ceph', 'ceph-common') }}"
+  - "ceph-common"
+  - "{{ ((ceph_repository == 'rhcs') and (mon_group_name in group_names)) | ternary('ceph-mon', 'ceph-common') }}"
+  - "{{ ((ceph_repository == 'rhcs') and (osd_group_name in group_names)) | ternary('ceph-osd', 'ceph-common') }}"
+  - "{{ (ceph_test) | ternary('ceph-test', 'ceph-common') }}"
+  - "{{ (rgw_group_name in group_names) | ternary('radosgw', 'ceph-common') }}"
+  - "{{ ((ceph_repository == 'rhcs') and (client_group_name in group_names)) | ternary('ceph-fuse', 'ceph-common') }}"
+
+redhat_ceph_pkgs:
+  - "{{ (ceph_test) | ternary('ceph-test', 'ceph-common') }}"
+  - "ceph-common"
+  - "{{ (mon_group_name in group_names) | ternary('ceph-mon', 'ceph-common') }}"
+  - "{{ (osd_group_name in group_names) | ternary('ceph-osd', 'ceph-common') }}"
+  - "{{ (client_group_name in group_names) | ternary('ceph-fuse', 'ceph-common') }}"
+  - "{{ (client_group_name in group_names) | ternary('ceph-base', 'ceph-common') }}"
+  - "{{ (rgw_group_name in group_names) | ternary('ceph-radosgw', 'ceph-common') }}"
+
+suse_ceph_pkgs:
+  - "{{ (ceph_test) | ternary('ceph-test', 'ceph-common') }}"
+  - "ceph-common"
+  - "{{ (mon_group_name in group_names) | ternary('ceph-mon', 'ceph-common') }}"
+  - "{{ (osd_group_name in group_names) | ternary('ceph-osd', 'ceph-common') }}"
+  - "{{ (client_group_name in group_names) | ternary('ceph-fuse', 'ceph-common') }}"
+  - "{{ (client_group_name in group_names) | ternary('ceph-base', 'ceph-common') }}"
+  - "{{ (rgw_group_name in group_names) | ternary('ceph-radosgw', 'ceph-common') }}"
