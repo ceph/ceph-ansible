@@ -159,6 +159,7 @@
   with_items: "{{ devices }}"
   register: devices_prepare_canonicalize
   when:
+    - devices is defined
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
     - osd_scenario|default('dummy') != 'lvm'
@@ -168,6 +169,7 @@
     devices: "{{ devices | default([]) + [ item.stdout ] }}"
   with_items: "{{ devices_prepare_canonicalize.results }}"
   when:
+    - devices is defined
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
     - osd_scenario|default('dummy') != 'lvm'
@@ -176,6 +178,7 @@
   set_fact:
     devices: "{{ devices | reject('search','/dev/disk') | list | unique }}"
   when:
+    - devices is defined
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
     - osd_scenario|default('dummy') != 'lvm'
