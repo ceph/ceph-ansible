@@ -14,6 +14,7 @@
 
 import imp
 import inspect
+import mock
 import os
 from . import choose_disk
 
@@ -176,10 +177,16 @@ def test_select_only_free_devices():
     """
     select_only_free_devices - Removing devices that have partitions
     """
-    fake_fsid = "97e40ff4-97d7-4dc6-8bf5-bad598480621"
     for host_file in get_hosts_to_test():
-        expected_result = host_file.prepare_test_select_only_free_devices()
-        result = choose_disk.select_only_free_devices(host_file.ansible_devices, fake_fsid)
+        with mock.patch('library.choose_disk.read_ceph_disk', host_file.read_ceph_disk):
+            with mock.patch('library.choose_disk.is_read_only_device', host_file.is_read_only_device):  # noqa 501
+                with mock.patch('library.choose_disk.get_ceph_volume_lvm_list', host_file.get_ceph_volume_lvm_list):  # noqa 501
+                    with mock.patch('library.choose_disk.is_valid_partition_table', host_file.is_valid_partition_table):  # noqa 501
+                        with mock.patch('library.choose_disk.get_partition_label', host_file.get_partition_label):  # noqa 501
+                            with mock.patch('library.choose_disk.is_lvm_disk', host_file.is_lvm_disk):  # noqa 501
+                                with mock.patch('library.choose_disk.is_locked_raw_device', host_file.is_locked_raw_device):  # noqa 501
+                                    expected_result = host_file.prepare_test_select_only_free_devices()  # noqa 501
+                                    result = choose_disk.select_only_free_devices(host_file.ansible_devices, host_file.fake_fsid)  # noqa 501
         assert result == expected_result
 
 
