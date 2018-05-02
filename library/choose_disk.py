@@ -102,6 +102,8 @@ class Filter(object):
 def to_bytes(value):
     '''
     Convert storage units into bytes to ease comparison between different units
+    If it's not a byte value, let's try to return a float value of it.
+    If it's not a float, then let it untouched
     '''
     value = str(value).lower().strip()
 
@@ -122,7 +124,10 @@ def to_bytes(value):
             real_value = value.replace(size, "")
             return float(real_value) * storage_units[size]
 
-    return float(value)
+    try:
+        return float(value)
+    except Exception:
+        return value
 
 
 def tree_to_bytes(tree):
@@ -139,19 +144,6 @@ def tree_to_bytes(tree):
         else:
             tree[ope] = to_bytes(value)
     return tree
-
-
-def can_this_be_an_int(s):
-    '''
-    Try to determine if the input could be converted to an integer
-    '''
-    if s is None:
-        return False
-    try:
-        int(s)
-        return True
-    except ValueError:
-        return False
 
 
 def get_keys_by_ceph_order(physical_disks, expected_type):
@@ -229,38 +221,20 @@ def find_match(physical_disks, lookup_disks, module=None):
 
                 # Assign left and right operands
                 # e.g: left is 10.00 GB and right is {'gt': 10}
-                right = current_lookup[feature]  # right is the operand
                 # left if the current disk feature/capability
-                left = current_physical_disk[feature]
+                # We sanitize it with to_bytes()
+                left = to_bytes(current_physical_disk[feature])
 
-                # The 'size' feature needs a special treatment
-                # If the current iteration compares sizes then we have to convert them in bytes
-                # to have a correct comparison.
-                # Ansible reports the size in GB, but this could change in the future as
-                # disk's size keeps on increasing, we are up to 10 TB drives at the moment
-                # so writing 10000 GB for a 10 TB drive is annoying.
-                # This removes the assumption that user's input will always be GB and the
-                # same goes for what Ansible will report in the future.
-                # Whatever is reported will be converted to bytes.
-                if feature == "size":
-                    # If this is a dict, we have a complex operand (a set of AND, OR for example)
-                    # So we have to iterate through the structure and convert every values to bytes
-                    if isinstance(right, dict):
-                        right = tree_to_bytes(right)
-                    else:
-                        # Else, this is a plain value and we convert it to bytes
-                        right = to_bytes(right)
-                    # No matter what the operand is the input from the disk (its capability) must
-                    # always be converted to bytes.
-                    left = to_bytes(left)
+                right = current_lookup[feature]  # right is the operand
 
-                # We are getting several features (rotational, removable etc) as a string
-                # however the comparison class needs an integer
-                # since the user's input should be an integer
-                # Regardless of the feature, we test if it could be an integer
-                # if eligible we convert it, otherwise it'll remain a string
-                if can_this_be_an_int(left):
-                    left = int(left)
+                # If the right operator is not a dict it means we an input like :
+                #   rotational: '0'
+                # In this case, we need to apply an implict operator : eq
+                if not isinstance(right, dict):
+                    right = {'eq': right}
+
+                # Once the right is well formatted, let's sanitize it regarding types & sizes
+                right = tree_to_bytes(right)
 
                 # build the object comparison with the operands
                 try:
