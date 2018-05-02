@@ -71,6 +71,27 @@
         - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
         - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
 
+- hosts:
+  - mons
+  - agents
+  - osds
+  - mdss
+  - rgws
+  - nfss
+  - restapis
+  - rbdmirrors
+  - clients
+  - mgrs
+  - iscsi-gws
+
+  gather_facts: false
+  any_errors_fatal: true
+  become: true
+
+  roles:
+    - ceph-defaults
+    - ceph-validate
+
 - hosts: mons
   tasks:
     - name: set ceph monitor install 'In Progress'
