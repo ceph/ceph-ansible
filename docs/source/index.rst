@@ -25,6 +25,11 @@ You can install directly from the source on github by following these steps:
 
       git checkout $branch
 
+- Next, use pip and the provided requirements.txt to install ansible and other
+  needed python libraries::
+
+      pip install -r requirements.txt
+
 .. _ansible-on-rhel-family:
 
 Ansible on RHEL and CentOS
