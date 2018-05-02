@@ -656,6 +656,8 @@ def main():
     lookup_disks = None
 
     setup_logging()
+    # Enforce the locale to avoid any translation issue
+    os.environ["LC_ALL"] = "C"
 
     fields = {
         "vars": {"required": True, "type": "dict"},
