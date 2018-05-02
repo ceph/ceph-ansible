@@ -1,17 +1,23 @@
 
 from ansible.plugins.action import ActionBase
 
-import notario
-from notario.exceptions import Invalid
-from notario.validators import types, chainable, iterables, recursive
-from notario.decorators import optional
-from notario.store import store as notario_store
-
 try:
     from __main__ import display
 except ImportError:
     from ansible.utils.display import Display
     display = Display()
+
+try:
+    import notario
+except ImportError:
+    msg = "The python-notario library is missing. Please install it to continue."
+    display.error(msg)
+    raise SystemExit(msg)
+
+from notario.exceptions import Invalid
+from notario.validators import types, chainable, iterables
+from notario.decorators import optional
+from notario.store import store as notario_store
 
 
 class ActionModule(ActionBase):
