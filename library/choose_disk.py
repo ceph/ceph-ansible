@@ -336,40 +336,84 @@ def expand_disks(lookup_disks, ceph_type="", module=None):
     return final_disks
 
 
+def is_valid_partition_table(partition):
+    '''
+    Return if a partition table is valid
+    if parted returns no partition label this means there is no partition
+    BUT the device is usable
+    however if parted fails with something else then we return failed
+    '''
+    parted_stdout = subprocess.Popen(["parted", "-sm", "{}".format(partition), "print"],
+                                     stderr=subprocess.PIPE, stdout=open(os.devnull, 'w'))
+    retcode = parted_stdout.poll()
+    stdout, stderr = parted_stdout.communicate()
+
+    if retcode != 0:
+        if 'unrecognised disk label' in stderr:
+            return False
+
+    return True
+
+
+def get_ceph_volume_lvm_list(partition):
+    '''
+    Get the ceph volume lvm list for a given partition
+    '''
+    output_cmd = subprocess.Popen(["ceph-volume", "lvm", "list", "--format=json", partition],
+                                  stdout=subprocess.PIPE)
+    raw_json, _ = output_cmd.communicate()
+    try:
+        return json.loads(raw_json)
+    except (ValueError, TypeError) as e:
+        fatal("Cannot parse ceph-volume properly : {}".format(e))
+
+
+def get_partition_label(partition):
+    '''
+    Extraction the paritition label
+    '''
+    try:
+        stdout = subprocess.check_output(
+            ["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)])
+    except subprocess.CalledProcessError:
+        # If we fail at blkid, we don't know the status of the disk
+        # Let's consider it's not free
+        return "failed"
+
+    # search for the known ceph partitions types
+    for ceph_type in CEPH_META_LIST:
+        if "ceph {}".format(ceph_type) in stdout:
+            return ceph_type
+
+    # Nothing found, let's report nothing
+    return ""
+
+
 def disk_label(partition, current_fsid, ceph_disk):
     '''
     Reports if a partition is containing some ceph structures
     '''
 
     # 1) let's search for metadata coming from ceph-volume
-    try:
-        output_cmd = subprocess.Popen(["ceph-volume", "lvm", "list", "--format=json", partition],
-                                      stdout=subprocess.PIPE)
-        raw_json, _ = output_cmd.communicate()
-        try:
-            json_dict = json.loads(raw_json)
-        except (ValueError, TypeError) as e:
-            fatal("Cannot parse ceph-volume properly : {}".format(e))
+    json_dict = get_ceph_volume_lvm_list(partition)
 
-        # If the disk have some metadata, the json is filled with information
-        for key, value in json_dict.items():
-            # As we parse a partition it should only have a single entry unless that's an error
-            if (len(value) > 1):
-                fatal("Error while parsing ceph-volume")
-            if "tags" in value[0]:
-                if "ceph.cluster_fsid" in value[0]['tags']:
-                    if value[0]["tags"]["ceph.cluster_fsid"] != current_fsid:
-                        return "foreign : {}".format(value[0]["tags"]["ceph.cluster_fsid"])
-            if "type" in value[0]:
-                return value[0]["type"]
-            else:
-                # ceph-volume should give a type
-                # If not, we don't really what it is _but_ the disks is used
-                # So we should ignore it, let's report it undefined
-                return "undefined"
+    # If the disk have some metadata, the json is filled with information
+    for key, value in json_dict.items():
+        # As we parse a partition it should only have a single entry unless that's an error
+        if (len(value) > 1):
+            fatal("Error while parsing ceph-volume")
+        if "tags" in value[0]:
+            if "ceph.cluster_fsid" in value[0]['tags']:
+                if value[0]["tags"]["ceph.cluster_fsid"] != current_fsid:
+                    return "foreign : {}".format(value[0]["tags"]["ceph.cluster_fsid"])
+        if "type" in value[0]:
+            return value[0]["type"]
+        else:
+            # ceph-volume should give a type
+            # If not, we don't really what it is _but_ the disks is used
+            # So we should ignore it, let's report it undefined
+            return "undefined"
 
-    except subprocess.CalledProcessError:
-        pass
 
     # 2) let's try with ceph-disk
     # If the disk have some metadata, the json is filled with information
@@ -383,35 +427,71 @@ def disk_label(partition, current_fsid, ceph_disk):
                                 return "foreign : {}".format(partition_iter["ceph_fsid"])
 
     # 3) let's search a partition table
-    # if parted returns no partition label this means there is no partition
-    # BUT the device is usable
-    # however if parted fails with something else then we return failed
-    parted_stdout = subprocess.Popen(
-        ["parted", "-sm", "{}".format(partition), "print"],
-        stderr=subprocess.PIPE, stdout=open(os.devnull, 'w'))
-    retcode = parted_stdout.poll()
-    stdout, stderr = parted_stdout.communicate()
-
-    if retcode != 0:
-        if 'unrecognised disk label' in stderr:
-            return ""
+    if not is_valid_partition_table(partition):
+        return ""
 
     # 4) if the device has a partition table, we can look for potential partitions
     # let's search directly from the partitions labels
-    try:
-        stdout = subprocess.check_output(
-            ["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)])
-    except subprocess.CalledProcessError:
-        # If we fail at blkid, we don't know the status of the disk
-        # Let's consider it's not free
-        return "failed"
-    # search for the known ceph partitions types
-    for ceph_type in CEPH_META_LIST:
-        if "ceph {}".format(ceph_type) in stdout:
-            return ceph_type
+    partition_label = get_partition_label(partition)
+    if partition_label:
+        return partition_label
+
     # 4) We were unable to find any trace of a metadata on this disk_label
     # So we return an empty string
     return ""
+
+
+def read_ceph_disk():
+    '''
+    Let's collect ceph-disk output
+    '''
+    output_cmd = subprocess.Popen(["ceph-disk", "list", "--format=json"],
+                                  stdout=subprocess.PIPE)
+    raw_json, _ = output_cmd.communicate()
+    try:
+        return json.loads(raw_json)
+    except (ValueError, TypeError) as e:
+        fatal("Cannot parse ceph-disk properly : {}".format(e))
+
+
+def is_read_only_device(physical_disk):
+    '''
+    Does the pointed physical disk is a readonly device ?
+    '''
+    stdout = subprocess.check_output(["blockdev", "--getro", "/dev/%s" % physical_disk])
+    if "1" in stdout:
+        return True
+    return False
+
+
+def is_lvm_disk(physical_disk):
+    '''
+    Check if a disk belongs to an exisiting lvm configuration
+    '''
+    output_cmd = subprocess.Popen(
+        ["pvdisplay", "--readonly", "-c", "/dev/{}".format(physical_disk)],
+        stdout=subprocess.PIPE)
+    raw_pvdisplay, _ = output_cmd.communicate()
+    if output_cmd.returncode == 0:
+        return True
+    return False
+
+
+def is_locked_raw_device(physical_disk):
+    '''
+    Can we open the device in exclusive mode ?
+    If not, someone is using it like a raw database
+    '''
+    open_flags = (os.O_RDONLY | os.O_EXCL)
+    open_mode = 0
+    open_disk = os.path.join("/dev/" + physical_disk)
+
+    try:
+        os.open(open_disk, open_flags, open_mode)
+    except OSError:
+        return True
+
+    return False
 
 
 def select_only_free_devices(physical_disks, current_fsid):
@@ -429,14 +509,7 @@ def select_only_free_devices(physical_disks, current_fsid):
     logger.info('Detecting free devices with fsid={}'.format(current_fsid))
 
     # Let's collect ceph-disk output one for all
-    ceph_disk = {}
-    output_cmd = subprocess.Popen(["ceph-disk", "list", "--format=json"],
-                                  stdout=subprocess.PIPE)
-    raw_json, _ = output_cmd.communicate()
-    try:
-        ceph_disk = json.loads(raw_json)
-    except (ValueError, TypeError) as e:
-        fatal("Cannot parse ceph-disk properly : {}".format(e))
+    ceph_disk = read_ceph_disk()
 
     for physical_disk in sorted(physical_disks):
         current_physical_disk = physical_disks[physical_disk]
@@ -457,8 +530,7 @@ def select_only_free_devices(physical_disks, current_fsid):
             continue
 
         # Removing Read-only devices
-        stdout = subprocess.check_output(["blockdev", "--getro", "/dev/%s" % physical_disk])
-        if "1" in stdout:
+        if is_read_only_device(physical_disk):
             logger.info('Ignoring %10s : read-only device', physical_disk)
             continue
 
@@ -506,12 +578,7 @@ def select_only_free_devices(physical_disks, current_fsid):
 
         # If ceph_disk is not populated, maybe this is a system lvm
         if not disk_type:
-            # Does the disk belongs to a LVM ?
-            output_cmd = subprocess.Popen(
-                ["pvdisplay", "--readonly", "-c", "/dev/{}".format(physical_disk)],
-                stdout=subprocess.PIPE)
-            raw_pvdisplay, _ = output_cmd.communicate()
-            if output_cmd.returncode == 0:
+            if is_lvm_disk(physical_disk):
                 # FIXME: Why not considering if there is some free space on it?
                 logger.info('Ignoring %10s : device is already used by LVM', physical_disk)
                 continue
@@ -521,12 +588,7 @@ def select_only_free_devices(physical_disks, current_fsid):
             continue
 
         # Removing accessed devices
-        open_flags = (os.O_RDONLY | os.O_EXCL)
-        open_mode = 0
-        open_disk = os.path.join("/dev/" + physical_disk)
-        try:
-            os.open(open_disk, open_flags, open_mode)
-        except OSError:
+        if is_locked_raw_device(physical_disk):
             logger.info('Ignoring %10s : device is busy', physical_disk)
             continue
 
@@ -622,7 +684,7 @@ def setup_logging(filename=None):
     logger.info("############")
 
 
-def fatal(message, module):
+def fatal(message, module=None):
     '''
     Report a fatal error and exit
     '''
