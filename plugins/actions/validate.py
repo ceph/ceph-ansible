@@ -36,6 +36,7 @@ class ActionModule(ActionBase):
 
         try:
             notario_store["groups"] = host_vars["groups"]
+            notario_store["containerized_deployment"] = host_vars["containerized_deployment"]
             notario.validate(host_vars, install_options, defined_keys=True)
 
             if host_vars["ceph_origin"] == "repository":
@@ -108,7 +109,8 @@ def osd_objectstore_choices(value):
 
 
 def ceph_origin_choices(value):
-    assert value in ['repository', 'distro', 'local'], "ceph_origin must be either 'repository', 'distro' or 'local'"
+    if not notario_store["containerized_deployment"]:
+        assert value in ['repository', 'distro', 'local'], "ceph_origin must be either 'repository', 'distro' or 'local'"
 
 
 def ceph_repository_choices(value):
@@ -166,6 +168,7 @@ def validate_rados_options(value):
 
 install_options = (
     ("ceph_origin", ceph_origin_choices),
+    ("containerized_deployment", types.boolean),
     ('osd_objectstore', osd_objectstore_choices),
 )
 
