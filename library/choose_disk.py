@@ -487,9 +487,15 @@ def is_locked_raw_device(physical_disk):
     open_flags = (os.O_RDONLY | os.O_EXCL)
     open_mode = 0
     open_disk = os.path.join("/dev/" + physical_disk)
+    fd = None
 
     try:
-        os.open(open_disk, open_flags, open_mode)
+        fd = os.open(open_disk, open_flags, open_mode)
+    except OSError:
+        return True
+
+    try:
+        os.close(fd)
     except OSError:
         return True
 
