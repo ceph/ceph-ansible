@@ -42,18 +42,18 @@ description:
     - native mode where user specify what disk to search base on its features
 '''
 
+# The list of ceph metadata that exist
 CEPH_META_LIST = ['data', 'journal', 'block.wal', 'block.db', 'block']
-
-# The following set of functions are used to compare units
-# To insure we compare similar metrics, we convert them with to_bytes()
-# into the same unit (i.e to avoid comparing GB and MB)
-
 
 logger = logging.getLogger('choose_disk')
 
 
 class InvalidFilter(Exception):
     pass
+
+# The following set of functions are used to compare units
+# To insure we compare similar metrics, we convert them with to_bytes()
+# into the same unit (i.e to avoid comparing GB and MB)
 
 
 class Filter(object):
@@ -354,7 +354,7 @@ def is_invalid_partition_table(partition):
         # unrecognised disk label is an exception for the "Error:" case
         if 'unrecognised disk label' not in stderr.lower():
             if "error:" in stderr.lower():
-                logger.error("parted -sm returned the following error on {} : {}".format(partition, stderr))
+                logger.error("parted -sm returned the following error on {} : {}".format(partition, stderr))  # noqa 501
                 return "failed"
 
     return ""
@@ -368,6 +368,7 @@ def get_ceph_volume_lvm_list(partition):
                                    stdout=subprocess.PIPE, close_fds=True)
 
     stdout, _ = ceph_volume.communicate()
+
     try:
         return json.loads(stdout)
     except (ValueError, TypeError) as e:
@@ -384,7 +385,7 @@ def get_partition_label(partition):
             stdout=subprocess.PIPE, close_fds=True)
         stdout, _ = blkid.communicate()
     except Exception:
-        logger.error("Extracting PARTLABEL with blkid failed with {} on device {}".format(blkid.returncode, partition))
+        logger.error("Extracting PARTLABEL with blkid failed with {} on device {}".format(blkid.returncode, partition))  # noqa 501
         # If we fail at blkid, we don't know the status of the disk
         # Let's consider it's not free
         return "failed"
@@ -457,6 +458,7 @@ def read_ceph_disk():
     ceph_disk = subprocess.Popen(["ceph-disk", "list", "--format=json"],
                                  stdout=subprocess.PIPE, close_fds=True)
     stdout, _ = ceph_disk.communicate()
+
     try:
         return json.loads(stdout)
     except (ValueError, TypeError) as e:
@@ -481,6 +483,7 @@ def is_lvm_disk(physical_disk):
         ["pvdisplay", "--readonly", "-c", "/dev/{}".format(physical_disk)],
         stdout=subprocess.PIPE, close_fds=True)
     raw_pvdisplay, _ = pvdisplay.communicate()
+
     if pvdisplay.returncode == 0:
         return True
     return False
@@ -567,7 +570,7 @@ def select_only_free_devices(physical_disks, current_fsid):
                                     partition, disk_type.split(":")[1])
                         continue
                     elif disk_type.startswith("failed"):
-                        logger.info('Ignoring %10s : unable to perform a complete detection', partition)
+                        logger.info('Ignoring %10s : unable to perform a complete detection', partition)  # noqa 501
                         continue
                     # This partition is populated, let's report a usable device of it
                     found_populated_partition = True
