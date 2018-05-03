@@ -20,6 +20,9 @@ from notario.decorators import optional
 from notario.store import store as notario_store
 
 
+CEPH_RELEASES = ['jewel', 'kraken', 'luminous', 'mimic']
+
+
 class ActionModule(ActionBase):
 
     def run(self, tmp=None, task_vars=None):
@@ -149,7 +152,7 @@ def validate_lvm_volumes(value):
 
 
 def validate_ceph_stable_release(value):
-    assert value in ['jewel', 'kraken', 'luminous', 'mimic'], "ceph_stable_release must be set to 'jewel', 'kraken', 'lumious' or 'mimic'"
+    assert value in CEPH_RELEASES, "ceph_stable_release must be set to one of the following: %s" % ", ".join(CEPH_RELEASES)
 
 
 def validate_rados_options(value):
