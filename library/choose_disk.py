@@ -344,7 +344,8 @@ def is_valid_partition_table(partition):
     however if parted fails with something else then we return failed
     '''
     parted = subprocess.Popen(["parted", "-sm", "{}".format(partition), "print"],
-                              stderr=subprocess.PIPE, stdout=open(os.devnull, 'w'))
+                              stderr=subprocess.PIPE, stdout=open(os.devnull, 'w'),
+                              close_fds=True)
 
     retcode = parted.poll()
     stdout, stderr = parted.communicate()
@@ -361,7 +362,7 @@ def get_ceph_volume_lvm_list(partition):
     Get the ceph volume lvm list for a given partition
     '''
     ceph_volume = subprocess.Popen(["ceph-volume", "lvm", "list", "--format=json", partition],
-                                   stdout=subprocess.PIPE)
+                                   stdout=subprocess.PIPE, close_fds=True)
 
     stdout, _ = ceph_volume.communicate()
     try:
@@ -448,7 +449,7 @@ def read_ceph_disk():
     Let's collect ceph-disk output
     '''
     ceph_disk = subprocess.Popen(["ceph-disk", "list", "--format=json"],
-                                 stdout=subprocess.PIPE)
+                                 stdout=subprocess.PIPE, close_fds=True)
     stdout, _ = ceph_disk.communicate()
     try:
         return json.loads(stdout)
@@ -472,7 +473,7 @@ def is_lvm_disk(physical_disk):
     '''
     pvdisplay = subprocess.Popen(
         ["pvdisplay", "--readonly", "-c", "/dev/{}".format(physical_disk)],
-        stdout=subprocess.PIPE)
+        stdout=subprocess.PIPE, close_fds=True)
     raw_pvdisplay, _ = pvdisplay.communicate()
     if pvdisplay.returncode == 0:
         return True
