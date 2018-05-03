@@ -376,12 +376,15 @@ def get_ceph_volume_lvm_list(partition):
 
 def get_partition_label(partition):
     '''
-    Extraction the paritition label
+    Extraction the partition label
     '''
     try:
-        stdout = subprocess.check_output(
-            ["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)])
-    except subprocess.CalledProcessError:
+        blkid = subprocess.Popen(
+            ["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)],
+            stdout=subprocess.PIPE, close_fds=True)
+        stdout, _ = blkid.communicate()
+    except Exception:
+        logger.error("Extracting PARTLABEL with blkid failed with {} on device {}".format(blkid.returncode, partition))
         # If we fail at blkid, we don't know the status of the disk
         # Let's consider it's not free
         return "failed"
@@ -419,7 +422,6 @@ def disk_label(partition, current_fsid, ceph_disk):
             # If not, we don't really what it is _but_ the disks is used
             # So we should ignore it, let's report it undefined
             return "undefined"
-
 
     # 2) let's try with ceph-disk
     # If the disk have some metadata, the json is filled with information
