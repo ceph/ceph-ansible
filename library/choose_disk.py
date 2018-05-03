@@ -343,10 +343,11 @@ def is_valid_partition_table(partition):
     BUT the device is usable
     however if parted fails with something else then we return failed
     '''
-    parted_stdout = subprocess.Popen(["parted", "-sm", "{}".format(partition), "print"],
-                                     stderr=subprocess.PIPE, stdout=open(os.devnull, 'w'))
-    retcode = parted_stdout.poll()
-    stdout, stderr = parted_stdout.communicate()
+    parted = subprocess.Popen(["parted", "-sm", "{}".format(partition), "print"],
+                              stderr=subprocess.PIPE, stdout=open(os.devnull, 'w'))
+
+    retcode = parted.poll()
+    stdout, stderr = parted.communicate()
 
     if retcode != 0:
         if 'unrecognised disk label' in stderr:
@@ -359,11 +360,12 @@ def get_ceph_volume_lvm_list(partition):
     '''
     Get the ceph volume lvm list for a given partition
     '''
-    output_cmd = subprocess.Popen(["ceph-volume", "lvm", "list", "--format=json", partition],
-                                  stdout=subprocess.PIPE)
-    raw_json, _ = output_cmd.communicate()
+    ceph_volume = subprocess.Popen(["ceph-volume", "lvm", "list", "--format=json", partition],
+                                   stdout=subprocess.PIPE)
+
+    stdout, _ = ceph_volume.communicate()
     try:
-        return json.loads(raw_json)
+        return json.loads(stdout)
     except (ValueError, TypeError) as e:
         fatal("Cannot parse ceph-volume properly : {}".format(e))
 
@@ -445,11 +447,11 @@ def read_ceph_disk():
     '''
     Let's collect ceph-disk output
     '''
-    output_cmd = subprocess.Popen(["ceph-disk", "list", "--format=json"],
-                                  stdout=subprocess.PIPE)
-    raw_json, _ = output_cmd.communicate()
+    ceph_disk = subprocess.Popen(["ceph-disk", "list", "--format=json"],
+                                 stdout=subprocess.PIPE)
+    stdout, _ = ceph_disk.communicate()
     try:
-        return json.loads(raw_json)
+        return json.loads(stdout)
     except (ValueError, TypeError) as e:
         fatal("Cannot parse ceph-disk properly : {}".format(e))
 
@@ -468,11 +470,11 @@ def is_lvm_disk(physical_disk):
     '''
     Check if a disk belongs to an exisiting lvm configuration
     '''
-    output_cmd = subprocess.Popen(
+    pvdisplay = subprocess.Popen(
         ["pvdisplay", "--readonly", "-c", "/dev/{}".format(physical_disk)],
         stdout=subprocess.PIPE)
-    raw_pvdisplay, _ = output_cmd.communicate()
-    if output_cmd.returncode == 0:
+    raw_pvdisplay, _ = pvdisplay.communicate()
+    if pvdisplay.returncode == 0:
         return True
     return False
 
