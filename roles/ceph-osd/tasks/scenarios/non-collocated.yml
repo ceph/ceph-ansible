@@ -29,7 +29,6 @@
     - data_devices|length > 0
     - journal_devices|length > 0
 
-
 - name: prepare ceph "{{ osd_objectstore }}" containerized osd disk(s) non-collocated with a dedicated device for db and wal
   command: |
     {{ container_binary }} run --net=host \
@@ -71,6 +70,28 @@
     - not containerized_deployment
     - data_devices|length > 0
     - journal_devices|length > 0
+
+- name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with a dedicated device for db
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.0 }} {{ item.1 }}"
+  with_nested:
+    - "{{ block_devices }}"
+    - "{{ db_devices }}"
+  when:
+    - osd_objectstore == 'bluestore'
+    - not containerized_deployment
+    - block_devices|length > 0
+    - db_devices|length > 0
+
+- name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with a dedicated device for wal
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.0 }} {{ item.1 }}"
+  with_nested:
+    - "{{ block_devices }}"
+    - "{{ wal_devices }}"
+  when:
+    - osd_objectstore == 'bluestore'
+    - not containerized_deployment
+    - block_devices|length > 0
+    - wal_devices|length > 0
 
 - name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with a dedicated device for db and wal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.0 }} --block.wal {{ item.1 }} {{ item.2 }}"

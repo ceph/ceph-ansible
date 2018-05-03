@@ -46,14 +46,16 @@
     {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
   with_items:
     - "{{ data_devices }}"
+    - "{{ block_devices }}"
   when:
     - containerized_deployment
-    - data_devices|length > 0
+    - (data_devices|length > 0 or block_devices|length > 0)
 
 - name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with collocated osd data and journal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item }}"
   with_items:
     - "{{ data_devices }}"
+    - "{{ block_devices }}"
   when:
     - not containerized_deployment
-    - data_devices|length > 0
+    - (data_devices|length > 0 or block_devices|length > 0)
