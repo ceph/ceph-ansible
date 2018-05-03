@@ -1,0 +1,87 @@
+fake_fsid = "97e40ff4-97d7-4dc6-8bf5-bad598480621"
+
+ansible_devices = {}
+
+
+def prepare_test_select_only_free_devices():
+    return {}
+
+
+def read_ceph_disk():
+    '''
+    sudo ceph-disk list --format=json
+    '''
+    return []
+
+
+def is_read_only_device(physical_disk):
+    '''
+    sudo blockdev --getro <physical_disk>
+    '''
+    devices = {}
+    if physical_disk in devices:
+        return devices[physical_disk]
+    else:
+        exit("unexpected {} in is_read_only_device()".format(physical_disk))
+
+
+def get_ceph_volume_lvm_list(partition):
+    '''
+    sudo ceph-volume lvm list --format=json <partition>
+    '''
+    partitions = {}
+    empty_answers = []
+    for empty_answer in empty_answers:
+        partitions["/dev/{}".format(empty_answer)] = {}
+
+    if partition in partitions:
+        return partitions[partition]
+    else:
+        exit("unexpected {} in get_ceph_volume_lvm_list()".format(partition))
+
+
+def is_invalid_partition_table(partition):
+    '''
+    LC_ALL=C sudo parted -sm <partition> print
+    '''
+    partitions = {}
+    if partition in partitions:
+      if 'unrecognised disk label' not in partitions[partition].lower():
+        if "error:" in partitions[partition].lower():
+          return "failed"
+        return ""
+    else:
+        exit("unexpected {} in is_valid_partition_table()".format(partition))
+
+
+def get_partition_label(partition):
+    '''
+    sudo blkid -s PARTLABEL -o value <partition>
+    '''
+    partitions = {}
+    empty_answers = []
+    for empty_answer in empty_answers:
+        partitions["/dev/{}".format(empty_answer)] = ""
+    if partition in partitions:
+        return partitions[partition]
+    else:
+        exit("unexpected {} in get_partition_label()".format(partition))
+
+def is_lvm_disk(physical_disk):
+    '''
+    sudo pvdisplay --readonly -c <physical_disk>
+    '''
+    physical_disks = {}
+    # physical_disks["loop0"] = False
+    if physical_disk in physical_disks:
+        return physical_disks[physical_disk]
+    else:
+        exit("unexpected {} in is_lvm_disk()".format(physical_disk))
+
+def is_locked_raw_device(physical_disk):
+    physical_disks = {}
+    # physical_disks["loop0"] = False
+    if physical_disk in physical_disks:
+        return physical_disks[physical_disk]
+    else:
+        exit("unexpected {} in is_locked_raw_device()".format(physical_disk))
