@@ -44,17 +44,16 @@
     {{ docker_env_args }} \
     {{ ceph_osd_docker_prepare_env }} \
     {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-  with_items: "{{ devices }}"
+  with_items:
+    - "{{ data_devices }}"
   when:
-    - osd_auto_discovery
     - containerized_deployment
-    - devices is defined
+    - data_devices|length > 0
 
 - name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with collocated osd data and journal
-  command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }}"
-  with_together:
-    - "{{ parted_results.results | default([]) }}"
-    - "{{ devices }}"
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item }}"
+  with_items:
+    - "{{ data_devices }}"
   when:
     - not containerized_deployment
-    - item.0.partitions|length == 0
+    - data_devices|length > 0

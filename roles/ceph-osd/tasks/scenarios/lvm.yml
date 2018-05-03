@@ -1,4 +1,13 @@
 ---
+- name: set_fact lvm_volumes - build lvm_volumes dict based on choose_disk inputs if no input from the user
+  set_fact:
+    lvm_volumes:
+      data: "{{ data_devices if data_devices|length==0 else block_devices }}"
+  with_items:
+    - "{{ data_devices }}"
+  when:
+    - lvm_volumes|length == 0
+
 - name: "use ceph-volume to create {{ osd_objectstore }} osds"
   ceph_volume:
     cluster: "{{ cluster }}"

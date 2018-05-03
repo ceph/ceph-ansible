@@ -16,9 +16,6 @@
 - name: include ceph_disk_cli_options_facts.yml
   include_tasks: ceph_disk_cli_options_facts.yml
 
-- name: include build_devices.yml
-  include_tasks: build_devices.yml
-
 - name: read information about the devices
   parted:
     device: "{{ item }}"
@@ -31,7 +28,39 @@
   when:
     - osd_scenario != 'lvm'
 
-- name: include_tasks scenarios/collocated.yml
+- name: set_fact make dedicated_devices uniq
+  set_fact:
+    dedicated_devices: "{{ dedicated_devices | unique }}"
+
+- name: run choose disk detection
+  choose_disk:
+    vars: "{{ vars }}"
+
+- name: print data_devices
+  debug:
+    msg: "{{ data_devices }}"
+
+- name: print journal_devices
+  debug:
+    msg: "{{ journal_devices }}"
+
+- name: print wal_devices
+  debug:
+    msg: "{{ wal_devices }}"
+
+- name: print db_devices
+  debug:
+    msg: "{{ db_devices }}"
+
+- name: print block_devices
+  debug:
+    msg: "{{ block_devices }}"
+
+- name: print devices_already_configured
+  debug:
+    msg: "{{ devices_already_configured }}"
+
+- name: include scenarios/collocated.yml
   include_tasks: scenarios/collocated.yml
   when:
     - osd_scenario == 'collocated'
