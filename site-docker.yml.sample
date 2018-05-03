@@ -16,6 +16,7 @@
 
   gather_facts: false
   become: True
+  any_errors_fatal: true
 
   vars:
     delegate_facts_host: True
@@ -51,10 +52,7 @@
   roles:
     - role: ceph-defaults
       tags: [with_pkg, fetch_container_image]
-      when:
-        - containerized_deployment | bool
-        - not (is_atomic | bool)
-        - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
+    - role: ceph-validate
     - role: ceph-docker-common
       tags: [with_pkg, fetch_container_image]
       when:
@@ -70,27 +68,6 @@
         - is_atomic
         - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
         - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
-
-- hosts:
-  - mons
-  - agents
-  - osds
-  - mdss
-  - rgws
-  - nfss
-  - restapis
-  - rbdmirrors
-  - clients
-  - mgrs
-  - iscsi-gws
-
-  gather_facts: false
-  any_errors_fatal: true
-  become: true
-
-  roles:
-    - ceph-defaults
-    - ceph-validate
 
 - hosts: mons
   tasks:
