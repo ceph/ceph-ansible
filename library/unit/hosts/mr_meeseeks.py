@@ -764,7 +764,7 @@ def get_ceph_volume_lvm_list(partition):
         exit("unexpected {} in get_ceph_volume_lvm_list()".format(partition))
 
 
-def is_valid_partition_table(partition):
+def is_invalid_partition_table(partition):
     partitions = {}
     partitions["/dev/loop0"] = "/dev/loop0:10,7GB:loopback:512:512:gpt:Loopback device:;"
     partitions["/dev/sda1"] = "Error: /dev/sda1: unrecognised disk label"
@@ -780,7 +780,11 @@ def is_valid_partition_table(partition):
         partitions["/dev/{}".format(unrecognised_partition)] = "Error: /dev/{}: unrecognised disk label".format(partition)  # noqa 501
 
     if partition in partitions:
-        return partitions[partition]
+        if 'unrecognised disk label' not in partitions[partition].lower():
+            if "error:" in partitions[partition].lower():
+                return "failed"
+
+        return ""
     else:
         exit("unexpected {} in is_valid_partition_table()".format(partition))
 

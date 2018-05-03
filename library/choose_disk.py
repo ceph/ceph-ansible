@@ -336,9 +336,9 @@ def expand_disks(lookup_disks, ceph_type="", module=None):
     return final_disks
 
 
-def is_valid_partition_table(partition):
+def is_invalid_partition_table(partition):
     '''
-    Return if a partition table is valid
+    Return if a partition table is invalid
     if parted returns no partition label this means there is no partition
     BUT the device is usable
     however if parted fails with something else then we return failed
@@ -351,10 +351,13 @@ def is_valid_partition_table(partition):
     stdout, stderr = parted.communicate()
 
     if retcode != 0:
-        if 'unrecognised disk label' in stderr:
-            return False
+        # unrecognised disk label is an exception for the "Error:" case
+        if 'unrecognised disk label' not in stderr.lower():
+            if "error:" in stderr.lower():
+                logger.error("parted -sm returned the following error on {} : {}".format(partition, stderr))
+                return "failed"
 
-    return True
+    return ""
 
 
 def get_ceph_volume_lvm_list(partition):
@@ -430,8 +433,9 @@ def disk_label(partition, current_fsid, ceph_disk):
                                 return "foreign : {}".format(partition_iter["ceph_fsid"])
 
     # 3) let's search a partition table
-    if not is_valid_partition_table(partition):
-        return ""
+    invalid_partition_table = is_invalid_partition_table(partition)
+    if invalid_partition_table:
+        return invalid_partition_table
 
     # 4) if the device has a partition table, we can look for potential partitions
     # let's search directly from the partitions labels
@@ -560,6 +564,9 @@ def select_only_free_devices(physical_disks, current_fsid):
                         logger.info('Ignoring %10s : device has foreign Ceph metadata : %s',
                                     partition, disk_type.split(":")[1])
                         continue
+                    elif disk_type.startswith("failed"):
+                        logger.info('Ignoring %10s : unable to perform a complete detection', partition)
+                        continue
                     # This partition is populated, let's report a usable device of it
                     found_populated_partition = True
                     selected_devices[partition] = current_physical_disk['partitions'][partition]
@@ -594,6 +601,9 @@ def select_only_free_devices(physical_disks, current_fsid):
         elif disk_type.startswith("foreign"):
             logger.info('Ignoring %10s : device has foreign Ceph metadata : %s',
                         physical_disk, disk_type.split(":")[1])
+            continue
+        elif disk_type.startswith("failed"):
+            logger.info('Ignoring %10s : unable to perform a complete detection', physical_disk)
             continue
 
         # Removing accessed devices

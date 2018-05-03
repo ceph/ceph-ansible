@@ -181,7 +181,7 @@ def test_select_only_free_devices():
         with mock.patch('library.choose_disk.read_ceph_disk', host_file.read_ceph_disk):
             with mock.patch('library.choose_disk.is_read_only_device', host_file.is_read_only_device):  # noqa 501
                 with mock.patch('library.choose_disk.get_ceph_volume_lvm_list', host_file.get_ceph_volume_lvm_list):  # noqa 501
-                    with mock.patch('library.choose_disk.is_valid_partition_table', host_file.is_valid_partition_table):  # noqa 501
+                    with mock.patch('library.choose_disk.is_invalid_partition_table', host_file.is_invalid_partition_table):  # noqa 501
                         with mock.patch('library.choose_disk.get_partition_label', host_file.get_partition_label):  # noqa 501
                             with mock.patch('library.choose_disk.is_lvm_disk', host_file.is_lvm_disk):  # noqa 501
                                 with mock.patch('library.choose_disk.is_locked_raw_device', host_file.is_locked_raw_device):  # noqa 501
