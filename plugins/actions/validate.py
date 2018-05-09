@@ -212,7 +212,6 @@ rados_options = (
 osd_options = (
     (optional("dmcrypt"), types.boolean),
     ("osd_scenario", validate_osd_scenarios),
-    (optional("objectstore"), validate_objectstore),
 )
 
 collocated_osd_scenario = ("devices", iterables.AllItems(types.string))
