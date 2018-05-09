@@ -11,7 +11,7 @@ stable_branch=$1
 commit=$2
 bkp_branch_name=$3
 bkp_branch_name_prefix=bkp
-bkp_branch=$bkp_branch_name-$bkp_branch_name_prefix
+bkp_branch=$bkp_branch_name-$bkp_branch_name_prefix-$stable_branch
 
 
 #############
@@ -89,8 +89,8 @@ checkout
 cherry_pick
 push
 create_pr <<MSG
-Backport of ${3}
+Backport of ${3} in $stable_branch
 
-Backport of #${3}
+Backport of #${3} in $stable_branch
 MSG
 cleanup
