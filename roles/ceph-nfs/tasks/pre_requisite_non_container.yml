@@ -75,6 +75,7 @@
 - name: install nfs cephfs gateway
   package:
     name: nfs-ganesha-ceph
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - nfs_file_gw
     - ansible_os_family == 'RedHat'
@@ -82,6 +83,7 @@
 - name: install redhat nfs-ganesha-rgw and ceph-radosgw packages
   package:
     name: "{{ item }}"
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   with_items:
     - nfs-ganesha-rgw
     - ceph-radosgw
