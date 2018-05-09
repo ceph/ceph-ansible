@@ -75,7 +75,8 @@ class ActionModule(ActionBase):
                 notario.validate(host_vars, osd_options, defined_keys=True)
                 notario_store['osd_objectstore'] = host_vars["osd_objectstore"]
                 if host_vars["osd_scenario"] == "collocated":
-                    notario.validate(host_vars, collocated_osd_scenario, defined_keys=True)
+                    if not host_vars.get("osd_auto_discovery", False):
+                        notario.validate(host_vars, collocated_osd_scenario, defined_keys=True)
 
                 if host_vars["osd_scenario"] == "non-collocated":
                     notario.validate(host_vars, non_collocated_osd_scenario, defined_keys=True)
@@ -169,6 +170,7 @@ def validate_rados_options(value):
     assert any([radosgw_address_given, radosgw_address_block_given, radosgw_interface_given]), msg
 
 
+
 install_options = (
     ("ceph_origin", ceph_origin_choices),
     ("containerized_deployment", types.boolean),
@@ -211,6 +213,7 @@ rados_options = (
 
 osd_options = (
     (optional("dmcrypt"), types.boolean),
+    (optional("osd_auto_discovery"), types.boolean),
     ("osd_scenario", validate_osd_scenarios),
 )
 
