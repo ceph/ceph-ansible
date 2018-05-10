@@ -192,7 +192,43 @@
   become: True
 
   pre_tasks:
-    # this task has a failed_when: false to handle the scenario where no mgr existed before the upgrade
+    - name: non container | create ceph mgr keyring(s)
+      command: "ceph --cluster {{ cluster }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
+      args:
+        creates: "{{ ceph_conf_key_directory }}/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items:
+        - "{{ groups.get(mgr_group_name, []) }}"
+      when:
+        - not containerized_deployment
+        - "{{ groups.get(mgr_group_name, []) | length > 0 }}"
+
+    - name: container | create ceph mgr keyring(s)
+      command: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
+      args:
+        creates: "{{ ceph_conf_key_directory }}/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items:
+        - "{{ groups.get(mgr_group_name, []) }}"
+      when:
+        - containerized_deployment
+        - "{{ groups.get(mgr_group_name, []) | length > 0 }}"
+
+    - name: fetch ceph mgr key(s)
+      fetch:
+        src: "{{ ceph_conf_key_directory }}/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
+        dest: "{{ fetch_directory }}/{{ fsid }}/"
+        flat: yes
+        fail_on_missing: no
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items:
+        - "{{ groups.get(mgr_group_name, []) }}"
+
+    # The following task has a failed_when: false
+    # to handle the scenario where no mgr existed before the upgrade
+    # or if we run a Ceph cluster before Luminous
     - name: stop ceph mgr
       systemd:
         name: ceph-mgr@{{ ansible_hostname }}
