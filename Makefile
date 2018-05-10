@@ -38,6 +38,13 @@ ifneq (,$(findstring rc,$(VERSION)))
     RELEASE := 0.$(RC).$(RELEASE)
     VERSION := $(subst $(RC),,$(VERSION))
 endif
+
+ifneq (,$(shell echo $(VERSION) | grep [a-zA-Z]))
+    # If we still have alpha characters in our Git tag string, we don't know
+    # how to translate that into a sane RPM version/release. Bail out.
+    $(error cannot translate Git tag version $(VERSION) to an RPM NVR)
+endif
+
 NVR := $(NAME)-$(VERSION)-$(RELEASE).el7
 
 all: srpm
