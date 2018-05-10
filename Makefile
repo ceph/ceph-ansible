@@ -15,7 +15,8 @@ NAME = ceph-ansible
 #  A "git describe" value of "v2.2.0" creates an NVR
 #  "ceph-ansible-2.2.0-1.el7"
 
-VERSION := $(shell git describe --tags --abbrev=0 --match 'v*' | sed 's/^v//')
+TAG := $(shell git describe --tags --abbrev=0 --match 'v*')
+VERSION := $(shell echo $(TAG) | sed 's/^v//')
 COMMIT := $(shell git rev-parse HEAD)
 SHORTCOMMIT := $(shell echo $(COMMIT) | cut -c1-7)
 RELEASE := $(shell git describe --tags --match 'v*' \
@@ -68,4 +69,23 @@ rpm: dist srpm
 	  --resultdir=. \
 	  --define "dist .el7"
 
-.PHONY: dist rpm srpm
+tag:
+	$(eval BRANCH := $(shell git rev-parse --abbrev-ref HEAD))
+	$(eval LASTNUM := $(shell echo $(TAG) \
+	                    | sed -E "s/.*[^0-9]([0-9]+)$$/\1/"))
+	$(eval NEXTNUM=$(shell echo $$(($(LASTNUM)+1))))
+	$(eval NEXTTAG=$(shell echo $(TAG) | sed "s/$(LASTNUM)$$/$(NEXTNUM)/"))
+	if [[ "$(TAG)" == $(git describe --tags --match 'v*') ]]; then \
+	    echo "$(SHORTCOMMIT) on $(BRANCH) is already tagged as $(TAG)"; \
+	    exit 1; \
+	fi
+	if [[ "$(BRANCH)" != "master" ]] && \
+	   ! [[ "$(BRANCH)" =~ ^stable- ]]; then \
+		echo Cannot tag $(BRANCH); \
+		exit 1; \
+	fi
+	@echo Tagging Git branch $(BRANCH)
+	git tag $(NEXTTAG)
+	@echo run \'git push origin $(NEXTTAG)\' to push to GitHub.
+
+.PHONY: dist rpm srpm tag
