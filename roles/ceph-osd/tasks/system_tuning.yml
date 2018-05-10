@@ -61,13 +61,7 @@
     sysctl_file: /etc/sysctl.d/ceph-tuning.conf
     sysctl_set: yes
     ignoreerrors: yes
-  with_items: "{{ os_tuning_params }}"
-
-- name: increase aio-max-nr for bluestore
-  sysctl:
-    name: fs.aio-max-nr
-    value: 1048576
-    sysctl_file: /etc/sysctl.d/ceph-tuning.conf
-    sysctl_set: yes
-  when:
-    - osd_objectstore == 'bluestore'
+  with_items:
+    - { name: "fs.aio-max-nr", value: "1048576", enable: (osd_objectstore == 'bluestore') }
+    - "{{ os_tuning_params }}"
+  when: item.enable | default(true)
