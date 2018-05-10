@@ -121,6 +121,29 @@ appropriate for your cluster setup. Perform the following steps to prepare your 
    It's important the playbook you use is placed at the root of the ``ceph-ansible`` project. This is how ansible will be able to find the roles that
    ``ceph-ansible`` provides.
 
+Configuration Validation
+------------------------
+The ``ceph-ansible`` project provides config validation through the ``ceph-validate`` role. If you are using one of the provided playbooks this role will
+be run early in the deployment as to ensure you've given ``ceph-ansible`` the correct config. This check is only making sure that you've provided the
+proper config settings for your cluster, not that the values in them will produce a healthy cluster. For example, if you give an incorrect address for
+``monitor_address`` then the mon will still fail to join the cluster.
+
+An example of a validation failure might look like::
+
+    TASK [ceph-validate : validate provided configuration] *************************
+    task path: /Users/andrewschoen/dev/ceph-ansible/roles/ceph-validate/tasks/main.yml:3
+    Wednesday 02 May 2018  13:48:16 -0500 (0:00:06.984)       0:00:18.803 *********
+     [ERROR]: [mon0] Validation failed for variable: osd_objectstore
+
+     [ERROR]: [mon0] Given value for osd_objectstore: foo
+
+     [ERROR]: [mon0] Reason: osd_objectstore must be either 'bluestore' or 'filestore'
+
+     fatal: [mon0]: FAILED! => {
+         "changed": false
+         }
+
+
 ceph-ansible - choose installation method
 -----------------------------------------
 
