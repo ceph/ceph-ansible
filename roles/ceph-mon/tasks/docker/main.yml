@@ -94,12 +94,8 @@
     - not containerized_deployment_with_kv
 
 - block:
-  - name: get mons ips addr
-    command: "{{ docker_exec_cmd }} ceph-conf -c {{ ceph_conf_key_directory }}/{{ cluster }}.conf 'mon host'"
-    register: mons_ips
-
   - name: create ceph mgr keyring(s) when mon is containerized
-    command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -m {{ mons_ips.stdout.split(',')[0] }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
+    command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
     args:
       creates: "{{ ceph_conf_key_directory }}/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
     changed_when: false
