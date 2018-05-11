@@ -1,0 +1,43 @@
+---
+
+- hosts: osds
+  gather_facts: false
+  become: yes
+  tasks:
+
+    - name: create dummy nvme file
+      command: dd if=/dev/zero of=/tmp/nvme bs=256MB count=78
+
+    - name: create dummy nvme loop device
+      command: losetup /dev/loop0 /tmp/nvme
+
+    - name: enable nvme kernel module
+      command: modprobe nvme nvmet nvme_loop
+
+    - name: clone nvme target cli
+      command: git clone git://git.infradead.org/users/hch/nvmetcli.git
+
+    - name: install nvme-cli
+      package:
+        name: nvme-cli
+        state: present
+
+    - name: install configshell-fb dep for nvme target cli
+      pip:
+        name: configshell-fb
+        state: present
+
+    - name: change examples/loop.json to use our loop0
+      shell: cd nvmetcli && sed -i 's|/dev/nvme0n1|/dev/loop0|' examples/loop.json
+
+    - name: change examples/loop.json to use our loop0
+      shell: cd nvmetcli && ./setup.py install
+
+    - name: activate the nvme drive
+      command: nvmetcli restore examples/loop-modified.json
+
+    - name: connect to the nvme target
+      command: nvme connect -t loop -n testnqn -q hostnqn
+
+    - name: show nvme devices
+      command: nvme list
