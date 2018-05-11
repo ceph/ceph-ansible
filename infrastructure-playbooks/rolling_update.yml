@@ -192,6 +192,11 @@
   become: True
 
   pre_tasks:
+    - name: get current fsid
+      command: "ceph --cluster {{ cluster }} fsid"
+      register: cluster_uuid
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
     - name: non container | create ceph mgr keyring(s)
       command: "ceph --cluster {{ cluster }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
       args:
