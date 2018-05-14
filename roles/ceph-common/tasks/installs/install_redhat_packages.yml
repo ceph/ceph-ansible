@@ -13,49 +13,23 @@
   when:
     - ansible_distribution == 'CentOS'
 
-- name: install redhat ceph-test package
-  package:
-    name: ceph-test
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - ceph_test
+- name: generate packages to install for redhat
+  set_fact:
+    _redhat_ceph_pkgs_to_install: [ "ceph-common" ]
 
-- name: install redhat ceph-common
-  package:
-    name: "ceph-common"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+- name: add packages to install per host
+  set_fact:
+    _redhat_ceph_pkgs_to_install: "{{ _redhat_ceph_pkgs_to_install + [ item.name ] }}"
+  when: item.install
+  with_items:
+    - { name: "ceph-test", install: ceph-test }
+    - { name: "ceph-mon", install: (mon_group_name in group_names) }
+    - { name: "ceph-osd", install: (osd_group_name in group_names) }
+    - { name: "ceph-fuse", install: (client_group_name in group_names) }
+    - { name: "ceph-base", install: (client_group_name in group_names) }
+    - { name: "ceph-radosgw", install: (rgw_group_name in group_names) }
 
-- name: install redhat ceph-mon package
+- name: install redhat ceph packages
   package:
-    name: "ceph-mon"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - mon_group_name in group_names
-
-- name: install redhat ceph-osd package
-  package:
-    name: "ceph-osd"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - osd_group_name in group_names
-
-- name: install redhat ceph-fuse package
-  package:
-    name: "ceph-fuse"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - client_group_name in group_names
-
-- name: install redhat ceph-base package
-  package:
-    name: "ceph-base"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - client_group_name in group_names
-
-- name: install redhat ceph-radosgw package
-  package:
-    name: ceph-radosgw
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - rgw_group_name in group_names
+    name: "{{ _redhat_ceph_pkgs_to_install }}"
+    state: present

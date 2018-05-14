@@ -1,40 +1,20 @@
 ---
-- name: install red hat storage ceph-common for debian
-  apt:
-    pkg: ceph-common
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+- name: generate packages to install for debian
+  set_fact:
+    _debian_rhcs_ceph_pkgs_to_install: [ "ceph-common" ]
 
-- name: install red hat storage ceph mon for debian
-  apt:
-    name: ceph-mon
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - mon_group_name in group_names
+- name: add packages to install per host
+  set_fact:
+    _debian_rhcs_ceph_pkgs_to_install: "{{ _debian_rhcs_ceph_pkgs_to_install + [ item.name ] }}"
+  when: item.install
+  with_items:
+    - { name: "ceph-mon", install: (mon_group_name in group_names) }
+    - { name: "ceph-osd", install: (osd_group_name in group_names) }
+    - { name: "ceph-test", install: ceph-test }
+    - { name: "radosgw", install: (rgw_group_name in group_names) }
+    - { name: "ceph-fuse", install: (client_group_name in group_names) }
 
-- name: install red hat storage ceph osd for debian
+- name: install red hat storage ceph packages for debian
   apt:
-    name: ceph-osd
+    pkg: "{{ _debian_rhcs_ceph_pkgs_to_install }}"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - osd_group_name in group_names
-
-- name: install ceph-test for debian
-  apt:
-    name: ceph-test
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - ceph_test
-
-- name: install red hat storage radosgw for debian
-  apt:
-    name: radosgw
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - rgw_group_name in group_names
-
-- name: install red hat storage ceph-fuse client for debian
-  apt:
-    pkg: ceph-fuse
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - client_group_name in group_names
