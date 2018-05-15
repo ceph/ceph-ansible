@@ -15,6 +15,8 @@
   - iscsi-gws
 
   gather_facts: false
+  any_errors_fatal: true
+  become: true
 
   tags:
     - always
@@ -22,7 +24,7 @@
   vars:
     delegate_facts_host: True
 
-  tasks:
+  pre_tasks:
     # If we can't get python2 installed before any module is used we will fail
     # so just try what we can to get it installed
     - name: check for python2
@@ -69,26 +71,10 @@
         - ansible_distribution == 'Fedora'
         - ansible_distribution_major_version|int >= 23
 
-- hosts:
-  - mons
-  - agents
-  - osds
-  - mdss
-  - rgws
-  - nfss
-  - restapis
-  - rbdmirrors
-  - clients
-  - mgrs
-  - iscsi-gws
-
-  gather_facts: false
-  any_errors_fatal: true
-  become: true
-
   roles:
     - ceph-defaults
     - ceph-validate
+
 
 - hosts: mons
   gather_facts: false
