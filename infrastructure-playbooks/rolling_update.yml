@@ -179,6 +179,25 @@
       when:
         - containerized_deployment
 
+    - name: set osd flags
+      command: ceph --cluster {{ cluster }} osd set {{ item }}
+      with_items:
+        - noout
+        - noscrub
+        - nodeep-scrub
+      delegate_to: "{{ mon_host }}"
+      when: not containerized_deployment
+
+    - name: set containerized osd flags
+      command: |
+        docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
+      with_items:
+        - noout
+        - noscrub
+        - nodeep-scrub
+      delegate_to: "{{ mon_host }}"
+      when: containerized_deployment
+
 
 - name: upgrade ceph mgr node
 
@@ -228,25 +247,6 @@
         daemon_reload: yes
       when:
         - containerized_deployment
-
-    - name: set osd flags
-      command: ceph --cluster {{ cluster }} osd set {{ item }}
-      with_items:
-        - noout
-        - noscrub
-        - nodeep-scrub
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      when: not containerized_deployment
-
-    - name: set containerized osd flags
-      command: |
-        docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
-      with_items:
-        - noout
-        - noscrub
-        - nodeep-scrub
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      when: containerized_deployment
 
 
 - name: upgrade ceph osds cluster
