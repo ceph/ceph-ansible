@@ -89,7 +89,7 @@ checkout
 cherry_pick
 push
 create_pr <<MSG
-Backport of ${3} in $stable_branch
+${4} Backport of ${3} in $stable_branch
 
 Backport of #${3} in $stable_branch
 MSG
