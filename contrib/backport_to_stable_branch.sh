@@ -70,7 +70,7 @@ cleanup () {
 }
 
 test_args () {
-  if [ $# -ne 3 ]; then
+  if [ $# -lt 3 ]; then
     echo "Please run the script like this: ./contrib/backport_to_stable_branch.sh STABLE_BRANCH_NAME COMMIT_SHA1 BACKPORT_BRANCH_NAME"
     echo "We accept multiple commits as soon as they are commas-separated."
     echo "e.g: ./contrib/backport_to_stable_branch.sh stable-2.2 6892670d317698771be7e96ce9032bc27d3fd1e5,8756c553cc8c213fc4996fc5202c7b687eb645a3 my-work"
