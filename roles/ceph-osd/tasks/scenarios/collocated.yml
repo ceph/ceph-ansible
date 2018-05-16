@@ -1,4 +1,8 @@
 ---
+- name: set_fact osd_created
+  set_fact:
+    osd_created: False
+
 # use shell rather than docker module
 # to ensure osd disk prepare finishes before
 # starting the next task
@@ -26,6 +30,12 @@
     - not osd_auto_discovery
     - containerized_deployment
     - item.0.partitions|length == 0
+  register: osd
+
+- name: set_fact osd_created
+  set_fact:
+    osd_created: True
+  when: osd.changed
 
 - name: automatic prepare ceph containerized osd disk collocated
   shell: |
@@ -49,6 +59,12 @@
     - osd_auto_discovery
     - containerized_deployment
     - devices is defined
+  register: osd
+
+- name: set_fact osd_created
+  set_fact:
+    osd_created: True
+  when: osd.changed
 
 - name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with collocated osd data and journal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }}"
@@ -57,4 +73,17 @@
     - "{{ devices }}"
   when:
     - not containerized_deployment
-    - item.0.partitions|length == 0
+  register: osd
+
+- name: set_fact osd_created
+  set_fact:
+    osd_created: True
+  when: osd.changed
+
+- name: fail if osd was never created
+  fail:
+    msg: >
+      OSD was never created. If using not using osd_auto_discovery, ensure the
+      specified devices do not have partitions. If using osd_auto_discovery,
+      check that suitable devices were found.
+  when: not osd_created

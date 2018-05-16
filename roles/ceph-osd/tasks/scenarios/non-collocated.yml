@@ -1,4 +1,8 @@
 ---
+- name: set_fact osd_created
+  set_fact:
+    osd_created: False
+
 # use shell rather than docker module
 # to ensure osd disk prepare finishes before
 # starting the next task
@@ -28,6 +32,12 @@
     - containerized_deployment
     - osd_objectstore == 'filestore'
     - item.0.partitions|length == 0
+  register: osd
+
+- name: set_fact osd_created
+  set_fact:
+    osd_created: True
+  when: osd.changed
 
 - name: prepare ceph "{{ osd_objectstore }}" containerized osd disk(s) non-collocated with a dedicated device for db and wal
   shell: |
@@ -57,14 +67,25 @@
     - containerized_deployment
     - osd_objectstore == 'bluestore'
     - item.0.partitions|length == 0
+  register: osd
 
-- name: prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) non-collocated
-  command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }} {{ item.2 }}"
-  with_together:
-    - "{{ parted_results.results | default([]) }}"
-    - "{{ devices }}"
-    - "{{ dedicated_devices }}"
-  changed_when: false
+- name: set_fact osd_created
+  set_fact:
+    osd_created: True
+  when: osd.changed
+
+- block:
+  - name: prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) non-collocated
+    command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }} {{ item.2 }}"
+    with_together:
+      - "{{ parted_results.results | default([]) }}"
+      - "{{ devices }}"
+      - "{{ dedicated_devices }}"
+    changed_when: false
+
+  - name: set_fact osd_created
+    set_fact:
+      osd_created: True
   when:
     - osd_objectstore == 'filestore'
     - not containerized_deployment
@@ -81,3 +102,16 @@
     - osd_objectstore == 'bluestore'
     - not containerized_deployment
     - item.0.partitions|length == 0
+  register: osd
+
+- name: set_fact osd_created
+  set_fact:
+    osd_created: True
+  when: osd.changed
+
+- name: fail if osd was never created
+  fail:
+    msg: >
+      OSD was never created. Ensure the specified devices do not have
+      partitions.
+  when: not osd_created
