@@ -388,17 +388,25 @@
     set_fact:
       resolved_parent_device: "{{ tmp_resolved_parent_device.results | map(attribute='stdout') | list | unique }}"
 
+  - name: wipe partitions
+    shell: |
+      wipefs --all "{{ item }}"
+      dd if=/dev/zero of="{{ item }}" bs=1 count=4096
+    with_items: "{{ combined_devices_list }}"
+
   - name: zap ceph journal/block db/block wal partitions
     shell: |
       # if the disk passed is a raw device AND the boot system disk
-      if parted -s "/dev/{{ item }}" print | grep -sq boot; then
+      if parted -s /dev/"{{ item }}" print | grep -sq boot; then
         echo "Looks like /dev/{{ item }} has a boot partition,"
         echo "if you want to delete specific partitions point to the partition instead of the raw device"
         echo "Do not use your system disk!"
         exit 1
       fi
-      sgdisk -Z "/dev/{{ item }}"
-      dd if=/dev/zero of="/dev/{{ item }}" bs=1M count=200
+      sgdisk -Z --clear --mbrtogpt -g -- /dev/"{{ item }}"
+      dd if=/dev/zero of=/dev/"{{ item }}" bs=1M count=200
+      parted -s /dev/"{{ item }}" mklabel gpt
+      partprobe /dev/"{{ item }}"
       udevadm settle --timeout=600
     with_items:
       - "{{ resolved_parent_device }}"
