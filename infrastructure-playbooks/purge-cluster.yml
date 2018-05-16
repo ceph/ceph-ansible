@@ -379,7 +379,7 @@
                                  ceph_wal_partition_to_erase_path.stdout_lines }}"
 
   - name: resolve parent device
-    shell: echo /dev/$(lsblk -no pkname "{{ item }}")
+    command: lsblk --nodeps -no pkname "{{ item }}"
     register: tmp_resolved_parent_device
     with_items:
       - "{{ combined_devices_list }}"
@@ -391,14 +391,14 @@
   - name: zap ceph journal/block db/block wal partitions
     shell: |
       # if the disk passed is a raw device AND the boot system disk
-      if parted -s "{{ item }}" print | grep -sq boot; then
-        echo "Looks like {{ item }} has a boot partition,"
+      if parted -s "/dev/{{ item }}" print | grep -sq boot; then
+        echo "Looks like /dev/{{ item }} has a boot partition,"
         echo "if you want to delete specific partitions point to the partition instead of the raw device"
         echo "Do not use your system disk!"
         exit 1
       fi
-      sgdisk -Z "{{ item }}"
-      dd if=/dev/zero of="{{ item }}" bs=1M count=200
+      sgdisk -Z "/dev/{{ item }}"
+      dd if=/dev/zero of="/dev/{{ item }}" bs=1M count=200
       udevadm settle --timeout=600
     with_items:
       - "{{ resolved_parent_device }}"
