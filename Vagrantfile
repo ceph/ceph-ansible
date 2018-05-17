@@ -520,6 +520,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         end
         lv.memory = MEMORY
         lv.random_hostname = true
+
+        # Test the host machine we are running on as an nvme drive
+        # Also make sure Intel IOMMU is enabled
+        # if so, then we expose it inside the guess using a PCI device passthrough
+        # we should probably check if the device is not accessed already...
+        if system "lspci | grep -sqo 'Non-Volatile memory controller: Intel Corporation PCIe Data Center SSD' && dmesg | grep -sq 'IOMMU'"
+          # Only do the passthrough on first OSD virtual machine
+          if i == "0"
+            # On our CI machines all the NVMEs have the same PCI slot 02:00.0
+            # So it's "safe" to hardcode it
+            libvirt.pci :bus => '0x02', :slot => '0x00', :function => '0x0'
+          end
+        end
       end
 
       # Parallels
