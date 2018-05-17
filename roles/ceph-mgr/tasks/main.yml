@@ -23,19 +23,25 @@
   when:
     - ceph_release_num[ceph_release] >= ceph_release_num['luminous']
 
+- name: set _ceph_mgr_modules fact
+  set_fact:
+    _ceph_mgr_modules: "{{ enabled_ceph_mgr_modules.get('stdout', '{}') | from_json }}"
+
 - name: disable ceph mgr enabled modules
   command: "{{ docker_exec_cmd_mgr | default('') }} ceph --cluster {{ cluster }} mgr module disable {{ item }}"
   # When ceph release is jewel, ceph-mgr role is skipped. It means, the enabled_ceph_mgr_modules doesn't contain 'stdout' attribute.
   # Therefore, we need to get a default value which can be used up by from_json filter.
-  with_items: "{{ enabled_ceph_mgr_modules.get('stdout', '{}') | from_json }}"
+  with_items: "{{ _ceph_mgr_modules.enabled_modules }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
+    - item not in ceph_mgr_modules
     - not enabled_ceph_mgr_modules.get('skipped')
     - ceph_release_num[ceph_release] >= ceph_release_num['luminous']
 
 - name: add modules to ceph-mgr
-  command: "{{ docker_exec_cmd_mgr | default('') }} ceph --cluster {{ cluster }} mgr module enable {{ item }} --force"
+  command: "{{ docker_exec_cmd_mgr | default('') }} ceph --cluster {{ cluster }} mgr module enable {{ item }}"
   with_items: "{{ ceph_mgr_modules }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
+    - item in _ceph_mgr_modules.disabled_modules
     - ceph_release_num[ceph_release] >= ceph_release_num['luminous']
