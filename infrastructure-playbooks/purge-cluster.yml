@@ -311,10 +311,34 @@
     failed_when: false
     register: ceph_disk_present
 
+  - name: wipe table on dm-crypt devices
+    command: dmsetup wipe_table --force "{{ item }}"
+    with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
+    when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
+
   - name: delete dm-crypt devices if any
     command: dmsetup remove --retry --force {{ item }}
     with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
     when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
+
+  - name: get payload_offset
+    shell: cryptsetup luksDump /dev/disk/by-partuuid/{{ item }} | awk '/Payload offset:/ { print $3 }'
+    register: payload_offset
+    with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
+    when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
+
+  - name: get physical sector size
+    command: blockdev --getpbsz /dev/disk/by-partuuid/{{ item }}
+    with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
+    when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
+    register: phys_sector_size
+
+  - name: wipe dmcrypt device
+    command: dd if=/dev/zero of=/dev/disk/by-partuuid/{{ item.0 }} bs={{ item.1.stdout }} count={{ item.2.stdout }} oflag=direct
+    with_together:
+      - "{{ encrypted_ceph_partuuid.stdout_lines }}"
+      - "{{ payload_offset.results }}"
+      - "{{ phys_sector_size.results }}"
 
   - name: get ceph data partitions
     shell: |
