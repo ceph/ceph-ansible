@@ -1,15 +1,16 @@
 ---
 - name: list existing pool(s)
   command: >
-    {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+    {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
     osd pool get {{ item.name }} size
   with_items: "{{ openstack_pools | unique }}"
   register: created_pools
+  delegate_to: "{{ groups[mon_group_name][0] }}"
   failed_when: false
 
 - name: create openstack pool(s)
   command: >
-    {{ docker_exec_cmd }} ceph --cluster {{ cluster }}
+    {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
     osd pool create {{ item.0.name }}
     {{ item.0.pg_num }}
     {{ item.0.pgp_num | default(item.0.pg_num) }}
@@ -23,13 +24,15 @@
     - "{{ openstack_pools | unique }}"
     - "{{ created_pools.results }}"
   changed_when: false
+  delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
     - item.1.get('rc', 0) != 0
 
 - name: assign application to pool(s)
-  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
+  command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
   with_items: "{{ openstack_pools | unique }}"
   changed_when: false
+  delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
     - ceph_release_num[ceph_release] >= ceph_release_num['luminous']
     - item.application is defined
@@ -40,10 +43,11 @@
     name: "{{ item.name }}"
     caps: "{{ item.caps }}"
     secret: "{{ item.key | default('') }}"
-    containerized: "{{ docker_exec_cmd | default(False) }}"
+    containerized: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }}"
     cluster: "{{ cluster }}"
     mode: "{{ item.mode|default(omit) }}"
   with_items: "{{ openstack_keys }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
   when: cephx
 
 - name: fetch openstack cephx key(s)
@@ -51,6 +55,7 @@
     src: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
     dest: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
     flat: yes
+  delegate_to: "{{ groups[mon_group_name][0] }}"
   with_items: "{{ openstack_keys }}"
 
 - name: copy to other mons the openstack cephx key(s)
