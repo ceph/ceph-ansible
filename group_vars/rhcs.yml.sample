@@ -29,7 +29,7 @@ dummy:
 #  mimic: 13
 
 # Directory to fetch cluster fsid, keys etc...
-fetch_directory: ~/ceph-ansible-keys
+#fetch_directory: fetch/
 
 # The 'cluster' variable determines the name of the cluster.
 # Changing the default value to something else means that you will
@@ -135,14 +135,14 @@ fetch_directory: ~/ceph-ansible-keys
 # - 'distro' means that no separate repo file will be added
 #  you will get whatever version of Ceph is included in your Linux distro.
 # 'local' means that the ceph binaries will be copied over from the local machine
-ceph_origin: repository
+#ceph_origin: "{{ 'repository' if ceph_rhcs or ceph_stable or ceph_dev or ceph_stable_uca or ceph_custom else 'dummy' }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
 #valid_ceph_origins:
 #  - repository
 #  - distro
 #  - local
 
 
-ceph_repository: rhcs
+#ceph_repository: "{{ 'community' if ceph_stable else 'rhcs' if ceph_rhcs else 'dev' if ceph_dev else 'uca' if ceph_stable_uca else 'custom' if ceph_custom else 'dummy' }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
 #valid_ceph_repository:
 #  - community
 #  - rhcs
@@ -532,4 +532,70 @@ ceph_repository: rhcs
 #####################
 #docker_pull_retry: 3
 #docker_pull_timeout: "300s"
+
+
+
+#############
+# OPENSTACK #
+#############
+#openstack_config: false
+#openstack_glance_pool:
+#  name: "images"
+#  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+#  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+#  rule_name: "replicated_rule"
+#  type: 1
+#  erasure_profile: ""
+#  expected_num_objects: ""
+#openstack_cinder_pool:
+#  name: "volumes"
+#  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+#  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+#  rule_name: "replicated_rule"
+#  type: 1
+#  erasure_profile: ""
+#  expected_num_objects: ""
+#openstack_nova_pool:
+#  name: "vms"
+#  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+#  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+#  rule_name: "replicated_rule"
+#  type: 1
+#  erasure_profile: ""
+#  expected_num_objects: ""
+#openstack_cinder_backup_pool:
+#  name: "backups"
+#  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+#  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+#  rule_name: "replicated_rule"
+#  type: 1
+#  erasure_profile: ""
+#  expected_num_objects: ""
+#openstack_gnocchi_pool:
+#  name: "metrics"
+#  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+#  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+#  rule_name: "replicated_rule"
+#  type: 1
+#  erasure_profile: ""
+#  expected_num_objects: ""
+
+#openstack_pools:
+#  - "{{ openstack_glance_pool }}"
+#  - "{{ openstack_cinder_pool }}"
+#  - "{{ openstack_nova_pool }}"
+#  - "{{ openstack_cinder_backup_pool }}"
+#  - "{{ openstack_gnocchi_pool }}"
+
+
+# The value for 'key' can be a pre-generated key,
+# e.g key: "AQDC2UxZH4yeLhAAgTaZb+4wDUlYOsr1OfZSpQ=="
+# By default, keys will be auto-generated.
+#
+#openstack_keys:
+#  - { name: client.glance, caps: { mon: "profile rbd", osd: "profile rbd pool=volumes, profile rbd pool={{ openstack_glance_pool.name }}"}, mode: "0600" }
+#  - { name: client.cinder, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_glance_pool.name }}"}, mode: "0600" }
+#  - { name: client.cinder-backup, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_backup_pool.name }}"}, mode: "0600" }
+#  - { name: client.gnocchi, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_gnocchi_pool.name }}"}, mode: "0600", }
+#  - { name: client.openstack, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_glance_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_cinder_backup_pool.name }}"}, mode: "0600" }
 
