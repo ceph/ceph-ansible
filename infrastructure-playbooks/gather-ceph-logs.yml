@@ -1,0 +1,42 @@
+- hosts:
+  - mons
+  - agents
+  - osds
+  - mdss
+  - rgws
+  - nfss
+  - restapis
+  - rbdmirrors
+  - clients
+  - mgrs
+  - iscsi-gws
+  - iscsigws
+
+  gather_facts: false
+  become: yes
+
+  tasks:
+    - name: create a temp directory
+      local_action:
+        module: tempfile
+        state: directory
+        prefix: ceph_ansible
+      run_once: true
+      register: localtempfile
+
+    - name: set_fact lookup_ceph_config - lookup keys, conf and logs
+      shell: ls -1 {{ item }}
+      register: ceph_collect
+      changed_when: false
+      with_items:
+        - /etc/ceph/*
+        - /var/log/ceph/*
+
+    - name: collect ceph logs, config and keys in "{{ localtempfile.path }}" on the machine running ansible
+      fetch:
+        src: "{{ item }}"
+        dest: "{{ localtempfile.path }}"
+        fail_on_missing: no
+        flat: no
+      with_items:
+        - "{{ ceph_collect.stdout_lines }}"
