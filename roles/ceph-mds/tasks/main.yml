@@ -1,4 +1,9 @@
 ---
+- name: include create_mds_filesystems.yml
+  include: create_mds_filesystems.yml
+  when:
+    - inventory_hostname == groups[mds_group_name] | first
+
 - name: set_fact docker_exec_cmd
   set_fact:
     docker_exec_cmd: "docker exec ceph-mds-{{ ansible_hostname }}"
@@ -7,11 +12,6 @@
 
 - name: include common.yml
   include: common.yml
-
-- name: include create_mds_filesystems.yml
-  include: create_mds_filesystems.yml
-  when:
-    - inventory_hostname == groups[mds_group_name] | first
 
 - name: non_containerized.yml
   include: non_containerized.yml
