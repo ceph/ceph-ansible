@@ -21,15 +21,6 @@
     - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
     - ceph_repository not in ['rhcs', 'dev', 'obs']
 
-- name: make sure pg num is set for cephfs pools
-  fail:
-    msg: "You must set pg num for your cephfs pools, see the cephfs_pools variable."
-  with_items: "{{ cephfs_pools }}"
-  when:
-    - groups.get(mds_group_name, []) | length > 0
-    - mon_group_name in group_names
-    - item.pgs == ''
-
 - name: make sure journal_size configured
   debug:
     msg: "WARNING: journal_size is configured to {{ journal_size }}, which is less than 5GB. This is not recommended and can lead to severe issues."
