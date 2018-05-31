@@ -1,10 +1,10 @@
 ---
 # If admin key has been copied to the RGWs, we can run the command from them.
-- name: create rgw pools if create_pools is defined
+- name: create rgw pools if rgw_create_pools is defined
   command: "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num }}"
   changed_when: false
   run_once: true
-  with_dict: "{{ create_pools }}"
+  with_dict: "{{ rgw_create_pools }}"
   when:
     - copy_admin_key
 
@@ -16,11 +16,11 @@
     - not copy_admin_key
 
 # If no admin key has been copied to the RGWs, we have to run the command from the first monitor.
-- name: create rgw pools if create_pools is defined, delegated to first monitor
+- name: create rgw pools if rgw_create_pools is defined, delegated to first monitor
   command: "{{ docker_exec_mon_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num }}"
   changed_when: false
   run_once: true
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  with_dict: "{{ create_pools }}"
+  with_dict: "{{ rgw_create_pools }}"
   when:
     - not copy_admin_key
