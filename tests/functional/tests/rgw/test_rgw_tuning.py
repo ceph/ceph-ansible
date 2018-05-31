@@ -21,7 +21,7 @@ class TestRGWs(object):
     def test_rgw_tuning_pools_are_set(self, node, host):
         cmd = "sudo ceph --cluster={} --connect-timeout 5 osd dump".format(node["cluster_name"])
         output = host.check_output(cmd)
-        pools = node["vars"]["create_pools"]
+        pools = node["vars"]["rgw_create_pools"]
         for pool_name, pg_num in pools.items():
             assert pool_name in output
             pg_num_str = "pg_num {pg_num}".format(pg_num=pg_num["pg_num"])
@@ -36,7 +36,7 @@ class TestRGWs(object):
             cluster=cluster
         )
         output = host.check_output(cmd)
-        pools = node["vars"]["create_pools"]
+        pools = node["vars"]["rgw_create_pools"]
         for pool_name, pg_num in pools.items():
             assert pool_name in output
             pg_num_str = "pg_num {pg_num}".format(pg_num=pg_num["pg_num"])
