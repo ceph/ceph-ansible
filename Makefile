@@ -83,7 +83,7 @@ tag:
 	                    | sed -E "s/.*[^0-9]([0-9]+)$$/\1/"))
 	$(eval NEXTNUM=$(shell echo $$(($(LASTNUM)+1))))
 	$(eval NEXTTAG=$(shell echo $(TAG) | sed "s/$(LASTNUM)$$/$(NEXTNUM)/"))
-	if [[ "$(TAG)" == $(git describe --tags --match 'v*') ]]; then \
+	if [[ "$(TAG)" == "$(git describe --tags --match 'v*')" ]]; then \
 	    echo "$(SHORTCOMMIT) on $(BRANCH) is already tagged as $(TAG)"; \
 	    exit 1; \
 	fi
