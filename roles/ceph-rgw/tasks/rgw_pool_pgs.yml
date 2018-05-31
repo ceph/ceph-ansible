@@ -1,9 +1,9 @@
 ---
-- name: create rgw pools if create_pools is defined
+- name: create rgw pools if rgw_create_pools is defined
   command: ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num }}
   changed_when: false
   run_once: true
-  with_dict: "{{ create_pools }}"
+  with_dict: "{{ rgw_create_pools }}"
   when:
     - not containerized_deployment
 
@@ -14,11 +14,11 @@
   when:
     - containerized_deployment
 
-- name: create rgw pools if create_pools is defined
+- name: create rgw pools if rgw_create_pools is defined
   command: "{{ docker_exec_rgw_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num }}"
   changed_when: false
   run_once: true
-  with_dict: "{{ create_pools }}"
+  with_dict: "{{ rgw_create_pools }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
     - containerized_deployment
