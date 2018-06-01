@@ -79,3 +79,5 @@ Note: If you have already installed a cluster with ceph-ansible, you can use the
 ## Conclusion
 
 You should now have a master zone on cluster0 and a secondary zone on cluster1 in an Active-Active mode.
+
+bar
