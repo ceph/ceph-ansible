@@ -1,10 +1,4 @@
 ---
-- name: set_fact docker_exec_cmd
-  set_fact:
-    docker_exec_cmd: "docker exec ceph-rgw-{{ ansible_hostname }}"
-  when:
-    - containerized_deployment
-
 - name: include common.yml
   include: common.yml
 
@@ -29,13 +23,6 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- name: include rgw_pool_pgs.yml
-  include: rgw_pool_pgs.yml
-  when:
-    - rgw_create_pools is defined
-    - not containerized_deployment
-  static: False 
-    
 - name: include multisite/main.yml
   include: multisite/main.yml
   when:
@@ -51,3 +38,12 @@
     - containerized_deployment
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
+
+- name: create rgw pools if rgw_create_pools is defined
+  command: "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num }}"
+  changed_when: false
+  with_dict: "{{ rgw_create_pools }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  when:
+    - rgw_create_pools is defined
