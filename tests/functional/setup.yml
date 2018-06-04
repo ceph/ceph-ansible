@@ -14,6 +14,21 @@
       set_fact:
         is_atomic: '{{ stat_ostree.stat.exists }}'
 
+    - name: disable fastest mirror detection
+      ini_file:
+        path: /etc/yum/pluginconf.d/fastestmirror.conf
+        section: main
+        option: enabled
+        value: 0
+      when:
+        - ansible_distribution == 'CentOS'
+        - not is_atomic
+
+    - name: update system
+      command: yum update -y
+      when:
+        - not is_atomic
+
       # we need to install this so the Socket testinfra module
       # can use netcat for testing
     - name: install net-tools
@@ -22,14 +37,6 @@
         state: present
       when:
         - not is_atomic
-
-    - name: disable fastest mirror detection
-      ini_file:
-        path: /etc/yum/pluginconf.d/fastestmirror.conf
-        section: main
-        option: enabled
-        value: 0
-      when: ansible_distribution == 'CentOS'
 
     - name: resize logical volume for root partition to fill remaining free space
       command: lvresize -l +100%FREE /dev/atomicos/root
