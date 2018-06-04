@@ -25,6 +25,22 @@
   tags:
     - firewall
 
+- name: open manager ports
+  firewalld:
+    service: ceph
+    zone: "{{ ceph_mgr_firewall_zone }}"
+    permanent: true
+    immediate: false # if true then fails in case firewalld is stopped
+    state: enabled
+  notify: restart firewalld
+  when:
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+    - mgr_group_name is defined
+    - mgr_group_name in group_names
+    - firewalld_pkg_query.rc == 0
+  tags:
+    - firewall
+
 - name: open osd ports
   firewalld:
     service: ceph
