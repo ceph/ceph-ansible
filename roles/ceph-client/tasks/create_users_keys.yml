@@ -1,62 +1,76 @@
 ---
-- name: set docker_exec_client_cmd_binary to ceph-authtool
+- name: set_fact delegated_node
   set_fact:
-    docker_exec_client_cmd_binary: ceph-authtool
-  when: containerized_deployment
+    delegated_node: "{{ groups[mon_group_name][0] if groups.get(mon_group_name, []) | length > 0 else inventory_hostname }}"
 
-- name: set docker_exec_client_cmd for containers
+- name: set_fact condition_copy_admin_key
   set_fact:
-    docker_exec_client_cmd: docker run --rm -v /etc/ceph:/etc/ceph --entrypoint /usr/bin/{{ docker_exec_client_cmd_binary }} {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-  when: containerized_deployment
+    condition_copy_admin_key: "{{ True if groups.get(mon_group_name, []) | length > 0 else copy_admin_key }}"
 
-- name: set docker_exec_client_cmd for non-containers
+- name: set_fact docker_exec_cmd
   set_fact:
-    docker_exec_client_cmd: ceph-authtool
-  when: not containerized_deployment
+    docker_exec_cmd: "docker exec {% if groups.get(mon_group_name, []) | length > 0 -%} ceph-mon-{{ hostvars[delegated_node]['ansible_hostname'] }} {% else %} ceph-client-{{ hostvars[delegated_node]['ansible_hostname'] }} {% endif %}"
+  when:
+    - containerized_deployment
 
 - name: create key(s)
-  shell: "{{ docker_exec_client_cmd }} -C /etc/ceph/{{ cluster }}.{{ item.name }}.keyring --name {{ item.name }} --add-key {{ item.key }} --cap mon \"{{ item.mon_cap|default('') }}\" --cap osd \"{{ item.osd_cap|default('') }}\" --cap mds \"{{ item.mds_cap|default('') }}\""
+  shell: "{{ docker_exec_cmd }} ceph -C /etc/ceph/{{ cluster }}.{{ item.name }}.keyring --name {{ item.name }} --add-key {{ item.key }} --cap mon \"{{ item.mon_cap|default('') }}\" --cap osd \"{{ item.osd_cap|default('') }}\" --cap mds \"{{ item.mds_cap|default('') }}\""
   args:
     creates: /etc/ceph/{{ cluster }}.{{ item.name }}.keyring
   with_items: "{{ keys }}"
   changed_when: false
+  delegate_to: "{{ delegated_node }}"
   when:
     - cephx
     - keys | length > 0
 
-- name: set docker_exec_client_cmd_binary to ceph
-  set_fact:
-    docker_exec_client_cmd_binary: ceph
-  when: containerized_deployment
-
-- name: replace docker_exec_client_cmd by ceph
-  set_fact:
-    docker_exec_client_cmd: ceph
-  when:
-    - not containerized_deployment
-    - docker_exec_client_cmd == 'ceph-authtool'
-
 - name: check if key(s) already exist(s)
-  command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} auth get {{ item.name }}"
+  command: "{{ docker_exec_cmd }} --cluster {{ cluster }} auth get {{ item.name }}"
   changed_when: false
   failed_when: false
   with_items: "{{ keys }}"
   register: keys_exist
-  when:
-    - copy_admin_key
+  when: condition_copy_admin_key
 
-- name: create pools
-  command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pgs }}"
+- name: list existing pool(s)
+  command: >
+    {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+    osd pool get {{ item.name }} size
   with_items: "{{ pools }}"
-  changed_when: false
+  register: created_pools
+  run_once: true
   failed_when: false
+  delegate_to: "{{ delegated_node }}"
+  when:
+    - condition_copy_admin_key
+
+- name: create ceph pool(s)
+  command: >
+    {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+    osd pool create {{ item.0.name }}
+    {{ item.0.get('pg_num', hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num']) }}
+    {{ item.0.pgp_num | default(item.0.pg_num) }}
+    {{ 'replicated_rule' if item.0.rule_name | default('replicated_rule') == '' else item.0.rule_name | default('replicated_rule') }}
+    {{ 1 if item.0.type|default(1) == 'replicated' else 3 if item.0.type|default(1) == 'erasure' else item.0.type|default(1) }}
+    {%- if (item.0.type | default("1") == '3' or item.0.type | default("1") == 'erasure') and item.0.erasure_profile != '' %}
+    {{ item.0.erasure_profile }}
+    {%- endif %}
+    {{ item.0.expected_num_objects | default('') }}
+  with_together:
+    - "{{ pools }}"
+    - "{{ created_pools.results }}"
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ delegated_node }}"
   when:
     - ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', False) != False
     - pools | length > 0
-    - copy_admin_key
+    - condition_copy_admin_key
+    - inventory_hostname in groups.get(client_group_name) | first
+    - item.1.rc != 0
 
 - name: add key(s) to ceph
-  command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} auth import -i /etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
+  command: "{{ docker_exec_cmd }} --cluster {{ cluster }} auth import -i /etc/ceph/{{ cluster }}.{{ item.0.name }}.keyring"
   changed_when: false
   with_together:
     - "{{ keys }}"
@@ -65,11 +79,6 @@
     - not item.1.get("skipped")
     - copy_admin_key
     - item.1.rc != 0
-
-- name: put docker_exec_client_cmd back to normal with a none value
-  set_fact:
-    docker_exec_client_cmd:
-  when: docker_exec_client_cmd == 'ceph'
 
 - name: chmod key(s)
   file:
