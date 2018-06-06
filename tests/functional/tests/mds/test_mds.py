@@ -35,7 +35,8 @@ class TestMDSs(object):
             hostname=node["vars"]["inventory_hostname"],
             cluster=node["cluster_name"]
         )
-        num_mdss = len(host.ansible.get_variables()["groups"]["mdss"])
+        ansible_vars = host.ansible.get_variables()
+        num_mdss = ansible_vars.get("mds_max_mds")
         output_raw = host.check_output(cmd)
         output_json = json.loads(output_raw)
         assert output_json['fsmap']['up'] and output_json['fsmap']['in'] == num_mdss  # noqa E501
