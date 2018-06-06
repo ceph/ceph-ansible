@@ -57,7 +57,7 @@ ansible_provision = proc do |ansible|
     'nfss'             => (0..NNFSS - 1).map { |j| "#{LABEL_PREFIX}nfs#{j}" },
     'rbd_mirrors'      => (0..NRBD_MIRRORS - 1).map { |j| "#{LABEL_PREFIX}rbd_mirror#{j}" },
     'clients'          => (0..CLIENTS - 1).map { |j| "#{LABEL_PREFIX}client#{j}" },
-    'iscsi_gws'        => (0..NISCSI_GWS - 1).map { |j| "#{LABEL_PREFIX}iscsi_gw#{j}" },
+    'iscsigws'        => (0..NISCSI_GWS - 1).map { |j| "#{LABEL_PREFIX}iscsi_gw#{j}" },
     'mgrs'             => (0..MGRS - 1).map { |j| "#{LABEL_PREFIX}mgr#{j}" }
   }
 
