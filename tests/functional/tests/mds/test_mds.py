@@ -23,9 +23,9 @@ class TestMDSs(object):
     def test_mds_is_up(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
         cmd = "sudo ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(cluster=node['cluster_name'])
-        output = host.check_output(cmd)
-        daemons = json.loads(output)["fsmap"]["by_rank"][0]["name"]
-        assert hostname in daemons
+        cluster_status = json.loads(host.check_output(cmd))
+
+        assert (cluster_status['fsmap'].get('up', 0) + cluster_status['fsmap'].get('up:standby', 0)) == len(node["vars"]["groups"]["mdss"])
 
     @pytest.mark.docker
     def test_docker_mds_is_up(self, node, host):
@@ -34,8 +34,6 @@ class TestMDSs(object):
             hostname=node["vars"]["inventory_hostname"],
             cluster=node["cluster_name"]
         )
-        output_raw = host.check_output(cmd)
-        output_json = json.loads(output_raw)
-        active_daemon = output_json["fsmap"]["by_rank"][0]["name"]
-        if active_daemon != hostname:
-            assert output_json['fsmap']['up:standby'] == 1
+        cluster_status = json.loads(host.check_output(cmd))
+
+        assert (cluster_status['fsmap'].get('up', 0) + cluster_status['fsmap'].get('up:standby', 0)) == len(node["vars"]["groups"]["mdss"])
