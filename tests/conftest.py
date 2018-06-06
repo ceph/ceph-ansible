@@ -25,7 +25,8 @@ def node(host, request):
       'jewel': 10,
       'kraken': 11,
       'luminous': 12,
-      'mimic': 13
+      'mimic': 13,
+      'dev': 99
     }
     if not request.node.get_marker(node_type) and not request.node.get_marker('all'):
         pytest.skip("Not a valid test for node type: %s" % node_type)
