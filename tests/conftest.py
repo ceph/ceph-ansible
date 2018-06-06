@@ -52,8 +52,8 @@ def node(host, request):
     if node_type == "nfss" and ceph_stable_release == "jewel":
         pytest.skip("nfs nodes can not be tested with ceph release jewel")
 
-    if node_type == "iscsi_gws" and ceph_stable_release == "jewel":
-        pytest.skip("iscsi_gws nodes can not be tested with ceph release jewel")  # noqa E501
+    if node_type == "iscsigws" and ceph_stable_release == "jewel":
+        pytest.skip("iscsigws nodes can not be tested with ceph release jewel")  # noqa E501
 
     if request.node.get_marker("from_luminous") and ceph_release_num[ceph_stable_release] < ceph_release_num['luminous']:  # noqa E501
         pytest.skip(
@@ -137,7 +137,7 @@ def pytest_collection_modifyitems(session, config, items):
         elif "nfs" in test_path:
             item.add_marker(pytest.mark.nfss)
         elif "iscsi" in test_path:
-            item.add_marker(pytest.mark.iscsi_gws)
+            item.add_marker(pytest.mark.iscsigws)
         else:
             item.add_marker(pytest.mark.all)
 
