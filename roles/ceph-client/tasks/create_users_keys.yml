@@ -23,8 +23,9 @@
     {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
     300
   changed_when: false
-  run_once: true
-  when: containerized_deployment
+  when:
+    - containerized_deployment
+    - inventory_hostname == groups.get(client_group_name) | first
 
 - name: set_fact delegated_node
   set_fact:
@@ -52,12 +53,11 @@
     import_key: "{{ copy_admin_key }}"
     mode: "{{ item.mode|default(omit) }}"
   with_items: "{{ keys }}"
-  run_once: true
   delegate_to: "{{ delegated_node }}"
   when:
     - cephx
     - keys | length > 0
-    - inventory_hostname in groups.get(client_group_name) | first
+    - inventory_hostname == groups.get(client_group_name) | first
 
 - name: slurp client cephx key(s)
   slurp:
@@ -65,12 +65,11 @@
   with_items:
     - "{{ keys }}"
   register: slurp_client_keys
-  run_once: true
   delegate_to: "{{ delegated_node }}"
   when:
     - cephx
     - keys | length > 0
-    - inventory_hostname in groups.get(client_group_name) | first
+    - inventory_hostname == groups.get(client_group_name) | first
 
 - name: list existing pool(s)
   command: >
@@ -78,11 +77,11 @@
     osd pool get {{ item.name }} size
   with_items: "{{ pools }}"
   register: created_pools
-  run_once: true
   failed_when: false
   delegate_to: "{{ delegated_node }}"
   when:
     - condition_copy_admin_key
+    - inventory_hostname == groups.get(client_group_name, []) | first
 
 - name: create ceph pool(s)
   command: >
@@ -100,7 +99,6 @@
     - "{{ pools }}"
     - "{{ created_pools.results }}"
   changed_when: false
-  run_once: true
   delegate_to: "{{ delegated_node }}"
   when:
     - pools | length > 0
@@ -122,7 +120,6 @@
     owner: "{{ ceph_uid }}"
     group: "{{ ceph_uid }}"
   with_items:
-    - "{{ slurp_client_keys.results }}"
+    - "{{ hostvars[groups[client_group_name][0]]['slurp_client_keys']['results'] }}"
   when:
     - not item.get('skipped', False)
-    - not inventory_hostname == groups.get(client_group_name, []) | first
