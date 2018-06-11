@@ -23,6 +23,7 @@
     {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
     300
   changed_when: false
+  run_once: true
   when:
     - containerized_deployment
     - inventory_hostname == groups.get(client_group_name) | first
@@ -53,6 +54,7 @@
     import_key: "{{ copy_admin_key }}"
     mode: "{{ item.mode|default(omit) }}"
   with_items: "{{ keys }}"
+  run_once: true
   delegate_to: "{{ delegated_node }}"
   when:
     - cephx
@@ -65,6 +67,7 @@
   with_items:
     - "{{ keys }}"
   register: slurp_client_keys
+  run_once: true
   delegate_to: "{{ delegated_node }}"
   when:
     - cephx
