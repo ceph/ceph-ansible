@@ -109,8 +109,9 @@
 - name: kill a dummy container that created pool(s)/key(s)
   command: docker rm -f ceph-create-keys
   changed_when: false
-  run_once: true
-  when: containerized_deployment
+  when:
+    - containerized_deployment
+    - inventory_hostname == groups.get(client_group_name) | first
 
 - name: get client cephx keys
   copy:
