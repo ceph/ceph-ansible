@@ -1,5 +1,5 @@
 import pytest
-
+import re
 
 class TestInstall(object):
 
@@ -26,8 +26,10 @@ class TestCephConf(object):
         assert File(node["conf_path"]).contains("^mon host = .*$")
 
     def test_mon_host_line_has_correct_value(self, node, host):
-        mon_ips = []
+        mon_host_line = host.check_output("grep 'mon host = ' /etc/ceph/{cluster}.conf".format(cluster=node['cluster_name']))
+        result=True
         for x in range(0, node["num_mons"]):
-            mon_ips.append("{}.1{}".format(node["subnet"], x))
-        line = "mon host = {}".format(",".join(mon_ips))
-        assert host.file(node["conf_path"]).contains(line)
+            pattern=re.compile(("{}.1{}".format(node["subnet"], x)))
+            if pattern.search(mon_host_line) == None:
+                result=False
+            assert result
