@@ -1,5 +1,5 @@
 import pytest
-
+import re
 
 class TestMons(object):
 
@@ -31,11 +31,14 @@ class TestMons(object):
     def test_ceph_config_has_inital_members_line(self, node, File):
         assert File(node["conf_path"]).contains("^mon initial members = .*$")
 
-    def test_initial_members_line_has_correct_value(self, node, File):
-        mons = ",".join("%s" % host
-                        for host in node["vars"]["groups"]["mons"])
-        line = "mon initial members = {}".format(mons)
-        assert File(node["conf_path"]).contains(line)
+    def test_initial_members_line_has_correct_value(self, node, host, File):
+        mon_initial_members_line = host.check_output("grep 'mon initial members = ' /etc/ceph/{cluster}.conf".format(cluster=node['cluster_name']))
+        result = True
+        for host in node["vars"]["groups"]["mons"]:
+            pattern = re.compile(host)
+            if pattern.search(mon_initial_members_line) == None:
+                result = False
+                assert result
 
 
 class TestOSDs(object):
