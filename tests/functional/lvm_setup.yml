@@ -21,21 +21,6 @@
       command: lvcreate --yes -l 50%FREE -n data-lv2 test_group
       failed_when: false
 
-    # purge-cluster.yml does not properly destroy partitions
-    # used for lvm osd journals, this ensures they are removed
-    # for that testing scenario
-    - name: remove /dev/sdc1 if it exists
-      parted:
-        device: /dev/sdc
-        number: 1
-        state: absent
-
-    - name: remove /dev/sdc2 if it exists
-      parted:
-        device: /dev/sdc
-        number: 2
-        state: absent
-
     - name: partition /dev/sdc for journals
       parted:
         device: /dev/sdc
@@ -43,8 +28,6 @@
         part_start: 0%
         part_end: 50%
         unit: '%'
-        # this is a brand-new, unlabeled disk, so add the label
-        # only for the first partition
         label: gpt
         state: present
 
@@ -56,6 +39,7 @@
         part_end: 100%
         unit: '%'
         state: present
+        label: gpt
 
     - name: create journals vg from /dev/sdc2
       lvg:
