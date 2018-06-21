@@ -34,11 +34,11 @@ You can install directly from the source on github by following these steps:
 
 Ansible on RHEL and CentOS
 --------------------------
-You can acquire Ansible on RHEL and CentOS by installing from `Extras <https://access.redhat.com/solutions/912213>`_.
+You can acquire Ansible on RHEL and CentOS by installing from `Ansible channel <https://access.redhat.com/articles/3174981>`_.
 
 On RHEL::
 
-    subscription-manager repos --enable=rhel-7-server-extras-rpms
+    subscription-manager repos --enable=rhel-7-server-ansible-2-rpms
 
 (CentOS does not use subscription-manager and already has "Extras" enabled by default.)
 
