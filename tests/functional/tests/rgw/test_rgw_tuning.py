@@ -36,7 +36,9 @@ class TestRGWs(object):
             cluster=cluster
         )
         output = host.check_output(cmd)
-        pools = node["vars"]["rgw_create_pools"]
+        pools = node["vars"].get("rgw_create_pools")
+        if pools == None:
+            pytest.skip('rgw_create_pools not defined, nothing to test')
         for pool_name, pg_num in pools.items():
             assert pool_name in output
             pg_num_str = "pg_num {pg_num}".format(pg_num=pg_num["pg_num"])
