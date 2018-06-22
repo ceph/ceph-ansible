@@ -40,22 +40,3 @@ class TestMons(object):
                 result = False
                 assert result
 
-
-class TestOSDs(object):
-
-    @pytest.mark.no_docker
-    def test_all_osds_are_up_and_in(self, node, host):
-        cmd = "sudo ceph --cluster={} --connect-timeout 5 -s".format(node["cluster_name"])
-        output = host.check_output(cmd)
-        phrase = "{num_osds} osds: {num_osds} up, {num_osds} in".format(num_osds=node["total_osds"])
-        assert phrase in output
-
-    @pytest.mark.docker
-    def test_all_docker_osds_are_up_and_in(self, node, host):
-        cmd = "sudo docker exec ceph-mon-{} ceph --cluster={} --connect-timeout 5 -s".format(
-            node["vars"]["inventory_hostname"],
-            node["cluster_name"]
-        )
-        output = host.check_output(cmd)
-        phrase = "{num_osds} osds: {num_osds} up, {num_osds} in".format(num_osds=node["total_osds"])
-        assert phrase in output

@@ -72,8 +72,6 @@ def node(host, request):
         num_devices = len(ansible_vars.get("devices", []))
     if not num_devices:
         num_devices = len(ansible_vars.get("lvm_volumes", []))
-    num_osd_hosts = len(ansible_vars["groups"]["osds"])
-    total_osds = num_devices * num_osd_hosts
     cluster_name = ansible_vars.get("cluster", "ceph")
     conf_path = "/etc/ceph/{}.conf".format(cluster_name)
     if node_type == "osds":
@@ -99,8 +97,6 @@ def node(host, request):
         osd_ids=osd_ids,
         num_mons=num_mons,
         num_devices=num_devices,
-        num_osd_hosts=num_osd_hosts,
-        total_osds=total_osds,
         cluster_name=cluster_name,
         conf_path=conf_path,
         cluster_address=cluster_address,
