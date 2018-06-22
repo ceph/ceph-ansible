@@ -59,7 +59,7 @@ def node(host, request):
     if "nfss" in group_names and ceph_stable_release == "jewel":
         pytest.skip("nfs nodes can not be tested with ceph release jewel")
 
-    if "iscsigws" in group_names and ceph_stable_release == "jewel":
+    if group_names == ["iscsigws"] and ceph_stable_release == "jewel":
         pytest.skip("iscsigws nodes can not be tested with ceph release jewel")  # noqa E501
 
     if request.node.get_closest_marker("from_luminous") and ceph_release_num[ceph_stable_release] < ceph_release_num['luminous']:  # noqa E501
