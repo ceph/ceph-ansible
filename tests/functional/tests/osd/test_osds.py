@@ -1,4 +1,6 @@
 import pytest
+import json
+import os
 
 
 class TestOSDs(object):
@@ -45,3 +47,32 @@ class TestOSDs(object):
     @pytest.mark.lvm_scenario
     def test_ceph_volume_systemd_is_installed(self, node, host):
         host.exists('ceph-volume-systemd')
+
+    def _get_osd_id_from_host(self, node, osd_tree):
+        for n in osd_tree['nodes']:
+            if n['name'] == node['vars']['inventory_hostname'] and n['type'] == 'host':
+                children = n['children']
+        return children
+
+    def _get_nb_up_osds_from_ids(self, node, osd_tree):
+        nb_up = 0
+        ids = self._get_osd_id_from_host(node, osd_tree)
+        for n in osd_tree['nodes']:
+            if n['id'] in ids and n['status'] == 'up':
+                nb_up += 1
+        return nb_up
+
+    @pytest.mark.no_docker
+    def test_all_osds_are_up_and_in(self, node, host):
+        cmd = "sudo ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(cluster=node["cluster_name"])
+        output = json.loads(host.check_output(cmd))
+        assert node["num_devices"] == self._get_nb_up_osds_from_ids(node, output)
+
+    @pytest.mark.docker
+    def test_all_docker_osds_are_up_and_in(self, node, host):
+        cmd = "sudo docker exec ceph-osd-{hostname}-sda ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(
+            hostname=node["vars"]["inventory_hostname"],
+            cluster=node["cluster_name"]
+        )
+        output = json.loads(host.check_output(cmd))
+        assert node["num_devices"] == self._get_nb_up_osds_from_ids(node, output)
