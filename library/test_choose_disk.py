@@ -42,7 +42,7 @@ def test_expand_disks_explicit_count_1():
     expand_disks - test expand disk with explicit count=1
     """
     result = choose_disk.expand_disks(
-        {'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1', 'count': 1, 'ceph_type': 'data'}})
+        {'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1', 'count': 1, 'ceph_type': 'data'}})  # noqa E501
     assert result == {'storage_disks_000': {
         'model': 'SAMSUNG MZ7LN512', 'rotational': '1', 'ceph_type': 'data'}}
 
@@ -52,9 +52,9 @@ def test_expand_disks_explicit_count_2():
     expand_disks - test expand disk with explicit count=2
     """
     result = choose_disk.expand_disks(
-        {'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1', 'count': 2, 'ceph_type': 'data'}})
-    assert result == {'storage_disks_000': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1', 'ceph_type': 'data'},
-                      'storage_disks_001': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1', 'ceph_type': 'data'}}
+        {'storage_disks': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1', 'count': 2, 'ceph_type': 'data'}})  # noqa E501
+    assert result == {'storage_disks_000': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1', 'ceph_type': 'data'},  # noqa E501
+                      'storage_disks_001': {'model': 'SAMSUNG MZ7LN512', 'rotational': '1', 'ceph_type': 'data'}}  # noqa E501
 
 
 def test_fake_device():
@@ -76,7 +76,7 @@ def test_expand_disks_legacy():
     result = choose_disk.expand_disks(choose_disk.fake_device(
         ["/dev/sda", "/dev/sdb", "/dev/sdc"], "data"), "data")
     assert result == {'data_1_000': {'ceph_type': 'data', 'bdev': '/dev/sdb'}, 'data_0_000': {
-        'ceph_type': 'data', 'bdev': '/dev/sda'}, 'data_2_000': {'ceph_type': 'data', 'bdev': '/dev/sdc'}}
+        'ceph_type': 'data', 'bdev': '/dev/sda'}, 'data_2_000': {'ceph_type': 'data', 'bdev': '/dev/sdc'}}  # noqa E501
 
 
 def test_units_gb():
