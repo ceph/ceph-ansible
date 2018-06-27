@@ -774,16 +774,16 @@ def main():
         logger.info("Legacy syntax")
         logger.info("devices : %s", devices)
 
-        # In case of legacy, we search for a possible presence of raw_journal_devices
-        raw_journal_devices = get_var(module, "raw_journal_devices")
+        # In case of legacy, we search for a possible presence of dedicated_devices
+        dedicated_devices = get_var(module, "dedicated_devices")
 
         # From the ansible facts, we only keep the disks that doesn't have partitions
         # We don't transform into the persistent naming but rather fake the disk
         # definition by creating "bdev" entries to get a feature to match.
         lookup_disks = expand_disks(fake_device(devices, "data"), "data", module)
-        if raw_journal_devices:
-            logger.info("raw_journal_devices : %s", raw_journal_devices)
-            lookup_disks.update(expand_disks(fake_device(raw_journal_devices, "journal"), "journal", module))  # noqa E501
+        if dedicated_devices:
+            logger.info("dedicated_devices : %s", dedicated_devices)
+            lookup_disks.update(expand_disks(fake_device(dedicated_devices, "journal"), "journal", module))  # noqa E501
     else:
         fatal("devices variable should be a dict for native syntax {...} or "
               "a list for legacy syntax [ ... ] : %s detected" % type(devices), module)
