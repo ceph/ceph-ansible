@@ -790,9 +790,9 @@ def main():
 
     # Final checks between the lookup & the actual ansible configuration
     for disk in lookup_disks:
-        if get_var(module, "journal_collocation") is True:
+        if get_var(module, "osd_scenario") == "collocated":
             if lookup_disks[disk]["ceph_type"] == "journal":
-                fatal("We cannot search for journal devices when 'journal_collocation' is set", module)  # noqa E501
+                fatal("We cannot search for journal devices when 'osd_scenario' is set to 'collocated'", module)  # noqa E501
 
     logger.debug("Looking for %s", lookup_disks)
 
