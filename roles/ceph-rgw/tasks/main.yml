@@ -29,13 +29,14 @@
 - name: include rgw_pool_pgs.yml
   include: rgw_pool_pgs.yml
   when:
-    - create_pools is defined
-  static: False
-
+    - rgw_create_pools is defined
+    - not containerized_deployment
+  static: False 
+    
 - name: include multisite/main.yml
   include: multisite/main.yml
   when:
-    - rgw_zone is defined
+    - rgw_zone != ""
     - rgw_multisite
     - ceph_release_num.{{ ceph_release }} >= ceph_release_num.jewel
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
