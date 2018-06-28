@@ -19,25 +19,17 @@ class TestMGRs(object):
         )
         assert host.service(service_name).is_enabled
 
-    @pytest.mark.no_docker
     def test_mgr_is_up(self, node, host):
         hostname=node["vars"]["inventory_hostname"]
         cluster=node["cluster_name"]
-        cmd = "sudo ceph --name mgr.{hostname} --keyring /var/lib/ceph/mgr/{cluster}-{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
-            hostname=hostname,
-            cluster=cluster
-        )
-        output = host.check_output(cmd)
-        daemons = json.loads(output)["mgrmap"]["active_name"]
-        assert hostname in daemons
-
-    @pytest.mark.docker
-    def test_docker_mgr_is_up(self, node, host):
-        hostname=node["vars"]["inventory_hostname"]
-        cluster=node["cluster_name"]
-        cmd = "sudo docker exec ceph-mgr-{hostname} ceph --name mgr.{hostname} --keyring /var/lib/ceph/mgr/{cluster}-{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
+        if node['docker']:
+            docker_exec_cmd = 'docker exec ceph-mgr-{hostname}'.format(hostname=hostname)
+        else:
+            docker_exec_cmd = ''
+        cmd = "sudo {docker_exec_cmd} ceph --name mgr.{hostname} --keyring /var/lib/ceph/mgr/{cluster}-{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
+            docker_exec_cmd=docker_exec_cmd,
             hostname=node["vars"]["inventory_hostname"],
-            cluster=node["cluster_name"]
+            cluster=cluster
         )
         output_raw = host.check_output(cmd)
         output_json = json.loads(output_raw)
