@@ -99,6 +99,17 @@ class Filter(object):
         return lambda value: op((e(value) for e in elements))
 
 
+def container_exec(binary, container_image):
+    '''
+    Build the CLI to run a command inside a container
+    '''
+
+    command_exec = ["docker", "run", "--rm", "--privileged",
+                    os.path.join("--entrypoint=" + binary),
+                    container_image]
+    return command_exec
+
+
 def to_bytes(value):
     '''
     Convert storage units into bytes to ease comparison between different units
@@ -360,11 +371,20 @@ def is_invalid_partition_table(partition):
     return ""
 
 
-def get_ceph_volume_lvm_list(partition):
+def get_ceph_volume_lvm_list(partition, container_image=None):
     '''
     Get the ceph volume lvm list for a given partition
     '''
-    ceph_volume = subprocess.Popen(["ceph-volume", "lvm", "list", "--format=json", partition],
+    ceph_volume_cmd_args = ["lvm", "list", "--format=json", partition]
+
+    if container_image:
+        binary = "ceph-volume"
+        ceph_volume_cmd = container_exec(binary, container_image) + ceph_volume_cmd_args
+    else:
+        binary = ["ceph-volume"]
+        ceph_volume_cmd = binary + ceph_volume_cmd_args
+
+    ceph_volume = subprocess.Popen(ceph_volume_cmd,
                                    stdout=subprocess.PIPE, close_fds=True)
 
     stdout, _ = ceph_volume.communicate()
@@ -399,13 +419,13 @@ def get_partition_label(partition):
     return ""
 
 
-def disk_label(partition, current_fsid, ceph_disk):
+def disk_label(partition, current_fsid, ceph_disk, container_image=None):
     '''
     Reports if a partition is containing some ceph structures
     '''
 
     # 1) let's search for metadata coming from ceph-volume
-    json_dict = get_ceph_volume_lvm_list(partition)
+    json_dict = get_ceph_volume_lvm_list(partition, container_image)
 
     # If the disk have some metadata, the json is filled with information
     for key, value in json_dict.items():
@@ -451,11 +471,20 @@ def disk_label(partition, current_fsid, ceph_disk):
     return ""
 
 
-def read_ceph_disk():
+def read_ceph_disk(container_image=None):
     '''
     Let's collect ceph-disk output
     '''
-    ceph_disk = subprocess.Popen(["ceph-disk", "list", "--format=json"],
+    ceph_disk_cmd_args = ["list", "--format=json"]
+
+    if container_image:
+        binary = "ceph-disk"
+        ceph_disk_cmd = container_exec(binary, container_image) + ceph_disk_cmd_args
+    else:
+        binary = ["ceph-disk"]
+        ceph_disk_cmd = binary + ceph_disk_cmd_args
+
+    ceph_disk = subprocess.Popen(ceph_disk_cmd,
                                  stdout=subprocess.PIPE, close_fds=True)
     stdout, _ = ceph_disk.communicate()
 
@@ -512,7 +541,7 @@ def is_locked_raw_device(physical_disk):
     return False
 
 
-def select_only_free_devices(physical_disks, current_fsid):
+def select_only_free_devices(physical_disks, current_fsid, container_image=None):
     '''
     It's important reporting only devices that are not currently used.
     This code is written by rejecting devices by successive tests.
@@ -527,7 +556,7 @@ def select_only_free_devices(physical_disks, current_fsid):
     logger.info('Detecting free devices with fsid={}'.format(current_fsid))
 
     # Let's collect ceph-disk output one for all
-    ceph_disk = read_ceph_disk()
+    ceph_disk = read_ceph_disk(container_image)
 
     for physical_disk in sorted(physical_disks):
         current_physical_disk = physical_disks[physical_disk]
@@ -563,7 +592,7 @@ def select_only_free_devices(physical_disks, current_fsid):
         if len(current_physical_disk['partitions']) > 0:
             for partition in sorted(current_physical_disk['partitions']):
                 partition_name = "/dev/{}".format(partition)
-                disk_type = disk_label(partition_name, current_fsid, ceph_disk)
+                disk_type = disk_label(partition_name, current_fsid, ceph_disk, container_image)
                 if disk_type:
                     if disk_type.startswith("foreign"):
                         logger.info('Ignoring %10s : device has foreign Ceph metadata : %s',
@@ -595,7 +624,7 @@ def select_only_free_devices(physical_disks, current_fsid):
         # If we reach here, it could be a free or lvm-based block
         # We didn't checked LVM before as some ceph disks could be under LVM
         # disk_label is supposed to catch this case, so it only remain LVM made by the user
-        disk_type = disk_label("/dev/{}".format(physical_disk), current_fsid, ceph_disk)
+        disk_type = disk_label("/dev/{}".format(physical_disk), current_fsid, ceph_disk, container_image)  # noqa E501
 
         # If ceph_disk is not populated, maybe this is a system lvm
         if not disk_type:
@@ -759,7 +788,17 @@ def main():
 
     current_fsid = get_var(module, "fsid", True)
 
-    physical_disks = select_only_free_devices(ansible_devices, current_fsid)
+    containerized_deployment = get_var(module, "containerized_deployment")
+    if containerized_deployment:
+        container_image_registry = get_var(module, "ceph_docker_registry")
+        container_image = get_var(module, "ceph_docker_image")
+        container_image_tag = get_var(module, "ceph_docker_image_tag")
+        container_image = os.path.join(
+            container_image_registry + "/" + container_image + ":" + container_image_tag)
+    else:
+        container_image = None
+
+    physical_disks = select_only_free_devices(ansible_devices, current_fsid, container_image)
 
     devices = get_var(module, "devices")
 
