@@ -23,6 +23,7 @@ import json
 import operator
 import os
 import subprocess
+import StringIO
 
 DOCUMENTATION = '''
 module: choose_disk
@@ -46,6 +47,7 @@ description:
 CEPH_META_LIST = ['data', 'journal', 'block.wal', 'block.db', 'block']
 
 logger = logging.getLogger('choose_disk')
+logstream = StringIO.StringIO()
 
 
 class InvalidFilter(Exception):
@@ -729,8 +731,10 @@ def setup_logging(filename=None):
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     if filename:
         hdlr = logging.FileHandler(filename)
-        hdlr.setFormatter(formatter)
-        logger.addHandler(hdlr)
+    else:
+        hdlr = logging.StreamHandler(logstream)
+    hdlr.setFormatter(formatter)
+    logger.addHandler(hdlr)
     logger.setLevel(logging.INFO)
     logger.info("############")
     logger.info("# Starting #")
@@ -748,7 +752,7 @@ def fatal(message, module=None):
     logger.info("# End #")
     logger.info("#######")
     if module:
-        module.fail_json(msg=message)
+        module.fail_json(msg="{} \n {}".format(message, logstream.getvalue()))
     else:
         exit(1)
 
