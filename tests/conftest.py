@@ -48,6 +48,9 @@ def node(host, request):
     if node_type == "nfss" and ceph_stable_release == "jewel":
         pytest.skip("nfs nodes can not be tested with ceph release jewel")
 
+    if node_type == "iscsi-gws" and ceph_stable_release == "jewel":
+        pytest.skip("iscsi-gw nodes can not be tested with ceph release jewel")
+
     if request.node.get_marker("from_luminous") and ceph_release_num[ceph_stable_release] < ceph_release_num['luminous']:
         pytest.skip("This test is only valid for releases starting from Luminous and above")
 
