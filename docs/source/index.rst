@@ -53,8 +53,8 @@ You can acquire Ansible on Ubuntu by using the `Ansible PPA <https://launchpad.n
 ::
 
     sudo add-apt-repository ppa:ansible/ansible
-    sudo apt-get update
-    sudo apt-get install ansible
+    sudo apt update
+    sudo apt install ansible
 
 
 Releases
