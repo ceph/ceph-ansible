@@ -12,9 +12,9 @@ Ansible playbooks for Ceph, the distributed filesystem.
 Installation
 ============
 
-github
+GitHub
 ------
-You can install directly from the source on github by following these steps:
+You can install directly from the source on GitHub by following these steps:
 
 - Clone the repository::
 
