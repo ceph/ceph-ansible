@@ -772,6 +772,22 @@ def get_var(module, variable, must_exist=False):
         fatal("variable {} should exist in vars !".format(variable))
 
 
+def getParentBlock(device):
+    '''
+    Report the name of the parent block device or nothing
+    '''
+    try:
+        lsblk = subprocess.Popen(
+            ["lsblk", "--nodeps", "-npo", "pkname", "{}".format(device)],
+            stdout=subprocess.PIPE, close_fds=True)
+        stdout, _ = lsblk.communicate()
+    except Exception:
+        logger.error("Extracting parent of block device {} failed".format(device))  # noqa 501
+        raise
+
+    return stdout.rstrip()
+
+
 def main():
     module = None
     matched_devices = None
@@ -822,6 +838,9 @@ def main():
         logger.info("Legacy syntax")
         logger.info("devices : %s", devices)
         input_mode = "legacy"
+        for device in devices:
+            if len(getParentBlock(device)):
+                fatal("Device {} have a parent device which is not allowed in legacy mode".format(device), module)  # noqa E501
 
         # In case of legacy, we search for a possible presence of dedicated_devices
         dedicated_devices = get_var(module, "dedicated_devices")
@@ -832,6 +851,9 @@ def main():
         lookup_disks = expand_disks(fake_device(devices, "data"), "data", module)
         if dedicated_devices:
             logger.info("dedicated_devices : %s", dedicated_devices)
+            for dedicated_device in dedicated_devices:
+                if len(getParentBlock(dedicated_device)):
+                    fatal("Device {} have a parent device which is not allowed in legacy mode".format(dedicated_device), module)  # noqa E501
             lookup_disks.update(expand_disks(fake_device(dedicated_devices, "journal"), "journal", module))  # noqa E501
     else:
         fatal("devices variable should be a dict for native syntax {...} or "
