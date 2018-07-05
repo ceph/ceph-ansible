@@ -241,6 +241,18 @@ def find_match(physical_disks, lookup_disks, module=None):
                 # We sanitize it with to_bytes()
                 left = to_bytes(current_physical_disk[feature])
 
+                # Under the legacy mode, an OSD will be detected as
+                # a partition of the expected block device
+                # So we have to compare the parent block device instead of the partition name
+                if (input_mode is "legacy") and (feature is "bdev"):
+                    # Let's extract the parent block device of the current disk
+                    parent_block = getParentBlock(left)
+                    # If one is found
+                    if len(parent_block):
+                        logging.info(" {} is replaced by its parent {}".format(left, parent_block))
+                        # Let's replace the bdev path by the parent's one to get a match
+                        left = parent_block
+
                 right = current_lookup[feature]  # right is the operand
 
                 # If the right operator is not a dict it means we an input like :
