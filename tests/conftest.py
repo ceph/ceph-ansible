@@ -107,6 +107,7 @@ def node(host, request):
         docker=docker,
         osds=osds,
         ceph_stable_release=ceph_stable_release,
+        ceph_release_num=ceph_release_num,
     )
     return data
 
