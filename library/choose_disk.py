@@ -49,6 +49,9 @@ CEPH_META_LIST = ['data', 'journal', 'block.wal', 'block.db', 'block']
 logger = logging.getLogger('choose_disk')
 logstream = StringIO.StringIO()
 
+# What syntax got selected by the user (legacy or native)
+input_mode = "undefined"
+
 
 class InvalidFilter(Exception):
     pass
@@ -773,6 +776,7 @@ def main():
     module = None
     matched_devices = None
     lookup_disks = None
+    global input_mode
 
     setup_logging()
     # Enforce the locale to avoid any translation issue
@@ -810,12 +814,14 @@ def main():
     if isinstance(devices, dict):
         logger.info("Native syntax")
         logger.info("devices : %s", devices)
+        input_mode = "native"
         # From the ansible facts, we only keep disks that doesn't have
         # partitions, transform their device name in a persistent name
         lookup_disks = expand_disks(devices, "", module)
     elif isinstance(devices, list):
         logger.info("Legacy syntax")
         logger.info("devices : %s", devices)
+        input_mode = "legacy"
 
         # In case of legacy, we search for a possible presence of dedicated_devices
         dedicated_devices = get_var(module, "dedicated_devices")
