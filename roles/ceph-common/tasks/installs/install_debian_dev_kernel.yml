@@ -1,0 +1,45 @@
+---
+- name: fetch ceph kernel development repository
+  uri:
+    url: https://shaman.ceph.com/api/repos/kernel/testing/{{ ceph_dev_kernel_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_lsb.codename }}/repo
+    return_content: yes
+  register: ceph_dev_kernel_deb_repo
+  when: ceph_dev_kernel
+
+- name: add ceph kernel development repository
+  apt_repository:
+    repo: "{{ ceph_dev_kernel_deb_repo.content }}"
+    state: present
+  changed_when: false
+  when: ceph_dev_kernel
+- name: determine kernel package name
+  command: apt-cache search 'linux-image.*ceph-[^-]*$'
+  register: kernel_package_output
+  when:
+    - client_group_name in group_names
+    - ceph_dev_kernel
+  changed_when: false
+
+- name: install ceph development kernel
+  package:
+    name: "{{ kernel_package_output.stdout.split()[0] }}"
+    state: latest
+    update_cache: yes
+  when:
+    - client_group_name in group_names
+    - ceph_dev_kernel
+
+- name: reboot to run ceph development kernel
+  shell: sleep 5 && shutdown -r now "Boot ceph dev kernel"
+  async: 1
+  poll: 0
+  ignore_errors: true
+  when:
+    - client_group_name in group_names
+    - ceph_dev_kernel
+
+- name: wait for reboot to complete
+  local_action: wait_for host={{ inventory_hostname }} state=started
+  when:
+    - client_group_name in group_names
+    - ceph_dev_kernel
