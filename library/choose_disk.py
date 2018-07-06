@@ -821,8 +821,8 @@ def main():
 
     # Loading variables from vars
     ansible_devices = get_var(module, "ansible_devices", True)
-
     current_fsid = get_var(module, "fsid", True)
+    osd_objectstore = get_var(module, "osd_objectstore", True)
 
     containerized_deployment = get_var(module, "containerized_deployment")
     if containerized_deployment:
@@ -860,13 +860,19 @@ def main():
         # From the ansible facts, we only keep the disks that doesn't have partitions
         # We don't transform into the persistent naming but rather fake the disk
         # definition by creating "bdev" entries to get a feature to match.
-        lookup_disks = expand_disks(fake_device(devices, "data"), "data", module)
+        faked_device_type = "data"
+        faked_dedicated_device_type = "journal"
+        if "bluestore" in osd_objectstore:
+            faked_device_type = "block"
+            faked_dedicated_device_type = "block.wal"
+
+        lookup_disks = expand_disks(fake_device(devices, faked_device_type), faked_device_type, module)  # noqa E501
         if dedicated_devices:
             logger.info("dedicated_devices : %s", dedicated_devices)
             for dedicated_device in dedicated_devices:
                 if len(getParentBlock(dedicated_device)):
                     fatal("Device {} have a parent device which is not allowed in legacy mode".format(dedicated_device), module)  # noqa E501
-            lookup_disks.update(expand_disks(fake_device(dedicated_devices, "journal"), "journal", module))  # noqa E501
+            lookup_disks.update(expand_disks(fake_device(dedicated_devices, faked_dedicated_device_type), faked_dedicated_device_type, module))  # noqa E501
     else:
         fatal("devices variable should be a dict for native syntax {...} or "
               "a list for legacy syntax [ ... ] : %s detected" % type(devices), module)
