@@ -12,9 +12,9 @@ IRC
 ---
 Feel free to join us in the channel #ceph-ansible of the OFTC servers
 
-Github
+GitHub
 ------
-The main github account for the project is at https://github.com/ceph/ceph-ansible/
+The main GitHub account for the project is at https://github.com/ceph/ceph-ansible/
 
 Submit a patch
 --------------
@@ -29,7 +29,7 @@ If your change impacts a variable file in a role such as ``roles/ceph-common/def
 
     $ ./generate_group_vars_sample.sh
 
-You are finally ready to push your changes on Github::
+You are finally ready to push your changes on GitHub::
 
     $ git commit -s
     $ git push origin my-working-branch
@@ -46,7 +46,7 @@ PR Testing
 ----------
 Pull Request testing is handled by jenkins. All test must pass before your PR will be merged.
 
-All of tests that are running are listed in the github UI and will list their current status.
+All of tests that are running are listed in the GitHub UI and will list their current status.
 
 If a test fails and you'd like to rerun it, comment on your PR in the following format::
 

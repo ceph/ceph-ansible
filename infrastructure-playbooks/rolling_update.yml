@@ -206,6 +206,7 @@
 
   vars:
     upgrade_ceph_packages: True
+    ceph_release: "{{ ceph_stable_release }}"
 
   hosts:
     - "{{ mgr_group_name|default('mgrs') }}"
@@ -232,29 +233,41 @@
       set_fact:
         ceph_cluster_fsid: "{{ cluster_uuid_container.stdout if containerized_deployment else cluster_uuid_non_container.stdout }}"
 
-    - name: non container | create ceph mgr keyring(s)
-      command: "ceph --cluster {{ cluster }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
-      args:
-        creates: "{{ ceph_conf_key_directory }}/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      with_items:
-        - "{{ groups.get(mgr_group_name, []) }}"
+    - name: create ceph mgr keyring(s) when mon is not containerized
+      ceph_key:
+        name: "mgr.{{ hostvars[item]['ansible_hostname'] }}"
+        state: present
+        caps:
+          mon: allow profile mgr
+          osd: allow *
+          mds: allow *
+        cluster: "{{ cluster }}"
       when:
         - not containerized_deployment
-        - "{{ groups.get(mgr_group_name, []) | length > 0 }}"
-
-    - name: container | create ceph mgr keyring(s)
-      command: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} auth get-or-create mgr.{{ hostvars[item]['ansible_hostname'] }} mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o /etc/ceph/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
-      args:
-        creates: "{{ ceph_conf_key_directory }}/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
-      changed_when: false
+        - cephx
+        - groups.get(mgr_group_name, []) | length > 0
+        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      with_items:
-        - "{{ groups.get(mgr_group_name, []) }}"
+      with_items: "{{ groups.get(mgr_group_name, []) }}"
+
+    - name: create ceph mgr keyring(s) when mon is containerized
+      ceph_key:
+        name: "mgr.{{ hostvars[item]['ansible_hostname'] }}"
+        state: present
+        caps:
+          mon: allow profile mgr
+          osd: allow *
+          mds: allow *
+        cluster: "{{ cluster }}"
+        containerized: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when:
         - containerized_deployment
-        - "{{ groups.get(mgr_group_name, []) | length > 0 }}"
+        - cephx
+        - groups.get(mgr_group_name, []) | length > 0
+        - inventory_hostname == groups[mon_group_name]|last
+        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items: "{{ groups.get(mgr_group_name, []) }}"
 
     - name: fetch ceph mgr key(s)
       fetch:

@@ -12,9 +12,9 @@ Ansible playbooks for Ceph, the distributed filesystem.
 Installation
 ============
 
-github
+GitHub
 ------
-You can install directly from the source on github by following these steps:
+You can install directly from the source on GitHub by following these steps:
 
 - Clone the repository::
 
@@ -53,8 +53,8 @@ You can acquire Ansible on Ubuntu by using the `Ansible PPA <https://launchpad.n
 ::
 
     sudo add-apt-repository ppa:ansible/ansible
-    sudo apt-get update
-    sudo apt-get install ansible
+    sudo apt update
+    sudo apt install ansible
 
 
 Releases
@@ -218,7 +218,7 @@ An example::
 Full documentation for configuring each of the ceph daemon types are in the following sections.
 
 OSD Configuration
-=================
+-----------------
 
 OSD configuration is set by selecting an osd scenario and providing the configuration needed for
 that scenario. Each scenario is different in it's requirements. Selecting your OSD scenario is done
