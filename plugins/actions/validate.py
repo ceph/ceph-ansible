@@ -10,7 +10,7 @@ except ImportError:
 try:
     import notario
 except ImportError:
-    msg = "The python-notario library is missing. Please install it to continue."
+    msg = "The python-notario library is missing. Please install it on the node you are running ceph-ansible to continue."
     display.error(msg)
     raise SystemExit(msg)
 

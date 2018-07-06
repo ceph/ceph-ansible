@@ -12,9 +12,9 @@ Ansible playbooks for Ceph, the distributed filesystem.
 Installation
 ============
 
-github
+GitHub
 ------
-You can install directly from the source on github by following these steps:
+You can install directly from the source on GitHub by following these steps:
 
 - Clone the repository::
 
@@ -34,11 +34,11 @@ You can install directly from the source on github by following these steps:
 
 Ansible on RHEL and CentOS
 --------------------------
-You can acquire Ansible on RHEL and CentOS by installing from `Extras <https://access.redhat.com/solutions/912213>`_.
+You can acquire Ansible on RHEL and CentOS by installing from `Ansible channel <https://access.redhat.com/articles/3174981>`_.
 
 On RHEL::
 
-    subscription-manager repos --enable=rhel-7-server-extras-rpms
+    subscription-manager repos --enable=rhel-7-server-ansible-2-rpms
 
 (CentOS does not use subscription-manager and already has "Extras" enabled by default.)
 
@@ -53,8 +53,8 @@ You can acquire Ansible on Ubuntu by using the `Ansible PPA <https://launchpad.n
 ::
 
     sudo add-apt-repository ppa:ansible/ansible
-    sudo apt-get update
-    sudo apt-get install ansible
+    sudo apt update
+    sudo apt install ansible
 
 
 Releases
@@ -218,7 +218,7 @@ An example::
 Full documentation for configuring each of the ceph daemon types are in the following sections.
 
 OSD Configuration
-=================
+-----------------
 
 OSD configuration is set by selecting an osd scenario and providing the configuration needed for
 that scenario. Each scenario is different in it's requirements. Selecting your OSD scenario is done

@@ -23,14 +23,9 @@
     {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
     300
   changed_when: false
-  run_once: true
-  when: containerized_deployment
-
-- name: set docker_exec_client_cmd for containers
-  set_fact:
-    docker_exec_client_cmd: "docker exec ceph-create-keys"
-  run_once: true
-  when: containerized_deployment
+  when:
+    - containerized_deployment
+    - inventory_hostname == groups.get(client_group_name) | first
 
 - name: set_fact delegated_node
   set_fact:
@@ -42,7 +37,7 @@
 
 - name: set_fact docker_exec_cmd
   set_fact:
-    docker_exec_cmd: "docker exec {% if groups.get(mon_group_name, []) | length > 0 -%} ceph-mon-{{ hostvars[delegated_node]['ansible_hostname'] }} {% else %} ceph-client-{{ hostvars[delegated_node]['ansible_hostname'] }} {% endif %}"
+    docker_exec_cmd: "docker exec {% if groups.get(mon_group_name, []) | length > 0 -%} ceph-mon-{{ hostvars[delegated_node]['ansible_hostname'] }} {% else %} ceph-create-keys {% endif %}"
   when:
     - containerized_deployment
 
@@ -52,17 +47,17 @@
     name: "{{ item.name }}"
     caps: "{{ item.caps }}"
     secret: "{{ item.key | default('') }}"
-    containerized: "{{ docker_exec_client_cmd | default('') }}"
+    containerized: "{{ docker_exec_cmd | default('') }}"
     cluster: "{{ cluster }}"
     dest: "{{ ceph_conf_key_directory }}"
     import_key: "{{ copy_admin_key }}"
     mode: "{{ item.mode|default(omit) }}"
   with_items: "{{ keys }}"
-  run_once: true
+  delegate_to: "{{ delegated_node }}"
   when:
     - cephx
     - keys | length > 0
-    - inventory_hostname in groups.get(client_group_name) | first
+    - inventory_hostname == groups.get(client_group_name) | first
 
 - name: slurp client cephx key(s)
   slurp:
@@ -70,11 +65,11 @@
   with_items:
     - "{{ keys }}"
   register: slurp_client_keys
-  run_once: true
+  delegate_to: "{{ delegated_node }}"
   when:
     - cephx
     - keys | length > 0
-    - inventory_hostname in groups.get(client_group_name) | first
+    - inventory_hostname == groups.get(client_group_name) | first
 
 - name: list existing pool(s)
   command: >
@@ -82,11 +77,11 @@
     osd pool get {{ item.name }} size
   with_items: "{{ pools }}"
   register: created_pools
-  run_once: true
   failed_when: false
   delegate_to: "{{ delegated_node }}"
   when:
     - condition_copy_admin_key
+    - inventory_hostname == groups.get(client_group_name, []) | first
 
 - name: create ceph pool(s)
   command: >
@@ -104,7 +99,6 @@
     - "{{ pools }}"
     - "{{ created_pools.results }}"
   changed_when: false
-  run_once: true
   delegate_to: "{{ delegated_node }}"
   when:
     - pools | length > 0
@@ -112,21 +106,14 @@
     - inventory_hostname in groups.get(client_group_name) | first
     - item.1.rc != 0
 
-- name: kill a dummy container that created pool(s)/key(s)
-  command: docker rm -f ceph-create-keys
-  changed_when: false
-  run_once: true
-  when: containerized_deployment
-
 - name: get client cephx keys
   copy:
     dest: "{{ item.source }}"
     content: "{{ item.content | b64decode }}"
-    mode: "{{ item.item.mode }}"
+    mode: "{{ item.item.get('mode', '0600') }}"
     owner: "{{ ceph_uid }}"
     group: "{{ ceph_uid }}"
   with_items:
-    - "{{ slurp_client_keys.results }}"
+    - "{{ hostvars[groups[client_group_name][0]]['slurp_client_keys']['results'] }}"
   when:
     - not item.get('skipped', False)
-    - not inventory_hostname == groups.get(client_group_name, []) | first

@@ -19,22 +19,16 @@ class TestMDSs(object):
         )
         assert host.service(service_name).is_enabled
 
-    @pytest.mark.no_docker
     def test_mds_is_up(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
-        cmd = "sudo ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(cluster=node['cluster_name'])
-        output = host.check_output(cmd)
-        daemons = json.loads(output)["fsmap"]["by_rank"][0]["name"]
-        assert hostname in daemons
+        if node['docker']:
+            docker_exec_cmd = 'docker exec ceph-mds-{hostname}'.format(hostname=hostname)
+        else:
+            docker_exec_cmd = ''
 
-    @pytest.mark.docker
-    def test_docker_mds_is_up(self, node, host):
-        hostname = node["vars"]["inventory_hostname"]
-        cmd = "sudo docker exec ceph-mds-{hostname} ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
-            hostname=node["vars"]["inventory_hostname"],
-            cluster=node["cluster_name"]
+        cmd = "sudo {docker_exec_cmd} ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
+            docker_exec_cmd=docker_exec_cmd,
+            cluster=node['cluster_name']
         )
-        num_mdss = len(host.ansible.get_variables()["groups"]["mdss"])
-        output_raw = host.check_output(cmd)
-        output_json = json.loads(output_raw)
-        assert output_json['fsmap']['up'] and output_json['fsmap']['in'] == num_mdss
+        cluster_status = json.loads(host.check_output(cmd))
+        assert (cluster_status['fsmap'].get('up', 0) + cluster_status['fsmap'].get('up:standby', 0)) == len(node["vars"]["groups"]["mdss"])

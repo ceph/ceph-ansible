@@ -6,13 +6,13 @@
   register: rhcs_mon_repo
   check_mode: no
   when:
-    - mon_group_name in group_names
+    - (mon_group_name in group_names or mgr_group_name in group_names)
 
 - name: enable red hat storage monitor repository
   command: subscription-manager repos --enable rhel-7-server-rhceph-{{ ceph_rhcs_version }}-mon-rpms
   changed_when: false
   when:
-    - mon_group_name in group_names
+    - (mon_group_name in group_names or mgr_group_name in group_names)
     - rhcs_mon_repo.rc != 0
 
 - name: check if the red hat storage osd repo is already present

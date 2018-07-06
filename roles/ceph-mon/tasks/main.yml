@@ -21,6 +21,8 @@
 
 - name: include secure_cluster.yml
   include: secure_cluster.yml
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
   when:
     - secure_cluster
     - not containerized_deployment
@@ -36,19 +38,6 @@
 
 - name: include set_osd_pool_default_pg_num.yml
   include: set_osd_pool_default_pg_num.yml
-
-- name: set_fact openstack_keys_tmp - preserve backward compatibility after the introduction of the ceph_keys module
-  set_fact:
-    openstack_keys_tmp: "{{ openstack_keys_tmp|default([]) + [ { 'key': item.key, 'name': item.name, 'caps': { 'mon': item.mon_cap, 'osd': item.osd_cap|default(''), 'mds': item.mds_cap|default(''), 'mgr': item.mgr_cap|default('') } , 'mode': item.mode } ] }}"
-  with_items: "{{ openstack_keys }}"
-  when:
-    - item.get('mon_cap', None) # it's enough to assume we are running an old-fashionned syntax simply by checking the presence of mon_cap since every key needs this cap
-
-- name: set_fact keys - override keys_tmp with keys
-  set_fact:
-    openstack_keys: "{{ openstack_keys_tmp }}"
-  when:
-    - openstack_keys_tmp is defined
 
 - name: include calamari.yml
   include: calamari.yml

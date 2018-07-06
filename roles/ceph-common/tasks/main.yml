@@ -1,18 +1,4 @@
 ---
-- name: include checks/check_firewall.yml
-  include: checks/check_firewall.yml
-  when:
-    - check_firewall
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
-
-- name: include misc/configure_firewall_rpm.yml
-  include: misc/configure_firewall_rpm.yml
-  when:
-    - ansible_os_family in ['RedHat', 'Suse']
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
-
 - name: include installs/install_on_redhat.yml
   include: installs/install_on_redhat.yml
   when:
@@ -82,6 +68,21 @@
     - ceph_repository in ['rhcs', 'dev']
   tags:
     - always
+
+- name: include checks/check_firewall.yml
+  include: checks/check_firewall.yml
+  when:
+    - check_firewall
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
+
+- name: include misc/configure_firewall_rpm.yml
+  include: misc/configure_firewall_rpm.yml
+  when:
+    - configure_firewall
+    - ansible_os_family in ['RedHat', 'Suse']
+  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
+  static: False
 
 - name: include facts_mon_fsid.yml
   include: facts_mon_fsid.yml

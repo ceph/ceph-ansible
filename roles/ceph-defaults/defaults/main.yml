@@ -19,6 +19,8 @@ ceph_release_num:
   kraken: 11
   luminous: 12
   mimic: 13
+  nautilus: 14
+  dev: 99
 
 # Directory to fetch cluster fsid, keys etc...
 fetch_directory: fetch/
@@ -43,7 +45,7 @@ nfs_group_name: nfss
 restapi_group_name: restapis
 rbdmirror_group_name: rbdmirrors
 client_group_name: clients
-iscsi_gw_group_name: iscsi-gws
+iscsi_gw_group_name: iscsigws
 mgr_group_name: mgrs
 
 # If check_firewall is true, then ansible will try to determine if the
@@ -52,8 +54,14 @@ mgr_group_name: mgrs
 # want to set this to False to skip those checks.
 check_firewall: False
 
+# If configure_firewall is true, then ansible will try to configure the
+# appropriate firewalling rules so that Ceph daemons can communicate
+# with each others.
+configure_firewall: False
+
 # Open ports on corresponding nodes if firewall is installed on it
 ceph_mon_firewall_zone: public
+ceph_mgr_firewall_zone: public
 ceph_osd_firewall_zone: public
 ceph_rgw_firewall_zone: public
 ceph_mds_firewall_zone: public
@@ -61,6 +69,9 @@ ceph_nfs_firewall_zone: public
 ceph_restapi_firewall_zone: public
 ceph_rbdmirror_firewall_zone: public
 ceph_iscsi_firewall_zone: public
+
+# Generate local ceph.conf in fetch directory
+ceph_conf_local: false
 
 ############
 # PACKAGES #
@@ -279,6 +290,9 @@ generate_fsid: true
 
 ceph_conf_key_directory: /etc/ceph
 
+# Permissions for keyring files in /etc/ceph
+ceph_keyring_permissions: '0600'
+
 cephx: true
 
 ## Client options
@@ -367,7 +381,7 @@ filestore_xattr_use_omap: null
 ## MDS options
 #
 mds_use_fqdn: false # if set to true, the MDS name used will be the fqdn in the ceph.conf
-mds_max_mds: 3
+mds_max_mds: 1
 
 ## Rados Gateway options
 #
@@ -537,6 +551,7 @@ openstack_glance_pool:
   type: 1
   erasure_profile: ""
   expected_num_objects: ""
+  application: "rbd"
 openstack_cinder_pool:
   name: "volumes"
   pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
@@ -545,6 +560,7 @@ openstack_cinder_pool:
   type: 1
   erasure_profile: ""
   expected_num_objects: ""
+  application: "rbd"
 openstack_nova_pool:
   name: "vms"
   pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
@@ -553,6 +569,7 @@ openstack_nova_pool:
   type: 1
   erasure_profile: ""
   expected_num_objects: ""
+  application: "rbd"
 openstack_cinder_backup_pool:
   name: "backups"
   pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
@@ -561,6 +578,7 @@ openstack_cinder_backup_pool:
   type: 1
   erasure_profile: ""
   expected_num_objects: ""
+  application: "rbd"
 openstack_gnocchi_pool:
   name: "metrics"
   pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
@@ -569,6 +587,7 @@ openstack_gnocchi_pool:
   type: 1
   erasure_profile: ""
   expected_num_objects: ""
+  application: "rbd"
 
 openstack_pools:
   - "{{ openstack_glance_pool }}"
