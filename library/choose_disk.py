@@ -895,11 +895,11 @@ def main():
 
     # Preparing the final output by device in several categories
     # This is CEPH_META_LIST + ceph_already_configured to report the already configured devices
-    ceph_data = []
-    ceph_journal = []
-    ceph_block_wal = []
-    ceph_block_db = []
-    ceph_block = []
+    ceph_data_devices = []
+    ceph_journal_devices = []
+    ceph_wal_devices = []
+    ceph_db_devices = []
+    ceph_block_devices = []
     ceph_already_configured = []
     ceph_count = 0
     for matched_device in matched_devices:
@@ -912,17 +912,17 @@ def main():
                 ceph_already_configured.append(device["bdev"])
             continue
         if "data" in device["ceph_type"]:
-            ceph_data.append(device["bdev"])
+            ceph_data_devices.append(device["bdev"])
             continue
         if "block.wal" in device["ceph_type"]:
-            ceph_block_wal.append(device['bdev'])
+            ceph_wal_devices.append(device['bdev'])
             continue
         if "block.db" in device["ceph_type"]:
-            ceph_block_db.append(device['bdev'])
+            ceph_db_devices.append(device['bdev'])
         if "block" in device["ceph_type"]:
-            ceph_block.append(device['bdev'])
+            ceph_block_devices.append(device['bdev'])
         if "journal" in device["ceph_type"]:
-            ceph_journal.append(device["bdev"])
+            ceph_journal_devices.append(device["bdev"])
 
     changed = True
     logger.info("%d/%d disks already configured", ceph_count, len(matched_devices))
@@ -939,11 +939,11 @@ def main():
 
     # We report disks per categories regardingless if its a legacy or native syntax
     module.exit_json(msg=message, changed=changed,
-                     ansible_facts=dict(data_devices=ceph_data,
-                                        journal_devices=ceph_journal,
-                                        wal_devices=ceph_block_wal,
-                                        db_devices=ceph_block_db,
-                                        block_devices=ceph_block,
+                     ansible_facts=dict(data_devices=ceph_data_devices,
+                                        journal_devices=ceph_journal_devices,
+                                        wal_devices=ceph_wal_devices,
+                                        db_devices=ceph_db_devices,
+                                        block_devices=ceph_block_devices,
                                         devices_already_configured=ceph_already_configured,
                                         ))
 
