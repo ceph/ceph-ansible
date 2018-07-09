@@ -865,6 +865,9 @@ def main():
         if "bluestore" in osd_objectstore:
             faked_device_type = "block"
             faked_dedicated_device_type = "block.wal"
+            # If the block.wal is empty, we have to consume block.db instead
+            if not (get_var(module, faked_dedicated_device_type, True).rstrip()):
+                faked_dedicated_device_type = "block.db"
 
         lookup_disks = expand_disks(fake_device(devices, faked_device_type), faked_device_type, module)  # noqa E501
         if dedicated_devices:
