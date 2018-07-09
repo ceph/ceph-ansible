@@ -223,7 +223,7 @@ def find_match(physical_disks, lookup_disks, module=None):
 
         logger.info("Inspecting %s", disk)
         # Trying to find a match against all physical disks we have
-        for physical_disk in get_keys_by_ceph_order(physical_disks, current_type):
+        for physical_disk in get_keys_by_ceph_order(physical_disks, current_type):  # noqa E501
             # Avoid reusing an already matched physical disk
             if physical_disk in ignored_devices:
                 continue
@@ -243,25 +243,25 @@ def find_match(physical_disks, lookup_disks, module=None):
 
                 # Under the legacy mode, an OSD will be detected as
                 # a partition of the expected block device
-                # So we have to compare the parent block device instead of the partition name
+                # So we have to compare the parent block device instead of the partition name # noqa E501
                 if (input_mode is "legacy") and (feature is "bdev"):
                     # Let's extract the parent block device of the current disk
                     parent_block = getParentBlock(left)
                     # If one is found
                     if len(parent_block):
-                        logging.info(" {} is replaced by its parent {}".format(left, parent_block))
-                        # Let's replace the bdev path by the parent's one to get a match
+                        logging.info(" {} is replaced by its parent {}".format(left, parent_block))  # noqa E501
+                        # Let's replace the bdev path by the parent's one to get a match   # noqa E501
                         left = parent_block
 
                 right = current_lookup[feature]  # right is the operand
 
-                # If the right operator is not a dict it means we an input like :
+                # If the right operator is not a dict it means we an input like :   # noqa E501
                 #   rotational: '0'
                 # In this case, we need to apply an implict operator : eq
                 if not isinstance(right, dict):
                     right = {'eq': right}
 
-                # Once the right is well formatted, let's sanitize it regarding types & sizes
+                # Once the right is well formatted, let's sanitize it regarding types & sizes   # noqa E501
                 right = tree_to_bytes(right)
 
                 # build the object comparison with the operands
@@ -270,14 +270,14 @@ def find_match(physical_disks, lookup_disks, module=None):
                 except InvalidFilter as e:
                     fatal(e, module)
 
-                # Let's check if (left <operator> right) is True meaning the match is done
+                # Let's check if (left <operator> right) is True meaning the match is done  # noqa E501
                 if f(left):
-                    logger.debug(" %s : match %s %s", physical_disk, left, right)
+                    logger.debug(" %s : match %s %s", physical_disk, left, right)  # noqa E501
                     match_count = match_count + 1
                     continue
                 else:
                     # comparison is False meaning devices don't match
-                    logger.debug(" %s : no match %s %s", physical_disk, left, right)
+                    logger.debug(" %s : no match %s %s", physical_disk, left, right)  # noqa E501
 
             # If all the features matched
             if match_count == len(current_lookup):
@@ -312,7 +312,7 @@ def find_match(physical_disks, lookup_disks, module=None):
     # Let's prepare the final output
     final_disks = {}
 
-    # Matching devices are named base on the user-provided name + incremental number
+    # Matching devices are named base on the user-provided name + incremental number  # noqa E501
     # If we look for {'storage_disks': {'count': 2, 'ceph_type': 'data', 'vendor': '0x1af4', 'size': 'gte(20 GB)'}} # noqa E501
     # - first device will be named  : storage_disks_000
     # - second device will be named : storage_disks_001
@@ -341,7 +341,7 @@ def expand_disks(lookup_disks, ceph_type="", module=None):
             lookup_disks[disk]['ceph_type'] = ceph_type
         else:
             if 'count' not in lookup_disks[disk]:
-                fatal("disk '%s' should have a 'count' value defined" % disk, module)
+                fatal("disk '%s' should have a 'count' value defined" % disk, module)  # noqa E501
             if 'ceph_type' not in lookup_disks[disk]:
                 fatal("disk '%s' should have a 'ceph_type' value defined" % disk, module)  # noqa E501
             if lookup_disks[disk]['ceph_type'] not in CEPH_META_LIST:
@@ -351,7 +351,7 @@ def expand_disks(lookup_disks, ceph_type="", module=None):
                 count = lookup_disks[disk]['count']
                 del lookup_disks[disk]['count']
 
-        #  If the count field is set to '*', let's consider an infinite number of devices to match
+        #  If the count field is set to '*', let's consider an infinite number of devices to match  # noqa E501
         if '*' in str(count).strip():
             infinite = True
             count = 1
@@ -371,8 +371,8 @@ def is_invalid_partition_table(partition):
     BUT the device is usable
     however if parted fails with something else then we return failed
     '''
-    parted = subprocess.Popen(["parted", "-sm", "{}".format(partition), "print"],
-                              stderr=subprocess.PIPE, stdout=open(os.devnull, 'w'),
+    parted = subprocess.Popen(["parted", "-sm", "{}".format(partition), "print"],  # noqa E501
+                              stderr=subprocess.PIPE, stdout=open(os.devnull, 'w'),  # noqa E501
                               close_fds=True)
 
     retcode = parted.poll()
@@ -396,7 +396,7 @@ def get_ceph_volume_lvm_list(partition, container_image=None):
 
     if container_image:
         binary = "ceph-volume"
-        ceph_volume_cmd = container_exec(binary, container_image) + ceph_volume_cmd_args
+        ceph_volume_cmd = container_exec(binary, container_image) + ceph_volume_cmd_args  # noqa E501
     else:
         binary = ["ceph-volume"]
         ceph_volume_cmd = binary + ceph_volume_cmd_args
@@ -418,7 +418,7 @@ def get_partition_label(partition):
     '''
     try:
         blkid = subprocess.Popen(
-            ["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)],
+            ["blkid", "-s", "PARTLABEL", "-o", "value", "{}".format(partition)],  # noqa E501
             stdout=subprocess.PIPE, close_fds=True)
         stdout, _ = blkid.communicate()
     except Exception:
@@ -446,13 +446,13 @@ def disk_label(partition, current_fsid, ceph_disk, container_image=None):
 
     # If the disk have some metadata, the json is filled with information
     for key, value in json_dict.items():
-        # As we parse a partition it should only have a single entry unless that's an error
+        # As we parse a partition it should only have a single entry unless that's an error  # noqa E501
         if (len(value) > 1):
             fatal("Error while parsing ceph-volume")
         if "tags" in value[0]:
             if "ceph.cluster_fsid" in value[0]['tags']:
                 if value[0]["tags"]["ceph.cluster_fsid"] != current_fsid:
-                    return "foreign : {}".format(value[0]["tags"]["ceph.cluster_fsid"])
+                    return "foreign : {}".format(value[0]["tags"]["ceph.cluster_fsid"])  # noqa E501
         if "type" in value[0]:
             return value[0]["type"]
         else:
@@ -470,14 +470,14 @@ def disk_label(partition, current_fsid, ceph_disk, container_image=None):
                     if partition_iter["path"] == partition:
                         if "ceph_fsid" in partition_iter:
                             if partition_iter["ceph_fsid"] != current_fsid:
-                                return "foreign : {}".format(partition_iter["ceph_fsid"])
+                                return "foreign : {}".format(partition_iter["ceph_fsid"])  # noqa E501
 
     # 3) let's search a partition table
     invalid_partition_table = is_invalid_partition_table(partition)
     if invalid_partition_table:
         return invalid_partition_table
 
-    # 4) if the device has a partition table, we can look for potential partitions
+    # 4) if the device has a partition table, we can look for potential partitions  # noqa E501
     # let's search directly from the partitions labels
     partition_label = get_partition_label(partition)
     if partition_label:
@@ -496,7 +496,7 @@ def read_ceph_disk(container_image=None):
 
     if container_image:
         binary = "ceph-disk"
-        ceph_disk_cmd = container_exec(binary, container_image) + ceph_disk_cmd_args
+        ceph_disk_cmd = container_exec(binary, container_image) + ceph_disk_cmd_args  # noqa E501
     else:
         binary = ["ceph-disk"]
         ceph_disk_cmd = binary + ceph_disk_cmd_args
@@ -515,7 +515,7 @@ def is_read_only_device(physical_disk):
     '''
     Does the pointed physical disk is a readonly device ?
     '''
-    stdout = subprocess.check_output(["blockdev", "--getro", "/dev/%s" % physical_disk])
+    stdout = subprocess.check_output(["blockdev", "--getro", "/dev/%s" % physical_disk])  # noqa E501
     if "1" in stdout:
         return True
     return False
@@ -558,7 +558,7 @@ def is_locked_raw_device(physical_disk):
     return False
 
 
-def select_only_free_devices(physical_disks, current_fsid, container_image=None):
+def select_only_free_devices(physical_disks, current_fsid, container_image=None):  # noqa E501
     '''
     It's important reporting only devices that are not currently used.
     This code is written by rejecting devices by successive tests.
@@ -566,8 +566,8 @@ def select_only_free_devices(physical_disks, current_fsid, container_image=None)
         - if we do, we reject the disk and continue to the next one
         - if we don't, we try another way of detecting something
 
-    So in this code, the 'continue' call means "We've found something, let's check the next disk'
-    This approach avoid avoid a cascade of if/elif where the free disk case would be the last else.
+    So in this code, the 'continue' call means "We've found something, let's check the next disk'  # noqa E501
+    This approach avoid avoid a cascade of if/elif where the free disk case would be the last else.  # noqa E501
     '''
     selected_devices = {}
     logger.info('Detecting free devices with fsid={}'.format(current_fsid))
@@ -585,7 +585,7 @@ def select_only_free_devices(physical_disks, current_fsid, container_image=None)
 
         # Don't consider devices that doesn't support partitions
         if 'partitions' not in current_physical_disk:
-            logger.info('Ignoring %10s : device does not support partitioning', physical_disk)
+            logger.info('Ignoring %10s : device does not support partitioning', physical_disk)  # noqa E501
             continue
 
         # Removing CD-ROM Devices
@@ -600,7 +600,7 @@ def select_only_free_devices(physical_disks, current_fsid, container_image=None)
 
         # Don't consider the device if partition list is not empty,
         # A disk that is already partionned may contain important data
-        # It's up to the admin to zap the device before using it in ceph-ansible
+        # It's up to the admin to zap the device before using it in ceph-ansible  # noqa E501
         # There is only an exception :
         #    if the partitions are from ceph, it surely means that we have to
         #    reuse them to get a match on an existing setup
@@ -609,52 +609,52 @@ def select_only_free_devices(physical_disks, current_fsid, container_image=None)
         if len(current_physical_disk['partitions']) > 0:
             for partition in sorted(current_physical_disk['partitions']):
                 partition_name = "/dev/{}".format(partition)
-                disk_type = disk_label(partition_name, current_fsid, ceph_disk, container_image)
+                disk_type = disk_label(partition_name, current_fsid, ceph_disk, container_image)  # noqa E501
                 if disk_type:
                     if disk_type.startswith("foreign"):
-                        logger.info('Ignoring %10s : device has foreign Ceph metadata : %s',
+                        logger.info('Ignoring %10s : device has foreign Ceph metadata : %s',  # noqa E501
                                     partition, disk_type.split(":")[1])
                         continue
                     elif disk_type.startswith("failed"):
                         logger.info('Ignoring %10s : unable to perform a complete detection', partition)  # noqa 501
                         continue
-                    # This partition is populated, let's report a usable device of it
+                    # This partition is populated, let's report a usable device of it  # noqa E501
                     found_populated_partition = True
-                    selected_devices[partition] = current_physical_disk['partitions'][partition]
+                    selected_devices[partition] = current_physical_disk['partitions'][partition]  # noqa E501
                     selected_devices[partition]['bdev'] = partition_name
                     selected_devices[partition]['ceph_prepared'] = disk_type
                     # Let's propagate basic raw level info to the partition
                     for key in ["vendor", "model", "rotational"]:
                         if key in current_physical_disk:
-                            selected_devices[partition][key] = current_physical_disk[key]
-                    logger.info('Adding   %10s : Ceph disk detected (%s)', partition, disk_type)
+                            selected_devices[partition][key] = current_physical_disk[key]  # noqa E501
+                    logger.info('Adding   %10s : Ceph disk detected (%s)', partition, disk_type)  # noqa E501
 
             # If we find populated partitions, no need to go further
-            # As we couldn't use the complete disk or looking for anything else on it
+            # As we couldn't use the complete disk or looking for anything else on it  # noqa E501
             if found_populated_partition:
                 continue
             else:
                 # Having undefined populated partitions is a show stopper
-                logger.info('Ignoring %10s : device has existing partitions', physical_disk)
+                logger.info('Ignoring %10s : device has existing partitions', physical_disk)  # noqa E501
                 continue
 
         # If we reach here, it could be a free or lvm-based block
         # We didn't checked LVM before as some ceph disks could be under LVM
-        # disk_label is supposed to catch this case, so it only remain LVM made by the user
+        # disk_label is supposed to catch this case, so it only remain LVM made by the user  # noqa E501
         disk_type = disk_label("/dev/{}".format(physical_disk), current_fsid, ceph_disk, container_image)  # noqa E501
 
         # If ceph_disk is not populated, maybe this is a system lvm
         if not disk_type:
             if is_lvm_disk(physical_disk):
                 # FIXME: Why not considering if there is some free space on it?
-                logger.info('Ignoring %10s : device is already used by LVM', physical_disk)
+                logger.info('Ignoring %10s : device is already used by LVM', physical_disk)  # noqa E501
                 continue
         elif disk_type.startswith("foreign"):
-            logger.info('Ignoring %10s : device has foreign Ceph metadata : %s',
+            logger.info('Ignoring %10s : device has foreign Ceph metadata : %s',  # noqa E501
                         physical_disk, disk_type.split(":")[1])
             continue
         elif disk_type.startswith("failed"):
-            logger.info('Ignoring %10s : unable to perform a complete detection', physical_disk)
+            logger.info('Ignoring %10s : unable to perform a complete detection', physical_disk)  # noqa E501
             continue
 
         # Removing accessed devices
@@ -666,16 +666,16 @@ def select_only_free_devices(physical_disks, current_fsid, container_image=None)
         # AFTER THIS LINE, NO MORE DEVICE EXCLUSION #
         #############################################
         # If we get here, it means that's a free device we can use
-        # Everthing below that line should be about handling how to report a free disk
+        # Everthing below that line should be about handling how to report a free disk  # noqa E501
         selected_devices[physical_disk] = physical_disks[physical_disk]
         selected_devices[physical_disk]['bdev'] = '/dev/' + physical_disk
 
         if disk_type:
             # The block device had some ceph metadata
             selected_devices[physical_disk]['ceph_prepared'] = disk_type
-            logger.info('Adding   %10s : Ceph disk detected (%s)', physical_disk, disk_type)
+            logger.info('Adding   %10s : Ceph disk detected (%s)', physical_disk, disk_type)  # noqa E501
         else:
-            # This is a totally free disk device, no lvm, no partitions, no ceph label
+            # This is a totally free disk device, no lvm, no partitions, no ceph label  # noqa E501
             logger.info('Adding   %10s : %s', physical_disk, selected_devices[physical_disk]['bdev'])  # noqa E501
         # This is end of handling a single disk
 
@@ -692,8 +692,8 @@ def fake_device(legacy_devices, ceph_type):
     devices = {}
     count = 0
     for device in legacy_devices:
-        devices["%s_%d" % (ceph_type, count)] = {"bdev": os.path.join(os.path.dirname(device),
-                                                                      os.path.basename(device))}
+        devices["%s_%d" % (ceph_type, count)] = {"bdev": os.path.join(os.path.dirname(device),  # noqa E501
+                                                                      os.path.basename(device))}  # noqa E501
         count = count + 1
 
     return devices
@@ -732,7 +732,7 @@ def show_resulting_devices(matched_devices, physical_disks):
     for physical_disk in sorted(physical_disks):
         pdisk = physical_disks[physical_disk]
         if pdisk["bdev"] not in bdev_matched:
-            bdev_unmatched.append("%s %s" % (pdisk["bdev"], prepare_device_string(pdisk)))
+            bdev_unmatched.append("%s %s" % (pdisk["bdev"], prepare_device_string(pdisk)))  # noqa E501
 
     logger.info("Unmatched devices : %3d", len(bdev_unmatched))
     for bdev in sorted(bdev_unmatched):
@@ -830,11 +830,11 @@ def main():
         container_image = get_var(module, "ceph_docker_image")
         container_image_tag = get_var(module, "ceph_docker_image_tag")
         container_image = os.path.join(
-            container_image_registry + "/" + container_image + ":" + container_image_tag)
+            container_image_registry + "/" + container_image + ":" + container_image_tag)  # noqa E501
     else:
         container_image = None
 
-    physical_disks = select_only_free_devices(ansible_devices, current_fsid, container_image)
+    physical_disks = select_only_free_devices(ansible_devices, current_fsid, container_image)  # noqa E501
 
     devices = get_var(module, "devices")
 
@@ -854,11 +854,11 @@ def main():
             if len(getParentBlock(device)):
                 fatal("Device {} have a parent device which is not allowed in legacy mode".format(device), module)  # noqa E501
 
-        # In case of legacy, we search for a possible presence of dedicated_devices
+        # In case of legacy, we search for a possible presence of dedicated_devices # noqa E501
         dedicated_devices = get_var(module, "dedicated_devices")
 
-        # From the ansible facts, we only keep the disks that doesn't have partitions
-        # We don't transform into the persistent naming but rather fake the disk
+        # From the ansible facts, we only keep the disks that doesn't have partitions # noqa E501
+        # We don't transform into the persistent naming but rather fake the disk # noqa E501
         # definition by creating "bdev" entries to get a feature to match.
         faked_device_type = "data"
         faked_dedicated_device_type = "journal"
@@ -866,7 +866,7 @@ def main():
             faked_device_type = "block"
             faked_dedicated_device_type = "block.wal"
             # If the block.wal is empty, we have to consume block.db instead
-            if not (get_var(module, faked_dedicated_device_type, True).rstrip()):
+            if not (get_var(module, faked_dedicated_device_type, True).rstrip()):  # noqa E501
                 faked_dedicated_device_type = "block.db"
 
         lookup_disks = expand_disks(fake_device(devices, faked_device_type), faked_device_type, module)  # noqa E501
@@ -878,7 +878,7 @@ def main():
             lookup_disks.update(expand_disks(fake_device(dedicated_devices, faked_dedicated_device_type), faked_dedicated_device_type, module))  # noqa E501
     else:
         fatal("devices variable should be a dict for native syntax {...} or "
-              "a list for legacy syntax [ ... ] : %s detected" % type(devices), module)
+              "a list for legacy syntax [ ... ] : %s detected" % type(devices), module)  # noqa E501
 
     # Final checks between the lookup & the actual ansible configuration
     for disk in lookup_disks:
@@ -893,11 +893,11 @@ def main():
     show_resulting_devices(matched_devices, physical_disks)
 
     if len(matched_devices) < len(lookup_disks):
-        fatal("Could only find %d of the %d expected devices" % (len(matched_devices),
-                                                                 len(lookup_disks)), module)
+        fatal("Could only find %d of the %d expected devices" % (len(matched_devices),  # noqa E501
+                                                                 len(lookup_disks)), module)  # noqa E501
 
     # Preparing the final output by device in several categories
-    # This is CEPH_META_LIST + ceph_already_configured to report the already configured devices
+    # This is CEPH_META_LIST + ceph_already_configured to report the already configured devices  # noqa E501
     ceph_data_devices = []
     ceph_journal_devices = []
     ceph_wal_devices = []
@@ -910,7 +910,7 @@ def main():
         device['name'] = matched_device
         if "ceph_prepared" in device:
             # If the already prepared disk is not a journal
-            if (device["ceph_prepared"] in [x for x in CEPH_META_LIST if x != "journal"]):
+            if (device["ceph_prepared"] in [x for x in CEPH_META_LIST if x != "journal"]):  # noqa E501
                 ceph_count = ceph_count + 1
                 ceph_already_configured.append(device["bdev"])
             continue
@@ -928,7 +928,7 @@ def main():
             ceph_journal_devices.append(device["bdev"])
 
     changed = True
-    logger.info("%d/%d disks already configured", ceph_count, len(matched_devices))
+    logger.info("%d/%d disks already configured", ceph_count, len(matched_devices))  # noqa E501
     # If we only report already ceph-prepared disks, let's report nothing
     # changed to Ansible
     if ceph_count == len(matched_devices):
@@ -940,14 +940,14 @@ def main():
     logger.info("# End #")
     logger.info("#######")
 
-    # We report disks per categories regardingless if its a legacy or native syntax
+    # We report disks per categories regardingless if its a legacy or native syntax  # noqa E501
     module.exit_json(msg=message, changed=changed,
                      ansible_facts=dict(data_devices=ceph_data_devices,
                                         journal_devices=ceph_journal_devices,
                                         wal_devices=ceph_wal_devices,
                                         db_devices=ceph_db_devices,
                                         block_devices=ceph_block_devices,
-                                        devices_already_configured=ceph_already_configured,
+                                        devices_already_configured=ceph_already_configured,  # noqa E501
                                         ))
 
 
