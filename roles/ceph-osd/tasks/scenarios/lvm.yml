@@ -1,4 +1,28 @@
 ---
+- name: set_fact docker_exec_prepare_cmd
+  set_fact:
+    docker_exec_prepare_cmd: "docker exec ceph-volume-prepare"
+  when:
+    - containerized_deployment
+
+- name: run a ceph-volume prepare container (sleep 3000)
+  command: >
+    docker run \
+    --rm \
+    --privileged=true \
+    --net=host \
+    -v /dev:/dev \
+    -d \
+    -v {{ ceph_conf_key_directory }}:{{ ceph_conf_key_directory }}:z \
+    -v /var/lib/ceph/:/var/lib/ceph/:z \
+    -v /run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket \
+    --name ceph-volume-prepare \
+    --entrypoint=sleep \
+    {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+    3000
+  changed_when: false
+  when:
+    - containerized_deployment
 
 - name: "use ceph-volume to create {{ osd_objectstore }} osds"
   ceph_volume:
@@ -14,6 +38,8 @@
     wal_vg: "{{ item.wal_vg|default(omit) }}"
     crush_device_class: "{{ item.crush_device_class|default(omit) }}"
     dmcrypt: "{{ dmcrypt|default(omit) }}"
+    containerized: "{{ docker_exec_prepare_cmd | default(False) }}"
+    action: "{{ 'prepare' if containerized_deployment else 'create' }}"
   environment:
     CEPH_VOLUME_DEBUG: 1
   with_items: "{{ lvm_volumes }}"
