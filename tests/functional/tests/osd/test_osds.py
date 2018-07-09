@@ -49,6 +49,7 @@ class TestOSDs(object):
         host.exists('ceph-volume-systemd')
 
     def _get_osd_id_from_host(self, node, osd_tree):
+        children = []
         for n in osd_tree['nodes']:
             if n['name'] == node['vars']['inventory_hostname'] and n['type'] == 'host':
                 children = n['children']
