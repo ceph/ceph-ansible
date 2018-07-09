@@ -107,7 +107,12 @@ expose_partitions "$1"
   {% if (ceph_tcmalloc_max_total_thread_cache | int) > 0 and osd_objectstore == 'filestore' -%}
   -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
   {% endif -%}
+  {% if osd_scenario == 'lvm' -%}
+  -v /run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket \
+  -e CEPH_DAEMON=OSD_CEPH_VOLUME_ACTIVATE \
+  {% else -%}
   -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE \
+  {% endif -%}
   {{ ceph_osd_docker_extra_env }} \
   --name=ceph-osd-{{ ansible_hostname }}-${1} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
