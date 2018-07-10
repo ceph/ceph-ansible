@@ -63,7 +63,8 @@ ExecStart=/usr/bin/docker run --rm --name ceph-mon-%i \
   -e CEPH_DAEMON=MON \
   {{ ceph_mon_docker_extra_env }} \
   {{ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-ExecStopPost=-/usr/bin/docker stop ceph-mon-%i
+ExecStop=-/usr/bin/docker stop ceph-mon-%i
+ExecStopPost=-/bin/rm -f /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok
 Restart=always
 RestartSec=10s
 TimeoutStartSec=120
