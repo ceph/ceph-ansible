@@ -36,10 +36,24 @@
     - not containerized_deployment
     - docker_exec_client_cmd == 'ceph-authtool'
 
+<<<<<<< HEAD
 - name: check if key(s) already exist(s)
   command: "{{ docker_exec_client_cmd }} --cluster {{ cluster }} auth get {{ item.name }}"
   changed_when: false
   failed_when: false
+=======
+- name: create cephx key(s)
+  ceph_key:
+    state: present
+    name: "{{ item.name }}"
+    caps: "{{ item.caps }}"
+    secret: "{{ item.key | default('') }}"
+    containerized: "{{ docker_exec_cmd | default('') }}"
+    cluster: "{{ cluster }}"
+    dest: "{{ ceph_conf_key_directory }}"
+    import_key: "{{ condition_copy_admin_key }}"
+    mode: "{{ item.mode|default(omit) }}"
+>>>>>>> 5ef5fcd0... client: do not rely on copy_admin_key to import keys
   with_items: "{{ keys }}"
   register: keys_exist
   when:
