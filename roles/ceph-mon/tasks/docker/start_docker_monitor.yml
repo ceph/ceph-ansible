@@ -1,10 +1,10 @@
 ---
 - name: populate kv_store with default ceph.conf
-  docker:
+  docker_container:
     name: populate-kv-store
     image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
     command: populate_kvstore
-    net: host
+    network: host
     env:
       KV_TYPE: "{{kv_type}}"
       KV_IP: "{{kv_endpoint}}"
@@ -16,11 +16,11 @@
     - mon_containerized_default_ceph_conf_with_kv
 
 - name: populate kv_store with custom ceph.conf
-  docker:
+  docker_container:
     name: populate-kv-store
     image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
     command: populate_kvstore
-    net: host
+    network: host
     env:
       KV_TYPE: "{{kv_type}}"
       KV_IP: "{{kv_endpoint}}"
@@ -34,7 +34,7 @@
     - not mon_containerized_default_ceph_conf_with_kv
 
 - name: delete populate-kv-store docker
-  docker:
+  docker_container:
     name: populate-kv-store
     state: absent
     image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
