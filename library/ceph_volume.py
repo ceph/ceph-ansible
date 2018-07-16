@@ -1,8 +1,8 @@
 #!/usr/bin/python
 import datetime
-import json
 import copy
-
+import json
+import os
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
@@ -156,6 +156,20 @@ EXAMPLES = '''
 
 
 from ansible.module_utils.basic import AnsibleModule  # noqa 4502
+
+
+def container_exec(binary, container_image):
+    '''
+    Build the CLI to run a command inside a container
+    '''
+
+    command_exec = ["docker", "run", "--rm", "--privileged", "--net=host",
+                    "-v", "/dev:/dev", "-v", "/etc/ceph:/etc/ceph:z",
+                    "-v", "/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket",
+                    "-v", "/var/lib/ceph/:/var/lib/ceph/:z",
+                    os.path.join("--entrypoint=" + binary),
+                    container_image]
+    return command_exec
 
 
 def get_data(data, data_vg):
@@ -336,20 +350,26 @@ def batch(module):
     module.exit_json(**result)
 
 
-def ceph_volume_cmd(subcommand, containerized, cluster=None):
-    cmd = ['ceph-volume']
+def ceph_volume_cmd(subcommand, container_image, cluster=None):
+
+    if container_image:
+        binary = "ceph-volume"
+        cmd = container_exec(
+            binary, container_image)
+    else:
+        binary = ["ceph-volume"]
+        cmd = binary
+
     if cluster:
         cmd.extend(["--cluster", cluster])
+
     cmd.append('lvm')
     cmd.append(subcommand)
-
-    if containerized:
-        cmd = containerized.split() + cmd
 
     return cmd
 
 
-def activate_osd(module, containerized=None):
+def activate_osd(module, container_image=None):
     subcommand = "activate"
     cmd = ceph_volume_cmd(subcommand)
     cmd.append("--all")
@@ -370,10 +390,14 @@ def prepare_osd(module):
     wal_vg = module.params.get('wal_vg', None)
     crush_device_class = module.params.get('crush_device_class', None)
     dmcrypt = module.params['dmcrypt']
-    containerized = module.params.get('containerized', None)
     subcommand = "prepare"
 
-    cmd = ceph_volume_cmd(subcommand, containerized, cluster)
+    if "CEPH_CONTAINER_IMAGE" in os.environ:
+        container_image = os.getenv("CEPH_CONTAINER_IMAGE")
+    else:
+        container_image = None
+
+    cmd = ceph_volume_cmd(subcommand, container_image, cluster)
     cmd.extend(["--%s" % objectstore])
     cmd.append("--data")
 
@@ -417,9 +441,14 @@ def prepare_osd(module):
     # support for 'lvm list' and raw devices
     # was added with https://github.com/ceph/ceph/pull/20620 but
     # has not made it to a luminous release as of 12.2.4
-    ceph_volume_list_cmd = ["ceph-volume", "lvm", "list", data]
-    if containerized:
-        ceph_volume_list_cmd = containerized.split() + ceph_volume_list_cmd
+    ceph_volume_list_cmd_args = ["lvm", "list", data]
+    if container_image:
+        binary = "ceph-volume"
+        ceph_volume_list_cmd = container_exec(
+            binary, container_image) + ceph_volume_list_cmd_args
+    else:
+        binary = ["ceph-volume"]
+        ceph_volume_list_cmd = binary + ceph_volume_list_cmd_args
 
     rc, out, err = module.run_command(ceph_volume_list_cmd, encoding=None)
     if rc == 0:
