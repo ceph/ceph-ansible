@@ -1,0 +1,55 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+
+CLUSTER=sys.argv[1]
+
+def get_version():
+    return json.loads(subprocess.check_output(["ceph", "--cluster", CLUSTER, "version", "--format=json"]).decode('utf-8'))
+
+major_version = re.match("ceph version (\d+)", get_version()["version"]).group(1)
+postmimic = int(major_version) > 12
+
+def get_fsmap():
+    d = subprocess.check_output(["ceph", "--cluster", CLUSTER, "fs", "dump", "--format=json"]).decode('utf-8')
+    print(d, file=sys.stderr)
+    return json.loads(str(d))
+
+def highest_rank(mdsmap):
+    highest = None
+    for mds in mdsmap["info"].values():
+        r = mds["rank"]
+        if r >= 0 and (highest is None or r > highest["rank"]):
+            highest = mds
+    if highest is None:
+        raise RuntimeError("no ranks")
+    return highest
+
+def reach_max_mds():
+    done = False
+    while not done:
+        fsmap = get_fsmap()
+        done = True
+        for fs in fsmap['filesystems']:
+            mdsmap = fs['mdsmap']
+            name = mdsmap['fs_name']
+            h = highest_rank(mdsmap)
+            if h["rank"] == mdsmap["max_mds"]-1:
+                break
+            done = False
+
+            if not postmimic and h["state"] == "up:active":
+                subprocess.check_call(["ceph", "--cluster", CLUSTER, "mds", "deactivate", name+":"+h])
+            else:
+                print("waiting for cluster to stabilize", file=sys.stderr)
+
+            time.sleep(2)
+
+reach_max_mds()

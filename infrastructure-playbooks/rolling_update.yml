@@ -445,6 +445,9 @@
         - not jewel_minor_update
 
 
+# See also:
+#   - [master] http://docs.ceph.com/docs/master/cephfs/upgrading/
+#   - [pre-mimic] http://docs.ceph.com/docs/luminous/cephfs/upgrading/
 - name: upgrade ceph mdss cluster
 
   vars:
@@ -457,6 +460,28 @@
   become: True
 
   pre_tasks:
+    - name: get fsmap
+      command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} fs dump --format=json"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      register: fetched_fsmap
+
+    - name: set_fact fsmap
+      set_fact:
+        pre_upgrade_fsmap: "{{ fetched_fsmap.stdout | from_json }}"
+
+    # JSON looks like:
+    # {..., "filesystems": [{"fs_name": "foo", ...}, {"fs_name": "bar", ...}]}
+    - name: reduce ranks to 1
+      command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} fs set {{ item.fs_name }} max_mds 1"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items: "{{ pre_upgrade_fsmap.filesystems | select('mds_map.fs_name') }}"
+
+    - name: cephfs preupgrade sequence
+      command: "{{ docker_exec_cmd_update_osd|default('') }} python /tmp/preupgrade_cephfs.py {{ cluster }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    # XXX From "get fsmap" to "cephfs preup...", these should be executed ONCE on the mons for EACH CephFS file system, THEN all mdss are restarted. THEN "restore max_mds" is done once.
+
     - name: stop ceph mds
       systemd:
         name: ceph-mds@{{ ansible_hostname }}
@@ -490,6 +515,10 @@
       when:
         - containerized_deployment
 
+    - name: restore max_mds
+      command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} fs set {{ item.fs_name }} max_mds {{ item.max_mds }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items: "{{ pre_upgrade_fsmap.filesystems | select('mds_map') }}"
 
 - name: upgrade ceph rgws cluster
 
