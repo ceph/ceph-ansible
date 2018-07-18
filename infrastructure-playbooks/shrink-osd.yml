@@ -130,6 +130,28 @@
       when:
         - containerized_deployment
 
+    - name: resolve parent device
+      command: lsblk --nodeps -no pkname "{{ item.stdout }}"
+      register: resolved_parent_device
+      with_items:
+        - "{{ osd_to_kill_disks.results }}"
+      when:
+        - containerized_deployment
+
+    - name: zap ceph osd disks
+      shell: |
+        docker run --rm \
+        --privileged=true \
+        --name ceph-osd-zap-{{ ansible_hostname }}-{{ item.stdout }} \
+        -v /dev/:/dev/ \
+        -e OSD_DEVICE=/dev/{{ item.stdout }} \
+        {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+        zap_device
+      with_items:
+        - "{{ resolved_parent_device.results }}"
+      when:
+        - containerized_deployment
+
     - name: deactivating osd(s)
       command: ceph-disk deactivate --cluster {{ cluster }} --deactivate-by-id {{ item.0 }} --mark-out
       run_once: true
