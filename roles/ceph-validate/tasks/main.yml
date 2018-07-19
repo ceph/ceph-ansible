@@ -1,0 +1,61 @@
+---
+- name: validate provided configuration
+  validate:
+    mode: strict
+
+- name: fail if local scenario is enabled on debian
+  fail:
+    msg: "'local' installation scenario not supported on Debian systems"
+  when:
+    - ansible_os_family == 'Debian'
+    - ceph_origin == 'local'
+
+- name: verify that ceph_rhcs_cdn_debian_repo url is valid for red hat storage
+  fail:
+    msg: "ceph_rhcs_cdn_debian_repo url is invalid, please set your customername:customerpasswd"
+  when:
+    - ceph_origin == 'repository'
+    - ceph_repository == 'rhcs'
+    - ceph_repository_type == 'cdn'
+    - ansible_os_family == 'Debian'
+    - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
+    - ceph_repository not in ['rhcs', 'dev', 'obs']
+
+- name: make sure journal_size configured
+  debug:
+    msg: "WARNING: journal_size is configured to {{ journal_size }}, which is less than 5GB. This is not recommended and can lead to severe issues."
+  when:
+    - journal_size|int < 5120
+    - osd_objectstore == 'filestore'
+    - osd_group_name in group_names
+
+- name: check if osd_scenario lvm is supported by the selected ceph version
+  fail:
+    msg: "osd_scenario lvm is not supported by the selected Ceph version, use Luminous or newer."
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - ceph_repository not in ['rhcs', 'dev']
+    - not containerized_deployment
+    - osd_scenario == "lvm"
+    - ceph_release_num[ceph_release] < ceph_release_num.luminous
+
+- name: check if bluestore is supported by the selected ceph version
+  fail:
+    msg: "bluestore is not supported by the selected Ceph version, use Luminous or above."
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - ceph_repository not in ['rhcs', 'dev']
+    - osd_objectstore == 'bluestore'
+    - ceph_release_num[ceph_release] < ceph_release_num.luminous
+
+- name: include check_system.yml
+  include: check_system.yml
+
+- name: include check_devices.yml
+  include: check_devices.yml
+  when:
+    - osd_group_name in group_names
+    - not osd_auto_discovery | default(False)
+    - osd_scenario != "lvm"
