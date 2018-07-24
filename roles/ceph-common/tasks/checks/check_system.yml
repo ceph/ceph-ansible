@@ -52,18 +52,25 @@
     - ceph_repository == 'uca'
     - ansible_distribution != 'Ubuntu'
 
-- name: fail on unsupported ansible version
+- name: fail on unsupported ansible version (<2.x)
   fail:
-    msg: "Ansible version must be >= 2.3.x, please update!"
+    msg: "Ansible version must be >= 2.3.x AND < 2.5!"
   when:
     - ansible_version.major|int < 2
 
-- name: fail on unsupported ansible version
+- name: fail on unsupported ansible version (<2.3)
   fail:
-    msg: "Ansible version must be >= 2.3.x, please update!"
+    msg: "Ansible version must be >= 2.3.x AND < 2.5!"
   when:
     - ansible_version.major|int == 2
     - ansible_version.minor|int < 3
+
+- name: fail on unsupported ansible version (>= 2.5)
+  fail:
+    msg: "Ansible version must be >= 2.3.x AND < 2.5!"
+  when:
+    - ansible_version.major|int == 2
+    - ansible_version.minor|int >= 5
 
 - name: fail if systemd is not present
   fail:
