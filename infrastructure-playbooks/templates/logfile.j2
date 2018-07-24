@@ -1,0 +1,14 @@
+Suggested cut and paste into "group_vars/osds.yml" for configuring with osd_scenario=lvm
+----------------------------------------------------------------------------------------
+{% for lv in nvme_device_lvs %}
+  - data: {{ lv.lv_name }}
+    data_vg: {{ nvme_vg_name }}
+    journal: {{ lv.journal_name }}
+    journal_vg: {{ nvme_vg_name }}
+{% endfor %}
+{% for hdd in hdd_devices %}
+  - data: {{ hdd_lv_prefix }}-{{ hdd.split('/')[-1] }}
+    data_vg: {{ hdd_vg_prefix }}-{{ hdd.split('/')[-1] }}
+    journal: {{ hdd_journal_prefix }}-{{ hdd.split('/')[-1] }}
+    journal_vg: {{ nvme_vg_name }}
+{% endfor %}
