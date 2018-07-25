@@ -70,7 +70,8 @@ def delete_group(module, image_list, cfg):
 def delete_rbd(module, rbd_path):
 
     logger.debug("issuing delete for {}".format(rbd_path))
-    rm_cmd = 'rbd --no-progress rm {}'.format(rbd_path)
+    rm_cmd = 'rbd --no-progress --conf {} rm {}'.format(settings.config.cephconf,
+                                                        rbd_path)
     rc, rm_out, err = module.run_command(rm_cmd, use_unsafe_shell=True)
     logger.debug("delete RC = {}, {}".format(rc, rm_out, err))
 
