@@ -384,3 +384,22 @@
           installer_phase_ceph_iscsi_gw:
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts: mons
+  gather_facts: false
+  become: True
+  tasks:
+    - name: get ceph status from the first monitor
+      command: ceph --cluster {{ cluster }} -s
+      register: ceph_status
+      changed_when: false
+      delegate_to: "{{ groups['mons'][0] }}"
+      run_once: true
+      ignore_errors: true # we skip the error if mon_group_name is different than 'mons'
+
+    - name: "show ceph status for cluster {{ cluster }}"
+      debug:
+        msg: "{{ ceph_status.stdout_lines }}"
+      delegate_to: "{{ groups['mons'][0] }}"
+      run_once: true
+      when: not ceph_status.failed
