@@ -50,7 +50,7 @@
     containerized: "{{ docker_exec_cmd | default('') }}"
     cluster: "{{ cluster }}"
     dest: "{{ ceph_conf_key_directory }}"
-    import_key: "{{ copy_admin_key }}"
+    import_key: "{{ condition_copy_admin_key }}"
     mode: "{{ item.mode|default(omit) }}"
   with_items: "{{ keys }}"
   delegate_to: "{{ delegated_node }}"
@@ -105,13 +105,6 @@
     - condition_copy_admin_key
     - inventory_hostname in groups.get(client_group_name) | first
     - item.1.rc != 0
-
-- name: kill a dummy container that created pool(s)/key(s)
-  command: docker rm -f ceph-create-keys
-  changed_when: false
-  when:
-    - containerized_deployment
-    - inventory_hostname == groups.get(client_group_name) | first
 
 - name: get client cephx keys
   copy:
