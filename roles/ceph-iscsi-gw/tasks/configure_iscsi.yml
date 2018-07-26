@@ -14,6 +14,12 @@
   when: "'rbd' not in (rbd_pool_exists.stdout | from_json)"
   delegate_to: "{{ groups[mon_group_name][0] }}"
 
+- name: enable the rbd-target-gw service and make sure it is running
+  service:
+    name: rbd-target-gw
+    enabled: yes
+    state: started
+
 - name: igw_gateway (tgt) | configure iscsi target (gateway)
   igw_gateway:
     mode: "target"
