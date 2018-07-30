@@ -37,19 +37,19 @@
       raw: sudo apt-get -y install python-simplejson
       ignore_errors: yes
       when:
-        - systempython2.stat.exists is undefined or systempython2.stat.exists == false
+        - systempython2.stat is undefined or systempython2.stat.exists == false
 
     - name: install python2 for fedora
       raw: sudo dnf -y install python creates=/usr/bin/python
       ignore_errors: yes
       when:
-        - systempython2.stat.exists is undefined or systempython2.stat.exists == false
+        - systempython2.stat is undefined or systempython2.stat.exists == false
 
     - name: install python2 for opensuse
       raw: sudo zypper -n install python-base creates=/usr/bin/python2.7
       ignore_errors: yes
       when:
-        - systempython2.stat.exists is undefined or systempython2.stat.exists == false
+        - systempython2.stat is undefined or systempython2.stat.exists == false
 
     - name: gather facts
       setup:
@@ -373,6 +373,8 @@
     - role: ceph-defaults
       tags: ['ceph_update_config']
     - role: ceph-common
+      when:
+        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
     - role: ceph-config
       tags: ['ceph_update_config']
       when:
@@ -388,3 +390,22 @@
           installer_phase_ceph_iscsi_gw:
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts: mons
+  gather_facts: false
+  become: True
+  tasks:
+    - name: get ceph status from the first monitor
+      command: ceph --cluster {{ cluster }} -s
+      register: ceph_status
+      changed_when: false
+      delegate_to: "{{ groups['mons'][0] }}"
+      run_once: true
+      ignore_errors: true # we skip the error if mon_group_name is different than 'mons'
+
+    - name: "show ceph status for cluster {{ cluster }}"
+      debug:
+        msg: "{{ ceph_status.stdout_lines }}"
+      delegate_to: "{{ groups['mons'][0] }}"
+      run_once: true
+      when: not ceph_status.failed
