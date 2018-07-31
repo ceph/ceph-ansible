@@ -175,33 +175,44 @@
   become: True
 
   roles:
-    - role: ceph-defaults
-      tags: ['ceph_update_config']
-    - role: ceph-common
-    - role: ceph-config
-      tags: ['ceph_update_config']
-    - role: ceph-mds
-      when: "'mdss' in group_names"
-    - role: ceph-rgw
-      when: "'rgws' in group_names"
-    - role: ceph-nfs
-      when:
-        - "'nfss' in group_names"
-        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
-    - role: ceph-restapi
-      when:
-        - "'restapis' in group_names"
-        - ceph_release_num[ceph_release] <= ceph_release_num.luminous
-    - role: ceph-rbd-mirror
-      when: "'rbdmirrors' in group_names"
-    - role: ceph-client
-      when: "'clients' in group_names"
-    - role: ceph-iscsi-gw
-      when:
-        - "'iscsigws' in group_names"
-        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
-    - role: ceph-agent
-      when: "'agents' in group_names"
+    - include_role:
+        name: ceph-defaults
+        tags: ['ceph_update_config']
+    - include_role:
+        name: ceph-common
+    - include_role:
+        name: ceph-config
+        tags: ['ceph_update_config']
+    - include_role:
+        name: ceph-mds
+        when: "'mdss' in group_names"
+    - include_role:
+        name: ceph-rgw
+        when: "'rgws' in group_names"
+    - include_role:
+        name: ceph-nfs
+        when:
+          - "'nfss' in group_names"
+          - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+    - include_role:
+        name: ceph-restapi
+        when:
+          - "'restapis' in group_names"
+          - ceph_release_num[ceph_release] <= ceph_release_num.luminous
+    - include_role:
+        name: ceph-rbd-mirror
+        when: "'rbdmirrors' in group_names"
+    - include_role:
+        name: ceph-client
+        when: "'clients' in group_names"
+    - include_role:
+        name: ceph-iscsi-gw
+        when:
+          - "'iscsigws' in group_names"
+          - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+    - include_role:
+        name: ceph-agent
+        when: "'agents' in group_names"
 
 
 - hosts: mons
