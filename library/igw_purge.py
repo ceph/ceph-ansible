@@ -55,11 +55,11 @@ def delete_group(module, image_list, cfg):
     pending_list = list(image_list)
 
     for rbd_path in image_list:
-        if delete_rbd(module, rbd_path):
-            disk_key = rbd_path.replace('/', '.', 1)
-            cfg.del_item('disks', disk_key)
-            pending_list.remove(rbd_path)
-            cfg.changed = True
+        delete_rbd(module, rbd_path)
+        disk_key = rbd_path.replace('/', '.', 1)
+        cfg.del_item('disks', disk_key)
+        pending_list.remove(rbd_path)
+        cfg.changed = True
 
     if cfg.changed:
         cfg.commit()
@@ -70,11 +70,13 @@ def delete_group(module, image_list, cfg):
 def delete_rbd(module, rbd_path):
 
     logger.debug("issuing delete for {}".format(rbd_path))
-    rm_cmd = 'rbd --no-progress rm {}'.format(rbd_path)
+    rm_cmd = 'rbd --no-progress --conf {} rm {}'.format(settings.config.cephconf,
+                                                        rbd_path)
     rc, rm_out, err = module.run_command(rm_cmd, use_unsafe_shell=True)
     logger.debug("delete RC = {}, {}".format(rc, rm_out, err))
-
-    return True if rc == 0 else False
+    if rc != 0:
+        logger.error("Could not fully cleanup image {}. Manually run the rbd "
+                     "command line tool to remove.".format(rbd_path))
 
 
 def is_cleanup_host(config):

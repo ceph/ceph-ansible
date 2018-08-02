@@ -17,6 +17,7 @@ def node(host, request):
     # because testinfra does not collect and provide ansible config passed in
     # from using --extra-vars
     ceph_stable_release = os.environ.get("CEPH_STABLE_RELEASE", "luminous")
+    rolling_update = os.environ.get("ROLLING_UPDATE", "False")
     group_names = ansible_vars["group_names"]
     docker = ansible_vars.get("docker")
     osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
@@ -119,6 +120,7 @@ def node(host, request):
         osds=osds,
         ceph_stable_release=ceph_stable_release,
         ceph_release_num=ceph_release_num,
+        rolling_update=rolling_update,
     )
     return data
 
