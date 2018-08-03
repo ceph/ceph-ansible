@@ -36,7 +36,7 @@ options:
         description:
             - The action to take. Either creating OSDs or zapping devices.
         required: true
-        choices: ['create', 'zap']
+        choices: ['create', 'zap', 'batch']
         default: create
     data:
         description:
@@ -83,6 +83,11 @@ options:
     dmcrypt:
         description:
             - If set to True the OSD will be encrypted with dmcrypt.
+        required: false
+    batch_devices:
+        description:
+            - A list of devices to pass to the 'ceph-volume lvm batch' subcommand.
+            - Only applicable if action is 'batch'.
         required: false
 
 
@@ -138,6 +143,72 @@ def get_wal(wal, wal_vg):
     if wal_vg:
         wal = "{0}/{1}".format(wal_vg, wal)
     return wal
+
+
+def batch(module):
+    cluster = module.params['cluster']
+    objectstore = module.params['objectstore']
+    batch_devices = module.params['batch_devices']
+    crush_device_class = module.params.get('crush_device_class', None)
+    dmcrypt = module.params['dmcrypt']
+
+    if not batch_devices:
+        module.fail_json(msg='batch_devices must be provided if action is "batch"', changed=False, rc=1)
+
+    cmd = [
+        'ceph-volume',
+        '--cluster',
+        cluster,
+        'lvm',
+        'batch',
+        '--%s' % objectstore,
+        '--yes',
+    ]
+
+    if crush_device_class:
+        cmd.extend(["--crush-device-class", crush_device_class])
+
+    if dmcrypt:
+        cmd.append("--dmcrypt")
+
+    cmd.extend(batch_devices)
+
+    result = dict(
+        changed=False,
+        cmd=cmd,
+        stdout='',
+        stderr='',
+        rc='',
+        start='',
+        end='',
+        delta='',
+    )
+
+    if module.check_mode:
+        return result
+
+    startd = datetime.datetime.now()
+
+    rc, out, err = module.run_command(cmd, encoding=None)
+
+    endd = datetime.datetime.now()
+    delta = endd - startd
+
+    result = dict(
+        cmd=cmd,
+        stdout=out.rstrip(b"\r\n"),
+        stderr=err.rstrip(b"\r\n"),
+        rc=rc,
+        start=str(startd),
+        end=str(endd),
+        delta=str(delta),
+        changed=True,
+    )
+
+    if rc != 0:
+        module.fail_json(msg='non-zero return code', **result)
+
+    module.exit_json(**result)
 
 
 def create_osd(module):
@@ -313,8 +384,8 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         objectstore=dict(type='str', required=False, choices=['bluestore', 'filestore'], default='bluestore'),
-        action=dict(type='str', required=False, choices=['create', 'zap'], default='create'),
-        data=dict(type='str', required=True),
+        action=dict(type='str', required=False, choices=['create', 'zap', 'batch'], default='create'),
+        data=dict(type='str', required=False),
         data_vg=dict(type='str', required=False),
         journal=dict(type='str', required=False),
         journal_vg=dict(type='str', required=False),
@@ -324,6 +395,7 @@ def run_module():
         wal_vg=dict(type='str', required=False),
         crush_device_class=dict(type='str', required=False),
         dmcrypt=dict(type='bool', required=False, default=False),
+        batch_devices=dict(type='list', required=False, default=[]),
     )
 
     module = AnsibleModule(
@@ -337,6 +409,8 @@ def run_module():
         create_osd(module)
     elif action == "zap":
         zap_devices(module)
+    elif action == "batch":
+        batch(module)
 
     module.fail_json(msg='State must either be "present" or "absent".', changed=False, rc=1)
 
