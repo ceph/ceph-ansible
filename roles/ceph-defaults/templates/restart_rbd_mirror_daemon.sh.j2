@@ -3,13 +3,15 @@
 RETRIES="{{ handler_health_rbd_mirror_check_retries }}"
 DELAY="{{ handler_health_rbd_mirror_check_delay }}"
 RBD_MIRROR_NAME="{{ ansible_hostname }}"
+{% if containerized_deployment %}
+DOCKER_EXEC="docker exec ceph-rbd-mirror-{{ ansible_hostname }}"
+{% endif %}
 {% if ceph_release_num[ceph_release] < ceph_release_num['luminous'] %}
 SOCKET=/var/run/ceph/{{ cluster }}-client.admin.asok
 {% else %}
-SOCKET=/var/run/ceph/{{ cluster }}-client.rbd-mirror.${RBD_MIRROR_NAME}.asok
-{% endif %}
-{% if containerized_deployment %}
-DOCKER_EXEC="docker exec ceph-rbd-mirror-{{ ansible_hostname }}"
+# Backward compatibility
+$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-client.rbd-mirror.{{ ansible_fqdn }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-client.rbd-mirror.{{ ansible_fqdn }}.asok
+$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-client.rbd-mirror.{{ ansible_hostname }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-client.rbd-mirror.{{ ansible_hostname }}.asok
 {% endif %}
 
 # First, restart the daemon
