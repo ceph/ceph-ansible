@@ -188,10 +188,23 @@ is only available when the Ceph release is Luminous or newer.
    The creation of the logical volumes is not supported by ``ceph-ansible``, ``ceph-volume``
    only creates OSDs from existing logical volumes.
 
-``lvm_volumes`` is the config option that needs to be defined to configure the
-mappings for devices to be deployed. It is a list of dictionaries which expects
-a volume name and a volume group for logical volumes, but can also accept
-a partition in the case of ``filestore`` for the ``journal``.
+
+Configurations
+^^^^^^^^^^^^^^
+
+``lvm_volumes`` or ``devices`` are the config option that needs to be defined to deploy OSDs
+with the ``lvm`` osd scenario.
+
+- ``lvm_volumes`` is a list of dictionaries which expects a volume name and a volume group for
+  logical volumes, but can also accept a partition in the case of ``filestore`` for the ``journal``.
+  If ``lvm_volumes`` is defined then the ``ceph-volume lvm create`` command is used to create each OSD
+  defined in ``lvm_volumes``.
+
+- ``devices`` is a list of raw device names as strings. If ``devices`` is defined then the ``ceph-volume lvm batch``
+  command will be used to deploy OSDs.
+
+Both ``lvm_volumes`` and ``devices`` can be defined and both methods would be used in the deployment or you
+can pick just one method.
 
 This scenario supports encrypting your OSDs by setting ``dmcrypt: True``. If set,
 all OSDs defined in ``lvm_volumes`` will be encrypted.
@@ -272,6 +285,23 @@ For example, a configuration to use the ``lvm`` osd scenario with encryption wou
        journal_vg: vg2
        crush_device_class: foo
 
+If you wished to use ``devices`` instead of ``lvm_volumes`` your configuration would look like:
+
+.. code-block:: yaml
+
+   osd_objectstore: filestore
+   osd_scenario: lvm
+   crush_device_class: foo
+   devices:
+     - /dev/sda
+     - /dev/sdc
+
+.. note::
+
+    If you wish to change set the ``crush_device_class`` for the OSDs when using ``devices`` you must set it
+    using the global ``crush_device_class`` option as shown above. There is no way to define a specific crush device
+    class per OSD when using ``devices`` like there is for ``lvm_volumes``.
+
 ``bluestore``
 ^^^^^^^^^^^^^
 
@@ -316,3 +346,20 @@ could look like:
        wal: wal-lv4
        wal_vg: vg4
      - data: /dev/sda
+
+If you wished to use ``devices`` instead of ``lvm_volumes`` your configuration would look like:
+
+.. code-block:: yaml
+
+   osd_objectstore: bluestore
+   osd_scenario: lvm
+   crush_device_class: foo
+   devices:
+     - /dev/sda
+     - /dev/sdc
+
+.. note::
+
+    If you wish to change set the ``crush_device_class`` for the OSDs when using ``devices`` you must set it
+    using the global ``crush_device_class`` option as shown above. There is no way to define a specific crush device
+    class per OSD when using ``devices`` like there is for ``lvm_volumes``.
