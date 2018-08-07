@@ -46,7 +46,7 @@ master_doc = 'glossary'
 
 # General information about the project.
 project = u'ceph-ansible'
-copyright = u'2017, Ceph team and individual contributors'
+copyright = u'2017-2018, Ceph team and individual contributors'
 author = u'Ceph team and individual contributors'
 
 # The version info for the project you're documenting, acts as replacement for

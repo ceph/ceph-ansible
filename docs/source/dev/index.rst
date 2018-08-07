@@ -1,7 +1,8 @@
 Contribution Guidelines
 =======================
 
-The repository centralises all the Ansible roles. The roles are all part of the Galaxy.
+The repository centralises all the Ansible roles. The roles are all part of the Ansible Galaxy.
+
 We love contribution and we love giving visibility to our contributors, this is why all the **commits must be signed-off**.
 
 Mailing list
@@ -12,7 +13,7 @@ Please register the mailing list at http://lists.ceph.com/listinfo.cgi/ceph-ansi
 IRC
 ---
 
-Feel free to join us in the channel #ceph-ansible of the OFTC servers.
+Feel free to join us in the channel ``#ceph-ansible`` of the OFTC servers (https://www.oftc.net).
 
 GitHub
 ------
@@ -51,13 +52,14 @@ Worked on a change and you don't want to resend a commit for a syntax fix?
    $ git commit --amend
    $ git push -f origin my-working-branch
 
-PR Testing
-----------
-Pull Request testing is handled by jenkins. All test must pass before your PR will be merged.
+Pull Request Testing
+--------------------
+
+Pull request testing is handled by Jenkins. All test must pass before your pull request will be merged.
 
 All of tests that are running are listed in the GitHub UI and will list their current status.
 
-If a test fails and you'd like to rerun it, comment on your PR in the following format:
+If a test fails and you'd like to rerun it, comment on your pull request in the following format:
 
 .. code-block:: none
 
@@ -74,17 +76,17 @@ Backporting changes
 
 If a change should be backported to a ``stable-*`` Git branch:
 
-- Mark your PR with the GitHub label "Backport" so we don't lose track of it.
+- Mark your pull request with the GitHub label "Backport" so we don't lose track of it.
 - Fetch the latest updates into your clone: ``git fetch``
 - Determine the latest available stable branch:
   ``git branch -r --list "origin/stable-[0-9].[0-9]" | sort -r | sed 1q``
-- Create a new local branch for your PR, based on the stable branch:
+- Create a new local branch for your pull request, based on the stable branch:
   ``git checkout --no-track -b my-backported-change origin/stable-3.0``
 - Cherry-pick your change: ``git cherry-pick -x (your-sha1)``
 - Create a new pull request against the ``stable-3.0`` branch.
-- Ensure that your PR's title has the prefix "backport:", so it's clear
+- Ensure that your pull requests's title has the prefix "backport:", so it's clear
   to reviewers what this is about.
-- Add a comment in your backport PR linking to the original (master) PR.
+- Add a comment in your backport pull request linking to the original (master) pull request.
 
 All changes to the stable branches should land in master first, so we avoid
 regressions.
