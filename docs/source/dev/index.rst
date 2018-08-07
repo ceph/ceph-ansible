@@ -6,41 +6,50 @@ We love contribution and we love giving visibility to our contributors, this is 
 
 Mailing list
 ------------
-Please register the mailing list at http://lists.ceph.com/listinfo.cgi/ceph-ansible-ceph.com
+
+Please register the mailing list at http://lists.ceph.com/listinfo.cgi/ceph-ansible-ceph.com.
 
 IRC
 ---
-Feel free to join us in the channel #ceph-ansible of the OFTC servers
+
+Feel free to join us in the channel #ceph-ansible of the OFTC servers.
 
 GitHub
 ------
-The main GitHub account for the project is at https://github.com/ceph/ceph-ansible/
+
+The main GitHub account for the project is at https://github.com/ceph/ceph-ansible/.
 
 Submit a patch
 --------------
 
-To start contributing just do::
+To start contributing just do:
 
-    $ git checkout -b my-working-branch
-    $ # do your changes #
-    $ git add -p
+.. code-block:: console
 
-If your change impacts a variable file in a role such as ``roles/ceph-common/defaults/main.yml``, you need to generate a ``group_vars`` file::
+   $ git checkout -b my-working-branch
+   $ # do your changes #
+   $ git add -p
 
-    $ ./generate_group_vars_sample.sh
+If your change impacts a variable file in a role such as ``roles/ceph-common/defaults/main.yml``, you need to generate a ``group_vars`` file:
 
-You are finally ready to push your changes on GitHub::
+.. code-block:: console
 
-    $ git commit -s
-    $ git push origin my-working-branch
+   $ ./generate_group_vars_sample.sh
+
+You are finally ready to push your changes on GitHub:
+
+.. code-block:: console
+
+   $ git commit -s
+   $ git push origin my-working-branch
 
 Worked on a change and you don't want to resend a commit for a syntax fix?
 
-::
+.. code-block:: console
 
-    $ # do your syntax change #
-    $ git commit --amend
-    $ git push -f origin my-working-branch
+   $ # do your syntax change #
+   $ git commit --amend
+   $ git push -f origin my-working-branch
 
 PR Testing
 ----------
@@ -48,13 +57,17 @@ Pull Request testing is handled by jenkins. All test must pass before your PR wi
 
 All of tests that are running are listed in the GitHub UI and will list their current status.
 
-If a test fails and you'd like to rerun it, comment on your PR in the following format::
+If a test fails and you'd like to rerun it, comment on your PR in the following format:
 
-    jenkins test $scenario_name
+.. code-block:: none
 
-For example::
+   jenkins test $scenario_name
 
-    jenkins test luminous-ansible2.3-journal_collocation
+For example:
+
+.. code-block:: none
+
+   jenkins test luminous-ansible2.3-journal_collocation
 
 Backporting changes
 -------------------
@@ -77,9 +90,11 @@ All changes to the stable branches should land in master first, so we avoid
 regressions.
 
 Once this is done, one of the project maintainers will tag the tip of the
-stable branch with your change. For example::
+stable branch with your change. For example:
 
-   git checkout stable-3.0
-   git pull --ff-only
-   git tag v3.0.12
-   git push origin v3.0.12
+.. code-block:: console
+
+   $ git checkout stable-3.0
+   $ git pull --ff-only
+   $ git tag v3.0.12
+   $ git push origin v3.0.12
