@@ -87,8 +87,17 @@
       - "{{ hdd_devices }}"
 
   # Write ending configuration logfile
-  - name: write output for osds.yml to logfile /tmp/logfile.txt
+  - name: create temporary logfile
+    tempfile:
+      state: file
+      suffix: logfile
+    register: temp_file
+
+  - name: print logfile details
+    debug: var=temp_file
+
+  - name: write output for osds.yml to logfile /tmp/ansible.*logfile
     copy:
       content: "{{ logfile }}"
-      dest: "/tmp/logfile.txt"
+      dest: "{{ temp_file.path }}"
     delegate_to: localhost
