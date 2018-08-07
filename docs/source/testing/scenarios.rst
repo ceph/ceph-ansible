@@ -1,4 +1,3 @@
-
 .. _test_scenarios:
 
 Test Scenarios
@@ -17,7 +16,9 @@ consumed by ``Vagrant`` when bringing up an environment.
 This yaml file is loaded in the ``Vagrantfile`` so that the settings can be
 used to bring up the boxes and pass some configuration to ansible when running.
 
-.. note:: The basic layout of a scenario is covered in :ref:`layout`
+.. note::
+
+   The basic layout of a scenario is covered in :ref:`layout`.
    There are just a handful of required files, this is the most basic layout.
 
 There are just a handful of required files, these sections will cover the
@@ -36,25 +37,32 @@ to follow (most of them are 1 line settings).
 * **docker**: (bool) Indicates if the scenario will deploy docker daemons
 
 * **VMS**: (int) These integer values are just a count of how  many machines will be
-  needed. Each supported type is listed, defaulting to 0::
+  needed. Each supported type is listed, defaulting to 0:
 
-    mon_vms: 0
-    osd_vms: 0
-    mds_vms: 0
-    rgw_vms: 0
-    nfs_vms: 0
-    rbd_mirror_vms: 0
-    client_vms: 0
-    iscsi_gw_vms: 0
-    mgr_vms: 0
+  .. code-block:: yaml
 
-  For a deployment that needs 1 MON and 1 OSD, the list would look like::
+     mon_vms: 0
+     osd_vms: 0
+     mds_vms: 0
+     rgw_vms: 0
+     nfs_vms: 0
+     rbd_mirror_vms: 0
+     client_vms: 0
+     iscsi_gw_vms: 0
+     mgr_vms: 0
 
-    mon_vms: 1
-    osd_vms: 1
+  For a deployment that needs 1 MON and 1 OSD, the list would look like:
+
+  .. code-block:: yaml
+
+     mon_vms: 1
+     osd_vms: 1
 
 * **RESTAPI**: (bool) Deploy RESTAPI on each of the monitor(s)
-  restapi: true
+
+  .. code-block:: yaml
+
+     restapi: true
 
 * **CEPH SOURCE**: (string) indicate whether a ``dev`` or ``stable`` release is
   needed. A ``stable`` release will use the latest stable release of Ceph,
@@ -62,10 +70,12 @@ to follow (most of them are 1 line settings).
 
 * **SUBNETS**: These are used for configuring the network availability of each
   server that will be booted as well as being used as configuration for
-  ceph-ansible (and eventually ceph). The two values that are **required**::
+  ceph-ansible (and eventually ceph). The two values that are **required**:
 
-    public_subnet: 192.168.13
-    cluster_subnet: 192.168.14
+  .. code-block:: yaml
+
+     public_subnet: 192.168.13
+     cluster_subnet: 192.168.14
 
 * **MEMORY**: Memory requirements (in megabytes) for each server, e.g.
   ``memory: 512``
@@ -76,9 +86,11 @@ to follow (most of them are 1 line settings).
   the public Vagrant boxes normalize the interface to ``eth1`` for all boxes,
   making it easier to configure them with Ansible later.
 
-.. warning:: Do *not* change the interface from ``eth1`` unless absolutely
-             certain that is needed for a box. Some tests that depend on that
-             naming will fail.
+.. warning::
+
+   Do *not* change the interface from ``eth1`` unless absolutely
+   certain that is needed for a box. Some tests that depend on that
+   naming will fail.
 
 * **disks**: The disks that will be created for each machine, for most
   environments ``/dev/sd*`` style of disks will work, like: ``[ '/dev/sda', '/dev/sdb' ]``
@@ -92,16 +104,16 @@ The following aren't usually changed/enabled for tests, since they don't have
 an impact, however they are documented here for general knowledge in case they
 are needed:
 
-* **ssh_private_key_path** : The path to the ``id_rsa`` (or other private SSH
+* **ssh_private_key_path**: The path to the ``id_rsa`` (or other private SSH
   key) that should be used to connect to these boxes.
 
-* **vagrant_sync_dir** : what should be "synced" (made available on the new
+* **vagrant_sync_dir**: what should be "synced" (made available on the new
   servers) from the host.
 
-* **vagrant_disable_synced_folder** : (bool) when disabled, it will make
+* **vagrant_disable_synced_folder**: (bool) when disabled, it will make
   booting machines faster because no files need to be synced over.
 
-* **os_tuning_params** : These are passed onto ceph-ansible as part of the
+* **os_tuning_params**: These are passed onto ceph-ansible as part of the
   variables for "system tunning". These shouldn't be changed.
 
 
@@ -122,13 +134,14 @@ The ``hosts`` file should contain the hosts needed for the scenario. This might
 seem a bit repetitive since machines are already defined in
 :ref:`vagrant_variables` but it allows granular changes to hosts (for example
 defining an interface vs. an IP on a monitor) which can help catch issues in
-ceph-ansible configuration. For example::
+ceph-ansible configuration. For example:
 
+.. code-block:: ini
 
-    [mons]
-    mon0 monitor_address=192.168.5.10
-    mon1 monitor_address=192.168.5.11
-    mon2 monitor_interface=eth1
+   [mons]
+   mon0 monitor_address=192.168.5.10
+   mon1 monitor_address=192.168.5.11
+   mon2 monitor_interface=eth1
 
 .. _group_vars:
 
@@ -150,25 +163,29 @@ Scenario Wiring
 Scenarios are just meant to provide the Ceph environment for testing, but they
 do need to be defined in the ``tox.ini`` so that they are available to the test
 framework. To see a list of available scenarios, the following command (ran
-from the root of the project) will list them, shortened for brevity::
+from the root of the project) will list them, shortened for brevity:
 
-    $ tox -l
-    ...
-    luminous-ansible2.4-centos7_cluster
-    ...
+.. code-block:: console
 
- These scenarios are made from different variables, in the above command there
- are 3:
+   $ tox -l
+   ...
+   luminous-ansible2.4-centos7_cluster
+   ...
 
-* jewel: the Ceph version to test
-* ansible2.4: the Ansible version to install
+These scenarios are made from different variables, in the above command there
+are 3:
+
+* ``jewel``: the Ceph version to test
+* ``ansible2.4``: the Ansible version to install
 * ``centos7_cluster``: the name of the scenario
 
 The last one is important in the *wiring up* of the scenario. It is a variable
 that will define in what path the scenario lives. For example, the
-``changedir`` section for ``centos7_cluster`` that looks like::
+``changedir`` section for ``centos7_cluster`` that looks like:
 
-  centos7_cluster: {toxinidir}/tests/functional/centos/7/cluster
+.. code-block:: ini
+
+   centos7_cluster: {toxinidir}/tests/functional/centos/7/cluster
 
 The actual tests are written for specific daemon types, for all daemon types,
 and for specific use cases (e.g. journal collocation), those have their own

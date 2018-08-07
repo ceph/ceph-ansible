@@ -36,19 +36,23 @@ Fixtures are detected by name, so as long as the argument being used has the
 same name, the fixture will be passed in (see `pytest fixtures`_ for more
 in-depth examples). The code that follows shows a test method that will use the
 ``node`` fixture that contains useful information about a node in a ceph
-cluster::
+cluster:
 
-    def test_ceph_conf(self, node):
-        assert node['conf_path'] == "/etc/ceph/ceph.conf"
+.. code-block:: python
+
+   def test_ceph_conf(self, node):
+       assert node['conf_path'] == "/etc/ceph/ceph.conf"
 
 The test is naive (the configuration path might not exist remotely) but
 explains how simple it is to "request" a fixture.
 
 For remote execution, we can rely further on other fixtures (tests can have as
-many fixtures as needed) like ``File``::
+many fixtures as needed) like ``File``:
 
-    def test_ceph_config_has_inital_members_line(self, node, File):
-        assert File(node["conf_path"]).contains("^mon initial members = .*$")
+.. code-block:: python
+
+   def test_ceph_config_has_inital_members_line(self, node, File):
+       assert File(node["conf_path"]).contains("^mon initial members = .*$")
 
 
 .. node:
