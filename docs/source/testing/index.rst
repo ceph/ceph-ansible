@@ -1,9 +1,9 @@
-
 .. _testing:
 
 Testing
 =======
-ceph-ansible has the ability to test different scenarios (collocated journals
+
+``ceph-ansible`` has the ability to test different scenarios (collocated journals
 or dmcrypt OSDs for example) in an isolated, repeatable, and easy way.
 
 These tests can run locally with VirtualBox or via libvirt if available, which

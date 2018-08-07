@@ -1,5 +1,4 @@
-
-.. development:
+.. _development:
 
 ceph-ansible testing for development
 ====================================
