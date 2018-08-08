@@ -2,14 +2,16 @@
 
 Test Scenarios
 ==============
+
 Scenarios are distinct environments that describe a Ceph deployment and
 configuration. Scenarios are isolated as well, and define what machines are
-needed aside from any ceph-ansible configuration.
+needed aside from any ``ceph-ansible`` configuration.
 
 .. _scenario_files:
 
 Scenario Files
 ==============
+
 The scenario is described in a ``vagrant_variables.yml`` file, which is
 consumed by ``Vagrant`` when bringing up an environment.
 
@@ -22,7 +24,7 @@ used to bring up the boxes and pass some configuration to ansible when running.
    There are just a handful of required files, this is the most basic layout.
 
 There are just a handful of required files, these sections will cover the
-required (most basic) ones. Alternatively, other ceph-ansible files can be
+required (most basic) ones. Alternatively, other ``ceph-ansible`` files can be
 added to customize the behavior of a scenario deployment.
 
 
@@ -30,11 +32,11 @@ added to customize the behavior of a scenario deployment.
 
 ``vagrant_variables.yml``
 -------------------------
+
 There are a few sections in the ``vagrant_variables.yml`` file which are easy
 to follow (most of them are 1 line settings).
 
-
-* **docker**: (bool) Indicates if the scenario will deploy docker daemons
+* **docker**: (bool) Indicates if the scenario will deploy Docker daemons
 
 * **VMS**: (int) These integer values are just a count of how  many machines will be
   needed. Each supported type is listed, defaulting to 0:
@@ -70,7 +72,7 @@ to follow (most of them are 1 line settings).
 
 * **SUBNETS**: These are used for configuring the network availability of each
   server that will be booted as well as being used as configuration for
-  ceph-ansible (and eventually ceph). The two values that are **required**:
+  ``ceph-ansible`` (and eventually Ceph). The two values that are **required**:
 
   .. code-block:: yaml
 
@@ -113,7 +115,7 @@ are needed:
 * **vagrant_disable_synced_folder**: (bool) when disabled, it will make
   booting machines faster because no files need to be synced over.
 
-* **os_tuning_params**: These are passed onto ceph-ansible as part of the
+* **os_tuning_params**: These are passed onto ``ceph-ansible`` as part of the
   variables for "system tunning". These shouldn't be changed.
 
 
@@ -121,6 +123,7 @@ are needed:
 
 ``Vagrantfile``
 ---------------
+
 The ``Vagrantfile`` should not need to change, and it is symlinked back to the
 ``Vagrantfile`` that exists in the root of the project. It is linked in this
 way so that a vagrant environment can be isolated to the given scenario.
@@ -130,11 +133,12 @@ way so that a vagrant environment can be isolated to the given scenario.
 
 ``hosts``
 ---------
+
 The ``hosts`` file should contain the hosts needed for the scenario. This might
 seem a bit repetitive since machines are already defined in
 :ref:`vagrant_variables` but it allows granular changes to hosts (for example
 defining an interface vs. an IP on a monitor) which can help catch issues in
-ceph-ansible configuration. For example:
+``ceph-ansible`` configuration. For example:
 
 .. code-block:: ini
 
@@ -147,19 +151,21 @@ ceph-ansible configuration. For example:
 
 ``group_vars``
 --------------
-This directory holds any configuration change that will affect ceph-ansible
+
+This directory holds any configuration change that will affect ``ceph-ansible``
 deployments in the same way as if ansible was executed from the root of the
 project.
 
 The file that will need to be defined always is ``all`` where (again) certain
 values like ``public_network`` and ``cluster_network`` will need to be defined
-along with any customizations that ceph-ansible supports.
+along with any customizations that ``ceph-ansible`` supports.
 
 
 .. _scenario_wiring:
 
 Scenario Wiring
 ---------------
+
 Scenarios are just meant to provide the Ceph environment for testing, but they
 do need to be defined in the ``tox.ini`` so that they are available to the test
 framework. To see a list of available scenarios, the following command (ran

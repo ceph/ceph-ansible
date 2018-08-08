@@ -18,7 +18,7 @@ has the following required configuration options:
 This scenario has the following optional configuration options:
 
 - ``osd_objectstore``: defaults to ``filestore`` if not set. Available options are ``filestore`` or ``bluestore``.
-  You can only select ``bluestore`` if the ceph release is Luminous or greater.
+  You can only select ``bluestore`` if the Ceph release is Luminous or greater.
 
 - ``dmcrypt``: defaults to ``false`` if not set.
 
@@ -69,7 +69,7 @@ This scenario has the following optional configuration options:
 - ``dedicated_devices``: defaults to ``devices`` if not set
 
 - ``osd_objectstore``: defaults to ``filestore`` if not set. Available options are ``filestore`` or ``bluestore``.
-  You can only select ``bluestore`` with the ceph release is Luminous or greater.
+  You can only select ``bluestore`` with the Ceph release is Luminous or greater.
 
 - ``dmcrypt``: defaults to ``false`` if not set.
 
@@ -179,8 +179,9 @@ An example of using the ``non-collocated`` OSD scenario with encryption, bluesto
 
 lvm
 ---
+
 This OSD scenario uses ``ceph-volume`` to create OSDs from logical volumes and
-is only available when the ceph release is Luminous or newer.
+is only available when the Ceph release is Luminous or newer.
 
 .. note::
 
