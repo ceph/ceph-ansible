@@ -2,23 +2,6 @@
   hosts:
   - osds
 
-  vars:
-    logfile: |
-      Suggested cut and paste under "lvm_volumes:" in "group_vars/osds.yml" for configuring with osd_scenario=lvm
-      -----------------------------------------------------------------------------------------------------------
-      {% for lv in nvme_device_lvs %}
-        - data: {{ lv.lv_name }}
-          data_vg: {{ nvme_vg_name }}
-          journal: {{ lv.journal_name }}
-          journal_vg: {{ nvme_vg_name }}
-      {% endfor %}
-      {% for hdd in hdd_devices %}
-        - data: {{ hdd_lv_prefix }}-{{ hdd.split('/')[-1] }}
-          data_vg: {{ hdd_vg_prefix }}-{{ hdd.split('/')[-1] }}
-          journal: {{ hdd_journal_prefix }}-{{ hdd.split('/')[-1] }}
-          journal_vg: {{ nvme_vg_name }}
-      {% endfor %}
-
   tasks:
 
   - name: include vars of lv_vars.yaml
@@ -86,18 +69,9 @@
     with_items:
       - "{{ hdd_devices }}"
 
-  # Write ending configuration logfile
-  - name: create temporary logfile
-    tempfile:
-      state: file
-      suffix: logfile
-    register: temp_file
-
-  - name: print logfile details
-    debug: var=temp_file
-
-  - name: write output for osds.yml to logfile /tmp/ansible.*logfile
-    copy:
-      content: "{{ logfile }}"
-      dest: "{{ temp_file.path }}"
+  - name: "write output for osds.yml to {{ logfile_path }}"
+    become: false
+    template:
+      src: "templates/lv-create-log.j2"
+      dest: "{{ logfile_path }}"
     delegate_to: localhost
