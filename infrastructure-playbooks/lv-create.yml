@@ -3,6 +3,23 @@
   hosts:
   - osds
 
+  vars:
+    logfile: |
+      Suggested cut and paste under "lvm_volumes:" in "group_vars/osds.yml" for configuring with osd_scenario=lvm
+      -----------------------------------------------------------------------------------------------------------
+      {% for lv in nvme_device_lvs %}
+        - data: {{ lv.lv_name }}
+          data_vg: {{ nvme_vg_name }}
+          journal: {{ lv.journal_name }}
+          journal_vg: {{ nvme_vg_name }}
+      {% endfor %}
+      {% for hdd in hdd_devices %}
+        - data: {{ hdd_lv_prefix }}-{{ hdd.split('/')[-1] }}
+          data_vg: {{ hdd_vg_prefix }}-{{ hdd.split('/')[-1] }}
+          journal: {{ hdd_journal_prefix }}-{{ hdd.split('/')[-1] }}
+          journal_vg: {{ nvme_vg_name }}
+      {% endfor %}
+
   tasks:
 
   - name: include vars of lv_vars.yaml
@@ -73,7 +90,7 @@
 
   - name: "write output for osds.yml to {{ logfile_path }}"
     become: false
-    template:
-      src: "templates/lv-create-log.j2"
+    copy:
+      content: "{{ logfile }}"
       dest: "{{ logfile_path }}"
     delegate_to: localhost
