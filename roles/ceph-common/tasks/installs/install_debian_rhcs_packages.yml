@@ -1,4 +1,11 @@
 ---
+- name: install ceph-test for debian
+  apt:
+    name: ceph-test
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  when:
+    - ceph_test
+
 - name: install red hat storage ceph-common for debian
   apt:
     pkg: ceph-common
@@ -17,13 +24,6 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   when:
     - osd_group_name in group_names
-
-- name: install ceph-test for debian
-  apt:
-    name: ceph-test
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - ceph_test
 
 - name: install red hat storage radosgw for debian
   apt:
