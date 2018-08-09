@@ -173,10 +173,10 @@ host = {{ hostvars[host]['ansible_hostname'] }}
 {% if rgw_group_name in group_names %}
 {% if inventory_hostname in groups.get(rgw_group_name, []) %}
 {% for host in groups[rgw_group_name] %}
-{% if hostvars[host]['ansible_hostname'] is defined %}
-[client.rgw.{{ hostvars[host]['ansible_hostname'] }}]
-host = {{ hostvars[host]['ansible_hostname'] }}
-keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['ansible_hostname'] }}/keyring
+{# {{ hostvars[host]['rgw_hostname'] }} for backward compatibility, fqdn issues. See bz1580408 #}
+[client.rgw.{{ hostvars[host]['rgw_hostname'] }}]
+host = {{ hostvars[host]['rgw_hostname'] }}
+keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['rgw_hostname'] }}/keyring
 log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
 {% if hostvars[host]['radosgw_address_block'] is defined and hostvars[host]['radosgw_address_block'] != 'subnet' %}
     {% if ip_version == 'ipv4' %}
@@ -217,7 +217,6 @@ rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type =
 rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}=[{{ hostvars[host][interface][ip_version][0]['address'] }}]:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
     {% endif %}
 {% endif %}
-{% endif %}
 {% endfor %}
 {% endif %}
 {% endif %}
@@ -228,12 +227,10 @@ rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type =
 {% if inventory_hostname in groups.get(nfs_group_name, []) and inventory_hostname not in groups.get(rgw_group_name, []) %}
 {% for host in groups[nfs_group_name] %}
 {% if nfs_obj_gw %}
-{% if hostvars[host]['ansible_hostname'] is defined %}
-[client.rgw.{{ hostvars[host]['ansible_hostname'] }}]
-host = {{ hostvars[host]['ansible_hostname'] }}
-keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['ansible_hostname'] }}/keyring
+[client.rgw.{{ hostvars[host]['rgw_hostname'] }}]
+host = {{ hostvars[host]['rgw_hostname'] }}
+keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['rgw_hostname'] }}/keyring
 log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
-{% endif %}
 {% endif %}
 {% endfor %}
 {% endif %}
