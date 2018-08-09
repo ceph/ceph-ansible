@@ -107,11 +107,21 @@
         - containerized_deployment
         - mon_host_count | int == 1
 
-    - name: stop ceph mon
+    - name: stop ceph mon - shortname
       systemd:
         name: ceph-mon@{{ ansible_hostname }}
         state: stopped
         enabled: yes
+      ignore_errors: True
+      when:
+        - not containerized_deployment
+
+    - name: stop ceph mon - fqdn
+      systemd:
+        name: ceph-mon@{{ ansible_fqdn }}
+        state: stopped
+        enabled: yes
+      ignore_errors: True
       when:
         - not containerized_deployment
 
@@ -125,7 +135,7 @@
   post_tasks:
     - name: start ceph mon
       systemd:
-        name: ceph-mon@{{ ansible_hostname }}
+        name: ceph-mon@{{ monitor_name }}
         state: started
         enabled: yes
       when:
@@ -133,7 +143,7 @@
 
     - name: restart containerized ceph mon
       systemd:
-        name: ceph-mon@{{ ansible_hostname }}
+        name: ceph-mon@{{ monitor_name }}
         state: restarted
         enabled: yes
         daemon_reload: yes
