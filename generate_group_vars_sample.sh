@@ -66,6 +66,10 @@ for role in "$basedir"/roles/ceph-*; do
     output="agent.yml.sample"
   elif [[ $rolename == "ceph-fetch-keys" ]]; then
     output="ceph-fetch-keys.yml.sample"
+  elif [[ $rolename == "ceph-rbd-mirror" ]]; then
+    output="rbdmirrors.yml.sample"
+  elif [[ $rolename == "ceph-iscsi-gw" ]]; then
+    output="iscsigws.yml.sample"
   else
     output="${rolename:5}s.yml.sample"
   fi
