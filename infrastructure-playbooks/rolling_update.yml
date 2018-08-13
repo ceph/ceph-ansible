@@ -265,11 +265,17 @@
   become: True
 
   pre_tasks:
-    - name: get osd numbers
+    - name: get osd numbers - non container
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
       register: osd_ids
       changed_when: false
       when: not containerized_deployment
+
+    - name: get osd unit names - container
+      shell: systemctl list-units | grep -E "loaded * active" | grep -oE "ceph-osd@([0-9]{1,}|[a-z]+).service"
+      register: osd_names
+      changed_when: false
+      when: containerized_deployment
 
     - name: stop ceph osd
       systemd:
@@ -305,11 +311,11 @@
 
     - name: restart containerized ceph osd
       systemd:
-        name: ceph-osd@{{ item | basename }}
+        name: "{{ item }}"
         state: restarted
         enabled: yes
         daemon_reload: yes
-      with_items: "{{ devices }}"
+      with_items: "{{ osd_names.stdout_lines }}"
       when:
         - containerized_deployment
 
