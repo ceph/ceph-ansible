@@ -222,9 +222,7 @@
       timeout: 500
 
   - name: remove data
-    file:
-     path: /var/lib/ceph
-     state: absent
+    command: rm -rf /var/lib/ceph/*
 
   tasks:
 
@@ -275,7 +273,7 @@
     register: encrypted_ceph_partuuid
 
   - name: get osd data and lockbox mount points
-    shell: "(grep /var/lib/ceph /proc/mounts || echo -n) | awk '{ print $2 }'"
+    shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
     register: mounted_osd
     changed_when: false
 
@@ -526,7 +524,7 @@
 
   handlers:
   - name: get osd data and lockbox mount points
-    shell: "(grep /var/lib/ceph /proc/mounts || echo -n) | awk '{ print $2 }'"
+    shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
     register: mounted_osd
     changed_when: false
     listen: "remove data"
