@@ -12,18 +12,6 @@
     - item.value.holders|count == 0
     - "'dm-' not in item.key"
 
-- name: set_fact devices generate device list when osd_auto_discovery - rolling_update
-  set_fact:
-    devices: "{{ devices | default([]) + [ item.key | regex_replace('^', '/dev/') ] }}"
-  with_dict: "{{ ansible_devices }}"
-  when:
-    - osd_auto_discovery
-    - rolling_update
-    - ansible_devices is defined
-    - "'dm-' not in item.key"
-    - item.value.removable == "0"
-    - item.value.sectors != "0"
-
 - name: resolve dedicated device link(s)
   command: readlink -f {{ item }}
   changed_when: false
