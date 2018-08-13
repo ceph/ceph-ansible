@@ -29,6 +29,7 @@ flexible as most platforms will be covered by either VirtualBox or libvirt.
 
 Running a scenario
 ------------------
+
 Tests are driven by ``tox``, a command line tool to run a matrix of tests defined in
 a configuration file (``tox.ini`` in this case at the root of the project).
 
@@ -66,7 +67,7 @@ And for libvirt it would be:
    resources
 
 The command should bring up the machines needed for the test, provision them
-with ceph-ansible, run the tests, and tear the whole environment down at the
+with ``ceph-ansible``, run the tests, and tear the whole environment down at the
 end.
 
 
@@ -87,7 +88,7 @@ The output would look something similar to this trimmed version:
    ...
 
 
-After all the nodes are up, ceph-ansible will provision them, and run the
+After all the nodes are up, ``ceph-ansible`` will provision them, and run the
 playbook(s):
 
 .. code-block:: console

@@ -1,8 +1,17 @@
 ---
+- name: test if calamari-server is installed
+  command: rpm -q --qf "%{VERSION}\n" calamari-server
+  args:
+    warn: no
+  ignore_errors: true
+  check_mode: no
+  changed_when: false
+  register: calamari_server_rpm_state
+
 - name: install calamari server
   package:
     name: calamari-server
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    state: "{{ 'latest' if (calamari_server_rpm_state.stdout.split('.')[0] is version(ceph_rhcs_version, '<') and not calamari_server_rpm_state.failed) else (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   tags:
     - package-install
 

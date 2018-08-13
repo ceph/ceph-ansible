@@ -22,7 +22,8 @@ def node(host, request):
     group_names = ansible_vars["group_names"]
     docker = ansible_vars.get("docker")
     osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
-    lvm_scenario = ansible_vars.get("osd_scenario") == 'lvm'
+    osd_scenario = ansible_vars.get("osd_scenario")
+    lvm_scenario = osd_scenario in ['lvm', 'lvm-batch']
     ceph_release_num = {
         'jewel': 10,
         'kraken': 11,

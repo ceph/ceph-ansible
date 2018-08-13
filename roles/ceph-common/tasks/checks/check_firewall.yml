@@ -79,7 +79,7 @@
 - name: check if rados gateway port is not filtered
   local_action:
     module: shell
-      set -o pipefail && nmap -p {{ radosgw_civetweb_port }} {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} | grep -sqo -e filtered -e '0 hosts up'
+      set -o pipefail && nmap -p {{ radosgw_frontend_port }} {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} | grep -sqo -e filtered -e '0 hosts up'
   changed_when: false
   failed_when: false
   register: rgwportstate
@@ -90,7 +90,7 @@
 
 - name: fail if rados gateway port is filtered
   fail:
-      msg: "Please allow port {{ radosgw_civetweb_port }} on your firewall"
+      msg: "Please allow port {{ radosgw_frontend_port }} on your firewall"
   when:
     - rgw_group_name in group_names
     - nmapexist.rc == 0
