@@ -153,30 +153,12 @@ filestore xattr use omap = true
 {% endif %}
 {% endif %}
 
-{% if groups[mds_group_name] is defined %}
-{% if mds_group_name in group_names %}
-{% if inventory_hostname in groups.get(mds_group_name, []) %}
-{% for host in groups[mds_group_name] %}
-{% if hostvars[host]['ansible_fqdn'] is defined and mds_use_fqdn %}
-[mds.{{ hostvars[host]['ansible_fqdn'] }}]
-host = {{ hostvars[host]['ansible_fqdn'] }}
-{% elif hostvars[host]['ansible_hostname'] is defined %}
-[mds.{{ hostvars[host]['ansible_hostname'] }}]
-host = {{ hostvars[host]['ansible_hostname'] }}
-{% endif %}
-{% endfor %}
-{% endif %}
-{% endif %}
-{% endif %}
-
-{% if groups[rgw_group_name] is defined %}
-{% if rgw_group_name in group_names %}
 {% if inventory_hostname in groups.get(rgw_group_name, []) %}
 {% for host in groups[rgw_group_name] %}
-{% if hostvars[host]['ansible_hostname'] is defined %}
-[client.rgw.{{ hostvars[host]['ansible_hostname'] }}]
-host = {{ hostvars[host]['ansible_hostname'] }}
-keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['ansible_hostname'] }}/keyring
+{# {{ hostvars[host]['rgw_hostname'] }} for backward compatibility, fqdn issues. See bz1580408 #}
+[client.rgw.{{ hostvars[host]['rgw_hostname'] }}]
+host = {{ hostvars[host]['rgw_hostname'] }}
+keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['rgw_hostname'] }}/keyring
 log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
 {% if hostvars[host]['radosgw_address_block'] is defined and hostvars[host]['radosgw_address_block'] != 'subnet' %}
     {% if ip_version == 'ipv4' %}
@@ -217,31 +199,20 @@ rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type =
 rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}=[{{ hostvars[host][interface][ip_version][0]['address'] }}]:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
     {% endif %}
 {% endif %}
-{% endif %}
 {% endfor %}
 {% endif %}
-{% endif %}
-{% endif %}
 
-{% if groups[nfs_group_name] is defined %}
-{% if nfs_group_name in group_names %}
 {% if inventory_hostname in groups.get(nfs_group_name, []) and inventory_hostname not in groups.get(rgw_group_name, []) %}
 {% for host in groups[nfs_group_name] %}
 {% if nfs_obj_gw %}
-{% if hostvars[host]['ansible_hostname'] is defined %}
-[client.rgw.{{ hostvars[host]['ansible_hostname'] }}]
-host = {{ hostvars[host]['ansible_hostname'] }}
-keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['ansible_hostname'] }}/keyring
+[client.rgw.{{ hostvars[host]['rgw_hostname'] }}]
+host = {{ hostvars[host]['rgw_hostname'] }}
+keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['rgw_hostname'] }}/keyring
 log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
-{% endif %}
 {% endif %}
 {% endfor %}
 {% endif %}
-{% endif %}
-{% endif %}
 
-{% if groups[restapi_group_name] is defined %}
-{% if restapi_group_name in group_names %}
 {% if inventory_hostname in groups.get(restapi_group_name, []) %}
 [client.restapi]
 {% if restapi_interface != "interface" %}
@@ -251,6 +222,4 @@ log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname']
 {% endif %}
 keyring = /var/lib/ceph/restapi/ceph-restapi/keyring
 log file = /var/log/ceph/ceph-restapi.log
-{% endif %}
-{% endif %}
 {% endif %}

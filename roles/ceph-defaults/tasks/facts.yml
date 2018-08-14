@@ -190,12 +190,12 @@
     - not containerized_deployment
     - ansible_os_family == 'Debian'
 
-- name: set_fact ceph_uid for red hat based system - non container
+- name: set_fact ceph_uid for red hat or suse based system - non container
   set_fact:
     ceph_uid: 167
   when:
     - not containerized_deployment
-    - ansible_os_family == 'RedHat'
+    - ansible_os_family in ['RedHat', 'Suse']
 
 - name: set_fact ceph_uid for debian based system - container
   set_fact:
@@ -217,3 +217,28 @@
   when:
     - containerized_deployment
     - ceph_docker_image | search("rhceph")
+
+- block:
+    - name: get current cluster status (if already running)
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
+      register: ceph_current_status
+
+    - name: set_fact ceph_current_status (convert to json)
+      set_fact:
+        ceph_current_status: "{{ ceph_current_status.stdout | from_json }}"
+
+    - name: set_fact rgw_hostname
+      set_fact:
+        rgw_hostname: "{% for key in ceph_current_status['servicemap']['services']['rgw']['daemons'].keys() %}{% if key == ansible_fqdn %}{{ key }}{% endif %}{% endfor %}"
+  when:
+    - ceph_current_fsid.get('rc', 1) == 0
+    - inventory_hostname in groups.get(rgw_group_name, [])
+    # no servicemap before luminous
+    - ceph_release_num[ceph_release] >= ceph_release_num['luminous']
+    - ansible_hostname != ansible_fqdn
+
+- name: set_fact rgw_hostname
+  set_fact:
+    rgw_hostname: "{{ ansible_hostname }}"
+  when:
+    - rgw_hostname is undefined
