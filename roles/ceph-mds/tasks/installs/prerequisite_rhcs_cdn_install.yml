@@ -1,0 +1,17 @@
+---
+- name: check if the red hat storage tools repo is already present
+  shell: yum --noplugins --cacheonly repolist | grep -sq rhel-7-server-rhceph-{{ ceph_rhcs_version }}-tools-rpms
+  changed_when: false
+  failed_when: false
+  register: rhcs_tools_repo
+  check_mode: no
+  when:
+    - mds_group_name in group_names
+
+- name: enable red hat storage tools repository
+  command: subscription-manager repos --enable rhel-7-server-rhceph-{{ ceph_rhcs_version }}-tools-rpms
+  changed_when: false
+  when:
+    - mds_group_name in group_names
+    - rhcs_tools_repo.rc != 0
+
