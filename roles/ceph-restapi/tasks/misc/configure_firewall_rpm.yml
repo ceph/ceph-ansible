@@ -1,0 +1,15 @@
+---
+- name: open restapi ports
+  firewalld:
+    port: "{{ restapi_port }}/tcp"
+    zone: "{{ ceph_restapi_firewall_zone }}"
+    permanent: true
+    immediate: false # if true then fails in case firewalld is stopped
+    state: enabled
+  notify: restart firewalld
+  when:
+    - restapi_group_name is defined
+    - restapi_group_name in group_names
+    - firewalld_pkg_query.rc == 0
+  tags:
+    - firewall
