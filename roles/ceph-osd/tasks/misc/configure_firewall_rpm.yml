@@ -1,0 +1,15 @@
+---
+- name: open osd ports
+  firewalld:
+    service: ceph
+    zone: "{{ ceph_osd_firewall_zone }}"
+    permanent: true
+    immediate: false # if true then fails in case firewalld is stopped
+    state: enabled
+  notify: restart firewalld
+  when:
+    - osd_group_name is defined
+    - osd_group_name in group_names
+    - firewalld_pkg_query.rc == 0
+  tags:
+    - firewall
