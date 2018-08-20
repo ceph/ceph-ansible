@@ -1,0 +1,99 @@
+---
+- name: wait for all osd to be up
+  shell: >
+    test "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" =
+    "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_up_osds"])')"
+  register: wait_for_all_osds_up
+  retries: 30
+  delay: 10
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  until: wait_for_all_osds_up.rc == 0
+
+- name: list existing pool(s)
+  command: >
+    {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
+    osd pool get {{ item.name }} size
+  with_items: "{{ openstack_pools | unique }}"
+  register: created_pools
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  failed_when: false
+
+- name: set_fact rule_name before luminous
+  set_fact:
+    rule_name: "replicated_ruleset"
+  when:
+    - ceph_release_num[ceph_release] < ceph_release_num['luminous']
+    - not rolling_update
+
+- name: set_fact rule_name from luminous
+  set_fact:
+    rule_name: "replicated_rule"
+  when:
+    - ceph_release_num[ceph_release] >= ceph_release_num['luminous']
+      or (ceph_release_num[ceph_release] < ceph_release_num['luminous'] and rolling_update)
+
+- name: create openstack pool(s)
+  command: >
+    {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
+    osd pool create {{ item.0.name }}
+    {{ item.0.pg_num }}
+    {{ item.0.pgp_num | default(item.0.pg_num) }}
+    {{ rule_name if item.0.rule_name | default(rule_name) == '' else item.0.rule_name | default(rule_name) }}
+    {{ 1 if item.0.type|default(1) == 'replicated' else 3 if item.0.type|default(1) == 'erasure' else item.0.type|default(1) }}
+    {%- if (item.0.type | default("1") == '3' or item.0.type | default("1") == 'erasure') and item.0.erasure_profile != '' %}
+    {{ item.0.erasure_profile }}
+    {%- endif %}
+    {{ item.0.expected_num_objects | default('') }}
+  with_together:
+    - "{{ openstack_pools | unique }}"
+    - "{{ created_pools.results }}"
+  changed_when: false
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - item.1.get('rc', 0) != 0
+
+- name: assign application to pool(s)
+  command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
+  with_items: "{{ openstack_pools | unique }}"
+  changed_when: false
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - ceph_release_num[ceph_release] >= ceph_release_num['luminous']
+    - item.application is defined
+
+- name: create openstack cephx key(s)
+  ceph_key:
+    state: present
+    name: "{{ item.name }}"
+    caps: "{{ item.caps }}"
+    secret: "{{ item.key | default('') }}"
+    containerized: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }}"
+    cluster: "{{ cluster }}"
+    mode: "{{ item.mode|default(omit) }}"
+  with_items: "{{ openstack_keys }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when: cephx
+
+- name: fetch openstack cephx key(s)
+  fetch:
+    src: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
+    dest: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
+    flat: yes
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  with_items: "{{ openstack_keys }}"
+
+- name: copy to other mons the openstack cephx key(s)
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
+    dest: "/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
+    owner: "{{ ceph_uid }}"
+    group: "{{ ceph_uid }}"
+    mode: "{{ item.1.mode|default(omit) }}"
+  with_nested:
+    - "{{ groups[mon_group_name] }}"
+    - "{{ openstack_keys }}"
+  delegate_to: "{{ item.0 }}"
+  when:
+    - cephx
+    - openstack_config
+    - item.0 != groups[mon_group_name]
