@@ -1,7 +1,7 @@
 ---
 - name: wait for all osd to be up
   shell: >
-    test "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" = 
+    test "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" =
     "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_up_osds"])')"
   register: wait_for_all_osds_up
   retries: 30
@@ -22,15 +22,15 @@
   set_fact:
     rule_name: "replicated_ruleset"
   when:
-    - ceph_release_num[ceph_stable_release] < ceph_release_num['luminous']
+    - ceph_release_num[ceph_release] < ceph_release_num['luminous']
     - not rolling_update
 
 - name: set_fact rule_name from luminous
   set_fact:
     rule_name: "replicated_rule"
   when:
-    - ceph_release_num[ceph_stable_release] >= ceph_release_num['luminous']
-      or (ceph_release_num[ceph_stable_release] < ceph_release_num['luminous'] and rolling_update)
+    - ceph_release_num[ceph_release] >= ceph_release_num['luminous']
+      or (ceph_release_num[ceph_release] < ceph_release_num['luminous'] and rolling_update)
 
 - name: create openstack pool(s)
   command: >
