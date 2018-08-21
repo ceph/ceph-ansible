@@ -32,11 +32,11 @@
 # because it blindly picks a mon, which may be down because
 # of the rolling update
 - name: is ceph running already?
-  command: "timeout 5 {{ docker_exec_cmd }} ceph --cluster {{ cluster }} fsid"
+  command: "timeout 5 {{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
   changed_when: false
   failed_when: false
   check_mode: no
-  register: ceph_current_fsid
+  register: ceph_current_status
   run_once: true
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
@@ -54,9 +54,9 @@
 
 # set this as a default when performing a rolling_update
 # so the rest of the tasks here will succeed
-- name: set_fact ceph_current_fsid rc 1
+- name: set_fact ceph_current_status rc 1
   set_fact:
-    ceph_current_fsid:
+    ceph_current_status:
       rc: 1
   when:
     - rolling_update or groups.get(mon_group_name, []) | length == 0
@@ -71,11 +71,18 @@
   when:
     - (cephx or generate_fsid)
 
-- name: set_fact fsid ceph_current_fsid.stdout
+- name: set_fact ceph_current_status (convert to json)
   set_fact:
-    fsid: "{{ ceph_current_fsid.stdout }}"
+    ceph_current_status: "{{ ceph_current_status.stdout | from_json }}"
   when:
-    - ceph_current_fsid.get('rc', 1) == 0
+    - not rolling_update
+    - ceph_current_status.rc == 0
+
+- name: set_fact fsid from ceph_current_status
+  set_fact:
+    fsid: "{{ ceph_current_status.fsid }}"
+  when:
+    - ceph_current_status.fsid is defined
 
 # Set ceph_release to ceph_stable by default
 - name: set_fact ceph_release ceph_stable_release
@@ -91,7 +98,7 @@
   become: false
   when:
     - generate_fsid
-    - ceph_current_fsid.rc != 0
+    - ceph_current_status.fsid is undefined
 
 - name: reuse cluster fsid when cluster is already running
   local_action:
@@ -100,7 +107,7 @@
     creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
   become: false
   when:
-    - ceph_current_fsid.get('rc', 1) == 0
+    - ceph_current_status.fsid is defined
 
 - name: read cluster fsid if it already exists
   local_action:
@@ -218,36 +225,19 @@
     - containerized_deployment
     - ceph_docker_image | search("rhceph")
 
-- block:
-    - name: get current cluster status (if already running)
-      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
-      changed_when: false
-      failed_when: false
-      check_mode: no
-      run_once: true
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      when:
-        - not rolling_update
-        - groups.get(mon_group_name, []) | length > 0
-      register: ceph_current_status
-
-    - name: set_fact ceph_current_status (convert to json)
-      set_fact:
-        ceph_current_status: "{{ ceph_current_status.stdout | from_json }}"
-
-    - name: set_fact rgw_hostname
-      set_fact:
-        rgw_hostname: "{% for key in ceph_current_status['servicemap']['services']['rgw']['daemons'].keys() %}{% if key == ansible_fqdn %}{{ key }}{% endif %}{% endfor %}"
-      when: ceph_current_status['servicemap']['services']['rgw'] is defined
+- name: set_fact rgw_hostname - fqdn
+  set_fact:
+    rgw_hostname: "{% for key in ceph_current_status['servicemap']['services']['rgw']['daemons'].keys() %}{% if key == ansible_fqdn %}{{ key }}{% endif %}{% endfor %}"
   when:
-    - ceph_current_fsid.get('rc', 1) == 0
-    - inventory_hostname in groups.get(rgw_group_name, [])
-    # no servicemap before luminous
-    - ceph_release_num[ceph_release] >= ceph_release_num['luminous']
+    - inventory_hostname in groups.get(rgw_group_name, []) or inventory_hostname in groups.get(nfs_group_name, [])
+    - ceph_current_status['servicemap'] is defined
+    - ceph_current_status['servicemap']['services'] is defined
+    - ceph_current_status['servicemap']['services']['rgw'] is defined # that's the way to cover ceph_release_num[ceph_release] >= ceph_release_num['luminous']
     - ansible_hostname != ansible_fqdn
 
-- name: set_fact rgw_hostname
+- name: set_fact rgw_hostname - no fqdn
   set_fact:
     rgw_hostname: "{{ ansible_hostname }}"
   when:
+    - inventory_hostname in groups.get(rgw_group_name, []) or inventory_hostname in groups.get(nfs_group_name, [])
     - rgw_hostname is undefined
