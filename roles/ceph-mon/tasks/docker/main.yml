@@ -1,13 +1,13 @@
 ---
 - name: include copy_configs.yml
-  include: copy_configs.yml
+  include_tasks: copy_configs.yml
   when: not containerized_deployment_with_kv
 
 - name: include start_docker_monitor.yml
-  include: start_docker_monitor.yml
+  include_tasks: start_docker_monitor.yml
 
 - name: include configure_ceph_command_aliases.yml
-  include: configure_ceph_command_aliases.yml
+  include_tasks: configure_ceph_command_aliases.yml
 
 - name: wait for monitor socket to exist
   command: "{{ docker_exec_cmd }} sh -c 'stat /var/run/ceph/{{ cluster }}-mon.{{ ansible_hostname }}.asok || stat /var/run/ceph/{{ cluster }}-mon.{{ ansible_fqdn }}.asok'"
@@ -77,7 +77,7 @@
     - hostvars[groups[mon_group_name][0]]['monitor_address_block'] != 'subnet'
 
 - name: include fetch_configs.yml
-  include: fetch_configs.yml
+  include_tasks: fetch_configs.yml
   run_once: true
   when: not containerized_deployment_with_kv
 
