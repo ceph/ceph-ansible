@@ -1,12 +1,12 @@
 ---
 - name: include system_checks.yml
-  include: system_checks.yml
+  include_tasks: system_checks.yml
 
 - name: include check_mandatory_vars.yml
-  include: check_mandatory_vars.yml
+  include_tasks: check_mandatory_vars.yml
 
 - name: include pre_requisites/prerequisites.yml
-  include: pre_requisites/prerequisites.yml
+  include_tasks: pre_requisites/prerequisites.yml
   when:
     - not is_atomic
 
@@ -47,7 +47,7 @@
   check_mode: no
 
 - name: include checks.yml
-  include: checks.yml
+  include_tasks: checks.yml
   when:
     - (not containerized_deployment_with_kv and
        ((inventory_hostname in groups.get(mon_group_name, [])) or
@@ -57,27 +57,27 @@
     - not rolling_update | default(false)
 
 - name: include misc/ntp_atomic.yml
-  include: misc/ntp_atomic.yml
+  include_tasks: misc/ntp_atomic.yml
   when:
     - is_atomic
     - ansible_os_family == 'RedHat'
     - ntp_service_enabled
 
 - name: include misc/ntp_rpm.yml
-  include: misc/ntp_rpm.yml
+  include_tasks: misc/ntp_rpm.yml
   when:
     - not is_atomic
     - ansible_os_family in ['RedHat', 'Suse']
     - ntp_service_enabled
 
 - name: include misc/ntp_debian.yml
-  include: misc/ntp_debian.yml
+  include_tasks: misc/ntp_debian.yml
   when:
     - ansible_os_family == 'Debian'
     - ntp_service_enabled
 
 - name: include fetch_image.yml
-  include: fetch_image.yml
+  include_tasks: fetch_image.yml
   tags:
     - fetch_container_image
 
@@ -92,9 +92,9 @@
     ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
 
 - name: include release.yml
-  include: release.yml
+  include_tasks: release.yml
 
 # NOTE (jimcurtis): dirs_permissions.yml must precede fetch_configs.yml
 # # because it creates the directories needed by the latter.
 - name: include dirs_permissions.yml
-  include: dirs_permissions.yml
+  include_tasks: dirs_permissions.yml
