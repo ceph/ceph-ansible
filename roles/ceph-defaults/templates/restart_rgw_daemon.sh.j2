@@ -3,11 +3,13 @@
 RETRIES="{{ handler_health_rgw_check_retries }}"
 DELAY="{{ handler_health_rgw_check_delay }}"
 RGW_NAME="{{ ansible_hostname }}"
-RGW_PORT="{{ radosgw_civetweb_port }}"
-SOCKET=/var/run/ceph/{{ cluster }}-client.rgw.${RGW_NAME}.asok
+RGW_PORT="{{ radosgw_frontend_port }}"
 {% if containerized_deployment %}
 DOCKER_EXEC="docker exec ceph-rgw-{{ ansible_hostname }}"
 {% endif %}
+# Backward compatibility
+$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_fqdn }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_fqdn }}.asok
+$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_hostname }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_hostname }}.asok
 {% if hostvars[inventory_hostname]['radosgw_address_block'] is defined and hostvars[inventory_hostname]['radosgw_address_block'] != 'subnet' %}
     {% if ip_version == 'ipv4' %}
 RGW_IP={{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }} \

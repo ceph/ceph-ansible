@@ -1,0 +1,96 @@
+- name: creates logical volumes for the bucket index or fs journals on a single device and prepares for use of osd_scenario=lvm. 
+  become: true
+  hosts:
+  - osds
+
+  vars:
+    logfile: |
+      Suggested cut and paste under "lvm_volumes:" in "group_vars/osds.yml" for configuring with osd_scenario=lvm
+      -----------------------------------------------------------------------------------------------------------
+      {% for lv in nvme_device_lvs %}
+        - data: {{ lv.lv_name }}
+          data_vg: {{ nvme_vg_name }}
+          journal: {{ lv.journal_name }}
+          journal_vg: {{ nvme_vg_name }}
+      {% endfor %}
+      {% for hdd in hdd_devices %}
+        - data: {{ hdd_lv_prefix }}-{{ hdd.split('/')[-1] }}
+          data_vg: {{ hdd_vg_prefix }}-{{ hdd.split('/')[-1] }}
+          journal: {{ hdd_journal_prefix }}-{{ hdd.split('/')[-1] }}
+          journal_vg: {{ nvme_vg_name }}
+      {% endfor %}
+
+  tasks:
+
+  - name: include vars of lv_vars.yaml
+    include_vars:
+      file: lv_vars.yaml
+    failed_when: false
+
+  # need to check if lvm2 is installed
+  - name: install lvm2
+    package:
+      name: lvm2
+      state: present
+
+  # Make entire nvme device a VG
+  - name: add nvme device as lvm pv
+    lvg:
+      force: yes
+      pvs: "{{ nvme_device }}"
+      pesize: 4
+      state: present
+      vg: "{{ nvme_vg_name }}"
+
+  - name: create lvs for fs journals for the bucket index on the nvme device
+    lvol:
+      lv: "{{ item.journal_name }}"
+      vg: "{{ nvme_vg_name }}"
+      size: "{{ journal_size }}"
+      pvs: "{{ nvme_device }}"
+    with_items:
+      - "{{ nvme_device_lvs }}"
+
+  - name: create lvs for fs journals for hdd devices
+    lvol:
+      lv: "{{ hdd_journal_prefix }}-{{ item.split('/')[-1] }}"
+      vg: "{{ nvme_vg_name }}"
+      size: "{{ journal_size }}"
+    with_items:
+      - "{{ hdd_devices }}"
+
+  - name: create the lv for data portion of the bucket index on the nvme device
+    lvol:
+      lv: "{{ item.lv_name }}"
+      vg: "{{ nvme_vg_name }}"
+      size: "{{ item.size }}"
+      pvs: "{{ nvme_device }}"
+    with_items:
+      - "{{ nvme_device_lvs }}"
+
+    # Make sure all hdd devices have a unique volume group
+  - name: create vgs for all hdd devices
+    lvg:
+      force: yes
+      pvs: "{{ item }}"
+      pesize: 4
+      state: present
+      vg: "{{ hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
+    with_items:
+      - "{{ hdd_devices }}"
+
+  - name: create lvs for the data portion on hdd devices
+    lvol:
+      lv: "{{ hdd_lv_prefix }}-{{ item.split('/')[-1] }}"
+      vg: "{{ hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
+      size: "{{ hdd_lv_size }}"
+      pvs: "{{ item }}"
+    with_items:
+      - "{{ hdd_devices }}"
+
+  - name: "write output for osds.yml to {{ logfile_path }}"
+    become: false
+    copy:
+      content: "{{ logfile }}"
+      dest: "{{ logfile_path }}"
+    delegate_to: localhost

@@ -1,0 +1,105 @@
+- name: tear down existing osd filesystems then logical volumes, volume groups, and physical volumes
+  become: true
+  hosts:
+  - osds
+
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to tear down the logical volumes?
+      default: 'no'
+      private: no
+
+  tasks:
+  - name: exit playbook, if user did not mean to tear down logical volumes
+    fail:
+      msg: >
+        "Exiting lv-teardown playbook, logical volumes were NOT torn down.
+         To tear down the logical volumes, either say 'yes' on the prompt or
+         or use `-e ireallymeanit=yes` on the command line when
+         invoking the playbook"
+    when: ireallymeanit != 'yes'
+
+  - name: include vars of lv_vars.yaml
+    include_vars:
+      file: lv_vars.yaml
+    failed_when: false
+
+  # need to check if lvm2 is installed
+  - name: install lvm2
+    package:
+      name: lvm2
+      state: present
+
+# BEGIN TEARDOWN
+  - name: find any existing osd filesystems
+    shell: "grep /var/lib/ceph/osd /proc/mounts | awk '{print $2}'"
+    register: old_osd_filesystems
+
+  - name: tear down any existing osd filesystems
+    command: "umount -v {{ item }}"
+    with_items: "{{ old_osd_filesystems.stdout_lines }}"
+
+  - name: kill all lvm commands that may have been hung
+    command: "killall -q lvcreate pvcreate vgcreate lvconvert || echo -n"
+    failed_when: false
+
+  ## Logcal Vols
+  - name: tear down existing lv for bucket index
+    lvol:
+      lv: "{{ item.lv_name }}"
+      vg: "{{ nvme_vg_name }}"
+      state: absent
+      force: yes
+    with_items:
+      - "{{ nvme_device_lvs }}"
+
+  - name: tear down any existing hdd data lvs 
+    lvol:
+      lv: "{{ hdd_lv_prefix }}-{{ item.split('/')[-1] }}"
+      vg: "{{ hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
+      state: absent
+      force: yes
+    with_items:
+      - "{{ hdd_devices }}"
+
+  - name: tear down any existing lv of journal for bucket index
+    lvol:
+      lv: "{{ item.journal_name }}"
+      vg: "{{ nvme_vg_name }}"
+      state: absent
+      force: yes
+    with_items:
+      - "{{ nvme_device_lvs }}"
+
+  - name: tear down any existing lvs of hdd journals
+    lvol:
+      lv: "{{ hdd_journal_prefix }}-{{ item.split('/')[-1] }}"
+      vg: "{{ nvme_vg_name }}"
+      state: absent
+      force: yes
+    with_items:
+      - "{{ hdd_devices }}"
+
+  ## Volume Groups
+  - name: remove vg on nvme device
+    lvg:
+      vg: "{{ nvme_vg_name }}"
+      state: absent
+      force: yes
+
+  - name: remove vg for each hdd device
+    lvg:
+      vg: "{{ hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
+      state: absent
+      force: yes
+    with_items:
+      - "{{ hdd_devices }}"
+
+  ## Physical Vols
+  - name: tear down pv for nvme device
+    command: "pvremove --force --yes {{ nvme_device }}"
+
+  - name: tear down pv for each hdd device
+    command: "pvremove --force --yes {{ item }}"
+    with_items:
+      - "{{ hdd_devices }}"
