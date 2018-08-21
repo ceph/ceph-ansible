@@ -16,26 +16,6 @@
   when:
     - nmapexist.rc != 0
 
-- name: check if monitor port is not filtered
-  local_action:
-    module: shell
-      set -o pipefail && nmap -p 6789 {{ hostvars[inventory_hostname]['ansible_' + monitor_interface]['ipv4']['address'] if hostvars[inventory_hostname]['ansible_' + monitor_interface] is defined else hostvars[inventory_hostname]['monitor_address'] }} | grep -sqo -e filtered -e '0 hosts up'
-  changed_when: false
-  failed_when: false
-  register: monportstate
-  check_mode: no
-  when:
-    - mon_group_name in group_names
-    - nmapexist.rc == 0
-
-- name: fail if monitor port is filtered
-  fail:
-      msg: "Please allow port 6789 on your firewall"
-  when:
-    - mon_group_name in group_names
-    - nmapexist.rc == 0
-    - monportstate.rc == 0
-
 - name: check if osd and mds range is not filtered (osd hosts)
   local_action:
     module: shell

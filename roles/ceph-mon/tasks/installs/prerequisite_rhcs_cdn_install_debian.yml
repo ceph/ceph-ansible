@@ -1,0 +1,10 @@
+---
+- name: enable red hat storage monitor repository for debian systems
+  apt_repository:
+    repo: "deb {{ ceph_rhcs_cdn_debian_repo }}{{ ceph_rhcs_cdn_debian_repo_version }}/{{ item.repo }} {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
+    state: present
+    update_cache: no
+  register: add_debian_apt_repo
+  with_items:
+    - { repo: "MON", configure: (mon_group_name in group_names or mgr_group_name in group_names) }
+  when: item.configure

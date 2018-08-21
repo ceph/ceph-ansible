@@ -18,21 +18,6 @@
   when:
     - firewalld_pkg_query.rc == 0
 
-- name: open monitor ports
-  firewalld:
-    service: ceph-mon
-    zone: "{{ ceph_mon_firewall_zone }}"
-    permanent: true
-    immediate: false # if true then fails in case firewalld is stopped
-    state: enabled
-  notify: restart firewalld
-  when:
-    - mon_group_name is defined
-    - mon_group_name in group_names
-    - firewalld_pkg_query.rc == 0
-  tags:
-    - firewall
-
 - name: open manager ports
   firewalld:
     service: ceph
