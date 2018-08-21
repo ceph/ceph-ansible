@@ -9,7 +9,6 @@
     msg: "/var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring not found"
   when:
     - not initial_mon_keyring.stat.exists
-    - ceph_current_fsid.rc == 0
 
 - name: get existing initial mon keyring if it already exists but not monitor_keyring.conf in {{ fetch_directory }}
   shell: |
@@ -17,7 +16,6 @@
   register: monitor_keyring
   when:
     - not monitor_keyring_conf.stat.exists
-    - ceph_current_fsid.rc == 0
 
 - name: test existing initial mon keyring
   command: ceph --connect-timeout 3 --cluster {{ cluster }} --keyring /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring -n mon. fsid
