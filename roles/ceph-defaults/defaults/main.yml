@@ -118,14 +118,7 @@ ceph_use_distro_backports: false # DEBIAN ONLY
 ###########
 # INSTALL #
 ###########
-ceph_rhcs_cdn_install: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-ceph_repository_type: "{{ 'cdn' if ceph_rhcs_cdn_install else 'iso' if ceph_rhcs_iso_install else 'dummy' }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
-ceph_rhcs_iso_install: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-ceph_rhcs: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-ceph_stable: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-ceph_dev: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-ceph_stable_uca: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-ceph_custom: False # backward compatibility with stable-2.2, will disappear in stable 3.1
+ceph_repository_type: dummy
 
 # ORIGIN SOURCE
 #
@@ -134,14 +127,14 @@ ceph_custom: False # backward compatibility with stable-2.2, will disappear in s
 # - 'distro' means that no separate repo file will be added
 #  you will get whatever version of Ceph is included in your Linux distro.
 # 'local' means that the ceph binaries will be copied over from the local machine
-ceph_origin: "{{ 'repository' if ceph_rhcs or ceph_stable or ceph_dev or ceph_stable_uca or ceph_custom else 'dummy' }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
+ceph_origin: dummy
 valid_ceph_origins:
   - repository
   - distro
   - local
 
 
-ceph_repository: "{{ 'community' if ceph_stable else 'rhcs' if ceph_rhcs else 'dev' if ceph_dev else 'uca' if ceph_stable_uca else 'custom' if ceph_custom else 'dummy' }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
+ceph_repository: dummy
 valid_ceph_repository:
   - community
   - rhcs
@@ -339,7 +332,7 @@ rbd_client_admin_socket_path: /var/run/ceph # must be writable by QEMU and allow
 # These variables must be defined at least in all.yml and overrided if needed (inventory host file or group_vars/*.yml).
 # Eg. If you want to specify for each monitor which address the monitor will bind to you can set it in your **inventory host file** by using 'monitor_address' variable.
 # Preference will go to monitor_address if both monitor_address and monitor_interface are defined.
-monitor_interface: "{{ ceph_mon_docker_interface if ceph_mon_docker_interface != 'interface' else 'interface' }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
+monitor_interface: interface
 monitor_address: 0.0.0.0
 monitor_address_block: subnet
 # set to either ipv4 or ipv6, whichever your network is using
@@ -360,7 +353,7 @@ cephfs_pools:
 ## OSD options
 #
 journal_size: 5120 # OSD journal size in MB
-public_network: "{{ ceph_mon_docker_subnet if ceph_mon_docker_subnet != '0.0.0.0/0' else '0.0.0.0/0' }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
+public_network: 0.0.0.0/0
 cluster_network: "{{ public_network | regex_replace(' ', '') }}"
 osd_mkfs_type: xfs
 osd_mkfs_options_xfs: -f -i size=2048
@@ -399,7 +392,7 @@ radosgw_frontend_options: "{{ radosgw_civetweb_options if radosgw_frontend_type 
 # Eg. If you want to specify for each radosgw node which address the radosgw will bind to you can set it in your **inventory host file** by using 'radosgw_address' variable.
 # Preference will go to radosgw_address if both radosgw_address and radosgw_interface are defined.
 radosgw_interface: interface
-radosgw_address: "{{ '0.0.0.0' if rgw_containerized_deployment else 'address' }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
+radosgw_address: address
 radosgw_address_block: subnet
 radosgw_keystone_ssl: false # activate this when using keystone PKI keys
 # Rados Gateway options
@@ -513,12 +506,6 @@ ceph_docker_image_tag: latest
 ceph_docker_registry: docker.io
 ceph_docker_enable_centos_extra_repo: false
 ceph_docker_on_openstack: false
-ceph_mon_docker_interface: "interface" # backward compatibility with stable-2.2, will disappear in stable 3.1
-ceph_mon_docker_subnet: "0.0.0.0/0" # backward compatibility with stable-2.2, will disappear in stable 3.1
-mon_containerized_deployment: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-osd_containerized_deployment: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-mds_containerized_deployment: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-rgw_containerized_deployment: False # backward compatibility with stable-2.2, will disappear in stable 3.1
 containerized_deployment: False
 
 ############
