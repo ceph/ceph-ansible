@@ -40,19 +40,6 @@
       pvs: "{{ nvme_device }}"
       pesize: 4
       state: present
-    ignore_errors: True
-    register: nvme_pv_create
-
-  - fail:
-      msg: "PV creation for {{ nvme_device }} has failed. Please verify the device is ready for use by running `wipefs --all {{ nvme_device }}`"
-    when: nvme_pv_create.rc != 0
-
-  - name: add vg to nvme device pv
-    lvg:
-      force: yes
-      pvs: "{{ nvme_device }}"
-      pesize: 4
-      state: present
       vg: "{{ nvme_vg_name }}"
 
   - name: create lvs for fs journals for the bucket index on the nvme device
@@ -82,22 +69,6 @@
       - "{{ nvme_device_lvs }}"
 
     # Make sure all hdd devices have a unique volume group
-  - name: create pvs on all hdd devices
-    lvg:
-      force: yes
-      pvs: "{{ item }}"
-      pesize: 4
-      state: present
-    ignore_errors: True
-    register: hdd_pv_create
-    with_items:
-      - "{{ hdd_devices }}"
-
-  - fail:
-      msg: "PV creation for {{ item.item }} has failed. Please verify the device is ready for use by running `wipefs --all {{ item.item }}`"
-    when: item.rc != 0
-    loop: "{{ hdd_pv_create.results }}"
-
   - name: create vgs for all hdd devices
     lvg:
       force: yes
