@@ -13,6 +13,7 @@
   - clients
   - mgrs
   - iscsigws
+  - iscsi-gws # for backward compatibility only!
 
   gather_facts: false
   any_errors_fatal: true
@@ -358,7 +359,9 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: iscsigws
+- hosts:
+    - iscsigws
+    - iscsi-gws # for backward compatibility only!
   gather_facts: false
   become: True
   pre_tasks:
@@ -373,8 +376,6 @@
     - role: ceph-defaults
       tags: ['ceph_update_config']
     - role: ceph-common
-      when:
-        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
     - role: ceph-config
       tags: ['ceph_update_config']
       when:
