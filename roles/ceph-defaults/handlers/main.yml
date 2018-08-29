@@ -5,6 +5,21 @@
   when:
     - ansible_os_family == 'Debian'
 
+- name: make tempdir for scripts
+  tempfile:
+    state: directory
+    prefix: ceph_ansible
+  listen:
+    - "restart ceph mons"
+    - "restart ceph osds"
+    - "restart ceph mdss"
+    - "restart ceph rgws"
+    - "restart ceph nfss"
+    - "restart ceph rbdmirrors"
+    - "restart ceph mgrs"
+  register: tmpdirpath
+  when: tmpdirpath is not defined
+
 # We only want to restart on hosts that have called the handler.
 # This var is set when he handler is called, and unset after the
 # restart to ensure only the correct hosts are restarted.
@@ -16,7 +31,7 @@
 - name: copy mon restart script
   template:
     src: restart_mon_daemon.sh.j2
-    dest: /tmp/restart_mon_daemon.sh
+    dest: "{{tmpdirpath.path}}/restart_mon_daemon.sh"
     owner: root
     group: root
     mode: 0750
@@ -25,7 +40,7 @@
     - mon_group_name in group_names
 
 - name: restart ceph mon daemon(s) - non container
-  command: /usr/bin/env bash /tmp/restart_mon_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_mon_daemon.sh
   listen: "restart ceph mons"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
@@ -38,7 +53,7 @@
   run_once: True
 
 - name: restart ceph mon daemon(s) - container
-  command: /usr/bin/env bash /tmp/restart_mon_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_mon_daemon.sh
   listen: "restart ceph mons"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
@@ -70,7 +85,7 @@
 - name: copy osd restart script
   template:
     src: restart_osd_daemon.sh.j2
-    dest: /tmp/restart_osd_daemon.sh
+    dest: "{{tmpdirpath.path}}/restart_osd_daemon.sh"
     owner: root
     group: root
     mode: 0750
@@ -80,7 +95,7 @@
     - not rolling_update
 
 - name: restart ceph osds daemon(s) - non container
-  command: /usr/bin/env bash /tmp/restart_osd_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_osd_daemon.sh
   listen: "restart ceph osds"
   when:
     - osd_group_name in group_names
@@ -97,7 +112,7 @@
   run_once: True
 
 - name: restart ceph osds daemon(s) - container
-  command: /usr/bin/env bash /tmp/restart_osd_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_osd_daemon.sh
   listen: "restart ceph osds"
   when:
     # We do not want to run these checks on initial deployment (`socket_osd_container_stat.results[n].rc == 0`)
@@ -126,7 +141,7 @@
 - name: copy mds restart script
   template:
     src: restart_mds_daemon.sh.j2
-    dest: /tmp/restart_mds_daemon.sh
+    dest: "{{tmpdirpath.path}}/restart_mds_daemon.sh"
     owner: root
     group: root
     mode: 0750
@@ -135,7 +150,7 @@
     - mds_group_name in group_names
 
 - name: restart ceph mds daemon(s) - non container
-  command: /usr/bin/env bash /tmp/restart_mds_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_mds_daemon.sh
   listen: "restart ceph mdss"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
@@ -148,7 +163,7 @@
   run_once: True
 
 - name: restart ceph mds daemon(s) - container
-  command: /usr/bin/env bash /tmp/restart_mds_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_mds_daemon.sh
   listen: "restart ceph mdss"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
@@ -174,7 +189,7 @@
 - name: copy rgw restart script
   template:
     src: restart_rgw_daemon.sh.j2
-    dest: /tmp/restart_rgw_daemon.sh
+    dest: "{{tmpdirpath.path}}/restart_rgw_daemon.sh"
     owner: root
     group: root
     mode: 0750
@@ -183,7 +198,7 @@
     - rgw_group_name in group_names
 
 - name: restart ceph rgw daemon(s) - non container
-  command: /usr/bin/env bash /tmp/restart_rgw_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_rgw_daemon.sh
   listen: "restart ceph rgws"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
@@ -196,7 +211,7 @@
   run_once: True
 
 - name: restart ceph rgw daemon(s) - container
-  command: /usr/bin/env bash /tmp/restart_rgw_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_rgw_daemon.sh
   listen: "restart ceph rgws"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
@@ -222,7 +237,7 @@
 - name: copy nfs restart script
   template:
     src: restart_nfs_daemon.sh.j2
-    dest: /tmp/restart_nfs_daemon.sh
+    dest: "{{tmpdirpath.path}}/restart_nfs_daemon.sh"
     owner: root
     group: root
     mode: 0750
@@ -231,7 +246,7 @@
     - nfs_group_name in group_names
 
 - name: restart ceph nfs daemon(s) - non container
-  command: /usr/bin/env bash /tmp/restart_nfs_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_nfs_daemon.sh
   listen: "restart ceph nfss"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
@@ -244,7 +259,7 @@
   run_once: True
 
 - name: restart ceph nfs daemon(s) - container
-  command: /usr/bin/env bash /tmp/restart_nfs_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_nfs_daemon.sh
   listen: "restart ceph nfss"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
@@ -270,7 +285,7 @@
 - name: copy rbd mirror restart script
   template:
     src: restart_rbd_mirror_daemon.sh.j2
-    dest: /tmp/restart_rbd_mirror_daemon.sh
+    dest: "{{tmpdirpath.path}}/restart_rbd_mirror_daemon.sh"
     owner: root
     group: root
     mode: 0750
@@ -279,7 +294,7 @@
     - rbdmirror_group_name in group_names
 
 - name: restart ceph rbd mirror daemon(s) - non container
-  command: /usr/bin/env bash /tmp/restart_rbd_mirror_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_rbd_mirror_daemon.sh
   listen: "restart ceph rbdmirrors"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
@@ -292,7 +307,7 @@
   run_once: True
 
 - name: restart ceph rbd mirror daemon(s) - container
-  command: /usr/bin/env bash /tmp/restart_rbd_mirror_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_rbd_mirror_daemon.sh
   listen: "restart ceph rbdmirrors"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
@@ -318,7 +333,7 @@
 - name: copy mgr restart script
   template:
     src: restart_mgr_daemon.sh.j2
-    dest: /tmp/restart_mgr_daemon.sh
+    dest: "{{tmpdirpath.path}}/restart_mgr_daemon.sh"
     owner: root
     group: root
     mode: 0750
@@ -327,7 +342,7 @@
     - mgr_group_name in group_names
 
 - name: restart ceph mgr daemon(s) - non container
-  command: /usr/bin/env bash /tmp/restart_mgr_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_mgr_daemon.sh
   listen: "restart ceph mgrs"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
@@ -340,7 +355,7 @@
   run_once: True
 
 - name: restart ceph mgr daemon(s) - container
-  command: /usr/bin/env bash /tmp/restart_mgr_daemon.sh
+  command: /usr/bin/env bash {{hostvars[item]['tmpdirpath']['path']}}/restart_mgr_daemon.sh
   listen: "restart ceph mgrs"
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
@@ -357,3 +372,17 @@
   set_fact:
      _mgr_handler_called: False
   listen: "restart ceph mgrs"
+
+- name: remove tempdir for scripts
+  file:
+    path: "{{tmpdirpath.path}}"
+    state: absent
+  listen:
+    - "restart ceph mons"
+    - "restart ceph osds"
+    - "restart ceph mdss"
+    - "restart ceph rgws"
+    - "restart ceph nfss"
+    - "restart ceph rbdmirrors"
+    - "restart ceph mgrs"
+  when: tmpdirpath is defined
