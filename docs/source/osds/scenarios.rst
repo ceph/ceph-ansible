@@ -111,12 +111,6 @@ This will result in the following mapping:
 - ``/dev/sdd`` will have ``/dev/sdg2`` as a journal
 
 
-.. warning::
-
-   On a containerized scenario we only support A SINGLE journal
-   for all the OSDs on a given machine. If you don't, bad things will happen
-   This is a limitation we plan to fix at some point.
-
 If ``osd_objectstore: bluestore`` is enabled, both 'ceph block.db' and 'ceph block.wal' partitions will be stored
 on a dedicated device.
 
