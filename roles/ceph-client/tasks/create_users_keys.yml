@@ -12,6 +12,15 @@
   when:
     - keys_tmp is defined
 
+# ppc64le architectures dont currently support running the dummy container
+- name: pick container_host to run dummy container on
+  set_fact:
+    _container_hostname: "{{ inventory_hostname }}"
+  run_once: true
+  when:
+    - ansible_architecture != 'ppc64le'
+    - inventory_hostname in groups.get(client_group_name)
+
 - name: run a dummy container (sleep 300) from where we can create pool(s)/key(s)
   command: >
     docker run \
@@ -25,7 +34,7 @@
   changed_when: false
   when:
     - containerized_deployment
-    - inventory_hostname == groups.get(client_group_name) | first
+    - inventory_hostname == _container_hostname
 
 - name: set_fact delegated_node
   set_fact:
@@ -57,7 +66,7 @@
   when:
     - cephx
     - keys | length > 0
-    - inventory_hostname == groups.get(client_group_name) | first
+    - inventory_hostname == _container_hostname
 
 - name: slurp client cephx key(s)
   slurp:
@@ -69,7 +78,7 @@
   when:
     - cephx
     - keys | length > 0
-    - inventory_hostname == groups.get(client_group_name) | first
+    - inventory_hostname == _container_hostname
 
 - name: list existing pool(s)
   command: >
@@ -81,7 +90,7 @@
   delegate_to: "{{ delegated_node }}"
   when:
     - condition_copy_admin_key
-    - inventory_hostname == groups.get(client_group_name, []) | first
+    - inventory_hostname == _container_hostname
 
 - name: create ceph pool(s)
   command: >
@@ -103,7 +112,7 @@
   when:
     - pools | length > 0
     - condition_copy_admin_key
-    - inventory_hostname in groups.get(client_group_name) | first
+    - inventory_hostname == _container_hostname
     - item.1.rc != 0
 
 - name: get client cephx keys
@@ -114,6 +123,6 @@
     owner: "{{ ceph_uid }}"
     group: "{{ ceph_uid }}"
   with_items:
-    - "{{ hostvars[groups[client_group_name][0]]['slurp_client_keys']['results'] }}"
+    - "{{ hostvars[_container_hostname]['slurp_client_keys']['results'] }}"
   when:
     - not item.get('skipped', False)
