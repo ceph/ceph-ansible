@@ -12,6 +12,19 @@
   when:
     - keys_tmp is defined
 
+# dummy container setup is only supported on x86_64
+# when running with containerized_deployment: true this task
+# creates a group that contains only x86_64 hosts.
+# when running with containerized_deployment: false this task
+# will add all client hosts to the group (and not filter).
+- name: create filtered clients group
+  add_host:
+    name: "{{ item }}"
+    groups: _filtered_clients
+  with_items: "{{ groups[client_group_name] }}"
+  when:
+    - (hostvars[item]['ansible_architecture'] == 'x86_64') or (not containerized_deployment)
+
 - name: run a dummy container (sleep 300) from where we can create pool(s)/key(s)
   command: >
     docker run \
@@ -25,7 +38,7 @@
   changed_when: false
   when:
     - containerized_deployment
-    - inventory_hostname == groups.get(client_group_name) | first
+    - inventory_hostname == groups.get('_filtered_clients') | first
 
 - name: set_fact delegated_node
   set_fact:
@@ -57,7 +70,7 @@
   when:
     - cephx
     - keys | length > 0
-    - inventory_hostname == groups.get(client_group_name) | first
+    - inventory_hostname == groups.get('_filtered_clients') | first
 
 - name: slurp client cephx key(s)
   slurp:
@@ -69,7 +82,7 @@
   when:
     - cephx
     - keys | length > 0
-    - inventory_hostname == groups.get(client_group_name) | first
+    - inventory_hostname == groups.get('_filtered_clients') | first
 
 - name: list existing pool(s)
   command: >
@@ -81,7 +94,7 @@
   delegate_to: "{{ delegated_node }}"
   when:
     - condition_copy_admin_key
-    - inventory_hostname == groups.get(client_group_name, []) | first
+    - inventory_hostname == groups.get('_filtered_clients', []) | first
 
 - name: create ceph pool(s)
   command: >
@@ -103,7 +116,7 @@
   when:
     - pools | length > 0
     - condition_copy_admin_key
-    - inventory_hostname in groups.get(client_group_name) | first
+    - inventory_hostname in groups.get('_filtered_clients') | first
     - item.1.rc != 0
 
 - name: get client cephx keys
@@ -114,6 +127,6 @@
     owner: "{{ ceph_uid }}"
     group: "{{ ceph_uid }}"
   with_items:
-    - "{{ hostvars[groups[client_group_name][0]]['slurp_client_keys']['results'] }}"
+    - "{{ hostvars[groups['_filtered_clients'][0]]['slurp_client_keys']['results'] }}"
   when:
     - not item.get('skipped', False)
