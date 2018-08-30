@@ -274,27 +274,55 @@
     - ceph_nfs_container_inspect_before_pull.get('rc') == 0
     - ceph_nfs_image_repodigest_before_pulling != image_repodigest_after_pulling
 
+- name: make local tempdir for ceph dev images
+  local_action:
+    module: tempdir
+    state: directory
+    prefix: ceph_ansible
+  register: localtmpdir
+  when:
+    - (ceph_docker_dev_image is defined and ceph_docker_dev_image)
+  run_once: true
+
+- name: make target tempdir for ceph dev images
+  tempdir: 
+    state: directory
+    prefix: ceph_ansible
+  register: targettmpdir
+  when:
+    - (ceph_docker_dev_image is defined and ceph_docker_dev_image)
+
 - name: export local ceph dev image
   local_action:
     module: command
-      docker save -o "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar" "{{ ceph_docker_username }}/{{ ceph_docker_imagename }}:{{ ceph_docker_image_tag }}"
+      docker save -o "{{localtmpdir.path}}/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar" "{{ ceph_docker_username }}/{{ ceph_docker_imagename }}:{{ ceph_docker_image_tag }}"
   when:
     - (ceph_docker_dev_image is defined and ceph_docker_dev_image)
   run_once: true
 
 - name: copy ceph dev image file
   copy:
-    src: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
-    dest: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+    src: "{{localtmpdir.path}}/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+    dest: "{{targettmpdir.path}}/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
   when:
     - (ceph_docker_dev_image is defined and ceph_docker_dev_image)
 
 - name: load ceph dev image
-  command: "docker load -i /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+  command: "docker load -i {{targettmpdir.path}}/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
   when:
     - (ceph_docker_dev_image is defined and ceph_docker_dev_image)
 
 - name: remove tmp ceph dev image file
-  command: "rm /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+  file: 
+    path: "{{targettmpdir.path}}"
+    state: absent
+  when:
+    - (ceph_docker_dev_image is defined and ceph_docker_dev_image)
+
+- name: remove local ceph dev image
+  local_action:
+    module: file
+    path: "{{localtmpdir.path}}"
+    state: absent
   when:
     - (ceph_docker_dev_image is defined and ceph_docker_dev_image)
