@@ -91,6 +91,9 @@ def node(host, request):
         num_devices = len(ansible_vars.get("devices", []))
     if not num_devices:
         num_devices = len(ansible_vars.get("lvm_volumes", []))
+    # If number of devices doesn't map to number of OSDs, allow tests to define
+    # that custom number, defaulting it to ``num_devices``
+    num_osds = ansible_vars.get('num_osds', num_devices)
     cluster_name = ansible_vars.get("cluster", "ceph")
     conf_path = "/etc/ceph/{}.conf".format(cluster_name)
     if "osds" in group_names:
@@ -116,6 +119,7 @@ def node(host, request):
         osd_ids=osd_ids,
         num_mons=num_mons,
         num_devices=num_devices,
+        num_osds=num_osds,
         cluster_name=cluster_name,
         conf_path=conf_path,
         cluster_address=cluster_address,
