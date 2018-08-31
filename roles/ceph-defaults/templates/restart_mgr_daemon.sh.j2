@@ -3,10 +3,13 @@
 RETRIES="{{ handler_health_mgr_check_retries }}"
 DELAY="{{ handler_health_mgr_check_delay }}"
 MGR_NAME="{{ ansible_hostname }}"
-SOCKET=/var/run/ceph/{{ cluster }}-mgr.${MGR_NAME}.asok
 {% if containerized_deployment %}
 DOCKER_EXEC="docker exec ceph-mgr-{{ ansible_hostname }}"
 {% endif %}
+
+# Backward compatibility
+$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-mgr.{{ ansible_fqdn }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-mgr.{{ ansible_fqdn }}.asok
+$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-mgr.{{ ansible_hostname }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-mgr.{{ ansible_hostname }}.asok
 
 systemctl reset-failed ceph-mgr@${MGR_NAME}
 # First, restart the daemon

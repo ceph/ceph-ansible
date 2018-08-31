@@ -12,6 +12,7 @@
   - rbdmirrors
   - clients
   - iscsigws
+  - iscsi-gws # for backward compatibility only!
   - mgrs
 
   gather_facts: false
@@ -56,7 +57,6 @@
     - role: ceph-docker-common
       tags: [with_pkg, fetch_container_image]
       when:
-        - containerized_deployment | bool
         - not (is_atomic | bool)
         - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
 
@@ -331,7 +331,9 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: iscsigws
+- hosts:
+    - iscsigws
+    - iscsi-gws # for backward compatibility only!
   gather_facts: false
   become: True
   pre_tasks:
@@ -344,7 +346,7 @@
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - { role: ceph-docker-common, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
+    - { role: ceph-docker-common }
     - { role: ceph-config, tags: ['ceph_update_config'], when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
     - { role: ceph-iscsi-gw, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
   post_tasks:
