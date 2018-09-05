@@ -28,6 +28,13 @@
     - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
     - ceph_repository not in ['rhcs', 'dev', 'obs']
 
+- name: validate ntp daemon type
+  fail:
+    msg: "ntp_daemon_type must be one of chronyd, ntpd, or timesyncd"
+  when:
+    - ntp_service_enabled
+    - ntp_daemon_type not in ['chronyd', 'ntpd', 'timesyncd']
+
 - name: make sure journal_size configured
   debug:
     msg: "WARNING: journal_size is configured to {{ journal_size }}, which is less than 5GB. This is not recommended and can lead to severe issues."

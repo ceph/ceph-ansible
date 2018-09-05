@@ -1,11 +1,29 @@
 ---
-- name: install ntp on debian
-  package:
-    name: ntp
-    state: present
+- name: setup ntpd
+  block:
+    - command: timedatectl set-ntp no
+    - package:
+        name: ntp
+        state: present
+    - service:
+        name: ntp
+        enabled: yes
+        state: started
+  when: ntp_daemon_type == "ntpd"
 
-- name: start the ntp service
-  service:
-    name: ntp
-    enabled: yes
-    state: started
+- name: setup chrony
+  block:
+    - command: timedatectl set-ntp no
+    - package:
+        name: chrony
+        state: present
+    - service:
+        name: chronyd
+        enabled: yes
+        state: started
+  when: ntp_daemon_type == "chronyd"
+
+- name: setup timesyncd
+  block:
+    - command: timedatectl set-ntp on
+  when: ntp_daemon_type == "timesyncd"
