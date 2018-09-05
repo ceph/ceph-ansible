@@ -36,3 +36,21 @@
   when:
     - osd_scenario == 'non-collocated'
     - dedicated_devices|length != devices|length
+
+# true if one of the OSDs servers has one SSD, so don't fail if only one has an SSD, at least one
+- name: fail if there are no fast media available to store rgw bucket index
+  fail:
+    msg: "It looks like there are no fast media available on the OSD servers to host the Rados Gateway bucket index."
+  with_dict: "{{ ansible_devices }}"
+  when:
+    - ansible_distribution == 'RedHat'
+    - ceph_repository == 'rhcs'
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - groups[rgw_group_name] | length > 0
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.sectors != "0"
+    - item.value.partitions|count == 0
+    - item.value.holders|count == 0
+    - item.rotational != 0
+    - "'dm-' not in item.key"
