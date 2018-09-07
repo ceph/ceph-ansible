@@ -1,119 +1,12 @@
 ---
-- name: add nfs-ganesha stable repository
-  yum_repository:
-    name: nfs_ganesha_stable
-    description: nfs-ganesha stable repo
-    gpgcheck: yes
-    state: present
-    gpgkey: "{{ ceph_stable_key }}"
-    baseurl: "{{ ceph_mirror }}/nfs-ganesha/rpm-{{ nfs_ganesha_stable_branch }}/{{ ceph_release }}/$basearch"
+- name: include red hat based system related tasks
+  include_tasks: pre_requisite_non_container_red_hat.yml
   when:
     - ansible_os_family == 'RedHat'
-    - nfs_ganesha_stable
-    - ceph_origin == 'repository'
-    - ceph_repository == 'community'
 
-- name: fetch nfs-ganesha red hat development repository
-  uri:
-    url: https://shaman.ceph.com/api/repos/nfs-ganesha/next/latest/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/flavors/{{ nfs_ganesha_flavor }}/repo
-    return_content: yes
-  register: nfs_ganesha_dev_yum_repo
+- name: include debian based system related tasks
+  include_tasks: pre_requisite_non_container_debian.yml
   when:
-    - ansible_os_family == 'RedHat'
-    - nfs_ganesha_dev
-    - ceph_origin == 'repository'
-    - ceph_repository == 'dev'
-
-- name: add nfs-ganesha development repository
-  copy:
-    content: "{{ nfs_ganesha_dev_yum_repo.content }}"
-    dest: /etc/yum.repos.d/nfs-ganesha-dev.repo
-    owner: root
-    group: root
-    backup: yes
-  when:
-    - ansible_os_family == 'RedHat'
-    - nfs_ganesha_dev
-    - ceph_origin == 'repository'
-    - ceph_repository == 'dev'
-
-- name: add nfs-ganesha stable repository
-  apt_repository:
-    repo: "deb {{ nfs_ganesha_stable_deb_repo }} {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
-    state: present
-    update_cache: no
-  register: add_ganesha_apt_repo
-  when:
-    - ansible_os_family == 'Debian'
-    - nfs_ganesha_stable
-    - ceph_origin == 'repository'
-    - ceph_repository == 'community'
-
-- name: update apt cache
-  apt:
-    update_cache: yes
-  register: update_ganesha_apt_cache
-  retries: 5
-  delay: 2
-  until: update_ganesha_apt_cache | success
-  when:
-    - ansible_os_family == 'Debian'
-    - nfs_ganesha_stable
-    - ceph_origin == 'repository'
-    - ceph_repository == 'community'
-    - add_ganesha_apt_repo | changed
-
-- name: fetch nfs-ganesha development repository
-  uri:
-    url: https://shaman.ceph.com/api/repos/nfs-ganesha/next/latest/{{ ansible_distribution | lower }}/{{ ansible_distribution_release }}/flavors/{{ nfs_ganesha_flavor }}/repo
-    return_content: yes
-  register: nfs_ganesha_apt_repo
-  when:
-    - ansible_os_family == 'Debian'
-    - nfs_ganesha_dev
-    - ceph_origin == 'repository'
-    - ceph_repository == 'dev'
-
-- name: add nfs-ganesha development repository
-  copy:
-    content: "{{ nfs_ganesha_dev_apt_repo.content }}"
-    dest: /etc/apt/sources.list.d/nfs-ganesha-dev.list
-    owner: root
-    group: root
-    backup: yes
-  when:
-    - ansible_os_family == 'Debian'
-    - nfs_ganesha_dev
-    - ceph_origin == 'repository'
-    - ceph_repository == 'dev'
-
-- name: install nfs cephfs gateway
-  package:
-    name: nfs-ganesha-ceph
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - nfs_file_gw
-    - ansible_os_family == 'RedHat'
-
-- name: install redhat nfs-ganesha-rgw and ceph-radosgw packages
-  package:
-    name: "{{ item }}"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  with_items:
-    - nfs-ganesha-rgw
-    - ceph-radosgw
-  when:
-    - nfs_obj_gw
-    - ansible_os_family == 'RedHat'
-
-- name: install jemalloc for debian
-  apt:
-    name: libjemalloc1
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    update_cache: yes
-  when:
-    - (ceph_origin == 'repository' or ceph_origin == 'distro')
-    - ceph_repository != 'rhcs'
     - ansible_os_family == 'Debian'
 
 - name: install nfs rgw/cephfs gateway - suse
@@ -129,50 +22,6 @@
     - ceph_repository != 'rhcs'
     - ansible_os_family == 'Suse'
     - item.install | bool
-
-- name: install nfs rgw/cephfs gateway - debian
-  apt:
-    name: "{{ item.name }}"
-    allow_unauthenticated: yes
-  with_items:
-    - { name: 'nfs-ganesha-rgw', install: "{{ nfs_obj_gw }}" }
-    - { name: 'radosgw', install: "{{ nfs_obj_gw }}" }
-    - { name: 'nfs-ganesha-ceph', install: "{{ nfs_file_gw }}" }
-  when:
-    - (ceph_origin == 'repository' or ceph_origin == 'distro')
-    - ceph_repository != 'rhcs'
-    - ansible_os_family == 'Debian'
-    - item.install | bool
-
-# debian_rhcs installation
-- name: install red hat storage nfs gateway for debian
-  apt:
-    name: nfs-ganesha
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - ansible_os_family == 'Debian'
-    - (ceph_origin == 'repository' or ceph_origin == 'distro')
-    - ceph_repository == 'rhcs'
-
-- name: install red hat storage nfs file gateway
-  apt:
-    name: nfs-ganesha-ceph
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - ansible_os_family == 'Debian'
-    - (ceph_origin == 'repository' or ceph_origin == 'distro')
-    - ceph_repository == 'rhcs'
-    - nfs_file_gw
-
-- name: install red hat storage nfs obj gateway
-  apt:
-    name: nfs-ganesha-rgw
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-  when:
-    - ansible_os_family == 'Debian'
-    - (ceph_origin == 'repository' or ceph_origin == 'distro')
-    - ceph_repository == 'rhcs'
-    - nfs_obj_gw
 
 # NOTE (leseb): we use root:ceph for permissions since ganesha
 # does not have the right selinux context to read ceph directories.
@@ -193,36 +42,37 @@
   when:
     - item.create|bool
 
-- name: copy bootstrap cephx keys
-  copy:
-    src: "{{ fetch_directory }}/{{ fsid }}{{ item.name }}"
-    dest: "{{ item.name }}"
-    owner: "ceph"
-    group: "ceph"
-    mode: "0600"
-  with_items:
-    - { name: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring", copy_key: "{{ nfs_obj_gw }}" }
-  when:
-    - cephx
-    - item.copy_key|bool
+- name: cephx related tasks
+  block:
+    - name: copy bootstrap cephx keys
+      copy:
+        src: "{{ fetch_directory }}/{{ fsid }}{{ item.name }}"
+        dest: "{{ item.name }}"
+        owner: "ceph"
+        group: "ceph"
+        mode: "0600"
+      with_items:
+        - { name: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring", copy_key: "{{ nfs_obj_gw }}" }
+      when:
+        - item.copy_key|bool
 
-- name: create rados gateway keyring
-  command: ceph --cluster {{ cluster }} --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
-  args:
-    creates: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
-  changed_when: false
-  when:
-    - nfs_obj_gw
-    - cephx
+    - name: nfs object gateway related tasks
+      block:
+        - name: create rados gateway keyring
+          command: ceph --cluster {{ cluster }} --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
+          args:
+            creates: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
+          changed_when: false
 
-- name: set rados gateway key permissions
-  file:
-    path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
-    owner: "ceph"
-    group: "ceph"
-    mode: "0600"
+        - name: set rados gateway key permissions
+          file:
+            path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
+            owner: "ceph"
+            group: "ceph"
+            mode: "0600"
+      when:
+        - nfs_obj_gw
   when:
-    - nfs_obj_gw
     - cephx
 
 - name: change ownership on /var/log/ganesha

@@ -17,33 +17,33 @@
   when:
     - ansible_os_family not in ['Debian', 'RedHat', 'ClearLinux', 'Suse']
 
-- name: fail on unsupported distribution for red hat ceph storage
-  fail:
-    msg: "Distribution not supported {{ ansible_distribution_version }} by Red Hat Ceph Storage, only RHEL >= 7.3"
-  when:
-    - ansible_distribution == 'Red Hat Enterprise Linux'
-    - ceph_repository == 'rhcs'
-    - ansible_distribution_version is version_compare('7.3', '<')
+- name: red hat based systems tasks
+  block:
+    - name: fail on unsupported distribution for red hat ceph storage
+      fail:
+        msg: "Distribution not supported {{ ansible_distribution_version }} by Red Hat Ceph Storage, only RHEL >= 7.3"
+      when:
+        - ansible_distribution_version | version_compare('7.3', '<')
 
-- name: determine if node is registered with subscription-manager
-  command: subscription-manager identity
-  register: subscription
-  changed_when: false
-  failed_when: false
-  check_mode: no
-  when:
-    - ansible_distribution == 'Red Hat Enterprise Linux'
-    - ceph_repository == 'rhcs'
-    - ceph_repository_type == 'cdn'
+    - name: subscription manager related tasks
+      block:
+        - name: determine if node is registered with subscription-manager
+          command: subscription-manager identity
+          register: subscription
+          changed_when: false
+          failed_when: false
+          check_mode: no
 
-- name: fail on unregistered red hat rhcs linux
-  fail:
-    msg: "You must register your machine with subscription-manager"
+        - name: fail on unregistered red hat rhcs linux
+          fail:
+            msg: "You must register your machine with subscription-manager"
+          when:
+            - subscription.rc != '0'
+      when:
+        - ceph_repository_type == 'cdn'
   when:
-    - ansible_distribution == 'Red Hat Enterprise Linux'
     - ceph_repository == 'rhcs'
-    - ceph_repository_type == 'cdn'
-    - subscription.rc != '0'
+    - ansible_distribution == 'Red Hat Enterprise Linux'
 
 - name: fail on unsupported distribution for ubuntu cloud archive
   fail:
@@ -78,19 +78,21 @@
   when:
     - ansible_service_mgr != 'systemd'
 
-- name: fail on unsupported distribution for iscsi gateways
-  fail:
-    msg: "iSCSI gateways can only be deployed on Red Hat Enterprise Linux or CentOS"
-  when:
-    - ansible_distribution not in ['RedHat', 'CentOS']
-    - iscsi_gw_group_name in group_names
+- name: check if iscsi gateways is target on supported distros and versions
+  block:
+    - name: fail on unsupported distribution for iscsi gateways
+      fail:
+        msg: "iSCSI gateways can only be deployed on Red Hat Enterprise Linux or CentOS"
+      when:
+        - ansible_distribution not in ['RedHat', 'CentOS']
 
-- name: fail on unsupported distribution version for iscsi gateways
-  fail:
-    msg: "iSCSI gateways can only be deployed on Red Hat Enterprise Linux or CentOS >= 7.4"
+    - name: fail on unsupported distribution version for iscsi gateways
+      fail:
+        msg: "iSCSI gateways can only be deployed on Red Hat Enterprise Linux or CentOS >= 7.4"
+      when:
+        - ansible_distribution_version < '7.4'
+        - ansible_distribution in ['RedHat', 'CentOS']
   when:
-    - ansible_distribution in ['RedHat', 'CentOS']
-    - ansible_distribution_version < '7.4'
     - iscsi_gw_group_name in group_names
 
 - name: warn users that ceph-disk scenarios will be removed on 3.3

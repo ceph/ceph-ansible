@@ -11,11 +11,18 @@
   tags:
     - package-install
 
-- name: include_tasks installs/install_on_debian.yml
-  include_tasks: installs/install_on_debian.yml
-  when: ansible_os_family == 'Debian'
-  tags:
-    - package-install
+- name: debian based systems tasks
+  block:
+    - name: include installs/install_on_debian.yml
+      include_tasks: installs/install_on_debian.yml
+      tags:
+        - package-install
+    - name: include ntp debian setup tasks
+      include_tasks: "misc/ntp_debian.yml"
+      when:
+        - ntp_service_enabled
+  when:
+    - ansible_os_family == 'Debian'
 
 - name: include_tasks installs/install_on_clear.yml
   include_tasks: installs/install_on_clear.yml

@@ -10,23 +10,24 @@
     - mon_use_fqdn or mds_use_fqdn
     - not use_fqdn_yes_i_am_sure
 
-- name: fail if local scenario is enabled on debian
-  fail:
-    msg: "'local' installation scenario not supported on Debian systems"
+- name: debian based systems tasks
+  block:
+    - name: fail if local scenario is enabled on debian
+      fail:
+        msg: "'local' installation scenario not supported on Debian systems"
+      when:
+        - ceph_origin == 'local'
+    - name: verify that ceph_rhcs_cdn_debian_repo url is valid for red hat storage
+      fail:
+        msg: "ceph_rhcs_cdn_debian_repo url is invalid, please set your customername:customerpasswd"
+      when:
+        - ceph_origin == 'repository'
+        - ceph_repository == 'rhcs'
+        - ceph_repository_type == 'cdn'
+        - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
+        - ceph_repository not in ['rhcs', 'dev', 'obs']
   when:
     - ansible_os_family == 'Debian'
-    - ceph_origin == 'local'
-
-- name: verify that ceph_rhcs_cdn_debian_repo url is valid for red hat storage
-  fail:
-    msg: "ceph_rhcs_cdn_debian_repo url is invalid, please set your customername:customerpasswd"
-  when:
-    - ceph_origin == 'repository'
-    - ceph_repository == 'rhcs'
-    - ceph_repository_type == 'cdn'
-    - ansible_os_family == 'Debian'
-    - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
-    - ceph_repository not in ['rhcs', 'dev', 'obs']
 
 - name: validate ntp daemon type
   fail:
