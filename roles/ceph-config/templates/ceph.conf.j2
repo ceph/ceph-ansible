@@ -151,6 +151,20 @@ filestore xattr use omap = true
 {# else, default is false #}
 {% endif %}
 {% endif %}
+{% if osd_objectstore == 'bluestore' %}
+{% set _num_osds = num_osds | default(0) | int %}
+[osd]
+{% if is_hci and _num_osds > 0 %}
+{% if ansible_memtotal_mb * hci_safety_factor / _num_osds > osd_memory_target %} # hci_safety_factor is the safety factor for HCI deployments
+{% set _osd_memory_target = (ansible_memtotal_mb * hci_safety_factor / _num_osds) %}
+{% endif %}
+{% elif _num_osds > 0 %}
+{% if ansible_memtotal_mb * non_hci_safety_factor / _num_osds > osd_memory_target %} # non_hci_safety_factor is the safety factor for dedicated nodes
+{% set _osd_memory_target = (ansible_memtotal_mb * non_hci_safety_factor / _num_osds) %}
+{% endif %}
+{% endif %}
+osd memory target = {{ _osd_memory_target | default(osd_memory_target) }}
+{% endif %}
 {% endif %}
 
 {% if inventory_hostname in groups.get(rgw_group_name, []) %}
