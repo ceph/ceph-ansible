@@ -155,10 +155,11 @@ filestore xattr use omap = true
 
 {% if inventory_hostname in groups.get(rgw_group_name, []) %}
 {% for host in groups[rgw_group_name] %}
+{% set rgw_hostname = hostvars[host]['rgw_hostname'] | default(ansible_hostname) %}
 {# {{ hostvars[host]['rgw_hostname'] }} for backward compatibility, fqdn issues. See bz1580408 #}
-[client.rgw.{{ hostvars[host]['rgw_hostname'] }}]
-host = {{ hostvars[host]['rgw_hostname'] }}
-keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['rgw_hostname'] }}/keyring
+[client.rgw.{{ rgw_hostname }}]
+host = {{ rgw_hostname }}
+keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_hostname }}/keyring
 log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
 {% if hostvars[host]['radosgw_address_block'] is defined and hostvars[host]['radosgw_address_block'] != 'subnet' %}
     {% if ip_version == 'ipv4' %}
@@ -204,10 +205,11 @@ rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type =
 
 {% if inventory_hostname in groups.get(nfs_group_name, []) and inventory_hostname not in groups.get(rgw_group_name, []) %}
 {% for host in groups[nfs_group_name] %}
+{% set rgw_hostname = hostvars[host]['rgw_hostname'] | default(ansible_hostname) %}
 {% if nfs_obj_gw %}
-[client.rgw.{{ hostvars[host]['rgw_hostname'] }}]
-host = {{ hostvars[host]['rgw_hostname'] }}
-keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ hostvars[host]['rgw_hostname'] }}/keyring
+[client.rgw.{{ rgw_hostname }}]
+host = {{ rgw_hostname }}
+keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_hostname }}/keyring
 log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
 {% endif %}
 {% endfor %}
