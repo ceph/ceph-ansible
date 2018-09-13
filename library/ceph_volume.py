@@ -89,6 +89,12 @@ options:
             - A list of devices to pass to the 'ceph-volume lvm batch' subcommand.
             - Only applicable if action is 'batch'.
         required: false
+    osds_per_device:
+        description:
+            - The number of OSDs to create per device.
+            - Only applicable if action is 'batch'.
+        required: false
+        default: 1
 
 
 author:
@@ -151,6 +157,7 @@ def batch(module):
     batch_devices = module.params['batch_devices']
     crush_device_class = module.params.get('crush_device_class', None)
     dmcrypt = module.params['dmcrypt']
+    osds_per_device = module.params['osds_per_device']
 
     if not batch_devices:
         module.fail_json(msg='batch_devices must be provided if action is "batch"', changed=False, rc=1)
@@ -170,6 +177,9 @@ def batch(module):
 
     if dmcrypt:
         cmd.append("--dmcrypt")
+
+    if osds_per_device > 1:
+        cmd.extend(["--osds-per-device", osds_per_device])
 
     cmd.extend(batch_devices)
 
@@ -396,6 +406,7 @@ def run_module():
         crush_device_class=dict(type='str', required=False),
         dmcrypt=dict(type='bool', required=False, default=False),
         batch_devices=dict(type='list', required=False, default=[]),
+        osds_per_device=dict(type='int', required=False, default=1),
     )
 
     module = AnsibleModule(

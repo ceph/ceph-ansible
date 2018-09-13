@@ -195,7 +195,8 @@ with the ``lvm`` osd scenario.
   defined in ``lvm_volumes``.
 
 - ``devices`` is a list of raw device names as strings. If ``devices`` is defined then the ``ceph-volume lvm batch``
-  command will be used to deploy OSDs.
+  command will be used to deploy OSDs. You can also use the ``osds_per_device`` variable to inform ``ceph-volume`` how
+  many OSDs it should create from each device it finds suitable.
 
 Both ``lvm_volumes`` and ``devices`` can be defined and both methods would be used in the deployment or you
 can pick just one method.
