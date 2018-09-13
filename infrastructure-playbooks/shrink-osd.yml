@@ -131,10 +131,12 @@
         - containerized_deployment
 
     - name: resolve parent device
-      command: lsblk --nodeps -no pkname "{{ item.stdout }}"
+      command: lsblk --nodeps -no pkname "{{ item.0.stdout }}"
       register: resolved_parent_device
-      with_items:
+      delegate_to: "{{ item.1 }}"
+      with_together:
         - "{{ osd_to_kill_disks.results }}"
+        - "{{ osd_hosts }}"
       when:
         - containerized_deployment
 
@@ -142,13 +144,15 @@
       shell: |
         docker run --rm \
         --privileged=true \
-        --name ceph-osd-zap-{{ ansible_hostname }}-{{ item.stdout }} \
+        --name ceph-osd-zap-{{ ansible_hostname }}-{{ item.0.stdout }} \
         -v /dev/:/dev/ \
-        -e OSD_DEVICE=/dev/{{ item.stdout }} \
+        -e OSD_DEVICE=/dev/{{ item.0.stdout }} \
         {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
         zap_device
-      with_items:
+      delegate_to: "{{ item.1 }}"
+      with_together:
         - "{{ resolved_parent_device.results }}"
+        - "{{ osd_hosts }}"
       when:
         - containerized_deployment
 
