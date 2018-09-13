@@ -177,11 +177,6 @@ lvm
 This OSD scenario uses ``ceph-volume`` to create OSDs from logical volumes and
 is only available when the Ceph release is Luminous or newer.
 
-.. note::
-
-   The creation of the logical volumes is not supported by ``ceph-ansible``, ``ceph-volume``
-   only creates OSDs from existing logical volumes.
-
 
 Configurations
 ^^^^^^^^^^^^^^
