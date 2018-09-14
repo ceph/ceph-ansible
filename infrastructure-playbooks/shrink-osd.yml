@@ -167,7 +167,7 @@
       shell: |
         docker run --rm \
         --privileged=true \
-        --name ceph-osd-zap-{{ ansible_hostname }}-{{ item.0.stdout }} \
+        --name ceph-osd-zap-{{ hostvars[item.1]['ansible_hostname'] }}-{{ item.0.stdout }} \
         -v /dev/:/dev/ \
         -e OSD_DEVICE=/dev/{{ item.0.stdout }} \
         {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
@@ -181,13 +181,22 @@
 
     - name: zap ceph osd partitions from dedicated devices
       shell: |
-        docker run --rm \
-        --privileged=true \
-        --name ceph-osd-zap-{{ ansible_hostname }}-{{ item.1.stdout }} \
-        -v /dev/:/dev/ \
-        -e OSD_DEVICE={{ item.1.stdout }} \
-        {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
-        zap_device
+        for osd in {{ ' '.join(item.1.stdout_lines) }}
+        do
+          if [ -b "${osd}" ];
+          pkname=$(lsblk --nodeps -no PKNAME "${osd}");
+          then
+            echo zapping ceph osd partitions "${osd}";
+            docker run --rm \
+            --privileged=true \
+            --name ceph-osd-zap-{{ hostvars[item.0]['ansible_hostname'] }}-$(basename "${osd}") \
+            -v /dev/:/dev/ \
+            -e OSD_DEVICE="${osd}" \
+            {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+            zap_device;
+            partprobe /dev/"${pkname}";
+          fi
+        done
       with_together:
         - "{{ osd_hosts }}"
         - "{{ osd_to_kill_disks_dedicated.results }}"
@@ -234,11 +243,19 @@
 
     - name: zap dedicated partitions
       shell: |
-        pkname=$(lsblk --nodeps -no PKNAME {{ item.1.stdout_lines }})
-        wipefs --all {{ item.1.stdout_lines }}
-        dd if=/dev/zero of={{ item.1.stdout_lines }} bs=1M count=10
-        partition_nb=$(echo {{ item.1.stdout_lines }} | grep -oE '[0-9]{1,2}$')
-        sgdisk --delete $partition_nb /dev/$pkname
+          for osd in {{ ' '.join(item.1.stdout_lines) }}
+          do
+            if [ -b "${osd}" ];
+            then
+            echo zapping dedicated partition "${osd}"
+            pkname=$(lsblk --nodeps -no PKNAME "${osd}")
+            wipefs --all "${osd}"
+            dd if=/dev/zero of="${osd}" bs=1M count=10
+            partition_nb=$(echo "${osd}" | grep -oE '[0-9]{1,2}$')
+            sgdisk --delete $partition_nb /dev/"${pkname}"
+            partprobe /dev/"${pkname}"
+            fi
+          done
       with_together:
         - "{{ osd_hosts }}"
         - "{{ osd_to_kill_disks_dedicated_non_container.results }}"
