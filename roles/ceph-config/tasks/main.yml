@@ -27,16 +27,30 @@
         - lvm_volumes | default([]) | length > 0
         - osd_scenario == 'lvm'
 
-    # This is a best guess. Ideally we'd like to use `ceph-volume lvm batch --report` to get
-    # a more accurate number but the ceph.conf needs to be in place before that is possible.
-    # There is a tracker to add functionality to ceph-volume which would allow doing this
-    # without the need for a ceph.conf: http://tracker.ceph.com/issues/36088
-    - name: count number of osds for lvm batch scenario
-      set_fact:
-        num_osds: "{{ devices | length | int * osds_per_device | default(1) }}"
+    - name: run 'ceph-volume lvm batch --report' to see how many osds are to be created
+      ceph_volume:
+        cluster: "{{ cluster }}"
+        objectstore: "{{ osd_objectstore }}"
+        batch_devices: "{{ devices }}"
+        osds_per_device: "{{ osds_per_device | default(1) | int }}"
+        journal_size: "{{ journal_size }}"
+        block_db_size: "{{ block_db_size }}"
+        report: true
+        action: "batch"
+      register: lvm_batch_report
+      environment:
+        CEPH_VOLUME_DEBUG: 1
       when:
         - devices | default([]) | length > 0
         - osd_scenario == 'lvm'
+
+    - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report'
+      set_fact:
+        num_osds: "{{ (lvm_batch_report.stdout | from_json).osds | length | int }}"
+      when:
+        - devices | default([]) | length > 0
+        - osd_scenario == 'lvm'
+
     when:
       - inventory_hostname in groups.get(osd_group_name, [])
 
