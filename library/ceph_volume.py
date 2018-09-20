@@ -2,6 +2,7 @@
 import datetime
 import json
 
+
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
     'status': ['preview'],
@@ -207,7 +208,7 @@ def batch(module):
     if objectstore == "filestore":
         cmd.extend(["--journal-size", journal_size])
 
-    if objectstore == "bluestore" and block_db_size != -1:
+    if objectstore == "bluestore" and block_db_size != "-1":
         cmd.extend(["--block-db-size", block_db_size])
 
     if report:
@@ -442,8 +443,8 @@ def run_module():
         dmcrypt=dict(type='bool', required=False, default=False),
         batch_devices=dict(type='list', required=False, default=[]),
         osds_per_device=dict(type='int', required=False, default=1),
-        journal_size=dict(type='int', required=False, default=5120),
-        block_db_size=dict(type='int', required=False, default=-1),
+        journal_size=dict(type='str', required=False, default="5120"),
+        block_db_size=dict(type='str', required=False, default="-1"),
         report=dict(type='bool', required=False, default=False),
     )
 
