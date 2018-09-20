@@ -95,6 +95,19 @@ options:
             - Only applicable if action is 'batch'.
         required: false
         default: 1
+    journal_size:
+        description:
+            - The size in MB of filestore journals.
+            - Only applicable if action is 'batch'.
+        required: false
+        default: 5120
+    block_db_size:
+        description:
+            - The size in bytes of bluestore block db lvs.
+            - The default of -1 means to create them as big as possible.
+            - Only applicable if action is 'batch'.
+        required: false
+        default: -1
 
 
 author:
@@ -158,6 +171,8 @@ def batch(module):
     crush_device_class = module.params.get('crush_device_class', None)
     dmcrypt = module.params['dmcrypt']
     osds_per_device = module.params['osds_per_device']
+    journal_size = module.params['journal_size']
+    block_db_size = module.params['block_db_size']
 
     if not batch_devices:
         module.fail_json(msg='batch_devices must be provided if action is "batch"', changed=False, rc=1)
@@ -180,6 +195,12 @@ def batch(module):
 
     if osds_per_device > 1:
         cmd.extend(["--osds-per-device", osds_per_device])
+
+    if objectstore == "filestore":
+        cmd.extend(["--journal-size", journal_size])
+
+    if objectstore == "bluestore" and block_db_size != -1:
+        cmd.extend(["--block-db-size", block_db_size])
 
     cmd.extend(batch_devices)
 
@@ -407,6 +428,8 @@ def run_module():
         dmcrypt=dict(type='bool', required=False, default=False),
         batch_devices=dict(type='list', required=False, default=[]),
         osds_per_device=dict(type='int', required=False, default=1),
+        journal_size=dict(type='int', required=False, default=5120),
+        block_db_size=dict(type='int', required=False, default=-1),
     )
 
     module = AnsibleModule(
