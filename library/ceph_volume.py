@@ -108,6 +108,13 @@ options:
             - Only applicable if action is 'batch'.
         required: false
         default: -1
+    report:
+        description:
+            - If provided the --report flag will be passed to 'ceph-volume lvm batch'.
+            - No OSDs will be created.
+            - Results will be returned in json format.
+            - Only applicable if action is 'batch'.
+        required: false
 
 
 author:
@@ -173,6 +180,7 @@ def batch(module):
     osds_per_device = module.params['osds_per_device']
     journal_size = module.params['journal_size']
     block_db_size = module.params['block_db_size']
+    report = module.params['report']
 
     if not batch_devices:
         module.fail_json(msg='batch_devices must be provided if action is "batch"', changed=False, rc=1)
@@ -201,6 +209,12 @@ def batch(module):
 
     if objectstore == "bluestore" and block_db_size != -1:
         cmd.extend(["--block-db-size", block_db_size])
+
+    if report:
+        cmd.extend([
+            "--report",
+            "--format=json",
+        ])
 
     cmd.extend(batch_devices)
 
@@ -430,6 +444,7 @@ def run_module():
         osds_per_device=dict(type='int', required=False, default=1),
         journal_size=dict(type='int', required=False, default=5120),
         block_db_size=dict(type='int', required=False, default=-1),
+        report=dict(type='bool', required=False, default=False),
     )
 
     module = AnsibleModule(
