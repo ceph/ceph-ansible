@@ -1,6 +1,5 @@
 #!/bin/bash
 
-RETRIES="{{ handler_health_osd_check_retries }}"
 DELAY="{{ handler_health_osd_check_delay }}"
 CEPH_CLI="--name client.bootstrap-osd --keyring /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring --cluster {{ cluster }}"
 
@@ -78,6 +77,7 @@ for unit in $(systemctl list-units | grep -E "loaded * active" | grep -oE "ceph-
   {% endif %}
   SOCKET=/var/run/ceph/{{ cluster }}-osd.${osd_id}.asok
   while [ $COUNT -ne 0 ]; do
+    RETRIES="{{ handler_health_osd_check_retries }}"
     $docker_exec test -S "$SOCKET" && check_pgs && continue 2
     sleep $DELAY
     let COUNT=COUNT-1
