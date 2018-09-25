@@ -37,7 +37,7 @@ options:
         description:
             - The action to take. Either creating OSDs or zapping devices.
         required: true
-        choices: ['create', 'zap', 'batch']
+        choices: ['create', 'zap', 'batch', 'list']
         default: create
     data:
         description:
@@ -170,6 +170,52 @@ def get_wal(wal, wal_vg):
     if wal_vg:
         wal = "{0}/{1}".format(wal_vg, wal)
     return wal
+
+
+def _list(module):
+    cmd = [
+        'ceph-volume',
+        'lvm',
+        'list',
+        '--format=json',
+    ]
+
+    result = dict(
+        changed=False,
+        cmd=cmd,
+        stdout='',
+        stderr='',
+        rc='',
+        start='',
+        end='',
+        delta='',
+    )
+
+    if module.check_mode:
+        return result
+
+    startd = datetime.datetime.now()
+
+    rc, out, err = module.run_command(cmd, encoding=None)
+
+    endd = datetime.datetime.now()
+    delta = endd - startd
+
+    result = dict(
+        cmd=cmd,
+        stdout=out.rstrip(b"\r\n"),
+        stderr=err.rstrip(b"\r\n"),
+        rc=rc,
+        start=str(startd),
+        end=str(endd),
+        delta=str(delta),
+        changed=True,
+    )
+
+    if rc != 0:
+        module.fail_json(msg='non-zero return code', **result)
+
+    module.exit_json(**result)
 
 
 def batch(module):
@@ -430,7 +476,7 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         objectstore=dict(type='str', required=False, choices=['bluestore', 'filestore'], default='bluestore'),
-        action=dict(type='str', required=False, choices=['create', 'zap', 'batch'], default='create'),
+        action=dict(type='str', required=False, choices=['create', 'zap', 'batch', 'list'], default='create'),
         data=dict(type='str', required=False),
         data_vg=dict(type='str', required=False),
         journal=dict(type='str', required=False),
@@ -461,6 +507,8 @@ def run_module():
         zap_devices(module)
     elif action == "batch":
         batch(module)
+    elif action == "list":
+        _list(module)
 
     module.fail_json(msg='State must either be "present" or "absent".', changed=False, rc=1)
 
