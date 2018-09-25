@@ -116,6 +116,29 @@
       when:
         - containerized_deployment
 
+    - name: find osd dedicated devices - container
+      shell: >
+        docker run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
+        {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+        list | grep osd.{{ item.0 }} | grep -Eo '/dev/([hsv]d[a-z]{1,2})[0-9]{1,2}|/dev/nvme[0-9]n[0-9]p[0-9]'
+      with_together:
+        - "{{ osd_to_kill.split(',') }}"
+        - "{{ osd_hosts }}"
+      register: osd_to_kill_disks_dedicated
+      delegate_to: "{{ item.1 }}"
+      when:
+        - containerized_deployment
+
+    - name: find osd dedicated devices - non container
+      shell: ceph-disk list | grep osd.{{ item.0 }} | grep -Eo '/dev/([hsv]d[a-z]{1,2})[0-9]{1,2}|/dev/nvme[0-9]n[0-9]p[0-9]'
+      with_together:
+        - "{{ osd_to_kill.split(',') }}"
+        - "{{ osd_hosts }}"
+      register: osd_to_kill_disks_dedicated_non_container
+      delegate_to: "{{ item.1 }}"
+      when:
+        - not containerized_deployment
+
     # if nvme then osd_to_kill_disks is nvme0n1, we need nvme0
     # if ssd or hdd then osd_to_kill_disks is sda1, we need sda
     - name: stop osd services (container)
@@ -131,10 +154,12 @@
         - containerized_deployment
 
     - name: resolve parent device
-      command: lsblk --nodeps -no pkname "{{ item.stdout }}"
+      command: lsblk --nodeps -no pkname "{{ item.0.stdout }}"
       register: resolved_parent_device
-      with_items:
+      delegate_to: "{{ item.1 }}"
+      with_together:
         - "{{ osd_to_kill_disks.results }}"
+        - "{{ osd_hosts }}"
       when:
         - containerized_deployment
 
@@ -142,15 +167,43 @@
       shell: |
         docker run --rm \
         --privileged=true \
-        --name ceph-osd-zap-{{ ansible_hostname }}-{{ item.stdout }} \
+        --name ceph-osd-zap-{{ hostvars[item.1]['ansible_hostname'] }}-{{ item.0.stdout }} \
         -v /dev/:/dev/ \
-        -e OSD_DEVICE=/dev/{{ item.stdout }} \
+        -e OSD_DEVICE=/dev/{{ item.0.stdout }} \
         {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
         zap_device
-      with_items:
+      delegate_to: "{{ item.1 }}"
+      with_together:
         - "{{ resolved_parent_device.results }}"
+        - "{{ osd_hosts }}"
       when:
         - containerized_deployment
+
+    - name: zap ceph osd partitions from dedicated devices
+      shell: |
+        for osd in {{ ' '.join(item.1.stdout_lines) }}
+        do
+          if [ -b "${osd}" ];
+          pkname=$(lsblk --nodeps -no PKNAME "${osd}");
+          then
+            echo zapping ceph osd partitions "${osd}";
+            docker run --rm \
+            --privileged=true \
+            --name ceph-osd-zap-{{ hostvars[item.0]['ansible_hostname'] }}-$(basename "${osd}") \
+            -v /dev/:/dev/ \
+            -e OSD_DEVICE="${osd}" \
+            {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+            zap_device;
+            partprobe /dev/"${pkname}";
+          fi
+        done
+      with_together:
+        - "{{ osd_hosts }}"
+        - "{{ osd_to_kill_disks_dedicated.results }}"
+      delegate_to: "{{ item.0 }}"
+      when:
+        - containerized_deployment
+        - item.1 | length > 0
 
     - name: deactivating osd(s)
       command: ceph-disk deactivate --cluster {{ cluster }} --deactivate-by-id {{ item.0 }} --mark-out
@@ -187,6 +240,29 @@
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd rm {{ item }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ osd_to_kill.split(',') }}"
+
+    - name: zap dedicated partitions
+      shell: |
+          for osd in {{ ' '.join(item.1.stdout_lines) }}
+          do
+            if [ -b "${osd}" ];
+            then
+            echo zapping dedicated partition "${osd}"
+            pkname=$(lsblk --nodeps -no PKNAME "${osd}")
+            wipefs --all "${osd}"
+            dd if=/dev/zero of="${osd}" bs=1M count=10
+            partition_nb=$(echo "${osd}" | grep -oE '[0-9]{1,2}$')
+            sgdisk --delete $partition_nb /dev/"${pkname}"
+            partprobe /dev/"${pkname}"
+            fi
+          done
+      with_together:
+        - "{{ osd_hosts }}"
+        - "{{ osd_to_kill_disks_dedicated_non_container.results }}"
+      delegate_to: "{{ item.0 }}"
+      when:
+        - not containerized_deployment
+        - item.1 | length > 0
 
     - name: show ceph health
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s"

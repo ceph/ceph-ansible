@@ -162,11 +162,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       os.keypair_name = settings['os_keypair_name']
       os.security_groups = ['default']
 
-      if settings['os.networks'] then
+      if settings['os_networks'] then
         os.networks = settings['os_networks']
       end
 
-      if settings['os.floating_ip_pool'] then
+      if settings['os_floating_ip_pool'] then
         os.floating_ip_pool = settings['os_floating_ip_pool']
       end
 
