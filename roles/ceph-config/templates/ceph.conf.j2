@@ -17,7 +17,7 @@ fsid = {{ fsid }}
 {% if common_single_host_mode is defined and common_single_host_mode %}
 osd crush chooseleaf type = 0
 {% endif %}
-{% if ceph_version not in ['jewel', 'kraken', 'luminous'] and containerized_deployment %}
+{% if ceph_release not in ['jewel', 'kraken', 'luminous'] and containerized_deployment %}
 # let's force the admin socket the way it was so we can properly check for existing instances
 # also the line $cluster-$name.$pid.$cctid.asok is only needed when running multiple instances
 # of the same daemon, thing ceph-ansible cannot do at the time of writing
@@ -151,15 +151,29 @@ filestore xattr use omap = true
 {# else, default is false #}
 {% endif %}
 {% endif %}
+{% if osd_objectstore == 'bluestore' %}
+{% set _num_osds = num_osds | default(0) | int %}
+[osd]
+{% if is_hci and _num_osds > 0 %}
+{% if ansible_memtotal_mb * hci_safety_factor / _num_osds > osd_memory_target %} # hci_safety_factor is the safety factor for HCI deployments
+{% set _osd_memory_target = (ansible_memtotal_mb * hci_safety_factor / _num_osds) %}
+{% endif %}
+{% elif _num_osds > 0 %}
+{% if ansible_memtotal_mb * non_hci_safety_factor / _num_osds > osd_memory_target %} # non_hci_safety_factor is the safety factor for dedicated nodes
+{% set _osd_memory_target = (ansible_memtotal_mb * non_hci_safety_factor / _num_osds) %}
+{% endif %}
+{% endif %}
+osd memory target = {{ _osd_memory_target | default(osd_memory_target) }}
+{% endif %}
 {% endif %}
 
 {% if inventory_hostname in groups.get(rgw_group_name, []) %}
 {% for host in groups[rgw_group_name] %}
-{% set rgw_hostname = hostvars[host]['rgw_hostname'] | default(ansible_hostname) %}
+{% set _rgw_hostname = hostvars[host]['rgw_hostname'] | default(hostvars[host]['ansible_hostname']) %}
 {# {{ hostvars[host]['rgw_hostname'] }} for backward compatibility, fqdn issues. See bz1580408 #}
-[client.rgw.{{ rgw_hostname }}]
-host = {{ rgw_hostname }}
-keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_hostname }}/keyring
+[client.rgw.{{ _rgw_hostname }}]
+host = {{ _rgw_hostname }}
+keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname }}/keyring
 log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
 {% if hostvars[host]['radosgw_address_block'] is defined and hostvars[host]['radosgw_address_block'] != 'subnet' %}
     {% if ip_version == 'ipv4' %}
@@ -205,11 +219,11 @@ rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type =
 
 {% if inventory_hostname in groups.get(nfs_group_name, []) and inventory_hostname not in groups.get(rgw_group_name, []) %}
 {% for host in groups[nfs_group_name] %}
-{% set rgw_hostname = hostvars[host]['rgw_hostname'] | default(ansible_hostname) %}
+{% set _rgw_hostname = hostvars[host]['rgw_hostname'] | default(hostvars[host]['ansible_hostname']) %}
 {% if nfs_obj_gw %}
-[client.rgw.{{ rgw_hostname }}]
-host = {{ rgw_hostname }}
-keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_hostname }}/keyring
+[client.rgw.{{ _rgw_hostname }}]
+host = {{ _rgw_hostname }}
+keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname }}/keyring
 log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
 {% endif %}
 {% endfor %}
