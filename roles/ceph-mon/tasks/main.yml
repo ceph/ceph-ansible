@@ -6,11 +6,11 @@
     - containerized_deployment
 
 - name: include deploy_monitors.yml
-  include: deploy_monitors.yml
+  include_tasks: deploy_monitors.yml
   when: not containerized_deployment
 
 - name: include start_monitor.yml
-  include: start_monitor.yml
+  import_tasks: start_monitor.yml
   when: not containerized_deployment
 
 - name: include ceph_keys.yml
@@ -20,7 +20,7 @@
   static: no
 
 - name: include secure_cluster.yml
-  include: secure_cluster.yml
+  include_tasks: secure_cluster.yml
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   when:
@@ -28,17 +28,17 @@
     - not containerized_deployment
 
 - name: include docker/main.yml
-  include: docker/main.yml
+  include_tasks: docker/main.yml
   when: containerized_deployment
 
 - name: crush_rules.yml
-  include: crush_rules.yml
+  include_tasks: crush_rules.yml
   when:
     - crush_rule_config
 
 - name: include set_osd_pool_default_pg_num.yml
-  include: set_osd_pool_default_pg_num.yml
+  include_tasks: set_osd_pool_default_pg_num.yml
 
 - name: include calamari.yml
-  include: calamari.yml
+  include_tasks: calamari.yml
   when: calamari
