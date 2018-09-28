@@ -11,6 +11,7 @@ DOCKER_ENV=""
 #############
 # FUNCTIONS #
 #############
+{% if osd_scenario != 'lvm' -%}
 {% if disk_list.get('rc') == 0 -%}
 function expose_partitions () {
 DOCKER_ENV=$(docker run --rm --net=host --name expose_partitions_${1} --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z -e CLUSTER={{ cluster }} -e OSD_DEVICE=/dev/${1} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list)
@@ -51,6 +52,7 @@ function expose_partitions {
     exit 1
   fi
 }
+{% endif -%}
 {% endif -%}
 
 expose_partitions "$1"
