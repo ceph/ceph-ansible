@@ -36,6 +36,24 @@
         - mon_group_name in group_names
         - monportstate.rc == 0
 
+    - name: check if osd range is not filtered on the cluster interface
+      local_action:
+        module: shell
+          set -o pipefail && nmap -p 6800-7300 {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} | grep -sqo -e filtered -e '0 hosts up'
+      changed_when: false
+      failed_when: false
+      register: osdrangestate
+      check_mode: no
+      when:
+        - osd_group_name in group_names
+
+    - name: fail if osd range is filtered on the cluster interface
+      fail:
+          msg: "Please allow range from 6800 to 7300 on your firewall to reach out to your osd nodes on the cluster interface."
+      when:
+        - (osd_group_name in group_names or mgr_group_name in group_names or mds_group_name in group_names)
+        - osdrangestate.rc == 0
+
     - name: check if osd, mds and mgr range is not filtered
       local_action:
         module: shell
