@@ -16,82 +16,78 @@
   when:
     - nmapexist.rc != 0
 
-- name: check if monitor port is not filtered
-  local_action:
-    module: shell
-      set -o pipefail && nmap -p 6789 {{ hostvars[inventory_hostname]['ansible_' + monitor_interface]['ipv4']['address'] if hostvars[inventory_hostname]['ansible_' + monitor_interface] is defined else hostvars[inventory_hostname]['monitor_address'] }} | grep -sqo -e filtered -e '0 hosts up'
-  changed_when: false
-  failed_when: false
-  register: monportstate
-  check_mode: no
-  when:
-    - mon_group_name in group_names
-    - nmapexist.rc == 0
+- name: perform firewall checks
+  block:
+    - name: check if monitor port is not filtered
+      local_action:
+        module: shell
+          set -o pipefail && nmap -p 6789 {{ hostvars[inventory_hostname]['ansible_' + monitor_interface]['ipv4']['address'] if hostvars[inventory_hostname]['ansible_' + monitor_interface] is defined else hostvars[inventory_hostname]['monitor_address'] }} | grep -sqo -e filtered -e '0 hosts up'
+      changed_when: false
+      failed_when: false
+      register: monportstate
+      check_mode: no
+      when:
+        - mon_group_name in group_names
 
-- name: fail if monitor port is filtered
-  fail:
-      msg: "Please allow port 6789 on your firewall to reach out to your monitor nodes."
-  when:
-    - mon_group_name in group_names
-    - nmapexist.rc == 0
-    - monportstate.rc == 0
+    - name: fail if monitor port is filtered
+      fail:
+          msg: "Please allow port 6789 on your firewall to reach out to your monitor nodes."
+      when:
+        - mon_group_name in group_names
+        - monportstate.rc == 0
 
-- name: check if osd, mds and mgr range is not filtered
-  local_action:
-    module: shell
-      set -o pipefail && nmap -p 6800-7300 {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} | grep -sqo -e filtered -e '0 hosts up'
-  changed_when: false
-  failed_when: false
-  register: osdrangestate
-  check_mode: no
-  when:
-    - (osd_group_name in group_names or mgr_group_name in group_names or mds_group_name in group_names)
-    - nmapexist.rc == 0
+    - name: check if osd, mds and mgr range is not filtered
+      local_action:
+        module: shell
+          set -o pipefail && nmap -p 6800-7300 {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} | grep -sqo -e filtered -e '0 hosts up'
+      changed_when: false
+      failed_when: false
+      register: osdrangestate
+      check_mode: no
+      when:
+        - (osd_group_name in group_names or mgr_group_name in group_names or mds_group_name in group_names)
 
-- name: fail if osd, mds and mgr range is filtered
-  fail:
-      msg: "Please allow range from 6800 to 7300 on your firewall to reach out to your osd/mds/mgr nodes."
-  when:
-    - (osd_group_name in group_names or mgr_group_name in group_names or mds_group_name in group_names)
-    - nmapexist.rc == 0
-    - osdrangestate.rc == 0
+    - name: fail if osd, mds and mgr range is filtered
+      fail:
+          msg: "Please allow range from 6800 to 7300 on your firewall to reach out to your osd/mds/mgr nodes."
+      when:
+        - (osd_group_name in group_names or mgr_group_name in group_names or mds_group_name in group_names)
+        - osdrangestate.rc == 0
 
-- name: check if rados gateway port is not filtered
-  local_action:
-    module: shell
-      set -o pipefail && nmap -p {{ radosgw_frontend_port }} {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} | grep -sqo -e filtered -e '0 hosts up'
-  changed_when: false
-  failed_when: false
-  register: rgwportstate
-  check_mode: no
-  when:
-    - rgw_group_name in group_names
-    - nmapexist.rc == 0
+    - name: check if rados gateway port is not filtered
+      local_action:
+        module: shell
+          set -o pipefail && nmap -p {{ radosgw_frontend_port }} {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} | grep -sqo -e filtered -e '0 hosts up'
+      changed_when: false
+      failed_when: false
+      register: rgwportstate
+      check_mode: no
+      when:
+        - rgw_group_name in group_names
 
-- name: fail if rados gateway port is filtered
-  fail:
-      msg: "Please allow port {{ radosgw_frontend_port }} on your firewall to reach out to your rados gateway nodes."
-  when:
-    - rgw_group_name in group_names
-    - nmapexist.rc == 0
-    - rgwportstate.rc == 0
+    - name: fail if rados gateway port is filtered
+      fail:
+          msg: "Please allow port {{ radosgw_frontend_port }} on your firewall to reach out to your rados gateway nodes."
+      when:
+        - rgw_group_name in group_names
+        - rgwportstate.rc == 0
 
-- name: check if nfs ports are not filtered
-  local_action:
-    module: shell
-      set -o pipefail && nmap -p 111,2049 {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} | grep -sqo -e filtered -e '0 hosts up'
-  changed_when: false
-  failed_when: false
-  register: nfsportstate
-  check_mode: no
-  when:
-    - nfs_group_name in group_names
-    - nmapexist.rc == 0
+    - name: check if nfs ports are not filtered
+      local_action:
+        module: shell
+          set -o pipefail && nmap -p 111,2049 {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} | grep -sqo -e filtered -e '0 hosts up'
+      changed_when: false
+      failed_when: false
+      register: nfsportstate
+      check_mode: no
+      when:
+        - nfs_group_name in group_names
 
-- name: fail if nfs ports are filtered
-  fail:
-      msg: "Please allow ports 111 and 2049 on your firewall to reach out to your ceph nfs nodes."
+    - name: fail if nfs ports are filtered
+      fail:
+          msg: "Please allow ports 111 and 2049 on your firewall to reach out to your ceph nfs nodes."
+      when:
+        - nfs_group_name in group_names
+        - nfsportstate.rc == 0
   when:
-    - nfs_group_name in group_names
     - nmapexist.rc == 0
-    - nfsportstate.rc == 0
