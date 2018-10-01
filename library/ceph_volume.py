@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import datetime
 import json
+import copy
 
 
 ANSIBLE_METADATA = {
@@ -257,11 +258,10 @@ def batch(module):
     if objectstore == "bluestore" and block_db_size != "-1":
         cmd.extend(["--block-db-size", block_db_size])
 
-    if report:
-        cmd.extend([
-            "--report",
-            "--format=json",
-        ])
+    report_flags = [
+        "--report",
+        "--format=json",
+    ]
 
     cmd.extend(batch_devices)
 
@@ -281,10 +281,22 @@ def batch(module):
 
     startd = datetime.datetime.now()
 
-    rc, out, err = module.run_command(cmd, encoding=None)
+    report_cmd = copy.copy(cmd)
+    report_cmd.extend(report_flags)
+
+    rc, out, err = module.run_command(report_cmd, encoding=None)
+    report_result = json.loads(out)
+    if not report:
+        rc, out, err = module.run_command(cmd, encoding=None)
+    else:
+        cmd = report_cmd
 
     endd = datetime.datetime.now()
     delta = endd - startd
+
+    changed = True
+    if not report:
+        changed = report_result['changed']
 
     result = dict(
         cmd=cmd,
@@ -294,7 +306,7 @@ def batch(module):
         start=str(startd),
         end=str(endd),
         delta=str(delta),
-        changed=True,
+        changed=changed,
     )
 
     if rc != 0:
