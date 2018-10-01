@@ -1,10 +1,19 @@
 ---
-- name: create filesystem pools
-  command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pgs }}"
-  changed_when: false
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  with_items:
-    - "{{ cephfs_pools }}"
+- name: filesystem pools related tasks
+  block:
+    - name: create filesystem pools
+      command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pgs }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items:
+        - "{{ cephfs_pools }}"
+
+    - name: customize pool size
+      command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} size {{ item.size | default('') }}"
+      with_items: "{{ cephfs_pools | unique }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: item.size | default ("") != ""
 
 - name: check if ceph filesystem already exists
   command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} fs get {{ cephfs }}"

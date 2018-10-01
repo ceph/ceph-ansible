@@ -24,11 +24,21 @@
   include_tasks: docker/main.yml
   when: containerized_deployment
 
-- name: create rgw pools if rgw_create_pools is defined
-  command: "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num }}"
-  changed_when: false
-  with_dict: "{{ rgw_create_pools }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
+- name: rgw pool realted tasks
   when:
     - rgw_create_pools is defined
+  block:
+    - name: create rgw pools if rgw_create_pools is defined
+      command: "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num }}"
+      changed_when: false
+      with_dict: "{{ rgw_create_pools }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+
+    - name: customize pool size
+      command: "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool set {{ item.key }} size {{ item.size | default('') }}"
+      with_dict: "{{ rgw_create_pools }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      run_once: true
+      when: item.size | default ("") != ""
