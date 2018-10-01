@@ -9,42 +9,53 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   until: wait_for_all_osds_up.rc == 0
 
-- name: list existing pool(s)
-  command: >
-    {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
-    osd pool get {{ item.name }} size
-  with_items: "{{ openstack_pools | unique }}"
-  register: created_pools
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  failed_when: false
+- name: pool related tasks
+  block:
+    - name: list existing pool(s)
+      command: >
+        {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
+        osd pool get {{ item.name }} size
+      with_items: "{{ openstack_pools | unique }}"
+      register: created_pools
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      failed_when: false
 
-- name: create openstack pool(s)
-  command: >
-    {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
-    osd pool create {{ item.0.name }}
-    {{ item.0.pg_num }}
-    {{ item.0.pgp_num | default(item.0.pg_num) }}
-    {{ 'replicated_rule' if item.0.rule_name | default('replicated_rule') == '' else item.0.rule_name | default('replicated_rule') }}
-    {{ 1 if item.0.type|default(1) == 'replicated' else 3 if item.0.type|default(1) == 'erasure' else item.0.type|default(1) }}
-    {%- if (item.0.type | default("1") == '3' or item.0.type | default("1") == 'erasure') and item.0.erasure_profile != '' %}
-    {{ item.0.erasure_profile }}
-    {%- endif %}
-    {{ item.0.expected_num_objects | default('') }}
-  with_together:
-    - "{{ openstack_pools | unique }}"
-    - "{{ created_pools.results }}"
-  changed_when: false
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  when:
-    - item.1.get('rc', 0) != 0
+    - name: create openstack pool(s)
+      command: >
+        {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
+        osd pool create {{ item.0.name }}
+        {{ item.0.pg_num }}
+        {{ item.0.pgp_num | default(item.0.pg_num) }}
+        {{ 'replicated_rule' if item.0.rule_name | default('replicated_rule') == '' else item.0.rule_name | default('replicated_rule') }}
+        {{ 1 if item.0.type|default(1) == 'replicated' else 3 if item.0.type|default(1) == 'erasure' else item.0.type|default(1) }}
+        {%- if (item.0.type | default("1") == '3' or item.0.type | default("1") == 'erasure') and item.0.erasure_profile != '' %}
+        {{ item.0.erasure_profile }}
+        {%- endif %}
+        {{ item.0.expected_num_objects | default('') }}
+      with_together:
+        - "{{ openstack_pools | unique }}"
+        - "{{ created_pools.results }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when:
+        - item.1.get('rc', 0) != 0
 
-- name: assign application to pool(s)
-  command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
-  with_items: "{{ openstack_pools | unique }}"
-  changed_when: false
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  when:
-    - item.application is defined
+    - name: customize pool size
+      command: >
+        {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
+        osd pool set {{ item.name }} size {{ item.size | default('') }}
+      with_items: "{{ openstack_pools | unique }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: item.size | default ("") != ""
+
+    - name: assign application to pool(s)
+      command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
+      with_items: "{{ openstack_pools | unique }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when:
+        - item.application is defined
 
 - name: create openstack cephx key(s)
   ceph_key:
@@ -82,3 +93,4 @@
     - cephx
     - openstack_config
     - item.0 != groups[mon_group_name]
+

@@ -346,8 +346,8 @@ cephfs_data: cephfs_data # name of the data pool for a given filesystem
 cephfs_metadata: cephfs_metadata # name of the metadata pool for a given filesystem
 
 cephfs_pools:
-  - { name: "{{ cephfs_data }}", pgs: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}" }
-  - { name: "{{ cephfs_metadata }}", pgs: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}" }
+  - { name: "{{ cephfs_data }}", pgs: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}", size: "" }
+  - { name: "{{ cephfs_metadata }}", pgs: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}", size: "" }
 
 ## OSD options
 #
@@ -550,6 +550,7 @@ openstack_glance_pool:
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
+  size: ""
 openstack_cinder_pool:
   name: "volumes"
   pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
@@ -559,6 +560,7 @@ openstack_cinder_pool:
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
+  size: ""
 openstack_nova_pool:
   name: "vms"
   pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
@@ -568,6 +570,7 @@ openstack_nova_pool:
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
+  size: ""
 openstack_cinder_backup_pool:
   name: "backups"
   pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
@@ -577,6 +580,7 @@ openstack_cinder_backup_pool:
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
+  size: ""
 openstack_gnocchi_pool:
   name: "metrics"
   pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
@@ -586,6 +590,27 @@ openstack_gnocchi_pool:
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
+  size: ""
+openstack_cephfs_data_pool:
+  name: "manila_data"
+  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  rule_name: "replicated_rule"
+  type: 1
+  erasure_profile: ""
+  expected_num_objects: ""
+  application: "rbd"
+  size: ""
+openstack_cephfs_metadata_pool:
+  name: "manila_metadata"
+  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  rule_name: "replicated_rule"
+  type: 1
+  erasure_profile: ""
+  expected_num_objects: ""
+  application: "rbd"
+  size: ""
 
 openstack_pools:
   - "{{ openstack_glance_pool }}"
@@ -593,6 +618,8 @@ openstack_pools:
   - "{{ openstack_nova_pool }}"
   - "{{ openstack_cinder_backup_pool }}"
   - "{{ openstack_gnocchi_pool }}"
+  - "{{ openstack_cephfs_data_pool }}"
+  - "{{ openstack_cephfs_metadata_pool }}"
 
 
 # The value for 'key' can be a pre-generated key,
