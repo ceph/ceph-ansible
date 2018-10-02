@@ -44,11 +44,11 @@ mon initial members = {% for host in groups[mon_group_name] %}
 {% if not containerized_deployment and not containerized_deployment_with_kv -%}
 mon host = {% if nb_mon > 0 %}
   {% for host in groups[mon_group_name] -%}
-    {% if monitor_address_block != 'subnet' %}
+    {% if hostvars[host]['monitor_address_block'] is defined and hostvars[host]['monitor_address_block'] != 'subnet' %}
       {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}
+        {{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(hostvars[host]['monitor_address_block']) | first }}
       {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}]
+        [{{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(hostvars[host]['monitor_address_block']) | first }}]
       {%- endif %}
     {% elif hostvars[host]['monitor_address'] is defined and hostvars[host]['monitor_address'] != '0.0.0.0' -%}
       {% if ip_version == 'ipv4' -%}
@@ -84,11 +84,11 @@ log file = /dev/null
 mon cluster log file = /dev/null
 mon host = {% if nb_mon > 0 %}
 {% for host in groups[mon_group_name] -%}
-    {% if monitor_address_block != 'subnet' %}
+    {% if hostvars[host]['monitor_address_block'] is defined and hostvars[host]['monitor_address_block'] != 'subnet' %}
       {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}
+        {{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(hostvars[host]['monitor_address_block']) | first }}
       {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}]
+        [{{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(hostvars[host]['monitor_address_block']) | first }}]
       {%- endif %}
     {% elif hostvars[host]['monitor_address'] is defined and hostvars[host]['monitor_address'] != '0.0.0.0' -%}
       {% if ip_version == 'ipv4' -%}
