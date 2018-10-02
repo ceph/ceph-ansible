@@ -285,7 +285,18 @@ def batch(module):
     report_cmd.extend(report_flags)
 
     rc, out, err = module.run_command(report_cmd, encoding=None)
-    report_result = json.loads(out)
+    try:
+        report_result = json.loads(out)
+    except ValueError:
+        result = dict(
+            cmd=report_cmd,
+            stdout=out.rstrip(b"\r\n"),
+            stderr=err.rstrip(b"\r\n"),
+            rc=rc,
+            changed=True,
+        )
+        module.fail_json(msg='non-zero return code', **result)
+
     if not report:
         rc, out, err = module.run_command(cmd, encoding=None)
     else:
