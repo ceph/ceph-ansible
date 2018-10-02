@@ -24,7 +24,7 @@ from _v2_config_template import *
 #  needed based on the ansible version calling the plugin.
 sys.path.append(os.path.dirname(__file__))
 
-#if LooseVersion(__ansible_version__) < LooseVersion("2.0"):
-#    from _v1_config_template import *
-#else:
-#    from _v2_config_template import *
+if LooseVersion(__ansible_version__) < LooseVersion("2.0"):
+    from _v1_config_template import *
+else:
+    from _v2_config_template import *
