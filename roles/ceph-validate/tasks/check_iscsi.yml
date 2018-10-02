@@ -1,0 +1,10 @@
+---
+- name: fail if unsupported chap configuration
+  fail:
+    msg: "Mixing clients with CHAP enabled and disabled is not supported."
+  with_items: "{{ client_connections | default({})  }}"
+  when:
+    - item.status is defined
+    - item.status == "present"
+    - item.chap != ''
+    - " '' in client_connections | selectattr('status', 'match', 'present') | map(attribute='chap') | list"

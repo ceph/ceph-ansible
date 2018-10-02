@@ -1,4 +1,7 @@
 ---
+- name: include create_ceph_initial_dirs.yml
+  include: create_ceph_initial_dirs.yml
+
 # ceph-common
 - block:
   - name: create ceph conf directory
@@ -10,12 +13,12 @@
       mode: "0755"
 
   - block:
-    - name: count number of osds for non-lvm scenario
+    - name: count number of osds for ceph-disk scenarios
       set_fact:
         num_osds: "{{ devices | length | int }}"
       when:
         - devices | default([]) | length > 0
-        - (osd_scenario == 'collocated' or osd_scenario == 'non-collocated')
+        - osd_scenario in ['collocated', 'non-collocated']
 
     - name: count number of osds for lvm scenario
       set_fact:
@@ -24,16 +27,13 @@
         - lvm_volumes | default([]) | length > 0
         - osd_scenario == 'lvm'
 
-    - name: get number of osds for lvm-batch scenario
-      command: "ceph-volume lvm batch --report --format=json --osds-per-device osds_per_device {{ devices | join(' ') }}"
-      register: lvm_batch_devices
-      when:
-        - devices | default([]) | length > 0
-        - osd_scenario == 'lvm'
-
-    - name: set_fact num_osds
+    # This is a best guess. Ideally we'd like to use `ceph-volume lvm batch --report` to get
+    # a more accurate number but the ceph.conf needs to be in place before that is possible.
+    # There is a tracker to add functionality to ceph-volume which would allow doing this
+    # without the need for a ceph.conf: http://tracker.ceph.com/issues/36088
+    - name: count number of osds for lvm batch scenario
       set_fact:
-        num_osds: "{{ (lvm_batch_devices.stdout | from_json).osds | length | int }}"
+        num_osds: "{{ devices | length | int * osds_per_device | default(1) }}"
       when:
         - devices | default([]) | length > 0
         - osd_scenario == 'lvm'

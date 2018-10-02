@@ -97,9 +97,14 @@ suse_package_dependencies:
 # Whether or not to install the ceph-test package.
 ceph_test: false
 
-# Enable the ntp service by default to avoid clock skew on
-# ceph nodes
+# Enable the ntp service by default to avoid clock skew on ceph nodes
+# Disable if an appropriate NTP client is already installed and configured
 ntp_service_enabled: true
+
+# Set type of NTP client daemon to use, valid entries are chronyd, ntpd or timesyncd
+# Note that this selection is currently ignored on containerized deployments
+ntp_daemon_type: timesyncd
+
 
 # Set uid/gid to default '64045' for bootstrap directories.
 # '64045' is used for debian based distros. It must be set to 167 in case of rhel based distros.
@@ -362,7 +367,7 @@ cluster_network: "{{ public_network | regex_replace(' ', '') }}"
 osd_mkfs_type: xfs
 osd_mkfs_options_xfs: -f -i size=2048
 osd_mount_options_xfs: noatime,largeio,inode64,swalloc
-osd_objectstore: filestore
+osd_objectstore: bluestore
 
 # xattrs. by default, 'filestore xattr use omap' is set to 'true' if
 # 'osd_mkfs_type' is set to 'ext4'; otherwise it isn't set. This can
@@ -487,7 +492,7 @@ ceph_conf_overrides: {}
 # OS TUNING #
 #############
 
-disable_transparent_hugepage: true
+disable_transparent_hugepage: "{{ false if osd_objectstore == 'bluestore' else true }}"
 os_tuning_params:
   - { name: fs.file-max, value: 26234859 }
   - { name: vm.zone_reclaim_mode, value: 0 }
