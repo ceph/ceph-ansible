@@ -17,6 +17,7 @@ import sys
 
 from distutils.version import LooseVersion
 from ansible import __version__ as __ansible_version__
+from _v2_config_template import *
 
 # This appends the sys path with the file path which is used for the
 #  import of the specific verion of the config_template action plugin

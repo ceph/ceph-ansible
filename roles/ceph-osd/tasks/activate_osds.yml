@@ -89,7 +89,7 @@
     - ansible_selinux != false
     - ansible_selinux['status'] == 'enabled'
     - ansible_selinux['config_mode'] != 'disabled'
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+    - ceph_release_num[ceph_release] < ceph_release_num.infernalis
 
 - name: start and add that the osd service(s) to the init sequence (before infernalis)
   service:
@@ -98,17 +98,17 @@
     enabled: yes
   when:
     - ansible_distribution != "Ubuntu"
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+    - ceph_release_num[ceph_release] < ceph_release_num.infernalis
 
 - name: get osd id (for or after infernalis)
   shell: 'ls /var/lib/ceph/osd/ | grep -oP "\d+$"'
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: osd_id
   when:
     - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+    - ceph_release_num[ceph_release] > ceph_release_num.hammer
 
 - name: enable the osd service (for or after infernalis)
   command: systemctl enable ceph-osd@{{ item }}
@@ -117,7 +117,7 @@
   with_items: "{{ (osd_id|default({})).stdout_lines|default([]) }}"
   when:
     - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+    - ceph_release_num[ceph_release] > ceph_release_num.hammer
 
 - name: start and add that the osd service(s) to the init sequence (for or after infernalis)
   service:
@@ -128,4 +128,4 @@
   changed_when: false
   when:
     - use_systemd
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+    - ceph_release_num[ceph_release] > ceph_release_num.hammer

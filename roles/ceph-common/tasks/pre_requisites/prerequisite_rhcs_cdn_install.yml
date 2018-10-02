@@ -3,14 +3,14 @@
   command: subscription-manager identity
   register: subscription
   changed_when: false
-  always_run: true
+  check_mode: no
 
 - name: check if the red hat storage monitor repo is already present
   shell: yum --noplugins --cacheonly repolist | grep -sq rhel-7-server-rhceph-{{ ceph_rhcs_version }}-mon-rpms
   changed_when: false
   failed_when: false
   register: rhcs_mon_repo
-  always_run: true
+  check_mode: no
   when: mon_group_name in group_names
 
 - name: enable red hat storage monitor repository
@@ -25,7 +25,7 @@
   changed_when: false
   failed_when: false
   register: rhcs_osd_repo
-  always_run: true
+  check_mode: no
   when: osd_group_name in group_names
 
 - name: enable red hat storage osd repository
@@ -40,7 +40,7 @@
   changed_when: false
   failed_when: false
   register: rhcs_rgw_mds_repo
-  always_run: true
+  check_mode: no
   when: (rgw_group_name in group_names or mds_group_name in group_names)
 
 - name: enable red hat storage rados gateway / mds repository

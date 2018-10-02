@@ -31,7 +31,7 @@
     state: present
   when:
     - ansible_os_family != "Ubuntu"
-    - ceph_release_num.{{ ceph_stable_release }} < ceph_release_num.infernalis
+    - ceph_release_num[ceph_stable_release] < ceph_release_num.infernalis
  
 # NOTE (jsaintrocc): can't use service module because we need to use the 
 # legacy systemv init for older ceph releases.  Even when the os supports systemd
@@ -41,7 +41,7 @@
   changed_when: false
   when:
     - ansible_os_family != "Ubuntu"
-    - ceph_release_num.{{ ceph_stable_release }} < ceph_release_num.infernalis
+    - ceph_release_num[ceph_stable_release] < ceph_release_num.infernalis
 
 - name: start and add that the monitor service to the init sequence (for or after infernalis)
   command: systemctl enable ceph-mon@{{ monitor_name }}
