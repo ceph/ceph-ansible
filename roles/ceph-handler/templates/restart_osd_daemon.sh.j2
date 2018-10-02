@@ -66,11 +66,15 @@ for unit in $(systemctl list-units | grep -E "loaded * active" | grep -oE "ceph-
   # We need to wait because it may take some time for the socket to actually exists
   COUNT=10
   # Wait and ensure the socket exists after restarting the daemon
-  {% if containerized_deployment -%}
+  {% if containerized_deployment and osd_scenario != 'lvm' -%}
   id=$(get_dev_name "$unit")
   container_id=$(get_docker_id_from_dev_name "$id")
   wait_for_socket_in_docker "$container_id"
   osd_id=$whoami
+  docker_exec="docker exec $container_id"
+  {% elif containerized_deployment and osd_scenario == 'lvm' %}
+  osd_id=$(echo ${unit#ceph-osd@} | grep -oE '[0-9]+')
+  container_id=$(get_docker_id_from_dev_name "ceph-osd-${osd_id}")
   docker_exec="docker exec $container_id"
   {% else %}
   osd_id=$(echo ${unit#ceph-osd@} | grep -oE '[0-9]+')
