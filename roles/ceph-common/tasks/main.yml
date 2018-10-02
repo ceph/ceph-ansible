@@ -7,84 +7,64 @@
   tags:
     - always
 
-- include: ./checks/check_firewall.yml
+- include_tasks: ./checks/check_firewall.yml
   when: check_firewall
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: ./misc/system_tuning.yml
+- include_tasks: ./misc/system_tuning.yml
   when: osd_group_name in group_names
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: ./pre_requisites/prerequisite_rhcs_iso_install.yml
+- include_tasks: ./pre_requisites/prerequisite_rhcs_iso_install.yml
   when:
     - ceph_rhcs
     - ceph_rhcs_iso_install
   tags:
     - package-install
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: ./pre_requisites/prerequisite_rhcs_cdn_install.yml
+- include_tasks: ./pre_requisites/prerequisite_rhcs_cdn_install.yml
   when:
     - ceph_rhcs
     - ceph_rhcs_cdn_install
     - ansible_os_family == "RedHat"
   tags:
     - package-install
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: ./installs/install_on_redhat.yml
+- include_tasks: ./installs/install_on_redhat.yml
   when:
     ansible_os_family == 'RedHat' and
     not ceph_rhcs_iso_install
   tags:
     - package-install
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: ./installs/install_rh_storage_on_redhat.yml
+- include_tasks: ./installs/install_rh_storage_on_redhat.yml
   when:
     - ansible_distribution == "RedHat"
     - ceph_rhcs
   tags:
     - package-install
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: ./installs/install_on_debian.yml
+- include_tasks: ./installs/install_on_debian.yml
   when:
     - ansible_os_family == 'Debian'
     - not ceph_rhcs
   tags:
     - package-install
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: ./installs/install_rh_storage_on_debian.yml
+- include_tasks: ./installs/install_rh_storage_on_debian.yml
   when:
     - ansible_os_family == 'Debian'
     - ceph_rhcs
   tags:
     - package-install
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: ./misc/ntp_redhat.yml
+- include_tasks: ./misc/ntp_redhat.yml
   when:
     - ansible_os_family == 'RedHat'
     - ntp_service_enabled
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: ./misc/ntp_debian.yml
+- include_tasks: ./misc/ntp_debian.yml
   when:
     - ansible_os_family == 'Debian'
     - ntp_service_enabled
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
 - include: facts.yml
 - include: ./checks/check_socket.yml

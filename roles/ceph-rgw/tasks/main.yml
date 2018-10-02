@@ -1,31 +1,21 @@
 ---
-- include: pre_requisite.yml
+- include_tasks: pre_requisite.yml
   when: not rgw_containerized_deployment
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: openstack-keystone.yml
+- include_tasks: openstack-keystone.yml
   when:
     - radosgw_keystone|bool
     - radosgw_keystone_ssl|bool
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: start_radosgw.yml
+- include_tasks: start_radosgw.yml
   when: not rgw_containerized_deployment
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
 - name: include rgw multisite playbooks
-  include: multisite/main.yml
+  include_tasks: multisite/main.yml
   when:
     - rgw_zone is defined
     - rgw_multisite
     - ( ceph_release_num.{{ ceph_release }} >= ceph_release_num.jewel )
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: ./docker/main.yml
+- include_tasks: ./docker/main.yml
   when: rgw_containerized_deployment
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False

@@ -10,26 +10,22 @@
 # allow 2-digit partition numbers so fast SSDs can be shared by > 9 disks
 # for SSD journals.
 
-- include: ./check_devices_static.yml
+- include_tasks: ./check_devices_static.yml
   when:
     - not osd_auto_discovery
     - not osd_directory
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
-- include: ./check_devices_auto.yml
+- include_tasks: ./check_devices_auto.yml
   when:
     - osd_auto_discovery
     - not osd_directory
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
 - name: check the journal device is partition
   shell: "readlink -f {{ item }} | egrep '/dev/([hsv]d[a-z]{1,2}|cciss/c[0-9]d[0-9]p|nvme[0-9]n[0-9]p)[0-9]{1,2}$'"
   with_items: "{{ raw_journal_devices }}"
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: journal_ispartition_results
 
 - name: check the partition status of the journal devices
@@ -39,7 +35,7 @@
     - "{{ raw_journal_devices|unique }}"
   changed_when: false
   failed_when: false
-  always_run: true
+  check_mode: no
   register: journal_partition_status
   when:
     - (raw_multi_journal or dmcrypt_dedicated_journal)

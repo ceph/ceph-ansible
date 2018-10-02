@@ -2,16 +2,21 @@
 - name: get ceph version
   command: ceph --version
   changed_when: false
-  always_run: yes
+  check_mode: no
   register: ceph_version
 
 - name: is ceph running already?
-  command: ceph --connect-timeout 3 --cluster {{ cluster }} fsid
+  command: ceph --connect-timeout 10 --cluster "{{ cluster }}" fsid
   changed_when: false
   failed_when: false
-  always_run: yes
+  check_mode: no
   register: ceph_current_fsid
   delegate_to: "{{ groups[mon_group_name][0] }}"
+
+  # Why are we getting unreachable errors?
+- assert:
+    that:
+      - ansible_play_hosts == ansible_play_hosts_all
 
 - name: create a local fetch directory if it does not exist
   local_action: file path={{ fetch_directory }} state=directory
@@ -92,7 +97,7 @@
 - name: check init system
   slurp:
     src: /proc/1/comm
-  always_run: yes
+  check_mode: no
   register: init_system
 
 - set_fact:
@@ -113,77 +118,77 @@
     dir_owner: ceph
     dir_group: ceph
     dir_mode: "0755"
-  when: ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+  when: ceph_release_num[ceph_release] > ceph_release_num.hammer
 
 - set_fact:
     dir_owner: root
     dir_group: root
     dir_mode: "0755"
-  when: ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+  when: ceph_release_num[ceph_release] < ceph_release_num.infernalis
 
 - set_fact:
     key_owner: root
     key_group: root
     key_mode: "0600"
-  when: ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+  when: ceph_release_num[ceph_release] < ceph_release_num.infernalis
 
 - set_fact:
     key_owner: ceph
     key_group: ceph
     key_mode: "0600"
-  when: ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+  when: ceph_release_num[ceph_release] > ceph_release_num.hammer
 
 - set_fact:
     activate_file_owner: ceph
     activate_file_group: ceph
     activate_file_mode: "0644"
-  when: ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+  when: ceph_release_num[ceph_release] > ceph_release_num.hammer
 
 - set_fact:
     activate_file_owner: root
     activate_file_group: root
     activate_file_mode: "0644"
-  when: ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+  when: ceph_release_num[ceph_release] < ceph_release_num.infernalis
 
 - set_fact:
     rbd_client_directory_owner: root
   when:
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+    - ceph_release_num[ceph_release] < ceph_release_num.infernalis
     - rbd_client_directory_owner is not defined
       or not rbd_client_directory_owner
 
 - set_fact:
     rbd_client_directory_owner: ceph
   when:
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+    - ceph_release_num[ceph_release] > ceph_release_num.hammer
     - rbd_client_directory_owner is not defined
       or not rbd_client_directory_owner
 
 - set_fact:
     rbd_client_directory_group: root
   when:
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+    - ceph_release_num[ceph_release] < ceph_release_num.infernalis
     - rbd_client_directory_group is not defined
       or not rbd_client_directory_group
 
 - set_fact:
     rbd_client_directory_group: ceph
   when:
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+    - ceph_release_num[ceph_release] > ceph_release_num.hammer
     - rbd_client_directory_group is not defined
       or not rbd_client_directory_group
 
 - set_fact:
     rbd_client_directory_mode: "1777"
   when:
-    - ceph_release_num.{{ ceph_release }} < ceph_release_num.infernalis
+    - ceph_release_num[ceph_release] < ceph_release_num.infernalis
     - rbd_client_directory_mode is not defined
       or not rbd_client_directory_mode
 
 - set_fact:
     rbd_client_directory_mode: "0770"
   when:
-    - ceph_release_num.{{ ceph_release }} > ceph_release_num.hammer
+    - ceph_release_num[ceph_release] > ceph_release_num.hammer
     - rbd_client_directory_mode is not defined
       or not rbd_client_directory_mode
 

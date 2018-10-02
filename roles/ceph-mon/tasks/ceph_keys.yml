@@ -10,14 +10,14 @@
   command: ceph --cluster {{ cluster }} config-key get initial_mon_keyring
   changed_when: false
   ignore_errors: true
-  always_run: true
+  check_mode: no
   run_once: true
   register: is_initial_mon_keyring_in_kv
 
 - name: put initial mon keyring in mon kv store
   command: ceph --cluster {{ cluster }} config-key put initial_mon_keyring {{ monitor_keyring.stdout }}
   changed_when: false
-  always_run: true
+  check_mode: no
   run_once: true
   when: is_initial_mon_keyring_in_kv.rc != 0
 
@@ -93,7 +93,7 @@
   shell: ls -1 /etc/ceph/*.keyring
   changed_when: false
   register: ceph_keys
-  always_run: true
+  check_mode: no
   when: cephx
 
 - name: set keys permissions

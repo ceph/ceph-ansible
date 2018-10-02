@@ -34,7 +34,7 @@ import yaml
 
 
 from ansible.plugins.action import ActionBase
-from ansible.utils.unicode import to_bytes, to_unicode
+from ansible.module_utils._text import to_bytes, to_text as to_unicode
 from ansible import constants as C
 from ansible import errors
 
@@ -554,7 +554,7 @@ class ActionModule(ActionBase):
             dict(
                 src=transferred_data,
                 dest=_vars['dest'],
-                original_basename=os.path.basename(source),
+                _original_basename=os.path.basename(source),
                 follow=True,
             ),
         )

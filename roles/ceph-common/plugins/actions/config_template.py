@@ -17,13 +17,14 @@ import sys
 
 from distutils.version import LooseVersion
 from ansible import __version__ as __ansible_version__
+from _v2_config_template import *
 
 # This appends the sys path with the file path which is used for the
 #  import of the specific verion of the config_template action plugin
 #  needed based on the ansible version calling the plugin.
 sys.path.append(os.path.dirname(__file__))
 
-if LooseVersion(__ansible_version__) < LooseVersion("2.0"):
-    from _v1_config_template import *
-else:
-    from _v2_config_template import *
+#if LooseVersion(__ansible_version__) < LooseVersion("2.0"):
+#    from _v1_config_template import *
+#else:
+#    from _v2_config_template import *
