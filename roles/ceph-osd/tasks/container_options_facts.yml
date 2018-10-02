@@ -1,0 +1,32 @@
+---
+- name: set_fact docker_env_args '-e osd_bluestore=0 -e osd_filestore=1 -e osd_dmcrypt=0'
+  set_fact:
+    docker_env_args: -e OSD_BLUESTORE=0 -e OSD_FILESTORE=1 -e OSD_DMCRYPT=0
+  when:
+    - containerized_deployment
+    - osd_objectstore == 'filestore'
+    - not dmcrypt
+
+- name: set_fact docker_env_args '-e osd_bluestore=0 -e osd_filestore=1 -e osd_dmcrypt=1'
+  set_fact:
+    docker_env_args: -e OSD_BLUESTORE=0 -e OSD_FILESTORE=1 -e OSD_DMCRYPT=1
+  when:
+    - containerized_deployment
+    - osd_objectstore == 'filestore'
+    - dmcrypt
+
+- name: set_fact docker_env_args '-e osd_bluestore=1 -e osd_filestore=0 -e osd_dmcrypt=0'
+  set_fact:
+    docker_env_args: -e OSD_BLUESTORE=1 -e OSD_FILESTORE=0 -e OSD_DMCRYPT=0
+  when:
+    - containerized_deployment
+    - osd_objectstore == 'bluestore'
+    - not dmcrypt
+
+- name: set_fact docker_env_args '-e osd_bluestore=1 -e osd_filestore=0 -e osd_dmcrypt=1'
+  set_fact:
+    docker_env_args: -e OSD_BLUESTORE=1 -e OSD_FILESTORE=0 -e OSD_DMCRYPT=1
+  when:
+    - containerized_deployment
+    - osd_objectstore == 'bluestore'
+    - dmcrypt
