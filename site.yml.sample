@@ -1,0 +1,99 @@
+---
+# Defines deployment design and assigns role to server groups
+
+- hosts:
+  - mons
+  - agents
+  - osds
+  - mdss
+  - rgws
+  - nfss
+  - restapis
+  - rbdmirrors
+  - clients
+  - iscsigws
+  gather_facts: false
+  tags:
+    - always
+  tasks:
+    # If we can't get python2 installed before any module is used we will fail
+    # so just try what we can to get it installed
+    - name: check for python2
+      stat:
+        path: /usr/bin/python
+      ignore_errors: yes
+      register: systempython2
+    - name: install python2 for Debian based systems
+      raw: sudo apt-get -y install python-simplejson
+      ignore_errors: yes
+      when: systempython2.stat.exists is undefined or systempython2.stat.exists == false
+    # Try to install python2 on Fedora > 23
+    - name: install python2 for Fedora
+      raw: sudo dnf -y install python creates=/usr/bin/python
+      ignore_errors: yes
+      when: systempython2.stat.exists is undefined or systempython2.stat.exists == false
+    - name: gathering facts
+      setup:
+    - name: install required packages for Fedora > 23
+      raw: sudo dnf -y install python2-dnf libselinux-python ntp
+      when: ansible_distribution == 'Fedora' and ansible_distribution_major_version|int >= 23
+
+- hosts: mons
+  gather_facts: false
+  become: True
+  roles:
+  - ceph-mon
+
+- hosts: agents
+  gather_facts: false
+  become: True
+  roles:
+  - ceph-agent
+
+- hosts: osds
+  gather_facts: false
+  become: True
+  roles:
+  - ceph-osd
+
+- hosts: mdss
+  gather_facts: false
+  become: True
+  roles:
+  - ceph-mds
+
+- hosts: rgws
+  gather_facts: false
+  become: True
+  roles:
+  - ceph-rgw
+
+- hosts: nfss
+  gather_facts: false
+  become: True
+  roles:
+  - ceph-nfs
+
+- hosts: restapis
+  gather_facts: false
+  become: True
+  roles:
+  - ceph-restapi
+
+- hosts: rbdmirrors
+  gather_facts: false
+  become: True
+  roles:
+  - ceph-rbd-mirror
+
+- hosts: clients
+  gather_facts: false
+  become: True
+  roles:
+  - ceph-client
+
+- hosts: iscsigws
+  gather_facts: false
+  become: True
+  roles:
+  - ceph-iscsi-gw
