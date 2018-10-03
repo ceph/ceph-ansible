@@ -15,6 +15,9 @@ Since the Ceph mimic release, it is preferred to use the :ref:`lvm scenario
 <osd_scenario_lvm>` that uses the ``ceph-volume`` provisioning tool. Any other
 scenario will cause deprecation warnings.
 
+All the scenarios mentionned above support both containerized and non-containerized cluster.
+As a reminder, deploying a containerized cluster can be done by setting ``containerized_deployment``
+to ``True``.
 
 .. _osd_scenario_lvm:
 
