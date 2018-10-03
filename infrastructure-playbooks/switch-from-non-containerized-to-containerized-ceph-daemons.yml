@@ -109,6 +109,13 @@
       failed_when: false
       when: ldb_files.rc == 0
 
+    - name: copy mon initial keyring in /etc/ceph to satisfy fetch config task in ceph-docker-common
+      command: cp /var/lib/ceph/mon/{{ cluster }}-{{ ansible_hostname }}/keyring /etc/ceph/{{ cluster }}.mon.keyring
+      args:
+        creates: /etc/ceph/{{ cluster }}.mon.keyring
+      changed_when: false
+      failed_when: false
+
   roles:
     - ceph-defaults
     - ceph-handler
