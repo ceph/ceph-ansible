@@ -123,9 +123,14 @@ options:
             assigned or not depending on how the playbook runs.
         required: false
         default: None
+    list:
+        description:
+            - List potential Ceph LVM metadata on a device
+        required: false
 
 author:
     - Andrew Schoen (@andrewschoen)
+    - Sebastien Han <seb@redhat.com>
 '''
 
 EXAMPLES = '''
@@ -144,7 +149,7 @@ EXAMPLES = '''
     action: create
 
 
-- name: set up a bluestore osd with an lv for data and partitions for block.wal and block.db  # noqa E501
+- name: set up a bluestore osd with an lv for data and partitions for block.wal and block.db  # noqa e501
   ceph_volume:
     objectstore: bluestore
     data: data-lv
@@ -158,211 +163,165 @@ EXAMPLES = '''
 from ansible.module_utils.basic import AnsibleModule  # noqa 4502
 
 
-def container_exec(binary, container_image):
+def fatal(message, module):
     '''
-    Build the CLI to run a command inside a container
+    Report a fatal error and exit
     '''
 
-    command_exec = ["docker", "run", "--rm", "--privileged", "--net=host",
-                    "-v", "/dev:/dev", "-v", "/etc/ceph:/etc/ceph:z",
-                    "-v", "/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket",
-                    "-v", "/var/lib/ceph/:/var/lib/ceph/:z",
-                    os.path.join("--entrypoint=" + binary),
+    if module:
+        module.fail_json(msg=message, changed=False, rc=1)
+    else:
+        raise(Exception(message))
+
+
+def container_exec(binary, container_image):
+    '''
+    Build the docker CLI to run a command inside a container
+    '''
+
+    command_exec = ['docker', 'run', '--rm', '--privileged', '--net=host',
+                    '-v', '/run/lock/lvm:/run/lock/lvm:z',
+                    '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',
+                    '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',
+                    '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                    os.path.join('--entrypoint=' + binary),
                     container_image]
     return command_exec
 
 
+def build_ceph_volume_cmd(action, container_image, cluster=None):
+    '''
+    Build the ceph-volume command
+    '''
+
+    if container_image:
+        binary = 'ceph-volume'
+        cmd = container_exec(
+            binary, container_image)
+    else:
+        binary = ['ceph-volume']
+        cmd = binary
+
+    if cluster:
+        cmd.extend(['--cluster', cluster])
+
+    cmd.append('lvm')
+    cmd.append(action)
+
+    return cmd
+
+
+def exec_command(module, cmd):
+    '''
+    Execute command
+    '''
+
+    rc, out, err = module.run_command(cmd)
+    return rc, cmd, out, err
+
+
+def is_containerized():
+    '''
+    Check if we are running on a containerized cluster
+    '''
+
+    if 'CEPH_CONTAINER_IMAGE' in os.environ:
+        container_image = os.getenv('CEPH_CONTAINER_IMAGE')
+    else:
+        container_image = None
+
+    return container_image
+
+
 def get_data(data, data_vg):
     if data_vg:
-        data = "{0}/{1}".format(data_vg, data)
+        data = '{0}/{1}'.format(data_vg, data)
     return data
 
 
 def get_journal(journal, journal_vg):
     if journal_vg:
-        journal = "{0}/{1}".format(journal_vg, journal)
+        journal = '{0}/{1}'.format(journal_vg, journal)
     return journal
 
 
 def get_db(db, db_vg):
     if db_vg:
-        db = "{0}/{1}".format(db_vg, db)
+        db = '{0}/{1}'.format(db_vg, db)
     return db
 
 
 def get_wal(wal, wal_vg):
     if wal_vg:
-        wal = "{0}/{1}".format(wal_vg, wal)
+        wal = '{0}/{1}'.format(wal_vg, wal)
     return wal
 
 
-def _list(module):
-    cmd = [
-        'ceph-volume',
-        'lvm',
-        'list',
-        '--format=json',
-    ]
+def batch(module, container_image):
+    '''
+    Batch prepare OSD devices
+    '''
 
-    result = dict(
-        changed=False,
-        cmd=cmd,
-        stdout='',
-        stderr='',
-        rc='',
-        start='',
-        end='',
-        delta='',
-    )
-
-    if module.check_mode:
-        return result
-
-    startd = datetime.datetime.now()
-
-    rc, out, err = module.run_command(cmd, encoding=None)
-
-    endd = datetime.datetime.now()
-    delta = endd - startd
-
-    result = dict(
-        cmd=cmd,
-        stdout=out.rstrip(b"\r\n"),
-        stderr=err.rstrip(b"\r\n"),
-        rc=rc,
-        start=str(startd),
-        end=str(endd),
-        delta=str(delta),
-        changed=True,
-    )
-
-    if rc != 0:
-        module.fail_json(msg='non-zero return code', **result)
-
-    module.exit_json(**result)
-
-
-def batch(module):
+    # get module variables
     cluster = module.params['cluster']
     objectstore = module.params['objectstore']
-    batch_devices = module.params['batch_devices']
+    batch_devices = module.params.get('batch_devices', None)
     crush_device_class = module.params.get('crush_device_class', None)
-    dmcrypt = module.params['dmcrypt']
-    osds_per_device = module.params['osds_per_device']
-    journal_size = module.params['journal_size']
-    block_db_size = module.params['block_db_size']
-    report = module.params['report']
-    subcommand = 'batch'
+    journal_size = module.params.get('journal_size', None)
+    block_db_size = module.params.get('block_db_size', None)
+    dmcrypt = module.params.get('dmcrypt', None)
+    osds_per_device = module.params.get('osds_per_device', None)
+
+    if not osds_per_device:
+        fatal('osds_per_device must be provided if action is "batch"', module)
+
+    if osds_per_device < 1:
+        fatal('osds_per_device must be greater than 0 if action is "batch"', module)  # noqa E501
 
     if not batch_devices:
-        module.fail_json(
-            msg='batch_devices must be provided if action is "batch"', changed=False, rc=1)  # noqa 4502
+        fatal('batch_devices must be provided if action is "batch"', module)
 
-    if "CEPH_CONTAINER_IMAGE" in os.environ:
-        container_image = os.getenv("CEPH_CONTAINER_IMAGE")
-    else:
-        container_image = None
-
-    cmd = ceph_volume_cmd(subcommand, container_image, cluster)
-    cmd.extend(["--%s" % objectstore])
-    cmd.extend("--yes")
-    cmd.extend("--no-systemd ")
+    # Build the CLI
+    action = 'batch'
+    cmd = build_ceph_volume_cmd(action, container_image, cluster)
+    cmd.extend(['--%s' % objectstore])
+    cmd.append('--yes')
 
     if crush_device_class:
-        cmd.extend(["--crush-device-class", crush_device_class])
+        cmd.extend(['--crush-device-class', crush_device_class])
 
     if dmcrypt:
-        cmd.append("--dmcrypt")
+        cmd.append('--dmcrypt')
 
     if osds_per_device > 1:
-        cmd.extend(["--osds-per-device", osds_per_device])
+        cmd.extend(['--osds-per-device', osds_per_device])
 
-    if objectstore == "filestore":
-        cmd.extend(["--journal-size", journal_size])
+    if objectstore == 'filestore':
+        cmd.extend(['--journal-size', journal_size])
 
-    if objectstore == "bluestore" and block_db_size != "-1":
-        cmd.extend(["--block-db-size", block_db_size])
-
-    report_flags = [
-        "--report",
-        "--format=json",
-    ]
+    if objectstore == 'bluestore' and block_db_size != '-1':
+        cmd.extend(['--block-db-size', block_db_size])
 
     cmd.extend(batch_devices)
 
-    result = dict(
-        changed=False,
-        cmd=cmd,
-        stdout='',
-        stderr='',
-        rc='',
-        start='',
-        end='',
-        delta='',
-    )
-
-    if module.check_mode:
-        return result
-
-    startd = datetime.datetime.now()
-
-    report_cmd = copy.copy(cmd)
-    report_cmd.extend(report_flags)
-
-    rc, out, err = module.run_command(report_cmd, encoding=None)
-    try:
-        report_result = json.loads(out)
-    except ValueError:
-        result = dict(
-            cmd=report_cmd,
-            stdout=out.rstrip(b"\r\n"),
-            stderr=err.rstrip(b"\r\n"),
-            rc=rc,
-            changed=True,
-        )
-        module.fail_json(msg='non-zero return code', **result)
-
-    if not report:
-        rc, out, err = module.run_command(cmd, encoding=None)
-    else:
-        cmd = report_cmd
-
-    endd = datetime.datetime.now()
-    delta = endd - startd
-
-    changed = True
-    if not report:
-        changed = report_result['changed']
-
-    result = dict(
-        cmd=cmd,
-        stdout=out.rstrip(b"\r\n"),
-        stderr=err.rstrip(b"\r\n"),
-        rc=rc,
-        start=str(startd),
-        end=str(endd),
-        delta=str(delta),
-        changed=changed,
-    )
-
-    if rc != 0:
-        module.fail_json(msg='non-zero return code', **result)
-
-    module.exit_json(**result)
+    return cmd
 
 
 def ceph_volume_cmd(subcommand, container_image, cluster=None):
+    '''
+    Build ceph-volume initial command
+    '''
 
     if container_image:
-        binary = "ceph-volume"
+        binary = 'ceph-volume'
         cmd = container_exec(
             binary, container_image)
     else:
-        binary = ["ceph-volume"]
+        binary = ['ceph-volume']
         cmd = binary
 
     if cluster:
-        cmd.extend(["--cluster", cluster])
+        cmd.extend(['--cluster', cluster])
 
     cmd.append('lvm')
     cmd.append(subcommand)
@@ -370,19 +329,17 @@ def ceph_volume_cmd(subcommand, container_image, cluster=None):
     return cmd
 
 
-def activate_osd(module, container_image=None):
-    subcommand = "activate"
-    cmd = ceph_volume_cmd(subcommand)
-    cmd.append("--all")
+def prepare_or_create_osd(module, action, container_image):
+    '''
+    Prepare or create OSD devices
+    '''
 
-    return True
-
-
-def prepare_osd(module):
+    # get module variables
     cluster = module.params['cluster']
     objectstore = module.params['objectstore']
     data = module.params['data']
     data_vg = module.params.get('data_vg', None)
+    data = get_data(data, data_vg)
     journal = module.params.get('journal', None)
     journal_vg = module.params.get('journal_vg', None)
     db = module.params.get('db', None)
@@ -390,105 +347,79 @@ def prepare_osd(module):
     wal = module.params.get('wal', None)
     wal_vg = module.params.get('wal_vg', None)
     crush_device_class = module.params.get('crush_device_class', None)
-    dmcrypt = module.params['dmcrypt']
-    subcommand = "prepare"
+    dmcrypt = module.params.get('dmcrypt', None)
 
-    if "CEPH_CONTAINER_IMAGE" in os.environ:
-        container_image = os.getenv("CEPH_CONTAINER_IMAGE")
-    else:
-        container_image = None
-
-    cmd = ceph_volume_cmd(subcommand, container_image, cluster)
-    cmd.extend(["--%s" % objectstore])
-    cmd.append("--data")
-
-    data = get_data(data, data_vg)
+    # Build the CLI
+    cmd = build_ceph_volume_cmd(action, container_image, cluster)
+    cmd.extend(['--%s' % objectstore])
+    cmd.append('--data')
     cmd.append(data)
 
     if journal:
         journal = get_journal(journal, journal_vg)
-        cmd.extend(["--journal", journal])
+        cmd.extend(['--journal', journal])
 
     if db:
         db = get_db(db, db_vg)
-        cmd.extend(["--block.db", db])
+        cmd.extend(['--block.db', db])
 
     if wal:
         wal = get_wal(wal, wal_vg)
-        cmd.extend(["--block.wal", wal])
+        cmd.extend(['--block.wal', wal])
 
     if crush_device_class:
-        cmd.extend(["--crush-device-class", crush_device_class])
+        cmd.extend(['--crush-device-class', crush_device_class])
 
     if dmcrypt:
-        cmd.append("--dmcrypt")
+        cmd.append('--dmcrypt')
 
-    result = dict(
-        changed=False,
-        cmd=cmd,
-        stdout='',
-        stderr='',
-        rc='',
-        start='',
-        end='',
-        delta='',
-    )
-
-    if module.check_mode:
-        return result
-
-    # check to see if osd already exists
-    # FIXME: this does not work when data is a raw device
-    # support for 'lvm list' and raw devices
-    # was added with https://github.com/ceph/ceph/pull/20620 but
-    # has not made it to a luminous release as of 12.2.4
-    ceph_volume_list_cmd_args = ["lvm", "list", data]
-    if container_image:
-        binary = "ceph-volume"
-        ceph_volume_list_cmd = container_exec(
-            binary, container_image) + ceph_volume_list_cmd_args
-    else:
-        binary = ["ceph-volume"]
-        ceph_volume_list_cmd = binary + ceph_volume_list_cmd_args
-
-    rc, out, err = module.run_command(ceph_volume_list_cmd, encoding=None)
-    if rc == 0:
-        result["stdout"] = "skipped, since {0} is already used for an osd".format(  # noqa E501
-            data)
-        result['rc'] = 0
-        module.exit_json(**result)
-
-    startd = datetime.datetime.now()
-
-    rc, out, err = module.run_command(cmd, encoding=None)
-
-    endd = datetime.datetime.now()
-    delta = endd - startd
-
-    result = dict(
-        cmd=cmd,
-        stdout=out.rstrip(b"\r\n"),
-        stderr=err.rstrip(b"\r\n"),
-        rc=rc,
-        start=str(startd),
-        end=str(endd),
-        delta=str(delta),
-        changed=True,
-    )
-
-    if rc != 0:
-        module.fail_json(msg='non-zero return code', **result)
-
-    module.exit_json(**result)
+    return cmd
 
 
-def zap_devices(module):
-    """
+def list_osd(module, container_image):
+    '''
+    List will detect wether or not a device has Ceph LVM Metadata
+    '''
+
+    # get module variables
+    cluster = module.params['cluster']
+    data = module.params.get('data', None)
+    data_vg = module.params.get('data_vg', None)
+    data = get_data(data, data_vg)
+
+    # Build the CLI
+    action = 'list'
+    cmd = build_ceph_volume_cmd(action, container_image, cluster)
+    if data:
+        cmd.append(data)
+    cmd.append('--format=json')
+
+    return cmd
+
+
+def activate_osd():
+    '''
+    Activate all the OSDs on a machine
+    '''
+
+    # build the CLI
+    action = 'activate'
+    container_image = None
+    cmd = build_ceph_volume_cmd(action, container_image)
+    cmd.append('--all')
+
+    return cmd
+
+
+def zap_devices(module, container_image):
+    '''
     Will run 'ceph-volume lvm zap' on all devices, lvs and partitions
     used to create the OSD. The --destroy flag is always passed so that
     if an OSD was originally created with a raw device or partition for
     'data' then any lvs that were created by ceph-volume are removed.
-    """
+    '''
+
+    # get module variables
     data = module.params['data']
     data_vg = module.params.get('data_vg', None)
     journal = module.params.get('journal', None)
@@ -497,65 +428,27 @@ def zap_devices(module):
     db_vg = module.params.get('db_vg', None)
     wal = module.params.get('wal', None)
     wal_vg = module.params.get('wal_vg', None)
-
-    base_zap_cmd = [
-        'ceph-volume',
-        'lvm',
-        'zap',
-        # for simplicity always --destroy. It will be needed
-        # for raw devices and will noop for lvs.
-        '--destroy',
-    ]
-
-    commands = []
-
     data = get_data(data, data_vg)
 
-    commands.append(base_zap_cmd + [data])
+    # build the CLI
+    action = 'zap'
+    cmd = build_ceph_volume_cmd(action, container_image)
+    cmd.append('--destroy')
+    cmd.append(data)
 
     if journal:
         journal = get_journal(journal, journal_vg)
-        commands.append(base_zap_cmd + [journal])
+        cmd.extend([journal])
 
     if db:
         db = get_db(db, db_vg)
-        commands.append(base_zap_cmd + [db])
+        cmd.extend([db])
 
     if wal:
         wal = get_wal(wal, wal_vg)
-        commands.append(base_zap_cmd + [wal])
+        cmd.extend([wal])
 
-    result = dict(
-        changed=True,
-        rc=0,
-    )
-    command_results = []
-    for cmd in commands:
-        startd = datetime.datetime.now()
-
-        rc, out, err = module.run_command(cmd, encoding=None)
-
-        endd = datetime.datetime.now()
-        delta = endd - startd
-
-        cmd_result = dict(
-            cmd=cmd,
-            stdout_lines=out.split("\n"),
-            stderr_lines=err.split("\n"),
-            rc=rc,
-            start=str(startd),
-            end=str(endd),
-            delta=str(delta),
-        )
-
-        if rc != 0:
-            module.fail_json(msg='non-zero return code', **cmd_result)
-
-        command_results.append(cmd_result)
-
-    result["commands"] = command_results
-
-    module.exit_json(**result)
+    return cmd
 
 
 def run_module():
@@ -577,8 +470,8 @@ def run_module():
         dmcrypt=dict(type='bool', required=False, default=False),
         batch_devices=dict(type='list', required=False, default=[]),
         osds_per_device=dict(type='int', required=False, default=1),
-        journal_size=dict(type='str', required=False, default="5120"),
-        block_db_size=dict(type='str', required=False, default="-1"),
+        journal_size=dict(type='str', required=False, default='5120'),
+        block_db_size=dict(type='str', required=False, default='-1'),
         report=dict(type='bool', required=False, default=False),
         containerized=dict(type='str', required=False, default=False),
     )
@@ -588,24 +481,140 @@ def run_module():
         supports_check_mode=True
     )
 
+    result = dict(
+        changed=False,
+        stdout='',
+        stderr='',
+        rc='',
+        start='',
+        end='',
+        delta='',
+    )
+
+    if module.check_mode:
+        return result
+
+    # start execution
+    startd = datetime.datetime.now()
+
+    # get the desired action
     action = module.params['action']
 
-    if action == "create":
-        prepare_osd(module)
-        activate_osd(module)
-    elif action == "prepare":
-        prepare_osd(module)
-    elif action == "activate":
-        activate_osd(module)
-    elif action == "zap":
-        zap_devices(module)
-    elif action == "batch":
-        batch(module)
-    elif action == "list":
-        _list(module)
+    # will return either the image name or None
+    container_image = is_containerized()
 
-    module.fail_json(
-        msg='State must either be "present" or "absent".', changed=False, rc=1)
+    # Assume the task's status will be 'changed'
+    changed = True
+
+    if action == 'create' or action == 'prepare':
+        # First test if the device has Ceph LVM Metadata
+        rc, cmd, out, err = exec_command(
+            module, list_osd(module, container_image))
+
+        # list_osd returns a dict, if the dict is empty this means
+        # we can not check the return code since it's not consistent
+        # with the plain output
+        # see: http://tracker.ceph.com/issues/36329
+        # FIXME: it's probably less confusing to check for rc
+
+        # convert out to json, ansible return a string...
+        out_dict = json.loads(out)
+        if out_dict:
+            data = module.params['data']
+            result['stdout'] = 'skipped, since {0} is already used for an osd'.format(  # noqa E501
+            data)
+            result['rc'] = 0
+            module.exit_json(**result)
+
+        # Prepare or create the OSD
+        rc, cmd, out, err = exec_command(
+            module, prepare_or_create_osd(module, action, container_image))
+
+    elif action == 'activate':
+        if container_image:
+            fatal(
+                "This is not how container's activation happens, nothing to activate", module)  # noqa E501
+
+        # Activate the OSD
+        rc, cmd, out, err = exec_command(
+            module, activate_osd())
+
+    elif action == 'zap':
+        # Zap the OSD
+        rc, cmd, out, err = exec_command(
+            module, zap_devices(module, container_image))
+
+    elif action == 'list':
+        # List Ceph LVM Metadata on a device
+        rc, cmd, out, err = exec_command(
+            module, list_osd(module, container_image))
+
+    elif action == 'batch':
+        # Batch prepare AND activate OSDs
+        if container_image:
+            fatal(
+                'Batch operation is currently not supported on containerized deployment (https://tracker.ceph.com/issues/36363)', module)  # noqa E501
+
+        report = module.params.get('report', None)
+
+        # Add --report flag for the idempotency test
+        report_flags = [
+            '--report',
+            '--format=json',
+        ]
+
+        cmd = batch(module, container_image)
+        batch_report_cmd = copy.copy(cmd)
+        batch_report_cmd.extend(report_flags)
+
+        # Run batch --report to see what's going to happen
+        # Do not run the batch command if there is nothing to do
+        rc, cmd, out, err = exec_command(
+            module, batch_report_cmd)
+        try:
+            report_result = json.loads(out)
+        except ValueError:
+            result = dict(
+                cmd=cmd,
+                stdout=out.rstrip(b"\r\n"),
+                stderr=err.rstrip(b"\r\n"),
+                rc=rc,
+                changed=changed,
+            )
+            module.fail_json(msg='non-zero return code', **result)
+
+        if not report:
+            # if not asking for a report, let's just run the batch command
+            changed = report_result['changed']
+            if changed:
+                # Batch prepare the OSD
+                rc, cmd, out, err = exec_command(
+                    module, batch(module, container_image))
+        else:
+            cmd = batch_report_cmd
+
+    else:
+        module.fail_json(
+            msg='State must either be "create" or "prepare" or "activate" or "list" or "zap" or "batch".', changed=False, rc=1)  # noqa E501
+
+    endd = datetime.datetime.now()
+    delta = endd - startd
+
+    result = dict(
+        cmd=cmd,
+        start=str(startd),
+        end=str(endd),
+        delta=str(delta),
+        rc=rc,
+        stdout=out.rstrip(b'\r\n'),
+        stderr=err.rstrip(b'\r\n'),
+        changed=changed,
+    )
+
+    if rc != 0:
+        module.fail_json(msg='non-zero return code', **result)
+
+    module.exit_json(**result)
 
 
 def main():
