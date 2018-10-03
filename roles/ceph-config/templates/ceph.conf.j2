@@ -11,9 +11,6 @@ auth supported = none
 {% if ip_version == 'ipv6'  %}
 ms bind ipv6 = true
 {% endif %}
-{% if not containerized_deployment_with_kv and not containerized_deployment %}
-fsid = {{ fsid }}
-{% endif %}
 {% if common_single_host_mode is defined and common_single_host_mode %}
 osd crush chooseleaf type = 0
 {% endif %}
@@ -41,81 +38,18 @@ mon initial members = {% for host in groups[mon_group_name] %}
     {% endfor %}
 {% endif %}
 
-{% if not containerized_deployment and not containerized_deployment_with_kv -%}
-mon host = {% if nb_mon > 0 %}
-  {% for host in groups[mon_group_name] -%}
-    {% if hostvars[host]['monitor_address_block'] is defined and hostvars[host]['monitor_address_block'] != 'subnet' %}
-      {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(hostvars[host]['monitor_address_block']) | first }}
-      {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(hostvars[host]['monitor_address_block']) | first }}]
-      {%- endif %}
-    {% elif hostvars[host]['monitor_address'] is defined and hostvars[host]['monitor_address'] != '0.0.0.0' -%}
-      {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host]['monitor_address'] }}
-      {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host]['monitor_address'] }}]
-      {%- endif %}
-    {%- elif hostvars[host]['monitor_interface'] is defined -%}
-      {% set interface = 'ansible_' + (hostvars[host]['monitor_interface'] | replace('-', '_')) %}
-      {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host][interface][ip_version]['address'] }}
-      {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host][interface][ip_version][0]['address'] }}]
-      {%- endif %}
-    {%- else -%}
-      {% set interface = 'ansible_' + (monitor_interface | replace('-', '_')) %}
-      {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host][interface][ip_version]['address'] }}
-      {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host][interface][ip_version][0]['address'] }}]
-      {%- endif %}
-    {%- endif %}
-   {% if not loop.last -%},{%- endif %}
-  {%- endfor %}
-  {% elif nb_mon == 0 and inventory_hostname in groups.get(client_group_name, []) %}
-  {{ external_cluster_mon_ips }}
-  {% endif %}
-{%- endif %}
-
-{% if containerized_deployment %}
 fsid = {{ fsid }}
+{% if containerized_deployment %}
 log file = /dev/null
 mon cluster log file = /dev/null
+{% endif %}
 mon host = {% if nb_mon > 0 %}
-{% for host in groups[mon_group_name] -%}
-    {% if hostvars[host]['monitor_address_block'] is defined and hostvars[host]['monitor_address_block'] != 'subnet' %}
-      {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(hostvars[host]['monitor_address_block']) | first }}
-      {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(hostvars[host]['monitor_address_block']) | first }}]
-      {%- endif %}
-    {% elif hostvars[host]['monitor_address'] is defined and hostvars[host]['monitor_address'] != '0.0.0.0' -%}
-      {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host]['monitor_address'] }}
-      {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host]['monitor_address'] }}]
-      {%- endif %}
-    {%- elif hostvars[host]['monitor_interface'] is defined -%}
-      {% set interface = 'ansible_' + (hostvars[host]['monitor_interface'] | replace('-', '_')) %}
-      {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host][interface][ip_version]['address'] }}
-      {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host][interface][ip_version][0]['address'] }}]
-      {%- endif %}
-    {%- else -%}
-      {% set interface = 'ansible_' + (monitor_interface | replace('-', '_')) %}
-      {% if ip_version == 'ipv4' -%}
-        {{ hostvars[host][interface][ip_version]['address'] }}
-      {%- elif ip_version == 'ipv6' -%}
-        [{{ hostvars[host][interface][ip_version][0]['address'] }}]
-      {%- endif %}
-    {%- endif %}
-    {% if not loop.last -%},{%- endif %}
-  {%- endfor %}
-  {% elif nb_mon == 0 and inventory_hostname in groups.get(client_group_name, []) %}
-  {{ external_cluster_mon_ips }}
-  {% endif %}
+{% for host in _monitor_addresses -%}
+{{ host.addr }}
+{%- if not loop.last -%},{%- endif %}
+{%- endfor %}
+{% elif nb_mon == 0 and inventory_hostname in groups.get(client_group_name, []) %}
+{{ external_cluster_mon_ips }}
 {% endif %}
 
 {% if public_network is defined %}
@@ -152,7 +86,7 @@ filestore xattr use omap = true
 {% endif %}
 {% endif %}
 {% if osd_objectstore == 'bluestore' %}
-{% set _num_osds = num_osds | default(0) | int %}
+{% set _num_osds = num_osds | default(0) | int %}
 [osd]
 {% if is_hci and _num_osds > 0 %}
 {% if ansible_memtotal_mb * hci_safety_factor / _num_osds > osd_memory_target %} # hci_safety_factor is the safety factor for HCI deployments
@@ -175,45 +109,7 @@ osd memory target = {{ _osd_memory_target | default(osd_memory_target) }}
 host = {{ _rgw_hostname }}
 keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname }}/keyring
 log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
-{% if hostvars[host]['radosgw_address_block'] is defined and hostvars[host]['radosgw_address_block'] != 'subnet' %}
-    {% if ip_version == 'ipv4' %}
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}={{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }}:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
-    {% elif ip_version == 'ipv6' %}
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}=[{{ hostvars[host]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }}]:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
-    {% endif %}
-{% elif radosgw_address_block is defined and radosgw_address_block != 'subnet' -%}
-    {% if ip_version == 'ipv4' %}
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}={{ radosgw_address_block | ipaddr(radosgw_address_block) | first }}:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
-    {% elif ip_version == 'ipv6' %}
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}=[{{ radosgw_address_block | ipaddr(radosgw_address_block) | first }}]:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
-    {% endif %}
-{% elif hostvars[host]['radosgw_address'] is defined and hostvars[host]['radosgw_address'] != 'address' -%}
-    {% if ip_version == 'ipv4' %}
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}={{ hostvars[host]['radosgw_address'] }}:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
-    {% elif ip_version == 'ipv6' %}
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}=[{{ hostvars[host]['radosgw_address'] }}]:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
-    {% endif %}
-{% elif radosgw_address is defined and radosgw_address != 'address' -%}
-    {% if ip_version == 'ipv4' %}
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}={{ radosgw_address }}:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
-    {% elif ip_version == 'ipv6' %}
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}=[{{ radosgw_address }}]:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
-    {% endif %}
-{% elif hostvars[host]['radosgw_interface'] is defined -%}
-    {% set interface='ansible_' + (hostvars[host]['radosgw_interface'] | replace('-', '_')) %}
-    {% if ip_version == 'ipv4' %}
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}={{ hostvars[host][interface][ip_version]['address'] }}:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
-    {% elif ip_version == 'ipv6' %}
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}=[{{ hostvars[host][interface][ip_version][0]['address'] }}]:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
-    {% endif %}
-{% else %}
-    {% set interface='ansible_' + (radosgw_interface | replace('-', '_')) %}
-    {% if ip_version == 'ipv4' %}
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}={{ hostvars[host][interface][ip_version]['address'] }}:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
-    {% elif ip_version == 'ipv6' %}
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}=[{{ hostvars[host][interface][ip_version][0]['address'] }}]:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
-    {% endif %}
-{% endif %}
+rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}={{ hostvars[host]['_radosgw_address'] }}:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
 {% endfor %}
 {% endif %}
 
