@@ -374,14 +374,14 @@
   become: True
   tasks:
     - name: get ceph status from the first monitor
-      command: docker exec ceph-mon-{{ hostvars[groups['mons'][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s
+      command: docker exec ceph-mon-{{ hostvars[groups['mons'][0]]['ansible_hostname'] }} ceph --cluster {{ cluster | default ('ceph') }} -s
       register: ceph_status
       changed_when: false
       delegate_to: "{{ groups['mons'][0] }}"
       run_once: true
       ignore_errors: true # we skip the error if mon_group_name is different than 'mons'
 
-    - name: "show ceph status for cluster {{ cluster }}"
+    - name: "show ceph status for cluster {{ cluster | default ('ceph') }}"
       debug:
         msg: "{{ ceph_status.stdout_lines }}"
       delegate_to: "{{ groups['mons'][0] }}"
