@@ -350,7 +350,7 @@
     failed_when: false
     register: ceph_lockbox_partition_to_erase_path
 
-  - name: zap and destroy OSDs created by ceph-volume
+  - name: zap and destroy osds created by ceph-volume with lvm_volumes
     ceph_volume:
       data: "{{ item.data }}"
       data_vg: "{{ item.data_vg|default(omit) }}"
@@ -364,6 +364,16 @@
     environment:
       CEPH_VOLUME_DEBUG: 1
     with_items: "{{ lvm_volumes }}"
+    when:
+      - osd_scenario == "lvm"
+
+  - name: zap and destroy osds created by ceph-volume with devices
+    ceph_volume:
+      data: "{{ item }}"
+      action: "zap"
+    environment:
+      CEPH_VOLUME_DEBUG: 1
+    with_items: "{{ devices | default([]) }}"
     when:
       - osd_scenario == "lvm"
 
@@ -633,6 +643,8 @@
     find:
       paths: "/etc/systemd/system"
       pattern: "ceph*"
+      recurse: true
+      file_type: any
     register: systemd_files
 
   - name: remove ceph systemd unit files

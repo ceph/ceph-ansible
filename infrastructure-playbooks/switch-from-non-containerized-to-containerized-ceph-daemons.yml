@@ -109,8 +109,16 @@
       failed_when: false
       when: ldb_files.rc == 0
 
+    - name: copy mon initial keyring in /etc/ceph to satisfy fetch config task in ceph-docker-common
+      command: cp /var/lib/ceph/mon/{{ cluster }}-{{ ansible_hostname }}/keyring /etc/ceph/{{ cluster }}.mon.keyring
+      args:
+        creates: /etc/ceph/{{ cluster }}.mon.keyring
+      changed_when: false
+      failed_when: false
+
   roles:
     - ceph-defaults
+    - ceph-handler
     - ceph-docker-common
     - ceph-mon
 
@@ -168,6 +176,7 @@
 
   roles:
     - ceph-defaults
+    - ceph-handler
     - ceph-docker-common
     - ceph-mgr
 
@@ -282,6 +291,7 @@
 
   roles:
     - ceph-defaults
+    - ceph-handler
     - ceph-docker-common
     - ceph-osd
 
@@ -295,9 +305,9 @@
       command: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json"
       register: ceph_health_post
       until: >
-        ((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) == 1
+        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) > 0)
         and
-        (ceph_health_post.stdout | from_json).pgmap.pgs_by_state.0.state_name == "active+clean"
+        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | selectattr('state_name', 'search', '^active\\+clean') | map(attribute='count') | list | sum) == (ceph_pgs.stdout | from_json).pgmap.num_pgs)
       delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
@@ -343,6 +353,7 @@
 
   roles:
     - ceph-defaults
+    - ceph-handler
     - ceph-docker-common
     - ceph-mds
 
@@ -385,6 +396,7 @@
 
   roles:
     - ceph-defaults
+    - ceph-handler
     - ceph-docker-common
     - ceph-rgw
 
@@ -427,6 +439,7 @@
 
   roles:
     - ceph-defaults
+    - ceph-handler
     - ceph-docker-common
     - ceph-rbd-mirror
 
@@ -473,5 +486,6 @@
 
   roles:
     - ceph-defaults
+    - ceph-handler
     - ceph-docker-common
     - ceph-nfs
