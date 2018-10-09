@@ -102,7 +102,12 @@ class ActionModule(ActionBase):
             reason = "[{}] Reason: {}".format(host, error.reason)
             try:
                 if "schema is missing" not in error.message:
-                    given = "[{}] Given value for {}: {}".format(host, error.path[0], error.path[1])
+                    for i in range(0, len(error.path)):
+                        if i == 0:
+                            given = "[{}] Given value for {}".format(
+                                    host, error.path[0])
+                        else:
+                            given = given + ": {}".format(error.path[i])
                     display.error(given)
                 else:
                     given = ""
