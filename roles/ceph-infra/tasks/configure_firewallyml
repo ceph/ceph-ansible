@@ -9,6 +9,8 @@
   changed_when: false
   tags:
     - firewall
+  when:
+    - not containerized_deployment
 
 - name: start firewalld
   service:
@@ -16,7 +18,9 @@
     state: started
     enabled: yes
   when:
+    - not firewalld_pkg_query.skipped
     - firewalld_pkg_query.rc == 0
+      or is_atomic
 
 - name: open monitor ports
   firewalld:
