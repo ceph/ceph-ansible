@@ -1,15 +1,30 @@
 ---
 
 - hosts: osds
-  gather_facts: true
+  gather_facts: false
   become: yes
   tasks:
+
+    - name: check if it is atomic host
+      stat:
+        path: /run/ostree-booted
+      register: stat_ostree
+      tags:
+        - always
+
+    - name: set_fact is_atomic
+      set_fact:
+        is_atomic: '{{ stat_ostree.stat.exists }}'
+      tags:
+        - always
 
     # Some images may not have lvm2 installed
     - name: install lvm2
       package:
         name: lvm2
         state: present
+      when:
+        - not is_atomic
 
     - name: create physical volume
       command: pvcreate /dev/sdb
