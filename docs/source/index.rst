@@ -222,7 +222,9 @@ selection or other aspects of your cluster.
 - ``public_network``
 - ``osd_scenario``
 - ``monitor_interface`` or ``monitor_address``
-- ``radosgw_interface`` or ``radosgw_address``
+
+
+When deploying RGW instance(s) you are required to set the ``radosgw_interface`` or ``radosgw_address`` config option.
 
 ``ceph.conf`` Configuration File
 ---------------------------------
