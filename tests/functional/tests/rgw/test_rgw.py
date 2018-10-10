@@ -22,7 +22,6 @@ class TestRGWs(object):
         )
         assert host.service(service_name).is_enabled
 
-    @pytest.mark.from_luminous
     def test_rgw_is_up(self, node, host):
         hostname=node["vars"]["inventory_hostname"]
         cluster=node["cluster_name"]
