@@ -60,12 +60,6 @@ to follow (most of them are 1 line settings).
      mon_vms: 1
      osd_vms: 1
 
-* **RESTAPI**: (bool) Deploy RESTAPI on each of the monitor(s)
-
-  .. code-block:: yaml
-
-     restapi: true
-
 * **CEPH SOURCE**: (string) indicate whether a ``dev`` or ``stable`` release is
   needed. A ``stable`` release will use the latest stable release of Ceph,
   a ``dev`` will use ``shaman`` (http://shaman.ceph.com)

@@ -136,22 +136,6 @@
   tags:
     - firewall
 
-- name: open restapi ports
-  firewalld:
-    port: "{{ restapi_port }}/tcp"
-    zone: "{{ ceph_restapi_firewall_zone }}"
-    source: "{{ public_network }}"
-    permanent: true
-    immediate: true
-    state: enabled
-  notify: restart firewalld
-  when:
-    - restapi_group_name is defined
-    - restapi_group_name in group_names
-    - (firewalld_pkg_query.get('rc', 1) == 0 or is_atomic)
-  tags:
-    - firewall
-
 - name: open rbdmirror ports
   firewalld:
     service: ceph
