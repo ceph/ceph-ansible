@@ -8,7 +8,6 @@
   - mdss
   - rgws
   - nfss
-  - restapis
   - rbdmirrors
   - clients
   - mgrs
@@ -271,38 +270,6 @@
       set_stats:
         data:
           installer_phase_ceph_nfs:
-            status: "Complete"
-            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-
-- hosts: restapis
-  gather_facts: false
-  become: True
-  pre_tasks:
-    - name: set ceph rest api install 'In Progress'
-      run_once: true
-      set_stats:
-        data:
-          installer_phase_ceph_restapi:
-            status: "In Progress"
-            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-  roles:
-    - role: ceph-defaults
-      tags: ['ceph_update_config']
-    - role: ceph-handler
-    - role: ceph-common
-    - role: ceph-config
-      tags: ['ceph_update_config']
-      when:
-        - ceph_release_num[ceph_release] <= ceph_release_num.luminous
-    - role: ceph-restapi
-      when:
-        - ceph_release_num[ceph_release] <= ceph_release_num.luminous
-  post_tasks:
-    - name: set ceph rest api install 'Complete'
-      run_once: true
-      set_stats:
-        data:
-          installer_phase_ceph_restapi:
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 

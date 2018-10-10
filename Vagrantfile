@@ -13,7 +13,6 @@ NOSDS           = settings['osd_vms']
 NMDSS           = settings['mds_vms']
 NRGWS           = settings['rgw_vms']
 NNFSS           = settings['nfs_vms']
-RESTAPI         = settings['restapi']
 NRBD_MIRRORS    = settings['rbd_mirror_vms']
 CLIENTS         = settings['client_vms']
 NISCSI_GWS      = settings['iscsi_gw_vms']
@@ -58,10 +57,6 @@ ansible_provision = proc do |ansible|
     'iscsigws'        => (0..NISCSI_GWS - 1).map { |j| "#{LABEL_PREFIX}iscsi_gw#{j}" },
     'mgrs'             => (0..MGRS - 1).map { |j| "#{LABEL_PREFIX}mgr#{j}" }
   }
-
-  if RESTAPI then
-    ansible.groups['restapis'] = (0..NMONS - 1).map { |j| "#{LABEL_PREFIX}mon#{j}" }
-  end
 
   ansible.extra_vars = {
       cluster_network: "#{CLUSTER_SUBNET}.0/24",

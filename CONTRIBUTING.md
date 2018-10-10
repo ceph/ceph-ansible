@@ -54,7 +54,6 @@ It means if you are pushing a patch modifying one of these files:
 - `./roles/ceph-iscsi-gw/defaults/main.yml`
 - `./roles/ceph-mon/defaults/main.yml`
 - `./roles/ceph-rgw/defaults/main.yml`
-- `./roles/ceph-restapi/defaults/main.yml`
 - `./roles/ceph-docker-common/defaults/main.yml`
 - `./roles/ceph-common-coreos/defaults/main.yml`
 
