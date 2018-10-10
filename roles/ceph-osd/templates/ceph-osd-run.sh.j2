@@ -1,12 +1,17 @@
 #!/bin/bash
 # {{ ansible_managed }}
 
+
+{% if osd_scenario != 'lvm' -%}
+{% if disk_list.get('rc') == 0 -%}
+#############
+# VARIABLES #
+#############
 DOCKER_ENV=""
 
 #############
 # FUNCTIONS #
 #############
-{% if disk_list.get('rc') == 0 -%}
 function expose_partitions () {
 DOCKER_ENV=$(docker run --rm --net=host --name expose_partitions_${1} --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z -e CLUSTER={{ cluster }} -e OSD_DEVICE=/dev/${1} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list)
 }
@@ -46,9 +51,11 @@ function expose_partitions {
     exit 1
   fi
 }
-{% endif -%}
 
 expose_partitions "$1"
+
+{% endif -%}
+{% endif -%}
 
 
 ########
@@ -61,7 +68,7 @@ expose_partitions "$1"
   --privileged=true \
   --pid=host \
   --memory={{ ceph_osd_docker_memory_limit }} \
-  {% if ceph_docker_version.split('.')[0] | version_compare('13', '>=') -%}
+  {% if ceph_docker_version.split('.')[0] is version_compare('13', '>=') -%}
   --cpus={{ ceph_osd_docker_cpu_limit }} \
   {% else -%}
   --cpu-quota={{ ceph_osd_docker_cpu_limit * 100000 }} \
@@ -77,7 +84,6 @@ expose_partitions "$1"
   -v /var/lib/ceph:/var/lib/ceph:z \
   -v /etc/ceph:/etc/ceph:z \
   -v /var/run/ceph:/var/run/ceph:z \
-  $DOCKER_ENV \
   {% if ansible_distribution == 'Ubuntu' -%}
   --security-opt apparmor:unconfined \
   {% endif -%}
@@ -103,11 +109,19 @@ expose_partitions "$1"
   -e OSD_DMCRYPT=1 \
   {% endif -%}
   -e CLUSTER={{ cluster }} \
-  -e OSD_DEVICE=/dev/${1} \
   {% if (ceph_tcmalloc_max_total_thread_cache | int) > 0 and osd_objectstore == 'filestore' -%}
   -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
   {% endif -%}
+  {% if osd_scenario == 'lvm' -%}
+  -v /run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket \
+  -e CEPH_DAEMON=OSD_CEPH_VOLUME_ACTIVATE \
+  -e OSD_ID="$1" \
+  --name=ceph-osd-"$1" \
+  {% else -%}
+  $DOCKER_ENV \
   -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE \
+  -e OSD_DEVICE=/dev/"${1}" \
+  --name=ceph-osd-{{ ansible_hostname }}-"${1}" \
+  {% endif -%}
   {{ ceph_osd_docker_extra_env }} \
-  --name=ceph-osd-{{ ansible_hostname }}-${1} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}

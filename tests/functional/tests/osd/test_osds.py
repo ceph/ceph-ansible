@@ -71,7 +71,7 @@ class TestOSDs(object):
 
     @pytest.mark.docker
     def test_all_docker_osds_are_up_and_in(self, node, host):
-        cmd = "sudo docker exec ceph-osd-{hostname}-sda ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(
+        cmd = "sudo docker exec ceph-osd-0 ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(
             hostname=node["vars"]["inventory_hostname"],
             cluster=node["cluster_name"]
         )
