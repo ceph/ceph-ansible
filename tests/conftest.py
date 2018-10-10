@@ -57,22 +57,6 @@ def node(host, request):
         pytest.skip(
             "Not a valid test for non-containerized deployments or atomic hosts")  # noqa E501
 
-    if "mgrs" in group_names and ceph_stable_release == "jewel":
-        pytest.skip("mgr nodes can not be tested with ceph release jewel")
-
-    if "nfss" in group_names and ceph_stable_release == "jewel":
-        pytest.skip("nfs nodes can not be tested with ceph release jewel")
-
-    if group_names == ["iscsigws"] and ceph_stable_release == "jewel":
-        pytest.skip("iscsigws nodes can not be tested with ceph release jewel")  # noqa E501
-
-    if request.node.get_closest_marker("from_luminous") and ceph_release_num[ceph_stable_release] < ceph_release_num['luminous']:  # noqa E501
-        pytest.skip(
-            "This test is only valid for releases starting from Luminous and above")  # noqa E501
-
-    if request.node.get_closest_marker("before_luminous") and ceph_release_num[ceph_stable_release] >= ceph_release_num['luminous']:  # noqa E501
-        pytest.skip("This test is only valid for release before Luminous")
-
     journal_collocation_test = ansible_vars.get("osd_scenario") == "collocated"
     if request.node.get_closest_marker("journal_collocation") and not journal_collocation_test:  # noqa E501
         pytest.skip("Scenario is not using journal collocation")
