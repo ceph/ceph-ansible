@@ -184,8 +184,7 @@
       command: ceph --cluster {{ cluster }} osd set {{ item }}
       with_items:
         - noout
-        - noscrub
-        - nodeep-scrub
+        - norebalance
       delegate_to: "{{ mon_host }}"
       when: not containerized_deployment
 
@@ -194,8 +193,7 @@
         docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
       with_items:
         - noout
-        - noscrub
-        - nodeep-scrub
+        - norebalance
       delegate_to: "{{ mon_host }}"
       when: containerized_deployment
 
@@ -358,9 +356,7 @@
       command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} -s --format json"
       register: ceph_health_post
       until: >
-        ((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) == 1
-        and
-        (ceph_health_post.stdout | from_json).pgmap.pgs_by_state.0.state_name == "active+clean"
+        ((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | selectattr('state_name', 'search', '^active\\+clean') | map(attribute='count') | list | sum) == (ceph_pgs.stdout | from_json).pgmap.num_pgs
       delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
@@ -391,8 +387,7 @@
       command: "{{ docker_exec_cmd_update_osd|default('') }} ceph osd unset {{ item }} --cluster {{ cluster }}"
       with_items:
         - noout
-        - noscrub
-        - nodeep-scrub
+        - norebalance
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: get osd versions
