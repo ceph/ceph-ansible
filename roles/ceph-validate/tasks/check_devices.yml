@@ -20,19 +20,20 @@
   register: dedicated_device_parted
   with_items: "{{ dedicated_devices }}"
   when:
-    - osd_scenario == 'non-collocated'
+    - dedicated_devices|default([]) | length > 0
 
 - name: fail if one of the dedicated_device is not a device
   fail:
     msg: "{{ item }} is not a block special file!"
   with_items: "{{ dedicated_device_parted.results }}"
   when:
-    - osd_scenario == 'non-collocated'
+    - dedicated_devices|default([]) | length > 0
     - item.failed
 
 - name: fail if dedicated_device is not the size length as devices
   fail:
     msg: "dedicated_device lengtth must be identical to devices's length"
   when:
-    - osd_scenario == 'non-collocated'
+    - dedicated_devices|default([]) | length > 0
+    - devices | length > 0
     - dedicated_devices|length != devices|length
