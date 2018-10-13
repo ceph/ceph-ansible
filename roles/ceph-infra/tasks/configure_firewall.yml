@@ -9,6 +9,8 @@
   changed_when: false
   tags:
     - firewall
+  when:
+    - not containerized_deployment
 
 - name: start firewalld
   service:
@@ -16,12 +18,15 @@
     state: started
     enabled: yes
   when:
+    - not firewalld_pkg_query.skipped
     - firewalld_pkg_query.rc == 0
+      or is_atomic
 
 - name: open monitor ports
   firewalld:
     service: ceph-mon
     zone: "{{ ceph_mon_firewall_zone }}"
+    source: "{{ public_network }}"
     permanent: true
     immediate: false # if true then fails in case firewalld is stopped
     state: enabled
@@ -37,12 +42,12 @@
   firewalld:
     service: ceph
     zone: "{{ ceph_mgr_firewall_zone }}"
+    source: "{{ public_network }}"
     permanent: true
     immediate: false # if true then fails in case firewalld is stopped
     state: enabled
   notify: restart firewalld
   when:
-    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
     - mgr_group_name is defined
     - mgr_group_name in group_names
     - firewalld_pkg_query.rc == 0
@@ -53,9 +58,13 @@
   firewalld:
     service: ceph
     zone: "{{ ceph_osd_firewall_zone }}"
+    source: "{{ item }}"
     permanent: true
     immediate: false # if true then fails in case firewalld is stopped
     state: enabled
+  with_items:
+    - "{{ public_network }}"
+    - "{{ cluster_network }}"
   notify: restart firewalld
   when:
     - osd_group_name is defined
@@ -68,6 +77,7 @@
   firewalld:
     port: "{{ radosgw_frontend_port }}/tcp"
     zone: "{{ ceph_rgw_firewall_zone }}"
+    source: "{{ public_network }}"
     permanent: true
     immediate: false # if true then fails in case firewalld is stopped
     state: enabled
@@ -83,6 +93,7 @@
   firewalld:
     service: ceph
     zone: "{{ ceph_mds_firewall_zone }}"
+    source: "{{ public_network }}"
     permanent: true
     immediate: false # if true then fails in case firewalld is stopped
     state: enabled
@@ -98,6 +109,7 @@
   firewalld:
     service: nfs
     zone: "{{ ceph_nfs_firewall_zone }}"
+    source: "{{ public_network }}"
     permanent: true
     immediate: false # if true then fails in case firewalld is stopped
     state: enabled
@@ -113,6 +125,7 @@
   firewalld:
     port: "111/tcp"
     zone: "{{ ceph_nfs_firewall_zone }}"
+    source: "{{ public_network }}"
     permanent: true
     immediate: false # if true then fails in case firewalld is stopped
     state: enabled
@@ -128,6 +141,7 @@
   firewalld:
     port: "{{ restapi_port }}/tcp"
     zone: "{{ ceph_restapi_firewall_zone }}"
+    source: "{{ public_network }}"
     permanent: true
     immediate: false # if true then fails in case firewalld is stopped
     state: enabled
@@ -143,6 +157,7 @@
   firewalld:
     service: ceph
     zone: "{{ ceph_rbdmirror_firewall_zone }}"
+    source: "{{ public_network }}"
     permanent: true
     immediate: false # if true then fails in case firewalld is stopped
     state: enabled
@@ -158,6 +173,7 @@
   firewalld:
     port: "5001/tcp"
     zone: "{{ ceph_iscsi_firewall_zone }}"
+    source: "{{ public_network }}"
     permanent: true
     immediate: false # if true then fails in case firewalld is stopped
     state: enabled
