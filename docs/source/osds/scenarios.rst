@@ -38,7 +38,7 @@ Other (optional) supported settings:
 
 - ``osd_objectstore``: Set the Ceph *objectstore* for the OSD. Available options
   are ``filestore`` or ``bluestore``.  You can only select ``bluestore`` with
-  the Ceph release is luminous or greater. Defaults to ``filestore`` if unset.
+  the Ceph release is luminous or greater. Defaults to ``bluestore`` if unset.
 
 - ``dmcrypt``: Enable Ceph's encryption on OSDs using ``dmcrypt``.
     Defaults to ``false`` if unset.
