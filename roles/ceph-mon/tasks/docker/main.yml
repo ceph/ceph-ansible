@@ -16,65 +16,12 @@
   delay: 15
   until: monitor_socket.rc == 0
 
-- name: ipv4 - force peer addition as potential bootstrap peer for cluster bringup - monitor_interface
-  command: "{{ docker_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok add_bootstrap_peer_hint {{ hostvars[groups[mon_group_name][0]]['ansible_' + monitor_interface].ipv4.address }}"
+- name: force peer addition as potential bootstrap peer for cluster bringup
+  command: "{{ docker_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok add_bootstrap_peer_hint {{ _current_monitor_address }}"
   changed_when: false
   failed_when: false
   when:
     - not containerized_deployment_with_kv
-    - ip_version == 'ipv4'
-    - hostvars[groups[mon_group_name][0]]['monitor_interface'] is defined
-    - hostvars[groups[mon_group_name][0]]['monitor_interface'] != 'interface'
-
-- name: ipv4 - force peer addition as potential bootstrap peer for cluster bringup - monitor_address
-  command: "{{ docker_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok add_bootstrap_peer_hint {{ hostvars[groups[mon_group_name][0]]['monitor_address'] }}"
-  changed_when: false
-  failed_when: false
-  when:
-    - not containerized_deployment_with_kv
-    - ip_version == 'ipv4'
-    - hostvars[groups[mon_group_name][0]]['monitor_address'] is defined
-    - hostvars[groups[mon_group_name][0]]['monitor_address'] != '0.0.0.0'
-
-- name: ipv4 - force peer addition as potential bootstrap peer for cluster bringup - monitor_address_block
-  command: "{{ docker_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok add_bootstrap_peer_hint {{ hostvars[groups[mon_group_name][0]]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}"
-  changed_when: false
-  failed_when: false
-  when:
-    - not containerized_deployment_with_kv
-    - ip_version == 'ipv4'
-    - hostvars[groups[mon_group_name][0]]['monitor_address_block'] is defined
-    - hostvars[groups[mon_group_name][0]]['monitor_address_block'] != 'subnet'
-
-- name: ipv6 - force peer addition as potential bootstrap peer for cluster bringup - monitor_interface
-  command: "{{ docker_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok add_bootstrap_peer_hint [{{ hostvars[groups[mon_group_name][0]]['ansible_' + monitor_interface].ipv6[0].address }}]"
-  changed_when: false
-  failed_when: false
-  when:
-    - not containerized_deployment_with_kv
-    - ip_version == 'ipv6'
-    - hostvars[groups[mon_group_name][0]]['monitor_interface'] is defined
-    - hostvars[groups[mon_group_name][0]]['monitor_interface'] != 'interface'
-
-- name: ipv6 - force peer addition as potential bootstrap peer for cluster bringup - monitor_address
-  command: "{{ docker_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok add_bootstrap_peer_hint [{{ hostvars[groups[mon_group_name][0]]['monitor_address'] }}]"
-  changed_when: false
-  failed_when: false
-  when:
-    - not containerized_deployment_with_kv
-    - ip_version == 'ipv6'
-    - hostvars[groups[mon_group_name][0]]['monitor_address'] is defined
-    - hostvars[groups[mon_group_name][0]]['monitor_address'] != '0.0.0.0'
-
-- name: ipv6 - force peer addition as potential bootstrap peer for cluster bringup - monitor_address_block
-  command: "{{ docker_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok add_bootstrap_peer_hint [{{ hostvars[groups[mon_group_name][0]]['ansible_all_' + ip_version + '_addresses'] | ipaddr(monitor_address_block) | first }}]"
-  changed_when: false
-  failed_when: false
-  when:
-    - not containerized_deployment_with_kv
-    - ip_version == 'ipv6'
-    - hostvars[groups[mon_group_name][0]]['monitor_address_block'] is defined
-    - hostvars[groups[mon_group_name][0]]['monitor_address_block'] != 'subnet'
 
 - name: include fetch_configs.yml
   include_tasks: fetch_configs.yml
