@@ -30,11 +30,7 @@ ExecStart=/usr/bin/docker run --rm --name ceph-mon-%i \
   --net=host \
 {% endif -%}
   -e IP_VERSION={{ ip_version[-1:] }} \
-{% for host in _monitor_addresses %}
-{% if host.name == inventory_hostname %}
--e MON_IP={{ host.addr }} \
-{% endif %}
-{% endfor %}
+  -e MON_IP={{ _current_monitor_address }} \
   -e CLUSTER={{ cluster }} \
   -e FSID={{ fsid }} \
   -e CEPH_PUBLIC_NETWORK={{ public_network | regex_replace(' ', '') }} \
