@@ -244,10 +244,8 @@ rados_options = (
 )
 
 osd_options = (
-    << << << < HEAD
     (optional("dmcrypt"), validate_dmcrypt_bool_value),
     (optional("osd_auto_discovery"), validate_osd_auto_discovery_bool_value),
-    ("osd_scenario", validate_osd_scenarios),
 )
 
 collocated_osd_scenario = ("devices", iterables.AllItems(types.string))
@@ -256,10 +254,8 @@ non_collocated_osd_scenario = (
     (optional("bluestore_wal_devices"), iterables.AllItems(types.string)),
     (optional("dedicated_devices"), iterables.AllItems(types.string)),
     ("devices", iterables.AllItems(types.string)),
-    == == == =
     (optional("dmcrypt"), types.boolean),
     (optional("osd_auto_discovery"), types.boolean),
-    >>>>>> > plugin: validate.py do not check osd_scenario
 )
 
 lvm_batch_scenario = ("devices", iterables.AllItems(types.string))
