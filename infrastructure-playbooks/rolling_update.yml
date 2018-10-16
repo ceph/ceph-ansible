@@ -19,7 +19,6 @@
   become: false
   vars:
     - mgr_group_name: mgrs
-    - jewel_minor_update: False
 
   vars_prompt:
     - name: ireallymeanit
@@ -41,7 +40,6 @@
       fail:
         msg: "Please add a mgr host to your inventory."
       when:
-        - not jewel_minor_update
         - groups.get(mgr_group_name, []) | length == 0
 
 
@@ -243,7 +241,6 @@
         - not containerized_deployment
         - cephx
         - groups.get(mgr_group_name, []) | length > 0
-        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ groups.get(mgr_group_name, []) }}"
 
@@ -262,7 +259,6 @@
         - cephx
         - groups.get(mgr_group_name, []) | length > 0
         - inventory_hostname == groups[mon_group_name]|last
-        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ groups.get(mgr_group_name, []) }}"
 
@@ -294,9 +290,7 @@
     - { role: ceph-common, when: not containerized_deployment }
     - { role: ceph-docker-common, when: containerized_deployment }
     - ceph-config
-    - { role: ceph-mgr,
-        when: "(ceph_release_num[ceph_release] >= ceph_release_num.luminous) or
-               (ceph_release_num[ceph_release] < ceph_release_num.luminous and rolling_update)" }
+    - ceph-mgr
 
   post_tasks:
     - name: start ceph mgr
@@ -323,7 +317,6 @@
     health_osd_check_retries: 40
     health_osd_check_delay: 30
     upgrade_ceph_packages: True
-    jewel_minor_update: False
 
   hosts:
     - "{{ osd_group_name|default('osds') }}"
@@ -397,15 +390,11 @@
       command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
       register: ceph_versions
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when:
-        - not jewel_minor_update
 
     - name: set_fact ceph_versions_osd
       set_fact:
         ceph_versions_osd: "{{ (ceph_versions.stdout|from_json).osd }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when:
-        - not jewel_minor_update
 
     # length == 1 means there is a single osds versions entry
     # thus all the osds are running the same version
@@ -415,7 +404,6 @@
       when:
         - (ceph_versions.get('stdout', '{}')|from_json).get('osd', {}) | length == 1
         - ceph_versions_osd | string is search("ceph version 10")
-        - not jewel_minor_update
 
     - name: get num_pgs - non container
       command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} -s --format json"
@@ -437,8 +425,6 @@
 
 
 - name: unset osd flags
-  vars:
-    - jewel_minor_update: False
 
   hosts:
     - "{{ mon_group_name|default('mons') }}"
@@ -466,15 +452,11 @@
       command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
       register: ceph_versions
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when:
-        - not jewel_minor_update
 
     - name: set_fact ceph_versions_osd
       set_fact:
         ceph_versions_osd: "{{ (ceph_versions.stdout|from_json).osd }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when:
-        - not jewel_minor_update
 
     # length == 1 means there is a single osds versions entry
     # thus all the osds are running the same version
@@ -484,8 +466,6 @@
       when:
         - (ceph_versions.get('stdout', '{}')|from_json).get('osd', {}) | length == 1
         - ceph_versions_osd | string is search("ceph version 12")
-        - not jewel_minor_update
-
 
 - name: upgrade ceph mdss cluster
 
@@ -666,9 +646,7 @@
     - { role: ceph-common, when: not containerized_deployment }
     - { role: ceph-docker-common, when: containerized_deployment }
     - ceph-config
-    - { role: ceph-nfs,
-        when: "(ceph_release_num[ceph_release] >= ceph_release_num.luminous) or
-               (ceph_release_num[ceph_release] < ceph_release_num.luminous and rolling_update)" }
+    - ceph-nfs
 
   post_tasks:
     - name: start nfs gateway
@@ -722,9 +700,7 @@
     - { role: ceph-common, when: not containerized_deployment }
     - { role: ceph-docker-common, when: containerized_deployment }
     - ceph-config
-    - { role: ceph-iscsi-gw,
-        when: "(ceph_release_num[ceph_release] >= ceph_release_num.luminous) or
-               (ceph_release_num[ceph_release] < ceph_release_num.luminous and rolling_update)" }
+    - ceph-iscsi-gw
 
   post_tasks:
     - name: start rbd-target-gw
