@@ -34,8 +34,9 @@
     when:
       - cephx
       - containerized_deployment
-      - groups.get(mgr_group_name, []) | length > 0
-    with_items: "{{ groups.get(mgr_group_name, []) }}"
+    with_items:
+        - "{{ groups.get(mgr_group_name, []) }}" # this honors the condition where mgrs run on separate machines
+        - "{{ groups.get(mon_group_name, []) }}" # this honors the new rule where mgrs are always collocated with mons
 
   - name: fetch ceph mgr key(s)
     fetch:

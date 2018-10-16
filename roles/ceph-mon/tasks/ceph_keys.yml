@@ -60,9 +60,10 @@
     secret: "{{ (mgr_secret != 'mgr_secret') | ternary(mgr_secret, omit) }}"
   when:
     - cephx
-    - groups.get(mgr_group_name, []) | length > 0
     - inventory_hostname == groups[mon_group_name]|last
-  with_items: "{{ groups.get(mgr_group_name, []) }}"
+  with_items:
+    - "{{ groups.get(mgr_group_name, []) }}" # this honors the condition where mgrs run on separate machines
+    - "{{ groups.get(mon_group_name, []) }}" # this honors the new rule where mgrs are always collocated with mons
 
 # once this gets backported github.com/ceph/ceph/pull/20983
 # we will be able to remove these 2 tasks below

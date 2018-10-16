@@ -119,6 +119,15 @@
       when:
         - not containerized_deployment
 
+    - name: stop ceph mgr
+      systemd:
+        name: ceph-mgr@{{ ansible_hostname }}
+        state: stopped
+        enabled: yes
+      ignore_errors: True # if no mgr collocated with mons
+      when:
+        - not containerized_deployment
+
     - import_role:
         name: ceph-defaults
         private: false
@@ -139,6 +148,10 @@
     - import_role:
         name: ceph-mon
         private: false
+    - import_role:
+        name: ceph-mgr
+        private: false
+      when: groups.get(mgr_group_name, []) | length == 0
 
     - name: start ceph mon
       systemd:
@@ -148,12 +161,31 @@
       when:
         - not containerized_deployment
 
+    - name: start ceph mgr
+      systemd:
+        name: ceph-mgr@{{ ansible_hostname }}
+        state: started
+        enabled: yes
+      ignore_errors: True # if no mgr collocated with mons
+      when:
+        - not containerized_deployment
+
     - name: restart containerized ceph mon
       systemd:
         name: ceph-mon@{{ monitor_name }}
         state: restarted
         enabled: yes
         daemon_reload: yes
+      when:
+        - containerized_deployment
+
+    - name: restart containerized ceph mgr
+      systemd:
+        name: ceph-mgr@{{ monitor_name }}
+        state: restarted
+        enabled: yes
+        daemon_reload: yes
+      ignore_errors: True # if no mgr collocated with mons
       when:
         - containerized_deployment
 
