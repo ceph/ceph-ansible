@@ -45,20 +45,6 @@
     - ceph-defaults
     - ceph-validate
 
-- hosts: "{{ groups['mons'][0] }}"
-  gather_facts: False
-  become: True
-
-  roles:
-    - role: ceph-defaults
-    - role: ceph-fetch-keys
-
-  post_tasks:
-    - name: set_fact docker_exec_cmd if containerized_deployment
-      set_fact:
-        docker_exec_cmd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-      when: containerized_deployment
-
 - hosts: osds
   gather_facts: False
   become: True
