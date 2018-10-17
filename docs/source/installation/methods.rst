@@ -41,7 +41,7 @@ UCA repository
 
 If ``ceph_repository`` is set to ``uca``, packages you will be by default installed from http://ubuntu-cloud.archive.canonical.com/ubuntu, this can be changed by tweaking ``ceph_stable_repo_uca``.
 You can also decide which OpenStack version the Ceph packages should come from by tweaking ``ceph_stable_openstack_release_uca``.
-For example, ``ceph_stable_openstack_release_uca: liberty``.
+For example, ``ceph_stable_openstack_release_uca: queens``.
 
 Dev repository
 ~~~~~~~~~~~~~~
