@@ -4,7 +4,7 @@ set -xe
 # VARIABLES
 BASEDIR=$(dirname "$0")
 LOCAL_BRANCH=$(cd $BASEDIR && git rev-parse --abbrev-ref HEAD)
-ROLES="ceph-common ceph-mon ceph-osd ceph-mds ceph-rgw ceph-agent ceph-fetch-keys ceph-rbd-mirror ceph-client ceph-docker-common ceph-mgr ceph-defaults ceph-config"
+ROLES="ceph-common ceph-mon ceph-osd ceph-mds ceph-rgw ceph-restapi ceph-agent ceph-fetch-keys ceph-rbd-mirror ceph-client ceph-container-common ceph-mgr ceph-defaults ceph-config"
 
 
 # FUNCTIONS
