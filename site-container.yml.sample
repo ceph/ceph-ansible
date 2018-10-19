@@ -1,0 +1,349 @@
+---
+# Defines deployment design and assigns role to server groups
+
+- hosts:
+  - mons
+  - agents
+  - osds
+  - mdss
+  - rgws
+  - nfss
+  - rbdmirrors
+  - clients
+  - iscsigws
+  - iscsi-gws # for backward compatibility only!
+  - mgrs
+
+  gather_facts: false
+  become: True
+  any_errors_fatal: true
+
+  vars:
+    delegate_facts_host: True
+
+  pre_tasks:
+    - name: gather facts
+      setup:
+      when:
+        - not delegate_facts_host | bool
+
+    - name: gather and delegate facts
+      setup:
+      delegate_to: "{{ item }}"
+      delegate_facts: True
+      with_items: "{{ groups['all'] }}"
+      run_once: true
+      when:
+        - delegate_facts_host | bool
+
+    - name: check if it is atomic host
+      stat:
+        path: /run/ostree-booted
+      register: stat_ostree
+      tags:
+        - always
+
+    - name: set_fact is_atomic
+      set_fact:
+        is_atomic: '{{ stat_ostree.stat.exists }}'
+      tags:
+        - always
+
+  roles:
+    - role: ceph-defaults
+      tags: [with_pkg, fetch_container_image]
+    - role: ceph-validate
+    - role: ceph-infra
+    - role: ceph-handler
+    - role: ceph-container-common
+      tags: [with_pkg, fetch_container_image]
+      when:
+        - not (is_atomic | bool)
+        - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
+
+  post_tasks:
+    - name: "pull {{ ceph_docker_image }} image"
+      command: "docker pull {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      changed_when: false
+      when:
+        - is_atomic
+        - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
+        - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
+
+- hosts: mons
+  tasks:
+    - name: set ceph monitor install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_mon:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts: mons
+  become: True
+  gather_facts: false
+  roles:
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-handler
+    - role: ceph-container-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-mon
+  serial: 1 # MUST be '1' WHEN DEPLOYING MONITORS ON DOCKER CONTAINERS
+
+- hosts: mons
+  tasks:
+    - name: set ceph monitor install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_mon:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts: mgrs
+  become: True
+  gather_facts: false
+  pre_tasks:
+    - name: set ceph manager install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_mgr:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+  roles:
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-handler
+    - role: ceph-container-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-mgr
+  post_tasks:
+    - name: set ceph manager install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_mgr:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts: osds
+  become: True
+  gather_facts: false
+  pre_tasks:
+    - name: set ceph osd install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_osd:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+  roles:
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-handler
+    - role: ceph-container-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-osd
+  post_tasks:
+    - name: set ceph osd install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_osd:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts: mdss
+  become: True
+  gather_facts: false
+  pre_tasks:
+    - name: set ceph mds install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_mds:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+  roles:
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-handler
+    - role: ceph-container-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - ceph-mds
+  post_tasks:
+    - name: set ceph mds install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_mds:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts: rgws
+  become: True
+  gather_facts: false
+  pre_tasks:
+    - name: set ceph rgw install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_rgw:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+  roles:
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-handler
+    - role: ceph-container-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-rgw
+  post_tasks:
+    - name: set ceph rgw install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_rgw:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts: nfss
+  become: True
+  gather_facts: false
+  pre_tasks:
+    - name: set ceph nfs install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_nfs:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+  roles:
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-handler
+    - role: ceph-container-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-nfs
+  post_tasks:
+    - name: set ceph nfs install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_nfs:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts: rbdmirrors
+  become: True
+  gather_facts: false
+  pre_tasks:
+    - name: set ceph rbd mirror install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_rbdmirror:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+  roles:
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-handler
+    - role: ceph-container-common
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-rbd-mirror
+  post_tasks:
+    - name: set ceph rbd mirror install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_rbdmirror:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts: clients
+  become: True
+  gather_facts: false
+  pre_tasks:
+    - name: set ceph client install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_client:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+  roles:
+    - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-handler
+    - role: ceph-container-common
+      when:
+        - inventory_hostname == groups.get('clients', ['']) | first
+    - role: ceph-config
+      tags: ['ceph_update_config']
+    - role: ceph-client
+  post_tasks:
+    - name: set ceph client install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_client:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts:
+    - iscsigws
+    - iscsi-gws # for backward compatibility only!
+  gather_facts: false
+  become: True
+  pre_tasks:
+    - name: set ceph iscsi gateway install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_iscsi_gw:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+  roles:
+    - { role: ceph-defaults, tags: ['ceph_update_config'] }
+    - role: ceph-handler
+    - ceph-container-common
+    - { role: ceph-config, tags: ['ceph_update_config'] }
+    - ceph-iscsi-gw
+  post_tasks:
+    - name: set ceph iscsi gw install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_iscsi_gw:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts: mons
+  gather_facts: false
+  become: True
+  tasks:
+    - name: get ceph status from the first monitor
+      command: docker exec ceph-mon-{{ hostvars[groups['mons'][0]]['ansible_hostname'] }} ceph --cluster {{ cluster | default ('ceph') }} -s
+      register: ceph_status
+      changed_when: false
+      delegate_to: "{{ groups['mons'][0] }}"
+      run_once: true
+      ignore_errors: true # we skip the error if mon_group_name is different than 'mons'
+
+    - name: "show ceph status for cluster {{ cluster | default ('ceph') }}"
+      debug:
+        msg: "{{ ceph_status.stdout_lines }}"
+      delegate_to: "{{ groups['mons'][0] }}"
+      run_once: true
+      when: not ceph_status.failed
