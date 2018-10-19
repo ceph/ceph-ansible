@@ -20,19 +20,6 @@
   set_fact:
     ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
 
-# Only include 'checks.yml' when :
-# we are deploying containers without kv AND host is either a mon OR a nfs OR an osd,
-# AND
-# a cluster is not already running,
-# AND
-# we are not playing rolling-update.yml playbook.
-- name: check if a cluster is already running
-  command: "docker ps -q --filter='name=ceph-mon-{{ ansible_hostname }}'"
-  register: ceph_health
-  changed_when: false
-  failed_when: false
-  check_mode: no
-
 - name: include checks.yml
   include_tasks: checks.yml
   when:
@@ -40,7 +27,7 @@
        ((inventory_hostname in groups.get(mon_group_name, [])) or
         (inventory_hostname in groups.get(nfs_group_name, [])) or
         (inventory_hostname in groups.get(osd_group_name, []))))
-    - ceph_health.stdout_lines | length == 0
+    - not ceph_current_status.get('rc', 1) == 0
     - not rolling_update | default(false)
 
 - name: include misc/ntp_atomic.yml
