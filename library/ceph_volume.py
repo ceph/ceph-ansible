@@ -294,7 +294,7 @@ def batch(module, container_image):
         cmd.append('--dmcrypt')
 
     if osds_per_device > 1:
-        cmd.extend(['--osds-per-device', osds_per_device])
+        cmd.extend(['--osds-per-device', str(osds_per_device)])
 
     if objectstore == 'filestore':
         cmd.extend(['--journal-size', journal_size])
