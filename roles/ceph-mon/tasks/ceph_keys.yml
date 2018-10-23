@@ -1,9 +1,28 @@
 ---
+- name: waiting for the monitor(s) to form the quorum...
+  command: "ceph --cluster {{ cluster }} -n mon. -k /var/lib/ceph/mon/{{ cluster }}-{{ ansible_hostname }}/keyring mon_status --format json"
+  register: ceph_health_raw
+  until: >
+    (ceph_health_raw.stdout | from_json)['state'] in ['leader', 'peon']
+  retries: "{{ handler_health_mon_check_retries }}"
+  delay: "{{ handler_health_mon_check_delay }}"
+  when:
+    - ceph_release_num[ceph_release] >= ceph_release_num.nautilus
+
+- name: fetch ceph keys in nautilus and above
+  ceph_key:
+    state: fetch_initial_keys
+    cluster: "{{ cluster }}"
+  when:
+    - ceph_release_num[ceph_release] >= ceph_release_num.nautilus
+    - cephx
+
 - name: collect admin and bootstrap keys
   command: ceph-create-keys --cluster {{ cluster }} -i {{ monitor_name }} -t 30
   changed_when: false
   check_mode: no
   when:
+    - ceph_release_num[ceph_release] < ceph_release_num.nautilus
     - cephx
 
 # NOTE (leseb): wait for mon discovery and quorum resolution
@@ -15,6 +34,7 @@
     timeout: 30
     msg: "Timed out while waiting for keyring creation. Check network settings on mon nodes."
   when:
+    - ceph_release_num[ceph_release] < ceph_release_num.nautilus
     - cephx
     - (ansible_version.major == 2 and ansible_version.minor >= 4) or
       ansible_version.major > 2
@@ -24,6 +44,7 @@
     path: /etc/ceph/{{ cluster }}.client.admin.keyring
     timeout: 30
   when:
+    - ceph_release_num[ceph_release] < ceph_release_num.nautilus
     - cephx
     - ansible_version.major == 2 and ansible_version.minor < 4
 
