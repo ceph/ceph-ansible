@@ -184,6 +184,7 @@ def container_exec(binary, container_image):
                     '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',
                     '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',
                     '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                    '-v', '/var/log/ceph/:/var/log/ceph/:z',
                     os.path.join('--entrypoint=' + binary),
                     container_image]
     return command_exec
