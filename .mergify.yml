@@ -1,17 +1,86 @@
-rules:
-  default:
-    protection:
-      required_status_checks:
-        strict: true
-        contexts:
-          - "Testing: ceph-ansible PR Pipeline"
-      required_pull_request_reviews:
-        required_approving_review_count: 1
-    merge_strategy:
-      method: rebase
-    automated_backport_labels:
-      backport-stable-3.0: stable-3.0
-      backport-stable-3.1: stable-3.1
-    disabling_label: DNM
-    disabling_files:
-      - .mergify.yml
+pull_request_rules:
+  - name: automatic merge
+    conditions:
+      - label!=DNM
+      - '#approved-reviews-by>=1'
+      - 'status-success=Testing: ceph-ansible PR Pipeline'
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+      dismiss_reviews: {}
+      delete_head_branch: {}
+  - name: automatic merge on skip ci
+    conditions:
+      - label!=DNM
+      - title~=\[skip ci\]
+      - '#approved-reviews-by>=1'
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+      dismiss_reviews: {}
+      delete_head_branch: {}
+  - name: automerge backport 3.0
+    conditions:
+      - author=mergify[bot]
+      - base=stable-3.0
+      - label!=DNM
+      - 'status-success=Testing: ceph-ansible PR Pipeline'
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+      dismiss_reviews: {}
+      delete_head_branch: {}
+  - name: automerge backport 3.1
+    conditions:
+      - author=mergify[bot]
+      - base=stable-3.1
+      - label!=DNM
+      - 'status-success=Testing: ceph-ansible PR Pipeline'
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+      dismiss_reviews: {}
+      delete_head_branch: {}
+  - name: automerge backport 3.2
+    conditions:
+      - author=mergify[bot]
+      - base=stable-3.2
+      - label!=DNM
+      - 'status-success=Testing: ceph-ansible PR Pipeline'
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+      dismiss_reviews: {}
+      delete_head_branch: {}
+# Backports
+  - actions:
+      backport:
+        branches:
+        - stable-3.0
+    conditions:
+      - label=backport-stable-3.0
+    name: backport stable-3.0
+  - actions:
+      backport:
+        branches:
+        - stable-3.1
+    conditions:
+      - label=backport-stable-3.1
+    name: backport stable-3.1
+  - actions:
+      backport:
+        branches:
+        - stable-3.2
+    conditions:
+      - label=backport-stable-3.2
+    name: backport stable-3.2

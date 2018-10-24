@@ -1,5 +1,6 @@
 
 from ansible.plugins.action import ActionBase
+from distutils.version import LooseVersion
 
 try:
     from __main__ import display
@@ -11,6 +12,11 @@ try:
     import notario
 except ImportError:
     msg = "The python-notario library is missing. Please install it on the node you are running ceph-ansible to continue."
+    display.error(msg)
+    raise SystemExit(msg)
+
+if LooseVersion(notario.__version__) < LooseVersion("0.0.13"):
+    msg = "The python-notario libary has an incompatible version. Version >= 0.0.13 is needed, current version: %s" % notario.__version__
     display.error(msg)
     raise SystemExit(msg)
 
