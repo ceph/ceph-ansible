@@ -184,6 +184,7 @@ def container_exec(binary, container_image):
                     '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',
                     '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',
                     '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                    '-v', '/var/log/ceph/:/var/log/ceph/:z',
                     os.path.join('--entrypoint=' + binary),
                     container_image]
     return command_exec
@@ -517,8 +518,12 @@ def run_module():
         # see: http://tracker.ceph.com/issues/36329
         # FIXME: it's probably less confusing to check for rc
 
-        # convert out to json, ansible return a string...
-        out_dict = json.loads(out)
+        # convert out to json, ansible returns a string...
+        try:
+            out_dict = json.loads(out)
+        except ValueError:
+            fatal("Could not decode json output: {} from the command {}".format(out, cmd), module)  # noqa E501
+
         if out_dict:
             data = module.params['data']
             result['stdout'] = 'skipped, since {0} is already used for an osd'.format(  # noqa E501

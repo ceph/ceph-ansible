@@ -44,6 +44,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
                                  '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
                                  'docker.io/ceph/daemon:latest-luminous']
         result = ceph_volume.container_exec(fake_binary, fake_container_image)
@@ -58,6 +59,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
                                  '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
                                  'docker.io/ceph/daemon:latest-luminous',
                                  'lvm',
@@ -111,6 +113,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
                                  '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
                                  'docker.io/ceph/daemon:latest-luminous',
                                  '--cluster',
@@ -136,6 +139,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
                                  '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
                                  'docker.io/ceph/daemon:latest-luminous',
                                  '--cluster',
@@ -182,6 +186,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
                                  '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
                                  'docker.io/ceph/daemon:latest-luminous',
                                  '--cluster',
@@ -229,6 +234,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
                                  '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
                                  'docker.io/ceph/daemon:latest-luminous',
                                  '--cluster',
