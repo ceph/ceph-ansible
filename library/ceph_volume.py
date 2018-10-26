@@ -288,6 +288,9 @@ def batch(module, container_image):
     cmd.extend(['--%s' % objectstore])
     cmd.append('--yes')
 
+    if container_image:
+        cmd.append('--prepare')
+
     if crush_device_class:
         cmd.extend(['--crush-device-class', crush_device_class])
 
@@ -556,10 +559,6 @@ def run_module():
 
     elif action == 'batch':
         # Batch prepare AND activate OSDs
-        if container_image:
-            fatal(
-                'Batch operation is currently not supported on containerized deployment (https://tracker.ceph.com/issues/36363)', module)  # noqa E501
-
         report = module.params.get('report', None)
 
         # Add --report flag for the idempotency test
