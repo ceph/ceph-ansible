@@ -1,0 +1,38 @@
+---
+- name: delete the zone user
+  command: radosgw-admin user rm --uid=zone.user
+  run_once: true
+  failed_when: false
+
+- name: remove zone from zonegroup
+  command: radosgw-admin zonegroup remove --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }}
+  run_once: true
+  failed_when: false
+  notify:
+    - update period
+
+- name: delete the zone
+  command: radosgw-admin zone delete --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }}
+  run_once: true
+  failed_when: false
+
+- name: delete the zonegroup
+  command: radosgw-admin zonegroup delete --rgw-zonegroup={{ rgw_zonegroup }}
+  run_once: true
+  failed_when: false
+
+- name: delete the realm
+  command: radosgw-admin realm delete --rgw-realm={{ rgw_realm }}
+  run_once: true
+  failed_when: false
+
+- name: delete zone from rgw stanza in ceph.conf
+  lineinfile:
+    dest: "/etc/ceph/{{ cluster }}.conf"
+    regexp: "rgw_zone = {{ rgw_zonegroup }}-{{ rgw_zone }}"
+    state: absent
+  when:
+    - rgw_zone is defined
+    - rgw_zonegroup is defined
+  notify:
+    - restart rgw

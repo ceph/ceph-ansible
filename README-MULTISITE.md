@@ -33,6 +33,7 @@ rgw_multisite: true
 rgw_zone: jupiter
 rgw_zonemaster: true
 rgw_zonesecondary: false
+rgw_multisite_endpoint_addr: "{{ ansible_fqdn }}"
 rgw_zonegroup: solarsystem
 rgw_zone_user: zone.user
 rgw_realm: milkyway
@@ -56,6 +57,7 @@ rgw_multisite: true
 rgw_zone: mars
 rgw_zonemaster: false
 rgw_zonesecondary: true
+rgw_multisite_endpoint_addr: "{{ ansible_fqdn }}"
 rgw_zonegroup: solarsystem
 rgw_zone_user: zone.user
 rgw_realm: milkyway
@@ -66,7 +68,7 @@ rgw_pull_port: 8080
 rgw_pullhost: cluster0-rgw0
 ```
 
-**Note:** pullhost should be the host of the RGW that is configured as the Zone Master
+**Note:** pullhost should be the rgw_multisite_endpoint_addr of the RGW that is configured as the Zone Master
 **Note:** rgw_zone_user, system_access_key, and system_secret_key should match what you used in the master cluster
 **Note:** rgw_zonemaster should have the value of false and rgw_zonesecondary should be true
 
