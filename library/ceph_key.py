@@ -205,7 +205,7 @@ def generate_caps(cmd, _type, caps):
     Generate CephX capabilities list
     '''
 
-    for k, v in caps.iteritems():
+    for k, v in caps.items():
         # makes sure someone didn't pass an empty var,
         # we don't want to add an empty cap
         if len(k) == 0:
