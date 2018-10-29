@@ -1,0 +1,61 @@
+---
+- hosts: rgws
+  gather_facts: True
+  become: True
+  vars:
+    s3cmd_cmd: "s3cmd --no-ssl --access_key={{ system_access_key }} --secret_key={{ system_secret_key }} --host={{ rgw_multisite_endpoint_addr }}:8080 --host-bucket={{ rgw_multisite_endpoint_addr }}:8080"
+  tasks:
+
+    - name: check if it is Atomic host
+      stat: path=/run/ostree-booted
+      register: stat_ostree
+      check_mode: no
+
+    - name: set fact for using Atomic host
+      set_fact:
+        is_atomic: '{{ stat_ostree.stat.exists }}'
+
+    - name: install s3cmd
+      package:
+        name: s3cmd
+        state: present
+      when:
+        - not is_atomic
+
+    - name: generate and upload a random 10Mb file - containerized deployment
+      command: >
+        docker run --rm --name=rgw_multisite_test --entrypoint=/bin/bash {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} -c 'dd if=/dev/urandom of=/tmp/testinfra.img bs=1M count=10; {{ s3cmd_cmd }} mb s3://testinfra; {{ s3cmd_cmd }} put /tmp/testinfra.img s3://testinfra'
+      when:
+        - rgw_zonemaster
+        - containerized_deployment | default(False)
+
+    - name: generate and upload a random a 10Mb file - non containerized
+      shell: >
+        dd if=/dev/urandom of=/tmp/testinfra.img bs=1M count=10;
+        {{ s3cmd_cmd }} mb s3://testinfra;
+        {{ s3cmd_cmd }} put /tmp/testinfra.img s3://testinfra
+      when:
+        - rgw_zonemaster | default(False)
+        - not containerized_deployment | default(False)
+
+    - name: get info from replicated file - containerized deployment
+      command: >
+        docker run --rm --name=rgw_multisite_test --entrypoint=/bin/bash {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} -c '{{ s3cmd_cmd }} info s3://testinfra/testinfra.img'
+      register: s3cmd_info_status
+      when:
+        - not rgw_zonemaster | default(False)
+        - containerized_deployment | default(False)
+      retries: 10
+      delay: 2
+      until: s3cmd_info_status.get('rc', 1) == 0
+
+    - name: get info from replicated file - non containerized
+      command: >
+        {{ s3cmd_cmd }} info s3://testinfra/testinfra.img
+      register: s3cmd_info_status
+      when:
+        - not rgw_zonemaster | default(False)
+        - not containerized_deployment | default(False)
+      retries: 10
+      delay: 2
+      until: s3cmd_info_status.get('rc', 1) == 0
