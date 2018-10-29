@@ -21,6 +21,7 @@ def node(host, request):
     rolling_update = os.environ.get("ROLLING_UPDATE", "False")
     group_names = ansible_vars["group_names"]
     docker = ansible_vars.get("docker")
+    fsid = ansible_vars.get("fsid")
     osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
     osd_scenario = ansible_vars.get("osd_scenario")
     lvm_scenario = osd_scenario in ['lvm', 'lvm-batch']
@@ -92,7 +93,7 @@ def node(host, request):
         if cmd.rc == 0:
             osd_ids = cmd.stdout.rstrip("\n").split("\n")
             osds = osd_ids
-            if docker:
+            if docker and fsid == "6e008d48-1661-11e8-8546-008c3214218a":
                 osds = []
                 for device in ansible_vars.get("devices", []):
                     real_dev = host.run("sudo readlink -f %s" % device)
