@@ -71,14 +71,9 @@ class TestOSDs(object):
 
     @pytest.mark.docker
     def test_all_docker_osds_are_up_and_in(self, node, host):
-        osd_scenario = node["vars"].get('osd_scenario', False)
-        if osd_scenario in ['lvm', 'lvm-batch']:
-            osd_id = "0"
-        else:
-            hostname = node["vars"]["inventory_hostname"]
-            osd_id = os.path.join(hostname+"-sda")
-
-        cmd = "sudo docker exec ceph-osd-{osd_id} ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(
+        osd_id = host.check_output(
+            "docker ps -q --filter='name=ceph-osd' | head -1")
+        cmd = "sudo docker exec {osd_id} ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(
             osd_id=osd_id,
             cluster=node["cluster_name"]
         )
