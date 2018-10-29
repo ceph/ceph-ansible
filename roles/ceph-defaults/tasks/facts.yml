@@ -239,3 +239,41 @@
     - ceph_current_status['servicemap'] is defined
     - ceph_current_status['servicemap']['services'] is defined
     - ceph_current_status['servicemap']['services']['rgw'] is defined
+
+- name: get default value for osd_pool_default_pg_num
+  shell: |
+   {{ docker_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[groups[mon_group_name][0]]['inventory_hostname'] }} config get osd_pool_default_pg_num -f json
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  register: default_pool_default_pg_num
+  when: 
+    - not rolling_update
+    - ceph_current_status.fsid is defined
+
+- name: set_fact osd_pool_default_pg_num with default_pool_default_pg_num.stdout
+  set_fact:
+    osd_pool_default_pg_num: "{{ (default_pool_default_pg_num.stdout| from_json).osd_pool_default_pg_num | int }}"
+  run_once: true
+  delegate_facts: true
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['all'] }}"
+  when: default_pool_default_pg_num.stdout is defined
+
+- name: set_fact osd_pool_default_pg_num with pool_default_pg_num (backward compatibility)
+  set_fact:
+    osd_pool_default_pg_num: "{{ pool_default_pg_num }}"
+  run_once: true
+  delegate_facts: true
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['all'] }}"
+  when: pool_default_pg_num is defined and pool_default_pg_num|length != 0
+
+- name: set_fact osd_pool_default_pg_num ceph_conf_overrides.global.osd_pool_default_pg_num
+  set_fact:
+    osd_pool_default_pg_num: "{{ ceph_conf_overrides.global.osd_pool_default_pg_num }}"
+  run_once: true
+  delegate_facts: true
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['all'] }}"
+  when: ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', False) != False

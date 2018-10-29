@@ -21,10 +21,109 @@ dummy:
 # will copy the admin key to the /etc/ceph/ directory
 #copy_admin_key: false
 
+######################
+# OSD CRUSH LOCATION #
+######################
 
-##############
-# CEPH OPTIONS
-##############
+# /!\
+#
+# BE EXTREMELY CAREFUL WITH THIS OPTION
+# DO NOT USE IT UNLESS YOU KNOW WHAT YOU ARE DOING
+#
+# /!\
+#
+# It is probably best to keep this option to 'false' as the default
+# suggests it. This option should only be used while doing some complex
+# CRUSH map. It allows you to force a specific location for a set of OSDs.
+#
+# The following options will build a ceph.conf with OSD sections
+# Example:
+# [osd.X]
+# osd crush location = "root=location"
+#
+# This works with your inventory file
+# To match the following 'osd_crush_location' option the inventory must look like:
+#
+# [osds]
+# osd0 ceph_crush_root=foo ceph_crush_rack=bar
+
+#crush_location: false
+#osd_crush_location: "\"root={{ ceph_crush_root }} rack={{ ceph_crush_rack }} host={{ ansible_hostname }}\""
+
+###############
+# CRUSH RULES #
+###############
+#crush_rule_config: false
+
+#crush_rule_hdd:
+#  name: HDD
+#  root: default
+#  type: host
+#  device_class: hdd
+#  default: false
+
+# Note: ssd class must exist first, if none have been deployed don't enable.
+# In addition, you should only have one default rule.
+#
+#crush_rule_ssd:
+#  name: SSD
+#  root: default
+#  type: host
+#  device_class: ssd
+#  default: false
+
+#crush_rules:
+#  - "{{ crush_rule_hdd }}"
+#  - "{{ crush_rule_ssd }}"
+
+# Caution: this will create crush roots and racks according to hostvars {{ osd_crush_location }}
+# and will move hosts into them which might lead to significant data movement in the cluster!
+#
+# In order for the playbook to create CRUSH hierarchy, you have to setup your Ansible inventory file like so:
+#
+# [osds]
+# ceph-osd-01 osd_crush_location="{ 'root': 'mon-roottt', 'rack': 'mon-rackkkk', 'pod': 'monpod', 'host': 'ceph-osd-01' }"
+#
+# Note that 'host' is mandatory and that you need to submit at least two bucket type (including the host)
+#create_crush_tree: false
+
+#############
+# RBD POOLS #
+#############
+# By setting create_rbd_pools: true, you can have ceph-ansible create rbd pools.
+# Note: admin_key must be present on MONs, as these tasks are delegated to them.
+#
+#create_rbd_pools: true
+#rbd:
+#  name: "rbd"
+#  pg_num: 128
+#  pgp_num: 128
+#  rule_name: "replicated_hdd_ruleset"
+#  type: "replicated"
+#  device_class: "hdd"
+#rbd_ssd:
+#  name: "rbd_ssd"
+#  pg_num: 128
+#  pgp_num: 128
+#  rule_name: "replicated_ssd_ruleset"
+#  type: "replicated"
+#  device_class: "ssd"
+#rbd_osd_erasure:
+#  name: "rbd_osd_erasure"
+#  pg_num: 128
+#  pgp_num: 128
+#  rule_name: ""
+#  type: "erasure"
+#  erasure_profile: ""
+#pools:
+#  - "{{ rbd }}"
+#  - "{{ rbd_ssd }}"
+#  - "{{ rbd_osd_erasure }}"
+
+
+################
+# CEPH OPTIONS #
+################
 
 # Devices to be used as OSDs
 # You can pre-provision disks that are not present yet.
@@ -182,7 +281,7 @@ dummy:
 #     data_vg: vg1
 #     journal: journal-lv1
 #     journal_vg: vg2
-#     crush_device_class: foo
+#     crush_device_class: hdd
 #   - data: data-lv2
 #     journal: /dev/sda1
 #     data_vg: vg1
@@ -204,7 +303,7 @@ dummy:
 #     data_vg: vg1
 #     wal: wal-lv1
 #     wal_vg: vg1
-#     crush_device_class: foo
+#     crush_device_class: hdd
 #   - data: data-lv2
 #     db: db-lv2
 #     db_vg: vg2
@@ -219,9 +318,10 @@ dummy:
 #   - data: /dev/sdb1
 
 #lvm_volumes: []
-#crush_device_class: ""
-#osds_per_device: 1
 
+#This var is used w/lvm-batch, when osd_scenario: lvm & devices > 0. Default: hdd
+#crush_device_class: "hdd"
+#osds_per_device: 1
 
 ##########
 # DOCKER #

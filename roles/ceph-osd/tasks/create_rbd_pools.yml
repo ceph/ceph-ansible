@@ -1,0 +1,163 @@
+- name: register pool status
+  command: >
+    {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool get {{ item.name }} size
+  with_items: "{{ pools }}"
+  run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  delegate_facts: true
+  register: ceph_pool_exists
+  failed_when: ceph_pool_exists.rc == 1 or ceph_pool_exists.rc > 2
+  changed_when: false
+  when:
+    - create_rbd_pools
+
+- name: create pool crush rules < luminous
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush rule create-simple {{ item.name }} {{ item.root }} {{ item.type }}"
+  with_items: "{{ crush_rules | unique }}"
+  run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  register: crush_rule_status
+  when:
+    - ceph_release_num[ceph_release] < ceph_release_num.luminous
+  changed_when: "'exists' not in crush_rule_status.stderr"
+
+- name: wait for all osd to be up
+  shell: >
+    test "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" =
+    "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_up_osds"])')"
+  register: wait_for_all_osds_up
+  retries: 30
+  delay: 10
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  until: wait_for_all_osds_up.rc == 0
+  when:
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+
+- name: wait for device classes to report luminous+
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush class ls-osd {{ item.device_class }}"
+  retries: 30
+  delay: 10
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  register: wait_for_device_classes
+  until: wait_for_device_classes.stdout_lines | length > 0
+  with_items: "{{ crush_rules | unique }}"
+  when:
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+
+- name: create pool crush rules luminous+
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush rule create-replicated {{ item.name }} {{ item.root }} {{ item.type }} {{ item.device_class }}"
+  with_items: "{{ crush_rules | unique }}"
+  run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  register: crush_rule_status
+  when:
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+  changed_when: "'exists' not in crush_rule_status.stderr"
+
+- name: configure crush hierarchy
+  ceph_crush:
+    cluster: "{{ cluster }}"
+    location: "{{ hostvars[item]['osd_crush_location'] }}"
+    containerized: "{{ docker_exec_cmd }}"
+  with_items: "{{ groups[osd_group_name] }}"
+  register: config_crush_hierarchy
+  run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - create_crush_tree
+    - hostvars[item]['osd_crush_location'] is defined
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+
+- name: get id for new default crush rule
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd -f json crush rule dump {{ item.name }}"
+  run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  register: info_ceph_default_crush_rule
+  changed_when: false
+  with_items: "{{ crush_rules }}"
+  when:
+    - item.default
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+
+- name: set_fact info_ceph_default_crush_rule_yaml
+  set_fact:
+    info_ceph_default_crush_rule_yaml: "{{ item.stdout | from_json() }}"
+  with_items: "{{ info_ceph_default_crush_rule.results }}"
+  run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - not item.get('skipped', false)
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+
+- name: set_fact osd_pool_default_crush_rule to osd_pool_default_crush_replicated_ruleset if release < luminous else osd_pool_default_crush_rule
+  set_fact:
+    osd_pool_default_crush_rule: "{{ 'osd_pool_default_crush_replicated_ruleset' if ceph_release_num[ceph_release] < ceph_release_num.luminous else 'osd_pool_default_crush_rule' }}"
+
+- name: insert new default crush rule into daemon to prevent restart
+  command: "ceph --cluster {{ cluster }} daemon mon.{{ hostvars[item]['inventory_hostname'] }} config set {{ osd_pool_default_crush_rule }} {{ info_ceph_default_crush_rule_yaml.rule_id }}"
+  run_once: true
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups[mon_group_name] }}"
+  when:
+    - not containerized_deployment
+    - not config_crush_hierarchy.get('skipped', false)
+    - info_ceph_default_crush_rule_yaml | default('') | length > 0
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+
+- name: docker insert new default crush rule into daemon to prevent restart
+  command: "docker exec ceph-mon-{{ hostvars[item]['inventory_hostname'] }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[item]['inventory_hostname'] }} config set {{ osd_pool_default_crush_rule }} {{ info_ceph_default_crush_rule_yaml.rule_id }}"
+  run_once: true
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups[mon_group_name] }}"
+  when:
+    - containerized_deployment
+    - not config_crush_hierarchy.get('skipped', false)
+    - info_ceph_default_crush_rule_yaml | default('') | length > 0
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+
+- name: "add new default crush rule to {{ cluster }}.conf"
+  ini_file:
+    dest: "/etc/ceph/{{ cluster }}.conf"
+    section: "global"
+    option: "{{ osd_pool_default_crush_rule }}"
+    value: "{{ info_ceph_default_crush_rule_yaml.rule_id }}"
+  delegate_to: "{{ item }}"
+  run_once: true
+  with_items: 
+    - "{{ groups[mon_group_name] }}"
+    - "{{ groups[osd_group_name] }}"
+  when:
+    - not config_crush_hierarchy.get('skipped', false)
+    - info_ceph_default_crush_rule_yaml | default('') | length > 0
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
+
+- name: create ceph rbd pool(s)
+  command: >
+    {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+    osd pool create {{ item.item.name }}
+    {{ item.item.get('pg_num', hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num']) }}
+    {{ item.item.pgp_num | default(item.item.pg_num) }}
+    {{ item.item.type | default("replicated") }}
+    {{ item.item.rule_name | default("replicated_rule") }}
+    {%- if item.item.type | default("replicated") == 'erasure' and item.item.erasure_profile != '' %}
+    {{ item.item.erasure_profile }}
+    {%- endif %}
+  with_items: "{{ (ceph_pool_exists|default({})).results| default({}) }}"
+  run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when: 
+    - create_rbd_pools
+    - item.rc == 2
+  register: ceph_rbd_pool_create
+
+- name: init rbd pool(s)
+  command: >
+    {{ docker_exec_cmd | default('') }} rbd pool init {{ item.item.item.name }} --cluster {{ cluster }}
+  with_items: "{{ (ceph_rbd_pool_create|default({})).results| default({}) }}"
+  run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - item.changed == true
+    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
