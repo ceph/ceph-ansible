@@ -7,17 +7,7 @@
       - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
       - /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
       - /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring
-
-- name: register rbd bootstrap key
-  set_fact:
-    bootstrap_rbd_keyring:
-      - "/var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring"
-  when: ceph_release_num[ceph_release] >= ceph_release_num.luminous
-
-- name: merge rbd bootstrap key to config and keys paths
-  set_fact:
-    ceph_config_keys: "{{ ceph_config_keys + bootstrap_rbd_keyring }}"
-  when: ceph_release_num[ceph_release] >= ceph_release_num.luminous
+      - /var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring
 
 - name: stat for ceph config and keys
   local_action:
@@ -43,4 +33,4 @@
     - "{{ statconfig.results }}"
   when:
     - item.1.stat.exists == true
-    - item.0 | search("keyring")
+    - item.0 is search("keyring")

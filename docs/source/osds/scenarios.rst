@@ -1,11 +1,243 @@
 OSD Scenarios
 =============
 
-The following are all of the available options for the ``osd_scenario`` config
-setting. Defining an ``osd_scenario`` is mandatory for using ``ceph-ansible``.
+There are a few *scenarios* that are supported and the differences are mainly
+based on the Ceph tooling required to provision OSDs, but can also affect how
+devices are being configured to create an OSD.
+
+Supported values for the required ``osd_scenario`` variable are:
+
+* :ref:`collocated <osd_scenario_collocated>`
+* :ref:`non-collocated <osd_scenario_non_collocated>`
+* :ref:`lvm <osd_scenario_lvm>`
+
+Since the Ceph mimic release, it is preferred to use the :ref:`lvm scenario
+<osd_scenario_lvm>` that uses the ``ceph-volume`` provisioning tool. Any other
+scenario will cause deprecation warnings.
+
+All the scenarios mentionned above support both containerized and non-containerized cluster.
+As a reminder, deploying a containerized cluster can be done by setting ``containerized_deployment``
+to ``True``.
+
+.. _osd_scenario_lvm:
+
+lvm
+---
+
+This OSD scenario uses ``ceph-volume`` to create OSDs, primarily using LVM, and
+is only available when the Ceph release is luminous or newer.
+
+**It is the preferred method of provisioning OSDs.**
+
+It is enabled with the following setting::
+
+
+    osd_scenario: lvm
+
+Other (optional) supported settings:
+
+- ``osd_objectstore``: Set the Ceph *objectstore* for the OSD. Available options
+  are ``filestore`` or ``bluestore``.  You can only select ``bluestore`` with
+  the Ceph release is luminous or greater. Defaults to ``bluestore`` if unset.
+
+- ``dmcrypt``: Enable Ceph's encryption on OSDs using ``dmcrypt``.
+    Defaults to ``false`` if unset.
+
+- ``osds_per_device``: Provision more than 1 OSD (the default if unset) per device.
+
+
+Simple configuration
+^^^^^^^^^^^^^^^^^^^^
+
+With this approach, most of the decisions on how devices are configured to
+provision an OSD are made by the Ceph tooling (``ceph-volume lvm batch`` in
+this case).  There is almost no room to modify how the OSD is composed given an
+input of devices.
+
+To use this configuration, the ``devices`` option must be populated with the
+raw device paths that will be used to provision the OSDs.
+
+
+.. note:: Raw devices must be "clean", without a gpt partition table, or
+          logical volumes present.
+
+
+For example, for a node that has ``/dev/sda`` and ``/dev/sdb`` intended for
+Ceph usage, the configuration would be:
+
+
+.. code-block:: yaml
+
+   osd_scenario: lvm
+   devices:
+     - /dev/sda
+     - /dev/sdb
+
+In the above case, if both devices are spinning drives, 2 OSDs would be
+created, each with its own collocated journal.
+
+Other provisioning strategies are possible, by mixing spinning and solid state
+devices, for example:
+
+.. code-block:: yaml
+
+   osd_scenario: lvm
+   devices:
+     - /dev/sda
+     - /dev/sdb
+     - /dev/nvme0n1
+
+Similar to the initial example, this would end up producing 2 OSDs, but data
+would be placed on the slower spinning drives (``/dev/sda``, and ``/dev/sdb``)
+and journals would be placed on the faster solid state device ``/dev/nvme0n1``.
+The ``ceph-volume`` tool describes this in detail in
+`the "batch" subcommand section <http://docs.ceph.com/docs/master/ceph-volume/lvm/batch/>`_
+
+
+Other (optional) supported settings:
+
+- ``crush_device_class``: Sets the CRUSH device class for all OSDs created with this
+  method (it is not possible to have a per-OSD CRUSH device class using the *simple*
+  configuration approach). Values *must be* a string, like
+  ``crush_device_class: "ssd"``
+
+
+Advanced configuration
+^^^^^^^^^^^^^^^^^^^^^^
+
+This configuration is useful when more granular control is wanted when setting
+up devices and how they should be arranged to provision an OSD. It requires an
+existing setup of volume groups and logical volumes (``ceph-volume`` will **not**
+create these).
+
+To use this configuration, the ``lvm_volumes`` option must be populated with
+logical volumes and volume groups. Additionally, absolute paths to partitions
+*can* be used for ``journal``, ``block.db``, and ``block.wal``.
+
+.. note:: This configuration uses ``ceph-volume lvm create`` to provision OSDs
+
+Supported ``lvm_volumes`` configuration settings:
+
+- ``data``: The logical volume name or full path to a raw device (an LV will be
+  created using 100% of the raw device)
+
+- ``data_vg``: The volume group name, **required** if ``data`` is a logical volume.
+
+- ``crush_device_class``: CRUSH device class name for the resulting OSD, allows
+  setting set the device class for each OSD, unlike the global ``crush_device_class``
+  that sets them for all OSDs.
+
+.. note:: If you wish to set the ``crush_device_class`` for the OSDs
+          when using ``devices`` you must set it using the global ``crush_device_class``
+          option as shown above. There is no way to define a specific CRUSH device class
+          per OSD when using ``devices`` like there is for ``lvm_volumes``.
+
+
+``filestore`` objectstore variables:
+
+- ``journal``: The logical volume name or full path to a partition.
+
+- ``journal_vg``: The volume group name, **required** if ``journal`` is a logical volume.
+
+.. warning:: Each entry must be unique, duplicate values are not allowed
+
+
+``bluestore`` objectstore variables:
+
+- ``db``: The logical volume name or full path to a partition.
+
+- ``db_vg``: The volume group name, **required** if ``db`` is a logical volume.
+
+- ``wal``: The logical volume name or full path to a partition.
+
+- ``wal_vg``: The volume group name, **required** if ``wal`` is a logical volume.
+
+
+.. note:: These ``bluestore`` variables are optional optimizations. Bluestore's
+          ``db`` and ``wal`` will only benefit from faster devices. It is possible to
+          create a bluestore OSD with a single raw device.
+
+.. warning:: Each entry must be unique, duplicate values are not allowed
+
+
+``bluestore`` example using raw devices:
+
+.. code-block:: yaml
+
+   osd_objectstore: bluestore
+   osd_scenario: lvm
+   lvm_volumes:
+     - data: /dev/sda
+     - data: /dev/sdb
+
+.. note:: Volume groups and logical volumes will be created in this case,
+          utilizing 100% of the devices.
+
+``bluestore`` example with logical volumes:
+
+.. code-block:: yaml
+
+   osd_objectstore: bluestore
+   osd_scenario: lvm
+   lvm_volumes:
+     - data: data-lv1
+       data_vg: data-vg1
+     - data: data-lv2
+       data_vg: data-vg2
+
+.. note:: Volume groups and logical volumes must exist.
+
+
+``bluestore`` example defining ``wal`` and ``db`` logical volumes:
+
+.. code-block:: yaml
+
+   osd_objectstore: bluestore
+   osd_scenario: lvm
+   lvm_volumes:
+     - data: data-lv1
+       data_vg: data-vg1
+       db: db-lv1
+       db_vg: db-vg1
+       wal: wal-lv1
+       wal_vg: wal-vg1
+     - data: data-lv2
+       data_vg: data-vg2
+       db: db-lv2
+       db_vg: db-vg2
+       wal: wal-lv2
+       wal_vg: wal-vg2
+
+.. note:: Volume groups and logical volumes must exist.
+
+
+``filestore`` example with logical volumes:
+
+.. code-block:: yaml
+
+   osd_objectstore: filestore
+   osd_scenario: lvm
+   lvm_volumes:
+     - data: data-lv1
+       data_vg: data-vg1
+       journal: journal-lv1
+       journal_vg: journal-vg1
+     - data: data-lv2
+       data_vg: data-vg2
+       journal: journal-lv2
+       journal_vg: journal-vg2
+
+.. note:: Volume groups and logical volumes must exist.
+
+
+.. _osd_scenario_collocated:
 
 collocated
 ----------
+
+.. warning:: This scenario is deprecated in the Ceph mimic release, and fully
+             removed in newer releases. It is recommended to used the
+             :ref:`lvm scenario <osd_scenario_lvm>` instead
 
 This OSD scenario uses ``ceph-disk`` to create OSDs with collocated journals
 from raw devices.
@@ -18,7 +250,7 @@ has the following required configuration options:
 This scenario has the following optional configuration options:
 
 - ``osd_objectstore``: defaults to ``filestore`` if not set. Available options are ``filestore`` or ``bluestore``.
-  You can only select ``bluestore`` if the Ceph release is Luminous or greater.
+  You can only select ``bluestore`` if the Ceph release is luminous or greater.
 
 - ``dmcrypt``: defaults to ``false`` if not set.
 
@@ -53,8 +285,15 @@ An example of using the ``collocated`` OSD scenario with encryption would look l
      - /dev/sda
      - /dev/sdb
 
+
+.. _osd_scenario_non_collocated:
+
 non-collocated
 --------------
+
+.. warning:: This scenario is deprecated in the Ceph mimic release, and fully
+             removed in newer releases. It is recommended to used the
+             :ref:`lvm scenario <osd_scenario_lvm>` instead
 
 This OSD scenario uses ``ceph-disk`` to create OSDs from raw devices with journals that
 exist on a dedicated device.
@@ -69,7 +308,7 @@ This scenario has the following optional configuration options:
 - ``dedicated_devices``: defaults to ``devices`` if not set
 
 - ``osd_objectstore``: defaults to ``filestore`` if not set. Available options are ``filestore`` or ``bluestore``.
-  You can only select ``bluestore`` with the Ceph release is Luminous or greater.
+  You can only select ``bluestore`` with the Ceph release is luminous or greater.
 
 - ``dmcrypt``: defaults to ``false`` if not set.
 
@@ -170,186 +409,3 @@ An example of using the ``non-collocated`` OSD scenario with encryption, bluesto
    bluestore_wal_devices:
      - /dev/sdd
      - /dev/sdd
-
-lvm
----
-
-This OSD scenario uses ``ceph-volume`` to create OSDs from logical volumes and
-is only available when the Ceph release is Luminous or newer.
-
-
-Configurations
-^^^^^^^^^^^^^^
-
-``lvm_volumes`` or ``devices`` are the config option that needs to be defined to deploy OSDs
-with the ``lvm`` osd scenario.
-
-- ``lvm_volumes`` is a list of dictionaries which expects a volume name and a volume group for
-  logical volumes, but can also accept a partition in the case of ``filestore`` for the ``journal``.
-  If ``lvm_volumes`` is defined then the ``ceph-volume lvm create`` command is used to create each OSD
-  defined in ``lvm_volumes``.
-
-- ``devices`` is a list of raw device names as strings. If ``devices`` is defined then the ``ceph-volume lvm batch``
-  command will be used to deploy OSDs. You can also use the ``osds_per_device`` variable to inform ``ceph-volume`` how
-  many OSDs it should create from each device it finds suitable.
-
-Both ``lvm_volumes`` and ``devices`` can be defined and both methods would be used in the deployment or you
-can pick just one method.
-
-This scenario supports encrypting your OSDs by setting ``dmcrypt: True``. If set,
-all OSDs defined in ``lvm_volumes`` will be encrypted.
-
-The ``data`` key represents the logical volume name, raw device or partition that is to be used for your
-OSD data.  The ``data_vg`` key represents the volume group name that your
-``data`` logical volume resides on. This key is required for purging of OSDs
-created by this scenario.
-
-.. note::
-
-   Any logical volume or logical group used in ``lvm_volumes`` must be a name and not a path.
-
-.. note::
-
-   You can not use the same journal for many OSDs.
-
-
-``filestore``
-^^^^^^^^^^^^^
-
-There is filestore support which can be enabled with:
-
-.. code-block:: yaml
-
-   osd_objectstore: filestore
-
-To configure this scenario use the ``lvm_volumes`` config option.
-``lvm_volumes``  is a list of dictionaries which expects a volume name and
-a volume group for logical volumes, but can also accept a parition in the case of
-``filestore`` for the ``journal``.
-
-The following keys are accepted for a ``filestore`` deployment:
-
-* ``data``
-* ``data_vg`` (not required if ``data`` is a raw device or partition)
-* ``journal``
-* ``journal_vg`` (not required if ``journal`` is a partition and not a logical volume)
-* ``crush_device_class`` (optional, sets the crush device class for the OSD)
-
-The ``journal`` key represents the logical volume name or partition that will be used for your OSD journal.
-
-For example, a configuration to use the ``lvm`` osd scenario would look like:
-
-.. code-block:: yaml
-
-   osd_objectstore: filestore
-   osd_scenario: lvm
-   lvm_volumes:
-     - data: data-lv1
-       data_vg: vg1
-       journal: journal-lv1
-       journal_vg: vg2
-       crush_device_class: foo
-     - data: data-lv2
-       journal: /dev/sda
-       data_vg: vg1
-     - data: data-lv3
-       journal: /dev/sdb1
-       data_vg: vg2
-     - data: /dev/sda
-       journal: /dev/sdb1
-     - data: /dev/sda1
-       journal: journal-lv1
-       journal_vg: vg2
-
-For example, a configuration to use the ``lvm`` osd scenario with encryption would look like:
-
-.. code-block:: yaml
-
-   osd_objectstore: filestore
-   osd_scenario: lvm
-   dmcrypt: True
-   lvm_volumes:
-     - data: data-lv1
-       data_vg: vg1
-       journal: journal-lv1
-       journal_vg: vg2
-       crush_device_class: foo
-
-If you wished to use ``devices`` instead of ``lvm_volumes`` your configuration would look like:
-
-.. code-block:: yaml
-
-   osd_objectstore: filestore
-   osd_scenario: lvm
-   crush_device_class: foo
-   devices:
-     - /dev/sda
-     - /dev/sdc
-
-.. note::
-
-    If you wish to change set the ``crush_device_class`` for the OSDs when using ``devices`` you must set it
-    using the global ``crush_device_class`` option as shown above. There is no way to define a specific crush device
-    class per OSD when using ``devices`` like there is for ``lvm_volumes``.
-
-``bluestore``
-^^^^^^^^^^^^^
-
-This scenario allows a combination of devices to be used in an OSD.
-``bluestore`` can work just with a single "block" device (specified by the
-``data`` and optionally ``data_vg``) or additionally with a ``block.wal`` and ``block.db``
-(interchangeably)
-
-The following keys are accepted for a ``bluestore`` deployment:
-
-* ``data`` (required)
-* ``data_vg`` (not required if ``data`` is a raw device or partition)
-* ``db`` (optional for ``block.db``)
-* ``db_vg`` (optional for ``block.db``)
-* ``wal`` (optional for ``block.wal``)
-* ``wal_vg`` (optional for ``block.wal``)
-* ``crush_device_class`` (optional, sets the crush device class for the OSD)
-
-A ``bluestore`` lvm deployment, for all four different combinations supported
-could look like:
-
-.. code-block:: yaml
-
-   osd_objectstore: bluestore
-   osd_scenario: lvm
-   lvm_volumes:
-     - data: data-lv1
-       data_vg: vg1
-       crush_device_class: foo
-     - data: data-lv2
-       data_vg: vg1
-       wal: wal-lv1
-       wal_vg: vg2
-     - data: data-lv3
-       data_vg: vg2
-       db: db-lv1
-       db_vg: vg2
-     - data: data-lv4
-       data_vg: vg4
-       db: db-lv4
-       db_vg: vg4
-       wal: wal-lv4
-       wal_vg: vg4
-     - data: /dev/sda
-
-If you wished to use ``devices`` instead of ``lvm_volumes`` your configuration would look like:
-
-.. code-block:: yaml
-
-   osd_objectstore: bluestore
-   osd_scenario: lvm
-   crush_device_class: foo
-   devices:
-     - /dev/sda
-     - /dev/sdc
-
-.. note::
-
-    If you wish to change set the ``crush_device_class`` for the OSDs when using ``devices`` you must set it
-    using the global ``crush_device_class`` option as shown above. There is no way to define a specific crush device
-    class per OSD when using ``devices`` like there is for ``lvm_volumes``.

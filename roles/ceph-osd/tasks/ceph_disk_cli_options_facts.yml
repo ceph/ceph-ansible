@@ -5,7 +5,6 @@
   when:
     - osd_objectstore == 'bluestore'
     - not dmcrypt
-    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
     - not containerized_deployment
 
 - name: set_fact ceph_disk_cli_options 'ceph_disk_cli_options'
@@ -14,16 +13,6 @@
   when:
     - osd_objectstore == 'filestore'
     - not dmcrypt
-    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
-    - not containerized_deployment
-
-- name: set_fact ceph_disk_cli_options '--cluster {{ cluster }}'
-  set_fact:
-    ceph_disk_cli_options: "--cluster {{ cluster }}"
-  when:
-    - osd_objectstore == 'filestore'
-    - not dmcrypt
-    - ceph_release_num[ceph_release] < ceph_release_num.luminous
     - not containerized_deployment
 
 - name: set_fact ceph_disk_cli_options '--cluster {{ cluster }} --bluestore --dmcrypt'
@@ -32,7 +21,6 @@
   when:
     - osd_objectstore == 'bluestore'
     - dmcrypt
-    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
     - not containerized_deployment
 
 - name: set_fact ceph_disk_cli_options '--cluster {{ cluster }} --filestore --dmcrypt'
@@ -41,16 +29,6 @@
   when:
     - osd_objectstore == 'filestore'
     - dmcrypt
-    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
-    - not containerized_deployment
-
-- name: set_fact ceph_disk_cli_options '--cluster {{ cluster }} --dmcrypt'
-  set_fact:
-    ceph_disk_cli_options: "--cluster {{ cluster }} --dmcrypt"
-  when:
-    - osd_objectstore == 'filestore'
-    - dmcrypt
-    - ceph_release_num[ceph_release] < ceph_release_num.luminous
     - not containerized_deployment
 
 - name: set_fact docker_env_args '-e KV_TYPE={{ kv_type }} -e KV_IP={{ kv_endpoint }} -e KV_PORT={{ kv_port }}'

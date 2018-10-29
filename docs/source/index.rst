@@ -152,6 +152,26 @@ An example of a validation failure might look like:
         "changed": false
         }
 
+Supported Validation
+^^^^^^^^^^^^^^^^^^^^
+
+The ``ceph-validate`` role currently supports validation of the proper config for the following
+osd scenarios:
+
+- ``collocated``
+- ``non-collocated``
+- ``lvm``
+
+The following install options are also validated by the ``ceph-validate`` role:
+
+- ``ceph_origin`` set to ``distro``
+- ``ceph_origin`` set to ``repository``
+- ``ceph_origin`` set to ``local``
+- ``ceph_repository`` set to ``rhcs``
+- ``ceph_repository`` set to ``dev``
+- ``ceph_repository`` set to ``community``
+
+
 Installation methods
 --------------------
 
@@ -202,7 +222,9 @@ selection or other aspects of your cluster.
 - ``public_network``
 - ``osd_scenario``
 - ``monitor_interface`` or ``monitor_address``
-- ``radosgw_interface`` or ``radosgw_address``
+
+
+When deploying RGW instance(s) you are required to set the ``radosgw_interface`` or ``radosgw_address`` config option.
 
 ``ceph.conf`` Configuration File
 ---------------------------------

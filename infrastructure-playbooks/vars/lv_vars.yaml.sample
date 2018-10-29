@@ -1,0 +1,57 @@
+# This file configures logical volume creation for FS Journals on NVMe, a NVMe based bucket index, and HDD based OSDs.
+# This playbook configures one NVMe device at a time. If your OSD systems contain multiple NVMe devices, you will need to edit the key variables ("nvme_device", "hdd_devices") for each run.
+# It is meant to be used when osd_objectstore=filestore and it outputs the necessary input for group_vars/osds.yml when configured with osd_scenario=lvm.
+# The LVs for journals are created first then the LVs for data. All LVs for journals correspond to a LV for data.
+#
+## CHANGE THESE VARS ##
+#
+# The NVMe device and the hdd devices must be raw and not have any GPT, FS, or RAID signatures. 
+# GPT, FS, & RAID signatures should be removed from a device prior to running the lv-create.yml playbook. 
+# 
+# Having leftover signatures can result in ansible errors that say "device $device_name excluded by a filter" after running the lv-create.yml playbook.
+# This can be done by running `wipefs -a $device_name`.
+
+# Path of nvme device primed for LV creation for journals and data. Only one NVMe device is allowed at a time. Providing a list will not work in this case.
+nvme_device: dummy
+
+# Path of hdd devices designated for LV creation.
+hdd_devices:
+  - /dev/sdd
+  - /dev/sde
+  - /dev/sdf
+  - /dev/sdg
+  - /dev/sdh
+
+# Per the lvol module documentation, "size" and "journal_size" is the size of the logical volume, according to lvcreate(8) --size. 
+# This is by default in megabytes or optionally with one of [bBsSkKmMgGtTpPeE] units; or according to lvcreate(8) --extents as a percentage of [VG|PVS|FREE]; Float values must begin with a digit.
+# For further reading and examples see: https://docs.ansible.com/ansible/2.6/modules/lvol_module.html
+
+# Suggested journal size is 5500
+journal_size: 5500
+
+# This var is a list of bucket index LVs created on the NVMe device. We recommend one be created but you can add others
+nvme_device_lvs:
+  - lv_name: "ceph-bucket-index-1"
+    size: 100%FREE
+    journal_name: "ceph-journal-bucket-index-1-{{ nvme_device_basename }}"
+
+## TYPICAL USERS WILL NOT NEED TO CHANGE VARS FROM HERE DOWN ##
+
+# the path to where to save the logfile for lv-create.yml
+logfile_path: ./lv-create.log
+
+# all hdd's have to be the same size and the LVs on them are dedicated for OSD data
+hdd_lv_size: 100%FREE
+
+# Since this playbook can be run multiple times across different devices, {{ var.split('/')[-1] }} is used quite frequently in this play-book.
+# This is used to strip the device name away from its path (ex: sdc from /dev/sdc) to differenciate the names of vgs, journals, or lvs if the prefixes are not changed across multiple runs.
+nvme_device_basename: "{{ nvme_device.split('/')[-1] }}"
+
+# Only one volume group is created in the playbook for all the LVs on NVMe. This volume group takes up the entire device specified in "nvme_device".
+nvme_vg_name: "ceph-nvme-vg-{{ nvme_device_basename }}"
+
+hdd_vg_prefix: "ceph-hdd-vg"
+hdd_lv_prefix: "ceph-hdd-lv"
+hdd_journal_prefix: "ceph-journal"
+
+# Journals are created on NVMe device

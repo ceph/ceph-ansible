@@ -54,6 +54,8 @@
     - role: ceph-defaults
       tags: [with_pkg, fetch_container_image]
     - role: ceph-validate
+    - role: ceph-infra
+    - role: ceph-handler
     - role: ceph-docker-common
       tags: [with_pkg, fetch_container_image]
       when:
@@ -85,6 +87,7 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
       tags: ['ceph_update_config']
@@ -115,14 +118,11 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
       tags: ['ceph_update_config']
-      when:
-        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
     - role: ceph-mgr
-      when:
-        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
   post_tasks:
     - name: set ceph manager install 'Complete'
       run_once: true
@@ -146,6 +146,7 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
       tags: ['ceph_update_config']
@@ -173,6 +174,7 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
       tags: ['ceph_update_config']
@@ -200,6 +202,7 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
       tags: ['ceph_update_config']
@@ -227,14 +230,11 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
       tags: ['ceph_update_config']
-      when:
-        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
     - role: ceph-nfs
-      when:
-        - ceph_release_num[ceph_release] >= ceph_release_num.luminous
   post_tasks:
     - name: set ceph nfs install 'Complete'
       run_once: true
@@ -258,6 +258,7 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
       tags: ['ceph_update_config']
@@ -285,6 +286,7 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
       tags: ['ceph_update_config']
@@ -316,6 +318,7 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-handler
     - role: ceph-docker-common
       when:
         - inventory_hostname == groups.get('clients', ['']) | first
@@ -346,9 +349,10 @@
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - { role: ceph-docker-common }
-    - { role: ceph-config, tags: ['ceph_update_config'], when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
-    - { role: ceph-iscsi-gw, when: "ceph_release_num[ceph_release] >= ceph_release_num.luminous" }
+    - role: ceph-handler
+    - ceph-docker-common
+    - { role: ceph-config, tags: ['ceph_update_config'] }
+    - ceph-iscsi-gw
   post_tasks:
     - name: set ceph iscsi gw install 'Complete'
       run_once: true
@@ -363,14 +367,14 @@
   become: True
   tasks:
     - name: get ceph status from the first monitor
-      command: docker exec ceph-mon-{{ hostvars[groups['mons'][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s
+      command: docker exec ceph-mon-{{ hostvars[groups['mons'][0]]['ansible_hostname'] }} ceph --cluster {{ cluster | default ('ceph') }} -s
       register: ceph_status
       changed_when: false
       delegate_to: "{{ groups['mons'][0] }}"
       run_once: true
       ignore_errors: true # we skip the error if mon_group_name is different than 'mons'
 
-    - name: "show ceph status for cluster {{ cluster }}"
+    - name: "show ceph status for cluster {{ cluster | default ('ceph') }}"
       debug:
         msg: "{{ ceph_status.stdout_lines }}"
       delegate_to: "{{ groups['mons'][0] }}"

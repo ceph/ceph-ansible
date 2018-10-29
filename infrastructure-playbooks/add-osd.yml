@@ -1,0 +1,80 @@
+---
+# This playbook is used to add a new OSD to
+# an existing cluster without the need for running
+# the ceph-docker-common or ceph-common and ceph-mon role again against all
+# of the existing monitors.
+#
+# It can run from any machine. Even if the fetch directory is not present
+# it will be created.
+#
+# Ensure that all monitors are present in the mons
+# group in your inventory so that the ceph configuration file
+# is created correctly for the new OSD(s).
+#
+# It is expected to edit your inventory file to only point to the OSD hosts
+# you want to play the playbook on. So you need to comment already deployed OSD
+# and let uncommented the new OSDs.
+#
+- hosts:
+  - mons
+  - osds
+
+  gather_facts: False
+
+  vars:
+    delegate_facts_host: True
+
+  pre_tasks:
+    - name: gather facts
+      setup:
+      when:
+        - not delegate_facts_host | bool
+
+    - name: gather and delegate facts
+      setup:
+      delegate_to: "{{ item }}"
+      delegate_facts: True
+      with_items:
+        - "{{ groups['mons'] }}"
+        - "{{ groups['osds'] }}"
+      run_once: True
+      when:
+        - delegate_facts_host | bool
+
+  roles:
+    - ceph-defaults
+    - ceph-validate
+
+- hosts: osds
+  gather_facts: False
+  become: True
+
+  pre_tasks:
+    # this task is needed so we can skip the openstack_config.yml include in roles/ceph-osd
+    - name: set_fact add_osd
+      set_fact:
+        add_osd: True
+
+    - name: set noup flag
+      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set noup"
+      delegate_to: "{{ groups['mons'][0] }}"
+      run_once: True
+      changed_when: False
+
+  roles:
+    - role: ceph-defaults
+    - role: ceph-handler
+    - role: ceph-infra
+    - role: ceph-docker-common
+      when: containerized_deployment | bool
+    - role: ceph-common
+      when: not containerized_deployment | bool
+    - role: ceph-config
+    - role: ceph-osd
+
+  post_tasks:
+    - name: unset noup flag
+      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset noup"
+      delegate_to: "{{ groups['mons'][0] }}"
+      run_once: True
+      changed_when: False

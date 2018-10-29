@@ -48,16 +48,10 @@ client_group_name: clients
 iscsi_gw_group_name: iscsigws
 mgr_group_name: mgrs
 
-# If check_firewall is true, then ansible will try to determine if the
-# Ceph ports are blocked by a firewall. If the machine running ansible
-# cannot reach the Ceph ports for some other reason, you may need or
-# want to set this to False to skip those checks.
-check_firewall: False
-
 # If configure_firewall is true, then ansible will try to configure the
 # appropriate firewalling rules so that Ceph daemons can communicate
 # with each others.
-configure_firewall: False
+configure_firewall: True
 
 # Open ports on corresponding nodes if firewall is installed on it
 ceph_mon_firewall_zone: public
@@ -97,9 +91,14 @@ suse_package_dependencies:
 # Whether or not to install the ceph-test package.
 ceph_test: false
 
-# Enable the ntp service by default to avoid clock skew on
-# ceph nodes
+# Enable the ntp service by default to avoid clock skew on ceph nodes
+# Disable if an appropriate NTP client is already installed and configured
 ntp_service_enabled: true
+
+# Set type of NTP client daemon to use, valid entries are chronyd, ntpd or timesyncd
+# Note that this selection is currently ignored on containerized deployments
+ntp_daemon_type: timesyncd
+
 
 # Set uid/gid to default '64045' for bootstrap directories.
 # '64045' is used for debian based distros. It must be set to 167 in case of rhel based distros.
@@ -206,7 +205,7 @@ ceph_rhcs_cdn_debian_repo_version: "/3-release/" # for GA, later for updates use
 #
 #
 #ceph_stable_repo_uca: "http://ubuntu-cloud.archive.canonical.com/ubuntu"
-#ceph_stable_openstack_release_uca: liberty
+#ceph_stable_openstack_release_uca: queens
 #ceph_stable_release_uca: "{{ansible_lsb.codename}}-updates/{{ceph_stable_openstack_release_uca}}"
 
 # REPOSITORY: openSUSE OBS
@@ -347,8 +346,8 @@ cephfs_data: cephfs_data # name of the data pool for a given filesystem
 cephfs_metadata: cephfs_metadata # name of the metadata pool for a given filesystem
 
 cephfs_pools:
-  - { name: "{{ cephfs_data }}", pgs: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}" }
-  - { name: "{{ cephfs_metadata }}", pgs: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}" }
+  - { name: "{{ cephfs_data }}", pgs: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}", size: "" }
+  - { name: "{{ cephfs_metadata }}", pgs: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}", size: "" }
 
 ## OSD options
 #
@@ -357,12 +356,13 @@ hci_safety_factor: 0.2
 non_hci_safety_factor: 0.7
 osd_memory_target: 4000000000
 journal_size: 5120 # OSD journal size in MB
+block_db_size: -1 # block db size in bytes for the ceph-volume lvm batch. -1 means use the default of 'as big as possible'.
 public_network: 0.0.0.0/0
 cluster_network: "{{ public_network | regex_replace(' ', '') }}"
 osd_mkfs_type: xfs
 osd_mkfs_options_xfs: -f -i size=2048
 osd_mount_options_xfs: noatime,largeio,inode64,swalloc
-osd_objectstore: filestore
+osd_objectstore: bluestore
 
 # xattrs. by default, 'filestore xattr use omap' is set to 'true' if
 # 'osd_mkfs_type' is set to 'ext4'; otherwise it isn't set. This can
@@ -487,7 +487,7 @@ ceph_conf_overrides: {}
 # OS TUNING #
 #############
 
-disable_transparent_hugepage: true
+disable_transparent_hugepage: "{{ false if osd_objectstore == 'bluestore' else true }}"
 os_tuning_params:
   - { name: fs.file-max, value: 26234859 }
   - { name: vm.zone_reclaim_mode, value: 0 }
@@ -508,6 +508,10 @@ docker: false
 ceph_docker_image: "ceph/daemon"
 ceph_docker_image_tag: latest
 ceph_docker_registry: docker.io
+## Client only docker image - defaults to {{ ceph_docker_image }}
+ceph_client_docker_image: "{{ ceph_docker_image }}"
+ceph_client_docker_image_tag: "{{ ceph_docker_image_tag }}"
+ceph_client_docker_registry: "{{ ceph_docker_registry }}"
 ceph_docker_enable_centos_extra_repo: false
 ceph_docker_on_openstack: false
 containerized_deployment: False
@@ -546,6 +550,7 @@ openstack_glance_pool:
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
+  size: ""
 openstack_cinder_pool:
   name: "volumes"
   pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
@@ -555,6 +560,7 @@ openstack_cinder_pool:
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
+  size: ""
 openstack_nova_pool:
   name: "vms"
   pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
@@ -564,6 +570,7 @@ openstack_nova_pool:
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
+  size: ""
 openstack_cinder_backup_pool:
   name: "backups"
   pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
@@ -573,6 +580,7 @@ openstack_cinder_backup_pool:
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
+  size: ""
 openstack_gnocchi_pool:
   name: "metrics"
   pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
@@ -582,6 +590,27 @@ openstack_gnocchi_pool:
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
+  size: ""
+openstack_cephfs_data_pool:
+  name: "manila_data"
+  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  rule_name: "replicated_rule"
+  type: 1
+  erasure_profile: ""
+  expected_num_objects: ""
+  application: "rbd"
+  size: ""
+openstack_cephfs_metadata_pool:
+  name: "manila_metadata"
+  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  rule_name: "replicated_rule"
+  type: 1
+  erasure_profile: ""
+  expected_num_objects: ""
+  application: "rbd"
+  size: ""
 
 openstack_pools:
   - "{{ openstack_glance_pool }}"
@@ -589,6 +618,8 @@ openstack_pools:
   - "{{ openstack_nova_pool }}"
   - "{{ openstack_cinder_backup_pool }}"
   - "{{ openstack_gnocchi_pool }}"
+  - "{{ openstack_cephfs_data_pool }}"
+  - "{{ openstack_cephfs_metadata_pool }}"
 
 
 # The value for 'key' can be a pre-generated key,
