@@ -1,11 +1,14 @@
 ---
 - name: setup ntpd
   block:
-    - command: timedatectl set-ntp no
-    - package:
+    - name: timedatectl set-ntp no
+      command: timedatectl set-ntp no
+    - name: install ntp
+      package:
         name: ntp
         state: present
-    - service:
+    - name: start ntp
+      service:
         name: ntp
         enabled: yes
         state: started
@@ -13,11 +16,14 @@
 
 - name: setup chrony
   block:
-    - command: timedatectl set-ntp no
-    - package:
+    - name: timedatectl set-ntp no
+      command: timedatectl set-ntp no
+    - name: install chrony
+      package:
         name: chrony
         state: present
-    - service:
+    - name: start chronyd
+      service:
         name: chronyd
         enabled: yes
         state: started
@@ -25,5 +31,6 @@
 
 - name: setup timesyncd
   block:
-    - command: timedatectl set-ntp on
+    - name: timedatectl set-ntp on
+      command: timedatectl set-ntp on
   when: ntp_daemon_type == "timesyncd"
