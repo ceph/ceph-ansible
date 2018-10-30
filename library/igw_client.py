@@ -53,13 +53,14 @@ author:
 
 """
 
-import os
-import logging
-from logging.handlers import RotatingFileHandler
-from ansible.module_utils.basic import *
+import os  # noqa E402
+import logging  # noqa E402
+from logging.handlers import RotatingFileHandler  # noqa E402
+from ansible.module_utils.basic import *  # noqa E402
 
-from ceph_iscsi_config.client import GWClient
-import ceph_iscsi_config.settings as settings
+from ceph_iscsi_config.client import GWClient  # noqa E402
+import ceph_iscsi_config.settings as settings  # noqa E402
+
 
 # the main function is called ansible_main to allow the call stack
 # to be checked to determine whether the call to the ceph_iscsi_config
@@ -74,10 +75,10 @@ def ansible_main():
             "required": True,
             "choices": ['present', 'absent'],
             "type": "str"
-            },
-        }
+        },
+    }
 
-    module = AnsibleModule(argument_spec=fields,
+    module = AnsibleModule(argument_spec=fields,    # noqa F405
                            supports_check_mode=False)
 
     client_iqn = module.params['client_iqn']
@@ -112,6 +113,7 @@ def ansible_main():
     module.exit_json(changed=changes_made,
                      meta={"msg": "Client definition completed {} "
                                   "changes made".format(client.change_count)})
+
 
 if __name__ == '__main__':
 

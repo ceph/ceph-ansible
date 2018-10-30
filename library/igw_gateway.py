@@ -56,16 +56,16 @@ author:
 
 """
 
-import os
-import logging
+import os  # noqa E402
+import logging  # noqa E402
 
-from logging.handlers import RotatingFileHandler
-from ansible.module_utils.basic import *
+from logging.handlers import RotatingFileHandler  # noqa E402
+from ansible.module_utils.basic import *  # noqa E402
 
-import ceph_iscsi_config.settings as settings
+import ceph_iscsi_config.settings as settings  # noqa E402
 
-from ceph_iscsi_config.gateway import GWTarget
-from ceph_iscsi_config.utils import valid_ip
+from ceph_iscsi_config.gateway import GWTarget  # noqa E402
+from ceph_iscsi_config.utils import valid_ip  # noqa E402
 
 
 # the main function is called ansible_main to allow the call stack
@@ -79,10 +79,10 @@ def ansible_main():
               "mode": {
                   "required": True,
                   "choices": ['target', 'map']
-                  }
-              }
+    }
+    }
 
-    module = AnsibleModule(argument_spec=fields,
+    module = AnsibleModule(argument_spec=fields,  # noqa F405
                            supports_check_mode=False)
 
     gateway_iqn = module.params['gateway_iqn']
@@ -109,7 +109,6 @@ def ansible_main():
                         "unable to continue")
         module.fail_json(msg="iSCSI gateway creation/load failure "
                              "({})".format(gateway.error_msg))
-
 
     logger.info("END - GATEWAY configuration complete")
     module.exit_json(changed=gateway.changes_made,
