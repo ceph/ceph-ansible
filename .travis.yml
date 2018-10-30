@@ -2,18 +2,10 @@ sudo: required
 language: python
 python:
   - "3.6"
-services:
-  - docker
 notifications:
   webhooks: https://galaxy.ansible.com/api/v1/notifications/
 install:
   - pip install -r requirements.txt
-before_script:
-  - ansible-playbook build/build.yml
 script:
-  - docker container run --rm -it
-      -v /var/run/docker.sock:/var/run/docker.sock:ro
-      -v $(pwd):/role:ro
-      -e ANSIBLE_VERBOSITY=1
-      tecnativa/ansible-test-playground:lifecycle
-      create.yml destroy.yml
+  - ansible-playbook -i '127.0.0.1,' site.yml.sample --syntax-check --list-tasks -vv
+  - ansible-playbook -i '127.0.0.1,' site-docker.yml.sample --syntax-check --list-tasks -vv
