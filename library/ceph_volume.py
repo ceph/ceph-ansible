@@ -589,7 +589,6 @@ def run_module():
 
         if not report:
             # if not asking for a report, let's just run the batch command
-            changed = report_result['changed']
             if changed:
                 # Batch prepare the OSD
                 rc, cmd, out, err = exec_command(

@@ -50,7 +50,7 @@
       when:
         - devices | default([]) | length > 0
         - osd_scenario == 'lvm'
-        - (lvm_batch_report.stdout | from_json).changed
+        - lvm_batch_report.changed
 
     - name: run 'ceph-volume lvm list' to see how many osds have already been created
       ceph_volume:
@@ -61,7 +61,7 @@
       when:
         - devices | default([]) | length > 0
         - osd_scenario == 'lvm'
-        - not (lvm_batch_report.stdout | from_json).changed
+        - not lvm_batch_report.changed
 
     - name: set_fact num_osds from the output of 'ceph-volume lvm list'
       set_fact:
@@ -69,7 +69,7 @@
       when:
         - devices | default([]) | length > 0
         - osd_scenario == 'lvm'
-        - not (lvm_batch_report.stdout | from_json).changed
+        - not lvm_batch_report.changed
 
     when:
       - inventory_hostname in groups.get(osd_group_name, [])
