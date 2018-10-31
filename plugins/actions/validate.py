@@ -1,7 +1,6 @@
 
 from ansible.plugins.action import ActionBase
 from distutils.version import LooseVersion
-from ansible.errors import AnsibleUndefinedVariable
 
 try:
     from __main__ import display
@@ -35,15 +34,6 @@ class ActionModule(ActionBase):
     def run(self, tmp=None, task_vars=None):
         # we must use vars, since task_vars will have un-processed variables
         host_vars = task_vars['vars']
-
-        # process jinja2 templates
-        reqd_type = "<class 'ansible.parsing.yaml.objects.AnsibleUnicode'>"
-        for k, v in host_vars.items():
-            if str(type(v)) == reqd_type and len(v) > 2:
-                if v[0] == v[1] == '{' and v[-1] == v[-2] == '}' and v[2] == \
-                   v[-3] == ' ':
-                    host_vars[k] = self._expand_jinja2_template(v)
-
         host = host_vars['ansible_hostname']
         mode = self._task.args.get('mode', 'permissive')
 
@@ -130,22 +120,6 @@ class ActionModule(ActionBase):
             result['stderr_lines'] = msg.split('\n')
 
         return result
-
-    def _expand_jinja2_template(self, var):
-        try:
-            expanded_var = self._templar.template(var, convert_bare=True, fail_on_undefined=True)
-            if expanded_var == var:
-                # if expanded_var is not str/unicode type, raise an exception
-                if not isinstance(expanded_var, string_types):
-                    raise AnsibleUndefinedVariable
-                # If var name is same as result, try to template it
-                expanded_var = self._templar.template("{{" + expanded_var + "}}", convert_bare=True, fail_on_undefined=True)
-        except AnsibleUndefinedVariable as e:
-            expanded_var = u"VARIABLE IS NOT DEFINED!"
-            if self._display.verbosity > 0:
-                expanded_var += u": %s" % str(e)
-
-        return expanded_var
 
 # Schemas
 
