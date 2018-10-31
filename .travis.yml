@@ -6,6 +6,7 @@ notifications:
   webhooks: https://galaxy.ansible.com/api/v1/notifications/
 install:
   - pip install -r requirements.txt
+  - pip install ansible-lint
+  - git clone https://github.com/ansible/galaxy-lint-rules
 script:
-  - ansible-playbook -i '127.0.0.1,' site.yml.sample --syntax-check --list-tasks -vv
-  - ansible-playbook -i '127.0.0.1,' site-docker.yml.sample --syntax-check --list-tasks -vv
+  - for i in $(ls -1 roles/); do ansible-lint -v -r galaxy-lint-rules/rules roles/$i/ ; done
