@@ -29,10 +29,25 @@
         - rgw_zonemaster
         - containerized_deployment | default(False)
 
-    - name: generate and upload a random a 10Mb file - non containerized
+    - name: generate a random a 10Mb file - non containerized
       shell: >
         dd if=/dev/urandom of=/tmp/testinfra.img bs=1M count=10;
+      when:
+        - rgw_zonemaster | default(False)
+        - not containerized_deployment | default(False)
+
+    - name: sleep
+      shell: sleep 365d
+
+    - name: create a random bucket - non containerized
+      shell: >
         {{ s3cmd_cmd }} mb s3://testinfra;
+      when:
+        - rgw_zonemaster | default(False)
+        - not containerized_deployment | default(False)
+
+    - name: create a put a random file - non containerized
+      shell: >
         {{ s3cmd_cmd }} put /tmp/testinfra.img s3://testinfra
       when:
         - rgw_zonemaster | default(False)
