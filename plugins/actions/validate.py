@@ -48,7 +48,7 @@ class ActionModule(ActionBase):
             notario_store["containerized_deployment"] = host_vars["containerized_deployment"]
             notario.validate(host_vars, install_options, defined_keys=True)
 
-            if host_vars["ceph_origin"] == "repository":
+            if host_vars["ceph_origin"] == "repository" and not host_vars["containerized_deployment"]:
                 notario.validate(host_vars, ceph_origin_repository, defined_keys=True)
 
                 if host_vars["ceph_repository"] == "community":
