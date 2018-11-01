@@ -276,9 +276,10 @@
     - ceph_nfs_image_repodigest_before_pulling != image_repodigest_after_pulling
 
 - name: export local ceph dev image
-  local_action:
-    module: command
-      docker save -o "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar" "{{ ceph_docker_username }}/{{ ceph_docker_imagename }}:{{ ceph_docker_image_tag }}"
+  command: >
+    docker save -o "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+    "{{ ceph_docker_username }}/{{ ceph_docker_imagename }}:{{ ceph_docker_image_tag }}"
+  delegate_to: localhost
   when:
     - (ceph_docker_dev_image is defined and ceph_docker_dev_image)
   run_once: true
