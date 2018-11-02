@@ -44,7 +44,7 @@ from ansible.module_utils.basic import *
 import ceph_iscsi_config.settings as settings
 from ceph_iscsi_config.common import Config
 from ceph_iscsi_config.lio import LIO, Gateway
-from ceph_iscsi_config.utils import ipv4_addresses, get_ip
+from ceph_iscsi_config.utils import ip_addresses, resolve_ip_addresses
 
 __author__ = 'pcuzner@redhat.com'
 
@@ -93,10 +93,12 @@ def is_cleanup_host(config):
 
         gw_1 = config.config["gateways"]["ip_list"][0]
 
-        usable_ip = get_ip(gw_1)
-        if usable_ip != '0.0.0.0':
-            if usable_ip in ipv4_addresses():
+        local_ips = ip_addresses()
+        usable_ips = resolve_ip_addresses(gw_1)
+        for ip in usable_ips:
+            if ip in local_ips:
                 cleanup = True
+                break
 
     return cleanup
 
