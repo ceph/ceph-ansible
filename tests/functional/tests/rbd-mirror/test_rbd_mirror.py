@@ -37,7 +37,7 @@ class TestRbdMirrors(object):
             docker_exec_cmd = ''
         hostname = node["vars"]["inventory_hostname"]
         cluster = node['cluster_name']
-        cmd = "sudo {docker_exec_cmd} ceph --name client.bootstrap-rbd --keyring /var/lib/ceph/bootstrap-rbd/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
+        cmd = "sudo {docker_exec_cmd} ceph --name client.bootstrap-rbd-mirror --keyring /var/lib/ceph/bootstrap-rbd-mirror/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
             docker_exec_cmd=docker_exec_cmd,
             hostname=hostname,
             cluster=cluster
