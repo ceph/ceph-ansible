@@ -1,15 +1,60 @@
 ---
-- name: get osd id
-  shell: |
-    ls /var/lib/ceph/osd/ | sed 's/.*-//'
+- block:
+  # For openstack VMs modify the mount point below depending on if the Openstack
+  # VM deploy tool defaults to mounting ephemeral disks
+  - name: umount ceph disk (if on openstack)
+    mount:
+      name: /mnt
+      src: /dev/vdb
+      fstype: ext3
+      state: unmounted
+    when:
+      - ceph_docker_on_openstack
+
+  - name: generate ceph osd docker run script
+    become: true
+    template:
+      src: "{{ role_path }}/templates/ceph-osd-run.sh.j2"
+      dest: "{{ ceph_osd_docker_run_script_path }}/ceph-osd-run.sh"
+      owner: "root"
+      group: "root"
+      mode: "0744"
+    notify:
+      - restart ceph osds
+  when:
+    - containerized_deployment
+
+- name: set_fact docker_exec_start_osd
+  set_fact:
+    docker_exec_start_osd: "{{ 'docker run --rm --privileged=true -v /run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket -v /etc/ceph:/etc/ceph:z -v /dev:/dev --entrypoint=ceph-volume ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'ceph-volume' }}"
+
+- name: collect osd ids
+  shell: >
+    {{ docker_exec_start_osd }} lvm list --format json
   changed_when: false
   failed_when: false
-  check_mode: no
-  register: osd_id
-  until: osd_id.stdout_lines|length == devices|unique|length
-  retries: 10
+  register: ceph_osd_ids
+
+- name: generate systemd unit file
+  become: true
+  template:
+    src: "{{ role_path }}/templates/ceph-osd.service.j2"
+    dest: /etc/systemd/system/ceph-osd@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify:
+    - restart ceph osds
   when:
-    - osd_scenario != 'lvm'
+    - containerized_deployment
+
+- name: systemd start osd
+  systemd:
+    name: ceph-osd@{{ item | regex_replace('/dev/', '') if osd_scenario != 'lvm' else item }}
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  with_items: "{{ devices if osd_scenario != 'lvm' else (ceph_osd_ids.stdout | from_json).keys() }}"
 
 - name: ensure systemd service override directory exists
   file:
@@ -28,11 +73,3 @@
   when:
     - ceph_osd_systemd_overrides is defined
     - ansible_service_mgr == 'systemd'
-
-- name: ensure osd daemons are started
-  service:
-    name: ceph-osd@{{ item }}
-    state: started
-    enabled: true
-  with_items: "{{ (osd_id|default({})).stdout_lines|default([]) }}"
-  changed_when: false
