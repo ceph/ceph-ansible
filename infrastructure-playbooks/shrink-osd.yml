@@ -38,7 +38,8 @@
     mon_group_name: mons
     osd_group_name: osds
 
-  pre_tasks:
+  tasks:
+    # pre-task for following import
     - name: exit playbook, if user did not mean to shrink cluster
       fail:
         msg: "Exiting shrink-osd playbook, no osd(s) was/were removed..
@@ -55,11 +56,11 @@
            -e osd_to_kill=0,1,2,3 argument."
       when: osd_to_kill is not defined
 
-  roles:
-    - ceph-defaults
+    - import_role:
+        name: ceph-defaults
+        private: false
 
-  post_tasks:
-
+    # post-task for preceding import
     - name: set_fact docker_exec_cmd build docker exec command (containerized)
       set_fact:
         docker_exec_cmd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
