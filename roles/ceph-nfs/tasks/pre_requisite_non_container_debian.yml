@@ -55,14 +55,14 @@
             update_cache: yes
         - name: install nfs rgw/cephfs gateway - debian
           apt:
-            name: "{{ item.name }}"
+            name: ['nfs-ganesha-rgw', 'radosgw']
             allow_unauthenticated: yes
-          with_items:
-            - { name: 'nfs-ganesha-rgw', install: "{{ nfs_obj_gw }}" }
-            - { name: 'radosgw', install: "{{ nfs_obj_gw }}" }
-            - { name: 'nfs-ganesha-ceph', install: "{{ nfs_file_gw }}" }
-          when:
-            - item.install | bool
+          when: nfs_obj_gw
+        - name: install nfs rgw/cephfs gateway - debian
+          apt:
+            name: nfs-ganesha-ceph
+            allow_unauthenticated: yes
+          when: nfs_file_gw
       when:
         - (ceph_origin == 'repository' or ceph_origin == 'distro')
         - ceph_repository != 'rhcs'
