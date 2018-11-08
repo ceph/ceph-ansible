@@ -79,19 +79,15 @@
     - set_fact: rolling_update=true
 
 - name: upgrade ceph mon cluster
-
   vars:
     health_mon_check_retries: 5
     health_mon_check_delay: 15
     upgrade_ceph_packages: True
-
   hosts:
     - "{{ mon_group_name|default('mons') }}"
-
   serial: 1
   become: True
-
-  pre_tasks:
+  tasks:
     - name: set mon_host_count
       set_fact: mon_host_count={{ groups[mon_group_name] | length }}
 
@@ -123,15 +119,27 @@
       when:
         - not containerized_deployment
 
-  roles:
-    - ceph-defaults
-    - ceph-handler
-    - { role: ceph-common, when: not containerized_deployment }
-    - { role: ceph-docker-common, when: containerized_deployment }
-    - ceph-config
-    - ceph-mon
+    - import_role:
+        name: ceph-defaults
+        private: false
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-common
+        private: false
+      when: not containerized_deployment
+    - import_role:
+        name: ceph-docker-common
+        private: false
+      when: containerized_deployment
+    - import_role:
+        name: ceph-config
+        private: false
+    - import_role:
+        name: ceph-mon
+        private: false
 
-  post_tasks:
     - name: start ceph mon
       systemd:
         name: ceph-mon@{{ monitor_name }}
@@ -208,18 +216,14 @@
 
 
 - name: upgrade ceph mgr node
-
   vars:
     upgrade_ceph_packages: True
     ceph_release: "{{ ceph_stable_release }}"
-
   hosts:
     - "{{ mgr_group_name|default('mgrs') }}"
-
   serial: 1
   become: True
-
-  pre_tasks:
+  tasks:
     - name: non container - get current fsid
       command: "ceph --cluster {{ cluster }} fsid"
       register: cluster_uuid_non_container
@@ -294,15 +298,27 @@
       when:
         - not containerized_deployment
 
-  roles:
-    - ceph-defaults
-    - ceph-handler
-    - { role: ceph-common, when: not containerized_deployment }
-    - { role: ceph-docker-common, when: containerized_deployment }
-    - ceph-config
-    - ceph-mgr
+    - import_role:
+        name: ceph-defaults
+        private: false
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-common
+        private: false
+      when: not containerized_deployment
+    - import_role:
+        name: ceph-docker-common
+        private: false
+      when: containerized_deployment
+    - import_role:
+        name: ceph-config
+        private: false
+    - import_role:
+        name: ceph-mgr
+        private: false
 
-  post_tasks:
     - name: start ceph mgr
       systemd:
         name: ceph-mgr@{{ ansible_hostname }}
@@ -322,7 +338,6 @@
 
 
 - name: upgrade ceph osds cluster
-
   vars:
     health_osd_check_retries: 40
     health_osd_check_delay: 30
@@ -330,11 +345,9 @@
 
   hosts:
     - "{{ osd_group_name|default('osds') }}"
-
   serial: 1
   become: True
-
-  pre_tasks:
+  tasks:
     - name: get osd numbers - non container
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
       register: osd_ids
@@ -356,15 +369,27 @@
       when:
         - not containerized_deployment
 
-  roles:
-    - ceph-defaults
-    - ceph-handler
-    - { role: ceph-common, when: not containerized_deployment }
-    - { role: ceph-docker-common, when: containerized_deployment }
-    - ceph-config
-    - ceph-osd
+    - import_role:
+        name: ceph-defaults
+        private: false
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-common
+        private: false
+      when: not containerized_deployment
+    - import_role:
+        name: ceph-docker-common
+        private: false
+      when: containerized_deployment
+    - import_role:
+        name: ceph-config
+        private: false
+    - import_role:
+        name: ceph-osd
+        private: false
 
-  post_tasks:
     - name: get osd numbers
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
       register: osd_ids
@@ -441,10 +466,11 @@
 
   become: True
 
-  roles:
-    - ceph-defaults
-
   tasks:
+    - import_role:
+        name: ceph-defaults
+        private: false
+
     - name: set_fact docker_exec_cmd_osd
       set_fact:
         docker_exec_cmd_update_osd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
@@ -478,17 +504,13 @@
         - ceph_versions_osd | string is search("ceph version 12")
 
 - name: upgrade ceph mdss cluster
-
   vars:
     upgrade_ceph_packages: True
-
   hosts:
     - "{{ mds_group_name|default('mdss') }}"
-
   serial: 1
   become: True
-
-  pre_tasks:
+  tasks:
     - name: stop ceph mds
       systemd:
         name: ceph-mds@{{ ansible_hostname }}
@@ -497,15 +519,27 @@
       when:
         - not containerized_deployment
 
-  roles:
-    - ceph-defaults
-    - ceph-handler
-    - { role: ceph-common, when: not containerized_deployment }
-    - { role: ceph-docker-common, when: containerized_deployment }
-    - ceph-config
-    - ceph-mds
+    - import_role:
+        name: ceph-defaults
+        private: false
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-common
+        private: false
+      when: not containerized_deployment
+    - import_role:
+        name: ceph-docker-common
+        private: false
+      when: containerized_deployment
+    - import_role:
+        name: ceph-config
+        private: false
+    - import_role:
+        name: ceph-mds
+        private: false
 
-  post_tasks:
     - name: start ceph mds
       systemd:
         name: ceph-mds@{{ ansible_hostname }}
@@ -525,17 +559,13 @@
 
 
 - name: upgrade ceph rgws cluster
-
   vars:
     upgrade_ceph_packages: True
-
   hosts:
     - "{{ rgw_group_name|default('rgws') }}"
-
   serial: 1
   become: True
-
-  pre_tasks:
+  tasks:
     - name: stop ceph rgw
       systemd:
         name: ceph-radosgw@rgw.{{ ansible_hostname }}
@@ -544,15 +574,27 @@
       when:
         - not containerized_deployment
 
-  roles:
-    - ceph-defaults
-    - ceph-handler
-    - { role: ceph-common, when: not containerized_deployment }
-    - { role: ceph-docker-common, when: containerized_deployment }
-    - ceph-config
-    - ceph-rgw
+    - import_role:
+        name: ceph-defaults
+        private: false
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-common
+        private: false
+      when: not containerized_deployment
+    - import_role:
+        name: ceph-docker-common
+        private: false
+      when: containerized_deployment
+    - import_role:
+        name: ceph-config
+        private: false
+    - import_role:
+        name: ceph-rgw
+        private: false
 
-  post_tasks:
     - name: start ceph rgw
       systemd:
         name: ceph-radosgw@rgw.{{ ansible_hostname }}
@@ -572,17 +614,13 @@
 
 
 - name: upgrade ceph rbd mirror node
-
   vars:
     upgrade_ceph_packages: True
-
   hosts:
     - "{{ rbd_mirror_group_name|default('rbdmirrors') }}"
-
   serial: 1
   become: True
-
-  pre_tasks:
+  tasks:
     # NOTE(leseb): these tasks have a 'failed_when: false'
     # in case we run before luminous or after
     - name: stop ceph rbd mirror before luminous
@@ -599,15 +637,27 @@
         enabled: yes
       failed_when: false
 
-  roles:
-    - ceph-defaults
-    - ceph-handler
-    - { role: ceph-common, when: not containerized_deployment }
-    - { role: ceph-docker-common, when: containerized_deployment }
-    - ceph-config
-    - ceph-rbd-mirror
+    - import_role:
+        name: ceph-defaults
+        private: false
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-common
+        private: false
+      when: not containerized_deployment
+    - import_role:
+        name: ceph-docker-common
+        private: false
+      when: containerized_deployment
+    - import_role:
+        name: ceph-config
+        private: false
+    - import_role:
+        name: ceph-rbd-mirror
+        private: false
 
-  post_tasks:
     - name: start ceph rbd mirror
       systemd:
         name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
@@ -627,17 +677,13 @@
 
 
 - name: upgrade ceph nfs node
-
   vars:
     upgrade_ceph_packages: True
-
   hosts:
     - "{{ nfs_group_name|default('nfss') }}"
-
   serial: 1
   become: True
-
-  pre_tasks:
+  tasks:
     # failed_when: false is here so that if we upgrade
     # from a version of ceph that does not have nfs-ganesha
     # then this task will not fail
@@ -650,15 +696,27 @@
       when:
         - not containerized_deployment
 
-  roles:
-    - ceph-defaults
-    - ceph-handler
-    - { role: ceph-common, when: not containerized_deployment }
-    - { role: ceph-docker-common, when: containerized_deployment }
-    - ceph-config
-    - ceph-nfs
+    - import_role:
+        name: ceph-defaults
+        private: false
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-common
+        private: false
+      when: not containerized_deployment
+    - import_role:
+        name: ceph-docker-common
+        private: false
+      when: containerized_deployment
+    - import_role:
+        name: ceph-config
+        private: false
+    - import_role:
+        name: ceph-nfs
+        private: false
 
-  post_tasks:
     - name: start nfs gateway
       systemd:
         name: nfs-ganesha
@@ -680,18 +738,14 @@
 
 
 - name: upgrade ceph iscsi gateway node
-
   vars:
     upgrade_ceph_packages: True
-
   hosts:
     - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - iscsi-gws # for backward compatibility only!
-
   serial: 1
   become: True
-
-  pre_tasks:
+  tasks:
     # failed_when: false is here so that if we upgrade
     # from a version of ceph that does not have iscsi gws
     # then this task will not fail
@@ -704,15 +758,27 @@
       when:
         - not containerized_deployment
 
-  roles:
-    - ceph-defaults
-    - ceph-handler
-    - { role: ceph-common, when: not containerized_deployment }
-    - { role: ceph-docker-common, when: containerized_deployment }
-    - ceph-config
-    - ceph-iscsi-gw
+    - import_role:
+        name: ceph-defaults
+        private: false
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-common
+        private: false
+      when: not containerized_deployment
+    - import_role:
+        name: ceph-docker-common
+        private: false
+      when: containerized_deployment
+    - import_role:
+        name: ceph-config
+        private: false
+    - import_role:
+        name: ceph-iscsi-gw
+        private: false
 
-  post_tasks:
     - name: start rbd-target-gw
       systemd:
         name: rbd-target-gw
@@ -723,36 +789,43 @@
 
 
 - name: upgrade ceph client node
-
   vars:
     upgrade_ceph_packages: True
-
   hosts:
     - "{{ client_group_name|default('clients') }}"
-
   serial: 1
   become: True
-
-  roles:
-    - ceph-defaults
-    - ceph-handler
-    - { role: ceph-common, when: not containerized_deployment }
-    - { role: ceph-docker-common, when: containerized_deployment }
-    - ceph-config
-    - ceph-client
+  tasks:
+    - import_role:
+        name: ceph-defaults
+        private: false
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-common
+        private: false
+      when: not containerized_deployment
+    - import_role:
+        name: ceph-docker-common
+        private: false
+      when: containerized_deployment
+    - import_role:
+        name: ceph-config
+        private: false
+    - import_role:
+        name: ceph-client
+        private: false
 
 
 - name: show ceph status
-
   hosts:
     - "{{ mon_group_name|default('mons') }}"
-
   become: True
-
-  roles:
-    - ceph-defaults
-
   tasks:
+    - import_role:
+        name: ceph-defaults
+        private: false
     - name: set_fact docker_exec_cmd_status
       set_fact:
         docker_exec_cmd_status: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"

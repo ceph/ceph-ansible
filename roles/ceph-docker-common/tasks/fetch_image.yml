@@ -176,8 +176,8 @@
     - nfs_group_name in group_names
     - ceph_nfs_container_inspect_before_pull.get('rc') == 0
 
-- name: "pulling {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image"
-  command: "timeout {{ docker_pull_timeout }} docker pull {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+- name: "pulling {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image"
+  command: "timeout {{ docker_pull_timeout }} docker pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
   changed_when: false
   register: docker_image
   until: docker_image.rc == 0
@@ -186,8 +186,9 @@
   when:
     - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
 
-- name: "inspecting {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image after pulling"
-  command: "docker inspect {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+- name: "inspecting {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image after pulling"
+  command: "docker inspect {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+  changed_when: false
   failed_when: false
   register: image_inspect_after_pull
 
@@ -275,9 +276,10 @@
     - ceph_nfs_image_repodigest_before_pulling != image_repodigest_after_pulling
 
 - name: export local ceph dev image
-  local_action:
-    module: command
-      docker save -o "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar" "{{ ceph_docker_username }}/{{ ceph_docker_imagename }}:{{ ceph_docker_image_tag }}"
+  command: >
+    docker save -o "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+    "{{ ceph_docker_username }}/{{ ceph_docker_imagename }}:{{ ceph_docker_image_tag }}"
+  delegate_to: localhost
   when:
     - (ceph_docker_dev_image is defined and ceph_docker_dev_image)
   run_once: true
@@ -295,6 +297,8 @@
     - (ceph_docker_dev_image is defined and ceph_docker_dev_image)
 
 - name: remove tmp ceph dev image file
-  command: "rm /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+  file:
+    name: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+    state: absent
   when:
     - (ceph_docker_dev_image is defined and ceph_docker_dev_image)

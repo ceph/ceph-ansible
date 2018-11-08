@@ -493,134 +493,92 @@
     when: not is_atomic
     ignore_errors: true
 
-  - name: remove docker-py on Debian
-    pip:
-      name: docker-py
-      state: absent
-    when:
-      - ansible_distribution == 'Debian'
+  - name: debian based systems tasks
+    block:
+      - name: remove docker-py on debian
+        pip:
+          name: docker-py
+          state: absent
 
-  - name: remove six on Debian
-    pip:
-      name: six
-      state: absent
-    when:
-      - ansible_distribution == 'Debian'
+      - name: remove six on debian
+        pip:
+          name: six
+          state: absent
+
+      - name: remove pip and docker on debian
+        apt:
+          name: [python-pip, docker-engine]
+          state: absent
+          update_cache: yes
+          autoremove: yes
+    when: ansible_distribution == 'Debian'
 
   - name: remove pip and docker on ubuntu
     apt:
-      name: "{{ item }}"
+      name: [python-pip, docker, docker.io]
       state: absent
       update_cache: yes
       autoremove: yes
-    with_items:
-      - python-pip
-      - docker
-      - docker.io
     when: ansible_distribution == 'Ubuntu'
 
-  - name: remove pip and docker on debian
-    apt:
-      name: "{{ item }}"
-      state: absent
-      update_cache: yes
-      autoremove: yes
-    with_items:
-      - python-pip
-      - docker-engine
-    when: ansible_distribution == 'Debian'
+  - name: red hat based systems tasks
+    block:
+      - name: remove epel-release on redhat
+        yum:
+          name: epel-release
+          state: absent
 
-  - name: remove epel-release on redhat
-    yum:
-      name: epel-release
-      state: absent
+      - name: yum related tasks on red hat
+        block:
+          - name: remove pip on redhat
+            yum:
+              name: python-pip
+              state: absent
+
+          - name: remove docker-engine on redhat
+            yum:
+              name: docker-engine
+              state: absent
+
+          # for CentOS
+          - name: remove docker on redhat
+            yum:
+              name: docker
+              state: absent
+
+          - name: remove package dependencies on redhat
+            command: yum -y autoremove
+            args:
+              warn: no
+
+          - name: remove package dependencies on redhat again
+            command: yum -y autoremove
+            args:
+              warn: no
+        when:
+          ansible_pkg_mgr == "yum"
+
+      - name: dnf related tasks on red hat
+        block:
+          - name: remove pip and docker on redhat
+            dnf:
+              name: [python-pip, docker-engine, docker]
+              state: absent
+
+          - name: remove package dependencies on redhat
+            command: dnf -y autoremove
+            args:
+              warn: no
+
+          - name: remove package dependencies on redhat again
+            command: dnf -y autoremove
+            args:
+              warn: no
+        when:
+          ansible_pkg_mgr == "dnf"
     when:
       ansible_os_family == 'RedHat' and
       not is_atomic
-
-  - name: remove pip on redhat
-    yum:
-      name: "{{ item }}"
-      state: absent
-    with_items:
-      - python-pip
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "yum" and
-      not is_atomic
-
-  - name: remove docker-engine on redhat
-    yum:
-      name: "{{ item }}"
-      state: absent
-    with_items:
-      - docker-engine
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "yum" and
-      not is_atomic
-
-  # for CentOS
-  - name: remove docker on redhat
-    yum:
-      name: "{{ item }}"
-      state: absent
-    with_items:
-      - docker
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "yum" and
-      not is_atomic
-
-  - name: remove pip and docker on redhat
-    dnf:
-      name: "{{ item }}"
-      state: absent
-    with_items:
-      - python-pip
-      - docker-engine
-      - docker
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "dnf" and
-      not is_atomic
-
-  - name: remove package dependencies on redhat
-    command: yum -y autoremove
-    args:
-      warn: no
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "yum" and
-      not is_atomic
-
-  - name: remove package dependencies on redhat again
-    command: yum -y autoremove
-    args:
-      warn: no
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "yum" and
-      not is_atomic
-
-  - name: remove package dependencies on redhat
-    command: dnf -y autoremove
-    args:
-      warn: no
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "dnf" and
-      not is_atomic
-
-  - name: remove package dependencies on redhat again
-    command: dnf -y autoremove
-    args:
-      warn: no
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "dnf" and
-      not is_atomic
-
 
 - name: purge ceph directories
 

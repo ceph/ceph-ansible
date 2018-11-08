@@ -45,9 +45,9 @@
 
 # We want this check to be run only on the first node
 - name: check if {{ fetch_directory }} directory exists
-  local_action:
-    module: stat
+  stat:
     path: "{{ fetch_directory }}/monitor_keyring.conf"
+  delegate_to: localhost
   become: false
   register: monitor_keyring_conf
   run_once: true
@@ -62,10 +62,10 @@
     - rolling_update or groups.get(mon_group_name, []) | length == 0
 
 - name: create a local fetch directory if it does not exist
-  local_action:
-    module: file
+  file:
     path: "{{ fetch_directory }}"
     state: directory
+  delegate_to: localhost
   changed_when: false
   become: false
   when:
@@ -90,30 +90,30 @@
     ceph_release: "{{ ceph_stable_release }}"
 
 - name: generate cluster fsid
-  local_action:
-    module: shell
-      python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
+  shell: python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
+  args:
     creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
   register: cluster_uuid
+  delegate_to: localhost
   become: false
   when:
     - generate_fsid
     - ceph_current_status.fsid is undefined
 
 - name: reuse cluster fsid when cluster is already running
-  local_action:
-    module: shell
-      echo {{ fsid }} | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
+  shell: echo {{ fsid }} | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
+  args:
     creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
+  delegate_to: localhost
   become: false
   when:
     - ceph_current_status.fsid is defined
 
 - name: read cluster fsid if it already exists
-  local_action:
-    module: command
-      cat {{ fetch_directory }}/ceph_cluster_uuid.conf
+  command: cat {{ fetch_directory }}/ceph_cluster_uuid.conf
+  args:
     removes: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
+  delegate_to: localhost
   changed_when: false
   register: cluster_uuid
   become: false
@@ -239,3 +239,9 @@
     - ceph_current_status['servicemap'] is defined
     - ceph_current_status['servicemap']['services'] is defined
     - ceph_current_status['servicemap']['services']['rgw'] is defined
+
+- name: import_tasks set_monitor_address.yml
+  import_tasks: set_monitor_address.yml
+
+- name: import_tasks set_radosgw_address.yml
+  import_tasks: set_radosgw_address.yml

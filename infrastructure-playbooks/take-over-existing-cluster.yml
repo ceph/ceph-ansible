@@ -13,9 +13,13 @@
 
 - hosts: mons
   become: True
-  roles:
-    - ceph-defaults
-    - ceph-fetch-keys
+  tasks:
+    - import_role:
+        name: ceph-defaults
+        private: false
+    - import_role:
+        name: ceph-fetch-keys
+        private: false
 
 - hosts:
   - mons
@@ -29,14 +33,15 @@
   - mgrs
   - iscsi-gw
   become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+        private: false
 
-  roles:
-    - ceph-defaults
-
-  post_tasks:
+    # post-tasks for preceding import -
     - name: get the name of the existing ceph cluster
       shell: |
-        basename $(grep --exclude '*.bak' -R fsid /etc/ceph/ | egrep -o '^[^.]*' | head -n 1)
+          basename $(grep --exclude '*.bak' -R fsid /etc/ceph/ | egrep -o '^[^.]*' | head -n 1)
       changed_when: false
       register: cluster_name
 
@@ -45,7 +50,7 @@
         path: "/etc/ceph/{{ cluster_name.stdout }}.conf"
       register: ceph_conf_stat
 
-    # Creates a backup of original ceph conf file in 'cluster_name-YYYYMMDDTHHMMSS.conf.bak' format
+      # Creates a backup of original ceph conf file in 'cluster_name-YYYYMMDDTHHMMSS.conf.bak' format
     - name: "make a backup of original {{ cluster_name.stdout }}.conf"
       copy:
         src: "/etc/ceph/{{ cluster_name.stdout }}.conf"
@@ -65,4 +70,3 @@
         mode: "{{ ceph_conf_stat.stat.mode }}"
         config_overrides: "{{ ceph_conf_overrides }}"
         config_type: ini
-
