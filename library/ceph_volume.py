@@ -178,8 +178,9 @@ def container_exec(binary, container_image):
     '''
     Build the docker CLI to run a command inside a container
     '''
-
-    command_exec = ['docker', 'run', '--rm', '--privileged', '--net=host',
+    container_binary = os.getenv('CEPH_CONTAINER_BINARY')
+    command_exec = [container_binary, 'run',
+                    '--rm', '--privileged', '--net=host',
                     '-v', '/run/lock/lvm:/run/lock/lvm:z',
                     '-v', '/var/run/udev/:/var/run/udev/:z',
                     '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',
@@ -581,15 +582,16 @@ def run_module():
         except ValueError:
             strategy_change = "strategy changed" in out
             if strategy_change:
-                out = json.dumps({"changed": False, "stdout": out.rstrip("\r\n")})
+                out = json.dumps(
+                    {"changed": False, "stdout": out.rstrip("\r\n")})
                 rc = 0
                 changed = False
             else:
                 out = out.rstrip("\r\n")
             result = dict(
                 cmd=cmd,
-                stdout=out,
-                stderr=err.rstrip("\r\n"),
+                stdout=out.rstrip('\r\n'),
+                stderr=err.rstrip('\r\n'),
                 rc=rc,
                 changed=changed,
             )
@@ -620,8 +622,8 @@ def run_module():
         end=str(endd),
         delta=str(delta),
         rc=rc,
-        stdout=out.rstrip(b'\r\n'),
-        stderr=err.rstrip(b'\r\n'),
+        stdout=out.rstrip('\r\n'),
+        stderr=err.rstrip('\r\n'),
         changed=changed,
     )
 

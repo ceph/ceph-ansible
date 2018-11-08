@@ -4,12 +4,12 @@ DELAY="{{ handler_health_osd_check_delay }}"
 CEPH_CLI="--name client.bootstrap-osd --keyring /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring --cluster {{ cluster }}"
 
 check_pgs() {
-  num_pgs=$($docker_exec ceph $CEPH_CLI -s -f json|python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')
+  num_pgs=$($container_exec ceph $CEPH_CLI -s -f json|python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')
   if [[ "$num_pgs" == "0" ]]; then
     return 0
   fi
   while [ $RETRIES -ne 0 ]; do
-    test "$($docker_exec ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')" -eq "$($docker_exec ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print sum ( [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if "active+clean" in i["state_name"]])')"
+    test "$($container_exec ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')" -eq "$($container_exec ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print sum ( [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if "active+clean" in i["state_name"]])')"
     RET=$?
     test $RET -eq 0 && return 0
     sleep $DELAY
@@ -19,17 +19,17 @@ check_pgs() {
   echo "Error while running 'ceph $CEPH_CLI -s', PGs were not reported as active+clean"
   echo "It is possible that the cluster has less OSDs than the replica configuration"
   echo "Will refuse to continue"
-  $docker_exec ceph $CEPH_CLI -s
-  $docker_exec ceph $CEPH_CLI osd dump
-  $docker_exec ceph $CEPH_CLI osd tree
-  $docker_exec ceph $CEPH_CLI osd crush rule dump
+  $container_exec ceph $CEPH_CLI -s
+  $container_exec ceph $CEPH_CLI osd dump
+  $container_exec ceph $CEPH_CLI osd tree
+  $container_exec ceph $CEPH_CLI osd crush rule dump
   exit 1
 }
 
-wait_for_socket_in_docker() {
-  osd_mount_point=$(docker exec "$1" df --output=target | grep '/var/lib/ceph/osd/')
-  whoami=$(docker exec "$1" cat $osd_mount_point/whoami)
-  if ! docker exec "$1" timeout 10 bash -c "while [ ! -e /var/run/ceph/*.asok ]; do sleep 1 ; done"; then
+wait_for_socket_in_container() {
+  osd_mount_point=$({{ container_binary }} exec "$1" df --output=target | grep '/var/lib/ceph/osd/')
+  whoami=$({{ container_binary }} exec "$1" cat $osd_mount_point/whoami)
+  if ! {{ container_binary }} exec "$1" timeout 10 bash -c "while [ ! -e /var/run/ceph/*.asok ]; do sleep 1 ; done"; then
     echo "Timed out while trying to look for a Ceph OSD socket."
     echo "Abort mission!"
     exit 1
@@ -40,12 +40,12 @@ get_dev_name() {
   echo $1 | sed -r 's/ceph-osd@([a-z]{1,4})\.service/\1/'
 }
 
-get_docker_id_from_dev_name() {
+get_container_id_from_dev_name() {
   local id
   local count
   count=10
   while [ $count -ne 0 ]; do
-    id=$(docker ps -q -f "name=$1")
+    id=$({{ container_binary }} ps -q -f "name=$1")
     test "$id" != "" && break
     sleep $DELAY
     let count=count-1
@@ -53,9 +53,9 @@ get_docker_id_from_dev_name() {
   echo "$id"
 }
 
-get_docker_osd_id() {
-  wait_for_socket_in_docker $1
-  docker exec "$1" ls /var/run/ceph | cut -d'.' -f2
+get_container_osd_id() {
+  wait_for_socket_in_container $1
+  {{ container_binary }} exec "$1" ls /var/run/ceph | cut -d'.' -f2
 }
 
 # For containerized deployments, the unit file looks like: ceph-osd@sda.service
@@ -68,21 +68,21 @@ for unit in $(systemctl list-units | grep -E "loaded * active" | grep -oE "ceph-
   # Wait and ensure the socket exists after restarting the daemon
   {% if containerized_deployment and osd_scenario != 'lvm' -%}
   id=$(get_dev_name "$unit")
-  container_id=$(get_docker_id_from_dev_name "$id")
-  wait_for_socket_in_docker "$container_id"
+  container_id=$(get_container_id_from_dev_name "$id")
+  wait_for_socket_in_container "$container_id"
   osd_id=$whoami
-  docker_exec="docker exec $container_id"
+  container_exec="{{ container_binary }} exec $container_id"
   {% elif containerized_deployment and osd_scenario == 'lvm' %}
   osd_id=$(echo ${unit#ceph-osd@} | grep -oE '[0-9]+')
-  container_id=$(get_docker_id_from_dev_name "ceph-osd-${osd_id}")
-  docker_exec="docker exec $container_id"
+  container_id=$(get_container_id_from_dev_name "ceph-osd-${osd_id}")
+  container_exec="{{ container_binary }} exec $container_id"
   {% else %}
   osd_id=$(echo ${unit#ceph-osd@} | grep -oE '[0-9]+')
   {% endif %}
   SOCKET=/var/run/ceph/{{ cluster }}-osd.${osd_id}.asok
   while [ $COUNT -ne 0 ]; do
     RETRIES="{{ handler_health_osd_check_retries }}"
-    $docker_exec test -S "$SOCKET" && check_pgs && continue 2
+    $container_exec test -S "$SOCKET" && check_pgs && continue 2
     sleep $DELAY
     let COUNT=COUNT-1
   done

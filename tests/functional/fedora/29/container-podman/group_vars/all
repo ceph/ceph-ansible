@@ -1,0 +1,39 @@
+---
+# this is only here to let the CI tests know
+# that this scenario is using docker
+docker: True
+
+containerized_deployment: True
+monitor_interface: eth1
+radosgw_interface: eth1
+ceph_mon_docker_subnet: "{{ public_network }}"
+ceph_docker_on_openstack: False
+public_network: "192.168.30.0/24"
+cluster_network: "192.168.31.0/24"
+rgw_override_bucket_index_max_shards: 16
+rgw_bucket_default_quota_max_objects: 1638400
+ceph_conf_overrides:
+  global:
+    osd_pool_default_size: 1
+openstack_config: True
+openstack_glance_pool:
+  name: "images"
+  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  rule_name: "HDD"
+  type: 1
+  erasure_profile: ""
+  expected_num_objects: ""
+  size: ""
+openstack_cinder_pool:
+  name: "volumes"
+  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  rule_name: "HDD"
+  type: 1
+  erasure_profile: ""
+  expected_num_objects: ""
+  size: ""
+openstack_pools:
+  - "{{ openstack_glance_pool }}"
+  - "{{ openstack_cinder_pool }}"

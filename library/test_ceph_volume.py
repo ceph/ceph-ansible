@@ -36,7 +36,7 @@ class TestCephVolumeModule(object):
         result = ceph_volume.get_wal("wal-lv", "wal-vg")
         assert result == "wal-vg/wal-lv"
 
-    def test_container_exec(sefl):
+    def test_container_exec(self):
         fake_binary = "ceph-volume"
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host',  # noqa E501

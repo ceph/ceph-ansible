@@ -5,9 +5,9 @@ After=docker.service
 
 [Service]
 EnvironmentFile=-/etc/environment
-ExecStartPre=-/usr/bin/docker rm ceph-nfs-%i
+ExecStartPre=-/usr/bin/{{ container_binary }} rm ceph-nfs-%i
 ExecStartPre=/usr/bin/mkdir -p /etc/ceph /etc/ganesha /var/lib/nfs/ganesha
-ExecStart=/usr/bin/docker run --rm --net=host \
+ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   {% if not containerized_deployment_with_kv -%}
   -v /var/lib/ceph:/var/lib/ceph:z \
   -v /etc/ceph:/etc/ceph:z \
@@ -29,7 +29,7 @@ ExecStart=/usr/bin/docker run --rm --net=host \
   {{ ceph_nfs_docker_extra_env }} \
   --name=ceph-nfs-{{ ceph_nfs_service_suffix | default(ansible_hostname) }} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-ExecStopPost=-/usr/bin/docker stop ceph-nfs-%i
+ExecStopPost=-/usr/bin/{{ container_binary }} stop ceph-nfs-%i
 Restart=always
 RestartSec=10s
 TimeoutStartSec=120

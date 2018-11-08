@@ -6,17 +6,17 @@ After=docker.service
 [Service]
 EnvironmentFile=-/etc/environment
 {% if osd_scenario == 'lvm' -%}
-ExecStartPre=-/usr/bin/docker stop ceph-osd-%i
-ExecStartPre=-/usr/bin/docker rm -f ceph-osd-%i
+ExecStartPre=-/usr/bin/{{ container_binary }} stop ceph-osd-%i
+ExecStartPre=-/usr/bin/{{ container_binary }} rm -f ceph-osd-%i
 {% else %}
-ExecStartPre=-/usr/bin/docker stop ceph-osd-{{ ansible_hostname }}-%i
-ExecStartPre=-/usr/bin/docker rm -f ceph-osd-{{ ansible_hostname }}-%i
+ExecStartPre=-/usr/bin/{{ container_binary }} stop ceph-osd-{{ ansible_hostname }}-%i
+ExecStartPre=-/usr/bin/{{ container_binary }} rm -f ceph-osd-{{ ansible_hostname }}-%i
 {% endif -%}
 ExecStart={{ ceph_osd_docker_run_script_path }}/ceph-osd-run.sh %i
 {% if osd_scenario == 'lvm' -%}
-ExecStop=-/usr/bin/docker stop ceph-osd-%i
+ExecStop=-/usr/bin/{{ container_binary }} stop ceph-osd-%i
 {% else %}
-ExecStop=-/usr/bin/docker stop ceph-osd-{{ ansible_hostname }}-%i
+ExecStop=-/usr/bin/{{ container_binary }} stop ceph-osd-{{ ansible_hostname }}-%i
 {% endif -%}
 Restart=always
 RestartSec=10s
