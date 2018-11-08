@@ -550,48 +550,43 @@
 
   - name: purge ceph packages with yum
     yum:
-      name: "{{ item }}"
+      name: "{{ ceph_packages }}"
       state: absent
-    with_items: "{{ ceph_packages }}"
     when: ansible_pkg_mgr == 'yum'
 
   - name: purge ceph packages with dnf
     dnf:
-      name: "{{ item }}"
+      name: "{{ ceph_packages }}"
       state: absent
-    with_items: "{{ ceph_packages }}"
     when: ansible_pkg_mgr == 'dnf'
 
   - name: purge ceph packages with apt
     apt:
-      name: "{{ item }}"
+      name: "{{ ceph_packages }}"
       state: absent
-    with_items: "{{ ceph_packages }}"
+      purge: true
     when: ansible_pkg_mgr == 'apt'
 
   - name: purge remaining ceph packages with yum
     yum:
-      name: "{{ item }}"
+      name: "{{ ceph_remaining_packages }}"
       state: absent
-    with_items: "{{ ceph_remaining_packages }}"
     when:
       - ansible_pkg_mgr == 'yum'
       - purge_all_packages == true
 
   - name: purge remaining ceph packages with dnf
     dnf:
-      name: "{{ item }}"
+      name: "{{ ceph_remaining_packages }}"
       state: absent
-    with_items: "{{ ceph_remaining_packages }}"
     when:
       - ansible_pkg_mgr == 'dnf'
       - purge_all_packages == true
 
   - name: purge remaining ceph packages with apt
     apt:
-      name: "{{ item }}"
+      name: "{{ ceph_remaining_packages }}"
       state: absent
-    with_items: "{{ ceph_remaining_packages }}"
     when:
       - ansible_pkg_mgr == 'apt'
       - purge_all_packages == true

@@ -507,25 +507,18 @@
 
       - name: remove pip and docker on debian
         apt:
-          name: "{{ item }}"
+          name: [python-pip, docker-engine]
           state: absent
           update_cache: yes
           autoremove: yes
-        with_items:
-          - python-pip
-          - docker-engine
     when: ansible_distribution == 'Debian'
 
   - name: remove pip and docker on ubuntu
     apt:
-      name: "{{ item }}"
+      name: [python-pip, docker, docker.io]
       state: absent
       update_cache: yes
       autoremove: yes
-    with_items:
-      - python-pip
-      - docker
-      - docker.io
     when: ansible_distribution == 'Ubuntu'
 
   - name: red hat based systems tasks
@@ -539,25 +532,19 @@
         block:
           - name: remove pip on redhat
             yum:
-              name: "{{ item }}"
+              name: python-pip
               state: absent
-            with_items:
-              - python-pip
 
           - name: remove docker-engine on redhat
             yum:
-              name: "{{ item }}"
+              name: docker-engine
               state: absent
-            with_items:
-              - docker-engine
 
           # for CentOS
           - name: remove docker on redhat
             yum:
-              name: "{{ item }}"
+              name: docker
               state: absent
-            with_items:
-              - docker
 
           - name: remove package dependencies on redhat
             command: yum -y autoremove
@@ -575,12 +562,8 @@
         block:
           - name: remove pip and docker on redhat
             dnf:
-              name: "{{ item }}"
+              name: [python-pip, docker-engine, docker]
               state: absent
-            with_items:
-              - python-pip
-              - docker-engine
-              - docker
 
           - name: remove package dependencies on redhat
             command: dnf -y autoremove
