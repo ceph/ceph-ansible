@@ -1,0 +1,14 @@
+- hosts: all
+  gather_facts: true
+  become: yes
+  tasks:
+    - name: unlock /usr
+      command: ostree admin unlock --hotfix
+      changed_when: false
+      when: ansible_distribution == 'Fedora'
+
+    - name: remove docker binary on fedora to simulate rhel8
+      file:
+        path: /usr/bin/docker
+        state: absent
+      when: ansible_distribution == 'Fedora'

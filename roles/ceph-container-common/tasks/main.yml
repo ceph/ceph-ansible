@@ -9,10 +9,12 @@
   changed_when: false
   check_mode: no
   register: ceph_docker_version
+  when: not is_podman
 
 - name: set_fact ceph_docker_version ceph_docker_version.stdout.split
   set_fact:
     ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
+  when: not is_podman
 
 - name: include checks.yml
   include_tasks: checks.yml
@@ -31,7 +33,7 @@
 
 - name: get ceph version
   command: >
-    docker run --rm --entrypoint /usr/bin/ceph
+    {{ container_binary }} run --rm --entrypoint /usr/bin/ceph
     {{ ceph_client_docker_registry }}/{{ ceph_client_docker_image }}:{{ ceph_client_docker_image_tag }}
     --version
   changed_when: false
