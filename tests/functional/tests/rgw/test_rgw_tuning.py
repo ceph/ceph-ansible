@@ -13,7 +13,7 @@ class TestRGWs(object):
 
     @pytest.mark.no_docker
     def test_rgw_bucket_default_quota_is_applied(self, node, host):
-        radosgw_admin_cmd = "sudo radosgw-admin --cluster={cluster} -n client.rgw.{hostname} --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring user create --uid=test --display-name Test".format(  # noqa E501
+        radosgw_admin_cmd = "sudo radosgw-admin --cluster={cluster} -n client.rgw.{hostname}.rgw0 --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}.rgw0/keyring user create --uid=test --display-name Test".format(  # noqa E501
             hostname=node["vars"]["inventory_hostname"],
             cluster=node['cluster_name']
         )
@@ -24,7 +24,7 @@ class TestRGWs(object):
 
     @pytest.mark.no_docker
     def test_rgw_tuning_pools_are_set(self, node, host):
-        cmd = "sudo ceph --cluster={cluster} --connect-timeout 5 -n client.rgw.{hostname} --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring osd dump".format(  # noqa E501
+        cmd = "sudo ceph --cluster={cluster} --connect-timeout 5 -n client.rgw.{hostname}.rgw0 --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}.rgw0/keyring osd dump".format(  # noqa E501
             hostname=node["vars"]["inventory_hostname"],
             cluster=node['cluster_name']
         )
@@ -42,7 +42,7 @@ class TestRGWs(object):
         container_binary = 'docker'
         if host.exists('podman') and host.ansible("setup")["ansible_facts"]["ansible_distribution"] == 'Fedora':  # noqa E501
             container_binary = 'podman'
-        cmd = "sudo {container_binary} exec ceph-rgw-{hostname} ceph --cluster={cluster} -n client.rgw.{hostname} --connect-timeout 5 --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring  osd dump".format(  # noqa E501
+        cmd = "sudo {container_binary} exec ceph-rgw-{hostname}-rgw0 ceph --cluster={cluster} -n client.rgw.{hostname}.rgw0 --connect-timeout 5 --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}.rgw0/keyring  osd dump".format(  # noqa E501
             hostname=hostname,
             cluster=cluster,
             container_binary=container_binary

@@ -7,8 +7,18 @@
     group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     mode: "0755"
   with_items:
-    - /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}
     - "{{ rbd_client_admin_socket_path }}"
+
+- name: create rados gateway instance directories
+  file:
+    path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}.{{ item.instance_name }}"
+    state: directory
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: "0755"
+  with_items: "{{ rgw_instances }}"
+  when:
+    - rgw_instances is defined
 
 - name: copy ceph keyring(s) if needed
   copy:
