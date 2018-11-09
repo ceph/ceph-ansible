@@ -14,6 +14,24 @@
   notify:
     - restart ceph {{ item }}
 
+- name: generate systemd unit files for expose-ceph-iscsi-config
+  become: true
+  template:
+    src: "{{ role_path }}/templates/expose-ceph-iscsi-config.service.j2"
+    dest: /etc/systemd/system/expose-ceph-iscsi-config.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+
+- name: generate expose_ceph_iscsi_config script
+  become: true
+  template:
+    src: "{{ role_path }}/templates/expose_ceph_iscsi_config.sh.j2"
+    dest: "{{ ceph_isci_container_run_script_path }}/expose_ceph_iscsi_config.sh"
+    owner: "root"
+    group: "root"
+    mode: "0744"
+
 - name: systemd start tcmu-runner, rbd-target-api and rbd-target-gw containers
   systemd:
     name: "{{ item }}"
@@ -24,3 +42,4 @@
     - tcmu-runner
     - rbd-target-gw
     - rbd-target-api
+    - expose-ceph-iscsi-config

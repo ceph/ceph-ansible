@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -xe
+
+if [ -f /run/ostree-booted ]; then
+    if ! ostree admin status | grep -sq "Unlocked: hotfix"; then
+        ostree admin unlock --hotfix
+    fi
+fi
+
+{% raw %}
+for lib in rtslib_fb ceph_iscsi_config netaddr netifaces; do
+    lib_dir=/usr/lib/python2.7/site-packages
+    lib_path="$lib_dir/$lib"
+    if [[ "$lib" == "netifaces" ]]; then
+        lib_path=/usr/lib64/python2.7/site-packages/netifaces.so
+    fi
+    ln -sf /proc/$(docker inspect --format {{.State.Pid}} rbd-target-api)/root/"$lib_path" "$lib_dir"
+done
+{% endraw %}
