@@ -37,8 +37,7 @@
   vars:
     mon_group_name: mons
     osd_group_name: osds
-  tasks:
-    # pre-tasks for following import -
+  pre_tasks:
     - name: exit playbook, if user did not mean to replace the osd(s)
       fail:
         msg: "Exiting replace-osd playbook, no osd(s) was/were replaced..
@@ -55,10 +54,11 @@
            -e osd_to_replace=0,1,2,3 argument."
       when: osd_to_replace is not defined
 
+  tasks:
     - import_role:
         name: ceph-defaults
 
-    # post-tasks for preceding import -
+  post_tasks:
     - name: set_fact docker_exec_cmd build docker exec command (containerized)
       set_fact:
         docker_exec_cmd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
