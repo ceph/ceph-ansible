@@ -48,7 +48,7 @@ class ActionModule(ActionBase):
             notario_store["containerized_deployment"] = host_vars["containerized_deployment"]
             notario.validate(host_vars, install_options, defined_keys=True)
 
-            if host_vars["ceph_origin"] == "repository":
+            if host_vars["ceph_origin"] == "repository" and not host_vars["containerized_deployment"]:
                 notario.validate(host_vars, ceph_origin_repository, defined_keys=True)
 
                 if host_vars["ceph_repository"] == "community":
@@ -155,6 +155,14 @@ def validate_monitor_options(value):
     assert any([monitor_address_given, monitor_address_block_given, monitor_interface_given]), msg
 
 
+def validate_dmcrypt_bool_value(value):
+    assert value in ["true", True, "false", False], "dmcrypt can be set to true/True or false/False (default)"
+
+
+def validate_osd_auto_discovery_bool_value(value):
+    assert value in ["true", True, "false", False], "osd_auto_discovery can be set to true/True or false/False (default)"
+
+
 def validate_osd_scenarios(value):
     assert value in ["collocated", "non-collocated", "lvm"], "osd_scenario must be set to 'collocated', 'non-collocated' or 'lvm'"
 
@@ -222,8 +230,8 @@ rados_options = (
 )
 
 osd_options = (
-    (optional("dmcrypt"), types.boolean),
-    (optional("osd_auto_discovery"), types.boolean),
+    (optional("dmcrypt"), validate_dmcrypt_bool_value),
+    (optional("osd_auto_discovery"), validate_osd_auto_discovery_bool_value),
     ("osd_scenario", validate_osd_scenarios),
 )
 
