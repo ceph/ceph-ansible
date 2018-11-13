@@ -1,6 +1,8 @@
 
 from ansible.plugins.action import ActionBase
 from distutils.version import LooseVersion
+from ansible.module_utils.six import string_types
+from ansible.errors import AnsibleUndefinedVariable
 
 try:
     from __main__ import display
@@ -33,7 +35,7 @@ class ActionModule(ActionBase):
 
     def run(self, tmp=None, task_vars=None):
         # we must use vars, since task_vars will have un-processed variables
-        host_vars = task_vars['vars']
+        host_vars = self.expand_all_jinja2_templates(task_vars['vars'])
         host = host_vars['ansible_hostname']
         mode = self._task.args.get('mode', 'permissive')
 
@@ -127,6 +129,27 @@ class ActionModule(ActionBase):
 
 
         return result
+
+    def expand_all_jinja2_templates(self, variables):
+        for k, v in variables.items():
+            try:
+                if self._templar.is_template(v):
+                    variables[k] = self.expand_jinja2_template(v)
+            except AnsibleUndefinedVariable as e:
+                variables[k] = u"VARIABLE IS NOT DEFINED!"
+
+        return variables
+
+    def expand_jinja2_template(self, var):
+        expanded_var = self._templar.template(var, convert_bare=True,
+                                              fail_on_undefined=True)
+        if expanded_var == var:
+            if not isinstance(expanded_var, string_types):
+                raise AnsibleUndefinedVariable
+            expanded_var = self._templar.template("{{%s}}" % expanded_var,
+                                                  convert_bare=True,
+                                                  fail_on_undefined=True)
+        return expanded_var
 
 # Schemas
 
