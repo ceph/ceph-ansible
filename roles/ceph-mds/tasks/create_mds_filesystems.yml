@@ -2,7 +2,7 @@
 - name: filesystem pools related tasks
   block:
     - name: create filesystem pools
-      command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pgs }}"
+      command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool create {{ item.name }} {{ item.pgs | default(osd_pool_default_pg_num) }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items:
