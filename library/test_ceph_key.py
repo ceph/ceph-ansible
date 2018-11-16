@@ -540,7 +540,7 @@ class TestCephKeyModule(object):
 
     def test_build_key_path_bootstrap_osd(self):
         fake_cluster = "fake"
-        entity = "bootstrap-osd"
+        entity = "client.bootstrap-osd"
         expected_result = "/var/lib/ceph/bootstrap-osd/fake.keyring"
         result = ceph_key.build_key_path(fake_cluster, entity)
         assert result == expected_result
