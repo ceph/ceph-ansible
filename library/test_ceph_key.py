@@ -104,7 +104,6 @@ class TestCephKeyModule(object):
         fake_dest = "/fake/ceph"
         fake_file_destination = os.path.join(
             fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
-        fake_auid = None
         expected_command_list = [
             'ceph-authtool',
             '--create-keyring',
@@ -121,40 +120,7 @@ class TestCephKeyModule(object):
             'allow rwx',
         ]
         result = ceph_key.generate_ceph_authtool_cmd(
-            fake_cluster, fake_name, fake_secret, fake_caps, fake_auid, fake_file_destination)  # noqa E501
-        assert result == expected_command_list
-
-    def test_generate_ceph_authtool_cmd_non_container_auid(self):
-        fake_cluster = "fake"
-        fake_name = "client.fake"
-        fake_secret = "super-secret"
-        fake_caps = {
-            'mon': 'allow *',
-            'osd': 'allow rwx',
-        }
-        fake_dest = "/fake/ceph"
-        fake_file_destination = os.path.join(
-            fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
-        fake_auid = 666
-        expected_command_list = [
-            'ceph-authtool',
-            '--create-keyring',
-            fake_file_destination,
-            '--name',
-            fake_name,
-            '--add-key',
-            fake_secret,
-            '--set-uid',
-            fake_auid,
-            '--cap',
-            'mon',
-            'allow *',
-            '--cap',
-            'osd',
-            'allow rwx',
-        ]
-        result = ceph_key.generate_ceph_authtool_cmd(
-            fake_cluster, fake_name, fake_secret, fake_caps, fake_auid, fake_file_destination)  # noqa E501
+            fake_cluster, fake_name, fake_secret, fake_caps, fake_dest)  # noqa E501
         assert result == expected_command_list
 
     def test_generate_ceph_authtool_cmd_container(self):
@@ -166,7 +132,6 @@ class TestCephKeyModule(object):
             'osd': 'allow rwx',
         }
         fake_dest = "/fake/ceph"
-        fake_auid = None
         fake_file_destination = os.path.join(
             fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
@@ -192,7 +157,7 @@ class TestCephKeyModule(object):
                                  'osd',
                                  'allow rwx']
         result = ceph_key.generate_ceph_authtool_cmd(
-            fake_cluster, fake_name, fake_secret, fake_caps, fake_auid, fake_file_destination, fake_containerized)  # noqa E501
+            fake_cluster, fake_name, fake_secret, fake_caps, fake_dest, fake_container_image)  # noqa E501
         assert result == expected_command_list
 
     def test_create_key_non_container(self):
@@ -206,7 +171,6 @@ class TestCephKeyModule(object):
             'osd': 'allow rwx',
         }
         fake_import_key = True
-        fake_auid = None
         fake_dest = "/fake/ceph"
         fake_file_destination = os.path.join(
             fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
@@ -217,7 +181,7 @@ class TestCephKeyModule(object):
                 'import', '-i', fake_file_destination],
         ]
         result = ceph_key.create_key(fake_module, fake_result, fake_cluster,
-                                     fake_name, fake_secret, fake_caps, fake_import_key, fake_auid, fake_file_destination)  # noqa E501
+                                     fake_name, fake_secret, fake_caps, fake_import_key, fake_dest)  # noqa E501
         assert result == expected_command_list
 
     def test_create_key_container(self):
@@ -232,7 +196,6 @@ class TestCephKeyModule(object):
         }
         fake_dest = "/fake/ceph"
         fake_import_key = True
-        fake_auid = None
         fake_file_destination = os.path.join(
             fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
@@ -267,7 +230,7 @@ class TestCephKeyModule(object):
             '-i', fake_file_destination]
         ]
         result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_name,  # noqa E501
-                                     fake_secret, fake_caps, fake_import_key, fake_auid, fake_file_destination, fake_containerized)  # noqa E501
+                                     fake_secret, fake_caps, fake_import_key, fake_dest, fake_container_image)  # noqa E501
         assert result == expected_command_list
 
     def test_create_key_non_container_no_import(self):
@@ -282,7 +245,6 @@ class TestCephKeyModule(object):
         }
         fake_dest = "/fake/ceph"
         fake_import_key = False
-        fake_auid = None
         fake_file_destination = os.path.join(
             fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
         # create_key passes (one for ceph-authtool and one for itself) itw own array so the expected result is an array within an array # noqa E501
@@ -302,7 +264,7 @@ class TestCephKeyModule(object):
             'allow rwx', ]
         ]
         result = ceph_key.create_key(fake_module, fake_result, fake_cluster,
-                                     fake_name, fake_secret, fake_caps, fake_import_key, fake_auid, fake_file_destination)  # noqa E501
+                                     fake_name, fake_secret, fake_caps, fake_import_key, fake_dest)  # noqa E501
         assert result == expected_command_list
 
     def test_create_key_container_no_import(self):
@@ -319,7 +281,6 @@ class TestCephKeyModule(object):
         fake_import_key = False
         fake_file_destination = os.path.join(
             fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
-        fake_auid = None
         # create_key passes (one for ceph-authtool and one for itself) itw own array so the expected result is an array within an array # noqa E501
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = [['docker',   # noqa E128
@@ -344,7 +305,7 @@ class TestCephKeyModule(object):
                                  'osd',
                                  'allow rwx']]
         result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_name,  # noqa E501
-                                     fake_secret, fake_caps, fake_import_key, fake_auid, fake_file_destination, fake_containerized)  # noqa E501
+                                     fake_secret, fake_caps, fake_import_key, fake_dest, fake_container_image)  # noqa E501
         assert result == expected_command_list
 
     def test_update_key_non_container(self):
