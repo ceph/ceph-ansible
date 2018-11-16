@@ -1,0 +1,46 @@
+---
+- name: include pre_requisites/prerequisites.yml
+  include_tasks: pre_requisites/prerequisites.yml
+  when:
+    - not is_atomic
+
+- name: get docker version
+  command: docker --version
+  changed_when: false
+  check_mode: no
+  register: ceph_docker_version
+
+- name: set_fact ceph_docker_version ceph_docker_version.stdout.split
+  set_fact:
+    ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
+
+- name: include checks.yml
+  include_tasks: checks.yml
+  when:
+    - (not containerized_deployment_with_kv and
+       ((inventory_hostname in groups.get(mon_group_name, [])) or
+        (inventory_hostname in groups.get(nfs_group_name, [])) or
+        (inventory_hostname in groups.get(osd_group_name, []))))
+    - not ceph_current_status.get('rc', 1) == 0
+    - not rolling_update | default(false)
+
+- name: include fetch_image.yml
+  include_tasks: fetch_image.yml
+  tags:
+    - fetch_container_image
+
+- name: get ceph version
+  command: >
+    docker run --rm --entrypoint /usr/bin/ceph
+    {{ ceph_client_docker_registry }}/{{ ceph_client_docker_image }}:{{ ceph_client_docker_image_tag }}
+    --version
+  changed_when: false
+  check_mode: no
+  register: ceph_version
+
+- name: set_fact ceph_version ceph_version.stdout.split
+  set_fact:
+    ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
+
+- name: include release.yml
+  include_tasks: release.yml
