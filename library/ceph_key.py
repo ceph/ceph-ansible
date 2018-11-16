@@ -297,6 +297,9 @@ def generate_ceph_authtool_cmd(cluster, name, secret, caps, dest, container_imag
         binary = ['ceph-authtool']
         cmd = binary
 
+    file_destination = os.path.join(
+        dest + "/" + cluster + "." + name + ".keyring")
+
     base_cmd = [
         '--create-keyring',
         dest,
@@ -649,14 +652,6 @@ def run_module():
         if entities is None:
             fatal("Failed to find some of the initial entities", module)
 
-        # get ceph's group and user id
-        if container_image:
-            ceph_uid = os.getenv('CEPH_UID')
-            ceph_grp = os.getenv('CEPH_UID')
-        else:
-            ceph_uid = pwd.getpwnam('ceph').pw_uid
-            ceph_grp = grp.getgrnam('ceph').gr_gid
-
         output_format = "plain"
         for entity in entities:
             key_path = build_key_path(cluster, entity)
@@ -679,18 +674,9 @@ def run_module():
             rc, cmd, out, err = exec_commands(
                 module, info_cmd)  # noqa E501
 
-            # apply ceph:ceph ownership and mode 0400 on keys
-            # FIXME by using
-            # file_args = module.load_file_common_arguments(module.params)
-            # file_args['path'] = dest
-            # module.set_fs_attributes_if_different(file_args, False)
-            try:
-                os.chown(key_path, ceph_uid, ceph_grp)
-                os.chmod(key_path, stat.S_IRUSR)
-            except OSError as e:
-                fatal("Failed to set owner/group/permissions of %s: %s" % (
-                    key_path, str(e)), module)
-
+            file_args = module.load_file_common_arguments(module.params)
+            file_args['path'] = key_path
+            module.set_fs_attributes_if_different(file_args, False)
     else:
         module.fail_json(
             msg='State must either be "present" or "absent" or "update" or "list" or "info" or "fetch_initial_keys".', changed=False, rc=1)  # noqa E501
