@@ -1,6 +1,13 @@
 ---
 - name: waiting for the monitor(s) to form the quorum...
-  command: "ceph --cluster {{ cluster }} -n mon. -k /var/lib/ceph/mon/{{ cluster }}-{{ ansible_hostname }}/keyring mon_status --format json"
+  command: >
+    {{ docker_exec_cmd }}
+    ceph
+    --cluster {{ cluster }}
+    -n mon.
+    -k /var/lib/ceph/mon/{{ cluster }}-{{ ansible_hostname }}/keyring
+    mon_status
+    --format json
   register: ceph_health_raw
   until: >
     (ceph_health_raw.stdout | from_json)['state'] in ['leader', 'peon']
@@ -9,46 +16,19 @@
   when:
     - ceph_release_num[ceph_release] >= ceph_release_num.nautilus
 
-- name: fetch ceph keys in nautilus and above
+- name: fetch ceph keys
   ceph_key:
     state: fetch_initial_keys
     cluster: "{{ cluster }}"
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: "0400"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
   when:
-    - ceph_release_num[ceph_release] >= ceph_release_num.nautilus
     - cephx
 
-- name: collect admin and bootstrap keys
-  command: ceph-create-keys --cluster {{ cluster }} -i {{ monitor_name }} -t 30
-  changed_when: false
-  check_mode: no
-  when:
-    - ceph_release_num[ceph_release] < ceph_release_num.nautilus
-    - cephx
-
-# NOTE (leseb): wait for mon discovery and quorum resolution
-# the admin key is not instantaneously created so we have to wait a bit
-# msg: is only supported as of Ansible 2.4.
-- name: "wait for {{ cluster }}.client.admin.keyring exists"
-  wait_for:
-    path: /etc/ceph/{{ cluster }}.client.admin.keyring
-    timeout: 30
-    msg: "Timed out while waiting for keyring creation. Check network settings on mon nodes."
-  when:
-    - ceph_release_num[ceph_release] < ceph_release_num.nautilus
-    - cephx
-    - (ansible_version.major == 2 and ansible_version.minor >= 4) or
-      ansible_version.major > 2
-
-- name: "wait for {{ cluster }}.client.admin.keyring exists"
-  wait_for:
-    path: /etc/ceph/{{ cluster }}.client.admin.keyring
-    timeout: 30
-  when:
-    - ceph_release_num[ceph_release] < ceph_release_num.nautilus
-    - cephx
-    - ansible_version.major == 2 and ansible_version.minor < 4
-
-- name: create ceph mgr keyring(s) when mon is not containerized
+- name: create ceph mgr keyring(s)
   ceph_key:
     name: "mgr.{{ hostvars[item]['ansible_hostname'] }}"
     state: present
@@ -58,6 +38,11 @@
       mds: allow *
     cluster: "{{ cluster }}"
     secret: "{{ (mgr_secret != 'mgr_secret') | ternary(mgr_secret, omit) }}"
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: "0400"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
   when:
     - cephx
     - inventory_hostname == groups[mon_group_name]|last
@@ -65,39 +50,18 @@
     - "{{ groups.get(mgr_group_name, []) }}" # this honors the condition where mgrs run on separate machines
     - "{{ groups.get(mon_group_name, []) }}" # this honors the new rule where mgrs are always collocated with mons
 
-# once this gets backported github.com/ceph/ceph/pull/20983
-# we will be able to remove these 2 tasks below
-- name: find ceph keys
-  shell: ls -1 /etc/ceph/*.keyring
-  changed_when: false
-  register: ceph_keys
-  check_mode: no
-  when:
-    - cephx
-
-- name: set keys permissions
-  file:
-    path: "{{ item }}"
-    owner: "ceph"
-    group: "ceph"
-    mode: "{{ ceph_keyring_permissions }}"
-  with_items:
-    - "{{ ceph_keys.get('stdout_lines') | default([]) }}"
-  when:
-    - cephx
-
 - name: copy keys to the ansible server
   fetch:
     src: "{{ item }}"
     dest: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
     flat: yes
   with_items:
-    - "{{ ceph_keys.get('stdout_lines') | default([]) }}"
     - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
     - /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
     - /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring
     - /var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring
     - /var/lib/ceph/bootstrap-rbd-mirror/{{ cluster }}.keyring
+    - /etc/ceph/{{ cluster }}.client.admin.keyring
   when:
     - cephx
     - inventory_hostname == groups[mon_group_name] | last
