@@ -25,21 +25,6 @@
   when:
     - (hostvars[item]['ansible_architecture'] == 'x86_64') or (not containerized_deployment)
 
-- name: run a dummy container (sleep 300) from where we can create pool(s)/key(s)
-  command: >
-    {{ container_binary }} run \
-    --rm \
-    -d \
-    -v {{ ceph_conf_key_directory }}:{{ ceph_conf_key_directory }}:z \
-    --name ceph-create-keys \
-    --entrypoint=sleep \
-    {{ ceph_client_docker_registry}}/{{ ceph_client_docker_image }}:{{ ceph_client_docker_image_tag }} \
-    300
-  changed_when: false
-  when:
-    - containerized_deployment
-    - inventory_hostname == groups.get('_filtered_clients') | first
-
 - name: set_fact delegated_node
   set_fact:
     delegated_node: "{{ groups[mon_group_name][0] if groups.get(mon_group_name, []) | length > 0 else inventory_hostname }}"
@@ -48,23 +33,19 @@
   set_fact:
     condition_copy_admin_key: "{{ True if groups.get(mon_group_name, []) | length > 0 else copy_admin_key }}"
 
-- name: set_fact docker_exec_cmd
-  set_fact:
-    docker_exec_cmd: "{{ container_binary }} exec {% if groups.get(mon_group_name, []) | length > 0 -%} ceph-mon-{{ hostvars[delegated_node]['ansible_hostname'] }} {% else %} ceph-create-keys {% endif %}"
-  when:
-    - containerized_deployment
-
 - name: create cephx key(s)
   ceph_key:
     state: present
     name: "{{ item.name }}"
     caps: "{{ item.caps }}"
     secret: "{{ item.key | default('') }}"
-    containerized: "{{ docker_exec_cmd | default('') }}"
     cluster: "{{ cluster }}"
     dest: "{{ ceph_conf_key_directory }}"
     import_key: "{{ condition_copy_admin_key }}"
     mode: "{{ item.mode|default(omit) }}"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+    CEPH_UID: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
   with_items: "{{ keys }}"
   delegate_to: "{{ delegated_node }}"
   when:
