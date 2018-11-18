@@ -207,7 +207,8 @@ def container_exec(binary, container_image):
     Build the docker CLI to run a command inside a container
     '''
 
-    command_exec = ['docker',
+    container_binary = os.getenv('CEPH_CONTAINER_BINARY')
+    command_exec = [container_binary,
                     'run',
                     '--rm',
                     '--net=host',
