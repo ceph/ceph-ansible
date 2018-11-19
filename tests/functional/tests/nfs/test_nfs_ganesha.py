@@ -27,7 +27,11 @@ class TestNFSs(object):
         hostname = node["vars"]["inventory_hostname"]
         cluster = node['cluster_name']
         if node['docker']:
-            docker_exec_cmd = 'docker exec ceph-nfs-{hostname}'.format(hostname=hostname)
+            container_binary = 'docker'
+            if host.exists('podman') and host.ansible("setup")["ansible_facts"]["ansible_distribution"] == 'Fedora':  # noqa E501
+                container_binary = 'podman'
+            docker_exec_cmd = '{container_binary} exec ceph-nfs-{hostname}'.format(
+                hostname=hostname, container_binary=container_binary)
         else:
             docker_exec_cmd = ''
         cmd = "sudo {docker_exec_cmd} ceph --name client.rgw.{hostname} --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(

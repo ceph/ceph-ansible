@@ -71,11 +71,15 @@ class TestOSDs(object):
 
     @pytest.mark.docker
     def test_all_docker_osds_are_up_and_in(self, node, host):
-        osd_id = host.check_output(
-            "docker ps -q --filter='name=ceph-osd' | head -1")
-        cmd = "sudo docker exec {osd_id} ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(
+        container_binary = 'docker'
+        if host.exists('podman') and host.ansible("setup")["ansible_facts"]["ansible_distribution"] == 'Fedora':  # noqa E501
+            container_binary = 'podman'
+        osd_id = host.check_output(os.path.join(
+            container_binary + " ps -q --filter='name=ceph-osd' | head -1"))
+        cmd = "sudo {container_binary} exec {osd_id} ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(
             osd_id=osd_id,
-            cluster=node["cluster_name"]
+            cluster=node["cluster_name"],
+            container_binary=container_binary
         )
         output = json.loads(host.check_output(cmd))
         assert node["num_osds"] == self._get_nb_up_osds_from_ids(node, output)
