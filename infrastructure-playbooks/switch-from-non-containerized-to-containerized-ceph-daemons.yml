@@ -204,23 +204,7 @@
       changed_when: false
       failed_when: false
 
-    - name: collect osd devices
-      shell: |
-        blkid | awk '/ceph data/ { sub ("1:", "", $1); print $1 }'
-      register: collect_devices
-      changed_when: false
-      when:
-        - devices is not defined or (devices is defined and devices == [])
-
-    - name: set devices
-      set_fact:
-        devices: "{{ collect_devices.stdout_lines | list }}"
-      when:
-        - collect_devices is defined
-        - not collect_devices.get("skipped")
-        - collect_devices != []
-
-    - name: stop/disable non-containerized ceph osd(s), ceph-disk units (if any) and ceph-volume units (if any)
+    - name: stop/disable/mask non-containerized ceph osd(s) and ceph-disk units (if any)
       systemd:
         name: "{{ item }}"
         state: stopped
@@ -275,28 +259,27 @@
         - ldb_files.rc == 0
 
     - name: check if containerized osds are already running
-      shell: |
-        docker ps | grep -sq {{ item | regex_replace('/', '') }}
+      command: >
+        docker ps --filter='name=ceph-osd'
       changed_when: false
       failed_when: false
-      with_items: "{{ devices }}"
       register: osd_running
 
-    - name: resolve device(s) path(s)
-      command: readlink -f {{ item }}
+    - name: get osd directories
+      command: >
+        ls -1 /var/lib/ceph/osd
+      register: osd_dirs
       changed_when: false
-      with_items: "{{ devices }}"
-      register: devices_canonicalize
 
     - name: unmount all the osd directories
-      command: umount "{{ item.0.stdout }}"1
+      command: >
+        umount /var/lib/ceph/osd/{{ item }}
       changed_when: false
       failed_when: false
-      with_together:
-        - "{{ devices_canonicalize.results }}"
-        - "{{ osd_running.results }}"
+      with_items:
+        - "{{ osd_dirs.stdout_lines }}"
       when:
-        - item.1.get("rc", 0) != 0
+        - osd_running.rc != 0
 
   roles:
     - ceph-defaults
