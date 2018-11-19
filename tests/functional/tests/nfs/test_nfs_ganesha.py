@@ -1,6 +1,7 @@
 import json
 import pytest
 
+
 class TestNFSs(object):
 
     @pytest.mark.no_docker
@@ -21,7 +22,8 @@ class TestNFSs(object):
 
     @pytest.mark.no_docker
     def test_nfs_config_override(self, node, host):
-        assert host.file("/etc/ganesha/ganesha.conf").contains("Entries_HWMark")
+        assert host.file(
+            "/etc/ganesha/ganesha.conf").contains("Entries_HWMark")
 
     def test_nfs_is_up(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
@@ -30,20 +32,21 @@ class TestNFSs(object):
             container_binary = 'docker'
             if host.exists('podman') and host.ansible("setup")["ansible_facts"]["ansible_distribution"] == 'Fedora':  # noqa E501
                 container_binary = 'podman'
-            docker_exec_cmd = '{container_binary} exec ceph-nfs-{hostname}'.format(
+            docker_exec_cmd = '{container_binary} exec ceph-nfs-{hostname}'.format(  # noqa E501
                 hostname=hostname, container_binary=container_binary)
         else:
             docker_exec_cmd = ''
-        cmd = "sudo {docker_exec_cmd} ceph --name client.rgw.{hostname} --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
+        cmd = "sudo {docker_exec_cmd} ceph --name client.rgw.{hostname} --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(  # noqa E501
             docker_exec_cmd=docker_exec_cmd,
             hostname=hostname,
             cluster=cluster
         )
         output = host.check_output(cmd)
-        daemons = [i for i in json.loads(output)["servicemap"]["services"]["rgw-nfs"]["daemons"]]
+        daemons = [i for i in json.loads(
+            output)["servicemap"]["services"]["rgw-nfs"]["daemons"]]
         assert hostname in daemons
 
-#NOTE (guits): This check must be fixed. (Permission denied error)
+# NOTE (guits): This check must be fixed. (Permission denied error)
 #    @pytest.mark.no_docker
 #    def test_nfs_rgw_fsal_export(self, node, host):
 #        if(host.mount_point("/mnt").exists):

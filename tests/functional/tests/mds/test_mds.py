@@ -1,6 +1,7 @@
 import pytest
 import json
 
+
 class TestMDSs(object):
 
     @pytest.mark.no_docker
@@ -25,14 +26,15 @@ class TestMDSs(object):
             container_binary = 'docker'
             if host.exists('podman') and host.ansible("setup")["ansible_facts"]["ansible_distribution"] == 'Fedora':  # noqa E501
                 container_binary = 'podman'
-            docker_exec_cmd = '{container_binary} exec ceph-mds-{hostname}'.format(
+            docker_exec_cmd = '{container_binary} exec ceph-mds-{hostname}'.format(  # noqa E501
                 hostname=hostname, container_binary=container_binary)
         else:
             docker_exec_cmd = ''
 
-        cmd = "sudo {docker_exec_cmd} ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
+        cmd = "sudo {docker_exec_cmd} ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(  # noqa E501
             docker_exec_cmd=docker_exec_cmd,
             cluster=node['cluster_name']
         )
         cluster_status = json.loads(host.check_output(cmd))
-        assert (cluster_status['fsmap'].get('up', 0) + cluster_status['fsmap'].get('up:standby', 0)) == len(node["vars"]["groups"]["mdss"])
+        assert (cluster_status['fsmap'].get('up', 0) + cluster_status['fsmap'].get(  # noqa E501
+            'up:standby', 0)) == len(node["vars"]["groups"]["mdss"])

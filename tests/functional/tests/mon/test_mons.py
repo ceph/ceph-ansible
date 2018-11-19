@@ -1,6 +1,7 @@
 import pytest
 import re
 
+
 class TestMons(object):
 
     @pytest.mark.no_docker
@@ -24,7 +25,7 @@ class TestMons(object):
 
     @pytest.mark.no_docker
     def test_can_get_cluster_health(self, node, host):
-        cmd = "sudo ceph --cluster={} --connect-timeout 5 -s".format(node["cluster_name"])
+        cmd = "sudo ceph --cluster={} --connect-timeout 5 -s".format(node["cluster_name"])  # noqa E501
         output = host.check_output(cmd)
         assert output.strip().startswith("cluster")
 
@@ -32,11 +33,10 @@ class TestMons(object):
         assert File(node["conf_path"]).contains("^mon initial members = .*$")
 
     def test_initial_members_line_has_correct_value(self, node, host, File):
-        mon_initial_members_line = host.check_output("grep 'mon initial members = ' /etc/ceph/{cluster}.conf".format(cluster=node['cluster_name']))
+        mon_initial_members_line = host.check_output("grep 'mon initial members = ' /etc/ceph/{cluster}.conf".format(cluster=node['cluster_name']))  # noqa E501
         result = True
         for host in node["vars"]["groups"]["mons"]:
             pattern = re.compile(host)
-            if pattern.search(mon_initial_members_line) == None:
+            if pattern.search(mon_initial_members_line) == None:  # noqa E501
                 result = False
                 assert result
-
