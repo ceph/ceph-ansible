@@ -50,6 +50,15 @@
       tags:
         - always
 
+    - name: check if podman binary is present
+      stat:
+        path: /usr/bin/podman
+      register: podman_binary
+
+    - name: set_fact container_binary
+      set_fact:
+        container_binary: "{{ 'podman' if podman_binary.stat.exists else 'docker' }}"
+
     - import_role:
         name: ceph-defaults
         private: false
@@ -71,10 +80,9 @@
         - not (is_atomic | bool)
         - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
 
-
     # post-tasks for upcoming import -
     - name: "pull {{ ceph_docker_image }} image"
-      command: "docker pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      command: "{{ container_binary }} pull {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       changed_when: false
       when:
         - is_atomic
@@ -453,8 +461,14 @@
   gather_facts: false
   become: True
   tasks:
+    - name: check if podman binary is present
+      stat:
+        path: /usr/bin/podman
+      register: podman_binary
+
     - name: get ceph status from the first monitor
-      command: docker exec ceph-mon-{{ hostvars[groups['mons'][0]]['ansible_hostname'] }} ceph --cluster {{ cluster | default ('ceph') }} -s
+      command: >
+        {{ 'podman' if podman_binary.stat.exists else 'docker' }} exec ceph-mon-{{ hostvars[groups['mons'][0]]['ansible_hostname'] }} ceph --cluster {{ cluster | default ('ceph') }} -s
       register: ceph_status
       changed_when: false
       delegate_to: "{{ groups['mons'][0] }}"
