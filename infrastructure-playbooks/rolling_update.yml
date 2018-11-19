@@ -177,7 +177,8 @@
         - not containerized_deployment
 
     - name: container | waiting for the containerized monitor to join the quorum...
-      command: docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
       register: ceph_health_raw
       until: >
         hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"] or
@@ -214,8 +215,8 @@
       when: not containerized_deployment
 
     - name: set containerized osd flags
-      command: |
-        docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
       with_items:
         - noout
         - norebalance
@@ -240,7 +241,8 @@
         - not containerized_deployment
 
     - name: container - get current fsid
-      command: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} fsid"
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} fsid
       register: cluster_uuid_container
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when:
@@ -425,7 +427,7 @@
 
     - name: set_fact docker_exec_cmd_osd
       set_fact:
-        docker_exec_cmd_update_osd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        docker_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when:
         - containerized_deployment
 
@@ -481,7 +483,7 @@
 
     - name: set_fact docker_exec_cmd_osd
       set_fact:
-        docker_exec_cmd_update_osd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        docker_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when:
         - containerized_deployment
 
@@ -834,9 +836,10 @@
     - import_role:
         name: ceph-defaults
         private: false
+
     - name: set_fact docker_exec_cmd_status
       set_fact:
-        docker_exec_cmd_status: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        docker_exec_cmd_status: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when:
         - containerized_deployment
 

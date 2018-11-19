@@ -26,7 +26,7 @@
       when: ireallymeanit != 'yes'
 
 
-- name: make sure docker is present and started
+- name: gather facts
 
   hosts:
     - "{{ mon_group_name|default('mons') }}"
@@ -210,6 +210,10 @@
   become: true
   tasks:
 
+    - import_role:
+        name: ceph-defaults
+        private: false
+
     # pre-tasks for following importing
     - name: collect running osds and ceph-disk unit(s)
       shell: |
@@ -274,7 +278,7 @@
 
     - name: check if containerized osds are already running
       command: >
-        docker ps --filter='name=ceph-osd'
+        {{ container_binary }} ps --filter='name=ceph-osd'
       changed_when: false
       failed_when: false
       register: osd_running
@@ -313,12 +317,14 @@
 
     # post-task for preceding import -
     - name: get num_pgs
-      command: docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json
       register: ceph_pgs
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: container - waiting for clean pgs...
-      command: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json"
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json
       register: ceph_health_post
       until: >
         (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) > 0)
