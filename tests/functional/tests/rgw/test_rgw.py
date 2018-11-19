@@ -23,10 +23,14 @@ class TestRGWs(object):
         assert host.service(service_name).is_enabled
 
     def test_rgw_is_up(self, node, host):
-        hostname=node["vars"]["inventory_hostname"]
-        cluster=node["cluster_name"]
+        hostname = node["vars"]["inventory_hostname"]
+        cluster = node["cluster_name"]
         if node['docker']:
-            docker_exec_cmd = 'docker exec ceph-rgw-{hostname}'.format(hostname=hostname)
+            container_binary = 'docker'
+            if host.exists('podman') and host.ansible("setup")["ansible_facts"]["ansible_distribution"] == 'Fedora':  # noqa E501
+                container_binary = 'podman'
+            docker_exec_cmd = '{container_binary} exec ceph-rgw-{hostname}'.format(
+                hostname=hostname, container_binary=container_binary)
         else:
             docker_exec_cmd = ''
         cmd = "sudo {docker_exec_cmd} ceph --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
