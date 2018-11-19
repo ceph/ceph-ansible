@@ -57,9 +57,9 @@
         private: false
 
     # post-task for preceding import
-    - name: set_fact docker_exec_cmd build docker exec command (containerized)
+    - name: "set_fact docker_exec_cmd build {{ container_binary }} exec command (containerized)"
       set_fact:
-        docker_exec_cmd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        docker_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when: containerized_deployment
 
     - name: exit playbook, if can not connect to the cluster
@@ -102,7 +102,7 @@
     # NOTE(leseb): using '>' is the only way I could have the command working
     - name: find osd device based on the id
       shell: >
-        docker run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
+        {{ container_binary }} run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
         {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
         list | awk  -v pattern=osd.{{ item.0 }} '$0 ~ pattern {print $1}'
       with_together:
@@ -115,7 +115,7 @@
 
     - name: find osd dedicated devices - container
       shell: >
-        docker run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
+        {{ container_binary }} run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
         {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
         list | grep osd.{{ item.0 }} | grep -Eo '/dev/([hsv]d[a-z]{1,2})[0-9]{1,2}|/dev/nvme[0-9]n[0-9]p[0-9]'
       with_together:
@@ -162,7 +162,7 @@
 
     - name: zap ceph osd disks
       shell: |
-        docker run --rm \
+        {{ container_binary }} run --rm \
         --privileged=true \
         --name ceph-osd-zap-{{ hostvars[item.1]['ansible_hostname'] }}-{{ item.0.stdout }} \
         -v /dev/:/dev/ \
@@ -184,7 +184,7 @@
           pkname=$(lsblk --nodeps -no PKNAME "${osd}");
           then
             echo zapping ceph osd partitions "${osd}";
-            docker run --rm \
+            {{ container_binary }} run --rm \
             --privileged=true \
             --name ceph-osd-zap-{{ hostvars[item.0]['ansible_hostname'] }}-$(basename "${osd}") \
             -v /dev/:/dev/ \
