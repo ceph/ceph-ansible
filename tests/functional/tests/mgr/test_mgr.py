@@ -1,6 +1,7 @@
 import pytest
 import json
 
+
 class TestMGRs(object):
 
     @pytest.mark.no_docker
@@ -26,11 +27,11 @@ class TestMGRs(object):
             container_binary = 'docker'
             if host.exists('podman') and host.ansible("setup")["ansible_facts"]["ansible_distribution"] == 'Fedora':  # noqa E501
                 container_binary = 'podman'
-            docker_exec_cmd = '{container_binary} exec ceph-mgr-{hostname}'.format(
+            docker_exec_cmd = '{container_binary} exec ceph-mgr-{hostname}'.format(  # noqa E501
                 hostname=hostname, container_binary=container_binary)
         else:
             docker_exec_cmd = ''
-        cmd = "sudo {docker_exec_cmd} ceph --name mgr.{hostname} --keyring /var/lib/ceph/mgr/{cluster}-{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
+        cmd = "sudo {docker_exec_cmd} ceph --name mgr.{hostname} --keyring /var/lib/ceph/mgr/{cluster}-{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(  # noqa E501
             docker_exec_cmd=docker_exec_cmd,
             hostname=node["vars"]["inventory_hostname"],
             cluster=cluster

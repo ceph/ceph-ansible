@@ -1,6 +1,7 @@
 import pytest
 import re
 
+
 class TestInstall(object):
 
     def test_ceph_dir_exists(self, host, node):
@@ -26,10 +27,10 @@ class TestCephConf(object):
         assert File(node["conf_path"]).contains("^mon host = .*$")
 
     def test_mon_host_line_has_correct_value(self, node, host):
-        mon_host_line = host.check_output("grep 'mon host = ' /etc/ceph/{cluster}.conf".format(cluster=node['cluster_name']))
-        result=True
+        mon_host_line = host.check_output("grep 'mon host = ' /etc/ceph/{cluster}.conf".format(cluster=node['cluster_name']))  # noqa E501
+        result = True
         for x in range(0, node["num_mons"]):
-            pattern=re.compile(("{}.1{}".format(node["subnet"], x)))
-            if pattern.search(mon_host_line) == None:
-                result=False
+            pattern = re.compile(("{}.1{}".format(node["subnet"], x)))
+            if pattern.search(mon_host_line) is None:
+                result = False
             assert result
