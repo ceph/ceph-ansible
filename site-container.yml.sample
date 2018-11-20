@@ -57,7 +57,7 @@
 
     - name: set_fact container_binary
       set_fact:
-        container_binary: "{{ 'podman' if podman_binary.stat.exists else 'docker' }}"
+        container_binary: "{{ 'podman' if podman_binary.stat.exists and ansible_distribution == 'Fedora' else 'docker' }}"
 
     - import_role:
         name: ceph-defaults
@@ -468,7 +468,7 @@
 
     - name: get ceph status from the first monitor
       command: >
-        {{ 'podman' if podman_binary.stat.exists else 'docker' }} exec ceph-mon-{{ hostvars[groups['mons'][0]]['ansible_hostname'] }} ceph --cluster {{ cluster | default ('ceph') }} -s
+        {{ 'podman' if podman_binary.stat.exists and ansible_distribution == 'Fedora' else 'docker' }} exec ceph-mon-{{ hostvars[groups['mons'][0]]['ansible_hostname'] }} ceph --cluster {{ cluster | default ('ceph') }} -s
       register: ceph_status
       changed_when: false
       delegate_to: "{{ groups['mons'][0] }}"
