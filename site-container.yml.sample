@@ -21,7 +21,8 @@
   vars:
     delegate_facts_host: True
 
-  pre_tasks:
+  tasks:
+    # pre-tasks for following import -
     - name: gather facts
       setup:
       when:
@@ -49,21 +50,31 @@
       tags:
         - always
 
-  roles:
-    - role: ceph-defaults
+    - import_role:
+        name: ceph-defaults
+        private: false
       tags: [with_pkg, fetch_container_image]
-    - role: ceph-validate
-    - role: ceph-infra
-    - role: ceph-handler
-    - role: ceph-container-common
+    - import_role:
+        name: ceph-validate
+        private: false
+    - import_role:
+        name: ceph-infra
+        private: false
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-container-common
+        private: false
       tags: [with_pkg, fetch_container_image]
       when:
         - not (is_atomic | bool)
         - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
 
-  post_tasks:
+
+    # post-tasks for upcoming import -
     - name: "pull {{ ceph_docker_image }} image"
-      command: "docker pull {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      command: "docker pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       changed_when: false
       when:
         - is_atomic
@@ -83,14 +94,24 @@
 - hosts: mons
   become: True
   gather_facts: false
-  roles:
-    - role: ceph-defaults
+  tasks:
+    - import_role:
+        name: ceph-defaults
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-handler
-    - role: ceph-container-common
-    - role: ceph-config
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-container-common
+        private: false
+    - import_role:
+        name: ceph-config
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-mon
+    - import_role:
+        name: ceph-mon
+        private: false
   serial: 1 # MUST be '1' WHEN DEPLOYING MONITORS ON DOCKER CONTAINERS
 
 - hosts: mons
@@ -106,7 +127,8 @@
 - hosts: mgrs
   become: True
   gather_facts: false
-  pre_tasks:
+  tasks:
+    # pre-tasks for following imports -
     - name: set ceph manager install 'In Progress'
       run_once: true
       set_stats:
@@ -114,15 +136,26 @@
           installer_phase_ceph_mgr:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-  roles:
-    - role: ceph-defaults
+
+    - import_role:
+        name: ceph-defaults
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-handler
-    - role: ceph-container-common
-    - role: ceph-config
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-container-common
+        private: false
+    - import_role:
+        name: ceph-config
+        private: fals
       tags: ['ceph_update_config']
-    - role: ceph-mgr
-  post_tasks:
+    - import_role:
+        name: ceph-mgr
+        private: false
+
+    # post-tasks for upcoming imports -
     - name: set ceph manager install 'Complete'
       run_once: true
       set_stats:
@@ -134,7 +167,8 @@
 - hosts: osds
   become: True
   gather_facts: false
-  pre_tasks:
+  tasks:
+    # pre-tasks for upcoming imports -
     - name: set ceph osd install 'In Progress'
       run_once: true
       set_stats:
@@ -142,15 +176,26 @@
           installer_phase_ceph_osd:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-  roles:
-    - role: ceph-defaults
+
+    - import_role:
+        name: ceph-defaults
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-handler
-    - role: ceph-container-common
-    - role: ceph-config
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-container-common
+        private: false
+    - import_role:
+        name: ceph-config
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-osd
-  post_tasks:
+    - import_role:
+        name: ceph-osd
+        private: false
+
+    # post-tasks for preceding imports -
     - name: set ceph osd install 'Complete'
       run_once: true
       set_stats:
@@ -162,7 +207,8 @@
 - hosts: mdss
   become: True
   gather_facts: false
-  pre_tasks:
+  tasks:
+    # pre-tasks for following imports -
     - name: set ceph mds install 'In Progress'
       run_once: true
       set_stats:
@@ -170,15 +216,26 @@
           installer_phase_ceph_mds:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-  roles:
-    - role: ceph-defaults
+
+    - import_role:
+        name: ceph-defaults
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-handler
-    - role: ceph-container-common
-    - role: ceph-config
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-container-common
+        private: false
+    - import_role:
+        name: ceph-config
+        private: false
       tags: ['ceph_update_config']
-    - ceph-mds
-  post_tasks:
+    - import_role:
+        name: ceph-mds
+        private: false
+
+    # post-tasks for preceding imports -
     - name: set ceph mds install 'Complete'
       run_once: true
       set_stats:
@@ -190,7 +247,8 @@
 - hosts: rgws
   become: True
   gather_facts: false
-  pre_tasks:
+  tasks:
+    # pre-tasks for following imports -
     - name: set ceph rgw install 'In Progress'
       run_once: true
       set_stats:
@@ -198,15 +256,26 @@
           installer_phase_ceph_rgw:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-  roles:
-    - role: ceph-defaults
+
+    - import_role:
+        name: ceph-defaults
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-handler
-    - role: ceph-container-common
-    - role: ceph-config
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-container-common
+        private: false
+    - import_role:
+        name: ceph-config
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-rgw
-  post_tasks:
+    - import_role:
+        name: ceph-rgw
+        private: false
+
+    # post-tasks for preceding imports -
     - name: set ceph rgw install 'Complete'
       run_once: true
       set_stats:
@@ -218,7 +287,8 @@
 - hosts: nfss
   become: True
   gather_facts: false
-  pre_tasks:
+  tasks:
+    # pre-tasks for following imports -
     - name: set ceph nfs install 'In Progress'
       run_once: true
       set_stats:
@@ -226,15 +296,26 @@
           installer_phase_ceph_nfs:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-  roles:
-    - role: ceph-defaults
+
+    - import_role:
+        name: ceph-defaults
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-handler
-    - role: ceph-container-common
-    - role: ceph-config
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-container-common
+        private: false
+    - import_role:
+        name: ceph-config
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-nfs
-  post_tasks:
+    - import_role:
+        name: ceph-nfs
+        private: false
+
+    # post-tasks for following imports -
     - name: set ceph nfs install 'Complete'
       run_once: true
       set_stats:
@@ -246,7 +327,8 @@
 - hosts: rbdmirrors
   become: True
   gather_facts: false
-  pre_tasks:
+  tasks:
+    # pre-tasks for following imports -
     - name: set ceph rbd mirror install 'In Progress'
       run_once: true
       set_stats:
@@ -254,15 +336,26 @@
           installer_phase_ceph_rbdmirror:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-  roles:
-    - role: ceph-defaults
+
+    - import_role:
+        name: ceph-defaults
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-handler
-    - role: ceph-container-common
-    - role: ceph-config
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-container-common
+        private: false
+    - import_role:
+        name: ceph-config
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-rbd-mirror
-  post_tasks:
+    - import_role:
+        name: ceph-rbd-mirror
+        private: false
+
+    # post-tasks for preceding imports -
     - name: set ceph rbd mirror install 'Complete'
       run_once: true
       set_stats:
@@ -274,7 +367,8 @@
 - hosts: clients
   become: True
   gather_facts: false
-  pre_tasks:
+  tasks:
+    # pre-tasks for following imports -
     - name: set ceph client install 'In Progress'
       run_once: true
       set_stats:
@@ -282,17 +376,28 @@
           installer_phase_ceph_client:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-  roles:
-    - role: ceph-defaults
+
+    - import_role:
+        name: ceph-defaults
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-handler
-    - role: ceph-container-common
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-container-common
+        private: false
       when:
         - inventory_hostname == groups.get('clients', ['']) | first
-    - role: ceph-config
+    - import_role:
+        name: ceph-config
+        private: false
       tags: ['ceph_update_config']
-    - role: ceph-client
-  post_tasks:
+    - import_role:
+        name: ceph-client
+        private: false
+
+    # post-tasks for preceding imports -
     - name: set ceph client install 'Complete'
       run_once: true
       set_stats:
@@ -306,7 +411,8 @@
     - iscsi-gws # for backward compatibility only!
   gather_facts: false
   become: True
-  pre_tasks:
+  tasks:
+    # pre-tasks for following imports -
     - name: set ceph iscsi gateway install 'In Progress'
       run_once: true
       set_stats:
@@ -314,12 +420,26 @@
           installer_phase_ceph_iscsi_gw:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-  roles:
-    - { role: ceph-defaults, tags: ['ceph_update_config'] }
-    - role: ceph-handler
-    - ceph-container-common
-    - { role: ceph-config, tags: ['ceph_update_config'] }
-    - ceph-iscsi-gw
+
+    - import_role:
+        name: ceph-defaults
+        private: false
+      tags: ['ceph_update_config']
+    - import_role:
+        name: ceph-handler
+        private: false
+    - import_role:
+        name: ceph-container-common
+        private: false
+    - import_role:
+        name: ceph-config
+        private: false
+      tags: ['ceph_update_config']
+    - import_role:
+        name: ceph-iscsi-gw
+        private: false
+
+    # post-tasks for preceding imports -
   post_tasks:
     - name: set ceph iscsi gw install 'Complete'
       run_once: true
