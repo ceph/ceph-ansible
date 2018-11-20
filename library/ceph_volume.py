@@ -579,13 +579,22 @@ def run_module():
         try:
             report_result = json.loads(out)
         except ValueError:
+            strategy_change = "strategy changed" in out
+            if strategy_change:
+                out = json.dumps({"changed": False, "stdout": out.rstrip("\r\n")})
+                rc = 0
+                changed = False
+            else:
+                out = out.rstrip("\r\n")
             result = dict(
                 cmd=cmd,
-                stdout=out.rstrip(b"\r\n"),
-                stderr=err.rstrip(b"\r\n"),
+                stdout=out,
+                stderr=err.rstrip("\r\n"),
                 rc=rc,
                 changed=changed,
             )
+            if strategy_change:
+                module.exit_json(**result)
             module.fail_json(msg='non-zero return code', **result)
 
         if not report:
