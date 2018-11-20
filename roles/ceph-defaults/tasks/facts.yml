@@ -16,13 +16,10 @@
 - name: set_fact is_podman
   set_fact:
     is_podman: "{{ podman_binary.stat.exists }}"
-  when:
-    - is_atomic
-    - ansible_distribution == 'Fedora'
 
 - name: set_fact container_binary
   set_fact:
-    container_binary: "{{ 'podman' if is_atomic and is_podman else 'docker' }}"
+    container_binary: "{{ 'podman' if is_atomic and is_podman and ansible_distribution == 'Fedora' else 'docker' }}"
   when: containerized_deployment
 
 - name: set_fact monitor_name ansible_hostname
