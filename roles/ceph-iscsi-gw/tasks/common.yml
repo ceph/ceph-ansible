@@ -41,8 +41,8 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: customize pool size
-      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set rbd size {{ rbd_pool_size | default('') }}"
+      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set rbd size {{ rbd_pool_size | default(osd_pool_default_size) }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
       when:
-        - rbd_pool_size | default ("") != ""
+        - rbd_pool_size | default(osd_pool_default_size) != ceph_osd_pool_default_size

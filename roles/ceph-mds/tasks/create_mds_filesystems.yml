@@ -9,11 +9,12 @@
         - "{{ cephfs_pools }}"
 
     - name: customize pool size
-      command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} size {{ item.size | default('') }}"
+      command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }}"
       with_items: "{{ cephfs_pools | unique }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
-      when: item.size | default ("") != ""
+      when:
+        - item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
 
 - name: check if ceph filesystem already exists
   command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} fs get {{ cephfs }}"
