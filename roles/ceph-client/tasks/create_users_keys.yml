@@ -122,13 +122,13 @@
     - name: customize pool size
       command: >
         {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
-        osd pool set {{ item.name }} size {{ item.size | default('') }}
+        osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }}
       with_items: "{{ pools | unique }}"
       delegate_to: "{{ delegated_node }}"
       changed_when: false
       when:
         - pools | length > 0
-        - item.size | default ("")
+        - item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
 
 - name: get client cephx keys
   copy:
