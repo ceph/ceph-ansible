@@ -190,6 +190,23 @@
       when:
         - containerized_deployment
 
+    - name: create potentially missing keys (rbd and rbd-mirror)
+      ceph_key:
+        name: "client.{{ item.0 }}"
+        state: present
+        dest: "/var/lib/ceph/{{ item.0 }}/"
+        caps:
+          mon: "allow profile {{ item.0 }}"
+        cluster: "{{ cluster }}"
+        containerized: "{{ 'docker exec ceph-mon-' + hostvars[groups[mon_host]]['ansible_hostname'] if containerized_deployment else None }}"
+      when:
+        - cephx
+      delegate_to: "{{ mon_host }}"
+      ignore_errors: True # this might fail for upgrade from J to L on rbd-mirror and also on partially updated clusters
+      with_nested:
+        - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
+        - "{{ groups[mon_group_name] }}" # so the key goes on all the nodes
+
     - name: set osd flags
       command: ceph --cluster {{ cluster }} osd set {{ item }}
       with_items:
