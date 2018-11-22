@@ -161,17 +161,8 @@
       set_fact: mon_host_count={{ groups[mon_group_name] | length }}
 
     - name: select a running monitor if multiple monitors
-      set_fact: mon_host={{ item }}
-      with_items: "{{ groups[mon_group_name] }}"
-      when:
-        - mon_host_count | int > 1
-        - item != inventory_hostname
-
-    - name: select first monitor if only one monitor
-      set_fact: mon_host={{ item }}
-      with_items: "{{ groups[mon_group_name][0] }}"
-      when:
-        - mon_host_count | int == 1
+      set_fact:
+        mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last if mon_host_count > 1 else groups[mon_group_name] | last }}"
 
     - name: non container | waiting for the monitor to join the quorum...
       command: ceph --cluster "{{ cluster }}" -s --format json
