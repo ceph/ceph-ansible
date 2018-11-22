@@ -228,7 +228,7 @@
 - name: set_fact rgw_hostname
   set_fact:
     rgw_hostname: "{% set _value = ansible_hostname -%}
-    {% for key in ceph_current_status['servicemap']['services']['rgw']['daemons'].keys() -%}
+    {% for key in (ceph_current_status['servicemap']['services']['rgw']['daemons'] | list) -%}
     {% if key == ansible_fqdn -%}
     {% set _value = key -%}
     {% endif -%}
@@ -239,6 +239,14 @@
     - ceph_current_status['servicemap'] is defined
     - ceph_current_status['servicemap']['services'] is defined
     - ceph_current_status['servicemap']['services']['rgw'] is defined
+
+- name: set_fact osd_pool_default_pg_num
+  set_fact:
+    osd_pool_default_pg_num: "{{ ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', ceph_osd_pool_default_pg_num) }}"
+
+- name: set_fact osd_pool_default_size
+  set_fact:
+    osd_pool_default_size: "{{ ceph_conf_overrides.get('global', {}).get('osd_pool_default_size', ceph_osd_pool_default_size) }}"
 
 - name: import_tasks set_monitor_address.yml
   import_tasks: set_monitor_address.yml

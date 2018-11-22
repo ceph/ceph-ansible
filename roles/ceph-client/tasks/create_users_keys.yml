@@ -102,8 +102,8 @@
       command: >
         {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
         osd pool create {{ item.0.name }}
-        {{ item.0.pg_num }}
-        {{ item.0.pgp_num }}
+        {{ item.0.pg_num | default(osd_pool_default_pg_num) }}
+        {{ item.0.pgp_num | default(item.0.pg_num) | default(osd_pool_default_pg_num) }}
         {{ 'replicated_rule' if not item.0.rule_name | default('replicated_rule') else item.0.rule_name | default('replicated_rule') }}
         {{ 1 if item.0.type|default(1) == 'replicated' else 3 if item.0.type|default(1) == 'erasure' else item.0.type|default(1) }}
         {%- if (item.0.type | default("1") == '3' or item.0.type | default("1") == 'erasure') and item.0.erasure_profile %}
@@ -122,13 +122,13 @@
     - name: customize pool size
       command: >
         {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
-        osd pool set {{ item.name }} size {{ item.size | default('') }}
+        osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }}
       with_items: "{{ pools | unique }}"
-      delegate_to: "{{ delegate_node }}"
+      delegate_to: "{{ delegated_node }}"
       changed_when: false
       when:
         - pools | length > 0
-        - item.size | default ("")
+        - item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
 
 - name: get client cephx keys
   copy:
