@@ -10,7 +10,7 @@
     --format json
   register: ceph_health_raw
   until: >
-    (ceph_health_raw.stdout | from_json)['state'] in ['leader', 'peon']
+    (ceph_health_raw.stdout | default({}) | from_json)['state'] in ['leader', 'peon']
   retries: "{{ handler_health_mon_check_retries }}"
   delay: "{{ handler_health_mon_check_delay }}"
   when:
