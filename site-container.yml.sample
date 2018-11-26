@@ -82,7 +82,11 @@
 
     # post-tasks for upcoming import -
     - name: "pull {{ ceph_docker_image }} image"
-      command: "{{ container_binary }} pull {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      command: "{{ container_binary }} pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      register: container_pull
+      until: container_pull.rc == 0
+      retries: 5
+      delay: 5
       changed_when: false
       when:
         - is_atomic
