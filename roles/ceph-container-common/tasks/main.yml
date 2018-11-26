@@ -9,12 +9,14 @@
   changed_when: false
   check_mode: no
   register: ceph_docker_version
-  when: not is_podman
+  when:
+    - container_binary == 'docker'
 
 - name: set_fact ceph_docker_version ceph_docker_version.stdout.split
   set_fact:
     ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
-  when: not is_podman
+  when:
+    - container_binary == 'docker'
 
 - name: include checks.yml
   include_tasks: checks.yml
