@@ -185,6 +185,7 @@ def container_exec(binary, container_image):
 
     command_exec = ['docker', 'run', '--rm', '--privileged', '--net=host',
                     '-v', '/run/lock/lvm:/run/lock/lvm:z',
+                    '-v', '/var/run/udev/:/var/run/udev/:z',
                     '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',
                     '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',
                     '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
