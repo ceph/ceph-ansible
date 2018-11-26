@@ -21,10 +21,9 @@
 - name: include checks.yml
   include_tasks: checks.yml
   when:
-    - (not containerized_deployment_with_kv and
-       ((inventory_hostname in groups.get(mon_group_name, [])) or
-        (inventory_hostname in groups.get(nfs_group_name, [])) or
-        (inventory_hostname in groups.get(osd_group_name, []))))
+    - (inventory_hostname in groups.get(mon_group_name, []) or
+      inventory_hostname in groups.get(nfs_group_name, []) or
+      inventory_hostname in groups.get(osd_group_name, []))
     - not ceph_current_status.get('rc', 1) == 0
     - not rolling_update | default(false)
 
