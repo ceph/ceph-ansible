@@ -68,7 +68,7 @@ expose_partitions "$1"
   --privileged=true \
   --pid=host \
   --memory={{ ceph_osd_docker_memory_limit }} \
-  {% if (ceph_docker_version is defined and ceph_docker_version.split('.')[0] is version_compare('13', '>=')) or is_podman -%}
+  {% if (container_binary == 'docker' and ceph_docker_version.split('.')[0] is version_compare('13', '>=')) or container_binary == 'podman' -%}
   --cpus={{ ceph_osd_docker_cpu_limit }} \
   {% else -%}
   --cpu-quota={{ ceph_osd_docker_cpu_limit * 100000 }} \
