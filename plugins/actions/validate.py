@@ -26,7 +26,7 @@ from notario.decorators import optional
 from notario.store import store as notario_store
 
 
-CEPH_RELEASES = ['jewel', 'kraken', 'luminous', 'mimic']
+CEPH_RELEASES = ['jewel', 'kraken', 'luminous', 'mimic', 'nautilus']
 
 
 class ActionModule(ActionBase):
