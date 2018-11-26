@@ -161,17 +161,8 @@
       set_fact: mon_host_count={{ groups[mon_group_name] | length }}
 
     - name: select a running monitor if multiple monitors
-      set_fact: mon_host={{ item }}
-      with_items: "{{ groups[mon_group_name] }}"
-      when:
-        - mon_host_count | int > 1
-        - item != inventory_hostname
-
-    - name: select first monitor if only one monitor
-      set_fact: mon_host={{ item }}
-      with_items: "{{ groups[mon_group_name][0] }}"
-      when:
-        - mon_host_count | int == 1
+      set_fact:
+        mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last if mon_host_count > 1 else groups[mon_group_name] | last }}"
 
     - name: non container | waiting for the monitor to join the quorum...
       command: ceph --cluster "{{ cluster }}" -s --format json
@@ -196,6 +187,23 @@
       delegate_to: "{{ mon_host }}"
       when:
         - containerized_deployment
+
+    - name: create potentially missing keys (rbd and rbd-mirror)
+      ceph_key:
+        name: "client.{{ item.0 }}"
+        state: present
+        dest: "/var/lib/ceph/{{ item.0 }}/"
+        caps:
+          mon: "allow profile {{ item.0 }}"
+        cluster: "{{ cluster }}"
+        containerized: "{{ 'docker exec ceph-mon-' + hostvars[mon_host]['ansible_hostname'] if containerized_deployment else None }}"
+      when:
+        - cephx
+      delegate_to: "{{ mon_host }}"
+      ignore_errors: True # this might fail for upgrade from J to L on rbd-mirror and also on partially updated clusters
+      with_nested:
+        - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
+        - "{{ groups[mon_group_name] }}" # so the key goes on all the nodes
 
     - name: set osd flags
       command: ceph --cluster {{ cluster }} osd set {{ item }}

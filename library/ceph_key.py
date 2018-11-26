@@ -138,7 +138,7 @@ caps:
     secret: AQAin8tUMICVFBAALRHNrV0Z4MXupRw4v9JQ6Q==
     caps:
       mon: allow *
-    dest: "/var/lib/ceph/tmp/keyring.mon"
+    dest: "/var/lib/ceph/tmp/"
     import_key: False
 
 - name: create cephx key
@@ -268,13 +268,10 @@ def generate_ceph_authtool_cmd(cluster, name, secret, caps, auid, dest, containe
     Generate 'ceph-authtool' command line to execute
     '''
 
-    file_destination = os.path.join(
-        dest + "/" + cluster + "." + name + ".keyring")
-
     cmd = [
         'ceph-authtool',
         '--create-keyring',
-        file_destination,
+        dest,
         '--name',
         name,
         '--add-key',
@@ -297,12 +294,10 @@ def create_key(module, result, cluster, name, secret, caps, import_key, auid, de
     Create a CephX key
     '''
 
-    file_path = os.path.join(dest + "/" + cluster + "." + name + ".keyring")
-
     args = [
         'import',
         '-i',
-        file_path,
+        dest,
     ]
     cmd_list = []
 
@@ -355,6 +350,29 @@ def delete_key(cluster, name, containerized=None):
     args = [
         'del',
         name,
+    ]
+
+    user = "client.admin"
+    user_key = os.path.join(
+        "/etc/ceph/" + cluster + ".client.admin.keyring")
+    cmd_list.append(generate_ceph_cmd(
+        cluster, args, user, user_key, containerized))
+
+    return cmd_list
+
+
+def get_key(cluster, name, dest, containerized=None):
+    '''
+    Get a CephX key (write on the filesystem)
+    '''
+
+    cmd_list = []
+
+    args = [
+        'get',
+        name,
+        '-o',
+        dest,
     ]
 
     user = "client.admin"
@@ -478,7 +496,7 @@ def run_module():
         secret=dict(type='str', required=False, default=None),
         import_key=dict(type='bool', required=False, default=True),
         auid=dict(type='str', required=False, default=None),
-        dest=dict(type='str', required=False, default='/etc/ceph/'),
+        dest=dict(type='str', required=False, default='/etc/ceph'),
     )
 
     module = AnsibleModule(
@@ -528,21 +546,30 @@ def run_module():
         if not caps:
             fatal("Capabilities must be provided when state is 'present'", module)  # noqa E501
 
+        # Build a different path for bootstrap keys as there are stored as
+        # /var/lib/ceph/bootstrap-rbd/ceph.keyring
+        if 'bootstrap' in dest:
+            file_path = os.path.join(dest + "/" + cluster + ".keyring")
+        else:
+            file_path = os.path.join(dest + "/" + cluster +
+                                     "." + name + ".keyring")
+
         # We allow 'present' to override any existing key
         # ONLY if a secret is provided
         # if not we skip the creation
         if import_key:
             if rc == 0 and not secret:
-                result["stdout"] = "skipped, since {0} already exists, if you want to update a key use 'state: update'".format(  # noqa E501
-                    name)
+                # If the key exists in Ceph we must fetch it on the system
+                # because nothing tells us it exists on the fs or not
+                rc, cmd, out, err = exec_commands(module, get_key(cluster, name, file_path, containerized))  # noqa E501
+                result["stdout"] = "skipped, since {0} already exists, we only fetched the key at {1}. If you want to update a key use 'state: update'".format(  # noqa E501
+                    name, file_path)
                 result['rc'] = rc
                 module.exit_json(**result)
 
         rc, cmd, out, err = exec_commands(module, create_key(
-            module, result, cluster, name, secret, caps, import_key, auid, dest, containerized))  # noqa E501
+            module, result, cluster, name, secret, caps, import_key, auid, file_path, containerized))  # noqa E501
 
-        file_path = os.path.join(
-            dest + "/" + cluster + "." + name + ".keyring")
         file_args = module.load_file_common_arguments(module.params)
         file_args['path'] = file_path
         module.set_fs_attributes_if_different(file_args, False)
@@ -557,6 +584,8 @@ def run_module():
 
         rc, cmd, out, err = exec_commands(
             module, update_key(cluster, name, caps, containerized))
+        # After the update we don't need to overwrite the key on the filesystem
+        # since the secret has not changed
 
     elif state == "absent":
         rc, cmd, out, err = exec_commands(
@@ -625,6 +654,10 @@ def run_module():
                 module, info_cmd)  # noqa E501
 
             # apply ceph:ceph ownership and mode 0400 on keys
+            # FIXME by using
+            # file_args = module.load_file_common_arguments(module.params)
+            # file_args['path'] = dest
+            # module.set_fs_attributes_if_different(file_args, False)
             try:
                 os.chown(key_path, ceph_uid, ceph_grp)
                 os.chmod(key_path, stat.S_IRUSR)
