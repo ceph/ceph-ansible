@@ -590,7 +590,7 @@ def run_module():
                 module.exit_json(**result)
 
         rc, cmd, out, err = exec_commands(module, create_key(
-            module, result, cluster, name, secret, caps, import_key, dest, container_image))  # noqa E501
+            module, result, cluster, name, secret, caps, import_key, file_path, container_image))  # noqa E501
 
         file_args = module.load_file_common_arguments(module.params)
         file_args['path'] = file_path
