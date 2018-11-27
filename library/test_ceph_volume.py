@@ -1,7 +1,10 @@
 from . import ceph_volume
 from ansible.compat.tests.mock import MagicMock
+import mock
+import os
 
 
+@mock.patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'docker'})
 class TestCephVolumeModule(object):
 
     def test_data_no_vg(self):
