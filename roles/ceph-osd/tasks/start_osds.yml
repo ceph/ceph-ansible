@@ -11,6 +11,14 @@
     when:
       - ceph_docker_on_openstack
 
+  - name: test if the container image has the disk_list function
+    command: docker run --rm --entrypoint=stat {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list.sh
+    changed_when: false
+    failed_when: false
+    register: disk_list
+    when:
+      - osd_scenario != 'lvm'
+
   - name: generate ceph osd docker run script
     become: true
     template:
