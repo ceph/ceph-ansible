@@ -187,7 +187,7 @@ def validate_rados_options(value):
     Either radosgw_interface, radosgw_address or radosgw_address_block must
     be defined.
     """
-    radosgw_address_given = notario_store["radosgw_address"] != "address"
+    radosgw_address_given = notario_store["radosgw_address"] != "0.0.0.0"
     radosgw_address_block_given = notario_store["radosgw_address_block"] != "subnet"
     radosgw_interface_given = notario_store["radosgw_interface"] != "interface"
 
