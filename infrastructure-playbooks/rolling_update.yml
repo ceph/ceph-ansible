@@ -197,14 +197,14 @@
         caps:
           mon: "allow profile {{ item.0 }}"
         cluster: "{{ cluster }}"
-        containerized: "{{ 'docker exec ceph-mon-' + hostvars[mon_host]['ansible_hostname'] if containerized_deployment else None }}"
+        containerized: "{{ 'docker exec ceph-mon-' + hostvars[item.1]['ansible_hostname'] if containerized_deployment else None }}"
       when:
         - cephx
-      delegate_to: "{{ mon_host }}"
+      delegate_to: "{{ item.1 }}"
       ignore_errors: True # this might fail for upgrade from J to L on rbd-mirror and also on partially updated clusters
       with_nested:
         - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
-        - "{{ groups[mon_group_name] }}" # so the key goes on all the nodes
+        - "{{ groups[mon_group_name] | difference([mon_host]) }}" # so the key goes on all the nodes
 
     - name: set osd flags
       command: ceph --cluster {{ cluster }} osd set {{ item }}
