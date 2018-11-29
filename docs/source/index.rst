@@ -71,11 +71,13 @@ The following branches should be used depending on your requirements. The ``stab
 branches have been QE tested and sometimes recieve backport fixes throughout their lifecycle.
 The ``master`` branch should be considered experimental and used with caution.
 
-- ``stable-3.0`` Support for Ceph versions ``jewel`` and ``luminous``. This branch supports Ansible version ``2.4``.
+- ``stable-3.0`` Supports for Ceph versions ``jewel`` and ``luminous``. This branch supports Ansible version ``2.4``.
 
-- ``stable-3.1`` Support for Ceph version ``luminous`` and ``mimic``. This branch supports Ansible version ``2.4``.
+- ``stable-3.1`` Supports for Ceph version ``luminous`` and ``mimic``. This branch supports Ansible version ``2.4``.
 
-- ``master`` Support for Ceph versions ``luminous``, and ``mimic``. This branch supports Ansible version ``2.6`` and ``2.7``.
+- ``stable-3.2`` Supports for Ceph version ``luminous`` and ``mimic``. This branch supports Ansible version ``2.6``.
+
+- ``master`` Supports for Ceph@master version. This branch supports Ansible version ``2.7``.
 
 Configuration and Usage
 =======================

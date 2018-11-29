@@ -130,7 +130,7 @@
         private: false
       when: not containerized_deployment
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
       when: containerized_deployment
     - import_role:
@@ -161,17 +161,8 @@
       set_fact: mon_host_count={{ groups[mon_group_name] | length }}
 
     - name: select a running monitor if multiple monitors
-      set_fact: mon_host={{ item }}
-      with_items: "{{ groups[mon_group_name] }}"
-      when:
-        - mon_host_count | int > 1
-        - item != inventory_hostname
-
-    - name: select first monitor if only one monitor
-      set_fact: mon_host={{ item }}
-      with_items: "{{ groups[mon_group_name][0] }}"
-      when:
-        - mon_host_count | int == 1
+      set_fact:
+        mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last if mon_host_count > 1 else groups[mon_group_name] | last }}"
 
     - name: non container | waiting for the monitor to join the quorum...
       command: ceph --cluster "{{ cluster }}" -s --format json
@@ -186,7 +177,8 @@
         - not containerized_deployment
 
     - name: container | waiting for the containerized monitor to join the quorum...
-      command: docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
       register: ceph_health_raw
       until: >
         hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"] or
@@ -197,6 +189,23 @@
       when:
         - containerized_deployment
 
+    - name: create potentially missing keys (rbd and rbd-mirror)
+      ceph_key:
+        name: "client.{{ item.0 }}"
+        state: present
+        dest: "/var/lib/ceph/{{ item.0 }}/"
+        caps:
+          mon: "allow profile {{ item.0 }}"
+        cluster: "{{ cluster }}"
+        containerized: "{{ 'docker exec ceph-mon-' + hostvars[mon_host]['ansible_hostname'] if containerized_deployment else None }}"
+      when:
+        - cephx
+      delegate_to: "{{ mon_host }}"
+      ignore_errors: True # this might fail for upgrade from J to L on rbd-mirror and also on partially updated clusters
+      with_nested:
+        - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
+        - "{{ groups[mon_group_name] }}" # so the key goes on all the nodes
+
     - name: set osd flags
       command: ceph --cluster {{ cluster }} osd set {{ item }}
       with_items:
@@ -206,8 +215,8 @@
       when: not containerized_deployment
 
     - name: set containerized osd flags
-      command: |
-        docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
       with_items:
         - noout
         - norebalance
@@ -224,6 +233,10 @@
   serial: 1
   become: True
   tasks:
+    - import_role:
+        name: ceph-defaults
+        private: false
+
     - name: non container - get current fsid
       command: "ceph --cluster {{ cluster }} fsid"
       register: cluster_uuid_non_container
@@ -232,7 +245,8 @@
         - not containerized_deployment
 
     - name: container - get current fsid
-      command: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} fsid"
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} fsid
       register: cluster_uuid_container
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when:
@@ -267,12 +281,14 @@
           osd: allow *
           mds: allow *
         cluster: "{{ cluster }}"
-        containerized: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+        CEPH_UID: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       when:
         - containerized_deployment
         - cephx
         - groups.get(mgr_group_name, []) | length > 0
-        - inventory_hostname == groups[mon_group_name]|last
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ groups.get(mgr_group_name, []) }}"
 
@@ -309,7 +325,7 @@
         private: false
       when: not containerized_deployment
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
       when: containerized_deployment
     - import_role:
@@ -380,7 +396,7 @@
         private: false
       when: not containerized_deployment
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
       when: containerized_deployment
     - import_role:
@@ -417,7 +433,7 @@
 
     - name: set_fact docker_exec_cmd_osd
       set_fact:
-        docker_exec_cmd_update_osd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        docker_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when:
         - containerized_deployment
 
@@ -473,7 +489,7 @@
 
     - name: set_fact docker_exec_cmd_osd
       set_fact:
-        docker_exec_cmd_update_osd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        docker_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when:
         - containerized_deployment
 
@@ -530,7 +546,7 @@
         private: false
       when: not containerized_deployment
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
       when: containerized_deployment
     - import_role:
@@ -585,7 +601,7 @@
         private: false
       when: not containerized_deployment
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
       when: containerized_deployment
     - import_role:
@@ -648,7 +664,7 @@
         private: false
       when: not containerized_deployment
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
       when: containerized_deployment
     - import_role:
@@ -707,7 +723,7 @@
         private: false
       when: not containerized_deployment
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
       when: containerized_deployment
     - import_role:
@@ -769,7 +785,7 @@
         private: false
       when: not containerized_deployment
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
       when: containerized_deployment
     - import_role:
@@ -807,7 +823,7 @@
         private: false
       when: not containerized_deployment
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
       when: containerized_deployment
     - import_role:
@@ -826,9 +842,10 @@
     - import_role:
         name: ceph-defaults
         private: false
+
     - name: set_fact docker_exec_cmd_status
       set_fact:
-        docker_exec_cmd_status: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        docker_exec_cmd_status: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when:
         - containerized_deployment
 

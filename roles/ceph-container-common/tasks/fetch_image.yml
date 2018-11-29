@@ -1,7 +1,7 @@
 ---
 # NOTE (leseb): we must check each inventory group so this will work with collocated daemons
 - name: inspect ceph mon container
-  command: "docker inspect {{ ceph_mon_container_stat.stdout }}"
+  command: "{{ container_binary }} inspect {{ ceph_mon_container_stat.stdout }}"
   changed_when: false
   register: ceph_mon_inspect
   when:
@@ -10,7 +10,7 @@
     - ceph_mon_container_stat.get('stdout_lines', [])|length != 0
 
 - name: inspect ceph osd container
-  command: "docker inspect {{ ceph_osd_container_stat.stdout }}"
+  command: "{{ container_binary }} inspect {{ ceph_osd_container_stat.stdout }}"
   changed_when: false
   register: ceph_osd_inspect
   when:
@@ -19,7 +19,7 @@
     - ceph_osd_container_stat.get('stdout_lines', [])|length != 0
 
 - name: inspect ceph mds container
-  command: "docker inspect {{ ceph_mds_container_stat.stdout }}"
+  command: "{{ container_binary }} inspect {{ ceph_mds_container_stat.stdout }}"
   changed_when: false
   register: ceph_mds_inspect
   when:
@@ -28,7 +28,7 @@
     - ceph_mds_container_stat.get('stdout_lines', [])|length != 0
 
 - name: inspect ceph rgw container
-  command: "docker inspect {{ ceph_rgw_container_stat.stdout }}"
+  command: "{{ container_binary }} inspect {{ ceph_rgw_container_stat.stdout }}"
   changed_when: false
   register: ceph_rgw_inspect
   when:
@@ -37,7 +37,7 @@
     - ceph_rgw_container_stat.get('stdout_lines', [])|length != 0
 
 - name: inspect ceph mgr container
-  command: "docker inspect {{ ceph_mgr_container_stat.stdout }}"
+  command: "{{ container_binary }} inspect {{ ceph_mgr_container_stat.stdout }}"
   changed_when: false
   register: ceph_mgr_inspect
   when:
@@ -46,7 +46,7 @@
     - ceph_mgr_container_stat.get('stdout_lines', [])|length != 0
 
 - name: inspect ceph rbd mirror container
-  command: "docker inspect {{ ceph_rbd_mirror_container_stat.stdout }}"
+  command: "{{ container_binary }} inspect {{ ceph_rbd_mirror_container_stat.stdout }}"
   changed_when: false
   register: ceph_rbd_mirror_inspect
   when:
@@ -55,7 +55,7 @@
     - ceph_rbd_mirror_container_stat.get('stdout_lines', [])|length != 0
 
 - name: inspect ceph nfs container
-  command: "docker inspect {{ ceph_nfs_container_stat.stdout }}"
+  command: "{{ container_binary }} inspect {{ ceph_nfs_container_stat.stdout }}"
   changed_when: false
   register: ceph_nfs_inspect
   when:
@@ -65,7 +65,7 @@
 
 # NOTE(leseb): using failed_when to handle the case when the image is not present yet
 - name: "inspecting ceph mon container image before pulling"
-  command: "docker inspect {{ (ceph_mon_inspect.stdout | from_json)[0].Image }}"
+  command: "{{ container_binary }} inspect {{ (ceph_mon_inspect.stdout | from_json)[0].Image }}"
   changed_when: false
   failed_when: false
   register: ceph_mon_container_inspect_before_pull
@@ -74,7 +74,7 @@
     - ceph_mon_inspect.get('rc') == 0
 
 - name: "inspecting ceph osd container image before pulling"
-  command: "docker inspect {{ (ceph_osd_inspect.stdout | from_json)[0].Image }}"
+  command: "{{ container_binary }} inspect {{ (ceph_osd_inspect.stdout | from_json)[0].Image }}"
   changed_when: false
   failed_when: false
   register: ceph_osd_container_inspect_before_pull
@@ -83,7 +83,7 @@
     - ceph_osd_inspect.get('rc') == 0
 
 - name: "inspecting ceph rgw container image before pulling"
-  command: "docker inspect {{ (ceph_rgw_inspect.stdout | from_json)[0].Image }}"
+  command: "{{ container_binary }} inspect {{ (ceph_rgw_inspect.stdout | from_json)[0].Image }}"
   changed_when: false
   failed_when: false
   register: ceph_rgw_container_inspect_before_pull
@@ -92,7 +92,7 @@
     - ceph_rgw_inspect.get('rc') == 0
 
 - name: "inspecting ceph mds container image before pulling"
-  command: "docker inspect {{ (ceph_mds_inspect.stdout | from_json)[0].Image }}"
+  command: "{{ container_binary }} inspect {{ (ceph_mds_inspect.stdout | from_json)[0].Image }}"
   changed_when: false
   failed_when: false
   register: ceph_mds_container_inspect_before_pull
@@ -101,7 +101,7 @@
     - ceph_mds_inspect.get('rc') == 0
 
 - name: "inspecting ceph mgr container image before pulling"
-  command: "docker inspect {{ (ceph_mgr_inspect.stdout | from_json)[0].Image }}"
+  command: "{{ container_binary }} inspect {{ (ceph_mgr_inspect.stdout | from_json)[0].Image }}"
   changed_when: false
   failed_when: false
   register: ceph_mgr_container_inspect_before_pull
@@ -110,7 +110,7 @@
     - ceph_mgr_inspect.get('rc') == 0
 
 - name: "inspecting ceph rbd mirror container image before pulling"
-  command: "docker inspect {{ (ceph_rbd_mirror_inspect.stdout | from_json)[0].Image }}"
+  command: "{{ container_binary }} inspect {{ (ceph_rbd_mirror_inspect.stdout | from_json)[0].Image }}"
   changed_when: false
   failed_when: false
   register: ceph_rbd_mirror_container_inspect_before_pull
@@ -119,7 +119,7 @@
     - ceph_rbd_mirror_inspect.get('rc') == 0
 
 - name: "inspecting ceph nfs container image before pulling"
-  command: "docker inspect {{ (ceph_nfs_inspect.stdout | from_json)[0].Image }}"
+  command: "{{ container_binary }} inspect {{ (ceph_nfs_inspect.stdout | from_json)[0].Image }}"
   changed_when: false
   failed_when: false
   register: ceph_nfs_container_inspect_before_pull
@@ -176,8 +176,8 @@
     - nfs_group_name in group_names
     - ceph_nfs_container_inspect_before_pull.get('rc') == 0
 
-- name: "pulling {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image"
-  command: "timeout {{ docker_pull_timeout }} docker pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+- name: "pulling {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image"
+  command: "timeout {{ docker_pull_timeout }} {{ container_binary }} pull {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
   changed_when: false
   register: docker_image
   until: docker_image.rc == 0
@@ -186,8 +186,8 @@
   when:
     - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
 
-- name: "inspecting {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image after pulling"
-  command: "docker inspect {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+- name: "inspecting {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image after pulling"
+  command: "{{ container_binary }} inspect {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
   changed_when: false
   failed_when: false
   register: image_inspect_after_pull
@@ -277,7 +277,7 @@
 
 - name: export local ceph dev image
   command: >
-    docker save -o "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+    {{ container_binary }} save -o "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
     "{{ ceph_docker_username }}/{{ ceph_docker_imagename }}:{{ ceph_docker_image_tag }}"
   delegate_to: localhost
   when:
@@ -292,7 +292,7 @@
     - (ceph_docker_dev_image is defined and ceph_docker_dev_image)
 
 - name: load ceph dev image
-  command: "docker load -i /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+  command: "{{ container_binary }} load -i /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
   when:
     - (ceph_docker_dev_image is defined and ceph_docker_dev_image)
 

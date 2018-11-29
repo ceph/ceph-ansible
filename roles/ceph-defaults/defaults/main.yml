@@ -344,15 +344,15 @@ cephfs_data: cephfs_data # name of the data pool for a given filesystem
 cephfs_metadata: cephfs_metadata # name of the metadata pool for a given filesystem
 
 cephfs_pools:
-  - { name: "{{ cephfs_data }}", pgs: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}", size: "" }
-  - { name: "{{ cephfs_metadata }}", pgs: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}", size: "" }
+  - { name: "{{ cephfs_data }}", pgs: "{{ osd_pool_default_pg_num }}", size: "{{ osd_pool_default_size }}" }
+  - { name: "{{ cephfs_metadata }}", pgs: "{{ osd_pool_default_pg_num }}", size: "{{ osd_pool_default_size }}" }
 
 ## OSD options
 #
 is_hci: false
 hci_safety_factor: 0.2
 non_hci_safety_factor: 0.7
-osd_memory_target: 4000000000
+osd_memory_target: 4294967296
 journal_size: 5120 # OSD journal size in MB
 block_db_size: -1 # block db size in bytes for the ceph-volume lvm batch. -1 means use the default of 'as big as possible'.
 public_network: 0.0.0.0/0
@@ -394,7 +394,7 @@ radosgw_frontend_options: "{{ radosgw_civetweb_options if radosgw_frontend_type 
 # Eg. If you want to specify for each radosgw node which address the radosgw will bind to you can set it in your **inventory host file** by using 'radosgw_address' variable.
 # Preference will go to radosgw_address if both radosgw_address and radosgw_interface are defined.
 radosgw_interface: interface
-radosgw_address: address
+radosgw_address: 0.0.0.0
 radosgw_address_block: subnet
 radosgw_keystone_ssl: false # activate this when using keystone PKI keys
 # Rados Gateway options
@@ -535,6 +535,8 @@ ceph_client_docker_registry: "{{ ceph_docker_registry }}"
 ceph_docker_enable_centos_extra_repo: false
 ceph_docker_on_openstack: false
 containerized_deployment: False
+container_binary:
+
 
 ############
 # KV store #
@@ -563,74 +565,74 @@ docker_pull_timeout: "300s"
 openstack_config: false
 openstack_glance_pool:
   name: "images"
-  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
-  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pg_num: "{{ osd_pool_default_pg_num }}"
+  pgp_num: "{{ osd_pool_default_pg_num }}"
   rule_name: "replicated_rule"
   type: 1
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
-  size: ""
+  size: "{{ osd_pool_default_size }}"
 openstack_cinder_pool:
   name: "volumes"
-  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
-  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pg_num: "{{ osd_pool_default_pg_num }}"
+  pgp_num: "{{ osd_pool_default_pg_num }}"
   rule_name: "replicated_rule"
   type: 1
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
-  size: ""
+  size: "{{ osd_pool_default_size }}"
 openstack_nova_pool:
   name: "vms"
-  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
-  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pg_num: "{{ osd_pool_default_pg_num }}"
+  pgp_num: "{{ osd_pool_default_pg_num }}"
   rule_name: "replicated_rule"
   type: 1
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
-  size: ""
+  size: "{{ osd_pool_default_size }}"
 openstack_cinder_backup_pool:
   name: "backups"
-  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
-  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pg_num: "{{ osd_pool_default_pg_num }}"
+  pgp_num: "{{ osd_pool_default_pg_num }}"
   rule_name: "replicated_rule"
   type: 1
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
-  size: ""
+  size: "{{ osd_pool_default_size }}"
 openstack_gnocchi_pool:
   name: "metrics"
-  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
-  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pg_num: "{{ osd_pool_default_pg_num }}"
+  pgp_num: "{{ osd_pool_default_pg_num }}"
   rule_name: "replicated_rule"
   type: 1
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
-  size: ""
+  size: "{{ osd_pool_default_size }}"
 openstack_cephfs_data_pool:
   name: "manila_data"
-  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
-  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pg_num: "{{ osd_pool_default_pg_num }}"
+  pgp_num: "{{ osd_pool_default_pg_num }}"
   rule_name: "replicated_rule"
   type: 1
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
-  size: ""
+  size: "{{ osd_pool_default_size }}"
 openstack_cephfs_metadata_pool:
   name: "manila_metadata"
-  pg_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
-  pgp_num: "{{ hostvars[groups[mon_group_name][0]]['osd_pool_default_pg_num'] }}"
+  pg_num: "{{ osd_pool_default_pg_num }}"
+  pgp_num: "{{ osd_pool_default_pg_num }}"
   rule_name: "replicated_rule"
   type: 1
   erasure_profile: ""
   expected_num_objects: ""
   application: "rbd"
-  size: ""
+  size: "{{ osd_pool_default_size }}"
 
 openstack_pools:
   - "{{ openstack_glance_pool }}"

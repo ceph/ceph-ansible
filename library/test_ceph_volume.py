@@ -36,11 +36,12 @@ class TestCephVolumeModule(object):
         result = ceph_volume.get_wal("wal-lv", "wal-vg")
         assert result == "wal-vg/wal-lv"
 
-    def test_container_exec(sefl):
+    def test_container_exec(self):
         fake_binary = "ceph-volume"
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host',  # noqa E501
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
+                                 '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
                                  '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
@@ -56,6 +57,7 @@ class TestCephVolumeModule(object):
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host',  # noqa E501
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
+                                 '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
                                  '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
@@ -110,6 +112,7 @@ class TestCephVolumeModule(object):
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host',  # noqa E501
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
+                                 '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
                                  '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
@@ -136,6 +139,7 @@ class TestCephVolumeModule(object):
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host',  # noqa E501
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
+                                 '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
                                  '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
@@ -183,6 +187,7 @@ class TestCephVolumeModule(object):
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host',  # noqa E501
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
+                                 '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
                                  '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
@@ -231,6 +236,7 @@ class TestCephVolumeModule(object):
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host',  # noqa E501
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
+                                 '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
                                  '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',

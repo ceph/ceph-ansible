@@ -39,9 +39,11 @@ def node(host, request):
         if marker.name in group_names or marker.name == 'all':
             test_is_applicable = True
             break
-    # Check if any markers on the test method exist in the nodes group_names. If they do not, this test is not valid for the node being tested.
+    # Check if any markers on the test method exist in the nodes group_names.
+    # If they do not, this test is not valid for the node being tested.
     if not test_is_applicable:
-        reason = "%s: Not a valid test for node type: %s" % (request.function, group_names)
+        reason = "%s: Not a valid test for node type: %s" % (
+            request.function, group_names)
         pytest.skip(reason)
 
     if request.node.get_closest_marker("no_lvm_scenario") and lvm_scenario:

@@ -26,7 +26,7 @@ from notario.decorators import optional
 from notario.store import store as notario_store
 
 
-CEPH_RELEASES = ['jewel', 'kraken', 'luminous', 'mimic']
+CEPH_RELEASES = ['jewel', 'kraken', 'luminous', 'mimic', 'nautilus']
 
 
 class ActionModule(ActionBase):
@@ -96,10 +96,15 @@ class ActionModule(ActionBase):
                         notario.validate(host_vars, lvm_bluestore_scenario, defined_keys=True)
 
         except Invalid as error:
-            display.vvvv("Notario Failure: %s" % str(error))
-            msg = "[{}] Validation failed for variable: {}".format(host, error.path[0])
-            display.error(msg)
-            reason = "[{}] Reason: {}".format(host, error.reason)
+            display.vvv("Notario Failure: %s" % str(error))
+            msg = ""
+            if error.path:
+                msg = "[{}] Validation failed for variable: {}".format(host, error.path[0])
+                display.error(msg)
+                reason = "[{}] Reason: {}".format(host, error.reason)
+            else:
+                reason = "[{}] Reason: {}".format(host, str(error))
+            given = ""
             try:
                 if "schema is missing" not in error.message:
                     for i in range(0, len(error.path)):
@@ -108,7 +113,8 @@ class ActionModule(ActionBase):
                                     host, error.path[0])
                         else:
                             given = given + ": {}".format(error.path[i])
-                    display.error(given)
+                    if given:
+                        display.error(given)
                 else:
                     given = ""
                     reason = "[{}] Reason: {}".format(host, error.message)
@@ -116,8 +122,9 @@ class ActionModule(ActionBase):
                 given = ""
             display.error(reason)
             result['failed'] = mode == 'strict'
-            result['msg'] = "\n".join([msg, reason, given])
-            result['stderr_lines'] = msg.split('\n')
+            result['msg'] = "\n".join([s for s in (msg, reason, given) if len(s) > 0])
+            result['stderr_lines'] = result['msg'].split('\n')
+
 
         return result
 
@@ -180,7 +187,7 @@ def validate_rados_options(value):
     Either radosgw_interface, radosgw_address or radosgw_address_block must
     be defined.
     """
-    radosgw_address_given = notario_store["radosgw_address"] != "address"
+    radosgw_address_given = notario_store["radosgw_address"] != "0.0.0.0"
     radosgw_address_block_given = notario_store["radosgw_address_block"] != "subnet"
     radosgw_interface_given = notario_store["radosgw_interface"] != "interface"
 

@@ -4,7 +4,7 @@ RETRIES="{{ handler_health_rbd_mirror_check_retries }}"
 DELAY="{{ handler_health_rbd_mirror_check_delay }}"
 RBD_MIRROR_NAME="{{ ansible_hostname }}"
 {% if containerized_deployment %}
-DOCKER_EXEC="docker exec ceph-rbd-mirror-{{ ansible_hostname }}"
+DOCKER_EXEC="{{ container_binary }} exec ceph-rbd-mirror-{{ ansible_hostname }}"
 {% endif %}
 
 # Backward compatibility
@@ -21,5 +21,6 @@ while [ $RETRIES -ne 0 ]; do
   let RETRIES=RETRIES-1
 done
 # If we reach this point, it means the socket is not present.
-echo "Socket file ${SOCKET} could not be found, which means rbd mirror is not running."
+echo "Socket file ${SOCKET} could not be found, which means rbd mirror is not running. Showing ceph-rbd-mirror unit logs now:"
+journalctl -u ceph-rbd-mirror@rbd-mirror.${RBD_MIRROR_NAME}
 exit 1

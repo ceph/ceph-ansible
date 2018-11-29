@@ -26,7 +26,7 @@
       when: ireallymeanit != 'yes'
 
 
-- name: make sure docker is present and started
+- name: gather facts
 
   hosts:
     - "{{ mon_group_name|default('mons') }}"
@@ -105,7 +105,7 @@
       failed_when: false
       when: ldb_files.rc == 0
 
-    - name: copy mon initial keyring in /etc/ceph to satisfy fetch config task in ceph-docker-common
+    - name: copy mon initial keyring in /etc/ceph to satisfy fetch config task in ceph-container-common
       command: cp /var/lib/ceph/mon/{{ cluster }}-{{ ansible_hostname }}/keyring /etc/ceph/{{ cluster }}.mon.keyring
       args:
         creates: /etc/ceph/{{ cluster }}.mon.keyring
@@ -119,13 +119,14 @@
         name: ceph-handler
         private: false
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
     - import_role:
         name: ceph-mon
         private: false
 
     # post-tasks for preceding import -
+  post_tasks:
     # We don't do a container test by running 'docker exec ...' since not all the monitors have switched to containers yet.
     # Thus, we continue to use the 'ceph' binary from the host, there is no issue with that.
     - name: non container | waiting for the monitor to join the quorum...
@@ -186,7 +187,7 @@
         private: false
 
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
 
     - import_role:
@@ -209,38 +210,35 @@
   become: true
   tasks:
 
+    - import_role:
+        name: ceph-defaults
+        private: false
+
     # pre-tasks for following importing
     - name: collect running osds and ceph-disk unit(s)
       shell: |
-        systemctl list-units | grep "loaded active" | grep -Eo 'ceph-osd@[0-9]+.service|ceph-disk@dev-[a-z]{3,4}[0-9]{1}.service'
+        systemctl list-units | grep "loaded active" | grep -Eo 'ceph-osd@[0-9]+.service|ceph-disk@dev-[a-z]{3,4}[0-9]{1}.service|ceph-volume|ceph\.target'
       register: running_osds
       changed_when: false
       failed_when: false
-
-    - name: collect osd devices
-      shell: |
-        blkid | awk '/ceph data/ { sub ("1:", "", $1); print $1 }'
-      register: collect_devices
-      changed_when: false
-      when:
-        - devices is not defined or (devices is defined and devices == [])
-
-    - name: set devices
-      set_fact:
-        devices: "{{ collect_devices.stdout_lines | list }}"
-      when:
-        - collect_devices is defined
-        - not collect_devices.get("skipped")
-        - collect_devices != []
 
     - name: stop/disable/mask non-containerized ceph osd(s) and ceph-disk units (if any)
       systemd:
         name: "{{ item }}"
         state: stopped
         enabled: no
-        masked: yes
       with_items: "{{ running_osds.stdout_lines | default([])}}"
       when: running_osds != []
+
+    - name: remove old ceph-osd systemd units
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /usr/lib/systemd/system/ceph-osd.target
+        - /usr/lib/systemd/system/ceph-osd@.service
+        - /usr/lib/systemd/system/ceph-volume@.service
+        - /etc/systemd/system/ceph.target.wants
 
     - set_fact:
         ceph_uid: 64045
@@ -279,28 +277,27 @@
         - ldb_files.rc == 0
 
     - name: check if containerized osds are already running
-      shell: |
-        docker ps | grep -sq {{ item | regex_replace('/', '') }}
+      command: >
+        {{ container_binary }} ps --filter='name=ceph-osd'
       changed_when: false
       failed_when: false
-      with_items: "{{ devices }}"
       register: osd_running
 
-    - name: resolve device(s) path(s)
-      command: readlink -f {{ item }}
+    - name: get osd directories
+      command: >
+        ls -1 /var/lib/ceph/osd
+      register: osd_dirs
       changed_when: false
-      with_items: "{{ devices }}"
-      register: devices_canonicalize
 
     - name: unmount all the osd directories
-      command: umount "{{ item.0.stdout }}"1
+      command: >
+        umount /var/lib/ceph/osd/{{ item }}
       changed_when: false
       failed_when: false
-      with_together:
-        - "{{ devices_canonicalize.results }}"
-        - "{{ osd_running.results }}"
+      with_items:
+        - "{{ osd_dirs.stdout_lines }}"
       when:
-        - item.1.get("rc", 0) != 0
+        - osd_running.rc != 0
 
     - import_role:
         name: ceph-defaults
@@ -311,7 +308,7 @@
         private: false
 
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
 
     - import_role:
@@ -320,12 +317,14 @@
 
     # post-task for preceding import -
     - name: get num_pgs
-      command: docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json
       register: ceph_pgs
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: container - waiting for clean pgs...
-      command: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json"
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json
       register: ceph_health_post
       until: >
         (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) > 0)
@@ -384,7 +383,7 @@
         private: false
 
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
 
     - import_role:
@@ -438,7 +437,7 @@
         private: false
 
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
 
     - import_role:
@@ -491,7 +490,7 @@
         private: false
 
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
 
     - import_role:
@@ -549,7 +548,7 @@
         private: false
 
     - import_role:
-        name: ceph-docker-common
+        name: ceph-container-common
         private: false
 
     - import_role:

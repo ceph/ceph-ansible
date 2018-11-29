@@ -8,6 +8,20 @@
   set_fact:
     is_atomic: "{{ stat_ostree.stat.exists }}"
 
+- name: check if podman binary is present
+  stat:
+    path: /usr/bin/podman
+  register: podman_binary
+
+- name: set_fact is_podman
+  set_fact:
+    is_podman: "{{ podman_binary.stat.exists }}"
+
+- name: set_fact container_binary
+  set_fact:
+    container_binary: "{{ 'podman' if is_atomic and is_podman and ansible_distribution == 'Fedora' else 'docker' }}"
+  when: containerized_deployment
+
 - name: set_fact monitor_name ansible_hostname
   set_fact:
     monitor_name: "{{ ansible_hostname }}"
@@ -22,7 +36,7 @@
 
 - name: set_fact docker_exec_cmd
   set_fact:
-    docker_exec_cmd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+    docker_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
     - containerized_deployment
@@ -228,7 +242,7 @@
 - name: set_fact rgw_hostname
   set_fact:
     rgw_hostname: "{% set _value = ansible_hostname -%}
-    {% for key in ceph_current_status['servicemap']['services']['rgw']['daemons'].keys() -%}
+    {% for key in (ceph_current_status['servicemap']['services']['rgw']['daemons'] | list) -%}
     {% if key == ansible_fqdn -%}
     {% set _value = key -%}
     {% endif -%}
@@ -240,8 +254,21 @@
     - ceph_current_status['servicemap']['services'] is defined
     - ceph_current_status['servicemap']['services']['rgw'] is defined
 
+- name: set_fact osd_pool_default_pg_num
+  set_fact:
+    osd_pool_default_pg_num: "{{ ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', ceph_osd_pool_default_pg_num) }}"
+
+- name: set_fact osd_pool_default_size
+  set_fact:
+    osd_pool_default_size: "{{ ceph_conf_overrides.get('global', {}).get('osd_pool_default_size', ceph_osd_pool_default_size) }}"
+
 - name: import_tasks set_monitor_address.yml
   import_tasks: set_monitor_address.yml
 
 - name: import_tasks set_radosgw_address.yml
   import_tasks: set_radosgw_address.yml
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
+
+- name: populate service facts
+  service_facts:

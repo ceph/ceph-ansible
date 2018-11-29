@@ -4,7 +4,7 @@ RETRIES="{{ handler_health_mgr_check_retries }}"
 DELAY="{{ handler_health_mgr_check_delay }}"
 MGR_NAME="{{ ansible_hostname }}"
 {% if containerized_deployment %}
-DOCKER_EXEC="docker exec ceph-mgr-{{ ansible_hostname }}"
+DOCKER_EXEC="{{ container_binary }} exec ceph-mgr-{{ ansible_hostname }}"
 {% endif %}
 
 # Backward compatibility
@@ -22,5 +22,6 @@ while [ $RETRIES -ne 0 ]; do
   let RETRIES=RETRIES-1
 done
 # If we reach this point, it means the socket is not present.
-echo "Socket file ${SOCKET} could not be found, which means ceph manager is not running."
+echo "Socket file ${SOCKET} could not be found, which means ceph manager is not running. Showing ceph-mgr unit logs now:"
+journalctl -u ceph-mgr@${MGR_NAME}
 exit 1

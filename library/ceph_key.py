@@ -74,12 +74,6 @@ options:
             - keyring's secret value
         required: false
         default: None
-    containerized:
-        description:
-            - Wether or not this is a containerized cluster. The value is
-            assigned or not depending on how the playbook runs.
-        required: false
-        default: None
     import_key:
         description:
             - Wether or not to import the created keyring into Ceph.
@@ -87,11 +81,6 @@ options:
             but not add them into Ceph.
         required: false
         default: True
-    auid:
-        description:
-            - Sets the auid (authenticated user id) for the specified keyring
-        required: false
-        default: None
     dest:
         description:
             - Destination to write the keyring
@@ -122,7 +111,6 @@ caps:
     name: client.admin
     state: present
     secret: AQAin8tU2DsKFBAAFIAzVTzkL3+gtAjjpQiomw==
-    auid: 0
     caps:
       mon: allow *
       osd: allow *
@@ -138,7 +126,7 @@ caps:
     secret: AQAin8tUMICVFBAALRHNrV0Z4MXupRw4v9JQ6Q==
     caps:
       mon: allow *
-    dest: "/var/lib/ceph/tmp/keyring.mon"
+    dest: "/var/lib/ceph/tmp/"
     import_key: False
 
 - name: create cephx key
@@ -208,6 +196,37 @@ def fatal(message, module):
         raise(Exception(message))
 
 
+def container_exec(binary, container_image):
+    '''
+    Build the docker CLI to run a command inside a container
+    '''
+
+    container_binary = os.getenv('CEPH_CONTAINER_BINARY')
+    command_exec = [container_binary,
+                    'run',
+                    '--rm',
+                    '--net=host',
+                    '-v', '/etc/ceph:/etc/ceph:z',
+                    '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                    '-v', '/var/log/ceph/:/var/log/ceph/:z',
+                    os.path.join('--entrypoint=' + binary),
+                    container_image]
+    return command_exec
+
+
+def is_containerized():
+    '''
+    Check if we are running on a containerized cluster
+    '''
+
+    if 'CEPH_CONTAINER_IMAGE' in os.environ:
+        container_image = os.getenv('CEPH_CONTAINER_IMAGE')
+    else:
+        container_image = None
+
+    return container_image
+
+
 def generate_secret():
     '''
     Generate a CephX secret
@@ -237,15 +256,20 @@ def generate_caps(cmd, _type, caps):
     return cmd
 
 
-def generate_ceph_cmd(cluster, args, user, user_key, containerized=None):
+def generate_ceph_cmd(cluster, args, user, user_key, container_image=None):
     '''
     Generate 'ceph' command line to execute
     '''
 
-    cmd = []
+    if container_image:
+        binary = 'ceph'
+        cmd = container_exec(
+            binary, container_image)
+    else:
+        binary = ['ceph']
+        cmd = binary
 
     base_cmd = [
-        'ceph',
         '-n',
         user,
         '-k',
@@ -257,52 +281,46 @@ def generate_ceph_cmd(cluster, args, user, user_key, containerized=None):
 
     cmd.extend(base_cmd + args)
 
-    if containerized:
-        cmd = containerized.split() + cmd
-
     return cmd
 
 
-def generate_ceph_authtool_cmd(cluster, name, secret, caps, auid, dest, containerized=None):  # noqa E501
+def generate_ceph_authtool_cmd(cluster, name, secret, caps, dest, container_image=None):  # noqa E501
     '''
     Generate 'ceph-authtool' command line to execute
     '''
 
-    file_destination = os.path.join(
-        dest + "/" + cluster + "." + name + ".keyring")
+    if container_image:
+        binary = 'ceph-authtool'
+        cmd = container_exec(
+            binary, container_image)
+    else:
+        binary = ['ceph-authtool']
+        cmd = binary
 
-    cmd = [
-        'ceph-authtool',
+    base_cmd = [
         '--create-keyring',
-        file_destination,
+        dest,
         '--name',
         name,
         '--add-key',
         secret,
     ]
 
-    if auid:
-        cmd.extend(['--set-uid', auid])
-
+    cmd.extend(base_cmd)
     cmd = generate_caps(cmd, "ceph-authtool", caps)
-
-    if containerized:
-        cmd = containerized.split() + cmd
 
     return cmd
 
 
-def create_key(module, result, cluster, name, secret, caps, import_key, auid, dest, containerized=None):  # noqa E501
+def create_key(module, result, cluster, name, secret, caps, import_key, dest, container_image=None):  # noqa E501
     '''
     Create a CephX key
     '''
 
-    file_path = os.path.join(dest + "/" + cluster + "." + name + ".keyring")
-
     args = [
         'import',
         '-i',
-        file_path,
+        dest,
     ]
     cmd_list = []
 
@@ -310,7 +328,7 @@ def create_key(module, result, cluster, name, secret, caps, import_key, auid, de
         secret = generate_secret()
 
     cmd_list.append(generate_ceph_authtool_cmd(
-        cluster, name, secret, caps, auid, dest, containerized))
+        cluster, name, secret, caps, dest, container_image))
 
     if import_key:
         user = "client.admin"
@@ -318,12 +336,12 @@ def create_key(module, result, cluster, name, secret, caps, import_key, auid, de
         user_key = os.path.join(
             "/etc/ceph/" + cluster + ".client.admin.keyring")
         cmd_list.append(generate_ceph_cmd(
-            cluster, args, user, user_key, containerized))
+            cluster, args, user, user_key, container_image))
 
     return cmd_list
 
 
-def update_key(cluster, name, caps, containerized=None):
+def update_key(cluster, name, caps, container_image=None):
     '''
     Update a CephX key's capabilities
     '''
@@ -340,12 +358,12 @@ def update_key(cluster, name, caps, containerized=None):
     user_key = os.path.join(
         "/etc/ceph/" + cluster + ".client.admin.keyring")
     cmd_list.append(generate_ceph_cmd(
-        cluster, args, user, user_key, containerized))
+        cluster, args, user, user_key, container_image))
 
     return cmd_list
 
 
-def delete_key(cluster, name, containerized=None):
+def delete_key(cluster, name, container_image=None):
     '''
     Delete a CephX key
     '''
@@ -361,12 +379,35 @@ def delete_key(cluster, name, containerized=None):
     user_key = os.path.join(
         "/etc/ceph/" + cluster + ".client.admin.keyring")
     cmd_list.append(generate_ceph_cmd(
-        cluster, args, user, user_key, containerized))
+        cluster, args, user, user_key, container_image))
 
     return cmd_list
 
 
-def info_key(cluster, name, user, user_key, output_format, containerized=None):
+def get_key(cluster, name, dest, container_image=None):
+    '''
+    Get a CephX key (write on the filesystem)
+    '''
+
+    cmd_list = []
+
+    args = [
+        'get',
+        name,
+        '-o',
+        dest,
+    ]
+
+    user = "client.admin"
+    user_key = os.path.join(
+        "/etc/ceph/" + cluster + ".client.admin.keyring")
+    cmd_list.append(generate_ceph_cmd(
+        cluster, args, user, user_key, container_image))
+
+    return cmd_list
+
+
+def info_key(cluster, name, user, user_key, output_format, container_image=None):  # noqa E501
     '''
     Get information about a CephX key
     '''
@@ -381,12 +422,12 @@ def info_key(cluster, name, user, user_key, output_format, containerized=None):
     ]
 
     cmd_list.append(generate_ceph_cmd(
-        cluster, args, user, user_key, containerized))
+        cluster, args, user, user_key, container_image))
 
     return cmd_list
 
 
-def list_keys(cluster, user, user_key, containerized=None):
+def list_keys(cluster, user, user_key, container_image=None):
     '''
     List all CephX keys
     '''
@@ -400,7 +441,7 @@ def list_keys(cluster, user, user_key, containerized=None):
     ]
 
     cmd_list.append(generate_ceph_cmd(
-        cluster, args, user, user_key, containerized))
+        cluster, args, user, user_key, container_image))
 
     return cmd_list
 
@@ -473,11 +514,9 @@ def run_module():
         cluster=dict(type='str', required=False, default='ceph'),
         name=dict(type='str', required=False),
         state=dict(type='str', required=True),
-        containerized=dict(type='str', required=False, default=None),
         caps=dict(type='dict', required=False, default=None),
         secret=dict(type='str', required=False, default=None),
         import_key=dict(type='bool', required=False, default=True),
-        auid=dict(type='str', required=False, default=None),
         dest=dict(type='str', required=False, default='/etc/ceph/'),
     )
 
@@ -491,11 +530,9 @@ def run_module():
     state = module.params['state']
     name = module.params.get('name')
     cluster = module.params.get('cluster')
-    containerized = module.params.get('containerized')
     caps = module.params.get('caps')
     secret = module.params.get('secret')
     import_key = module.params.get('import_key')
-    auid = module.params.get('auid')
     dest = module.params.get('dest')
 
     result = dict(
@@ -513,6 +550,9 @@ def run_module():
 
     startd = datetime.datetime.now()
 
+    # will return either the image name or None
+    container_image = is_containerized()
+
     # Test if the key exists, if it does we skip its creation
     # We only want to run this check when a key needs to be added
     # There is no guarantee that any cluster is running and we don't need one
@@ -522,27 +562,36 @@ def run_module():
             "/etc/ceph/" + cluster + ".client.admin.keyring")
         output_format = "json"
         rc, cmd, out, err = exec_commands(
-            module, info_key(cluster, name, user, user_key, output_format, containerized))  # noqa E501
+            module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
 
     if state == "present":
         if not caps:
             fatal("Capabilities must be provided when state is 'present'", module)  # noqa E501
+
+        # Build a different path for bootstrap keys as there are stored as
+        # /var/lib/ceph/bootstrap-rbd/ceph.keyring
+        if 'bootstrap' in dest:
+            file_path = os.path.join(dest + "/" + cluster + ".keyring")
+        else:
+            file_path = os.path.join(dest + "/" + cluster +
+                                     "." + name + ".keyring")
 
         # We allow 'present' to override any existing key
         # ONLY if a secret is provided
         # if not we skip the creation
         if import_key:
             if rc == 0 and not secret:
-                result["stdout"] = "skipped, since {0} already exists, if you want to update a key use 'state: update'".format(  # noqa E501
-                    name)
+                # If the key exists in Ceph we must fetch it on the system
+                # because nothing tells us it exists on the fs or not
+                rc, cmd, out, err = exec_commands(module, get_key(cluster, name, file_path, container_image))  # noqa E501
+                result["stdout"] = "skipped, since {0} already exists, we only fetched the key at {1}. If you want to update a key use 'state: update'".format(  # noqa E501
+                    name, file_path)
                 result['rc'] = rc
                 module.exit_json(**result)
 
         rc, cmd, out, err = exec_commands(module, create_key(
-            module, result, cluster, name, secret, caps, import_key, auid, dest, containerized))  # noqa E501
+            module, result, cluster, name, secret, caps, import_key, file_path, container_image))  # noqa E501
 
-        file_path = os.path.join(
-            dest + "/" + cluster + "." + name + ".keyring")
         file_args = module.load_file_common_arguments(module.params)
         file_args['path'] = file_path
         module.set_fs_attributes_if_different(file_args, False)
@@ -556,11 +605,13 @@ def run_module():
             module.exit_json(**result)
 
         rc, cmd, out, err = exec_commands(
-            module, update_key(cluster, name, caps, containerized))
+            module, update_key(cluster, name, caps, container_image))
+        # After the update we don't need to overwrite the key on the filesystem
+        # since the secret has not changed
 
     elif state == "absent":
         rc, cmd, out, err = exec_commands(
-            module, delete_key(cluster, name, containerized))
+            module, delete_key(cluster, name, container_image))
 
     elif state == "info":
         if rc != 0:
@@ -573,14 +624,14 @@ def run_module():
             "/etc/ceph/" + cluster + ".client.admin.keyring")
         output_format = "json"
         rc, cmd, out, err = exec_commands(
-            module, info_key(cluster, name, user, user_key, output_format, containerized))  # noqa E501
+            module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
 
     elif state == "list":
         user = "client.admin"
         user_key = os.path.join(
             "/etc/ceph/" + cluster + ".client.admin.keyring")
         rc, cmd, out, err = exec_commands(
-            module, list_keys(cluster, user, user_key, containerized))
+            module, list_keys(cluster, user, user_key, container_image))
 
     elif state == "fetch_initial_keys":
         hostname = socket.gethostname()
@@ -588,7 +639,7 @@ def run_module():
         user_key = os.path.join(
             "/var/lib/ceph/mon/" + cluster + "-" + hostname + "/keyring")
         rc, cmd, out, err = exec_commands(
-            module, list_keys(cluster, user, user_key, containerized))
+            module, list_keys(cluster, user, user_key, container_image))
         if rc != 0:
             result["stdout"] = "failed to retrieve ceph keys".format(name)
             result['rc'] = 0
@@ -599,8 +650,12 @@ def run_module():
             fatal("Failed to find some of the initial entities", module)
 
         # get ceph's group and user id
-        ceph_uid = pwd.getpwnam('ceph').pw_uid
-        ceph_grp = grp.getgrnam('ceph').gr_gid
+        if container_image:
+            ceph_uid = os.getenv('CEPH_UID')
+            ceph_grp = os.getenv('CEPH_UID')
+        else:
+            ceph_uid = pwd.getpwnam('ceph').pw_uid
+            ceph_grp = grp.getgrnam('ceph').gr_gid
 
         output_format = "plain"
         for entity in entities:
@@ -618,13 +673,17 @@ def run_module():
             ]
 
             info_cmd = info_key(cluster, entity, user,
-                                user_key, output_format, containerized)
+                                user_key, output_format, container_image)
             # we use info_cmd[0] because info_cmd is an array made of an array
             info_cmd[0].extend(extra_args)
             rc, cmd, out, err = exec_commands(
                 module, info_cmd)  # noqa E501
 
             # apply ceph:ceph ownership and mode 0400 on keys
+            # FIXME by using
+            # file_args = module.load_file_common_arguments(module.params)
+            # file_args['path'] = dest
+            # module.set_fs_attributes_if_different(file_args, False)
             try:
                 os.chown(key_path, ceph_uid, ceph_grp)
                 os.chmod(key_path, stat.S_IRUSR)
@@ -645,8 +704,8 @@ def run_module():
         end=str(endd),
         delta=str(delta),
         rc=rc,
-        stdout=out.rstrip(b"\r\n"),
-        stderr=err.rstrip(b"\r\n"),
+        stdout=out.rstrip("\r\n"),
+        stderr=err.rstrip("\r\n"),
         changed=True,
     )
 
