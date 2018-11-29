@@ -33,6 +33,12 @@
   when:
     - containerized_deployment
 
+# this is for ceph-disk, the ceph-disk command is gone so we have to list /var/lib/ceph
+- name: get osd ids
+  shell: |
+    ls /var/lib/ceph/osd/ | sed 's/.*-//'
+  register: osd_ids_non_container
+
 - name: set_fact docker_exec_start_osd
   set_fact:
     docker_exec_start_osd: "{{ '{{ container_binary }} run --rm --privileged=true -v /var/run/udev/:/var/run/udev/:z -v /run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket -v /etc/ceph:/etc/ceph:z -v /dev:/dev --entrypoint=ceph-volume ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'ceph-volume' }}"
@@ -59,11 +65,11 @@
 
 - name: systemd start osd
   systemd:
-    name: ceph-osd@{{ item | regex_replace('/dev/', '') if osd_scenario != 'lvm' else item }}
+    name: ceph-osd@{{ item | regex_replace('/dev/', '') if osd_scenario != 'lvm' and containerized_deployment else item }}
     state: started
     enabled: yes
     daemon_reload: yes
-  with_items: "{{ devices if osd_scenario != 'lvm' else (ceph_osd_ids.stdout | from_json | list) }}"
+  with_items: "{{ devices if osd_scenario != 'lvm' and containerized_deployment else (ceph_osd_ids.stdout | from_json).keys() if osd_scenario == 'lvm' and not containerized_deployment else osd_ids_non_container.stdout_lines }}"
 
 - name: ensure systemd service override directory exists
   file:
