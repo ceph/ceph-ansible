@@ -48,24 +48,6 @@
     - cephx
     - ansible_version.major == 2 and ansible_version.minor < 4
 
-- name: test if initial mon keyring is in mon kv store
-  command: ceph --cluster {{ cluster }} config-key get initial_mon_keyring
-  changed_when: false
-  ignore_errors: true
-  check_mode: no
-  run_once: true
-  failed_when: false
-  register: is_initial_mon_keyring_in_kv
-
-- name: put initial mon keyring in mon kv store
-  command: ceph --cluster {{ cluster }} config-key put initial_mon_keyring {{ monitor_keyring.stdout }}
-  changed_when: false
-  check_mode: no
-  run_once: true
-  when:
-    - is_initial_mon_keyring_in_kv.rc != 0
-    - cephx
-
 - name: create ceph mgr keyring(s) when mon is not containerized
   ceph_key:
     name: "mgr.{{ hostvars[item]['ansible_hostname'] }}"

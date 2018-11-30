@@ -1,7 +1,6 @@
 ---
 - name: include copy_configs.yml
   include_tasks: copy_configs.yml
-  when: not containerized_deployment_with_kv
 
 - name: include start_docker_monitor.yml
   include_tasks: start_docker_monitor.yml
@@ -21,13 +20,10 @@
   command: "{{ docker_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok add_bootstrap_peer_hint {{ _current_monitor_address }}"
   changed_when: false
   failed_when: false
-  when:
-    - not containerized_deployment_with_kv
 
 - name: include fetch_configs.yml
   include_tasks: fetch_configs.yml
   run_once: true
-  when: not containerized_deployment_with_kv
 
 - block:
   - name: create ceph mgr keyring(s) when mon is containerized
@@ -39,7 +35,6 @@
       - cephx
       - containerized_deployment
       - groups.get(mgr_group_name, []) | length > 0
-      - not containerized_deployment_with_kv
     with_items: "{{ groups.get(mgr_group_name, []) }}"
 
   - name: fetch ceph mgr key(s)
