@@ -189,7 +189,18 @@
         name: ceph-config
       tags: ['ceph_update_config']
     - import_role:
-        name: ceph-osd
+        name: ceph-osd-common
+        private: false
+    - import_role:
+        name: ceph-osd-legacy
+        private: false
+      when:
+        - osd_scenario == 'collocated' or osd_scenario == 'non-collocated'
+    - import_role:
+        name: ceph-osd-lvm
+        private: false
+      when:
+        - osd_scenario == 'lvm'
 
     # post-tasks for preceding imports -
     - name: set ceph osd install 'Complete'
