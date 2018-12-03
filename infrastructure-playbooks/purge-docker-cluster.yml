@@ -519,20 +519,28 @@
 
   tasks:
 
-  - name: disable ceph mon service
+  # since mgr are now collocated with mons by default
+  - name: disable ceph mon and mgr service
     service:
-      name: "ceph-mon@{{ ansible_hostname }}"
+      name: "{{ item }}"
       state: stopped
       enabled: no
     ignore_errors: true
+    with_items:
+      - "ceph-mgr@{{ ansible_hostname }}"
+      - "ceph-mon@{{ ansible_hostname }}"
 
-  - name: remove ceph mon container
+  - name: remove ceph mon and mgr container
     docker_container:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-mon-{{ ansible_hostname }}"
+      name: "{{ item }}"
       state: absent
     ignore_errors: true
+    with_items:
+      - "ceph-mon-{{ ansible_hostname }}"
+      - "ceph-mgr-{{ ansible_hostname }}"
 
+<<<<<<< HEAD
   - name: remove restapi container
     docker_container:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
@@ -541,11 +549,17 @@
     ignore_errors: true
 
   - name: remove ceph mon service
+=======
+  - name: remove ceph mon and mgr service
+>>>>>>> 325a1594... purge-docker-cluster: add support for mgr/mon collocation
     file:
-      path: /etc/systemd/system/ceph-mon@.service
+      path: "/etc/systemd/system/ceph-{{ item }}@.service"
       state: absent
+    with_items:
+      - mon
+      - mgr
 
-  - name: remove ceph mon image
+  - name: remove ceph mon and mgr image
     docker_image:
       state: absent
       repository: "{{ ceph_docker_registry }}"
