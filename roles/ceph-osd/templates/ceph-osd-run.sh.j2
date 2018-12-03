@@ -52,9 +52,17 @@ function expose_partitions {
   fi
 }
 
+{% endif -%}
+
 expose_partitions "$1"
 
-{% endif -%}
+# discover osd_objectstore for ceph-disk based osds
+if [[ $DOCKER_ENV =~ "BLUESTORE" ]]; then
+  DOCKER_ENV="$DOCKER_ENV -e OSD_BLUESTORE=1"
+elif [[ $DOCKER_ENV =~ "JOURNAL" ]]; then
+  DOCKER_ENV="$DOCKER_ENV -e OSD_FILESTORE=1"
+fi
+
 {% endif -%}
 
 
@@ -87,21 +95,10 @@ expose_partitions "$1"
   {% if ansible_distribution == 'Ubuntu' -%}
   --security-opt apparmor:unconfined \
   {% endif -%}
-  {% if osd_objectstore == 'filestore' and not dmcrypt -%}
-  -e OSD_FILESTORE=1 \
-  -e OSD_DMCRYPT=0 \
-  {% endif -%}
-  {% if osd_objectstore == 'filestore' and dmcrypt -%}
-  -e OSD_FILESTORE=1 \
+  {% if dmcrypt -%}
   -e OSD_DMCRYPT=1 \
-  {% endif -%}
-  {% if osd_objectstore == 'bluestore' and not dmcrypt -%}
-  -e OSD_BLUESTORE=1 \
+  {% else -%}
   -e OSD_DMCRYPT=0 \
-  {% endif -%}
-  {% if osd_objectstore == 'bluestore' and dmcrypt -%}
-  -e OSD_BLUESTORE=1 \
-  -e OSD_DMCRYPT=1 \
   {% endif -%}
   -e CLUSTER={{ cluster }} \
   {% if (ceph_tcmalloc_max_total_thread_cache | int) > 0 and osd_objectstore == 'filestore' -%}
