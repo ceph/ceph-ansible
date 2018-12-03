@@ -412,10 +412,13 @@
 
   - name: stop ceph mons with systemd
     service:
-      name: ceph-mon@{{ ansible_hostname }}
+      name: "ceph-{{ item }}@{{ ansible_hostname }}"
       state: stopped
       enabled: no
     failed_when: false
+    with_items:
+      - mon
+      - mgr
 
 
   - name: remove monitor store and bootstrap keys
