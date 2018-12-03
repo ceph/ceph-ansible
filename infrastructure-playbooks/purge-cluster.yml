@@ -68,16 +68,7 @@
       state: stopped
       enabled: no
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
 
-  - name: stop ceph mdss
-    shell: "service ceph status mds ; if [ $? == 0 ] ; then service ceph stop mds ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph mdss on ubuntu
-    command: initctl stop ceph-mds cluster={{ cluster }} id={{ ansible_hostname }}
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
 - name: purge ceph mgr cluster
 
@@ -101,6 +92,7 @@
     failed_when: false
     when: ansible_service_mgr == 'systemd'
 
+
 - name: purge ceph rgw cluster
 
   vars:
@@ -121,16 +113,6 @@
       state: stopped
       enabled: no
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
-
-  - name: stop ceph rgws
-    shell: "service ceph-radosgw status ; if [ $? == 0 ] ; then service ceph-radosgw stop ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph rgws on ubuntu
-    command: initctl stop radosgw cluster={{ cluster }} id={{ ansible_hostname }}
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph rbd-mirror cluster
@@ -152,12 +134,6 @@
       name: ceph-rbd-mirror@admin.service
       state: stopped
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
-
-  - name: stop ceph rbd mirror on ubuntu
-    command: initctl stop ceph-rbd-mirror cluster={{ cluster }} id=admin
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph nfs cluster
@@ -180,15 +156,6 @@
       state: stopped
     failed_when: false
     when: ansible_service_mgr == 'systemd'
-
-  - name: stop ceph nfss
-    shell: "service nfs-ganesha status ; if [ $? == 0 ] ; then service nfs-ganesha stop ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph nfss on ubuntu
-    command: initctl stop nfs-ganesha
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph osd cluster
@@ -243,20 +210,6 @@
       enabled: no
     with_items: "{{ osd_ids.stdout_lines }}"
     when: ansible_service_mgr == 'systemd'
-
-  # before infernalis release, using sysvinit scripts
-  # we use this test so we do not have to know which RPM contains the boot script
-  # or where it is placed.
-
-  - name: stop ceph osds
-    shell: "service ceph status osd ; if [ $? == 0 ] ; then service ceph stop osd ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph osds on ubuntu
-    command: initctl stop ceph-osd cluster={{ cluster }} id={{ item }}
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
-    with_items: "{{ osd_ids.stdout_lines }}"
 
   - name: remove ceph udev rules
     file:
@@ -463,16 +416,7 @@
       state: stopped
       enabled: no
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
 
-  - name: stop ceph mons
-    shell: "service ceph status mon ; if [ $? == 0 ] ; then service ceph stop mon ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph mons on ubuntu
-    command: initctl stop ceph-mon cluster={{ cluster }} id={{ ansible_hostname }}
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
   - name: remove monitor store and bootstrap keys
     file:
