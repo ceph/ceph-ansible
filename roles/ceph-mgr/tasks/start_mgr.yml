@@ -1,0 +1,38 @@
+---
+- name: ensure systemd service override directory exists
+  file:
+    state: directory
+    path: "/etc/systemd/system/ceph-mgr@.service.d/"
+  when:
+    - ceph_mgr_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
+- name: add ceph-mgr systemd service overrides
+  config_template:
+    src: "ceph-mgr.service.d-overrides.j2"
+    dest: "/etc/systemd/system/ceph-mgr@.service.d/ceph-mgr-systemd-overrides.conf"
+    config_overrides: "{{ ceph_mgr_systemd_overrides | default({}) }}"
+    config_type: "ini"
+  when:
+    - ceph_mgr_systemd_overrides is defined
+    - ansible_service_mgr == 'systemd'
+
+- name: generate systemd unit file
+  become: true
+  template:
+    src: "{{ role_path }}/templates/ceph-mgr.service.j2"
+    dest: /etc/systemd/system/ceph-mgr@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  when:
+    - containerized_deployment
+  notify:
+    - restart ceph mgrs
+
+- name: systemd start mgr
+  systemd:
+    name: ceph-mgr@{{ ansible_hostname }}
+    state: started
+    enabled: yes
+    daemon_reload: yes
