@@ -85,15 +85,11 @@
     - name: set mon_host_count
       set_fact: mon_host_count={{ groups[mon_group_name] | length }}
 
-    - debug: msg="WARNING - upgrading a ceph cluster with only one monitor node ({{ inventory_hostname }})"
-      when: mon_host_count | int == 1
-
-    - name: fail when single containerized monitor
+    - name: fail when less than three monitors
       fail:
-        msg: "Upgrades of a single monitor are not supported, also running 1 monitor is not recommended always use 3."
+        msg: "Upgrade of cluster with less than three monitors is not supported."
       when:
-        - containerized_deployment
-        - mon_host_count | int == 1
+        - mon_host_count | int < 3
 
     - name: stop ceph mon - shortname
       systemd:
@@ -186,9 +182,9 @@
     - name: set mon_host_count
       set_fact: mon_host_count={{ groups[mon_group_name] | length }}
 
-    - name: select a running monitor if multiple monitors
+    - name: select a running monitor
       set_fact:
-        mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last if mon_host_count > 1 else groups[mon_group_name] | last }}"
+        mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last }}"
 
     - name: non container | waiting for the monitor to join the quorum...
       command: ceph --cluster "{{ cluster }}" -s --format json
