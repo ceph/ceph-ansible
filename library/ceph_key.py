@@ -83,7 +83,7 @@ options:
         default: True
     dest:
         description:
-            - Destination to write the keyring
+            - Destination to write the keyring, can a file or a directory
         required: false
         default: /etc/ceph/
     fetch_initial_keys:
@@ -568,9 +568,13 @@ def run_module():
         if not caps:
             fatal("Capabilities must be provided when state is 'present'", module)  # noqa E501
 
-        # Build a different path for bootstrap keys as there are stored as
-        # /var/lib/ceph/bootstrap-rbd/ceph.keyring
-        if 'bootstrap' in dest:
+        # if dest is not a directory, the user wants to change the file's name
+        # (e,g: /etc/ceph/ceph.mgr.ceph-mon2.keyring)
+        if not os.path.isdir(dest):
+            file_path = dest
+        elif 'bootstrap' in dest:
+            # Build a different path for bootstrap keys as there are stored as
+            # /var/lib/ceph/bootstrap-rbd/ceph.keyring
             file_path = os.path.join(dest + "/" + cluster + ".keyring")
         else:
             file_path = os.path.join(dest + "/" + cluster +
