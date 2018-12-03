@@ -554,6 +554,42 @@
       path: /etc/profile.d/ceph-aliases.sh
       state: absent
 
+- name: check container hosts
+
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+
+  become: true
+
+  tasks:
+
+  - import_role:
+      name: ceph-defaults
+      private: false
+
+  - name: show container list on all the nodes (should be empty)
+    command: >
+      {{ container_binary }} ps --filter='name=ceph' -a -q
+    register: containers_list
+    changed_when: false
+
+  - name: show container images on all the nodes (should be empty if tags was passed remove_img)
+    command: >
+      {{ container_binary }} images
+    register: images_list
+    changed_when: false
+
+  - name: fail if container are still present
+    fail:
+      msg: "It looks like container are still present."
+    when: containers_list.stdout_lines|length > 0
+
 - name: remove installed packages
 
   hosts:
@@ -684,7 +720,6 @@
 
   - name: remove data
     shell: rm -rf /var/lib/ceph/*
-
 
 - name: purge fetch directory
 
