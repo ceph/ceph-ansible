@@ -4,6 +4,7 @@
     state: directory
     path: "/etc/systemd/system/ceph-mon@.service.d/"
   when:
+    - not containerized_deployment
     - ceph_mon_systemd_overrides is defined
     - ansible_service_mgr == 'systemd'
 
@@ -14,21 +15,25 @@
     config_overrides: "{{ ceph_mon_systemd_overrides | default({}) }}"
     config_type: "ini"
   when:
+    - not containerized_deployment
     - ceph_mon_systemd_overrides is defined
     - ansible_service_mgr == 'systemd'
 
+- name: generate systemd unit file for mon container
+  become: true
+  template:
+    src: "{{ role_path }}/templates/ceph-mon.service.j2"
+    dest: /etc/systemd/system/ceph-mon@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify:
+    - restart ceph mons
+  when: containerized_deployment
+
 - name: start the monitor service
-  service:
-    name: ceph-mon@{{ monitor_name }}
+  systemd:
+    name: ceph-mon@{{ monitor_name if not containerized_deployment else ansible_hostname }}
     state: started
     enabled: yes
-  changed_when: false
-
-# NOTE: This patch only affects Kraken. This fixes a bug when the monitor service
-# does not start automatically after a reboot. Fix proposed upstream: ceph/ceph#14226
-- name: enable the ceph-mon.target service
-  systemd:
-    name: ceph-mon.target
-    enabled: yes
-    masked: no
-  changed_when: false
+    daemon_reload: yes
