@@ -73,6 +73,57 @@
       remove_img
     ignore_errors: true
 
+- name: purge ceph iscsigws cluster
+
+  hosts:
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+    - iscsi-gws
+  become: true
+  tasks:
+
+  - name: disable ceph iscsigw services
+    service:
+      name: "{{ item }}"
+      state: stopped
+      enabled: no
+    ignore_errors: true
+    with_items:
+      - rbd-target-api
+      - rbd-target-gw
+      - tcmu-runner
+
+  - name: remove ceph iscsigw containers
+    docker_container:
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      name: "{{ item }}"
+      state: absent
+    ignore_errors: true
+    with_items:
+      - rbd-target-api
+      - rbd-target-gw
+      - tcmu-runner
+
+  - name: remove ceph iscsigw systemd unit files
+    file:
+      path: /etc/systemd/system/{{ item }}.service
+      state: absent
+    ignore_errors: true
+    with_items:
+      - rbd-target-api
+      - rbd-target-gw
+      - tcmu-runner
+
+  - name: remove ceph iscsigw image
+    docker_image:
+      state: absent
+      repository: "{{ ceph_docker_registry }}"
+      name: "{{ ceph_docker_image }}"
+      tag: "{{ ceph_docker_image_tag }}"
+      force: yes
+    tags:
+      remove_img
+    ignore_errors: true
+
 - name: purge ceph mgr cluster
 
   hosts:

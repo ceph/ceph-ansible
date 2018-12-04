@@ -273,7 +273,7 @@ def batch(module, container_image):
     journal_size = module.params.get('journal_size', None)
     block_db_size = module.params.get('block_db_size', None)
     dmcrypt = module.params.get('dmcrypt', None)
-    osds_per_device = module.params.get('osds_per_device', None)
+    osds_per_device = module.params.get('osds_per_device', 1)
 
     if not osds_per_device:
         fatal('osds_per_device must be provided if action is "batch"', module)

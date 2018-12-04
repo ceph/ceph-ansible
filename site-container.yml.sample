@@ -82,7 +82,11 @@
 
     # post-tasks for upcoming import -
     - name: "pull {{ ceph_docker_image }} image"
-      command: "{{ container_binary }} pull {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      command: "{{ container_binary }} pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      register: container_pull
+      until: container_pull.rc == 0
+      retries: 5
+      delay: 5
       changed_when: false
       when:
         - is_atomic
@@ -102,6 +106,7 @@
 - hosts: mons
   become: True
   gather_facts: false
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -120,7 +125,9 @@
     - import_role:
         name: ceph-mon
         private: false
-  serial: 1 # MUST be '1' WHEN DEPLOYING MONITORS ON DOCKER CONTAINERS
+    - import_role:
+        name: ceph-mgr
+        private: false
 
 - hosts: mons
   tasks:
@@ -175,6 +182,7 @@
 - hosts: osds
   become: True
   gather_facts: false
+  any_errors_fatal: true
   tasks:
     # pre-tasks for upcoming imports -
     - name: set ceph osd install 'In Progress'
@@ -215,6 +223,7 @@
 - hosts: mdss
   become: True
   gather_facts: false
+  any_errors_fatal: true
   tasks:
     # pre-tasks for following imports -
     - name: set ceph mds install 'In Progress'
@@ -255,6 +264,7 @@
 - hosts: rgws
   become: True
   gather_facts: false
+  any_errors_fatal: true
   tasks:
     # pre-tasks for following imports -
     - name: set ceph rgw install 'In Progress'
@@ -295,6 +305,7 @@
 - hosts: nfss
   become: True
   gather_facts: false
+  any_errors_fatal: true
   tasks:
     # pre-tasks for following imports -
     - name: set ceph nfs install 'In Progress'
@@ -335,6 +346,7 @@
 - hosts: rbdmirrors
   become: True
   gather_facts: false
+  any_errors_fatal: true
   tasks:
     # pre-tasks for following imports -
     - name: set ceph rbd mirror install 'In Progress'
@@ -375,6 +387,7 @@
 - hosts: clients
   become: True
   gather_facts: false
+  any_errors_fatal: true
   tasks:
     # pre-tasks for following imports -
     - name: set ceph client install 'In Progress'
@@ -418,6 +431,7 @@
     - iscsigws
     - iscsi-gws # for backward compatibility only!
   gather_facts: false
+  any_errors_fatal: true
   become: True
   tasks:
     # pre-tasks for following imports -
