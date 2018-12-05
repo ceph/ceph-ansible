@@ -303,10 +303,17 @@
 - name: purge ceph osd cluster
 
   hosts:
-    - "{{ osd_group_name|default('osds') }}"
+    - "{{ osd_group_name | default('osds') }}"
 
   gather_facts: true
   become: true
+
+  pre_tasks:
+  - name: gather monitors facts
+    setup:
+    delegate_to: "{{ item }}"
+    delegate_facts: True
+    with_items: "{{ groups[mon_group_name] | default('mons') }}"
 
   tasks:
 
