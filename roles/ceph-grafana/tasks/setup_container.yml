@@ -1,0 +1,64 @@
+---
+- name: include ceph-container-common
+  include_role:
+    name: ceph-container-common
+    allow_duplicates: false
+
+- name: create grafana user
+  user:
+    name: grafana
+    shell: '/bin/false'
+    createhome: false
+    system: true
+
+- name: create /etc/grafana and /var/lib/grafana
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ grafana_uid }}"
+    recurse: true
+  with_items:
+    - /etc/grafana
+    - /var/lib/grafana
+
+- name: make sure the grafana-server service is down
+  service:
+    name: grafana-server
+    state: stopped
+  failed_when: false
+
+- name: create docker container
+  docker_container:
+    name: grafana-server
+    image: "{{ grafana_container_image }}"
+    state: present
+    # restart to allow updates
+    restart: true
+    restart_policy: no
+    force_kill: yes
+    published_ports: '3000:3000'
+    detach: true
+    volumes:
+      - "/etc/grafana:/etc/grafana:Z"
+      - "/var/lib/grafana:/var/lib/grafana:Z"
+    networks:
+      - name: "{{ dashboard_network_name }}"
+    keep_volumes: true
+    pull: true
+    cpu_period: "{{ grafana_container_cpu_period }}"
+    # As of ansible-2.5.2, this module doesn't support the equivalent of the
+    # --cpus flag, so we must use period/quota for now
+    cpu_quota: "{{ grafana_container_cpu_period * grafana_container_cpu_cores }}"
+    memory: "{{ grafana_container_memory }}GB"
+    memory_swap: "{{ grafana_container_memory * 2 }}GB"
+    env:
+      GF_INSTALL_PLUGINS: "{{ grafana_plugins|join(',') }}"
+
+- name: ship systemd service
+  copy:
+    src: grafana-server.service
+    dest: "/etc/systemd/system/"
+    owner: root
+    group: root
+    mode: 0644
+  notify: enable service
