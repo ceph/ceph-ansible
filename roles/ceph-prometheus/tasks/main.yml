@@ -1,0 +1,35 @@
+---
+- name: create prometheus directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prometheus_user_id }}"
+  with_items:
+   - "{{ prometheus_conf_dir }}"
+   - "{{ prometheus_data_dir }}"
+
+- name: write prometheus config file
+  template:
+    src: prometheus.yml
+    dest: "{{ prometheus_conf_dir }}/"
+    owner: "{{ prometheus_user_id }}"
+  notify: service handler
+
+- name: create alertmanager directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "root"
+  with_items:
+   - "{{ alertmanager_conf_dir }}"
+   - "{{ alertmanager_data_dir }}"
+
+- name: write alertmanager config file
+  template:
+    src: alertmanager.yml
+    dest: "{{ alertmanager_conf_dir }}/"
+    owner: "root"
+  notify: service handler
+
+- name: include setup_container.yml
+  include_tasks: setup_container.yml

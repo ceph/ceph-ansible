@@ -1,0 +1,47 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - '/etc/prometheus/alerts/*'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+  - job_name: 'ceph'
+    honor_labels: true
+    static_configs:
+{% for host in groups['mgrs'] | default(groups['mons']) %}
+      - targets: ['{{ host }}:9283']
+        labels:
+          instance: 'ceph_cluster'
+{% endfor %}
+  - job_name: 'node'
+    static_configs:
+{% for host in (groups['all'] | difference(groups['grafana-server'])) %}
+      - targets: ['{{ host }}:9100']
+        labels:
+          instance: "{{ hostvars[host]['ansible_nodename'] }}"
+{% endfor %}
+  - job_name: 'grafana'
+    static_configs:
+{% for host in groups['grafana-server'] %}
+      - targets: ['{{ host }}:9100']
+        labels:
+          instance: "{{ hostvars[host]['ansible_nodename'] }}"
+{% endfor %}
+{% if 'iscsigws' in groups %}
+  - job_name: 'iscsi-gws'
+    static_configs:
+{% for host in groups['iscsigws'] %}
+      - targets: ['{{ host }}:9287']
+        labels:
+          instance: "{{ hostvars[host]['ansible_nodename'] }}"
+{% endfor %}
+{% endif %}
+alerting:
+  alertmanagers:
+  - scheme: http
+    static_configs:
+    - targets: ['alertmanager:9093']
