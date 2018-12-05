@@ -1,0 +1,83 @@
+---
+- name: make sure grafana is down
+  service:
+    name: grafana-server
+    state: stopped
+
+- name: wait for grafana to be stopped
+  wait_for:
+    port: 3000
+    state: stopped
+
+- name: make sure grafana configuration directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    recurse: yes
+  with_items:
+    - "/etc/grafana/provisioning/datasources"
+    - "/etc/grafana/provisioning/dashboards"
+
+- name: write grafana.ini
+  template:
+    src: grafana.ini
+    dest: /etc/grafana/grafana.ini
+    mode: 0640
+
+- name: write datasources provisioning config file
+  template:
+    src: datasources-ceph-dashboard.yml
+    dest: /etc/grafana/provisioning/datasources/ceph-dashboard.yml
+    mode: 0640
+
+- name: Write dashboards provisioning config file
+  template:
+    src: dashboards-ceph-dashboard.yml
+    dest: /etc/grafana/provisioning/dashboards/ceph-dashboard.yml
+    mode: 0640
+
+- name: copy grafana SSL certificate file
+  copy:
+    src: "{{ grafana_crt }}"
+    dest: "/etc/grafana/ceph-dashboard.crt"
+    mode: 0640
+  when:
+    - grafana_crt
+    - dashboard_protocol == "https"
+
+- name: copy grafana SSL certificate key
+  copy:
+    src: "{{ grafana_key }}"
+    dest: "/etc/grafana/ceph-dashboard.key"
+    mode: 0640
+  when:
+    - grafana_key
+    - dashboard_protocol == "https"
+
+- name: generate a Self Signed OpenSSL certificate for dashboard
+  shell: |
+    test -f /etc/grafana/ceph-dashboard.key -a -f /etc/grafana/ceph-dashboard.crt || \
+    openssl req -new -nodes -x509 -subj '/O=IT/CN=ceph-grafana' -days 3650 -keyout /etc/grafana/ceph-dashboard.key -out /etc/grafana/ceph-dashboard.crt -extensions v3_ca
+  when:
+    - dashboard_protocol == "https"
+    - not grafana_key or not grafana_crt
+
+- name: set owner/group on /etc/grafana
+  file:
+    path: /etc/grafana
+    state: directory
+    # This is the UID used by the grafana container
+    owner: "{{ grafana_uid }}"
+    # This group is used by the grafana rpm
+    group: "grafana"
+    recurse: true
+
+- name: enable and start grafana
+  service:
+    name: grafana-server
+    state: restarted
+    enabled: true
+
+- name: wait for grafana to start
+  wait_for:
+    port: 3000

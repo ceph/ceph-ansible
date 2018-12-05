@@ -1,0 +1,42 @@
+---
+- name: include ceph-container-common
+  include_role:
+    name: ceph-container-common
+    allow_duplicates: false
+
+- name: make sure the node_exporter service is down
+  service:
+    name: node_exporter
+    state: stopped
+  failed_when: false
+
+- name: start docker container
+  docker_container:
+    name: node-exporter
+    image: "{{ node_exporter_container_image }}"
+    state: started
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--no-collector.timex'
+    # restart to allow updates
+    restart: true
+    restart_policy: no
+    force_kill: yes
+    detach: true
+    volumes:
+      - '/proc:/host/proc:ro'
+      - '/sys:/host/sys:ro'
+    network_mode: host
+    keep_volumes: true
+    pull: true
+  notify: restart node-exporter service
+
+- name: ship systemd service
+  copy:
+    src: node_exporter.service
+    dest: "/etc/systemd/system/"
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart node-exporter service
