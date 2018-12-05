@@ -458,3 +458,13 @@
       set_fact:
          _rbd_target_api_handler_called: False
       listen: "restart ceph rbd-target-api"
+
+    - name: restart node-exporter service
+      listen: "restart node-exporter service"
+      # We use the systemd module here so we can use the daemon_reload feature,
+      # since we're shipping the .service file ourselves
+      systemd:
+        name: 'node_exporter'
+        daemon_reload: true
+        enabled: true
+        state: restarted
