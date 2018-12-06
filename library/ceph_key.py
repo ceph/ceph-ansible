@@ -459,7 +459,7 @@ def exec_commands(module, cmd_list):
     return rc, cmd, out, err
 
 
-def lookup_ceph_initial_entities(out):
+def lookup_ceph_initial_entities(module, out):
     '''
     Lookup Ceph initial keys entries in the auth map
     '''
@@ -649,7 +649,7 @@ def run_module():
             result['rc'] = 0
             module.exit_json(**result)
 
-        entities = lookup_ceph_initial_entities(out)
+        entities = lookup_ceph_initial_entities(module, out)
         if entities is None:
             fatal("Failed to find some of the initial entities", module)
 
