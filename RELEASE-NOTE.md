@@ -18,9 +18,9 @@ The next version will support Nautilus and Octopus, then the one after that will
 Removed features
 ----------------
 
-* remove Jewel support [https://github.com/ceph/ceph-ansible/pull/3216](#3216)
-* remove check_firewall code [https://github.com/ceph/ceph-ansible/pull/3198](#3198)
-* Remove Calamari-related pieces [https://github.com/ceph/ceph-ansible/pull/3147](#3147)
+* remove Jewel support - [#3216](https://github.com/ceph/ceph-ansible/pull/3216)
+* remove check_firewall code - [#3198](https://github.com/ceph/ceph-ansible/pull/3198)
+* Remove Calamari-related pieces - [#3147](https://github.com/ceph/ceph-ansible/pull/3147)
 
 Deprecation warnings and incoming removal
 -----------------------------------------
@@ -44,7 +44,7 @@ In Nautilus, ceph-disk is gone completely. So we have to have a transition for c
 That will be implemented during the next cycle.
 
 However, with 3.2 people might start looking for deploying OSDs with ceph-volume starting from Luminous 12.2.10 (available since Nov 2018) and Mimic 13.2.3 (not available at the time of writting).
-For more Ceph release info see the [shecule](http://docs.ceph.com/docs/master/releases/schedule/).
+For more Ceph release info see the [schecule](http://docs.ceph.com/docs/master/releases/schedule/).
 
 /!\ Current limitation to that transition, **it can only be managed by hosts, not by disk**. /!\
 
@@ -118,31 +118,31 @@ Major changes from stable-3.1
 -----------------------------
 
 * Better support for python 3 in our modules
-* allow custom pool size [https://github.com/ceph/ceph-ansible/pull/3145](#3145)
-* infra: add a gather-ceph-logs.yml playbook [https://github.com/ceph/ceph-ansible/pull/2641](#2641)
-* day 2 playbook: add-osds [https://github.com/ceph/ceph-ansible/pull/3175](#3175)
-* ceph-osd: ceph-volume container support [https://github.com/ceph/ceph-ansible/pull/2866](#2866)
-* add ceph-infra role [https://github.com/ceph/ceph-ansible/pull/3201](#3201)
-* ceph-volume: makes the lvm scenario idempotent when using the simple configuration [https://github.com/ceph/ceph-ansible/pull/3190](#3190)
-* Add support for different NTP daemons [https://github.com/ceph/ceph-ansible/pull/3099](#3099)
-* purge-cluster: zap devices used with the lvm scenario [https://github.com/ceph/ceph-ansible/pull/3157](#3157)
-* default: use bluestore as default object store [https://github.com/ceph/ceph-ansible/pull/3172](#3172)
-* set osd max memory based on host memory [https://github.com/ceph/ceph-ansible/pull/3113](#3113)
-* shrink-osd: purge dedicated devices [https://github.com/ceph/ceph-ansible/pull/3145](#3145)
-* ceph-volume: adds support for the 'lvm batch' command [https://github.com/ceph/ceph-ansible/pull/2980](#2980)
-* site: report ceph -s status at the end of the deployment [https://github.com/ceph/ceph-ansible/pull/2936](#2936)
-* validate: add checks for interfaces [https://github.com/ceph/ceph-ansible/pull/2915](#2915)
-* Generate a copy of ceph.conf locally [https://github.com/ceph/ceph-ansible/pull/2700](#2700)
-* Add support for containerized iscsi deployment [https://github.com/ceph/ceph-ansible/pull/2466](#2466)
-* ceph-common: add firewall rules for ceph-mgr [https://github.com/ceph/ceph-ansible/pull/2686](#2686)
-* Create rgw pools containerized [https://github.com/ceph/ceph-ansible/pull/2424](#2424)
-* rgw: container add option to configure multi-site zone [https://github.com/ceph/ceph-ansible/pull/2525](#2525)
-* Config validation action plugin [https://github.com/ceph/ceph-ansible/pull/2555](#2555)
-* mon: refactor of mgr key fetching [https://github.com/ceph/ceph-ansible/pull/2589](#2589)
-* roles: do not limit docker_memory_limit for various daemons [https://github.com/ceph/ceph-ansible/pull/3263](#3263)
-* Rm ceph disk scenarios [https://github.com/ceph/ceph-ansible/pull/3262](#3262)
-* ceph_volume: add container support for batch [https://github.com/ceph/ceph-ansible/pull/3269](#3269)
-* rgw: enable multisite functionality [https://github.com/ceph/ceph-ansible/pull/1944](#1944)
+* allow custom pool size - [#3145](https://github.com/ceph/ceph-ansible/pull/3145)
+* infra: add a gather-ceph-logs.yml playbook - [#2641](https://github.com/ceph/ceph-ansible/pull/2641)
+* day 2 playbook: add-osds - [#3175](https://github.com/ceph/ceph-ansible/pull/3175)
+* ceph-osd: ceph-volume container support - [#2866](https://github.com/ceph/ceph-ansible/pull/2866)
+* add ceph-infra role - [#3201](https://github.com/ceph/ceph-ansible/pull/3201)
+* ceph-volume: makes the lvm scenario idempotent when using the simple configuration - [#3190](https://github.com/ceph/ceph-ansible/pull/3190)
+* Add support for different NTP daemons - [#3099](https://github.com/ceph/ceph-ansible/pull/3099)
+* purge-cluster: zap devices used with the lvm scenario - [#3157](https://github.com/ceph/ceph-ansible/pull/3157)
+* default: use bluestore as default object store - [#3172](https://github.com/ceph/ceph-ansible/pull/3172)
+* set osd max memory based on host memory - [#3113](https://github.com/ceph/ceph-ansible/pull/3113)
+* shrink-osd: purge dedicated devices - [#3145](https://github.com/ceph/ceph-ansible/pull/3145)
+* ceph-volume: adds support for the 'lvm batch' command - [#2980](https://github.com/ceph/ceph-ansible/pull/2980)
+* site: report ceph -s status at the end of the deployment - [#2936](https://github.com/ceph/ceph-ansible/pull/2936)
+* validate: add checks for interfaces - [#2915](https://github.com/ceph/ceph-ansible/pull/2915)
+* Generate a copy of ceph.conf locally - [#2700](https://github.com/ceph/ceph-ansible/pull/2700)
+* Add support for containerized iscsi deployment - [#2466](https://github.com/ceph/ceph-ansible/pull/2466)
+* ceph-common: add firewall rules for ceph-mgr - [#2686](https://github.com/ceph/ceph-ansible/pull/2686)
+* Create rgw pools containerized - [#2424](https://github.com/ceph/ceph-ansible/pull/2424)
+* rgw: container add option to configure multi-site zone - [#2525](https://github.com/ceph/ceph-ansible/pull/2525)
+* Config validation action plugin - [#2555](https://github.com/ceph/ceph-ansible/pull/2555)
+* mon: refactor of mgr key fetching - [#2589](https://github.com/ceph/ceph-ansible/pull/2589)
+* roles: do not limit docker_memory_limit for various daemons - [#3263](https://github.com/ceph/ceph-ansible/pull/3263)
+* Rm ceph disk scenarios - [#3262](https://github.com/ceph/ceph-ansible/pull/3262)
+* ceph_volume: add container support for batch - [#3269](https://github.com/ceph/ceph-ansible/pull/3269)
+* rgw: enable multisite functionality - [#1944](https://github.com/ceph/ceph-ansible/pull/1944)
 
 Notable changes from stable-3.1
 -------------------------------
