@@ -1,7 +1,4 @@
 ---
-- name: include create_ceph_initial_dirs.yml
-  include_tasks: create_ceph_initial_dirs.yml
-
 # ceph-common
 - block:
   - name: create ceph conf directory
@@ -120,6 +117,9 @@
     - not containerized_deployment|bool
 
 - block:
+  - name: include create_ceph_initial_dirs.yml
+    include_tasks: create_ceph_initial_dirs.yml
+
   - name: create a local fetch directory if it does not exist
     file:
       path: "{{ fetch_directory }}"
@@ -154,14 +154,6 @@
     become: false
     when:
       - generate_fsid
-
-  - name: ensure /etc/ceph exists
-    file:
-      path: /etc/ceph
-      state: directory
-      owner: "{{ ceph_uid }}"
-      group: "{{ ceph_uid }}"
-      mode: 0755
 
   - name: "generate {{ cluster }}.conf configuration file"
     action: config_template
