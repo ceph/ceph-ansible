@@ -53,6 +53,8 @@
   roles:
     - role: ceph-defaults
       tags: [with_pkg, fetch_container_image]
+    - role: ceph-facts
+      tags: [with_pkg, fetch_container_image]
     - role: ceph-validate
     - role: ceph-infra
     - role: ceph-handler
@@ -89,6 +91,8 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-facts
+      tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
@@ -122,6 +126,8 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-facts
+      tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
@@ -150,6 +156,8 @@
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-facts
       tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-docker-common
@@ -180,6 +188,8 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-facts
+      tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
@@ -208,6 +218,8 @@
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-facts
       tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-docker-common
@@ -238,6 +250,8 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-facts
+      tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
@@ -267,6 +281,8 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-facts
+      tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-docker-common
     - role: ceph-config
@@ -295,6 +311,8 @@
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-facts
       tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-docker-common
@@ -329,6 +347,8 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-facts
+      tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-docker-common
       when:
@@ -361,6 +381,7 @@
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - { role: ceph-defaults, tags: ['ceph_update_config'] }
+    - { role: ceph-facts, tags: ['ceph_update_config'] }
     - role: ceph-handler
     - ceph-docker-common
     - { role: ceph-config, tags: ['ceph_update_config'] }
@@ -378,18 +399,20 @@
   any_errors_fatal: true
   gather_facts: false
   become: True
+  roles:
+    - ceph-defaults
   tasks:
     - name: get ceph status from the first monitor
-      command: docker exec ceph-mon-{{ hostvars[groups['mons'][0]]['ansible_hostname'] }} ceph --cluster {{ cluster | default ('ceph') }} -s
+      command: docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s
       register: ceph_status
       changed_when: false
-      delegate_to: "{{ groups['mons'][0] }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       ignore_errors: true # we skip the error if mon_group_name is different than 'mons'
 
-    - name: "show ceph status for cluster {{ cluster | default ('ceph') }}"
+    - name: "show ceph status for cluster {{ cluster }}"
       debug:
         msg: "{{ ceph_status.stdout_lines }}"
-      delegate_to: "{{ groups['mons'][0] }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       when: not ceph_status.failed
