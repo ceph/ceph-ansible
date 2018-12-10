@@ -321,10 +321,6 @@
       name: ceph-defaults
       private: false
 
-  - import_role:
-      name: ceph-osd
-      private: false
-
   - name: get all the running osds
     shell: |
       systemctl list-units | grep 'loaded[[:space:]]\+active' | grep -oE "ceph-osd@([0-9]{1,2}|[a-z]+).service"
@@ -548,7 +544,6 @@
       - "ceph-mon-{{ ansible_hostname }}"
       - "ceph-mgr-{{ ansible_hostname }}"
 
-<<<<<<< HEAD
   - name: remove restapi container
     docker_container:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
@@ -557,9 +552,6 @@
     ignore_errors: true
 
   - name: remove ceph mon service
-=======
-  - name: remove ceph mon and mgr service
->>>>>>> 325a1594... purge-docker-cluster: add support for mgr/mon collocation
     file:
       path: "/etc/systemd/system/ceph-{{ item }}@.service"
       state: absent
