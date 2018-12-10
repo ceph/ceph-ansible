@@ -92,6 +92,8 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-facts
+      tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-common
     - role: ceph-config
@@ -119,6 +121,8 @@
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-facts
       tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-common
@@ -148,6 +152,8 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-facts
+      tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-common
     - role: ceph-config
@@ -175,6 +181,8 @@
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-facts
       tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-common
@@ -204,6 +212,8 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-facts
+      tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-common
     - role: ceph-config
@@ -232,6 +242,8 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-facts
+      tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-common
     - role: ceph-config
@@ -259,6 +271,8 @@
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-facts
       tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-common
@@ -320,6 +334,8 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-facts
+      tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-common
     - role: ceph-config
@@ -347,6 +363,8 @@
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
   roles:
     - role: ceph-defaults
+      tags: ['ceph_update_config']
+    - role: ceph-facts
       tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-common
@@ -378,6 +396,8 @@
   roles:
     - role: ceph-defaults
       tags: ['ceph_update_config']
+    - role: ceph-facts
+      tags: ['ceph_update_config']
     - role: ceph-handler
     - role: ceph-common
     - role: ceph-config
@@ -396,18 +416,19 @@
   gather_facts: false
   become: True
   any_errors_fatal: true
-  tasks:
+  roles:
+    - role: ceph-defaults
+  post_tasks:
     - name: get ceph status from the first monitor
-      command: ceph --cluster {{ cluster | default ('ceph') }} -s
+      command: ceph --cluster {{ cluster }} -s
       register: ceph_status
       changed_when: false
-      delegate_to: "{{ groups['mons'][0] }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
-      ignore_errors: true # we skip the error if mon_group_name is different than 'mons'
 
-    - name: "show ceph status for cluster {{ cluster | default ('ceph') }}"
+    - name: "show ceph status for cluster {{ cluster }}"
       debug:
         msg: "{{ ceph_status.stdout_lines }}"
-      delegate_to: "{{ groups['mons'][0] }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       when: not ceph_status.failed
