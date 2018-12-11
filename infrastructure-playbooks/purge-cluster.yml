@@ -303,6 +303,11 @@
     failed_when: false
     register: ceph_lockbox_partition_to_erase_path
 
+  - name: see if ceph-volume is installed
+    command: "command -v ceph-volume"
+    failed_when: false
+    register: ceph_volume_present
+
   - name: zap and destroy osds created by ceph-volume with lvm_volumes
     ceph_volume:
       data: "{{ item.data }}"
@@ -319,6 +324,7 @@
     with_items: "{{ lvm_volumes }}"
     when:
       - osd_scenario == "lvm"
+      - ceph_volume_present.rc == 0
 
   - name: zap and destroy osds created by ceph-volume with devices
     ceph_volume:
@@ -329,6 +335,7 @@
     with_items: "{{ devices | default([]) }}"
     when:
       - osd_scenario == "lvm"
+      - ceph_volume_present.rc == 0
 
   - name: get ceph block partitions
     shell: |
