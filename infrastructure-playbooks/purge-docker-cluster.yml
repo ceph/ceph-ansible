@@ -308,18 +308,17 @@
   gather_facts: true
   become: true
 
-  pre_tasks:
-  - name: gather monitors facts
-    setup:
-    delegate_to: "{{ item }}"
-    delegate_facts: True
-    with_items: "{{ groups[mon_group_name] | default('mons') }}"
-
   tasks:
 
   - import_role:
       name: ceph-defaults
       private: false
+
+  - name: gather monitors facts
+    setup:
+    delegate_to: "{{ item }}"
+    delegate_facts: True
+    with_items: "{{ groups.get(mon_group_name, 'mons') }}"
 
   - name: get all the running osds
     shell: |
