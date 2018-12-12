@@ -318,7 +318,11 @@
     setup:
     delegate_to: "{{ item }}"
     delegate_facts: True
-    with_items: "{{ groups.get(mon_group_name, 'mons') }}"
+    with_items: "{{ groups.get(mon_group_name | default('mons')) }}"
+
+  - import_role:
+      name: ceph-facts
+      private: false
 
   - name: get all the running osds
     shell: |
@@ -592,6 +596,10 @@
 
   - import_role:
       name: ceph-defaults
+      private: false
+
+  - import_role:
+      name: ceph-facts
       private: false
 
   - name: show container list on all the nodes (should be empty)
