@@ -64,6 +64,31 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
+- name: check and disable chronyd
+  block:
+    - name: check if chronyd is installed on debian based systems
+      command: dpkg -l chronyd
+      register: chronyd_deb_installed
+      failed_when: false
+      when: ansible_os_family == 'Debian'
+    - name: check if chronyd is installed on redhat based systems
+      command: rpm -q chronyd
+      register: chronyd_rpm_installed
+      failed_when: false
+      when: ansible_os_family in ['RedHat', 'Suse']
+    - name: disable chronyd
+      service:
+        name: chronyd
+        enabled: no
+        state: stopped
+      # XXX: Maintain the short-circuit evaluation in the condition below. The
+      # following condition is written to prevent Ansible from discovering
+      # undefined variable since one amongst chrony_deb_installed.rc and
+      # chrony_rpm_installed.rc will always be absent.
+      when: (ansible_os_family in ['RedHat', 'Suse'] and
+             chronyd_rpm_installed.rc == 0) or
+            (ansible_os_family == 'Debian'  and chrony_deb_installed.rc == 0)
+
 - name: get ceph version
   command: ceph --version
   changed_when: false
