@@ -48,21 +48,13 @@
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- name: include ntp debian setup tasks
-  include: "misc/ntp_debian.yml"
-  when:
-    - ansible_os_family == 'Debian'
-    - ntp_service_enabled
+- name: include ntp setup tasks
+  include: misc/setup_ntp.yml
+  when: ntp_service_enabled
+  tags: configure_ntp
   # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
   static: False
 
-- name: include ntp rpm setup tasks
-  include: "misc/ntp_rpm.yml"
-  when:
-    - ansible_os_family in ['RedHat', 'Suse']
-    - ntp_service_enabled
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
 
 - name: get ceph version
   command: ceph --version
