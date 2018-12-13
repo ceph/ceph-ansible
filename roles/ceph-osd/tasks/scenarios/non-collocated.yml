@@ -70,6 +70,18 @@
     - not containerized_deployment
     - item.0.partitions|length == 0
 
+- name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with a dedicated device for db
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.1 }} {{ item.2 }}"
+  with_together:
+    - "{{ parted_results.results | default([]) }}"
+    - "{{ dedicated_devices }}"
+    - "{{ devices | unique }}"
+  when:
+    - osd_objectstore == 'bluestore'
+    - not containerized_deployment
+    - item.0.partitions|length == 0
+    - bluestore_wal_devices|length == 0
+
 - name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with a dedicated device for db and wal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.1 }} --block.wal {{ item.2 }} {{ item.3 }}"
   with_together:
@@ -81,3 +93,4 @@
     - osd_objectstore == 'bluestore'
     - not containerized_deployment
     - item.0.partitions|length == 0
+    - bluestore_wal_devices|length > 0
