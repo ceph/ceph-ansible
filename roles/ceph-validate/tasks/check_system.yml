@@ -1,0 +1,104 @@
+---
+- name: fail on unsupported system
+  fail:
+    msg: "System not supported {{ ansible_system }}"
+  when:
+    - ansible_system not in ['Linux']
+
+- name: fail on unsupported architecture
+  fail:
+    msg: "Architecture not supported {{ ansible_architecture }}"
+  when:
+    - ansible_architecture not in ['x86_64', 'ppc64le', 'armv7l', 'aarch64']
+
+- name: fail on unsupported distribution
+  fail:
+    msg: "Distribution not supported {{ ansible_os_family }}"
+  when:
+    - ansible_os_family not in ['Debian', 'RedHat', 'ClearLinux', 'Suse']
+
+- name: red hat based systems tasks
+  block:
+    - name: fail on unsupported distribution for red hat ceph storage
+      fail:
+        msg: "Distribution not supported {{ ansible_distribution_version }} by Red Hat Ceph Storage, only RHEL >= 7.3"
+      when:
+        - ansible_distribution_version | version_compare('7.3', '<')
+
+    - name: subscription manager related tasks
+      block:
+        - name: determine if node is registered with subscription-manager
+          command: subscription-manager identity
+          register: subscription
+          changed_when: false
+          failed_when: false
+          check_mode: no
+
+        - name: fail on unregistered red hat rhcs linux
+          fail:
+            msg: "You must register your machine with subscription-manager"
+          when:
+            - subscription.rc != '0'
+      when:
+        - ceph_repository_type == 'cdn'
+  when:
+    - ceph_repository == 'rhcs'
+    - ansible_distribution == 'Red Hat Enterprise Linux'
+
+- name: fail on unsupported distribution for ubuntu cloud archive
+  fail:
+    msg: "Distribution not supported by Ubuntu Cloud Archive: {{ ansible_distribution }}"
+  when:
+    - ceph_repository == 'uca'
+    - ansible_distribution != 'Ubuntu'
+
+- name: fail on unsupported openSUSE distribution
+  fail:
+    msg: "Distribution not supported: {{ ansible_distribution }}"
+  when:
+    - ansible_distribution == 'openSUSE Leap'
+    - ansible_distribution_version is version_compare('42.3', '<')
+
+- name: fail on unsupported ansible version (1.X)
+  fail:
+    msg: "Ansible version must be >= 2.4.x, please update!"
+  when:
+    - ansible_version.major|int < 2
+
+- name: fail on unsupported ansible version
+  fail:
+    msg: "Ansible version must be 2.7!"
+  when:
+    - ansible_version.major|int != 2
+    - ansible_version.minor|int != 7
+
+- name: fail if systemd is not present
+  fail:
+    msg: "Systemd must be present"
+  when:
+    - ansible_service_mgr != 'systemd'
+
+- name: check if iscsi gateways is target on supported distros and versions
+  block:
+    - name: fail on unsupported distribution for iscsi gateways
+      fail:
+        msg: "iSCSI gateways can only be deployed on Red Hat Enterprise Linux, CentOS or Fedora"
+      when:
+        - ansible_distribution not in ['RedHat', 'CentOS', 'Fedora']
+
+    - name: fail on unsupported distribution version for iscsi gateways
+      fail:
+        msg: "iSCSI gateways can only be deployed on Red Hat Enterprise Linux or CentOS >= 7.4"
+      when:
+        - ansible_distribution_version < '7.4'
+        - ansible_distribution in ['RedHat', 'CentOS']
+  when:
+    - iscsi_gw_group_name in group_names
+
+- name: warn users that ceph-disk scenarios will be removed on 3.3
+  debug:
+    msg: "You are running 3.2 and should start considering using ceph-volume to deploy your OSDs. ceph-disk based deployments will be impossible in 3.3."
+  run_once: true
+  when:
+    - osd_group_name in group_names
+    - osd_scenario != 'lvm'

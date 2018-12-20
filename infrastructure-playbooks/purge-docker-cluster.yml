@@ -11,13 +11,9 @@
 
   vars_prompt:
     - name: ireallymeanit
-      prompt: Are you sure you want to purge the cluster?
-      default: 'no'
-      private: no
-
-    - name: remove_packages
       prompt: >
-        If --skip-tags=with_pkg is not set docker packages
+        Are you sure you want to purge the cluster?
+        Note that if with_pkg is not set docker packages
         and more will be uninstalled from non-atomic hosts.
         Do you want to continue?
       default: 'no'
@@ -33,21 +29,10 @@
          invoking the playbook"
     when: ireallymeanit != 'yes'
 
-  - name: exit playbook, if user did not mean to remove packages
-    fail:
-      msg: >
-        "Exiting purge-docker-cluster playbook. No packages were removed.
-         To skip removing packages use --skip-tag=with_pkg. To continue
-         with removing packages, do not specify --skip-tag=with_pkg and
-         either say 'yes' on the prompt or use `-e remove_packages=yes`
-         on the command line when invoking the playbook"
-    when: remove_packages != 'yes'
-
   - name: set ceph_docker_registry value if not set
     set_fact:
       ceph_docker_registry: "docker.io"
     when: ceph_docker_registry is not defined
-
 
 - name: purge ceph mds cluster
 
@@ -66,7 +51,7 @@
     ignore_errors: true
 
   - name: remove ceph mds container
-    docker:
+    docker_container:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-mds-{{ ansible_hostname }}"
       state: absent
@@ -86,6 +71,58 @@
       force: yes
     tags:
       remove_img
+    ignore_errors: true
+
+- name: purge ceph iscsigws cluster
+
+  hosts:
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+    - iscsi-gws
+  become: true
+  tasks:
+
+  - name: disable ceph iscsigw services
+    service:
+      name: "{{ item }}"
+      state: stopped
+      enabled: no
+    ignore_errors: true
+    with_items:
+      - rbd-target-api
+      - rbd-target-gw
+      - tcmu-runner
+
+  - name: remove ceph iscsigw containers
+    docker_container:
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      name: "{{ item }}"
+      state: absent
+    ignore_errors: true
+    with_items:
+      - rbd-target-api
+      - rbd-target-gw
+      - tcmu-runner
+
+  - name: remove ceph iscsigw systemd unit files
+    file:
+      path: /etc/systemd/system/{{ item }}.service
+      state: absent
+    ignore_errors: true
+    with_items:
+      - rbd-target-api
+      - rbd-target-gw
+      - tcmu-runner
+
+  - name: remove ceph iscsigw image
+    docker_image:
+      state: absent
+      repository: "{{ ceph_docker_registry }}"
+      name: "{{ ceph_docker_image }}"
+      tag: "{{ ceph_docker_image_tag }}"
+      force: yes
+    tags:
+      remove_img
+    ignore_errors: true
 
 - name: purge ceph mgr cluster
 
@@ -102,7 +139,7 @@
     ignore_errors: true
 
   - name: remove ceph mgr container
-    docker:
+    docker_container:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-mgr-{{ ansible_hostname }}"
       state: absent
@@ -122,6 +159,7 @@
       force: yes
     tags:
       remove_img
+    ignore_errors: true
 
 - name: purge ceph rgw cluster
 
@@ -148,7 +186,7 @@
     ignore_errors: true
 
   - name: remove ceph rgw container
-    docker:
+    docker_container:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-rgw-{{ ansible_hostname }}"
       state: absent
@@ -172,6 +210,7 @@
       force: yes
     tags:
       remove_img
+    ignore_errors: true
 
 
 - name: purge ceph rbd-mirror cluster
@@ -191,7 +230,7 @@
     ignore_errors: true
 
   - name: remove ceph rbd-mirror container
-    docker:
+    docker_container:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-rbd-mirror-{{ ansible_hostname }}"
       state: absent
@@ -230,7 +269,7 @@
     ignore_errors: true
 
   - name: remove ceph nfs container
-    docker:
+    docker_container:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       name: "ceph-nfs-{{ ansible_hostname }}"
       state: absent
@@ -264,16 +303,32 @@
 - name: purge ceph osd cluster
 
   hosts:
-    - "{{ osd_group_name|default('osds') }}"
+    - "{{ osd_group_name | default('osds') }}"
 
+  gather_facts: true
   become: true
 
   tasks:
 
+  - import_role:
+      name: ceph-defaults
+      private: false
+
+  - name: gather monitors facts
+    setup:
+    delegate_to: "{{ item }}"
+    delegate_facts: True
+    with_items: "{{ groups.get(mon_group_name | default('mons')) }}"
+
+  - import_role:
+      name: ceph-facts
+      private: false
+
   - name: get all the running osds
     shell: |
-      systemctl list-units | grep "loaded active" | grep -oE "ceph-osd@([0-9]{1,2}|[a-z]+).service"
+      systemctl list-units | grep 'loaded[[:space:]]\+active' | grep -oE "ceph-osd@([0-9]{1,2}|[a-z]+).service"
     register: osd_units
+    ignore_errors: true
 
   - name: disable ceph osd service
     service:
@@ -282,20 +337,6 @@
       enabled: no
     with_items: "{{ osd_units.stdout_lines }}"
 
-  - name: get prepare container
-    command: "docker ps -a -q --filter='name=ceph-osd-prepare'"
-    register: prepare_containers
-
-  - name: remove ceph osd prepare container
-    command: "docker rm -f {{ item }}"
-    with_items: "{{ prepare_containers.stdout_lines }}"
-
-  # NOTE(leseb): hope someone will find a more elegant way one day...
-  - name: see if encrypted partitions are present
-    shell: |
-      blkid -t TYPE=crypto_LUKS -s PARTLABEL -s PARTUUID | grep "ceph.*." | grep -o PARTUUID.* | cut -d '"' -f 2
-    register: encrypted_ceph_partuuid
-
   - name: remove osd mountpoint tree
     file:
       path: /var/lib/ceph/osd/
@@ -303,94 +344,145 @@
     register: remove_osd_mountpoints
     ignore_errors: true
 
-  - name: get ceph data partitions
-    command: |
-      blkid -o device -t PARTLABEL="ceph data"
-    failed_when: false
-    register: ceph_data_partition_to_erase_path
+  - name: for ceph-disk based deployment
+    block:
+      - name: get prepare container
+        command: "docker ps -a -q --filter='name=ceph-osd-prepare'"
+        register: prepare_containers
+        ignore_errors: true
 
-  - name: get ceph lockbox partitions
-    command: |
-      blkid -o device -t PARTLABEL="ceph lockbox"
-    failed_when: false
-    register: ceph_lockbox_partition_to_erase_path
+      - name: remove ceph osd prepare container
+        command: "docker rm -f {{ item }}"
+        with_items: "{{ prepare_containers.stdout_lines }}"
+        ignore_errors: true
 
-  - name: get ceph block partitions
-    command: |
-      blkid -o device -t PARTLABEL="ceph block"
-    failed_when: false
-    register: ceph_block_partition_to_erase_path
+      # NOTE(leseb): hope someone will find a more elegant way one day...
+      - name: see if encrypted partitions are present
+        shell: |
+          blkid -t TYPE=crypto_LUKS -s PARTLABEL -s PARTUUID | grep "ceph.*." | grep -o PARTUUID.* | cut -d '"' -f 2
+        register: encrypted_ceph_partuuid
 
-  - name: get ceph journal partitions
-    command: |
-      blkid -o device -t PARTLABEL="ceph journal"
-    failed_when: false
-    register: ceph_journal_partition_to_erase_path
+      - name: get ceph data partitions
+        command: |
+          blkid -o device -t PARTLABEL="ceph data"
+        failed_when: false
+        register: ceph_data_partition_to_erase_path
 
-  - name: get ceph db partitions
-    command: |
-      blkid -o device -t PARTLABEL="ceph block.db"
-    failed_when: false
-    register: ceph_db_partition_to_erase_path
+      - name: get ceph lockbox partitions
+        command: |
+          blkid -o device -t PARTLABEL="ceph lockbox"
+        failed_when: false
+        register: ceph_lockbox_partition_to_erase_path
 
-  - name: get ceph wal partitions
-    command: |
-      blkid -o device -t PARTLABEL="ceph block.wal"
-    failed_when: false
-    register: ceph_wal_partition_to_erase_path
+      - name: get ceph block partitions
+        command: |
+          blkid -o device -t PARTLABEL="ceph block"
+        failed_when: false
+        register: ceph_block_partition_to_erase_path
 
-  - name: set_fact combined_devices_list
-    set_fact:
-      combined_devices_list: "{{ ceph_data_partition_to_erase_path.get('stdout_lines', []) +
-                                 ceph_lockbox_partition_to_erase_path.get('stdout_lines', []) +
-                                 ceph_block_partition_to_erase_path.get('stdout_lines', []) +
-                                 ceph_journal_partition_to_erase_path.get('stdout_lines', []) +
-                                 ceph_db_partition_to_erase_path.get('stdout_lines', []) +
-                                 ceph_wal_partition_to_erase_path.get('stdout_lines', []) }}"
+      - name: get ceph journal partitions
+        command: |
+          blkid -o device -t PARTLABEL="ceph journal"
+        failed_when: false
+        register: ceph_journal_partition_to_erase_path
 
-  - name: resolve parent device
-    command: lsblk --nodeps -no pkname "{{ item }}"
-    register: tmp_resolved_parent_device
-    with_items:
-      - "{{ combined_devices_list }}"
+      - name: get ceph db partitions
+        command: |
+          blkid -o device -t PARTLABEL="ceph block.db"
+        failed_when: false
+        register: ceph_db_partition_to_erase_path
 
-  - name: set_fact resolved_parent_device
-    set_fact:
-      resolved_parent_device: "{{ tmp_resolved_parent_device.results | map(attribute='stdout') | list | unique }}"
+      - name: get ceph wal partitions
+        command: |
+          blkid -o device -t PARTLABEL="ceph block.wal"
+        failed_when: false
+        register: ceph_wal_partition_to_erase_path
 
-  - name: zap ceph osd disks
-    shell: |
-      docker run --rm \
-      --privileged=true \
-      --name ceph-osd-zap-{{ ansible_hostname }}-{{ item }} \
-      -v /dev/:/dev/ \
-      -e OSD_DEVICE=/dev/{{ item }} \
-      {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
-      zap_device
-    with_items:
-      - "{{ resolved_parent_device }}"
+      - name: set_fact combined_devices_list
+        set_fact:
+          combined_devices_list: "{{ ceph_data_partition_to_erase_path.get('stdout_lines', []) +
+                                    ceph_lockbox_partition_to_erase_path.get('stdout_lines', []) +
+                                    ceph_block_partition_to_erase_path.get('stdout_lines', []) +
+                                    ceph_journal_partition_to_erase_path.get('stdout_lines', []) +
+                                    ceph_db_partition_to_erase_path.get('stdout_lines', []) +
+                                    ceph_wal_partition_to_erase_path.get('stdout_lines', []) }}"
 
-  - name: wait until the zap containers die
-    shell: |
-      docker ps | grep -sq ceph-osd-zap-{{ ansible_hostname }}
-    register: zap_alive
-    failed_when: false
-    until: zap_alive.rc != 0
-    retries: 5
-    delay: 10
+      - name: resolve parent device
+        command: lsblk --nodeps -no pkname "{{ item }}"
+        register: tmp_resolved_parent_device
+        with_items:
+          - "{{ combined_devices_list }}"
 
-  - name: remove ceph osd zap disk container
-    docker:
-      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-osd-zap-{{ ansible_hostname }}-{{ item }}"
-      state: absent
-    with_items:
-      - "{{ resolved_parent_device }}"
+      - name: set_fact resolved_parent_device
+        set_fact:
+          resolved_parent_device: "{{ tmp_resolved_parent_device.results | map(attribute='stdout') | list | unique }}"
 
-  - name: remove ceph osd service
-    file:
-      path: /etc/systemd/system/ceph-osd@.service
-      state: absent
+      - name: zap ceph osd disks
+        shell: |
+          docker run --rm \
+          --privileged=true \
+          --name ceph-osd-zap-{{ ansible_hostname }}-{{ item }} \
+          -v /dev/:/dev/ \
+          -e OSD_DEVICE=/dev/{{ item }} \
+          {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+          zap_device
+        with_items:
+          - "{{ resolved_parent_device }}"
+
+      - name: wait until the zap containers die
+        shell: |
+          docker ps | grep -sq ceph-osd-zap-{{ ansible_hostname }}
+        register: zap_alive
+        failed_when: false
+        until: zap_alive.rc != 0
+        retries: 5
+        delay: 10
+
+      - name: remove ceph osd zap disk container
+        docker_container:
+          image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+          name: "ceph-osd-zap-{{ ansible_hostname }}-{{ item }}"
+          state: absent
+        with_items:
+          - "{{ resolved_parent_device }}"
+
+      - name: remove ceph osd service
+        file:
+          path: /etc/systemd/system/ceph-osd@.service
+          state: absent
+    when:
+      - osd_scenario != "lvm"
+
+  - name: for ceph-volume based deployments
+    block:
+      - name: zap and destroy osds created by ceph-volume with lvm_volumes
+        ceph_volume:
+          data: "{{ item.data }}"
+          data_vg: "{{ item.data_vg|default(omit) }}"
+          journal: "{{ item.journal|default(omit) }}"
+          journal_vg: "{{ item.journal_vg|default(omit) }}"
+          db: "{{ item.db|default(omit) }}"
+          db_vg: "{{ item.db_vg|default(omit) }}"
+          wal: "{{ item.wal|default(omit) }}"
+          wal_vg: "{{ item.wal_vg|default(omit) }}"
+          action: "zap"
+        environment:
+          CEPH_VOLUME_DEBUG: 1
+          CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+          CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+        with_items: "{{ lvm_volumes }}"
+
+      - name: zap and destroy osds created by ceph-volume with devices
+        ceph_volume:
+          data: "{{ item }}"
+          action: "zap"
+        environment:
+          CEPH_VOLUME_DEBUG: 1
+          CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+          CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+        with_items: "{{ devices | default([]) }}"
+    when:
+      - osd_scenario == "lvm"
 
   - name: remove ceph osd image
     docker_image:
@@ -401,6 +493,7 @@
       force: yes
     tags:
       remove_img
+    ignore_errors: true
 
   - name: include vars from group_vars/osds.yml
     include_vars:
@@ -433,33 +526,36 @@
 
   tasks:
 
-  - name: disable ceph mon service
+  # since mgr are now collocated with mons by default
+  - name: disable ceph mon and mgr service
     service:
-      name: "ceph-mon@{{ ansible_hostname }}"
+      name: "{{ item }}"
       state: stopped
       enabled: no
     ignore_errors: true
+    with_items:
+      - "ceph-mgr@{{ ansible_hostname }}"
+      - "ceph-mon@{{ ansible_hostname }}"
 
-  - name: remove ceph mon container
-    docker:
+  - name: remove ceph mon and mgr container
+    docker_container:
       image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-mon-{{ ansible_hostname }}"
+      name: "{{ item }}"
       state: absent
     ignore_errors: true
+    with_items:
+      - "ceph-mon-{{ ansible_hostname }}"
+      - "ceph-mgr-{{ ansible_hostname }}"
 
-  - name: remove restapi container
-    docker:
-      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-restapi-{{ ansible_hostname }}"
-      state: absent
-    ignore_errors: true
-
-  - name: remove ceph mon service
+  - name: remove ceph mon and mgr service
     file:
-      path: /etc/systemd/system/ceph-mon@.service
+      path: "/etc/systemd/system/ceph-{{ item }}@.service"
       state: absent
+    with_items:
+      - mon
+      - mgr
 
-  - name: remove ceph mon image
+  - name: remove ceph mon and mgr image
     docker_image:
       state: absent
       repository: "{{ ceph_docker_registry }}"
@@ -468,7 +564,53 @@
       force: yes
     tags:
       remove_img
+    ignore_errors: true
 
+  - name: remove ceph aliases
+    file:
+      path: /etc/profile.d/ceph-aliases.sh
+      state: absent
+
+- name: check container hosts
+
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+
+  gather_facts: true
+  become: true
+
+  tasks:
+
+  - import_role:
+      name: ceph-defaults
+      private: false
+
+  - import_role:
+      name: ceph-facts
+      private: false
+
+  - name: show container list on all the nodes (should be empty)
+    command: >
+      {{ container_binary }} ps --filter='name=ceph' -a -q
+    register: containers_list
+    changed_when: false
+
+  - name: show container images on all the nodes (should be empty if tags was passed remove_img)
+    command: >
+      {{ container_binary }} images
+    register: images_list
+    changed_when: false
+
+  - name: fail if container are still present
+    fail:
+      msg: "It looks like container are still present."
+    when: containers_list.stdout_lines|length > 0
 
 - name: remove installed packages
 
@@ -501,135 +643,78 @@
       state: stopped
       enabled: no
     when: not is_atomic
+    ignore_errors: true
 
-  - name: remove docker-py on Debian
-    pip:
-      name: docker-py
-      state: absent
-    when:
-      - ansible_distribution == 'Debian'
+  - name: debian based systems tasks
+    block:
+      - name: remove docker-py on debian
+        pip:
+          name: docker-py
+          state: absent
 
-  - name: remove six on Debian
-    pip:
-      name: six
-      state: absent
-    when:
-      - ansible_distribution == 'Debian'
+      - name: remove six on debian
+        pip:
+          name: six
+          state: absent
+
+      - name: remove pip and docker on debian
+        apt:
+          name: ['python-pip', 'docker-engine']
+          state: absent
+          update_cache: yes
+          autoremove: yes
+    when: ansible_distribution == 'Debian'
 
   - name: remove pip and docker on ubuntu
     apt:
-      name: "{{ item }}"
+      name: ['python-pip', 'docker', 'docker.io']
       state: absent
       update_cache: yes
       autoremove: yes
-    with_items:
-      - python-pip
-      - docker
-      - docker.io
     when: ansible_distribution == 'Ubuntu'
 
-  - name: remove pip and docker on debian
-    apt:
-      name: "{{ item }}"
-      state: absent
-      update_cache: yes
-      autoremove: yes
-    with_items:
-      - python-pip
-      - docker-engine
-    when: ansible_distribution == 'Debian'
+  - name: red hat based systems tasks
+    block:
+      - name: yum related tasks on red hat
+        block:
+          - name: remove packages on redhat
+            yum:
+              name: ['epel-release', 'python-pip', 'docker-engine', 'docker']
+              state: absent
 
-  - name: remove epel-release on redhat
-    yum:
-      name: epel-release
-      state: absent
+          - name: remove package dependencies on redhat
+            command: yum -y autoremove
+            args:
+              warn: no
+
+          - name: remove package dependencies on redhat again
+            command: yum -y autoremove
+            args:
+              warn: no
+        when:
+          ansible_pkg_mgr == "yum"
+
+      - name: dnf related tasks on red hat
+        block:
+          - name: remove pip and docker on redhat
+            dnf:
+              name: ['python-pip', 'docker-engine', 'docker']
+              state: absent
+
+          - name: remove package dependencies on redhat
+            command: dnf -y autoremove
+            args:
+              warn: no
+
+          - name: remove package dependencies on redhat again
+            command: dnf -y autoremove
+            args:
+              warn: no
+        when:
+          ansible_pkg_mgr == "dnf"
     when:
       ansible_os_family == 'RedHat' and
       not is_atomic
-
-  - name: remove pip on redhat
-    yum:
-      name: "{{ item }}"
-      state: absent
-    with_items:
-      - python-pip
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "yum" and
-      not is_atomic
-
-  - name: remove docker-engine on redhat
-    yum:
-      name: "{{ item }}"
-      state: absent
-    with_items:
-      - docker-engine
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "yum" and
-      not is_atomic
-
-  # for CentOS
-  - name: remove docker on redhat
-    yum:
-      name: "{{ item }}"
-      state: absent
-    with_items:
-      - docker
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "yum" and
-      not is_atomic
-
-  - name: remove pip and docker on redhat
-    dnf:
-      name: "{{ item }}"
-      state: absent
-    with_items:
-      - python-pip
-      - docker-engine
-      - docker
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "dnf" and
-      not is_atomic
-
-  - name: remove package dependencies on redhat
-    command: yum -y autoremove
-    args:
-      warn: no
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "yum" and
-      not is_atomic
-
-  - name: remove package dependencies on redhat again
-    command: yum -y autoremove
-    args:
-      warn: no
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "yum" and
-      not is_atomic
-
-  - name: remove package dependencies on redhat
-    command: dnf -y autoremove
-    args:
-      warn: no
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "dnf" and
-      not is_atomic
-
-  - name: remove package dependencies on redhat again
-    command: dnf -y autoremove
-    args:
-      warn: no
-    when:
-      ansible_os_family == 'RedHat' and
-      ansible_pkg_mgr == "dnf" and
-      not is_atomic
-
 
 - name: purge ceph directories
 
@@ -653,9 +738,10 @@
       state: absent
     with_items:
       - /etc/ceph
-      - /var/lib/ceph
       - /var/log/ceph
 
+  - name: remove data
+    shell: rm -rf /var/lib/ceph/*
 
 - name: purge fetch directory
 
@@ -673,5 +759,5 @@
 
   - name: purge fetch directory for localhost
     file:
-      path: "{{ fetch_directory }}"
+      path: "{{ fetch_directory }}/"
       state: absent

@@ -3,9 +3,11 @@
   apt_key:
     data: "{{ lookup('file', role_path+'/files/cephstable.asc') }}"
     state: present
+  register: result
+  until: result is succeeded
 
 - name: configure debian ceph stable community repository
   apt_repository:
     repo: "deb {{ ceph_stable_repo }} {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
     state: present
-  changed_when: false
+    update_cache: yes

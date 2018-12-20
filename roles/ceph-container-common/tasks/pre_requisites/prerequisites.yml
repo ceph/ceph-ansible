@@ -1,0 +1,75 @@
+---
+- name: include remove_ceph_udev_rules.yml
+  include_tasks: remove_ceph_udev_rules.yml
+
+- name: debian based systems tasks
+  block:
+    - name: include debian_prerequisites.yml
+      include_tasks: debian_prerequisites.yml
+      tags:
+        with_pkg
+    - name: install python-six
+      package:
+        name: python-six
+        state: present
+        update_cache: yes
+      register: result
+      until: result is succeeded
+      tags:
+        with_pkg
+  when:
+    - ansible_distribution == 'Debian'
+
+- name: ubuntu based systems tasks
+  block:
+    - name: install docker on ubuntu
+      package:
+        name: ['docker.io', 'python-docker']
+        state: present
+        update_cache: yes
+      register: result
+      until: result is succeeded
+      tags:
+        with_pkg
+  when:
+    - ansible_distribution == 'Ubuntu'
+
+# ensure extras enabled for docker
+- name: enable extras on centos
+  yum_repository:
+    name: extras
+    state: present
+    enabled: yes
+  when:
+    - ansible_distribution == 'CentOS'
+    - ceph_docker_enable_centos_extra_repo
+  tags:
+    with_pkg
+
+- name: red hat based systems tasks
+  block:
+    - name: install python-docker-py on red hat / centos
+      package:
+        name: ['docker', 'python-docker-py']
+        state: present
+      register: result
+      until: result is succeeded
+      tags:
+        with_pkg
+  when:
+    - ansible_os_family == 'RedHat'
+
+- name: pause after docker install before starting (on openstack vms)
+  pause: seconds=5
+  when:
+    - ceph_docker_on_openstack
+  tags:
+    with_pkg
+
+- name: start docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  tags:
+    with_pkg

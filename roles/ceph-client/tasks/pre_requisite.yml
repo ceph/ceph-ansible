@@ -1,32 +1,11 @@
 ---
-- name: check keys has been filled in users.key variables
-  fail:
-    msg: "you must generate and set keys properly in users.key variables"
-  with_items: "{{ keys }}"
-  when:
-    - user_config
-    - item.key == 'ADD-KEYRING-HERE=='
-
-- name: set selinux permissions
-  shell: |
-    chcon -Rt svirt_sandbox_file_t {{ item }}
-  with_items:
-    - /etc/ceph
-    - /var/lib/ceph
-  changed_when: false
-  when:
-    - containerized_deployment
-    - ansible_os_family == 'RedHat'
-    - sestatus is defined
-    - sestatus.stdout != 'Disabled'
-
 - name: copy ceph admin keyring
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.client.admin.keyring"
     dest: "/etc/ceph/"
-    owner: "ceph"
-    group: "ceph"
-    mode: "0600"
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: "{{ ceph_keyring_permissions }}"
   when:
     - cephx
     - copy_admin_key

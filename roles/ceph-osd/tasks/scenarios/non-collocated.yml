@@ -3,13 +3,13 @@
 # to ensure osd disk prepare finishes before
 # starting the next task
 - name: prepare ceph "{{ osd_objectstore }}" containerized osd disk(s) non-collocated
-  shell: |
-    docker run --net=host \
+  command: |
+    {{ container_binary }} run --net=host \
     --pid=host \
     --privileged=true \
     --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.1 | regex_replace('/dev/', '') }} \
-    -v /etc/ceph:/etc/ceph \
-    -v /var/lib/ceph/:/var/lib/ceph/ \
+    -v /etc/ceph:/etc/ceph:z \
+    -v /var/lib/ceph/:/var/lib/ceph/:z \
     -v /dev:/dev \
     -v /etc/localtime:/etc/localtime:ro \
     -e DEBUG=verbose \
@@ -27,17 +27,16 @@
   when:
     - containerized_deployment
     - osd_objectstore == 'filestore'
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
+    - item.0.partitions|length == 0
 
 - name: prepare ceph "{{ osd_objectstore }}" containerized osd disk(s) non-collocated with a dedicated device for db and wal
-  shell: |
-    docker run --net=host \
+  command: |
+    {{ container_binary }} run --net=host \
     --pid=host \
     --privileged=true \
     --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.1 | regex_replace('/dev/', '') }} \
-    -v /etc/ceph:/etc/ceph \
-    -v /var/lib/ceph/:/var/lib/ceph/ \
+    -v /etc/ceph:/etc/ceph:z \
+    -v /var/lib/ceph/:/var/lib/ceph/:z \
     -v /dev:/dev \
     -v /etc/localtime:/etc/localtime:ro \
     -e DEBUG=verbose \
@@ -57,8 +56,7 @@
   when:
     - containerized_deployment
     - osd_objectstore == 'bluestore'
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
+    - item.0.partitions|length == 0
 
 - name: prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) non-collocated
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }} {{ item.2 }}"
@@ -70,8 +68,19 @@
   when:
     - osd_objectstore == 'filestore'
     - not containerized_deployment
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
+    - item.0.partitions|length == 0
+
+- name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with a dedicated device for db
+  command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.1 }} {{ item.2 }}"
+  with_together:
+    - "{{ parted_results.results | default([]) }}"
+    - "{{ dedicated_devices }}"
+    - "{{ devices | unique }}"
+  when:
+    - osd_objectstore == 'bluestore'
+    - not containerized_deployment
+    - item.0.partitions|length == 0
+    - bluestore_wal_devices|length == 0
 
 - name: manually prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) with a dedicated device for db and wal
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} --block.db {{ item.1 }} --block.wal {{ item.2 }} {{ item.3 }}"
@@ -83,5 +92,5 @@
   when:
     - osd_objectstore == 'bluestore'
     - not containerized_deployment
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
+    - item.0.partitions|length == 0
+    - bluestore_wal_devices|length > 0

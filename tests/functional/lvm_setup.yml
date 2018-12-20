@@ -5,6 +5,29 @@
   become: yes
   tasks:
 
+    - name: check if it is atomic host
+      stat:
+        path: /run/ostree-booted
+      register: stat_ostree
+      tags:
+        - always
+
+    - name: set_fact is_atomic
+      set_fact:
+        is_atomic: '{{ stat_ostree.stat.exists }}'
+      tags:
+        - always
+
+    # Some images may not have lvm2 installed
+    - name: install lvm2
+      package:
+        name: lvm2
+        state: present
+      register: result
+      until: result is succeeded
+      when:
+        - not is_atomic
+
     - name: create physical volume
       command: pvcreate /dev/sdb
       failed_when: false
@@ -20,21 +43,6 @@
     - name: create logical volume 2
       command: lvcreate --yes -l 50%FREE -n data-lv2 test_group
       failed_when: false
-
-    # purge-cluster.yml does not properly destroy partitions
-    # used for lvm osd journals, this ensures they are removed
-    # for that testing scenario
-    - name: remove /dev/sdc1 if it exists
-      parted:
-        device: /dev/sdc
-        number: 1
-        state: absent
-
-    - name: remove /dev/sdc2 if it exists
-      parted:
-        device: /dev/sdc
-        number: 2
-        state: absent
 
     - name: partition /dev/sdc for journals
       parted:

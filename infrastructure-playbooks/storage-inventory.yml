@@ -1,0 +1,35 @@
+---
+# This playbook queries each OSD using `ceph-volume inventory` to report the
+# entire storage device inventory of a cluster.
+#
+# Usage:
+#   ansible-playbook storage-inventory.yml
+
+- name: gather facts and check the init system
+
+  hosts:
+    - "{{ osd_group_name|default('osds') }}"
+
+  become: true
+
+  tasks:
+    - debug: msg="gather facts on all Ceph hosts for following reference"
+
+- name: query each host for storage device inventory
+
+  hosts:
+    - "{{ osd_group_name|default('osds') }}"
+
+  become: true
+
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: list storage inventory
+      ceph_volume:
+        action: "inventory"
+      environment:
+        CEPH_VOLUME_DEBUG: 1
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"

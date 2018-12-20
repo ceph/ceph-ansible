@@ -11,7 +11,7 @@ stable_branch=$1
 commit=$2
 bkp_branch_name=$3
 bkp_branch_name_prefix=bkp
-bkp_branch=$bkp_branch_name-$bkp_branch_name_prefix
+bkp_branch=$bkp_branch_name-$bkp_branch_name_prefix-$stable_branch
 
 
 #############
@@ -70,7 +70,7 @@ cleanup () {
 }
 
 test_args () {
-  if [ $# -ne 3 ]; then
+  if [ $# -lt 3 ]; then
     echo "Please run the script like this: ./contrib/backport_to_stable_branch.sh STABLE_BRANCH_NAME COMMIT_SHA1 BACKPORT_BRANCH_NAME"
     echo "We accept multiple commits as soon as they are commas-separated."
     echo "e.g: ./contrib/backport_to_stable_branch.sh stable-2.2 6892670d317698771be7e96ce9032bc27d3fd1e5,8756c553cc8c213fc4996fc5202c7b687eb645a3 my-work"
@@ -89,8 +89,8 @@ checkout
 cherry_pick
 push
 create_pr <<MSG
-Backport of ${3}
+${4} Backport of ${3} in $stable_branch
 
-Backport of #${3}
+Backport of #${3} in $stable_branch
 MSG
 cleanup

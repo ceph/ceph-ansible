@@ -34,17 +34,17 @@ author:
 
 """
 
-import os
-import logging
-import socket
+import os  # noqa E402
+import logging  # noqa E402
+import socket  # noqa E402
 
-from logging.handlers import RotatingFileHandler
-from ansible.module_utils.basic import *
+from logging.handlers import RotatingFileHandler  # noqa E402
+from ansible.module_utils.basic import *  # noqa E402
 
-import ceph_iscsi_config.settings as settings
-from ceph_iscsi_config.common import Config
-from ceph_iscsi_config.lio import LIO, Gateway
-from ceph_iscsi_config.utils import ipv4_addresses, get_ip
+import ceph_iscsi_config.settings as settings  # noqa E402
+from ceph_iscsi_config.common import Config  # noqa E402
+from ceph_iscsi_config.lio import LIO, Gateway  # noqa E402
+from ceph_iscsi_config.utils import ip_addresses, resolve_ip_addresses  # noqa E402
 
 __author__ = 'pcuzner@redhat.com'
 
@@ -55,11 +55,11 @@ def delete_group(module, image_list, cfg):
     pending_list = list(image_list)
 
     for rbd_path in image_list:
-        if delete_rbd(module, rbd_path):
-            disk_key = rbd_path.replace('/', '.', 1)
-            cfg.del_item('disks', disk_key)
-            pending_list.remove(rbd_path)
-            cfg.changed = True
+        delete_rbd(module, rbd_path)
+        disk_key = rbd_path.replace('/', '.', 1)
+        cfg.del_item('disks', disk_key)
+        pending_list.remove(rbd_path)
+        cfg.changed = True
 
     if cfg.changed:
         cfg.commit()
@@ -70,11 +70,13 @@ def delete_group(module, image_list, cfg):
 def delete_rbd(module, rbd_path):
 
     logger.debug("issuing delete for {}".format(rbd_path))
-    rm_cmd = 'rbd --no-progress rm {}'.format(rbd_path)
+    rm_cmd = 'rbd --no-progress --conf {} rm {}'.format(settings.config.cephconf,  # noqa E501
+                                                        rbd_path)
     rc, rm_out, err = module.run_command(rm_cmd, use_unsafe_shell=True)
     logger.debug("delete RC = {}, {}".format(rc, rm_out, err))
-
-    return True if rc == 0 else False
+    if rc != 0:
+        logger.error("Could not fully cleanup image {}. Manually run the rbd "
+                     "command line tool to remove.".format(rbd_path))
 
 
 def is_cleanup_host(config):
@@ -91,10 +93,12 @@ def is_cleanup_host(config):
 
         gw_1 = config.config["gateways"]["ip_list"][0]
 
-        usable_ip = get_ip(gw_1)
-        if usable_ip != '0.0.0.0':
-            if usable_ip in ipv4_addresses():
+        local_ips = ip_addresses()
+        usable_ips = resolve_ip_addresses(gw_1)
+        for ip in usable_ips:
+            if ip in local_ips:
                 cleanup = True
+                break
 
     return cleanup
 
@@ -107,7 +111,7 @@ def ansible_main():
                        }
               }
 
-    module = AnsibleModule(argument_spec=fields,
+    module = AnsibleModule(argument_spec=fields,  # noqa F405
                            supports_check_mode=False)
 
     run_mode = module.params['mode']

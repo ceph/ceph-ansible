@@ -1,0 +1,27 @@
+---
+- name: create bootstrap-osd and osd directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: "0755"
+  when:
+    - cephx
+  with_items:
+    - /var/lib/ceph/bootstrap-osd/
+    - /var/lib/ceph/osd/
+
+- name: copy ceph key(s) if needed
+  copy:
+    src: "{{ fetch_directory }}/{{ fsid }}/{{ item.name }}"
+    dest: "{{ item.name }}"
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: "{{ ceph_keyring_permissions }}"
+  with_items:
+    - { name: "/var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring", copy_key: true }
+    - { name: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}" }
+  when:
+    - cephx
+    - item.copy_key|bool

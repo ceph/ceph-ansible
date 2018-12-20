@@ -1,18 +1,28 @@
 ---
+- name: set_fact docker_exec_cmd_nfs
+  set_fact:
+    docker_exec_cmd_nfs: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+  when:
+    - containerized_deployment
+
 - name: check if rados index object exists
-  shell: "rados -p {{ cephfs_data }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
+  shell: "{{ docker_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
   changed_when: false
   failed_when: false
   register: rados_index_exists
   check_mode: no
   when:
     - ceph_nfs_rados_backend
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
 
 - name: create an empty rados index object
-  shell: "echo | rados -p {{ cephfs_data }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} -"
+  command: "{{ docker_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} /dev/null"
   when:
     - ceph_nfs_rados_backend
     - rados_index_exists.rc != 0
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
 
 - name: create /etc/ganesha
   file:
@@ -25,7 +35,7 @@
 - name: generate ganesha configuration file
   action: config_template
   args:
-    src: "{{ lookup('env', 'ANSIBLE_ROLES_PATH') | default (playbook_dir + '/roles', true) }}/ceph-nfs/templates/ganesha.conf.j2"
+    src: "ganesha.conf.j2"
     dest: /etc/ganesha/ganesha.conf
     owner: "root"
     group: "root"
@@ -67,13 +77,6 @@
     - containerized_deployment
   notify:
     - restart ceph nfss
-
-- name: copy over nfs-ganesha-lock.service file
-  shell: "cp /lib/systemd/system/nfs-ganesha-lock.service.debian8 /lib/systemd/system/nfs-ganesha-lock.service"
-  when:
-    - ansible_distribution == 'Ubuntu'
-    - not containerized_deployment
-    - ceph_nfs_enable_service
 
 - name: systemd start nfs container
   systemd:

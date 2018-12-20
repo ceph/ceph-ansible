@@ -1,0 +1,82 @@
+---
+- name: validate provided configuration
+  validate:
+    mode: strict
+
+- name: warning deprecation for fqdn configuration
+  fail:
+    msg: "fqdn configuration is not supported anymore. Use 'use_fqdn_yes_i_am_sure: true' if you really want to use it. See release notes for more details"
+  when:
+    - mon_use_fqdn or mds_use_fqdn
+    - not use_fqdn_yes_i_am_sure
+
+- name: debian based systems tasks
+  block:
+    - name: fail if local scenario is enabled on debian
+      fail:
+        msg: "'local' installation scenario not supported on Debian systems"
+      when:
+        - ceph_origin == 'local'
+    - name: verify that ceph_rhcs_cdn_debian_repo url is valid for red hat storage
+      fail:
+        msg: "ceph_rhcs_cdn_debian_repo url is invalid, please set your customername:customerpasswd"
+      when:
+        - ceph_origin == 'repository'
+        - ceph_repository == 'rhcs'
+        - ceph_repository_type == 'cdn'
+        - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
+        - ceph_repository not in ['rhcs', 'dev', 'obs']
+  when:
+    - ansible_os_family == 'Debian'
+
+- name: validate ntp daemon type
+  fail:
+    msg: "ntp_daemon_type must be one of chronyd, ntpd, or timesyncd"
+  when:
+    - ntp_service_enabled
+    - ntp_daemon_type not in ['chronyd', 'ntpd', 'timesyncd']
+
+- name: make sure journal_size configured
+  debug:
+    msg: "WARNING: journal_size is configured to {{ journal_size }}, which is less than 5GB. This is not recommended and can lead to severe issues."
+  when:
+    - journal_size|int < 5120
+    - osd_objectstore == 'filestore'
+    - osd_group_name in group_names
+
+- name: include check_system.yml
+  include_tasks: check_system.yml
+
+- name: include check_devices.yml
+  include_tasks: check_devices.yml
+  when:
+    - osd_group_name in group_names
+    - not osd_auto_discovery | default(False)
+    - osd_scenario != "lvm" and devices is not defined
+
+- name: include check_eth_mon.yml
+  include_tasks: check_eth_mon.yml
+  when:
+    - mon_group_name in group_names
+    - monitor_interface != "dummy"
+    - monitor_address == "0.0.0.0"
+    - monitor_address_block == "subnet"
+
+- name: include check_eth_rgw.yml
+  include_tasks: check_eth_rgw.yml
+  when:
+    - rgw_group_name in group_names
+    - radosgw_interface != "dummy"
+    - radosgw_address == "0.0.0.0"
+    - radosgw_address_block == "subnet"
+
+- name: include check_rgw_multisite.yml
+  include_tasks: check_rgw_multisite.yml
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
+    - rgw_multisite
+
+- name: include check_iscsi.yml
+  include_tasks: check_iscsi.yml
+  when:
+    - iscsi_gw_group_name in group_names

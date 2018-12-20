@@ -1,6 +1,6 @@
 ---
 # NOTE (leseb):
-# The playbook aims to takeover a cluster that was not configured with 
+# The playbook aims to takeover a cluster that was not configured with
 # ceph-ansible.
 #
 # The procedure is as follows:
@@ -13,12 +13,11 @@
 
 - hosts: mons
   become: True
-  vars_files:
-    - roles/ceph-defaults/defaults/main.yml
-    - group_vars/all.yml
-  roles:
-    - ceph-defaults
-    - ceph-fetch-keys
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-fetch-keys
 
 - hosts:
   - mons
@@ -27,20 +26,19 @@
   - mdss
   - rgws
   - nfss
-  - restapis
   - rbdmirrors
   - clients
   - mgrs
   - iscsi-gw
   become: true
-
   tasks:
-    - include_vars: roles/ceph-defaults/defaults/main.yml
-    - include_vars: group_vars/all.yml
+    - import_role:
+        name: ceph-defaults
 
+  post_tasks:
     - name: get the name of the existing ceph cluster
       shell: |
-        basename $(grep --exclude '*.bak' -R fsid /etc/ceph/ | egrep -o '^[^.]*' | head -n 1)
+          basename $(grep --exclude '*.bak' -R fsid /etc/ceph/ | egrep -o '^[^.]*' | head -n 1)
       changed_when: false
       register: cluster_name
 
@@ -49,7 +47,7 @@
         path: "/etc/ceph/{{ cluster_name.stdout }}.conf"
       register: ceph_conf_stat
 
-    # Creates a backup of original ceph conf file in 'cluster_name-YYYYMMDDTHHMMSS.conf.bak' format
+      # Creates a backup of original ceph conf file in 'cluster_name-YYYYMMDDTHHMMSS.conf.bak' format
     - name: "make a backup of original {{ cluster_name.stdout }}.conf"
       copy:
         src: "/etc/ceph/{{ cluster_name.stdout }}.conf"
@@ -69,4 +67,3 @@
         mode: "{{ ceph_conf_stat.stat.mode }}"
         config_overrides: "{{ ceph_conf_overrides }}"
         config_type: ini
-

@@ -1,14 +1,22 @@
 ---
+- name: include create_mds_filesystems.yml
+  include_tasks: create_mds_filesystems.yml
+  when:
+    - inventory_hostname == groups[mds_group_name] | first
+
 - name: set_fact docker_exec_cmd
   set_fact:
-    docker_exec_cmd: "docker exec ceph-mds-{{ ansible_hostname }}"
+    docker_exec_cmd: "{{ container_binary }} exec ceph-mds-{{ ansible_hostname }}"
   when:
     - containerized_deployment
 
+- name: include common.yml
+  include_tasks: common.yml
+
 - name: non_containerized.yml
-  include: non_containerized.yml
+  include_tasks: non_containerized.yml
   when: not containerized_deployment
 
 - name: containerized.yml
-  include: containerized.yml
+  include_tasks: containerized.yml
   when: containerized_deployment

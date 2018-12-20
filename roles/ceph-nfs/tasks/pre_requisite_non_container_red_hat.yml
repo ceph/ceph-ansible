@@ -1,0 +1,55 @@
+---
+- name: red hat based systems - repo handling
+  block:
+    - name: add nfs-ganesha stable repository
+      yum_repository:
+        name: nfs_ganesha_stable
+        description: nfs-ganesha stable repo
+        gpgcheck: yes
+        state: present
+        gpgkey: "{{ ceph_stable_key }}"
+        baseurl: "{{ ceph_mirror }}/nfs-ganesha/rpm-{{ nfs_ganesha_stable_branch }}/{{ ceph_release }}/$basearch"
+      when:
+        - nfs_ganesha_stable
+        - ceph_repository == 'community'
+
+    - name: red hat based systems - dev repo related tasks
+      block:
+        - name: fetch nfs-ganesha red hat development repository
+          uri:
+            url: https://shaman.ceph.com/api/repos/nfs-ganesha/next/latest/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/flavors/{{ nfs_ganesha_flavor }}/repo
+            return_content: yes
+          register: nfs_ganesha_dev_yum_repo
+
+        - name: add nfs-ganesha development repository
+          copy:
+            content: "{{ nfs_ganesha_dev_yum_repo.content }}"
+            dest: /etc/yum.repos.d/nfs-ganesha-dev.repo
+            owner: root
+            group: root
+            backup: yes
+      when:
+        - nfs_ganesha_dev
+        - ceph_repository == 'dev'
+  when:
+    - ceph_origin == 'repository'
+
+- name: red hat based systems - install nfs packages
+  block:
+    - name: install nfs cephfs gateway
+      package:
+        name: nfs-ganesha-ceph
+        state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+      register: result
+      until: result is succeeded
+      when:
+        - nfs_file_gw
+
+    - name: install redhat nfs-ganesha-rgw and ceph-radosgw packages
+      package:
+        name: ['nfs-ganesha-rgw', 'ceph-radosgw']
+        state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+      register: result
+      until: result is succeeded
+      when:
+        - nfs_obj_gw

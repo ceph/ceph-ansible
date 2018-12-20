@@ -11,23 +11,45 @@ dummy:
 # GENERAL #
 ###########
 
+# Even though Client nodes should not have the admin key
+# at their disposal, some people might want to have it
+# distributed on Client nodes. Setting 'copy_admin_key' to 'true'
+# will copy the admin key to the /etc/ceph/ directory
 #copy_admin_key: false
 
 #user_config: false
+#test:
+#  name: "test"
+#  pg_num: "{{ osd_pool_default_pg_num }}"
+#  pgp_num: "{{ osd_pool_default_pg_num }}"
+#  rule_name: "replicated_rule"
+#  type: 1
+#  erasure_profile: ""
+#  expected_num_objects: ""
+#  size: "{{ osd_pool_default_size }}"
+#test2:
+#  name: "test2"
+#  pg_num: "{{ osd_pool_default_pg_num }}"
+#  pgp_num: "{{ osd_pool_default_pg_num }}"
+#  rule_name: "replicated_rule"
+#  type: 1
+#  erasure_profile: ""
+#  expected_num_objects: ""
+#  size: "{{ osd_pool_default_size }}"
 #pools:
-#  - { name: test, pgs: "{{ ceph_conf_overrides.global.osd_pool_default_pg_num }}" }
-#  - { name: test2, pgs: "{{ ceph_conf_overrides.global.osd_pool_default_pg_num }}" }
+#  - "{{ test }}"
+#  - "{{ test2 }}"
 
-# Can add `mds_cap` attribute to override the default value which is '' for mds capabilities.
-# To have have ansible setfacl the generated key for $user, set the acls var like so:
-# acls: ["u:$user:r--"]
-#
 # Generate a keyring using ceph-authtool CLI or python.
 # Eg:
 #  $ ceph-authtool --gen-print-key
 #  or
 #  $ python2 -c "import os ; import struct ; import time; import base64 ; key = os.urandom(16) ; header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ; print base64.b64encode(header + key)"
+#
+# To use a particular secret, you have to add 'key' to the dict below, so something like:
+# - { name: client.test, key: "AQAin8tUMICVFBAALRHNrV0Z4MXupRw4v9JQ6Q==" ...
+
 #keys:
-#  - { name: client.test, key: "ADD-KEYRING-HERE==", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool=test", mode: "0600", acls: [] }
-#  - { name: client.test2, key: "ADD-KEYRING-HERE==", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool=test2", mode: "0600", acls: [] }
+#  - { name: client.test, caps: { mon: "allow r", osd: "allow class-read object_prefix rbd_children, allow rwx pool=test" },  mode: "{{ ceph_keyring_permissions }}" }
+#  - { name: client.test2, caps: { mon: "allow r", osd: "allow class-read object_prefix rbd_children, allow rwx pool=test2" },  mode: "{{ ceph_keyring_permissions }}" }
 

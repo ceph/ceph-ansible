@@ -1,0 +1,63 @@
+---
+- name: debian based systems tasks
+  block:
+    - name: disable osd directory parsing by updatedb
+      command: updatedb -e /var/lib/ceph
+      changed_when: false
+      failed_when: false
+    - name: disable osd directory path in updatedb.conf
+      replace:
+        dest: /etc/updatedb.conf
+        regexp: '^(PRUNEPATHS(?!.*/var/lib/ceph).*)"$'
+        replace: '\1 /var/lib/ceph"'
+      failed_when: false
+  when:
+    - osd_objectstore == 'filestore'
+    - ansible_os_family == "Debian"
+
+- name: create tmpfiles.d directory
+  file:
+    path: "/etc/tmpfiles.d"
+    state: "directory"
+    owner: "root"
+    group: "root"
+    mode: "0755"
+  register: "tmpfiles_d"
+  when:
+    - disable_transparent_hugepage
+
+- name: disable transparent hugepage
+  template:
+    src: "tmpfiles_hugepage.j2"
+    dest: "/etc/tmpfiles.d/ceph_transparent_hugepage.conf"
+    group: "root"
+    owner: "root"
+    mode: "0644"
+    force: "yes"
+    validate: "systemd-tmpfiles --create %s"
+  when:
+    - disable_transparent_hugepage
+
+- name: get default vm.min_free_kbytes
+  command: sysctl -b vm.min_free_kbytes
+  changed_when: false
+  failed_when: false
+  check_mode: no
+  register: default_vm_min_free_kbytes
+
+- name: set_fact vm_min_free_kbytes
+  set_fact:
+    vm_min_free_kbytes: "{{ 4194303 if ansible_memtotal_mb >= 49152 else default_vm_min_free_kbytes.stdout }}"
+
+- name: apply operating system tuning
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/ceph-tuning.conf
+    sysctl_set: yes
+    ignoreerrors: yes
+  with_items:
+    - { name: "fs.aio-max-nr", value: "1048576", enable: (osd_objectstore == 'bluestore') }
+    - "{{ os_tuning_params }}"
+  when: item.enable | default(true)

@@ -1,50 +1,43 @@
 ---
-- name: set_fact docker_exec_cmd
-  set_fact:
-    docker_exec_cmd: "docker exec ceph-rgw-{{ ansible_hostname }}"
-  when:
-    - containerized_deployment
+- name: include common.yml
+  include_tasks: common.yml
 
-- name: include pre_requisite.yml
-  include: pre_requisite.yml
-  when:
-    - not containerized_deployment
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
+- name: include_tasks pre_requisite.yml
+  include_tasks: pre_requisite.yml
+  when: not containerized_deployment
 
-- name: include openstack-keystone.yml
-  include: openstack-keystone.yml
-  when:
-    - radosgw_keystone|bool
-    - radosgw_keystone_ssl|bool
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
+- name: include_tasks openstack-keystone.yml
+  include_tasks: openstack-keystone.yml
+  when: radosgw_keystone_ssl|bool
 
-- name: include start_radosgw.yml
-  include: start_radosgw.yml
-  when:
-    - not containerized_deployment
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
+- name: include_tasks start_radosgw.yml
+  include_tasks: start_radosgw.yml
+  when: not containerized_deployment
 
-- name: include rgw_pool_pgs.yml
-  include: rgw_pool_pgs.yml
-  when:
-    - create_pools is defined
-  static: False
+- name: include_tasks docker/main.yml
+  include_tasks: docker/main.yml
+  when: containerized_deployment
 
-- name: include multisite/main.yml
-  include: multisite/main.yml
-  when:
-    - rgw_zone is defined
-    - rgw_multisite
-    - ceph_release_num[ceph_release] >= ceph_release_num.jewel
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
+- name: include_tasks multisite/main.yml
+  include_tasks: multisite/main.yml
+  when: rgw_multisite
 
-- name: include docker/main.yml
-  include: docker/main.yml
+- name: rgw pool realted tasks
   when:
-    - containerized_deployment
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
+    - rgw_create_pools is defined
+  block:
+    - name: create rgw pools if rgw_create_pools is defined
+      command: "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num | default(osd_pool_default_pg_num) }}"
+      changed_when: false
+      with_dict: "{{ rgw_create_pools }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+
+    - name: customize pool size
+      command: "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool set {{ item.key }} size {{ item.size | default(osd_pool_default_size) }}"
+      with_dict: "{{ rgw_create_pools }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      run_once: true
+      when:
+        - item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size

@@ -3,13 +3,13 @@
 # to ensure osd disk prepare finishes before
 # starting the next task
 - name: prepare ceph containerized osd disk collocated
-  shell: |
-    docker run --net=host \
+  command: |
+    {{ container_binary }} run --net=host \
     --pid=host \
     --privileged=true \
     --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.1 | regex_replace('/dev/', '') }} \
-    -v /etc/ceph:/etc/ceph \
-    -v /var/lib/ceph/:/var/lib/ceph/ \
+    -v /etc/ceph:/etc/ceph:z \
+    -v /var/lib/ceph/:/var/lib/ceph/:z \
     -v /dev:/dev \
     -v /etc/localtime:/etc/localtime:ro \
     -e DEBUG=verbose \
@@ -25,17 +25,16 @@
   when:
     - not osd_auto_discovery
     - containerized_deployment
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
+    - item.0.partitions|length == 0
 
 - name: automatic prepare ceph containerized osd disk collocated
-  shell: |
-    docker run --net=host \
+  command: |
+    {{ container_binary }} run --net=host \
     --pid=host \
     --privileged=true \
     --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.split('/')[-1] }} \
-    -v /etc/ceph:/etc/ceph \
-    -v /var/lib/ceph/:/var/lib/ceph/ \
+    -v /etc/ceph:/etc/ceph:z \
+    -v /var/lib/ceph/:/var/lib/ceph/:z \
     -v /dev:/dev \
     -v /etc/localtime:/etc/localtime:ro \
     -e DEBUG=verbose \
@@ -58,5 +57,4 @@
     - "{{ devices }}"
   when:
     - not containerized_deployment
-    - not item.0.get("skipped")
-    - item.0.get("rc", 0) != 0
+    - item.0.partitions|length == 0

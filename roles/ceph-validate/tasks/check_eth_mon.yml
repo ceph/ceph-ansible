@@ -1,0 +1,26 @@
+---
+- name: "fail if {{ monitor_interface }} does not exist on {{ inventory_hostname }}"
+  fail:
+    msg: "{{ monitor_interface }} does not exist on {{ inventory_hostname }}"
+  when:
+    - monitor_interface not in ansible_interfaces
+
+- name: "fail if {{ monitor_interface }} is not active on {{ inventory_hostname }}"
+  fail:
+    msg: "{{ monitor_interface }} is not active on {{ inventory_hostname }}"
+  when:
+    - not hostvars[inventory_hostname]['ansible_' + monitor_interface]['active']
+
+- name: "fail if {{ monitor_interface }} does not have any ip v4 address on {{ inventory_hostname }}"
+  fail:
+    msg: "{{ monitor_interface }} does not have any IPv4 address on {{ inventory_hostname }}"
+  when:
+    - ip_version == "ipv4"
+    - hostvars[inventory_hostname]['ansible_' + monitor_interface]['ipv4'] is not defined
+
+- name: "fail if {{ monitor_interface }} does not have any ip v6 address on {{ inventory_hostname }}"
+  fail:
+    msg: "{{ monitor_interface }} does not have any IPv6 address on {{ inventory_hostname }}"
+  when:
+    - ip_version == "ipv6"
+    - hostvars[inventory_hostname]['ansible_' + monitor_interface]['ipv6'] is not defined

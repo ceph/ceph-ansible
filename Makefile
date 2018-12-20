@@ -18,7 +18,8 @@ NAME = ceph-ansible
 #  A "git describe" value of "v2.2.0" creates an NVR
 #  "ceph-ansible-2.2.0-1.el7"
 
-VERSION := $(shell git describe --tags --abbrev=0 --match 'v*' | sed 's/^v//')
+TAG := $(shell git describe --tags --abbrev=0 --match 'v*')
+VERSION := $(shell echo $(TAG) | sed 's/^v//')
 COMMIT := $(shell git rev-parse HEAD)
 SHORTCOMMIT := $(shell echo $(COMMIT) | cut -c1-7)
 RELEASE := $(shell git describe --tags --match 'v*' \
@@ -38,6 +39,13 @@ ifneq (,$(findstring rc,$(VERSION)))
     RELEASE := 0.$(RC).$(RELEASE)
     VERSION := $(subst $(RC),,$(VERSION))
 endif
+
+ifneq (,$(shell echo $(VERSION) | grep [a-zA-Z]))
+    # If we still have alpha characters in our Git tag string, we don't know
+    # how to translate that into a sane RPM version/release. Bail out.
+    $(error cannot translate Git tag version $(VERSION) to an RPM NVR)
+endif
+
 NVR := $(NAME)-$(VERSION)-$(RELEASE).el7
 
 all: srpm
@@ -76,4 +84,23 @@ rpm: dist srpm
 	  --resultdir=. \
 	  --define "dist .el7"
 
-.PHONY: dist rpm srpm
+tag:
+	$(eval BRANCH := $(shell git rev-parse --abbrev-ref HEAD))
+	$(eval LASTNUM := $(shell echo $(TAG) \
+	                    | sed -E "s/.*[^0-9]([0-9]+)$$/\1/"))
+	$(eval NEXTNUM=$(shell echo $$(($(LASTNUM)+1))))
+	$(eval NEXTTAG=$(shell echo $(TAG) | sed "s/$(LASTNUM)$$/$(NEXTNUM)/"))
+	if [[ "$(TAG)" == "$(git describe --tags --match 'v*')" ]]; then \
+	    echo "$(SHORTCOMMIT) on $(BRANCH) is already tagged as $(TAG)"; \
+	    exit 1; \
+	fi
+	if [[ "$(BRANCH)" != "master" ]] && \
+	   ! [[ "$(BRANCH)" =~ ^stable- ]]; then \
+		echo Cannot tag $(BRANCH); \
+		exit 1; \
+	fi
+	@echo Tagging Git branch $(BRANCH)
+	git tag $(NEXTTAG)
+	@echo run \'git push origin $(NEXTTAG)\' to push to GitHub.
+
+.PHONY: dist rpm srpm tag

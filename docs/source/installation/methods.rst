@@ -2,11 +2,12 @@ Installation methods
 ====================
 
 The following are all of the available options for the installing Ceph through different channels.
+
 We support 3 main installation methods, all managed by the ``ceph_origin`` variable:
 
-- ``repository``: means that you will get ceph installed through a new repository. Later below choose between ``community``, ``rhcs`` or ``dev``. These options will be exposed through the ``ceph_repository`` variable.
+- ``repository``: means that you will get Ceph installed through a new repository. Later below choose between ``community``, ``rhcs`` or ``dev``. These options will be exposed through the ``ceph_repository`` variable.
 - ``distro``: means that no separate repo file will be added and you will get whatever version of Ceph is included in your Linux distro.
-- ``local``: means that the ceph binaries will be copied over from the local machine (not well tested, use at your own risk)
+- ``local``: means that the Ceph binaries will be copied over from the local machine (not well tested, use at your own risk)
 
 Origin: Repository
 ------------------
@@ -40,7 +41,7 @@ UCA repository
 
 If ``ceph_repository`` is set to ``uca``, packages you will be by default installed from http://ubuntu-cloud.archive.canonical.com/ubuntu, this can be changed by tweaking ``ceph_stable_repo_uca``.
 You can also decide which OpenStack version the Ceph packages should come from by tweaking ``ceph_stable_openstack_release_uca``.
-For example, ``ceph_stable_openstack_release_uca: liberty``.
+For example, ``ceph_stable_openstack_release_uca: queens``.
 
 Dev repository
 ~~~~~~~~~~~~~~

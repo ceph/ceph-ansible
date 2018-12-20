@@ -26,7 +26,7 @@
       when: ireallymeanit != 'yes'
 
 
-- name: make sure docker is present and started
+- name: gather facts
 
   hosts:
     - "{{ mon_group_name|default('mons') }}"
@@ -40,22 +40,6 @@
   become: true
 
   tasks:
-    - name: check if selinux is enabled
-      command: getenforce
-      register: sestatus
-      changed_when: false
-      when: ansible_os_family == 'RedHat'
-
-    - name: set selinux permissions
-      command: chcon -Rt svirt_sandbox_file_t "{{ item }}"
-      with_items:
-        - /etc/ceph
-        - /var/lib/ceph
-      changed_when: false
-      when:
-        - sestatus.stdout != 'Disabled'
-        - ansible_os_family == 'RedHat'
-
     - name: gather and delegate facts
       setup:
       delegate_to: "{{ item }}"
@@ -63,20 +47,15 @@
       with_items: "{{ groups['all'] }}"
 
 - name: switching from non-containerized to containerized ceph mon
-
   vars:
     health_mon_check_retries: 5
     health_mon_check_delay: 15
     containerized_deployment: true
     mon_group_name:       mons
-    restapi_group_name:   restapis
-
   hosts:
     - "{{ mon_group_name|default('mons') }}"
-
   serial: 1
   become: true
-
   pre_tasks:
     - name: select a running monitor
       set_fact: mon_host={{ item }}
@@ -89,13 +68,20 @@
         state: stopped
         enabled: no
 
-    - set_fact:
+    - name: set_fact ceph_uid for ubuntu
+      set_fact:
         ceph_uid: 64045
-      when: ceph_docker_image_tag | match("latest") or ceph_docker_image_tag | search("ubuntu")
+      when: ceph_docker_image_tag | string is search("ubuntu")
 
-    - set_fact:
+    - name: set_fact ceph_uid for red hat
+      set_fact:
         ceph_uid: 167
-      when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph") or ceph_docker_image_tag | search("fedora")
+      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
+
+    - name: set_fact ceph_uid for rhel
+      set_fact:
+         ceph_uid: 167
+      when: ceph_docker_image is search("rhceph")
 
     - name: set proper ownership on ceph directories
       file:
@@ -118,10 +104,28 @@
       failed_when: false
       when: ldb_files.rc == 0
 
-  roles:
-    - ceph-defaults
-    - ceph-docker-common
-    - ceph-mon
+    - name: copy mon initial keyring in /etc/ceph to satisfy fetch config task in ceph-container-common
+      command: cp /var/lib/ceph/mon/{{ cluster }}-{{ ansible_hostname }}/keyring /etc/ceph/{{ cluster }}.mon.keyring
+      args:
+        creates: /etc/ceph/{{ cluster }}.mon.keyring
+      changed_when: false
+      failed_when: false
+
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+
+    - import_role:
+        name: ceph-handler
+
+    - import_role:
+        name: ceph-container-common
+
+    - import_role:
+        name: ceph-mon
 
   post_tasks:
     # We don't do a container test by running 'docker exec ...' since not all the monitors have switched to containers yet.
@@ -146,7 +150,6 @@
 
   serial: 1
   become: true
-
   pre_tasks:
     # failed_when: false is here because if we're
     # working with a jewel cluster then ceph mgr
@@ -160,11 +163,11 @@
 
     - set_fact:
         ceph_uid: 64045
-      when: ceph_docker_image_tag | match("latest") or ceph_docker_image_tag | search("ubuntu")
+      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
 
     - set_fact:
         ceph_uid: 167
-      when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph") or ceph_docker_image_tag | search("fedora")
+      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
 
     - name: set proper ownership on ceph directories
       file:
@@ -175,10 +178,21 @@
         - /var/lib/ceph
         - /etc/ceph
 
-  roles:
-    - ceph-defaults
-    - ceph-docker-common
-    - ceph-mgr
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+
+    - import_role:
+        name: ceph-handler
+
+    - import_role:
+        name: ceph-container-common
+
+    - import_role:
+        name: ceph-mgr
 
 
 - name: switching from non-containerized to containerized ceph osd
@@ -194,48 +208,49 @@
 
   serial: 1
   become: true
-
-
   pre_tasks:
-    - name: collect running osds
+
+    - import_role:
+        name: ceph-defaults
+
+    - name: collect running osds and ceph-disk unit(s)
       shell: |
-        systemctl list-units | grep "loaded active" | grep -Eo 'ceph-osd@[0-9]{1,2}.service'
+        systemctl list-units | grep "loaded active" | grep -Eo 'ceph-osd@[0-9]+.service|ceph-disk@dev-[a-z]{3,4}[0-9]{1}.service|ceph-volume|ceph\.target'
       register: running_osds
       changed_when: false
       failed_when: false
 
-    - name: collect osd devices
-      shell: |
-        blkid | awk '/ceph data/ { sub ("1:", "", $1); print $1 }'
-      register: collect_devices
-      changed_when: false
-      when:
-        - devices is not defined or (devices is defined and devices == [])
-
-    - name: set devices
-      set_fact:
-        devices: "{{ collect_devices.stdout_lines | list }}"
-      when:
-        - collect_devices is defined
-        - not collect_devices.get("skipped")
-        - collect_devices != []
-
-    - name: stop non-containerized ceph osd(s)
+    - name: stop/disable/mask non-containerized ceph osd(s) and ceph-disk units (if any)
       systemd:
         name: "{{ item }}"
         state: stopped
         enabled: no
-        masked: yes
       with_items: "{{ running_osds.stdout_lines | default([])}}"
       when: running_osds != []
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | match("latest") or ceph_docker_image_tag | search("ubuntu")
+    - name: remove old ceph-osd systemd units
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /usr/lib/systemd/system/ceph-osd.target
+        - /usr/lib/systemd/system/ceph-osd@.service
+        - /usr/lib/systemd/system/ceph-volume@.service
+        - /etc/systemd/system/ceph.target.wants
 
     - set_fact:
+        ceph_uid: 64045
+      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
+
+    - name: set_fact ceph_uid for red hat
+      set_fact:
         ceph_uid: 167
-      when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph") or ceph_docker_image_tag | search("fedora")
+      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
+
+    - name: set_fact ceph_uid for rhel
+      set_fact:
+         ceph_uid: 167
+      when: ceph_docker_image is search("rhceph")
 
     - name: set proper ownership on ceph directories
       file:
@@ -260,41 +275,59 @@
         - ldb_files.rc == 0
 
     - name: check if containerized osds are already running
-      shell: |
-        docker ps | grep -sq {{ item | regex_replace('/', '') }}
+      command: >
+        {{ container_binary }} ps --filter='name=ceph-osd'
       changed_when: false
       failed_when: false
-      with_items: "{{ devices }}"
       register: osd_running
 
+    - name: get osd directories
+      command: >
+        ls -1 /var/lib/ceph/osd
+      register: osd_dirs
+      changed_when: false
+
     - name: unmount all the osd directories
-      command: umount "{{ item.0 }}"1
+      command: >
+        umount /var/lib/ceph/osd/{{ item }}
       changed_when: false
       failed_when: false
-      with_together:
-        - "{{ devices }}"
-        - "{{ osd_running.results }}"
+      with_items:
+        - "{{ osd_dirs.stdout_lines }}"
       when:
-        - item.1.get("rc", 0) != 0
+        - osd_running.rc != 0
 
-  roles:
-    - ceph-defaults
-    - ceph-docker-common
-    - ceph-osd
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+
+    - import_role:
+        name: ceph-handler
+
+    - import_role:
+        name: ceph-container-common
+
+    - import_role:
+        name: ceph-osd
 
   post_tasks:
     - name: get num_pgs
-      command: docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json
       register: ceph_pgs
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: container - waiting for clean pgs...
-      command: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json"
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json
       register: ceph_health_post
       until: >
-        ((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) == 1
+        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) > 0)
         and
-        (ceph_health_post.stdout | from_json).pgmap.pgs_by_state.0.state_name == "active+clean"
+        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | selectattr('state_name', 'search', '^active\\+clean') | map(attribute='count') | list | sum) == (ceph_pgs.stdout | from_json).pgmap.num_pgs)
       delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
@@ -313,8 +346,8 @@
 
   serial: 1
   become: true
-
   pre_tasks:
+
     - name: stop non-containerized ceph mds(s)
       service:
         name: "ceph-mds@{{ ansible_hostname }}"
@@ -323,11 +356,11 @@
 
     - set_fact:
         ceph_uid: 64045
-      when: ceph_docker_image_tag | match("latest") or ceph_docker_image_tag | search("ubuntu")
+      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
 
     - set_fact:
         ceph_uid: 167
-      when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph") or ceph_docker_image_tag | search("fedora")
+      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
 
     - name: set proper ownership on ceph directories
       file:
@@ -338,10 +371,21 @@
         - /var/lib/ceph
         - /etc/ceph
 
-  roles:
-    - ceph-defaults
-    - ceph-docker-common
-    - ceph-mds
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+
+    - import_role:
+        name: ceph-handler
+
+    - import_role:
+        name: ceph-container-common
+
+    - import_role:
+         name: ceph-mds
 
 
 - name: switching from non-containerized to containerized ceph rgw
@@ -355,8 +399,8 @@
 
   serial: 1
   become: true
-
   pre_tasks:
+
     - name: stop non-containerized ceph rgw(s)
       service:
         name: "ceph-radosgw@rgw.{{ ansible_hostname }}"
@@ -365,11 +409,11 @@
 
     - set_fact:
         ceph_uid: 64045
-      when: ceph_docker_image_tag | match("latest") or ceph_docker_image_tag | search("ubuntu")
+      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
 
     - set_fact:
         ceph_uid: 167
-      when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph") or ceph_docker_image_tag | search("fedora")
+      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
 
     - name: set proper ownership on ceph directories
       file:
@@ -380,10 +424,21 @@
         - /var/lib/ceph
         - /etc/ceph
 
-  roles:
-    - ceph-defaults
-    - ceph-docker-common
-    - ceph-rgw
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+
+    - import_role:
+        name: ceph-handler
+
+    - import_role:
+        name: ceph-container-common
+
+    - import_role:
+        name: ceph-rgw
 
 
 - name: switching from non-containerized to containerized ceph rbd-mirror
@@ -397,7 +452,6 @@
 
   serial: 1
   become: true
-
   pre_tasks:
     - name: stop non-containerized ceph rbd mirror(s)
       service:
@@ -407,11 +461,11 @@
 
     - set_fact:
         ceph_uid: 64045
-      when: ceph_docker_image_tag | match("latest") or ceph_docker_image_tag | search("ubuntu")
+      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
 
     - set_fact:
         ceph_uid: 167
-      when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph") or ceph_docker_image_tag | search("fedora")
+      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
 
     - name: set proper ownership on ceph directories
       file:
@@ -422,10 +476,21 @@
         - /var/lib/ceph
         - /etc/ceph
 
-  roles:
-    - ceph-defaults
-    - ceph-docker-common
-    - ceph-rbd-mirror
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+
+    - import_role:
+        name: ceph-handler
+
+    - import_role:
+        name: ceph-container-common
+
+    - import_role:
+        name: ceph-rbd-mirror
 
 
 - name: switching from non-containerized to containerized ceph nfs
@@ -439,8 +504,8 @@
 
   serial: 1
   become: true
-
   pre_tasks:
+
     # failed_when: false is here because if we're
     # working with a jewel cluster then ceph nfs
     # will not exist
@@ -453,11 +518,11 @@
 
     - set_fact:
         ceph_uid: 64045
-      when: ceph_docker_image_tag | match("latest") or ceph_docker_image_tag | search("ubuntu")
+      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
 
     - set_fact:
         ceph_uid: 167
-      when: ceph_docker_image_tag | search("centos") or ceph_docker_image | search("rhceph") or ceph_docker_image_tag | search("fedora")
+      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
 
     - name: set proper ownership on ceph directories
       file:
@@ -468,7 +533,18 @@
         - /var/lib/ceph
         - /etc/ceph
 
-  roles:
-    - ceph-defaults
-    - ceph-docker-common
-    - ceph-nfs
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+
+    - import_role:
+        name: ceph-handler
+
+    - import_role:
+        name: ceph-container-common
+
+    - import_role:
+        name: ceph-nfs

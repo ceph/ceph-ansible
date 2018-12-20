@@ -1,0 +1,33 @@
+---
+
+logfile_path: ./lv-create.log
+# Path of nvme device primed for LV creation for journals and data. Only one NVMe device is allowed at a time. Providing a list will not work in this case.
+nvme_device: /dev/sdb
+
+# Path of hdd devices designated for LV creation.
+hdd_devices:
+  - /dev/sdc
+
+journal_size: 1024 
+
+# This var is a list of bucket index LVs created on the NVMe device. We recommend one be created but you can add others
+nvme_device_lvs:
+  - lv_name: "ceph-bucket-index-1"
+    size: 100%FREE
+    journal_name: "ceph-journal-bucket-index-1-{{ nvme_device_basename }}"
+
+## TYPICAL USERS WILL NOT NEED TO CHANGE VARS FROM HERE DOWN ##
+
+# all hdd's have to be the same size and the LVs on them are dedicated for OSD data
+hdd_lv_size: 100%FREE
+
+# Since this playbook can be run multiple times across different devices, {{ var.split('/')[-1] }} is used quite frequently in this play-book.
+# This is used to strip the device name away from its path (ex: sdc from /dev/sdc) to differenciate the names of vgs, journals, or lvs if the prefixes are not changed across multiple runs.
+nvme_device_basename: "{{ nvme_device.split('/')[-1] }}"
+
+# Only one volume group is created in the playbook for all the LVs on NVMe. This volume group takes up the entire device specified in "nvme_device".
+nvme_vg_name: "ceph-nvme-vg-{{ nvme_device_basename }}"
+
+hdd_vg_prefix: "ceph-hdd-vg"
+hdd_lv_prefix: "ceph-hdd-lv"
+hdd_journal_prefix: "ceph-journal"

@@ -11,14 +11,9 @@
 # will copy the admin key to the /etc/ceph/ directory
 copy_admin_key: false
 
-# Multi-site remote pull URL variables
-rgw_pull_port: "{{ radosgw_civetweb_port }}"
-rgw_pull_proto: "http"
-
-
-########
-#TUNING#
-########
+##########
+# TUNING #
+##########
 
 # To support buckets with a very large number of objects it's
 # important to split them into shards. We suggest about 100K
@@ -33,14 +28,17 @@ rgw_pull_proto: "http"
 # This is important because they would be created with the default
 # of 8.
 # New pools and their corresponding pg_nums can be created
-# by adding to the create_pools dictionary (see foo).
-#create_pools:
+# by adding to the rgw_create_pools dictionary (see foo).
+#rgw_create_pools:
 #  defaults.rgw.buckets.data:
 #    pg_num: 16
+#    size: ""
 #  defaults.rgw.buckets.index:
 #    pg_num: 32
+#    size: ""
 #  foo:
 #    pg_num: 4
+#    size: ""
 
 
 ##########
@@ -51,13 +49,12 @@ rgw_pull_proto: "http"
 # For the whole list of limits you can apply see: docs.docker.com/engine/admin/resource_constraints
 # Default values are based from: https://access.redhat.com/documentation/en-us/red_hat_ceph_storage/2/html/red_hat_ceph_storage_hardware_guide/minimum_recommendations
 # These options can be passed using the 'ceph_rgw_docker_extra_env' variable.
-ceph_rgw_docker_memory_limit: 1g
+ceph_rgw_docker_memory_limit: "{{ ansible_memtotal_mb }}m"
 ceph_rgw_docker_cpu_limit: 1
 
 ceph_rgw_docker_extra_env:
 ceph_config_keys: [] # DON'T TOUCH ME
 rgw_config_keys: "/" # DON'T TOUCH ME
-
 
 ###########
 # SYSTEMD #

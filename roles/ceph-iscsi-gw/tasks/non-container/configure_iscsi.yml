@@ -1,0 +1,33 @@
+---
+- name: igw_gateway (tgt) | configure iscsi target (gateway)
+  igw_gateway:
+    mode: "target"
+    gateway_iqn: "{{ gateway_iqn }}"
+    gateway_ip_list: "{{ gateway_ip_list }}"
+  register: target
+
+- name: igw_lun | configure luns (create/map rbds and add to lio)
+  igw_lun:
+    pool: "{{ item.pool }}"
+    image: "{{ item.image }}"
+    size: "{{ item.size }}"
+    host: "{{ item.host }}"
+    state: "{{ item.state }}"
+  with_items: "{{ rbd_devices }}"
+  register: images
+
+- name: igw_gateway (map) | map luns to the iscsi target
+  igw_gateway:
+    mode: "map"
+    gateway_iqn: "{{ gateway_iqn }}"
+    gateway_ip_list: "{{ gateway_ip_list }}"
+  register: luns
+
+- name: igw_client | configure client connectivity
+  igw_client:
+    client_iqn: "{{ item.client }}"
+    image_list: "{{ item.image_list }}"
+    chap: "{{ item.chap }}"
+    state: "{{ item.status }}"
+  with_items: "{{ client_connections }}"
+  register: clients

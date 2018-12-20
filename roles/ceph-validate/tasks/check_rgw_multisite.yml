@@ -1,0 +1,63 @@
+---
+- name: fail if rgw_zone is default
+  fail:
+    msg: "rgw_zone cannot be named 'default'"
+  when: rgw_zone == 'default' or rgw_zone is undefined
+
+- name: fail if either rgw_zonemaster or rgw_zonesecondary is undefined
+  fail:
+    msg: "rgw_zonemaster and rgw_zonesecondary must be defined"
+  when: rgw_zonemaster is undefined or rgw_zonesecondary is undefined
+
+- name: fail if rgw_zonemaster and rgw_zonesecondary are both true
+  fail:
+    msg: "rgw_zonemaster and rgw_zonesecondary cannot both be true"
+  when:
+    - rgw_zonemaster
+    - rgw_zonesecondary
+
+- name: fail if rgw_zonegroup is not set
+  fail:
+    msg: "rgw_zonegroup has not been set by the user"
+  when: rgw_zonegroup is undefined
+
+- name: fail if rgw_zone_user is not set
+  fail:
+    msg: "rgw_zone_user has not been set by the user"
+  when: rgw_zone_user is undefined
+
+- name: fail if rgw_realm is not set
+  fail:
+    msg: "rgw_realm has not been set by the user"
+  when: rgw_realm is undefined
+
+- name: fail if system_access_key is not set
+  fail:
+    msg: "system_access_key has not been set by the user"
+  when: system_access_key is undefined
+
+- name: fail if system_secret_key is not set
+  fail:
+    msg: "system_secret_key has not been set by the user"
+  when: system_secret_key is undefined
+
+- name: fail if rgw_pull_port is not set
+  fail:
+    msg: "rgw_pull_port has not been set by the user"
+  when:
+    - rgw_zonesecondary
+    - rgw_pull_port is undefined
+
+- name: fail if rgw_pull_proto is not set
+  fail:
+    msg: "rgw_pull_proto has not been set by the user"
+  when:
+    - rgw_zonesecondary
+    - rgw_pull_proto is undefined
+
+- name: fail if rgw_pullhost is not set
+  fail:
+    msg: "rgw_pullhost has not been set by the user"
+  when:
+    - rgw_zonesecondary
+    - rgw_pullhost is undefined

@@ -127,6 +127,34 @@ def run_ceph_facts(module):
         for (k,v) in rados_df_ds.items():
             setup_options["rados_df_%s" % k] = v
 
+    setup_options['rbd_images'] = {}
+    for pool in setup_options.get('osd_status_pools', []):
+        if 'rbd' in pool['application_metadata']:
+            pool_name = pool['pool_name']
+            setup_options['rbd_images'][pool_name] = {}
+            cmd = ["/usr/bin/env", "rbd", "list", pool_name, "--format=json"]
+            rc, out, err = module.run_command(cmd, check_rc=True)
+            try:
+                images = json.loads(out)
+            except json.JsonDecodeError:
+                continue
+            for image in images:
+                setup_options['rbd_images'][pool_name][image] = {}
+
+                cmd = ["/usr/bin/env", "rbd", "status", pool_name+'/'+image, "--format=json"]
+                rc, out, err = module.run_command(cmd, check_rc=True)
+                try:
+                    setup_options['rbd_images'][pool_name][image]['status'] = json.loads(out)
+                except json.JsonDecodeError:
+                    continue
+
+                cmd = ["/usr/bin/env", "rbd", "info", pool_name+'/'+image, "--format=json"]
+                rc, out, err = module.run_command(cmd, check_rc=True)
+                try:
+                    setup_options['rbd_images'][pool_name][image]['info'] = json.loads(out)
+                except json.JsonDecodeError:
+                    continue
+
     # business as usual
     for (k, v) in facts.items():                                                
         setup_options["ansible_%s" % k.replace('-', '_')] = v

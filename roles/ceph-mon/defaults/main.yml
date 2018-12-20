@@ -9,6 +9,7 @@ mon_group_name: mons
 # ACTIVATE BOTH FSID AND MONITOR_SECRET VARIABLES FOR NON-VAGRANT DEPLOYMENT
 monitor_secret: "{{ monitor_keyring.stdout }}"
 admin_secret: 'admin_secret'
+mgr_secret: 'mgr_secret'
 
 # Secure your cluster
 # This will set the following flags on all the pools:
@@ -22,24 +23,6 @@ secure_cluster_flags:
   - nodelete
   - nosizechange
 
-# Enable the Calamari-backed REST API on a Monitor
-calamari: false
-
-# Enable debugging for Calamari
-calamari_debug: false
-
-
-##########
-# CEPHFS #
-##########
-cephfs: cephfs # name of the ceph filesystem
-cephfs_data: cephfs_data # name of the data pool for a given filesystem
-cephfs_metadata: cephfs_metadata # name of the metadata pool for a given filesystem
-
-cephfs_pools:
-  - { name: "{{ cephfs_data }}", pgs: "" }
-  - { name: "{{ cephfs_metadata }}", pgs: "" }
-
 
 ###############
 # CRUSH RULES #
@@ -49,8 +32,8 @@ crush_rule_config: false
 crush_rule_hdd:
   name: HDD
   root: HDD
-  type: rack
-  default: true
+  type: host
+  default: false
 
 crush_rule_ssd:
   name: SSD
@@ -62,56 +45,16 @@ crush_rules:
   - "{{ crush_rule_hdd }}"
   - "{{ crush_rule_ssd }}"
 
-# Caution: this will create crush roots and racks according to {{ osd_crush_location }}
+# Caution: this will create crush roots and racks according to hostvars {{ osd_crush_location }}
 # and will move hosts into them which might lead to significant data movement in the cluster!
-create_crush_tree: false
-
-#############
-# OPENSTACK #
-#############
-openstack_config: false
-openstack_glance_pool:
-  name: images
-  pg_num: "{{ osd_pool_default_pg_num }}"
-  rule_name: ""
-openstack_cinder_pool:
-  name: volumes
-  pg_num: "{{ osd_pool_default_pg_num }}"
-  rule_name: ""
-openstack_nova_pool:
-  name: vms
-  pg_num: "{{ osd_pool_default_pg_num }}"
-  rule_name: ""
-openstack_cinder_backup_pool:
-  name: backups
-  pg_num: "{{ osd_pool_default_pg_num }}"
-  rule_name: ""
-openstack_gnocchi_pool:
-  name: metrics
-  pg_num: "{{ osd_pool_default_pg_num }}"
-  rule_name: ""
-
-openstack_pools:
-  - "{{ openstack_glance_pool }}"
-  - "{{ openstack_cinder_pool }}"
-  - "{{ openstack_nova_pool }}"
-  - "{{ openstack_cinder_backup_pool }}"
-  - "{{ openstack_gnocchi_pool }}"
-
-
-# The value for 'key' can be a pre-generated key,
-# e.g key: "AQDC2UxZH4yeLhAAgTaZb+4wDUlYOsr1OfZSpQ=="
-# By default, keys will be auto-generated.
 #
-# To have have ansible setfacl the generated key, set the acls var like so:
-# acls: ["u:nova:r--", "u:cinder:r--", "u:glance:r--", "u:gnocchi:r--"]
-openstack_keys:
-  - { name: client.glance, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_glance_pool.name }}", mode: "0600", acls: [] }
-  - { name: client.cinder, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_pool.name }}, allow rwx pool={{ openstack_nova_pool.name }}, allow rx pool={{ openstack_glance_pool.name }}", mode: "0600", acls: []  }
-  - { name: client.cinder-backup, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_cinder_backup_pool.name }}", mode: "0600", acls: [] }
-  - { name: client.gnocchi, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_gnocchi_pool.name }}", mode: "0600", acls: [] }
-  - { name: client.openstack, key: "$(ceph-authtool --gen-print-key)", mon_cap: "allow r", osd_cap: "allow class-read object_prefix rbd_children, allow rwx pool={{ openstack_glance_pool.name }}, allow rwx pool={{ openstack_nova_pool.name }}, allow rwx pool={{ openstack_cinder_pool.name }}, allow rwx pool={{ openstack_cinder_backup_pool.name }}", mode: "0600", acls: [] }
-
+# In order for the playbook to create CRUSH hierarchy, you have to setup your Ansible inventory file like so:
+#
+# [osds]
+# ceph-osd-01 osd_crush_location="{ 'root': 'mon-roottt', 'rack': 'mon-rackkkk', 'pod': 'monpod', 'host': 'ceph-osd-01' }"
+#
+# Note that 'host' is mandatory and that you need to submit at least two bucket type (including the host)
+create_crush_tree: false
 
 ##########
 # DOCKER #
@@ -121,7 +64,7 @@ openstack_keys:
 # For the whole list of limits you can apply see: docs.docker.com/engine/admin/resource_constraints
 # Default values are based from: https://access.redhat.com/documentation/en-us/red_hat_ceph_storage/2/html/red_hat_ceph_storage_hardware_guide/minimum_recommendations
 # These options can be passed using the 'ceph_mon_docker_extra_env' variable.
-ceph_mon_docker_memory_limit: 1g
+ceph_mon_docker_memory_limit: "{{ ansible_memtotal_mb }}m"
 ceph_mon_docker_cpu_limit: 1
 
 # Use this variable to add extra env configuration to run your mon container.

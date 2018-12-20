@@ -34,7 +34,7 @@
 - name: copy red hat storage iso content for redhat systems
   shell: cp -r {{ ceph_rhcs_mount_path }}/* {{ ceph_rhcs_repository_path }}
   args:
-    creates: "{{ ceph_rhcs_repository_path }}/README"
+    creates: "{{ ceph_rhcs_repository_path+'/README' if not rolling_update else 'dummy' }}"
 
 - name: unmount red hat storage iso file for redhat systems
   mount:
@@ -47,6 +47,8 @@
   rpm_key:
     key: "{{ ceph_rhcs_repository_path }}/RPM-GPG-KEY-redhat-release"
     state: present
+  register: result
+  until: result is succeeded
 
 - name: add red hat storage repository for redhat systems
   template:

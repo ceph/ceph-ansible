@@ -68,16 +68,7 @@
       state: stopped
       enabled: no
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
 
-  - name: stop ceph mdss
-    shell: "service ceph status mds ; if [ $? == 0 ] ; then service ceph stop mds ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph mdss on ubuntu
-    command: initctl stop ceph-mds cluster={{ cluster }} id={{ ansible_hostname }}
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
 - name: purge ceph mgr cluster
 
@@ -101,6 +92,7 @@
     failed_when: false
     when: ansible_service_mgr == 'systemd'
 
+
 - name: purge ceph rgw cluster
 
   vars:
@@ -121,16 +113,6 @@
       state: stopped
       enabled: no
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
-
-  - name: stop ceph rgws
-    shell: "service ceph-radosgw status ; if [ $? == 0 ] ; then service ceph-radosgw stop ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph rgws on ubuntu
-    command: initctl stop radosgw cluster={{ cluster }} id={{ ansible_hostname }}
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph rbd-mirror cluster
@@ -152,12 +134,6 @@
       name: ceph-rbd-mirror@admin.service
       state: stopped
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
-
-  - name: stop ceph rbd mirror on ubuntu
-    command: initctl stop ceph-rbd-mirror cluster={{ cluster }} id=admin
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph nfs cluster
@@ -180,15 +156,6 @@
       state: stopped
     failed_when: false
     when: ansible_service_mgr == 'systemd'
-
-  - name: stop ceph nfss
-    shell: "service nfs-ganesha status ; if [ $? == 0 ] ; then service nfs-ganesha stop ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph nfss on ubuntu
-    command: initctl stop nfs-ganesha
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph osd cluster
@@ -222,9 +189,7 @@
       timeout: 500
 
   - name: remove data
-    file:
-     path: /var/lib/ceph
-     state: absent
+    shell: rm -rf /var/lib/ceph/*
 
   tasks:
 
@@ -246,20 +211,6 @@
     with_items: "{{ osd_ids.stdout_lines }}"
     when: ansible_service_mgr == 'systemd'
 
-  # before infernalis release, using sysvinit scripts
-  # we use this test so we do not have to know which RPM contains the boot script
-  # or where it is placed.
-
-  - name: stop ceph osds
-    shell: "service ceph status osd ; if [ $? == 0 ] ; then service ceph stop osd ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph osds on ubuntu
-    command: initctl stop ceph-osd cluster={{ cluster }} id={{ item }}
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
-    with_items: "{{ osd_ids.stdout_lines }}"
-
   - name: remove ceph udev rules
     file:
       path: "{{ item }}"
@@ -275,7 +226,7 @@
     register: encrypted_ceph_partuuid
 
   - name: get osd data and lockbox mount points
-    shell: "(grep /var/lib/ceph /proc/mounts || echo -n) | awk '{ print $2 }'"
+    shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
     register: mounted_osd
     changed_when: false
 
@@ -311,10 +262,34 @@
     failed_when: false
     register: ceph_disk_present
 
+  - name: wipe table on dm-crypt devices
+    command: dmsetup wipe_table --force "{{ item }}"
+    with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
+    when: encrypted_ceph_partuuid.stdout_lines | length > 0
+
   - name: delete dm-crypt devices if any
     command: dmsetup remove --retry --force {{ item }}
     with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
-    when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
+    when: encrypted_ceph_partuuid.stdout_lines | length > 0
+
+  - name: get payload_offset
+    shell: cryptsetup luksDump /dev/disk/by-partuuid/{{ item }} | awk '/Payload offset:/ { print $3 }'
+    register: payload_offset
+    with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
+    when: encrypted_ceph_partuuid.stdout_lines | length > 0
+
+  - name: get physical sector size
+    command: blockdev --getpbsz /dev/disk/by-partuuid/{{ item }}
+    with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
+    when: encrypted_ceph_partuuid.stdout_lines | length > 0
+    register: phys_sector_size
+
+  - name: wipe dmcrypt device
+    command: dd if=/dev/zero of=/dev/disk/by-partuuid/{{ item.0 }} bs={{ item.1.stdout }} count={{ item.2.stdout }} oflag=direct
+    with_together:
+      - "{{ encrypted_ceph_partuuid.stdout_lines }}"
+      - "{{ payload_offset.results }}"
+      - "{{ phys_sector_size.results }}"
 
   - name: get ceph data partitions
     shell: |
@@ -328,23 +303,39 @@
     failed_when: false
     register: ceph_lockbox_partition_to_erase_path
 
-  # this should go away once 'ceph-volume lvm zap' is available
-  - name: remove osd logical volumes
-    command: "lvremove -f {{ item.data_vg }}/{{ item.data }}"
-    with_items: "{{ lvm_volumes }}"
-    when:
-      - osd_scenario == "lvm"
-
-  # this should go away once 'ceph-volume lvm zap' is available
-  - name: remove osd lvm journals
-    command: "lvremove -f {{ item.journal_vg }}/{{ item.journal }}"
-    with_items: "{{ lvm_volumes }}"
-    # journals might be logical volumes, but they could also be
-    # devices so fail silently if this doesn't work
+  - name: see if ceph-volume is installed
+    command: "command -v ceph-volume"
     failed_when: false
+    register: ceph_volume_present
+
+  - name: zap and destroy osds created by ceph-volume with lvm_volumes
+    ceph_volume:
+      data: "{{ item.data }}"
+      data_vg: "{{ item.data_vg|default(omit) }}"
+      journal: "{{ item.journal|default(omit) }}"
+      journal_vg: "{{ item.journal_vg|default(omit) }}"
+      db: "{{ item.db|default(omit) }}"
+      db_vg: "{{ item.db_vg|default(omit) }}"
+      wal: "{{ item.wal|default(omit) }}"
+      wal_vg: "{{ item.wal_vg|default(omit) }}"
+      action: "zap"
+    environment:
+      CEPH_VOLUME_DEBUG: 1
+    with_items: "{{ lvm_volumes }}"
     when:
       - osd_scenario == "lvm"
-      - item.journal_vg is defined
+      - ceph_volume_present.rc == 0
+
+  - name: zap and destroy osds created by ceph-volume with devices
+    ceph_volume:
+      data: "{{ item }}"
+      action: "zap"
+    environment:
+      CEPH_VOLUME_DEBUG: 1
+    with_items: "{{ devices | default([]) }}"
+    when:
+      - osd_scenario == "lvm"
+      - ceph_volume_present.rc == 0
 
   - name: get ceph block partitions
     shell: |
@@ -380,7 +371,7 @@
                                  ceph_wal_partition_to_erase_path.stdout_lines }}"
 
   - name: resolve parent device
-    shell: echo /dev/$(lsblk -no pkname "{{ item }}")
+    command: lsblk --nodeps -no pkname "{{ item }}"
     register: tmp_resolved_parent_device
     with_items:
       - "{{ combined_devices_list }}"
@@ -389,17 +380,25 @@
     set_fact:
       resolved_parent_device: "{{ tmp_resolved_parent_device.results | map(attribute='stdout') | list | unique }}"
 
+  - name: wipe partitions
+    shell: |
+      wipefs --all "{{ item }}"
+      dd if=/dev/zero of="{{ item }}" bs=1 count=4096
+    with_items: "{{ combined_devices_list }}"
+
   - name: zap ceph journal/block db/block wal partitions
     shell: |
       # if the disk passed is a raw device AND the boot system disk
-      if parted -s "{{ item }}" print | grep -sq boot; then
-        echo "Looks like {{ item }} has a boot partition,"
+      if parted -s /dev/"{{ item }}" print | grep -sq boot; then
+        echo "Looks like /dev/{{ item }} has a boot partition,"
         echo "if you want to delete specific partitions point to the partition instead of the raw device"
         echo "Do not use your system disk!"
         exit 1
       fi
-      sgdisk -Z "{{ item }}"
-      dd if=/dev/zero of="{{ item }}" bs=1M count=200
+      sgdisk -Z --clear --mbrtogpt -g -- /dev/"{{ item }}"
+      dd if=/dev/zero of=/dev/"{{ item }}" bs=1M count=200
+      parted -s /dev/"{{ item }}" mklabel gpt
+      partprobe /dev/"{{ item }}"
       udevadm settle --timeout=600
     with_items:
       - "{{ resolved_parent_device }}"
@@ -408,7 +407,6 @@
 
   vars:
     mon_group_name:       mons
-    restapi_group_name:   restapis
 
   hosts:
     - "{{ mon_group_name|default('mons') }}"
@@ -421,20 +419,14 @@
 
   - name: stop ceph mons with systemd
     service:
-      name: ceph-mon@{{ ansible_hostname }}
+      name: "ceph-{{ item }}@{{ ansible_hostname }}"
       state: stopped
       enabled: no
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
+    with_items:
+      - mon
+      - mgr
 
-  - name: stop ceph mons
-    shell: "service ceph status mon ; if [ $? == 0 ] ; then service ceph stop mon ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph mons on ubuntu
-    command: initctl stop ceph-mon cluster={{ cluster }} id={{ ansible_hostname }}
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
   - name: remove monitor store and bootstrap keys
     file:
@@ -494,7 +486,7 @@
 
   handlers:
   - name: get osd data and lockbox mount points
-    shell: "(grep /var/lib/ceph /proc/mounts || echo -n) | awk '{ print $2 }'"
+    shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
     register: mounted_osd
     changed_when: false
     listen: "remove data"
@@ -505,57 +497,50 @@
     listen: "remove data"
 
   - name: remove data
-    file:
-     path: /var/lib/ceph
-     state: absent
+    shell: rm -rf /var/lib/ceph/*
     listen: "remove data"
 
   tasks:
 
   - name: purge ceph packages with yum
     yum:
-      name: "{{ item }}"
+      name: "{{ ceph_packages }}"
       state: absent
-    with_items: "{{ ceph_packages }}"
     when: ansible_pkg_mgr == 'yum'
 
   - name: purge ceph packages with dnf
     dnf:
-      name: "{{ item }}"
+      name: "{{ ceph_packages }}"
       state: absent
-    with_items: "{{ ceph_packages }}"
     when: ansible_pkg_mgr == 'dnf'
 
   - name: purge ceph packages with apt
     apt:
-      name: "{{ item }}"
+      name: "{{ ceph_packages }}"
       state: absent
-    with_items: "{{ ceph_packages }}"
+      purge: true
     when: ansible_pkg_mgr == 'apt'
 
   - name: purge remaining ceph packages with yum
     yum:
-      name: "{{ item }}"
+      name: "{{ ceph_remaining_packages }}"
       state: absent
-    with_items: "{{ ceph_remaining_packages }}"
     when:
       - ansible_pkg_mgr == 'yum'
       - purge_all_packages == true
 
   - name: purge remaining ceph packages with dnf
     dnf:
-      name: "{{ item }}"
+      name: "{{ ceph_remaining_packages }}"
       state: absent
-    with_items: "{{ ceph_remaining_packages }}"
     when:
       - ansible_pkg_mgr == 'dnf'
       - purge_all_packages == true
 
   - name: purge remaining ceph packages with apt
     apt:
-      name: "{{ item }}"
+      name: "{{ ceph_remaining_packages }}"
       state: absent
-    with_items: "{{ ceph_remaining_packages }}"
     when:
       - ansible_pkg_mgr == 'apt'
       - purge_all_packages == true
@@ -606,6 +591,8 @@
     find:
       paths: "/etc/systemd/system"
       pattern: "ceph*"
+      recurse: true
+      file_type: any
     register: systemd_files
 
   - name: remove ceph systemd unit files

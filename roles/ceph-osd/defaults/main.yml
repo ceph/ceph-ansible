@@ -1,14 +1,4 @@
 ---
-# You can override default vars defined in defaults/main.yml here,
-# but I would advice to use host or group vars instead
-
-raw_journal_devices: [] # backward compatibility with stable-2.2, will disappear in stable 3.1
-journal_collocation: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-raw_multi_journal: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-dmcrypt_journal_collocation: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-dmcrypt_dedicated_journal: False # backward compatibility with stable-2.2, will disappear in stable 3.1
-
-
 ###########
 # GENERAL #
 ###########
@@ -18,36 +8,6 @@ dmcrypt_dedicated_journal: False # backward compatibility with stable-2.2, will 
 # distributed on OSD nodes. Setting 'copy_admin_key' to 'true'
 # will copy the admin key to the /etc/ceph/ directory
 copy_admin_key: false
-
-
-####################
-# OSD CRUSH LOCATION
-####################
-
-# /!\
-#
-# BE EXTREMELY CAREFUL WITH THIS OPTION
-# DO NOT USE IT UNLESS YOU KNOW WHAT YOU ARE DOING
-#
-# /!\
-#
-# It is probably best to keep this option to 'false' as the default
-# suggests it. This option should only be used while doing some complex
-# CRUSH map. It allows you to force a specific location for a set of OSDs.
-#
-# The following options will build a ceph.conf with OSD sections
-# Example:
-# [osd.X]
-# osd crush location = "root=location"
-#
-# This works with your inventory file
-# To match the following 'osd_crush_location' option the inventory must look like:
-#
-# [osds]
-# osd0 ceph_crush_root=foo ceph_crush_rack=bar
-
-crush_location: false
-osd_crush_location: "\"root={{ ceph_crush_root }} rack={{ ceph_crush_rack }} host={{ ansible_hostname }}\""
 
 
 ##############
@@ -63,6 +23,7 @@ osd_crush_location: "\"root={{ ceph_crush_root }} rack={{ ceph_crush_rack }} hos
 
 # Declare devices to be used as OSDs
 # All scenario(except 3rd) inherit from the following device declaration
+# Note: This scenario uses the ceph-disk tool to provision OSDs
 
 #devices:
 #  - /dev/sdb
@@ -74,7 +35,6 @@ devices: []
 
 
 #'osd_auto_discovery'  mode prevents you from filling out the 'devices' variable above.
-#  You can use this option with First and Forth and Fifth OSDS scenario.
 # Device discovery is based on the Ansible fact 'ansible_devices'
 # which reports all the devices on a system. If chosen all the disks
 # found will be passed to ceph-disk. You should not be worried on using
@@ -85,7 +45,7 @@ osd_auto_discovery: false
 
 # Encrypt your OSD device using dmcrypt
 # If set to True, no matter which osd_objecstore and osd_scenario you use the data will be encrypted
-dmcrypt: "{{ True if dmcrypt_journal_collocation or dmcrypt_dedicated_journal else False }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
+dmcrypt: False
 
 
 # I. First scenario: collocated
@@ -107,8 +67,9 @@ dmcrypt: "{{ True if dmcrypt_journal_collocation or dmcrypt_dedicated_journal el
 # /dev/sda1: UUID="9c43e346-dd6e-431f-92d8-cbed4ccb25f6" TYPE="xfs" PARTLABEL="ceph data" PARTUUID="749c71c9-ed8f-4930-82a7-a48a3bcdb1c7"
 # /dev/sda2: PARTLABEL="ceph block" PARTUUID="e6ca3e1d-4702-4569-abfa-e285de328e9d"
 #
+# Note: This scenario uses the ceph-disk tool to provision OSDs
 
-osd_scenario: "{{ 'collocated' if journal_collocation or dmcrypt_journal_collocation else 'non-collocated' if raw_multi_journal or dmcrypt_dedicated_journal else 'dummy' }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
+osd_scenario: dummy
 valid_osd_scenarios:
   - collocated
   - non-collocated
@@ -154,8 +115,9 @@ valid_osd_scenarios:
 # - The devices listed in 'devices' will get 2 partitions, one for 'block' and one for 'data'.
 # 'data' is only 100MB big and do not store any of your data, it's just a bunch of Ceph metadata.
 # 'block' will store all your actual data.
-# - The devices in 'dedicated_devices' will get 1 partition for RocksDB DB, called 'block.db'
-#  and one for RocksDB WAL, called 'block.wal'
+# - The devices in 'dedicated_devices' will get one partition for RocksDB DB, called 'block.db'
+#  and one for RocksDB WAL, called 'block.wal'. To use a single partition for RocksDB and WAL together
+#  set bluestore_wal_devices to [].
 #
 # By default dedicated_devices will represent block.db
 #
@@ -167,7 +129,9 @@ valid_osd_scenarios:
 # /dev/sdb: PTTYPE="gpt"
 # /dev/sdb1: PARTLABEL="ceph block.db" PARTUUID="af5b2d74-4c08-42cf-be57-7248c739e217"
 # /dev/sdb2: PARTLABEL="ceph block.wal" PARTUUID="af3f8327-9aa9-4c2b-a497-cf0fe96d126a"
-dedicated_devices: "{{ raw_journal_devices if raw_multi_journal or dmcrypt_dedicated_journal else [] }}" # backward compatibility with stable-2.2, will disappear in stable 3.1
+#
+# Note: This scenario uses the ceph-disk tool to provision OSDs
+dedicated_devices: []
 
 
 # More device granularity for Bluestore
@@ -176,6 +140,8 @@ dedicated_devices: "{{ raw_journal_devices if raw_multi_journal or dmcrypt_dedic
 #
 # By default, if 'bluestore_wal_devices' is empty, it will get the content of 'dedicated_devices'.
 # If set, then you will have a dedicated partition on a specific device for block.wal.
+#
+# Set bluestore_wal_devices: [] to use the same partition for RocksDB and WAL.
 #
 # Example of what you will get:
 # [root@ceph-osd0 ~]# blkid /dev/sd*
@@ -186,6 +152,7 @@ dedicated_devices: "{{ raw_journal_devices if raw_multi_journal or dmcrypt_dedic
 # /dev/sdb1: PARTLABEL="ceph block.db" PARTUUID="0734f6b6-cc94-49e9-93de-ba7e1d5b79e3"
 # /dev/sdc: PTTYPE="gpt"
 # /dev/sdc1: PARTLABEL="ceph block.wal" PARTUUID="824b84ba-6777-4272-bbbd-bfe2a25cecf3"
+# Note: This option uses the ceph-disk tool
 bluestore_wal_devices: "{{ dedicated_devices }}"
 
 # III. Use ceph-volume to create OSDs from logical volumes.
@@ -242,6 +209,8 @@ bluestore_wal_devices: "{{ dedicated_devices }}"
 #   - data: /dev/sdb1
 
 lvm_volumes: []
+crush_device_class: ""
+osds_per_device: 1
 
 
 ##########
@@ -254,7 +223,7 @@ ceph_config_keys: [] # DON'T TOUCH ME
 # For the whole list of limits you can apply see: docs.docker.com/engine/admin/resource_constraints
 # Default values are based from: https://access.redhat.com/documentation/en-us/red_hat_ceph_storage/2/html/red_hat_ceph_storage_hardware_guide/minimum_recommendations
 # These options can be passed using the 'ceph_osd_docker_extra_env' variable.
-ceph_osd_docker_memory_limit: 3g
+ceph_osd_docker_memory_limit: "{{ ansible_memtotal_mb }}m"
 ceph_osd_docker_cpu_limit: 1
 
 # The next two variables are undefined, and thus, unused by default.
