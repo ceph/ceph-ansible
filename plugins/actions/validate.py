@@ -134,7 +134,7 @@ def ceph_origin_choices(value):
 
 
 def ceph_repository_choices(value):
-    assert value in ['community', 'rhcs', 'dev'], "ceph_repository must be either 'community', 'rhcs' or 'dev'"
+    assert value in ['community', 'rhcs', 'dev', 'custom'], "ceph_repository must be either 'community', 'rhcs', 'dev', or 'custom'"
 
 
 def ceph_repository_type_choices(value):
