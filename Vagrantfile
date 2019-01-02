@@ -83,11 +83,9 @@ ansible_provision = proc do |ansible|
   else
     ansible.extra_vars = ansible.extra_vars.merge({
       devices: settings['disks'],
-      osd_scenario: 'collocated',
       monitor_interface: ETH,
       radosgw_interface: ETH,
       os_tuning_params: settings['os_tuning_params'],
-      pool_default_size: '2',
     })
   end
 
