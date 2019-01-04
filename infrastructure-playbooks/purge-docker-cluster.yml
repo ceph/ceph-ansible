@@ -332,6 +332,11 @@
     register: remove_osd_mountpoints
     ignore_errors: true
 
+  - name: default lvm_volumes if not defined
+    set_fact:
+      lvm_volumes: []
+    when: lvm_volumes is not defined
+
   - name: zap and destroy osds created by ceph-volume with lvm_volumes
     ceph_volume:
       data: "{{ item.data }}"
