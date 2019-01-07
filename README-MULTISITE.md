@@ -24,7 +24,7 @@ This will setup the realm, zonegroup and master zone and make them the defaults.
 echo system_access_key: $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1) > multi-site-keys.txt
 echo system_secret_key: $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 40 | head -n 1) >> multi-site-keys.txt
 ```
-2. Edit the RGW Group Vars
+2. Edit the all.yml in group_vars
 
 ```
 copy_admin_key: true
@@ -41,14 +41,15 @@ system_access_key: 6kWkikvapSnHyE22P7nO
 system_secret_key: MGecsMrWtKZgngOHZdrd6d3JxGO5CPWgT2lcnpSt
 ```
 
-**Note:** replace the system_access_key and system_secret_key values with the ones you generated
 **Note:** rgw_zonemaster should have the value of true and rgw_zonesecondary should be false
+**Note:** replace the system_access_key and system_secret_key values with the ones you generated
+**Note:** `ansible_fqdn` domain name assigned to rgw_multisite_endpoint_addr must be resolvable from the secondary Ceph cluster's mon and rgw node(s)
 
 3. Run the ceph-ansible playbook on your 1st cluster
 
 ## Configuring the Secondary Zone in a Separate Cluster
 
-4. Edit the RGW Group Vars
+4. Edit the all.yml in group_vars
 
 ```
 copy_admin_key: true
@@ -68,10 +69,10 @@ rgw_pull_port: 8080
 rgw_pullhost: cluster0-rgw0
 ```
 
+**Note:** rgw_zonemaster should have the value of false and rgw_zonesecondary should be true
 **Note:** pullhost should be the rgw_multisite_endpoint_addr of the RGW that is configured as the Zone Master
 **Note:** rgw_zone_user, system_access_key, and system_secret_key should match what you used in the master cluster
-**Note:** rgw_zonemaster should have the value of false and rgw_zonesecondary should be true
-
+**Note:** `ansible_fqdn` domain name assigned to rgw_multisite_endpoint_addr must be resolvable from the master Ceph cluster's mon and rgw node(s)
 
 5. Run the ceph-ansible playbook on your 2nd cluster
 

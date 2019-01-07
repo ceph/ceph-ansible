@@ -36,12 +36,6 @@
            invoking the playbook"
       when: ireallymeanit != 'yes'
 
-    - name: fail if no mgr host is present in the inventory
-      fail:
-        msg: "Please add a mgr host to your inventory."
-      when:
-        - groups.get(mgr_group_name, []) | length == 0
-
 
 - name: gather facts and check the init system
 
@@ -91,15 +85,11 @@
     - name: set mon_host_count
       set_fact: mon_host_count={{ groups[mon_group_name] | length }}
 
-    - debug: msg="WARNING - upgrading a ceph cluster with only one monitor node ({{ inventory_hostname }})"
-      when: mon_host_count | int == 1
-
-    - name: fail when single containerized monitor
+    - name: fail when less than three monitors
       fail:
-        msg: "Upgrades of a single monitor are not supported, also running 1 monitor is not recommended always use 3."
+        msg: "Upgrade of cluster with less than three monitors is not supported."
       when:
-        - containerized_deployment
-        - mon_host_count | int == 1
+        - mon_host_count | int < 3
 
     - name: stop ceph mon - shortname
       systemd:
@@ -119,32 +109,49 @@
       when:
         - not containerized_deployment
 
+    - name: stop ceph mgr
+      systemd:
+        name: ceph-mgr@{{ ansible_hostname }}
+        state: stopped
+        enabled: yes
+      ignore_errors: True # if no mgr collocated with mons
+      when:
+        - not containerized_deployment
+
     - import_role:
         name: ceph-defaults
-        private: false
+    - import_role:
+        name: ceph-facts
     - import_role:
         name: ceph-handler
-        private: false
     - import_role:
         name: ceph-common
-        private: false
       when: not containerized_deployment
     - import_role:
         name: ceph-container-common
-        private: false
       when: containerized_deployment
     - import_role:
         name: ceph-config
-        private: false
     - import_role:
         name: ceph-mon
-        private: false
+    - import_role:
+        name: ceph-mgr
+      when: groups.get(mgr_group_name, []) | length == 0
 
     - name: start ceph mon
       systemd:
         name: ceph-mon@{{ monitor_name }}
         state: started
         enabled: yes
+      when:
+        - not containerized_deployment
+
+    - name: start ceph mgr
+      systemd:
+        name: ceph-mgr@{{ ansible_hostname }}
+        state: started
+        enabled: yes
+      ignore_errors: True # if no mgr collocated with mons
       when:
         - not containerized_deployment
 
@@ -157,19 +164,29 @@
       when:
         - containerized_deployment
 
+    - name: restart containerized ceph mgr
+      systemd:
+        name: ceph-mgr@{{ monitor_name }}
+        state: restarted
+        enabled: yes
+        daemon_reload: yes
+      ignore_errors: True # if no mgr collocated with mons
+      when:
+        - containerized_deployment
+
     - name: set mon_host_count
       set_fact: mon_host_count={{ groups[mon_group_name] | length }}
 
-    - name: select a running monitor if multiple monitors
+    - name: select a running monitor
       set_fact:
-        mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last if mon_host_count > 1 else groups[mon_group_name] | last }}"
+        mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last }}"
 
     - name: non container | waiting for the monitor to join the quorum...
       command: ceph --cluster "{{ cluster }}" -s --format json
       register: ceph_health_raw
       until: >
-        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"] or
-        hostvars[mon_host]['ansible_fqdn'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
+        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | default('{}') |  from_json)["quorum_names"] or
+        hostvars[mon_host]['ansible_fqdn'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"]
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
@@ -181,8 +198,8 @@
         {{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
       register: ceph_health_raw
       until: >
-        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"] or
-        hostvars[mon_host]['ansible_fqdn'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
+        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"] or
+        hostvars[mon_host]['ansible_fqdn'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"]
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
@@ -197,14 +214,14 @@
         caps:
           mon: "allow profile {{ item.0 }}"
         cluster: "{{ cluster }}"
-        containerized: "{{ 'docker exec ceph-mon-' + hostvars[mon_host]['ansible_hostname'] if containerized_deployment else None }}"
+        containerized: "{{ 'docker exec ceph-mon-' + hostvars[item.1]['ansible_hostname'] if containerized_deployment else None }}"
       when:
         - cephx
-      delegate_to: "{{ mon_host }}"
+      delegate_to: "{{ item.1 }}"
       ignore_errors: True # this might fail for upgrade from J to L on rbd-mirror and also on partially updated clusters
       with_nested:
         - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
-        - "{{ groups[mon_group_name] }}" # so the key goes on all the nodes
+        - "{{ groups[mon_group_name] | difference([mon_host]) }}" # so the key goes on all the nodes
 
     - name: set osd flags
       command: ceph --cluster {{ cluster }} osd set {{ item }}
@@ -235,7 +252,8 @@
   tasks:
     - import_role:
         name: ceph-defaults
-        private: false
+    - import_role:
+        name: ceph-facts
 
     - name: non container - get current fsid
       command: "ceph --cluster {{ cluster }} fsid"
@@ -316,24 +334,20 @@
 
     - import_role:
         name: ceph-defaults
-        private: false
+    - import_role:
+        name: ceph-facts
     - import_role:
         name: ceph-handler
-        private: false
     - import_role:
         name: ceph-common
-        private: false
       when: not containerized_deployment
     - import_role:
         name: ceph-container-common
-        private: false
       when: containerized_deployment
     - import_role:
         name: ceph-config
-        private: false
     - import_role:
         name: ceph-mgr
-        private: false
 
     - name: start ceph mgr
       systemd:
@@ -387,24 +401,20 @@
 
     - import_role:
         name: ceph-defaults
-        private: false
+    - import_role:
+        name: ceph-facts
     - import_role:
         name: ceph-handler
-        private: false
     - import_role:
         name: ceph-common
-        private: false
       when: not containerized_deployment
     - import_role:
         name: ceph-container-common
-        private: false
       when: containerized_deployment
     - import_role:
         name: ceph-config
-        private: false
     - import_role:
         name: ceph-osd
-        private: false
 
     - name: get osd numbers
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
@@ -485,7 +495,8 @@
   tasks:
     - import_role:
         name: ceph-defaults
-        private: false
+    - import_role:
+        name: ceph-facts
 
     - name: set_fact docker_exec_cmd_osd
       set_fact:
@@ -537,24 +548,20 @@
 
     - import_role:
         name: ceph-defaults
-        private: false
+    - import_role:
+        name: ceph-facts
     - import_role:
         name: ceph-handler
-        private: false
     - import_role:
         name: ceph-common
-        private: false
       when: not containerized_deployment
     - import_role:
         name: ceph-container-common
-        private: false
       when: containerized_deployment
     - import_role:
         name: ceph-config
-        private: false
     - import_role:
         name: ceph-mds
-        private: false
 
     - name: start ceph mds
       systemd:
@@ -592,24 +599,20 @@
 
     - import_role:
         name: ceph-defaults
-        private: false
+    - import_role:
+        name: ceph-facts
     - import_role:
         name: ceph-handler
-        private: false
     - import_role:
         name: ceph-common
-        private: false
       when: not containerized_deployment
     - import_role:
         name: ceph-container-common
-        private: false
       when: containerized_deployment
     - import_role:
         name: ceph-config
-        private: false
     - import_role:
         name: ceph-rgw
-        private: false
 
     - name: start ceph rgw
       systemd:
@@ -655,24 +658,20 @@
 
     - import_role:
         name: ceph-defaults
-        private: false
+    - import_role:
+        name: ceph-facts
     - import_role:
         name: ceph-handler
-        private: false
     - import_role:
         name: ceph-common
-        private: false
       when: not containerized_deployment
     - import_role:
         name: ceph-container-common
-        private: false
       when: containerized_deployment
     - import_role:
         name: ceph-config
-        private: false
     - import_role:
         name: ceph-rbd-mirror
-        private: false
 
     - name: start ceph rbd mirror
       systemd:
@@ -714,24 +713,20 @@
 
     - import_role:
         name: ceph-defaults
-        private: false
+    - import_role:
+        name: ceph-facts
     - import_role:
         name: ceph-handler
-        private: false
     - import_role:
         name: ceph-common
-        private: false
       when: not containerized_deployment
     - import_role:
         name: ceph-container-common
-        private: false
       when: containerized_deployment
     - import_role:
         name: ceph-config
-        private: false
     - import_role:
         name: ceph-nfs
-        private: false
 
     - name: start nfs gateway
       systemd:
@@ -776,24 +771,20 @@
 
     - import_role:
         name: ceph-defaults
-        private: false
+    - import_role:
+        name: ceph-facts
     - import_role:
         name: ceph-handler
-        private: false
     - import_role:
         name: ceph-common
-        private: false
       when: not containerized_deployment
     - import_role:
         name: ceph-container-common
-        private: false
       when: containerized_deployment
     - import_role:
         name: ceph-config
-        private: false
     - import_role:
         name: ceph-iscsi-gw
-        private: false
 
     - name: start rbd-target-gw
       systemd:
@@ -809,29 +800,25 @@
     upgrade_ceph_packages: True
   hosts:
     - "{{ client_group_name|default('clients') }}"
-  serial: 1
+  serial: "{{ client_update_batch | default(ansible_forks) }}"
   become: True
   tasks:
     - import_role:
         name: ceph-defaults
-        private: false
+    - import_role:
+        name: ceph-facts
     - import_role:
         name: ceph-handler
-        private: false
     - import_role:
         name: ceph-common
-        private: false
       when: not containerized_deployment
     - import_role:
         name: ceph-container-common
-        private: false
       when: containerized_deployment
     - import_role:
         name: ceph-config
-        private: false
     - import_role:
         name: ceph-client
-        private: false
 
 
 - name: show ceph status
@@ -841,7 +828,6 @@
   tasks:
     - import_role:
         name: ceph-defaults
-        private: false
 
     - name: set_fact docker_exec_cmd_status
       set_fact:

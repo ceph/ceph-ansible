@@ -83,11 +83,13 @@ filestore xattr use omap = true
 {% set _num_osds = num_osds | default(0) | int %}
 [osd]
 {% if is_hci and _num_osds > 0 %}
-{% if ansible_memtotal_mb * 1048576 * hci_safety_factor / _num_osds > osd_memory_target %} # hci_safety_factor is the safety factor for HCI deployments
+{# hci_safety_factor is the safety factor for HCI deployments #}
+{% if ansible_memtotal_mb * 1048576 * hci_safety_factor / _num_osds > osd_memory_target %}
 {% set _osd_memory_target = (ansible_memtotal_mb * 1048576 * hci_safety_factor / _num_osds) | int %}
 {% endif %}
 {% elif _num_osds > 0 %}
-{% if ansible_memtotal_mb * 1048576 * non_hci_safety_factor / _num_osds > osd_memory_target %} # non_hci_safety_factor is the safety factor for dedicated nodes
+{# non_hci_safety_factor is the safety factor for dedicated nodes #}
+{% if ansible_memtotal_mb * 1048576 * non_hci_safety_factor / _num_osds > osd_memory_target %}
 {% set _osd_memory_target = (ansible_memtotal_mb * 1048576 * non_hci_safety_factor / _num_osds) | int %}
 {% endif %}
 {% endif %}

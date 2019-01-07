@@ -83,7 +83,7 @@ options:
         default: True
     dest:
         description:
-            - Destination to write the keyring
+            - Destination to write the keyring, can a file or a directory
         required: false
         default: /etc/ceph/
     fetch_initial_keys:
@@ -459,7 +459,7 @@ def exec_commands(module, cmd_list):
     return rc, cmd, out, err
 
 
-def lookup_ceph_initial_entities(out):
+def lookup_ceph_initial_entities(module, out):
     '''
     Lookup Ceph initial keys entries in the auth map
     '''
@@ -481,8 +481,13 @@ def lookup_ceph_initial_entities(out):
         fatal("'auth_dump' key not present in json output:", module)  # noqa E501
 
     if len(entities) != len(CEPH_INITIAL_KEYS):
-        return None
-
+        # must be missing in auth_dump, as if it were in CEPH_INITIAL_KEYS
+        # it'd be in entities from the above test. Report what's missing.
+        missing = []
+        for e in CEPH_INITIAL_KEYS:
+            if e not in entities:
+                missing.append(e)
+        fatal("initial keyring does not contain keys: " + ' '.join(missing), module)
     return entities
 
 
@@ -568,9 +573,13 @@ def run_module():
         if not caps:
             fatal("Capabilities must be provided when state is 'present'", module)  # noqa E501
 
-        # Build a different path for bootstrap keys as there are stored as
-        # /var/lib/ceph/bootstrap-rbd/ceph.keyring
-        if 'bootstrap' in dest:
+        # if dest is not a directory, the user wants to change the file's name
+        # (e,g: /etc/ceph/ceph.mgr.ceph-mon2.keyring)
+        if not os.path.isdir(dest):
+            file_path = dest
+        elif 'bootstrap' in dest:
+            # Build a different path for bootstrap keys as there are stored as
+            # /var/lib/ceph/bootstrap-rbd/ceph.keyring
             file_path = os.path.join(dest + "/" + cluster + ".keyring")
         else:
             file_path = os.path.join(dest + "/" + cluster +
@@ -645,17 +654,7 @@ def run_module():
             result['rc'] = 0
             module.exit_json(**result)
 
-        entities = lookup_ceph_initial_entities(out)
-        if entities is None:
-            fatal("Failed to find some of the initial entities", module)
-
-        # get ceph's group and user id
-        if container_image:
-            ceph_uid = os.getenv('CEPH_UID')
-            ceph_grp = os.getenv('CEPH_UID')
-        else:
-            ceph_uid = pwd.getpwnam('ceph').pw_uid
-            ceph_grp = grp.getgrnam('ceph').gr_gid
+        entities = lookup_ceph_initial_entities(module, out)
 
         output_format = "plain"
         for entity in entities:
@@ -679,18 +678,9 @@ def run_module():
             rc, cmd, out, err = exec_commands(
                 module, info_cmd)  # noqa E501
 
-            # apply ceph:ceph ownership and mode 0400 on keys
-            # FIXME by using
-            # file_args = module.load_file_common_arguments(module.params)
-            # file_args['path'] = dest
-            # module.set_fs_attributes_if_different(file_args, False)
-            try:
-                os.chown(key_path, ceph_uid, ceph_grp)
-                os.chmod(key_path, stat.S_IRUSR)
-            except OSError as e:
-                fatal("Failed to set owner/group/permissions of %s: %s" % (
-                    key_path, str(e)), module)
-
+            file_args = module.load_file_common_arguments(module.params)
+            file_args['path'] = key_path
+            module.set_fs_attributes_if_different(file_args, False)
     else:
         module.fail_json(
             msg='State must either be "present" or "absent" or "update" or "list" or "info" or "fetch_initial_keys".', changed=False, rc=1)  # noqa E501

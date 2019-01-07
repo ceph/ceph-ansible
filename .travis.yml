@@ -1,4 +1,3 @@
-sudo: required
 language: python
 python:
   - "3.6"
@@ -6,7 +5,8 @@ notifications:
   webhooks: https://galaxy.ansible.com/api/v1/notifications/
 install:
   - pip install -r requirements.txt
-  - pip install ansible-lint
+  - pip install ansible-lint pytest
   - git clone https://github.com/ansible/galaxy-lint-rules
 script:
+  - pytest -vvvv library/
   - for i in $(ls -1 roles/); do ansible-lint -x 204 -v -r galaxy-lint-rules/rules roles/$i/ ; done
