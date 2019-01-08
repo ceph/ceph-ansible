@@ -133,28 +133,6 @@
       - ((inventory_hostname in groups.get(mon_group_name, [])) or
         (groups.get(nfs_group_name, []) | length > 0) and inventory_hostname == groups.get(nfs_group_name, [])[0])
 
-  - name: generate cluster uuid
-    shell: python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
-    args:
-      creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-    delegate_to: localhost
-    register: cluster_uuid
-    become: false
-    when:
-      - generate_fsid
-
-  - name: read cluster uuid if it already exists
-    command: "cat {{ fetch_directory }}/ceph_cluster_uuid.conf"
-    args:
-      removes: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-    delegate_to: localhost
-    changed_when: false
-    register: cluster_uuid
-    check_mode: no
-    become: false
-    when:
-      - generate_fsid
-
   - name: "generate {{ cluster }}.conf configuration file"
     action: config_template
     args:
@@ -173,10 +151,5 @@
       - restart ceph mgrs
       - restart ceph rbdmirrors
 
-  - name: set fsid fact when generate_fsid = true
-    set_fact:
-      fsid: "{{ cluster_uuid.stdout }}"
-    when:
-      - generate_fsid
   when:
     - containerized_deployment|bool
