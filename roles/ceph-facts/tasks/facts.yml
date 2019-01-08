@@ -22,6 +22,11 @@
     container_binary: "{{ 'podman' if is_podman and ansible_distribution == 'Fedora' else 'docker' }}"
   when: containerized_deployment
 
+# Set ceph_release to ceph_stable by default
+- name: set_fact ceph_release ceph_stable_release
+  set_fact:
+    ceph_release: "{{ ceph_stable_release }}"
+
 - name: set_fact monitor_name ansible_hostname
   set_fact:
     monitor_name: "{{ ansible_hostname }}"
@@ -98,43 +103,21 @@
   when:
     - ceph_current_status.fsid is defined
 
-- name: generate cluster fsid
-  shell: python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
-  args:
-    creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-  register: cluster_uuid
-  delegate_to: localhost
-  become: false
+- block:
+  - name: generate cluster fsid
+    shell: python -c 'import uuid; print(str(uuid.uuid4()))'
+    register: cluster_uuid
+    delegate_to: localhost
+    become: false
+    run_once: true
+
+  - name: set_fact fsid
+    set_fact:
+      fsid: "{{ cluster_uuid.stdout }}"
+
   when:
     - generate_fsid
     - ceph_current_status.fsid is undefined
-
-- name: reuse cluster fsid when cluster is already running
-  shell: echo {{ fsid }} | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
-  args:
-    creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-  delegate_to: localhost
-  become: false
-  when:
-    - ceph_current_status.fsid is defined
-
-- name: read cluster fsid if it already exists
-  command: cat {{ fetch_directory }}/ceph_cluster_uuid.conf
-  args:
-    removes: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-  delegate_to: localhost
-  changed_when: false
-  register: cluster_uuid
-  become: false
-  check_mode: no
-  when:
-    - generate_fsid
-
-- name: set_fact fsid
-  set_fact:
-    fsid: "{{ cluster_uuid.stdout }}"
-  when:
-    - generate_fsid
 
 - name: set_fact mds_name ansible_hostname
   set_fact:
