@@ -90,12 +90,13 @@ class ActionModule(ActionBase):
                     notario.validate(host_vars, non_collocated_osd_scenario, defined_keys=True)
 
                 if host_vars["osd_scenario"] == "lvm":
-                    if host_vars.get("devices"):
-                        notario.validate(host_vars, lvm_batch_scenario, defined_keys=True)
-                    elif notario_store['osd_objectstore'] == 'filestore':
-                        notario.validate(host_vars, lvm_filestore_scenario, defined_keys=True)
-                    elif notario_store['osd_objectstore'] == 'bluestore':
-                        notario.validate(host_vars, lvm_bluestore_scenario, defined_keys=True)
+                    if not host_vars.get("osd_auto_discovery", False):
+                        if host_vars.get("devices"):
+                            notario.validate(host_vars, lvm_batch_scenario, defined_keys=True)
+                        elif notario_store['osd_objectstore'] == 'filestore':
+                            notario.validate(host_vars, lvm_filestore_scenario, defined_keys=True)
+                        elif notario_store['osd_objectstore'] == 'bluestore':
+                            notario.validate(host_vars, lvm_bluestore_scenario, defined_keys=True)
 
         except Invalid as error:
             display.vvv("Notario Failure: %s" % str(error))
