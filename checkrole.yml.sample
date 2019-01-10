@@ -1,0 +1,30 @@
+---
+
+# check host hardware specification against a given set of Ceph roles.
+#
+# Requires the variables to be passed in by the caller or vars defined
+# e.g.
+# vars:
+#   inventory:
+#     host1: osds,mons
+#     host2: rgws
+#     host3: mons
+#   mode: prod
+#   deployment: container
+#   osdtype: bluestore
+#   flashusage: journal 
+
+- name: Validate hosts against desired cluster state
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+  
+    - name: CEPH_CHECK_ROLE
+      ceph_check_role:
+        role: "{{ inventory[inventory_hostname] }}"
+        mode: "{{ mode }}"
+        deployment: "{{ deployment }}"
+        osdtype: "{{ osdtype }}"
+        flashusage: "{{ flashusage }}"
