@@ -182,6 +182,19 @@
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
 
+- name: set_fact devices generate device list when osd_auto_discovery
+  set_fact:
+    devices: "{{ devices | default([]) + [ item.key | regex_replace('^', '/dev/') ] }}"
+  with_dict: "{{ ansible_devices }}"
+  when:
+    - osd_auto_discovery|default(False)
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.sectors != "0"
+    - item.value.partitions|count == 0
+    - item.value.holders|count == 0
+    - "'dm-' not in item.key"
+
 - name: set_fact ceph_uid for debian based system - non container
   set_fact:
     ceph_uid: 64045

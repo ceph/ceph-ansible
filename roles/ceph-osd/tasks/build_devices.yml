@@ -1,17 +1,4 @@
 ---
-- name: set_fact devices generate device list when osd_auto_discovery
-  set_fact:
-    devices: "{{ devices | default([]) + [ item.key | regex_replace('^', '/dev/') ] }}"
-  with_dict: "{{ ansible_devices }}"
-  when:
-    - osd_auto_discovery
-    - ansible_devices is defined
-    - item.value.removable == "0"
-    - item.value.sectors != "0"
-    - item.value.partitions|count == 0
-    - item.value.holders|count == 0
-    - "'dm-' not in item.key"
-
 - name: resolve dedicated device link(s)
   command: readlink -f {{ item }}
   changed_when: false
