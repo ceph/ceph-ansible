@@ -27,7 +27,45 @@
       register: result
       until: result is succeeded
 
-- name: start and enable timesyncd
+- name: add/remove ntp servers
+  block:
+    - name: remove default ntp servers
+      when:
+        - ntp_remove_default_servers is defined
+        - ntp_remove_default_servers == true
+      block:
+        - name: remove default ntp servers from ntp.conf
+          when: ntp_daemon_type == 'ntpd'
+          lineinfile:
+            regexp: 'pool\.ntp\.org'
+            state: absent
+            path: /etc/ntp.conf
+        - name: remove default ntp servers from chrony.conf
+          when: ntp_daemon_type == 'chronyd'
+          lineinfile:
+            regexp: 'pool\.ntp\.org'
+            state: absent
+            path: /etc/chrony.conf
+
+    - name: add ntp servers if provided
+      when: ntp_servers is defined
+      block:
+        - name: add ntp servers for ntp.conf
+          when: ntp_daemon_type == 'ntpd'
+          lineinfile:
+            path: /etc/ntp.conf
+            line: 'server {{ item }}'
+            insertafter: BOF
+          loop: '{{ ntp_servers }}'
+        - name: add ntp servers to chrony.conf
+          when: ntp_daemon_type == 'chronyd'
+          lineinfile:
+            path: /etc/chrony.conf
+            line: 'server {{ item }}'
+            insertafter: BOF
+          loop: '{{ ntp_servers }}'
+
+- name: start and enable ntp daemons
   block:
     - name: install and enable timesyncd
       command: timedatectl set-ntp on
