@@ -10,7 +10,24 @@
         ntp_service_name: ntpd
       when: ansible_os_family in ['RedHat', 'Suse']
 
-- name: setup ntp daemon
+- name: install ntp packages
+  block:
+    - name: install ntpd
+      when: ntp_daemon_type == "ntpd"
+      package:
+        name: ntp
+        state: present
+      register: result
+      until: result is succeeded
+    - name: install chronyd
+      when: ntp_daemon_type == "chronyd"
+      package:
+        name: chrony
+        state: present
+      register: result
+      until: result is succeeded
+
+- name: start and enable timesyncd
   block:
     - name: install and enable timesyncd
       command: timedatectl set-ntp on
@@ -23,38 +40,22 @@
       command: timedatectl set-ntp no
       when: ntp_daemon_type != "timesyncd"
 
-    - name: setup ntpd
-      when: ntp_daemon_type == "ntpd"
-      block:
-        - name: install ntp
-          package:
-            name: ntp
-            state: present
-          register: result
-          until: result is succeeded
-        - name: enable and start ntp
-          service:
-            name: "{{ ntp_service_name }}"
-            enabled: yes
-            state: started
-          notify:
-            - disable chronyd
-            - disable timesyncd
+    - name: enable and start ntp
+      when: ntp_daemon_type == 'ntpd'
+      service:
+        name: "{{ ntp_service_name }}"
+        enabled: yes
+        state: started
+      notify:
+        - disable chronyd
+        - disable timesyncd
 
-    - name: setup chronyd
-      when: ntp_daemon_type == "chronyd"
-      block:
-        - name: install chrony
-          package:
-            name: chrony
-            state: present
-          register: result
-          until: result is succeeded
-        - name: enable and start chronyd
-          service:
-            name: chronyd
-            enabled: yes
-            state: started
-          notify:
-            - disable chronyd
-            - disable timesyncd
+    - name: enable and start chronyd
+      when: ntp_daemon_type == 'chronyd'
+      service:
+        name: chronyd
+        enabled: yes
+        state: started
+      notify:
+        - disable chronyd
+        - disable timesyncd
