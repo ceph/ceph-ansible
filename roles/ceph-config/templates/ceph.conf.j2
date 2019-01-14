@@ -14,12 +14,6 @@ ms bind ipv6 = true
 {% if common_single_host_mode is defined and common_single_host_mode %}
 osd crush chooseleaf type = 0
 {% endif %}
-{% if ceph_release not in ['jewel', 'kraken', 'luminous'] and containerized_deployment %}
-# let's force the admin socket the way it was so we can properly check for existing instances
-# also the line $cluster-$name.$pid.$cctid.asok is only needed when running multiple instances
-# of the same daemon, thing ceph-ansible cannot do at the time of writing
-admin socket = "$run_dir/$cluster-$name.asok"
-{% endif %}
 {# NOTE (leseb): the blank lines in-between are needed otherwise we won't get any line break #}
 
 {% set nb_mon = groups.get(mon_group_name, []) | length | int %}
