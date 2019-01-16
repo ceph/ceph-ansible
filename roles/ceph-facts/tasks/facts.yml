@@ -19,7 +19,7 @@
 
 - name: set_fact container_binary
   set_fact:
-    container_binary: "{{ 'podman' if is_podman and ansible_distribution == 'Fedora' else 'docker' }}"
+    container_binary: "{{ 'podman' if (podman_binary.stat.exists and ansible_distribution == 'Fedora') or (ansible_os_family == 'RedHat' and ansible_distribution_major_version == '8') else 'docker' }}"
   when: containerized_deployment
 
 # Set ceph_release to ceph_stable by default

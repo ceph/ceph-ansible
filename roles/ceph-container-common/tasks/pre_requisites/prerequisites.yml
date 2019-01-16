@@ -46,7 +46,7 @@
   tags:
     with_pkg
 
-- name: red hat based systems tasks
+- name: red hat 7 based systems tasks
   block:
     - name: install python-docker-py on red hat / centos
       package:
@@ -56,20 +56,36 @@
       until: result is succeeded
       tags:
         with_pkg
+
+    - name: pause after docker install before starting (on openstack vms)
+      pause: seconds=5
+      when:
+        - ceph_docker_on_openstack
+      tags:
+        with_pkg
+
+    - name: start docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+      tags:
+        with_pkg
+
   when:
     - ansible_os_family == 'RedHat'
+    - ansible_distribution_major_version == '7'
 
-- name: pause after docker install before starting (on openstack vms)
-  pause: seconds=5
+- name: red hat 8 based systems tasks
+  block:
+    - name: install podman
+      package:
+        name: 'podman'
+        state: present
+      register: result
+      until: result is succeeded
+      tags:
+        with_pkg
   when:
-    - ceph_docker_on_openstack
-  tags:
-    with_pkg
-
-- name: start docker service
-  service:
-    name: docker
-    state: started
-    enabled: yes
-  tags:
-    with_pkg
+    - ansible_os_family == 'RedHat'
+    - ansible_distribution_major_version == '8'

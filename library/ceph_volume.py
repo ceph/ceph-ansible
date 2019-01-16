@@ -193,7 +193,7 @@ def container_exec(binary, container_image):
                     '-v', '/run/lock/lvm:/run/lock/lvm:z',
                     '-v', '/var/run/udev/:/var/run/udev/:z',
                     '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',
-                    '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',
+                    '-v', '/run/lvm/:/run/lvm/',
                     '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                     '-v', '/var/log/ceph/:/var/log/ceph/:z',
                     os.path.join('--entrypoint=' + binary),
