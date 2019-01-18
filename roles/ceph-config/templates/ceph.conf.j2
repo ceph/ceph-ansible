@@ -101,11 +101,15 @@ osd memory target = {{ _osd_memory_target | default(osd_memory_target) }}
 {% for host in groups[rgw_group_name] %}
 {% set _rgw_hostname = hostvars[host]['rgw_hostname'] | default(hostvars[host]['ansible_hostname']) %}
 {# {{ hostvars[host]['rgw_hostname'] }} for backward compatibility, fqdn issues. See bz1580408 #}
-[client.rgw.{{ _rgw_hostname }}]
+{% if hostvars[host]['rgw_instances'] is defined %}
+{% for instance in hostvars[host]['rgw_instances'] %}
+[client.rgw.{{ _rgw_hostname + '.' + instance['instance_name'] }}]
 host = {{ _rgw_hostname }}
-keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname }}/keyring
-log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}={{ hostvars[host]['_radosgw_address'] }}:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
+keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname + '.' + instance['instance_name'] }}/keyring
+log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] + '.' + instance['instance_name'] }}.log
+rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}={{ instance['radosgw_address'] }}:{{ instance['radosgw_frontend_port'] }} {{ radosgw_frontend_options }}
+{% endfor %}
+{% endif %}
 {% endfor %}
 {% endif %}
 
