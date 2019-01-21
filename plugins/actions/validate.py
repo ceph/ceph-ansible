@@ -66,6 +66,9 @@ class ActionModule(ActionBase):
                     notario.validate(
                         host_vars, ceph_repository_dev, defined_keys=True)
 
+                if host_vars["ceph_repository"] == "custom":
+                    notario.validate(host_vars, ceph_repository_custom, defined_keys=True)
+
             # store these values because one must be defined
             # and the validation method
             # will need access to all three through the store
@@ -252,6 +255,8 @@ ceph_repository_dev = (
     ("ceph_dev_branch", types.string),
     ("ceph_dev_sha1", types.string),
 )
+
+ceph_repository_custom = ("ceph_custom_repo", types.string)
 
 ceph_repository_uca = (
     ("ceph_stable_repo_uca", types.string),
