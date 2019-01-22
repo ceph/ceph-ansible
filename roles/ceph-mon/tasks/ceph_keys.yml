@@ -1,4 +1,18 @@
 ---
+- name: wait for the monitor socket to exist
+  stat:
+    path: "/var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok"
+  register: socket
+  until: socket.stat.exists
+
+- name: add bootstrap peers for monitors to form quorum
+  command: "{{ docker_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ monitor_name }}.asok add_bootstrap_peer_hint {{ hostvars[item.1]['_current_monitor_address'] }}:{{ item.0 }}"
+  with_nested:
+    - 3300
+    - "{{ groups[mon_group_name] }}"
+  changed_when: false
+  failed_when: false
+
 - name: waiting for the monitor(s) to form the quorum...
   command: >
     {{ docker_exec_cmd }}

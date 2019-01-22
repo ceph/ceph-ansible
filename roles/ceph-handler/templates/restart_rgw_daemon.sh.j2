@@ -2,20 +2,48 @@
 
 RETRIES="{{ handler_health_rgw_check_retries }}"
 DELAY="{{ handler_health_rgw_check_delay }}"
-RGW_NAME="{{ ansible_hostname }}"
-RGW_PORT="{{ radosgw_frontend_port }}"
+HOST_NAME="{{ ansible_hostname }}"
+RGW_NUMS={{ radosgw_num_instances }}
+RGW_BASE_PORT={{ radosgw_frontend_port }}
+declare -a DOCKER_EXECS
+for ((i=0; i<${RGW_NUMS}; i++)); do
+  DOCKER_EXECS[i]=""
 {% if containerized_deployment %}
-DOCKER_EXEC="{{ container_binary }} exec ceph-rgw-{{ ansible_hostname }}"
+  CONTAINER_NAME="ceph-rgw-${HOST_NAME}-rgw${i}"
+  DOCKER_EXECS[i]="{{ container_binary }} exec ${CONTAINER_NAME}"
 {% endif %}
+done
+declare -a SOCKETS
 # Backward compatibility
-$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_fqdn }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_fqdn }}.asok
-$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_hostname }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_hostname }}.asok
+for ((i=0; i<${RGW_NUMS}; i++)); do
+  SOCKET[i]="EMPTY_SOCKET"
+  ${DOCKER_EXECS[i]} test -S /var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_fqdn }}.asok && SOCKETS[i]=/var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_fqdn }}.asok
+  ${DOCKER_EXECS[i]} test -S /var/run/ceph/{{ cluster }}-client.rgw.${HOST_NAME}.rgw${i}.asok && SOCKETS[i]=/var/run/ceph/{{ cluster }}-client.rgw.${HOST_NAME}.rgw${i}.asok
+done
 RGW_IP={{ hostvars[inventory_hostname]['_radosgw_address'] }}
 
+check_socket() {
+  local i=$1
+  local succ=0
+  local count=10
+  # Wait and ensure the socket exists after restarting the daemon
+  while [ $count -ne 0 ]; do
+    ${DOCKER_EXECS[i]} test -S ${SOCKETS[i]} && succ=$((succ+1)) && break
+    sleep $DELAY
+    let count=count-1
+  done
+  if [ $succ -ne 1 ]; then
+    echo "Socket file ${SOCKETS[i]} could not be found, which means Rados Gateway is not running. Showing ceph-rgw unit logs now:"
+    journalctl -u ceph-radosgw@rgw.${HOST_NAME}.rgw${i}
+    exit 1
+  fi
+}
+
 check_for_curl_or_wget() {
-  if $DOCKER_EXEC command -v wget &>/dev/null; then
+  local i=$1
+  if ${DOCKER_EXECS[i]} command -v wget &>/dev/null; then
     rgw_test_command="wget --quiet"
-  elif $DOCKER_EXEC command -v curl &>/dev/null; then
+  elif ${DOCKER_EXECS[i]} command -v curl &>/dev/null; then
     rgw_test_command="curl --fail --silent --output /dev/null"
   else
     echo "It seems that neither curl or wget are available on your system."
@@ -25,27 +53,32 @@ check_for_curl_or_wget() {
 }
 
 check_rest() {
-  check_for_curl_or_wget
+  local i=$1
+  check_for_curl_or_wget ${i}
+  local succ=0
   while [ $RETRIES -ne 0 ]; do
-    test "$rgw_test_command http://$RGW_IP:$RGW_PORT" && exit 0
+    test "$rgw_test_command http://$RGW_IP:$((RGW_BASE_PORT+i))" && succ=$((succ+1)) && break
     sleep $DELAY
     let RETRIES=RETRIES-1
   done
-  # If we reach this point, it means there is a problem with the connection to rgw
-  echo "Error connecting locally to Rados Gateway service: http://$rgw_listen"
-  exit 1
+  if [ $succ -ne 1 ]; then
+    # If we reach this point, it means there is a problem with the connection to rgw
+    echo "Error connecting locally to Rados Gateway service: http://$rgw_listen"
+    exit 1
+  fi
 }
 
 # First, restart the daemon
-systemctl restart ceph-radosgw@rgw.${RGW_NAME}
-
-COUNT=10
-# Wait and ensure the socket exists after restarting the daemon
-while [ $COUNT -ne 0 ]; do
-  $DOCKER_EXEC test -S $SOCKET && check_rest
-  sleep $DELAY
-  let COUNT=COUNT-1
+for ((i=0; i<${RGW_NUMS}; i++)); do
+  systemctl restart ceph-radosgw@rgw.${HOST_NAME}.rgw${i}
 done
-echo "Socket file ${SOCKET} could not be found, which means Rados Gateway is not running. Showing ceph-rgw unit logs now:"
-journalctl -u ceph-radosgw@rgw.${RGW_NAME}
-exit 1
+
+# Check socket files
+for ((i=0; i<${RGW_NUMS}; i++)); do
+  check_socket ${i}
+done
+
+# Check rest
+for ((i=0; i<${RGW_NUMS}; i++)); do
+  check_rest ${i}
+done

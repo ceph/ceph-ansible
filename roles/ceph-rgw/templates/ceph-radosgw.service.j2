@@ -3,9 +3,9 @@ Description=Ceph RGW
 After=docker.service
 
 [Service]
-EnvironmentFile=-/etc/environment
-ExecStartPre=-/usr/bin/{{ container_binary }} stop ceph-rgw-{{ ansible_hostname }}
-ExecStartPre=-/usr/bin/{{ container_binary }} rm ceph-rgw-{{ ansible_hostname }}
+EnvironmentFile=/var/lib/ceph/radosgw/ceph-%i/EnvironmentFile
+ExecStartPre=-/usr/bin/{{ container_binary }} stop ceph-rgw-{{ ansible_hostname }}-${INST_NAME}
+ExecStartPre=-/usr/bin/{{ container_binary }} rm ceph-rgw-{{ ansible_hostname }}-${INST_NAME}
 ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   --memory={{ ceph_rgw_docker_memory_limit }} \
   {% if (container_binary == 'docker' and ceph_docker_version.split('.')[0] is version_compare('13', '>=')) or container_binary == 'podman' -%}
@@ -19,10 +19,12 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   -v /etc/localtime:/etc/localtime:ro \
   -e CEPH_DAEMON=RGW \
   -e CLUSTER={{ cluster }} \
-  --name=ceph-rgw-{{ ansible_hostname }} \
+  -e RGW_NAME={{ ansible_hostname }}.${INST_NAME} \
+  -e RGW_CIVETWEB_PORT=${INST_PORT} \
+  --name=ceph-rgw-{{ ansible_hostname }}-${INST_NAME} \
   {{ ceph_rgw_docker_extra_env }} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-ExecStopPost=-/usr/bin/{{ container_binary }} stop ceph-rgw-{{ ansible_hostname }}
+ExecStopPost=-/usr/bin/{{ container_binary }} stop ceph-rgw-{{ ansible_hostname }}-${INST_NAME}
 Restart=always
 RestartSec=10s
 TimeoutStartSec=120

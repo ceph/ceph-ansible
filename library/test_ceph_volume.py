@@ -132,6 +132,34 @@ class TestCephVolumeModule(object):
         result = ceph_volume.list_osd(fake_module, fake_container_image)
         assert result == expected_command_list
 
+    def test_list_storage_inventory(self):
+        fake_module = MagicMock()
+        fake_container_image = None
+        expected_command_list = ['ceph-volume',
+                                 'inventory',
+                                 '--format=json',
+                                 ]
+        result = ceph_volume.list_storage_inventory(fake_module, fake_container_image)
+        assert result == expected_command_list
+
+    def test_list_storage_inventory_container(self):
+        fake_module = MagicMock()
+        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
+        expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host',  # noqa E501
+                                 '-v', '/run/lock/lvm:/run/lock/lvm:z',
+                                 '-v', '/var/run/udev/:/var/run/udev/:z',
+                                 '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
+                                 '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
+                                 '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
+                                 '--entrypoint=ceph-volume',
+                                 'docker.io/ceph/daemon:latest-luminous',
+                                 'inventory',
+                                 '--format=json',
+                                 ]
+        result = ceph_volume.list_storage_inventory(fake_module, fake_container_image)
+        assert result == expected_command_list
+
     def test_create_osd_container(self):
         fake_module = MagicMock()
         fake_module.params = {'data': '/dev/sda',
