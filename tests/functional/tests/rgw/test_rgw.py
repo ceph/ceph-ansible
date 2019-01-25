@@ -12,7 +12,7 @@ class TestRGWs(object):
         assert result
 
     def test_rgw_service_is_running(self, node, host):
-        for i in range(int(node["vars"]["radosgw_num_instances"])):
+        for i in range(int(node["radosgw_num_instances"])):
             service_name = "ceph-radosgw@rgw.{hostname}.rgw{seq}".format(
                 hostname=node["vars"]["inventory_hostname"],
                 seq=i
@@ -20,7 +20,7 @@ class TestRGWs(object):
             assert host.service(service_name).is_running
 
     def test_rgw_service_is_enabled(self, node, host):
-        for i in range(int(node["vars"]["radosgw_num_instances"])):
+        for i in range(int(node["radosgw_num_instances"])):
             service_name = "ceph-radosgw@rgw.{hostname}.rgw{seq}".format(
                 hostname=node["vars"]["inventory_hostname"],
                 seq=i
@@ -46,7 +46,7 @@ class TestRGWs(object):
         output = host.check_output(cmd)
         daemons = [i for i in json.loads(
             output)["servicemap"]["services"]["rgw"]["daemons"]]
-        for i in range(int(node["vars"]["radosgw_num_instances"])):
+        for i in range(int(node["radosgw_num_instances"])):
             instance_name = "{hostname}.rgw{seq}".format(
                 hostname=hostname,
                 seq=i
@@ -57,7 +57,7 @@ class TestRGWs(object):
     def test_rgw_http_endpoint(self, node, host):
         # rgw frontends ip_addr is configured on eth1
         ip_addr = host.interface("eth1").addresses[0]
-        for i in range(int(node["vars"]["radosgw_num_instances"])):
+        for i in range(int(node["radosgw_num_instances"])):
             assert host.socket(
                 "tcp://{ip_addr}:{port}".format(ip_addr=ip_addr,
                                                 port=(8080+i))
