@@ -612,7 +612,7 @@ def run_module():
             module, list_keys(cluster, user, user_key, containerized))
 
     elif state == "fetch_initial_keys":
-        hostname = socket.gethostname()
+        hostname = socket.gethostname().split('.', 1)[0]
         user = "mon."
         user_key = os.path.join(
             "/var/lib/ceph/mon/" + cluster + "-" + hostname + "/keyring")
