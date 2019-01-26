@@ -11,7 +11,28 @@
     - create_crush_tree
     - hostvars[item]['osd_crush_location'] is defined
 
-- name: create configured crush rules
+- name: create crush ec profiles
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd erasure-code-profile set {{ item.name }} plugin={{ item.plugin }} {{ item.ec_config | to_json | regex_replace('\\:\\ ','=') | regex_replace('[\\[\\]{}\\\"]') | regex_replace('\\,\\ ',' ') }}"
+  with_items: "{{ ec_profiles | unique }}"
+  changed_when: false
+  when:
+    - inventory_hostname == groups.get(mon_group_name) | last
+
+- name: create configured crush ec rules
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush rule create-erasure {{ item.name }} {{ item.ec_profile }}"
+  with_items: "{{ crush_ec_rules | unique }}"
+  changed_when: false
+  when:
+    - inventory_hostname == groups.get(mon_group_name) | last
+
+- name: create configured crush replicated rules
+  command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush rule create-replicated {{ item.name }} {{ item.root }} {{ item.type }} {{ item.class }}"
+  with_items: "{{ crush_rep_rules | unique }}"
+  changed_when: false
+  when:
+    - inventory_hostname == groups.get(mon_group_name) | last
+
+- name: create configured crush simple rules
   command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush rule create-simple {{ item.name }} {{ item.root }} {{ item.type }}"
   with_items: "{{ crush_rules | unique }}"
   changed_when: false
@@ -22,7 +43,7 @@
   command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd -f json crush rule dump {{ item.name }}"
   register: info_ceph_default_crush_rule
   changed_when: false
-  with_items: "{{ crush_rules }}"
+  loop: "{{ [crush_rules, crush_rep_rules, crush_ec_rules]|flatten(levels=1) }}"
   when:
     - inventory_hostname == groups.get(mon_group_name) | last
     - item.default
