@@ -1,4 +1,5 @@
 ---
+<<<<<<< HEAD
 - name: include create_ceph_initial_dirs.yml
   include_tasks: create_ceph_initial_dirs.yml
   when: containerized_deployment | bool
@@ -14,6 +15,22 @@
     set_fact:
       num_osds: "{{ lvm_volumes | length | int }}"
     when: lvm_volumes | default([]) | length > 0
+=======
+- block:
+  - name: count number of osds for ceph-disk scenarios
+    set_fact:
+      num_osds: "{{ devices | length | int }}"
+    when:
+      - devices | default([]) | length > 0
+      - osd_scenario in ['collocated', 'non-collocated']
+
+  - name: count number of osds for lvm scenario
+    set_fact:
+      num_osds: "{{ lvm_volumes | length | int }}"
+    when:
+      - lvm_volumes | default([]) | length > 0
+      - osd_scenario == 'lvm'
+>>>>>>> fe1528adb... config: support num_osds fact setting in containerized deployment
 
   - name: run 'ceph-volume lvm batch --report' to see how many osds are to be created
     ceph_volume:
@@ -28,17 +45,29 @@
     register: lvm_batch_report
     environment:
       CEPH_VOLUME_DEBUG: 1
+<<<<<<< HEAD
       CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       PYTHONIOENCODING: utf-8
     changed_when: false
     when: devices | default([]) | length > 0
+=======
+      CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+    when:
+      - devices | default([]) | length > 0
+      - osd_scenario == 'lvm'
+>>>>>>> fe1528adb... config: support num_osds fact setting in containerized deployment
 
   - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report'
     set_fact:
       num_osds: "{{ (lvm_batch_report.stdout | from_json).osds | length | int }}"
     when:
       - devices | default([]) | length > 0
+<<<<<<< HEAD
+=======
+      - osd_scenario == 'lvm'
+>>>>>>> fe1528adb... config: support num_osds fact setting in containerized deployment
       - (lvm_batch_report.stdout | from_json).changed
 
   - name: run 'ceph-volume lvm list' to see how many osds have already been created
@@ -47,12 +76,20 @@
     register: lvm_list
     environment:
       CEPH_VOLUME_DEBUG: 1
+<<<<<<< HEAD
       CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       PYTHONIOENCODING: utf-8
     changed_when: false
     when:
       - devices | default([]) | length > 0
+=======
+      CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+    when:
+      - devices | default([]) | length > 0
+      - osd_scenario == 'lvm'
+>>>>>>> fe1528adb... config: support num_osds fact setting in containerized deployment
       - not (lvm_batch_report.stdout | from_json).changed
 
   - name: set_fact num_osds from the output of 'ceph-volume lvm list'
@@ -60,8 +97,17 @@
       num_osds: "{{ lvm_list.stdout | from_json | length | int }}"
     when:
       - devices | default([]) | length > 0
+<<<<<<< HEAD
       - not (lvm_batch_report.stdout | from_json).changed
 
+=======
+      - osd_scenario == 'lvm'
+      - not (lvm_batch_report.stdout | from_json).changed
+
+  when:
+      - inventory_hostname in groups.get(osd_group_name, [])
+
+>>>>>>> fe1528adb... config: support num_osds fact setting in containerized deployment
 # ceph-common
 - name: config file operation for non-containerized scenarios
   when: not containerized_deployment | bool
@@ -72,7 +118,11 @@
       state: directory
       owner: "ceph"
       group: "ceph"
+<<<<<<< HEAD
       mode: "{{ ceph_directories_mode | default('0755') }}"
+=======
+      mode: "0755"
+>>>>>>> fe1528adb... config: support num_osds fact setting in containerized deployment
 
   - name: "generate ceph configuration file: {{ cluster }}.conf"
     action: config_template
