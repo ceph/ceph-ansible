@@ -1,13 +1,13 @@
 ---
-# This playbook shrinks Ceph OSDs.
+# This playbook shrinks Ceph OSDs that have been created with ceph-volume.
 # It can remove any number of OSD(s) from the cluster and ALL THEIR DATA
 #
 # Use it like this:
-# ansible-playbook shrink-osd.yml -e osd_to_kill=0,2,6
+# ansible-playbook lvm-shrink-osd.yml -e osd_to_kill=0,2,6
 #     Prompts for confirmation to shrink, defaults to no and
 #     doesn't shrink the cluster. yes shrinks the cluster.
 #
-# ansible-playbook -e ireallymeanit=yes|no shrink-osd.yml
+# ansible-playbook -e ireallymeanit=yes|no lvm-shrink-osd.yml
 #     Overrides the prompt using -e option. Can be used in
 #     automation scripts to avoid interactive prompt.
 
@@ -57,7 +57,6 @@
 
   roles:
     - ceph-defaults
-    - ceph-facts
 
   post_tasks:
 
@@ -85,185 +84,64 @@
         osd_hosts: "{{ osd_hosts | default([]) + [ (item.stdout | from_json).crush_location.host ] }}"
       with_items: "{{ find_osd_hosts.results }}"
 
-    - name: check if ceph admin key exists on the osd nodes
-      stat:
-        path: "/etc/ceph/{{ cluster }}.client.admin.keyring"
-      register: ceph_admin_key
+    - name: find lvm osd volumes on each host
+      ceph_volume:
+        action: "list"
+      environment:
+        CEPH_VOLUME_DEBUG: 1
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
       with_items: "{{ osd_hosts }}"
       delegate_to: "{{ item }}"
-      failed_when: false
-      when:
-        - not containerized_deployment
+      register: osd_volumes
 
-    - name: fail when admin key is not present
-      fail:
-        msg: "The Ceph admin key is not present on the OSD node, please add it and remove it after the playbook is done."
-      with_items: "{{ ceph_admin_key.results }}"
-      when:
-        - not containerized_deployment
-        - item.stat.exists == false
-
-    # NOTE(leseb): using '>' is the only way I could have the command working
-    - name: find osd device based on the id
-      shell: >
-        docker run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
-        {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-        list | awk  -v pattern=osd.{{ item.0 }} '$0 ~ pattern {print $1}'
+    - name: filter osd volumes to kill by osd - non container
+      set_fact:
+        osd_volumes_to_kill_non_container: "{{ osd_volumes_to_kill_non_container | default([]) + [ (item.1.stdout|from_json)[item.0] ] }}"
       with_together:
         - "{{ osd_to_kill.split(',') }}"
-        - "{{ osd_hosts }}"
-      register: osd_to_kill_disks
-      delegate_to: "{{ item.1 }}"
-      when:
-        - containerized_deployment
+        - "{{ osd_volumes.results }}"
 
-    - name: find osd dedicated devices - container
-      shell: >
-        docker run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
-        {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-        list | grep osd.{{ item.0 }} | grep -Eo '/dev/([hsv]d[a-z]{1,2})[0-9]{1,2}|/dev/nvme[0-9]n[0-9]p[0-9]'
-      with_together:
-        - "{{ osd_to_kill.split(',') }}"
-        - "{{ osd_hosts }}"
-      register: osd_to_kill_disks_dedicated
-      delegate_to: "{{ item.1 }}"
-      when:
-        - containerized_deployment
+    - name: generate (host / volume) pairs to zap - non container
+      set_fact:
+        osd_host_volumes_to_kill_non_container: "{%- set _val = namespace(devs=[]) -%}
+        {%- for host in osd_hosts -%}
+        {%- for dev in osd_volumes_to_kill_non_container[loop.index-1] -%}
+        {%- set _val.devs = _val.devs + [{\"host\": host, \"path\": dev.path}] -%}
+        {%- endfor -%}
+        {%- endfor -%}
+        {{ _val.devs }}"
 
-    - name: find osd dedicated devices - non container
-      shell: ceph-disk list | grep osd.{{ item.0 }} | grep -Eo '/dev/([hsv]d[a-z]{1,2})[0-9]{1,2}|/dev/nvme[0-9]n[0-9]p[0-9]'
-      with_together:
-        - "{{ osd_to_kill.split(',') }}"
-        - "{{ osd_hosts }}"
-      register: osd_to_kill_disks_dedicated_non_container
-      delegate_to: "{{ item.1 }}"
-      when:
-        - not containerized_deployment
+    - name: mark osd(s) out of the cluster
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ item }}"
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items: "{{ osd_to_kill.split(',') }}"
 
-    # if nvme then osd_to_kill_disks is nvme0n1, we need nvme0
-    # if ssd or hdd then osd_to_kill_disks is sda1, we need sda
-    - name: stop osd services (container)
+    - name: stop osd(s) service
       service:
-        name: "ceph-osd@{{ item.0.stdout[:-2] | regex_replace('/dev/', '') if 'nvme' in item.0.stdout else item.0.stdout[:-1] | regex_replace('/dev/', '') }}"
+        name: ceph-osd@{{ item.0 }}
         state: stopped
         enabled: no
       with_together:
-        - "{{ osd_to_kill_disks.results }}"
-        - "{{ osd_hosts }}"
-      delegate_to: "{{ item.1 }}"
-      when:
-        - containerized_deployment
-
-    - name: resolve parent device
-      command: lsblk --nodeps -no pkname "{{ item.0.stdout }}"
-      register: resolved_parent_device
-      delegate_to: "{{ item.1 }}"
-      with_together:
-        - "{{ osd_to_kill_disks.results }}"
-        - "{{ osd_hosts }}"
-      when:
-        - containerized_deployment
-
-    - name: zap ceph osd disks
-      shell: |
-        docker run --rm \
-        --privileged=true \
-        --name ceph-osd-zap-{{ hostvars[item.1]['ansible_hostname'] }}-{{ item.0.stdout }} \
-        -v /dev/:/dev/ \
-        -e OSD_DEVICE=/dev/{{ item.0.stdout }} \
-        {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
-        zap_device
-      delegate_to: "{{ item.1 }}"
-      with_together:
-        - "{{ resolved_parent_device.results }}"
-        - "{{ osd_hosts }}"
-      when:
-        - containerized_deployment
-
-    - name: zap ceph osd partitions from dedicated devices
-      shell: |
-        for osd in {{ ' '.join(item.1.stdout_lines) }}
-        do
-          if [ -b "${osd}" ];
-          pkname=$(lsblk --nodeps -no PKNAME "${osd}");
-          then
-            echo zapping ceph osd partitions "${osd}";
-            docker run --rm \
-            --privileged=true \
-            --name ceph-osd-zap-{{ hostvars[item.0]['ansible_hostname'] }}-$(basename "${osd}") \
-            -v /dev/:/dev/ \
-            -e OSD_DEVICE="${osd}" \
-            {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
-            zap_device;
-            partprobe /dev/"${pkname}";
-          fi
-        done
-      with_together:
-        - "{{ osd_hosts }}"
-        - "{{ osd_to_kill_disks_dedicated.results }}"
-      delegate_to: "{{ item.0 }}"
-      when:
-        - containerized_deployment
-        - item.1 | length > 0
-
-    - name: deactivating osd(s)
-      command: ceph-disk deactivate --cluster {{ cluster }} --deactivate-by-id {{ item.0 }} --mark-out
-      run_once: true
-      with_together:
         - "{{ osd_to_kill.split(',') }}"
         - "{{ osd_hosts }}"
       delegate_to: "{{ item.1 }}"
-      when:
-        - not containerized_deployment
 
-    - name: destroying osd(s)
-      command: ceph-disk destroy --cluster {{ cluster }} --destroy-by-id {{ item.0 }} --zap
-      run_once: true
-      with_together:
-        - "{{ osd_to_kill.split(',') }}"
-        - "{{ osd_hosts }}"
-      delegate_to: "{{ item.1 }}"
-      when:
-        - not containerized_deployment
+    - name: zap osd devices
+      ceph_volume:
+        action: "zap"
+        data: "{{ item.path }}"
+      environment:
+        CEPH_VOLUME_DEBUG: 1
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+      delegate_to: "{{ item.host }}"
+      with_items: "{{ osd_host_volumes_to_kill_non_container }}"
 
-    - name: remove osd(s) from crush_map when ceph-disk destroy fail
-      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush remove osd.{{ item }}"
+    - name: purge osd(s) from the cluster
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it"
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ osd_to_kill.split(',') }}"
-
-    - name: delete osd(s) auth key when ceph-disk destroy fail
-      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} auth del osd.{{ item }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      with_items: "{{ osd_to_kill.split(',') }}"
-
-    - name: deallocate osd(s) id when ceph-disk destroy fail
-      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd rm {{ item }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      with_items: "{{ osd_to_kill.split(',') }}"
-
-    - name: zap dedicated partitions
-      shell: |
-          for osd in {{ ' '.join(item.1.stdout_lines) }}
-          do
-            if [ -b "${osd}" ];
-            then
-            echo zapping dedicated partition "${osd}"
-            pkname=$(lsblk --nodeps -no PKNAME "${osd}")
-            wipefs --all "${osd}"
-            dd if=/dev/zero of="${osd}" bs=1M count=10
-            partition_nb=$(echo "${osd}" | grep -oE '[0-9]{1,2}$')
-            sgdisk --delete $partition_nb /dev/"${pkname}"
-            partprobe /dev/"${pkname}"
-            fi
-          done
-      with_together:
-        - "{{ osd_hosts }}"
-        - "{{ osd_to_kill_disks_dedicated_non_container.results }}"
-      delegate_to: "{{ item.0 }}"
-      when:
-        - not containerized_deployment
-        - item.1 | length > 0
 
     - name: show ceph health
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s"
