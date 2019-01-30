@@ -23,16 +23,14 @@ class TestMGRs(object):
     def test_mgr_is_up(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
         cluster = node["cluster_name"]
+        container_binary = node["container_binary"]
         if node['docker']:
-            container_binary = 'docker'
-            if host.exists('podman') and host.ansible("setup")["ansible_facts"]["ansible_distribution"] == 'Fedora':  # noqa E501
-                container_binary = 'podman'
-            docker_exec_cmd = '{container_binary} exec ceph-mgr-{hostname}'.format(  # noqa E501
+            container_exec_cmd = '{container_binary} exec ceph-mgr-{hostname}'.format(  # noqa E501
                 hostname=hostname, container_binary=container_binary)
         else:
-            docker_exec_cmd = ''
-        cmd = "sudo {docker_exec_cmd} ceph --name mgr.{hostname} --keyring /var/lib/ceph/mgr/{cluster}-{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(  # noqa E501
-            docker_exec_cmd=docker_exec_cmd,
+            container_exec_cmd = ''
+        cmd = "sudo {container_exec_cmd} ceph --name mgr.{hostname} --keyring /var/lib/ceph/mgr/{cluster}-{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(  # noqa E501
+            container_exec_cmd=container_exec_cmd,
             hostname=node["vars"]["inventory_hostname"],
             cluster=cluster
         )

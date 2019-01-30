@@ -39,9 +39,7 @@ class TestRGWs(object):
     def test_docker_rgw_tuning_pools_are_set(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
         cluster = node['cluster_name']
-        container_binary = 'docker'
-        if host.exists('podman') and host.ansible("setup")["ansible_facts"]["ansible_distribution"] == 'Fedora':  # noqa E501
-            container_binary = 'podman'
+        container_binary = node["container_binary"]
         cmd = "sudo {container_binary} exec ceph-rgw-{hostname}-rgw0 ceph --cluster={cluster} -n client.rgw.{hostname}.rgw0 --connect-timeout 5 --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}.rgw0/keyring  osd dump".format(  # noqa E501
             hostname=hostname,
             cluster=cluster,
