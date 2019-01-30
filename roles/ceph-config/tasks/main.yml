@@ -2,6 +2,72 @@
 - name: include create_ceph_initial_dirs.yml
   include_tasks: create_ceph_initial_dirs.yml
 
+- block:
+  - name: count number of osds for ceph-disk scenarios
+    set_fact:
+      num_osds: "{{ devices | length | int }}"
+    when:
+      - devices | default([]) | length > 0
+      - osd_scenario in ['collocated', 'non-collocated']
+
+  - name: count number of osds for lvm scenario
+    set_fact:
+      num_osds: "{{ lvm_volumes | length | int }}"
+    when:
+      - lvm_volumes | default([]) | length > 0
+      - osd_scenario == 'lvm'
+
+  - name: run 'ceph-volume lvm batch --report' to see how many osds are to be created
+    ceph_volume:
+      cluster: "{{ cluster }}"
+      objectstore: "{{ osd_objectstore }}"
+      batch_devices: "{{ devices }}"
+      osds_per_device: "{{ osds_per_device | default(1) | int }}"
+      journal_size: "{{ journal_size }}"
+      block_db_size: "{{ block_db_size }}"
+      report: true
+      action: "batch"
+    register: lvm_batch_report
+    environment:
+      CEPH_VOLUME_DEBUG: 1
+      CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+    when:
+      - devices | default([]) | length > 0
+      - osd_scenario == 'lvm'
+
+  - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report'
+    set_fact:
+      num_osds: "{{ (lvm_batch_report.stdout | from_json).osds | length | int }}"
+    when:
+      - devices | default([]) | length > 0
+      - osd_scenario == 'lvm'
+      - (lvm_batch_report.stdout | from_json).changed
+
+  - name: run 'ceph-volume lvm list' to see how many osds have already been created
+    ceph_volume:
+      action: "list"
+    register: lvm_list
+    environment:
+      CEPH_VOLUME_DEBUG: 1
+      CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+    when:
+      - devices | default([]) | length > 0
+      - osd_scenario == 'lvm'
+      - not (lvm_batch_report.stdout | from_json).changed
+
+  - name: set_fact num_osds from the output of 'ceph-volume lvm list'
+    set_fact:
+      num_osds: "{{ lvm_list.stdout | from_json | length | int }}"
+    when:
+      - devices | default([]) | length > 0
+      - osd_scenario == 'lvm'
+      - not (lvm_batch_report.stdout | from_json).changed
+
+  when:
+      - inventory_hostname in groups.get(osd_group_name, [])
+
 # ceph-common
 - block:
   - name: create ceph conf directory
@@ -11,68 +77,6 @@
       owner: "ceph"
       group: "ceph"
       mode: "0755"
-
-  - block:
-    - name: count number of osds for ceph-disk scenarios
-      set_fact:
-        num_osds: "{{ devices | length | int }}"
-      when:
-        - devices | default([]) | length > 0
-        - osd_scenario in ['collocated', 'non-collocated']
-
-    - name: count number of osds for lvm scenario
-      set_fact:
-        num_osds: "{{ lvm_volumes | length | int }}"
-      when:
-        - lvm_volumes | default([]) | length > 0
-        - osd_scenario == 'lvm'
-
-    - name: run 'ceph-volume lvm batch --report' to see how many osds are to be created
-      ceph_volume:
-        cluster: "{{ cluster }}"
-        objectstore: "{{ osd_objectstore }}"
-        batch_devices: "{{ devices }}"
-        osds_per_device: "{{ osds_per_device | default(1) | int }}"
-        journal_size: "{{ journal_size }}"
-        block_db_size: "{{ block_db_size }}"
-        report: true
-        action: "batch"
-      register: lvm_batch_report
-      environment:
-        CEPH_VOLUME_DEBUG: 1
-      when:
-        - devices | default([]) | length > 0
-        - osd_scenario == 'lvm'
-
-    - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report'
-      set_fact:
-        num_osds: "{{ (lvm_batch_report.stdout | from_json).osds | length | int }}"
-      when:
-        - devices | default([]) | length > 0
-        - osd_scenario == 'lvm'
-        - (lvm_batch_report.stdout | from_json).changed
-
-    - name: run 'ceph-volume lvm list' to see how many osds have already been created
-      ceph_volume:
-        action: "list"
-      register: lvm_list
-      environment:
-        CEPH_VOLUME_DEBUG: 1
-      when:
-        - devices | default([]) | length > 0
-        - osd_scenario == 'lvm'
-        - not (lvm_batch_report.stdout | from_json).changed
-
-    - name: set_fact num_osds from the output of 'ceph-volume lvm list'
-      set_fact:
-        num_osds: "{{ lvm_list.stdout | from_json | length | int }}"
-      when:
-        - devices | default([]) | length > 0
-        - osd_scenario == 'lvm'
-        - not (lvm_batch_report.stdout | from_json).changed
-
-    when:
-      - inventory_hostname in groups.get(osd_group_name, [])
 
   - name: "generate ceph configuration file: {{ cluster }}.conf"
     action: config_template
