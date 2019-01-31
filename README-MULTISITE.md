@@ -39,6 +39,7 @@ rgw_zone_user: zone.user
 rgw_realm: milkyway
 system_access_key: 6kWkikvapSnHyE22P7nO
 system_secret_key: MGecsMrWtKZgngOHZdrd6d3JxGO5CPWgT2lcnpSt
+rgw_endpoint_proto: http
 ```
 
 **Note:** rgw_zonemaster should have the value of true and rgw_zonesecondary should be false
@@ -64,6 +65,7 @@ rgw_zone_user: zone.user
 rgw_realm: milkyway
 system_access_key: 6kWkikvapSnHyE22P7nO
 system_secret_key: MGecsMrWtKZgngOHZdrd6d3JxGO5CPWgT2lcnpSt
+rgw_endpoint_proto: http
 rgw_pull_proto: http
 rgw_pull_port: 8080
 rgw_pullhost: cluster0-rgw0
