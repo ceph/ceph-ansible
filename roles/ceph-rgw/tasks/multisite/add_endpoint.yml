@@ -1,0 +1,32 @@
+- name: register zonegroup get
+  command: "{{ docker_exec_cmd }} radosgw-admin zonegroup get --rgw-zonegroup={{ rgw_zonegroup }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  register: zonegroupget
+
+- name: get zonegroupget stdout as json
+  set_fact:
+    zonegroup_get_json: "{{ zonegroupget.stdout|from_json }}"
+  when: zonegroupget.rc == 0
+
+- name: get endpoints as a list
+  set_fact:
+    endpoints_list: "{{ item.zones[0].endpoints }}"
+  when: zonegroupget.rc == 0
+  with_items:
+    - "{{ zonegroup_get_json }}"
+
+- set_fact:
+    endpoint: "http://{{ ansible_fqdn }}:{{ radosgw_frontend_port }}"
+
+- name: get endpoints as a var
+  when: endpoint not in endpoints_list
+  set_fact:
+    endpoints: "{{ endpoints_list | join(',') }},{{ endpoint }}"
+
+- name: modify the zone to add additional endpoints for master zone
+  command: "{{ docker_exec_cmd }} radosgw-admin zone modify --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --endpoints {{ endpoints }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - endpoint not in endpoints_list
+  notify:
+    - update period
