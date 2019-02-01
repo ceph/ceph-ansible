@@ -176,12 +176,6 @@
     - nfs_group_name in group_names
     - ceph_nfs_container_inspect_before_pull.get('rc') == 0
 
-- name: set_fact timeout_command
-  set_fact:
-    timeout_command: "{{ 'timeout -s KILL ' ~ docker_pull_timeout if (docker_pull_timeout != '0') else '' }}"
-  when:
-    - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
-
 - name: "pulling {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image"
   command: "{{ timeout_command }} {{ container_binary }} pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
   changed_when: false
