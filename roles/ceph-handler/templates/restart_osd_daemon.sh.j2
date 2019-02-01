@@ -9,7 +9,7 @@ check_pgs() {
     return 0
   fi
   while [ $RETRIES -ne 0 ]; do
-    test "$($container_exec ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')" -eq "$($container_exec ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print sum ( [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if "active+clean" in i["state_name"]])')"
+    test "$($container_exec ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')" -eq "$($container_exec ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print(sum ( [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if "active+clean" in i["state_name"]]))')"
     RET=$?
     test $RET -eq 0 && return 0
     sleep $DELAY
