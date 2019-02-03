@@ -22,6 +22,11 @@
     container_binary: "{{ 'podman' if is_podman and ansible_distribution == 'Fedora' else 'docker' }}"
   when: containerized_deployment
 
+# Set ceph_release to ceph_stable by default
+- name: set_fact ceph_release ceph_stable_release
+  set_fact:
+    ceph_release: "{{ ceph_stable_release }}"
+
 - name: set_fact monitor_name ansible_hostname
   set_fact:
     monitor_name: "{{ ansible_hostname }}"
@@ -57,15 +62,6 @@
     - not rolling_update
     - groups.get(mon_group_name, []) | length > 0
 
-# We want this check to be run only on the first node
-- name: check if {{ fetch_directory }} directory exists
-  stat:
-    path: "{{ fetch_directory }}/monitor_keyring.conf"
-  delegate_to: localhost
-  become: false
-  register: monitor_keyring_conf
-  run_once: true
-
 # set this as a default when performing a rolling_update
 # so the rest of the tasks here will succeed
 - name: set_fact ceph_current_status rc 1
@@ -98,43 +94,21 @@
   when:
     - ceph_current_status.fsid is defined
 
-- name: generate cluster fsid
-  shell: python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
-  args:
-    creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-  register: cluster_uuid
-  delegate_to: localhost
-  become: false
+- block:
+  - name: generate cluster fsid
+    shell: python -c 'import uuid; print(str(uuid.uuid4()))'
+    register: cluster_uuid
+    delegate_to: localhost
+    become: false
+    run_once: true
+
+  - name: set_fact fsid
+    set_fact:
+      fsid: "{{ cluster_uuid.stdout }}"
+
   when:
     - generate_fsid
     - ceph_current_status.fsid is undefined
-
-- name: reuse cluster fsid when cluster is already running
-  shell: echo {{ fsid }} | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
-  args:
-    creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-  delegate_to: localhost
-  become: false
-  when:
-    - ceph_current_status.fsid is defined
-
-- name: read cluster fsid if it already exists
-  command: cat {{ fetch_directory }}/ceph_cluster_uuid.conf
-  args:
-    removes: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-  delegate_to: localhost
-  changed_when: false
-  register: cluster_uuid
-  become: false
-  check_mode: no
-  when:
-    - generate_fsid
-
-- name: set_fact fsid
-  set_fact:
-    fsid: "{{ cluster_uuid.stdout }}"
-  when:
-    - generate_fsid
 
 - name: set_fact mds_name ansible_hostname
   set_fact:
@@ -199,6 +173,19 @@
     - not osd_auto_discovery|default(False)
     - osd_scenario|default('dummy') != 'lvm'
 
+- name: set_fact devices generate device list when osd_auto_discovery
+  set_fact:
+    devices: "{{ devices | default([]) + [ item.key | regex_replace('^', '/dev/') ] }}"
+  with_dict: "{{ ansible_devices }}"
+  when:
+    - osd_auto_discovery|default(False)
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.sectors != "0"
+    - item.value.partitions|count == 0
+    - item.value.holders|count == 0
+    - "'dm-' not in item.key"
+
 - name: set_fact ceph_uid for debian based system - non container
   set_fact:
     ceph_uid: 64045
@@ -262,5 +249,12 @@
 
 - name: import_tasks set_radosgw_address.yml
   import_tasks: set_radosgw_address.yml
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
+
+- name: set_fact rgw_instances
+  set_fact:
+    rgw_instances: "{{ rgw_instances|default([]) | union([{'instance_name': 'rgw' + item|string, 'radosgw_address': _radosgw_address, 'radosgw_frontend_port': radosgw_frontend_port|int + item|int}]) }}"
+  with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])

@@ -19,8 +19,8 @@ NISCSI_GWS      = settings['iscsi_gw_vms']
 MGRS            = settings['mgr_vms']
 PUBLIC_SUBNET   = settings['public_subnet']
 CLUSTER_SUBNET  = settings['cluster_subnet']
-BOX             = settings['vagrant_box']
-CLIENT_BOX      = settings['client_vagrant_box'] || settings['vagrant_box']
+BOX             = ENV['CEPH_ANSIBLE_VAGRANT_BOX'] || settings['vagrant_box']
+CLIENT_BOX      = settings['client_vagrant_box'] || BOX
 BOX_URL         = settings['vagrant_box_url']
 SYNC_DIR        = settings['vagrant_sync_dir']
 MEMORY          = settings['memory']
@@ -477,7 +477,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                         '--add', 'scsi']
         end
 
-        (0..1).each do |d|
+        (0..2).each do |d|
           vb.customize ['createhd',
                         '--filename', "disk-#{i}-#{d}",
                         '--size', '11000'] unless File.exist?("disk-#{i}-#{d}.vdi")

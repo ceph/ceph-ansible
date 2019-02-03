@@ -24,6 +24,7 @@ def node(host, request):
     fsid = ansible_vars.get("fsid")
     osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
     osd_scenario = ansible_vars.get("osd_scenario")
+    radosgw_num_instances = ansible_vars.get("radosgw_num_instances", 1)
     lvm_scenario = osd_scenario in ['lvm', 'lvm-batch']
     ceph_release_num = {
         'jewel': 10,
@@ -117,6 +118,7 @@ def node(host, request):
         ceph_stable_release=ceph_stable_release,
         ceph_release_num=ceph_release_num,
         rolling_update=rolling_update,
+        radosgw_num_instances=radosgw_num_instances,
     )
     return data
 

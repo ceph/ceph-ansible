@@ -624,10 +624,11 @@
 
     - name: restart containerized ceph rgw
       systemd:
-        name: ceph-radosgw@rgw.{{ ansible_hostname }}
+        name: ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}
         state: restarted
         enabled: yes
         daemon_reload: yes
+      with_items: "{{ rgw_instances }}"
       when:
         - containerized_deployment
 
@@ -800,7 +801,7 @@
     upgrade_ceph_packages: True
   hosts:
     - "{{ client_group_name|default('clients') }}"
-  serial: "{{ client_update_batch | default(ansible_forks) }}"
+  serial: "{{ client_update_batch | default(20) }}"
   become: True
   tasks:
     - import_role:

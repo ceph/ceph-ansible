@@ -15,11 +15,12 @@
   when:
     - ceph_rgw_systemd_overrides is defined
 
-- name: start rgw
+- name: start rgw instance
   service:
-    name: ceph-radosgw@rgw.{{ ansible_hostname }}
+    name: ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}
     state: started
     enabled: yes
+  with_items: "{{ rgw_instances }}"
 
 - name: enable the ceph-radosgw.target service
   systemd:

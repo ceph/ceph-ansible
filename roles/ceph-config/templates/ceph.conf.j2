@@ -19,7 +19,9 @@ osd crush chooseleaf type = 0
 {% set nb_mon = groups.get(mon_group_name, []) | length | int %}
 {% set nb_client = groups.get(client_group_name, []) | length | int %}
 {% set nb_osd = groups.get(osd_group_name, []) | length | int %}
-
+{% if inventory_hostname in groups.get(client_group_name, []) and not inventory_hostname == groups.get(client_group_name, []) | first %}
+{% set ceph_release = hostvars[groups[client_group_name][0]]['ceph_release'] %}
+{% endif %}
 
 {% if nb_mon > 0 and inventory_hostname in groups.get(mon_group_name, []) %}
 mon initial members = {% for host in groups[mon_group_name] %}
@@ -37,9 +39,13 @@ fsid = {{ fsid }}
 log file = /dev/null
 mon cluster log file = /dev/null
 {% endif %}
+{% if ceph_release not in ['jewel', 'kraken', 'luminous', 'mimic'] %}
+{% set mon_host_v1_suffix = ":6789" %}
+{% set mon_host_v2_suffix = ":3300" %}
+{% endif %}
 mon host = {% if nb_mon > 0 %}
 {% for host in _monitor_addresses -%}
-{{ host.addr }}
+[{{ "v2:" + host.addr + mon_host_v2_suffix }},{{ "v1:" + host.addr + mon_host_v1_suffix }}]
 {%- if not loop.last -%},{%- endif %}
 {%- endfor %}
 {% elif nb_mon == 0 and inventory_hostname in groups.get(client_group_name, []) %}
@@ -101,11 +107,15 @@ osd memory target = {{ _osd_memory_target | default(osd_memory_target) }}
 {% for host in groups[rgw_group_name] %}
 {% set _rgw_hostname = hostvars[host]['rgw_hostname'] | default(hostvars[host]['ansible_hostname']) %}
 {# {{ hostvars[host]['rgw_hostname'] }} for backward compatibility, fqdn issues. See bz1580408 #}
-[client.rgw.{{ _rgw_hostname }}]
+{% if hostvars[host]['rgw_instances'] is defined %}
+{% for instance in hostvars[host]['rgw_instances'] %}
+[client.rgw.{{ _rgw_hostname + '.' + instance['instance_name'] }}]
 host = {{ _rgw_hostname }}
-keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname }}/keyring
-log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}={{ hostvars[host]['_radosgw_address'] }}:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
+keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname + '.' + instance['instance_name'] }}/keyring
+log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] + '.' + instance['instance_name'] }}.log
+rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}={{ instance['radosgw_address'] }}:{{ instance['radosgw_frontend_port'] }} {{ radosgw_frontend_options }}
+{% endfor %}
+{% endif %}
 {% endfor %}
 {% endif %}
 
