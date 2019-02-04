@@ -93,6 +93,13 @@ and journals would be placed on the faster solid state device ``/dev/nvme0n1``.
 The ``ceph-volume`` tool describes this in detail in
 `the "batch" subcommand section <http://docs.ceph.com/docs/master/ceph-volume/lvm/batch/>`_
 
+This option can also be used with ``osd_auto_discovery``, meaning that you do not need to populate
+``devices`` directly and any appropriate devices found by ansible will be used instead.
+
+.. code-block:: yaml
+
+   osd_scenario: lvm
+   osd_auto_discovery: true
 
 Other (optional) supported settings:
 

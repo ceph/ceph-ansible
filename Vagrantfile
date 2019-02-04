@@ -477,7 +477,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                         '--add', 'scsi']
         end
 
-        (0..1).each do |d|
+        (0..2).each do |d|
           vb.customize ['createhd',
                         '--filename', "disk-#{i}-#{d}",
                         '--size', '11000'] unless File.exist?("disk-#{i}-#{d}.vdi")
