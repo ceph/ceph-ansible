@@ -35,6 +35,15 @@
     - ntp_service_enabled
     - ntp_daemon_type not in ['chronyd', 'ntpd', 'timesyncd']
 
+# Since NTPd can not be installed on Atomic...
+- name: abort if ntp_daemon_type is ntp on Atomic
+  fail:
+    msg: installation can't happen on Atomic and ntpd needs to be installed
+  when:
+    - is_atomic
+    - ansible_os_family == 'RedHat'
+    - ntp_daemon_type == 'ntpd'
+
 - name: make sure journal_size configured
   debug:
     msg: "WARNING: journal_size is configured to {{ journal_size }}, which is less than 5GB. This is not recommended and can lead to severe issues."
