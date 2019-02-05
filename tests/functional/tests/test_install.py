@@ -23,14 +23,11 @@ class TestInstall(object):
 
 class TestCephConf(object):
 
-    def test_ceph_config_has_mon_host_line(self, node, File):
-        assert File(node["conf_path"]).contains("^mon host = .*$")
-
     def test_mon_host_line_has_correct_value(self, node, host):
         mon_host_line = host.check_output("grep 'mon host = ' /etc/ceph/{cluster}.conf".format(cluster=node['cluster_name']))  # noqa E501
         result = True
         for x in range(0, node["num_mons"]):
-            pattern = re.compile(("{}.1{}".format(node["subnet"], x)))
+            pattern = re.compile(("v2:{subnet}.1{x}:3300,v1:{subnet}.1{x}:6789".format(subnet=node["subnet"], x=x)))
             if pattern.search(mon_host_line) is None:
                 result = False
             assert result

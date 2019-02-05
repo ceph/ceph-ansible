@@ -92,6 +92,7 @@ fi
   -v /var/lib/ceph:/var/lib/ceph:z \
   -v /etc/ceph:/etc/ceph:z \
   -v /var/run/ceph:/var/run/ceph:z \
+  -v /var/run/udev/:/var/run/udev/:z \
   {% if ansible_distribution == 'Ubuntu' -%}
   --security-opt apparmor:unconfined \
   {% endif -%}
@@ -105,7 +106,7 @@ fi
   -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
   {% endif -%}
   {% if osd_scenario == 'lvm' -%}
-  -v /run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket \
+  -v /run/lvm/:/run/lvm/ \
   -e CEPH_DAEMON=OSD_CEPH_VOLUME_ACTIVATE \
   -e OSD_ID="$1" \
   --name=ceph-osd-"$1" \
