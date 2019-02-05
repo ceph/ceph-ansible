@@ -651,6 +651,7 @@ def run_module():
             module, list_keys(cluster, user, user_key, container_image))
         if rc != 0:
             result["stdout"] = "failed to retrieve ceph keys".format(name)
+            result["sdterr"] = err
             result['rc'] = 0
             module.exit_json(**result)
 
