@@ -10,51 +10,62 @@
         ntp_service_name: ntpd
       when: ansible_os_family in ['RedHat', 'Suse']
 
-- name: setup ntp daemon
+# Installation of NTP daemons needs to be a separate task since installations
+# can't happen on Atomic
+- name: install the ntp daemon
+  when: not is_atomic
   block:
-    - name: install and enable timesyncd
+    - name: install ntpd
+      package:
+        name: ntp
+        state: present
+      register: result
+      until: result is succeeded
+      when:
+        - ntp_daemon_type == "ntpd"
+
+    - name: install chrony
+      package:
+        name: chrony
+        state: present
+      register: result
+      until: result is succeeded
+      when:
+        - ntp_daemon_type == "chronyd"
+
+- name: enable the ntp daemon and disable the rest
+  block:
+    - name: enable timesyncing on timesyncd
       command: timedatectl set-ntp on
-      when: ntp_daemon_type == "timesyncd"
       notify:
         - disable ntpd
         - disable chronyd
+      when:
+        - ntp_daemon_type == "timesyncd"
 
     - name: disable time sync using timesyncd if we are not using it
       command: timedatectl set-ntp no
-      when: ntp_daemon_type != "timesyncd"
+      when:
+        - ntp_daemon_type != "timesyncd"
 
-    - name: setup ntpd
-      when: ntp_daemon_type == "ntpd"
-      block:
-        - name: install ntp
-          package:
-            name: ntp
-            state: present
-          register: result
-          until: result is succeeded
-        - name: enable and start ntp
-          service:
-            name: "{{ ntp_service_name }}"
-            enabled: yes
-            state: started
-          notify:
-            - disable chronyd
-            - disable timesyncd
+    - name: enable ntpd
+      service:
+        name: "{{ ntp_service_name }}"
+        enabled: yes
+        state: started
+      notify:
+        - disable chronyd
+        - disable timesyncd
+      when:
+        - ntp_daemon_type == "ntpd"
 
-    - name: setup chronyd
-      when: ntp_daemon_type == "chronyd"
-      block:
-        - name: install chrony
-          package:
-            name: chrony
-            state: present
-          register: result
-          until: result is succeeded
-        - name: enable and start chronyd
-          service:
-            name: chronyd
-            enabled: yes
-            state: started
-          notify:
-            - disable ntpd
-            - disable timesyncd
+    - name: enable chronyd
+      service:
+        name: chronyd
+        enabled: yes
+        state: started
+      notify:
+        - disable ntpd
+        - disable timesyncd
+      when:
+        - ntp_daemon_type == "chronyd"
