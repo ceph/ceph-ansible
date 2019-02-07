@@ -18,16 +18,23 @@
   register: crt_files_exist
 
 - name: create ssl crt/key files
-  local_action:
-    module: shell openssl req -newkey rsa:2048 -nodes -keyout {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.key -x509 -days 365 -out {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.crt -subj "/C=US/ST=./L=./O=RedHat/OU=Linux/CN={{ ansible_hostname }}"
+  command: >
+    openssl req -newkey rsa:2048 -nodes -keyout {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.key
+     -x509 -days 365 -out {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.crt
+     -subj "/C=US/ST=./L=./O=RedHat/OU=Linux/CN={{ ansible_hostname }}"
+  delegate_to: localhost
+  become: False
   run_once: True
   with_items: "{{ crt_files_exist.results }}"
   when:
     - item.stat.exists == false
 
 - name: create pem
-  local_action:
-    module: shell cat {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.crt {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.key > {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.pem
+  shell: >
+    cat {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.crt
+    {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.key > {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.pem
+  delegate_to: localhost
+  become: False
   run_once: True
   register: pem
   with_items: "{{ crt_files_exist.results }}"
@@ -35,8 +42,11 @@
     - item.stat.exists == false
 
 - name: create public key from pem
-  local_action:
-    module: shell openssl x509 -inform pem -in {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.pem -pubkey -noout > {{ fetch_directory }}/{{ fsid }}/iscsi-gateway-pub.key
+  shell: >
+    openssl x509 -inform pem -in {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.pem
+    -pubkey -noout > {{ fetch_directory }}/{{ fsid }}/iscsi-gateway-pub.key
+  delegate_to: localhost
+  become: False
   run_once: True
   when:
     - pem.changed
