@@ -421,18 +421,6 @@
   serial: 1
   become: true
   pre_tasks:
-
-    - name: stop non-containerized ceph rgw(s)
-      service:
-        name: "ceph-radosgw@rgw.{{ ansible_hostname }}"
-        state: stopped
-        enabled: no
-
-    - name: remove old systemd unit file
-      file:
-        path: /usr/lib/systemd/system/ceph-radosgw@.service
-        state: absent
-
     - set_fact:
         ceph_uid: 64045
       when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
@@ -456,6 +444,18 @@
 
     - import_role:
         name: ceph-facts
+
+    - name: stop non-containerized ceph rgw(s)
+      service:
+        name: "ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}"
+        state: stopped
+        enabled: no
+      with_items: "{{ rgw_instances }}"
+
+    - name: remove old systemd unit file
+      file:
+        path: /usr/lib/systemd/system/ceph-radosgw@.service
+        state: absent
 
     - import_role:
         name: ceph-handler
