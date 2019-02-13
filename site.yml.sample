@@ -50,6 +50,19 @@
         - ansible_distribution == 'Fedora'
         - ansible_distribution_major_version|int >= 23
 
+    - name: check if it is atomic host
+      stat:
+        path: /run/ostree-booted
+      register: stat_ostree
+      tags:
+        - always
+
+    - name: set_fact is_atomic
+      set_fact:
+        is_atomic: '{{ stat_ostree.stat.exists }}'
+      tags:
+        - always
+
   tasks:
     - import_role:
         name: ceph-validate
