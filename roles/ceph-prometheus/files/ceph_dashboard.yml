@@ -1,0 +1,107 @@
+groups:
+- name: dashboard
+  rules:
+  - alert: Ceph Health Warning
+    expr: ceph_health_status == 1
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "Ceph Health Warning"
+      description: "Overall Ceph Health"
+  - alert: Ceph Health Error
+    expr: ceph_health_status > 1
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "Ceph Health Error"
+      description: "The Ceph cluster health is in an error state"
+  - alert: Disk(s) Near Full
+    expr: (ceph_osd_stat_bytes_used / ceph_osd_stat_bytes) * 100 > 85
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "Disk(s) Near Full"
+      description: "This shows how many disks are at or above 85% full. Performance may degrade beyond this threshold on filestore (XFS) backed OSD's."
+  - alert: OSD(s) Down
+    expr: ceph_osd_up < 0.5
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "OSD(s) Down"
+      description: "This indicates that one or more OSDs is currently marked down in the cluster."
+  - alert: OSD Host(s) Down
+    expr: count by(instance) (ceph_disk_occupation * on(ceph_daemon) group_right(instance) ceph_osd_up == 0) - count by(instance) (ceph_disk_occupation) == 0
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "OSD Host(s) Down"
+      description: "This indicates that one or more OSD hosts is currently down in the cluster."
+  - alert: PG(s) Stuck
+    expr: max(ceph_osd_numpg) > scalar(ceph_pg_active)
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "PG(s) Stuck"
+      description: "This indicates there are pg's in a stuck state, manual intervention needed to resolve."
+  - alert: OSD Host Loss Check
+    expr: max(sum(ceph_osd_stat_bytes - ceph_osd_stat_bytes_used)) * 0.9 < scalar(max(sum by (instance) (ceph_osd_stat_bytes + on (ceph_daemon) group_left (instance) (ceph_disk_occupation*0))))
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "OSD Host Loss Check"
+      description: "This indicates that the cluster @ 90% full is not enough to support the loss of the largest OSD host."
+  - alert: Slow OSD Responses
+    expr: ((irate(node_disk_read_time_seconds_total[5m]) / clamp_min(irate(node_disk_reads_completed_total[5m]), 1) + irate(node_disk_write_time_seconds_total[5m]) / clamp_min(irate(node_disk_writes_completed_total[5m]), 1)) and on (instance, device) ceph_disk_occupation) > 1
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "Slow OSD Responses"
+      description: "This indicates that some OSD Latencies are above 1s."
+  - alert: Network Errors
+    expr: sum by (instance, device) (irate(node_network_receive_drop_total{device=~"(eth|en|bond|ib|mlx|p).*"}[5m]) + irate(node_network_receive_errs_total{device=~"(eth|en|bond|ib|mlx|p).*"}[5m]) + irate(node_network_transmit_drop_total{device=~"(eth|en|bond|ib|mlx|p).*"}[5m]) + irate(node_network_transmit_errs_total{device=~"(eth|en|bond|ib|mlx|p).*"}[5m])) > 10
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "Network Errors"
+      description: "This indicates that more than 10 dropped/error packets are seen in a 5m interval"
+  - alert: Pool Capacity Low
+    expr: (ceph_pool_bytes_used / (ceph_pool_bytes_used + ceph_pool_max_avail) * 100 + on (pool_id) group_left (name) (ceph_pool_metadata*0)) > 85
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "Pool Capacity Low"
+      description: "This indicates a low capacity in a pool."
+  - alert: MON(s) Down
+    expr: ceph_mon_quorum_status != 1
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "MON(s) down"
+      description: "This indicates that one or more MON(s) is down."
+  - alert: Cluster Capacity Low
+    expr: sum(ceph_osd_stat_bytes_used) / sum(ceph_osd_stat_bytes) > 0.85
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "Cluster Capacity Low"
+      description: "This indicates raw used space crosses the 85% capacity threshold of the ceph cluster."
+  - alert: OSD(s) with High PG Count
+    expr: ceph_osd_numpg > 275
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "OSD(s) with High PG Count"
+      description: "This indicates there are some OSDs with high PG count (275+)."
