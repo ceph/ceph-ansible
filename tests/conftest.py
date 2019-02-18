@@ -2,6 +2,80 @@ import pytest
 import os
 
 
+@pytest.fixture(scope="module")
+def setup(host):
+    cluster_address = ""
+    container_binary = ""
+    osd_ids = []
+    osds = []
+
+    ansible_vars = host.ansible.get_variables()
+    ansible_facts = host.ansible("setup")
+
+    docker = ansible_vars.get("docker")
+    osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
+    group_names = ansible_vars["group_names"]
+    fsid = ansible_vars.get("fsid")
+
+    ansible_distribution = ansible_facts["ansible_facts"]["ansible_distribution"]
+
+    subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
+    num_mons = len(ansible_vars["groups"]["mons"])
+    if osd_auto_discovery:
+        num_osds = 3
+    else:
+        num_osds = len(ansible_vars.get("devices", []))
+    if not num_osds:
+        num_osds = len(ansible_vars.get("lvm_volumes", []))
+    osds_per_device = ansible_vars.get("osds_per_device", 1)
+    num_osds = num_osds * osds_per_device
+
+    if ansible_distribution == "RedHat":
+        public_interface = "ens6"
+        cluster_interface = "ens7"
+    else:
+        public_interface = "eth1"
+        cluster_interface = "eth2"
+
+    # If number of devices doesn't map to number of OSDs, allow tests to define
+    # that custom number, defaulting it to ``num_devices``
+    num_osds = ansible_vars.get('num_osds', num_osds)
+    cluster_name = ansible_vars.get("cluster", "ceph")
+    conf_path = "/etc/ceph/{}.conf".format(cluster_name)
+    if "osds" in group_names:
+        cluster_address = host.interface(cluster_interface).addresses[0]
+        cmd = host.run('sudo ls /var/lib/ceph/osd/ | sed "s/.*-//"')
+        if cmd.rc == 0:
+            osd_ids = cmd.stdout.rstrip("\n").split("\n")
+            osds = osd_ids
+            if docker and fsid == "6e008d48-1661-11e8-8546-008c3214218a":
+                osds = []
+                for device in ansible_vars.get("devices", []):
+                    real_dev = host.run("sudo readlink -f %s" % device)
+                    real_dev_split = real_dev.stdout.split("/")[-1]
+                    osds.append(real_dev_split)
+
+    address = host.interface(public_interface).addresses[0]
+
+    if docker:
+        container_binary = "docker"
+    if docker and host.exists("podman") and ansible_distribution in ["Fedora", "RedHat"]:  # noqa E501
+        container_binary = "podman"
+
+    data = dict(
+        cluster_name=cluster_name,
+        subnet=subnet,
+        osd_ids=osd_ids,
+        num_mons=num_mons,
+        num_osds=num_osds,
+        address=address,
+        osds=osds,
+        conf_path=conf_path,
+        cluster_address=cluster_address,
+        container_binary=container_binary)
+
+    return data
+
 @pytest.fixture()
 def node(host, request):
     """
@@ -21,8 +95,6 @@ def node(host, request):
     rolling_update = os.environ.get("ROLLING_UPDATE", "False")
     group_names = ansible_vars["group_names"]
     docker = ansible_vars.get("docker")
-    fsid = ansible_vars.get("fsid")
-    osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
     osd_scenario = ansible_vars.get("osd_scenario")
     radosgw_num_instances = ansible_vars.get("radosgw_num_instances", 1)
     lvm_scenario = osd_scenario in ['lvm', 'lvm-batch']
@@ -33,7 +105,6 @@ def node(host, request):
         'mimic': 13,
         'dev': 99
     }
-    ansible_distribution = host.ansible("setup")["ansible_facts"]['ansible_distribution']
 
     # capture the initial/default state
     test_is_applicable = False
@@ -66,69 +137,15 @@ def node(host, request):
     if request.node.get_closest_marker("journal_collocation") and not journal_collocation_test:  # noqa E501
         pytest.skip("Scenario is not using journal collocation")
 
-    osd_ids = []
-    osds = []
-    cluster_address = ""
-    container_binary = ""
 
-    if ansible_distribution == 'RedHat':
-        public_interface = 'ens6'
-        cluster_interface = 'ens7'
-    else:
-        public_interface = 'eth1'
-        cluster_interface = 'eth2'
-    address = host.interface(public_interface).addresses[0]
-    subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
-    num_mons = len(ansible_vars["groups"]["mons"])
-    if osd_auto_discovery:
-        num_osds = 3
-    else:
-        num_osds = len(ansible_vars.get("devices", []))
-    if not num_osds:
-        num_osds = len(ansible_vars.get("lvm_volumes", []))
-    osds_per_device = ansible_vars.get("osds_per_device", 1)
-    num_osds = num_osds * osds_per_device
-
-    # If number of devices doesn't map to number of OSDs, allow tests to define
-    # that custom number, defaulting it to ``num_devices``
-    num_osds = ansible_vars.get('num_osds', num_osds)
-    cluster_name = ansible_vars.get("cluster", "ceph")
-    conf_path = "/etc/ceph/{}.conf".format(cluster_name)
-    if "osds" in group_names:
-        cluster_address = host.interface(cluster_interface).addresses[0]
-        cmd = host.run('sudo ls /var/lib/ceph/osd/ | sed "s/.*-//"')
-        if cmd.rc == 0:
-            osd_ids = cmd.stdout.rstrip("\n").split("\n")
-            osds = osd_ids
-            if docker and fsid == "6e008d48-1661-11e8-8546-008c3214218a":
-                osds = []
-                for device in ansible_vars.get("devices", []):
-                    real_dev = host.run("sudo readlink -f %s" % device)
-                    real_dev_split = real_dev.stdout.split("/")[-1]
-                    osds.append(real_dev_split)
-
-    if docker:
-        container_binary = 'docker'
-    if docker and host.exists('podman') and ansible_distribution in ['Fedora', 'RedHat']:  # noqa E501
-        container_binary = 'podman'
 
     data = dict(
-        address=address,
-        subnet=subnet,
         vars=ansible_vars,
-        osd_ids=osd_ids,
-        num_mons=num_mons,
-        num_osds=num_osds,
-        cluster_name=cluster_name,
-        conf_path=conf_path,
-        cluster_address=cluster_address,
         docker=docker,
-        osds=osds,
         ceph_stable_release=ceph_stable_release,
         ceph_release_num=ceph_release_num,
         rolling_update=rolling_update,
         radosgw_num_instances=radosgw_num_instances,
-        container_binary=container_binary,
     )
     return data
 
