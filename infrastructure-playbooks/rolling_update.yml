@@ -624,10 +624,11 @@
 
     - name: restart containerized ceph rgw
       systemd:
-        name: ceph-radosgw@rgw.{{ ansible_hostname }}
+        name: ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}
         state: restarted
         enabled: yes
         daemon_reload: yes
+      with_items: "{{ rgw_instances }}"
       when:
         - containerized_deployment
 

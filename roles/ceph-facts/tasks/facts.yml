@@ -19,8 +19,13 @@
 
 - name: set_fact container_binary
   set_fact:
-    container_binary: "{{ 'podman' if is_podman and ansible_distribution == 'Fedora' else 'docker' }}"
+    container_binary: "{{ 'podman' if (podman_binary.stat.exists and ansible_distribution == 'Fedora') or (ansible_os_family == 'RedHat' and ansible_distribution_major_version == '8') else 'docker' }}"
   when: containerized_deployment
+
+# Set ceph_release to ceph_stable by default
+- name: set_fact ceph_release ceph_stable_release
+  set_fact:
+    ceph_release: "{{ ceph_stable_release }}"
 
 - name: set_fact monitor_name ansible_hostname
   set_fact:
@@ -46,7 +51,7 @@
 # because it blindly picks a mon, which may be down because
 # of the rolling update
 - name: is ceph running already?
-  command: "timeout 5 {{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
+  command: "{{ timeout_command }} {{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
   changed_when: false
   failed_when: false
   check_mode: no
@@ -56,15 +61,6 @@
   when:
     - not rolling_update
     - groups.get(mon_group_name, []) | length > 0
-
-# We want this check to be run only on the first node
-- name: check if {{ fetch_directory }} directory exists
-  stat:
-    path: "{{ fetch_directory }}/monitor_keyring.conf"
-  delegate_to: localhost
-  become: false
-  register: monitor_keyring_conf
-  run_once: true
 
 # set this as a default when performing a rolling_update
 # so the rest of the tasks here will succeed
@@ -98,43 +94,21 @@
   when:
     - ceph_current_status.fsid is defined
 
-- name: generate cluster fsid
-  shell: python -c 'import uuid; print(str(uuid.uuid4()))' | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
-  args:
-    creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-  register: cluster_uuid
-  delegate_to: localhost
-  become: false
+- block:
+  - name: generate cluster fsid
+    shell: python -c 'import uuid; print(str(uuid.uuid4()))'
+    register: cluster_uuid
+    delegate_to: localhost
+    become: false
+    run_once: true
+
+  - name: set_fact fsid
+    set_fact:
+      fsid: "{{ cluster_uuid.stdout }}"
+
   when:
     - generate_fsid
     - ceph_current_status.fsid is undefined
-
-- name: reuse cluster fsid when cluster is already running
-  shell: echo {{ fsid }} | tee {{ fetch_directory }}/ceph_cluster_uuid.conf
-  args:
-    creates: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-  delegate_to: localhost
-  become: false
-  when:
-    - ceph_current_status.fsid is defined
-
-- name: read cluster fsid if it already exists
-  command: cat {{ fetch_directory }}/ceph_cluster_uuid.conf
-  args:
-    removes: "{{ fetch_directory }}/ceph_cluster_uuid.conf"
-  delegate_to: localhost
-  changed_when: false
-  register: cluster_uuid
-  become: false
-  check_mode: no
-  when:
-    - generate_fsid
-
-- name: set_fact fsid
-  set_fact:
-    fsid: "{{ cluster_uuid.stdout }}"
-  when:
-    - generate_fsid
 
 - name: set_fact mds_name ansible_hostname
   set_fact:
@@ -199,6 +173,19 @@
     - not osd_auto_discovery|default(False)
     - osd_scenario|default('dummy') != 'lvm'
 
+- name: set_fact devices generate device list when osd_auto_discovery
+  set_fact:
+    devices: "{{ devices | default([]) + [ item.key | regex_replace('^', '/dev/') ] }}"
+  with_dict: "{{ ansible_devices }}"
+  when:
+    - osd_auto_discovery|default(False)
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.sectors != "0"
+    - item.value.partitions|count == 0
+    - item.value.holders|count == 0
+    - "'dm-' not in item.key"
+
 - name: set_fact ceph_uid for debian based system - non container
   set_fact:
     ceph_uid: 64045
@@ -225,7 +212,8 @@
     ceph_uid: 167
   when:
     - containerized_deployment
-    - ceph_docker_image_tag | string is search("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
+    - (ceph_docker_image_tag | string is search("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
+      or (ansible_distribution == 'RedHat'))
 
 - name: set_fact ceph_uid for red hat
   set_fact:
@@ -271,3 +259,15 @@
   with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
+
+- name: set ntp service name depending on OS family
+  block:
+  - name: set ntp service name for Debian family
+    set_fact:
+      ntp_service_name: ntp
+    when: ansible_os_family == 'Debian'
+
+  - name: set ntp service name for Red Hat family
+    set_fact:
+      ntp_service_name: ntpd
+    when: ansible_os_family in ['RedHat', 'Suse']

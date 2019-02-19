@@ -49,6 +49,10 @@ options:
         description:
             - If data is a lv, this must be the name of the volume group it belongs to.
         required: false
+    osd_fsid:
+        description:
+            - The OSD FSID
+        required: false
     journal:
         description:
             - The logical volume name or partition to use as a filestore journal.
@@ -189,7 +193,7 @@ def container_exec(binary, container_image):
                     '-v', '/run/lock/lvm:/run/lock/lvm:z',
                     '-v', '/var/run/udev/:/var/run/udev/:z',
                     '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',
-                    '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',
+                    '-v', '/run/lvm/:/run/lvm/',
                     '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                     '-v', '/var/log/ceph/:/var/log/ceph/:z',
                     os.path.join('--entrypoint=' + binary),
@@ -441,7 +445,7 @@ def zap_devices(module, container_image):
     '''
 
     # get module variables
-    data = module.params['data']
+    data = module.params.get('data', None)
     data_vg = module.params.get('data_vg', None)
     journal = module.params.get('journal', None)
     journal_vg = module.params.get('journal_vg', None)
@@ -449,13 +453,19 @@ def zap_devices(module, container_image):
     db_vg = module.params.get('db_vg', None)
     wal = module.params.get('wal', None)
     wal_vg = module.params.get('wal_vg', None)
-    data = get_data(data, data_vg)
+    osd_fsid = module.params.get('osd_fsid', None)
 
     # build the CLI
     action = ['lvm', 'zap']
     cmd = build_ceph_volume_cmd(action, container_image)
     cmd.append('--destroy')
-    cmd.append(data)
+
+    if osd_fsid:
+        cmd.extend(['--osd-fsid', osd_fsid])
+
+    if data:
+        data = get_data(data, data_vg)
+        cmd.append(data)
 
     if journal:
         journal = get_journal(journal, journal_vg)
@@ -496,6 +506,7 @@ def run_module():
         block_db_size=dict(type='str', required=False, default='-1'),
         report=dict(type='bool', required=False, default=False),
         containerized=dict(type='str', required=False, default=False),
+        osd_fsid=dict(type='str', required=False),
     )
 
     module = AnsibleModule(

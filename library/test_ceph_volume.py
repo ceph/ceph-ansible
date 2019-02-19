@@ -46,7 +46,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
+                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
@@ -62,7 +62,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
+                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
@@ -83,6 +83,19 @@ class TestCephVolumeModule(object):
                                  'zap',
                                  '--destroy',
                                  '/dev/sda']
+        result = ceph_volume.zap_devices(fake_module, fake_container_image)
+        assert result == expected_command_list
+
+    def test_zap_osd_fsid(self):
+        fake_module = MagicMock()
+        fake_module.params = {'osd_fsid': 'a_uuid'}
+        fake_container_image = None
+        expected_command_list = ['ceph-volume',
+                                 'lvm',
+                                 'zap',
+                                 '--destroy',
+                                 '--osd-fsid',
+                                 'a_uuid']
         result = ceph_volume.zap_devices(fake_module, fake_container_image)
         assert result == expected_command_list
 
@@ -117,7 +130,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
+                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
@@ -149,7 +162,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
+                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
@@ -172,7 +185,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
+                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
@@ -220,7 +233,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
+                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
@@ -269,7 +282,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket',  # noqa E501
+                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
