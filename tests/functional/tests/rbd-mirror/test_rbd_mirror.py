@@ -27,10 +27,10 @@ class TestRbdMirrors(object):
         )
         assert host.service(service_name).is_enabled
 
-    def test_rbd_mirror_is_up(self, node, host):
+    def test_rbd_mirror_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
-        cluster = node["cluster_name"]
-        container_binary = node["container_binary"]
+        cluster = setup["cluster_name"]
+        container_binary = setup["container_binary"]
         daemons = []
         if node['docker']:
             container_exec_cmd = '{container_binary} exec ceph-rbd-mirror-{hostname}'.format(  # noqa E501
@@ -38,7 +38,7 @@ class TestRbdMirrors(object):
         else:
             container_exec_cmd = ''
         hostname = node["vars"]["inventory_hostname"]
-        cluster = node['cluster_name']
+        cluster = setup['cluster_name']
         cmd = "sudo {container_exec_cmd} ceph --name client.bootstrap-rbd-mirror --keyring /var/lib/ceph/bootstrap-rbd-mirror/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(  # noqa E501
             container_exec_cmd=container_exec_cmd,
             hostname=hostname,

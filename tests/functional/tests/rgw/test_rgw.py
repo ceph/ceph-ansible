@@ -27,10 +27,10 @@ class TestRGWs(object):
             )
             assert host.service(service_name).is_enabled
 
-    def test_rgw_is_up(self, node, host):
+    def test_rgw_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
-        cluster = node["cluster_name"]
-        container_binary = node["container_binary"]
+        cluster = setup["cluster_name"]
+        container_binary = setup["container_binary"]
         if node['docker']:
             container_exec_cmd = '{container_binary} exec ceph-rgw-{hostname}-rgw0'.format(  # noqa E501
                 hostname=hostname, container_binary=container_binary)
