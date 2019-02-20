@@ -9,35 +9,35 @@ class TestOSDs(object):
     def test_ceph_osd_package_is_installed(self, node, host):
         assert host.package("ceph-osd").is_installed
 
-    def test_osds_listen_on_public_network(self, node, host):
+    def test_osds_listen_on_public_network(self, node, host, setup):
         # TODO: figure out way to paramaterize this test
-        nb_port = (node["num_osds"] * 4)
+        nb_port = (setup["num_osds"] * 4)
         assert host.check_output(
-            "netstat -lntp | grep ceph-osd | grep %s | wc -l" % (node["address"])) == str(nb_port)  # noqa E501
+            "netstat -lntp | grep ceph-osd | grep %s | wc -l" % (setup["address"])) == str(nb_port)  # noqa E501
 
-    def test_osds_listen_on_cluster_network(self, node, host):
+    def test_osds_listen_on_cluster_network(self, node, host, setup):
         # TODO: figure out way to paramaterize this test
-        nb_port = (node["num_osds"] * 4)
+        nb_port = (setup["num_osds"] * 4)
         assert host.check_output("netstat -lntp | grep ceph-osd | grep %s | wc -l" %  # noqa E501
-                                 (node["cluster_address"])) == str(nb_port)
+                                 (setup["cluster_address"])) == str(nb_port)
 
-    def test_osd_services_are_running(self, node, host):
+    def test_osd_services_are_running(self, node, host, setup):
         # TODO: figure out way to paramaterize node['osds'] for this test
-        for osd in node["osds"]:
+        for osd in setup["osds"]:
             assert host.service("ceph-osd@%s" % osd).is_running
 
     @pytest.mark.no_lvm_scenario
-    def test_osd_services_are_enabled(self, node, host):
+    def test_osd_services_are_enabled(self, node, host, setup):
         # TODO: figure out way to paramaterize node['osds'] for this test
-        for osd in node["osds"]:
+        for osd in setup["osds"]:
             assert host.service("ceph-osd@%s" % osd).is_enabled
 
     @pytest.mark.no_docker
-    def test_osd_are_mounted(self, node, host):
-        # TODO: figure out way to paramaterize node['osd_ids'] for this test
-        for osd_id in node["osd_ids"]:
+    def test_osd_are_mounted(self, node, host, setup):
+        # TODO: figure out way to paramaterize setup['osd_ids'] for this test
+        for osd_id in setup["osd_ids"]:
             osd_path = "/var/lib/ceph/osd/{cluster}-{osd_id}".format(
-                cluster=node["cluster_name"],
+                cluster=setup["cluster_name"],
                 osd_id=osd_id,
             )
             assert host.mount_point(osd_path).exists
@@ -66,21 +66,21 @@ class TestOSDs(object):
         return nb_up
 
     @pytest.mark.no_docker
-    def test_all_osds_are_up_and_in(self, node, host):
+    def test_all_osds_are_up_and_in(self, node, host, setup):
         cmd = "sudo ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(  # noqa E501
-            cluster=node["cluster_name"])
+            cluster=setup["cluster_name"])
         output = json.loads(host.check_output(cmd))
-        assert node["num_osds"] == self._get_nb_up_osds_from_ids(node, output)
+        assert setup["num_osds"] == self._get_nb_up_osds_from_ids(node, output)
 
     @pytest.mark.docker
-    def test_all_docker_osds_are_up_and_in(self, node, host):
-        container_binary = node["container_binary"]
+    def test_all_docker_osds_are_up_and_in(self, node, host, setup):
+        container_binary = setup["container_binary"]
         osd_id = host.check_output(os.path.join(
             container_binary + " ps -q --filter='name=ceph-osd' | head -1"))
         cmd = "sudo {container_binary} exec {osd_id} ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(  # noqa E501
             osd_id=osd_id,
-            cluster=node["cluster_name"],
+            cluster=setup["cluster_name"],
             container_binary=container_binary
         )
         output = json.loads(host.check_output(cmd))
-        assert node["num_osds"] == self._get_nb_up_osds_from_ids(node, output)
+        assert setup["num_osds"] == self._get_nb_up_osds_from_ids(node, output)
