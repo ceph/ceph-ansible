@@ -5,8 +5,9 @@
     test "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" =
     "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_up_osds"])')"
   register: wait_for_all_osds_up
-  retries: 30
-  delay: 10
+  retries: "{{ nb_retry_wait_osd_up }}"
+  delay: "{{ delay_wait_osd_up }}"
+  changed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
   until: wait_for_all_osds_up.rc == 0
 
