@@ -53,8 +53,8 @@ class TestRGWs(object):
 
     @pytest.mark.no_docker
     def test_rgw_http_endpoint(self, node, host):
-        # rgw frontends ip_addr is configured on eth1
-        ip_addr = host.interface("eth1").addresses[0]
+        # rgw frontends ip_addr is configured on ens6
+        ip_addr = host.interface("ens6").addresses[0]
         for i in range(int(node["radosgw_num_instances"])):
             assert host.socket(
                 "tcp://{ip_addr}:{port}".format(ip_addr=ip_addr,
