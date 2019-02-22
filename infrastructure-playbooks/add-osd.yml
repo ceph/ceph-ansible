@@ -24,8 +24,7 @@
   vars:
     delegate_facts_host: True
 
-  tasks:
-    # pre-tasks for following import
+  pre_tasks:
     - name: gather facts
       setup:
       when:
@@ -42,20 +41,21 @@
       when:
         - delegate_facts_host | bool
 
+  tasks:
     - import_role:
         name: ceph-defaults
-        private: false
+
+    - import_role:
+        name: ceph-facts
 
     - import_role:
         name: ceph-validate
-        private: false
 
 - hosts: osds
   gather_facts: False
   become: True
 
-  tasks:
-    # pre-tasks for following import
+  pre_tasks:
     # this task is needed so we can skip the openstack_config.yml include in roles/ceph-osd
     - name: set_fact add_osd
       set_fact:
@@ -67,37 +67,34 @@
       run_once: True
       changed_when: False
 
+  tasks:
     - import_role:
         name: ceph-defaults
-        private: false
+
+    - import_role:
+        name: ceph-facts
 
     - import_role:
         name: ceph-handler
-        private: false
 
     - import_role:
         name: ceph-infra
-        private: false
 
     - import_role:
         name: ceph-container-common
-        private: false
       when: containerized_deployment | bool
 
     - import_role:
         name: ceph-common
-        private: false
       when: not containerized_deployment | bool
 
     - import_role:
         name: ceph-config
-        private: false
 
     - import_role:
         name: ceph-osd
-        private: false
 
-    # post-tasks for preceding import
+  post_tasks:
     - name: unset noup flag
       command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset noup"
       delegate_to: "{{ groups['mons'][0] }}"

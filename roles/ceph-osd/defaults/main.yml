@@ -1,8 +1,4 @@
 ---
-# You can override default vars defined in defaults/main.yml here,
-# but I would advice to use host or group vars instead
-
-
 ###########
 # GENERAL #
 ###########
@@ -120,7 +116,8 @@ valid_osd_scenarios:
 # 'data' is only 100MB big and do not store any of your data, it's just a bunch of Ceph metadata.
 # 'block' will store all your actual data.
 # - The devices in 'dedicated_devices' will get 1 partition for RocksDB DB, called 'block.db'
-#  and one for RocksDB WAL, called 'block.wal'
+#  and one for RocksDB WAL, called 'block.wal'. To use a single partition for RocksDB and WAL together
+#  set bluestore_wal_devices to [] (supported only for non-containerized deployment).
 #
 # By default dedicated_devices will represent block.db
 #
@@ -143,6 +140,8 @@ dedicated_devices: []
 #
 # By default, if 'bluestore_wal_devices' is empty, it will get the content of 'dedicated_devices'.
 # If set, then you will have a dedicated partition on a specific device for block.wal.
+#
+# Set bluestore_wal_devices: [] to use the same partition for RocksDB and WAL (supported only for non-containerized deployment).
 #
 # Example of what you will get:
 # [root@ceph-osd0 ~]# blkid /dev/sd*
@@ -258,3 +257,11 @@ ceph_osd_docker_run_script_path: "/usr/share" # script called by systemd to run 
 #ceph_osd_systemd_overrides:
 #  Service:
 #    PrivateDevices: False
+
+
+###########
+#  CHECK  #
+###########
+
+nb_retry_wait_osd_up: 60
+delay_wait_osd_up: 10

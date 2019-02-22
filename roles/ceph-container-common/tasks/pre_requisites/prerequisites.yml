@@ -13,6 +13,8 @@
         name: python-six
         state: present
         update_cache: yes
+      register: result
+      until: result is succeeded
       tags:
         with_pkg
   when:
@@ -25,6 +27,8 @@
         name: ['docker.io', 'python-docker']
         state: present
         update_cache: yes
+      register: result
+      until: result is succeeded
       tags:
         with_pkg
   when:
@@ -42,28 +46,56 @@
   tags:
     with_pkg
 
-- name: red hat based systems tasks
+- name: red hat 7 based systems tasks
   block:
     - name: install python-docker-py on red hat / centos
       package:
         name: ['docker', 'python-docker-py']
         state: present
+      register: result
+      until: result is succeeded
+      tags:
+        with_pkg
+
+    - name: pause after docker install before starting (on openstack vms)
+      pause: seconds=5
+      when:
+        - ceph_docker_on_openstack
+      tags:
+        with_pkg
+
+    - name: start docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+      tags:
+        with_pkg
+
+  when:
+    - ansible_os_family == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: red hat 8 based systems tasks
+  block:
+    - name: install podman
+      package:
+        name: 'podman'
+        state: present
+      register: result
+      until: result is succeeded
       tags:
         with_pkg
   when:
     - ansible_os_family == 'RedHat'
+    - ansible_distribution_major_version == '8'
 
-- name: pause after docker install before starting (on openstack vms)
-  pause: seconds=5
-  when:
-    - ceph_docker_on_openstack
-  tags:
-    with_pkg
-
-- name: start docker service
-  service:
-    name: docker
-    state: started
-    enabled: yes
-  tags:
-    with_pkg
+- name: ensure tmpfiles.d is present
+  lineinfile:
+    path: /etc/tmpfiles.d/ceph-common.conf
+    line: "d /run/ceph 0770 root root -"
+    owner: root
+    group: root
+    mode: 0644
+    state: present
+    create: yes

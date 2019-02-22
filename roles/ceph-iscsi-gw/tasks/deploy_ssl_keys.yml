@@ -23,6 +23,7 @@
      -x509 -days 365 -out {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.crt
      -subj "/C=US/ST=./L=./O=RedHat/OU=Linux/CN={{ ansible_hostname }}"
   delegate_to: localhost
+  become: False
   run_once: True
   with_items: "{{ crt_files_exist.results }}"
   when:
@@ -33,6 +34,7 @@
     cat {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.crt
     {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.key > {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.pem
   delegate_to: localhost
+  become: False
   run_once: True
   register: pem
   with_items: "{{ crt_files_exist.results }}"
@@ -44,6 +46,7 @@
     openssl x509 -inform pem -in {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.pem
     -pubkey -noout > {{ fetch_directory }}/{{ fsid }}/iscsi-gateway-pub.key
   delegate_to: localhost
+  become: False
   run_once: True
   when:
     - pem.changed

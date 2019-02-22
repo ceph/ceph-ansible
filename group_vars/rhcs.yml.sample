@@ -159,7 +159,7 @@ ceph_repository: rhcs
 #ceph_stable_repo: "{{ ceph_mirror }}/debian-{{ ceph_stable_release }}"
 
 #nfs_ganesha_stable: true # use stable repos for nfs-ganesha
-#nfs_ganesha_stable_branch: V2.6-stable
+#nfs_ganesha_stable_branch: V2.7-stable
 #nfs_ganesha_stable_deb_repo: "{{ ceph_mirror }}/nfs-ganesha/deb-{{ nfs_ganesha_stable_branch }}/{{ ceph_stable_release }}"
 
 
@@ -405,6 +405,7 @@ ceph_rhcs_version: 3
 #radosgw_address: 0.0.0.0
 #radosgw_address_block: subnet
 #radosgw_keystone_ssl: false # activate this when using keystone PKI keys
+#radosgw_num_instances: 1
 # Rados Gateway options
 #email_address: foo@bar.com
 
@@ -500,6 +501,11 @@ ceph_rhcs_version: 3
 # Ceph configuration file override.
 # This allows you to specify more configuration options
 # using an INI style format.
+#
+# When configuring RGWs, make sure you use the form [client.rgw.*]
+# instead of [client.radosgw.*].
+# For more examples check the profiles directory of https://github.com/ceph/ceph-ansible.
+#
 # The following sections are supported: [global], [mon], [osd], [mds], [rgw]
 #
 # Example:
@@ -507,6 +513,8 @@ ceph_rhcs_version: 3
 #   global:
 #     foo: 1234
 #     bar: 5678
+#   "client.rgw.{{ hostvars[groups.get(rgw_group_name)[0]]['ansible_hostname'] }}":
+#     rgw_zone: zone1
 #
 #ceph_conf_overrides: {}
 
@@ -544,16 +552,7 @@ ceph_docker_registry: "registry.access.redhat.com/rhceph/"
 #ceph_docker_on_openstack: false
 #containerized_deployment: False
 #container_binary:
-
-
-############
-# KV store #
-############
-#containerized_deployment_with_kv: false
-#mon_containerized_default_ceph_conf_with_kv: false
-#kv_type: etcd
-#kv_endpoint: 127.0.0.1
-#kv_port: 2379
+#timeout_command: "{{ 'timeout --foreground -s KILL ' ~ docker_pull_timeout if (docker_pull_timeout != '0') and (ceph_docker_dev_image is undefined or not ceph_docker_dev_image) else '' }}"
 
 
 # this is only here for usage with the rolling_update.yml playbook

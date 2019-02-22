@@ -1,4 +1,16 @@
 ---
+- name: generate environment file
+  become: true
+  copy:
+    dest: "/var/lib/ceph/radosgw/ceph-rgw.{{ ansible_hostname }}.{{ item.instance_name }}/EnvironmentFile"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    content: |
+      INST_NAME={{ item.instance_name }}
+      INST_PORT={{ item.radosgw_frontend_port }}
+  with_items: "{{ rgw_instances }}"
+
 - name: generate systemd unit file
   become: true
   template:
@@ -26,7 +38,8 @@
 
 - name: systemd start rgw container
   systemd:
-    name: "ceph-radosgw@rgw.{{ ansible_hostname }}.service"
+    name: ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}
     state: started
     enabled: yes
     daemon_reload: yes
+  with_items: "{{ rgw_instances }}"

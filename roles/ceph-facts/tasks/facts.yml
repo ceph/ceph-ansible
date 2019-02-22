@@ -1,0 +1,273 @@
+---
+- name: check if it is atomic host
+  stat:
+    path: /run/ostree-booted
+  register: stat_ostree
+
+- name: set_fact is_atomic
+  set_fact:
+    is_atomic: "{{ stat_ostree.stat.exists }}"
+
+- name: check if podman binary is present
+  stat:
+    path: /usr/bin/podman
+  register: podman_binary
+
+- name: set_fact is_podman
+  set_fact:
+    is_podman: "{{ podman_binary.stat.exists }}"
+
+- name: set_fact container_binary
+  set_fact:
+    container_binary: "{{ 'podman' if (podman_binary.stat.exists and ansible_distribution == 'Fedora') or (ansible_os_family == 'RedHat' and ansible_distribution_major_version == '8') else 'docker' }}"
+  when: containerized_deployment
+
+# Set ceph_release to ceph_stable by default
+- name: set_fact ceph_release ceph_stable_release
+  set_fact:
+    ceph_release: "{{ ceph_stable_release }}"
+
+- name: set_fact monitor_name ansible_hostname
+  set_fact:
+    monitor_name: "{{ ansible_hostname }}"
+  when:
+    - not mon_use_fqdn
+
+- name: set_fact monitor_name ansible_fqdn
+  set_fact:
+    monitor_name: "{{ ansible_fqdn }}"
+  when:
+    - mon_use_fqdn
+
+- name: set_fact docker_exec_cmd
+  set_fact:
+    docker_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - containerized_deployment
+    - groups.get(mon_group_name, []) | length > 0
+
+# this task shouldn't run in a rolling_update situation
+# because it blindly picks a mon, which may be down because
+# of the rolling update
+- name: is ceph running already?
+  command: "{{ timeout_command }} {{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
+  changed_when: false
+  failed_when: false
+  check_mode: no
+  register: ceph_current_status
+  run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - not rolling_update
+    - groups.get(mon_group_name, []) | length > 0
+
+# set this as a default when performing a rolling_update
+# so the rest of the tasks here will succeed
+- name: set_fact ceph_current_status rc 1
+  set_fact:
+    ceph_current_status:
+      rc: 1
+  when:
+    - rolling_update or groups.get(mon_group_name, []) | length == 0
+
+- name: create a local fetch directory if it does not exist
+  file:
+    path: "{{ fetch_directory }}"
+    state: directory
+  delegate_to: localhost
+  changed_when: false
+  become: false
+  when:
+    - (cephx or generate_fsid)
+
+- name: set_fact ceph_current_status (convert to json)
+  set_fact:
+    ceph_current_status: "{{ ceph_current_status.stdout | from_json }}"
+  when:
+    - not rolling_update
+    - ceph_current_status.rc == 0
+
+- name: set_fact fsid from ceph_current_status
+  set_fact:
+    fsid: "{{ ceph_current_status.fsid }}"
+  when:
+    - ceph_current_status.fsid is defined
+
+- block:
+  - name: generate cluster fsid
+    shell: python -c 'import uuid; print(str(uuid.uuid4()))'
+    register: cluster_uuid
+    delegate_to: localhost
+    become: false
+    run_once: true
+
+  - name: set_fact fsid
+    set_fact:
+      fsid: "{{ cluster_uuid.stdout }}"
+
+  when:
+    - generate_fsid
+    - ceph_current_status.fsid is undefined
+
+- name: set_fact mds_name ansible_hostname
+  set_fact:
+    mds_name: "{{ ansible_hostname }}"
+  when:
+    - not mds_use_fqdn
+
+- name: set_fact mds_name ansible_fqdn
+  set_fact:
+    mds_name: "{{ ansible_fqdn }}"
+  when:
+    - mds_use_fqdn
+
+- name: set_fact rbd_client_directory_owner ceph
+  set_fact:
+    rbd_client_directory_owner: ceph
+  when:
+    - rbd_client_directory_owner is not defined
+      or not rbd_client_directory_owner
+
+- name: set_fact rbd_client_directory_group rbd_client_directory_group
+  set_fact:
+    rbd_client_directory_group: ceph
+  when:
+    - rbd_client_directory_group is not defined
+      or not rbd_client_directory_group
+
+- name: set_fact rbd_client_directory_mode 0770
+  set_fact:
+    rbd_client_directory_mode: "0770"
+  when:
+    - rbd_client_directory_mode is not defined
+      or not rbd_client_directory_mode
+
+- name: resolve device link(s)
+  command: readlink -f {{ item }}
+  changed_when: false
+  with_items: "{{ devices }}"
+  register: devices_prepare_canonicalize
+  when:
+    - devices is defined
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - osd_scenario|default('dummy') != 'lvm'
+
+- name: set_fact build devices from resolved symlinks
+  set_fact:
+    devices: "{{ devices | default([]) + [ item.stdout ] }}"
+  with_items: "{{ devices_prepare_canonicalize.results }}"
+  when:
+    - devices is defined
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - osd_scenario|default('dummy') != 'lvm'
+
+- name: set_fact build final devices list
+  set_fact:
+    devices: "{{ devices | reject('search','/dev/disk') | list | unique }}"
+  when:
+    - devices is defined
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - not osd_auto_discovery|default(False)
+    - osd_scenario|default('dummy') != 'lvm'
+
+- name: set_fact devices generate device list when osd_auto_discovery
+  set_fact:
+    devices: "{{ devices | default([]) + [ item.key | regex_replace('^', '/dev/') ] }}"
+  with_dict: "{{ ansible_devices }}"
+  when:
+    - osd_auto_discovery|default(False)
+    - ansible_devices is defined
+    - item.value.removable == "0"
+    - item.value.sectors != "0"
+    - item.value.partitions|count == 0
+    - item.value.holders|count == 0
+    - "'dm-' not in item.key"
+
+- name: set_fact ceph_uid for debian based system - non container
+  set_fact:
+    ceph_uid: 64045
+  when:
+    - not containerized_deployment
+    - ansible_os_family == 'Debian'
+
+- name: set_fact ceph_uid for red hat or suse based system - non container
+  set_fact:
+    ceph_uid: 167
+  when:
+    - not containerized_deployment
+    - ansible_os_family in ['RedHat', 'Suse']
+
+- name: set_fact ceph_uid for debian based system - container
+  set_fact:
+    ceph_uid: 64045
+  when:
+    - containerized_deployment
+    - ceph_docker_image_tag | string is search("ubuntu")
+
+- name: set_fact ceph_uid for red hat based system - container
+  set_fact:
+    ceph_uid: 167
+  when:
+    - containerized_deployment
+    - (ceph_docker_image_tag | string is search("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
+      or (ansible_distribution == 'RedHat'))
+
+- name: set_fact ceph_uid for red hat
+  set_fact:
+    ceph_uid: 167
+  when:
+    - containerized_deployment
+    - ceph_docker_image is search("rhceph")
+
+- name: set_fact rgw_hostname
+  set_fact:
+    rgw_hostname: "{% set _value = ansible_hostname -%}
+    {% for key in (ceph_current_status['servicemap']['services']['rgw']['daemons'] | list) -%}
+    {% if key == ansible_fqdn -%}
+    {% set _value = key -%}
+    {% endif -%}
+    {% endfor -%}
+    {{ _value }}"
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, []) or inventory_hostname in groups.get(nfs_group_name, [])
+    - ceph_current_status['servicemap'] is defined
+    - ceph_current_status['servicemap']['services'] is defined
+    - ceph_current_status['servicemap']['services']['rgw'] is defined
+
+- name: set_fact osd_pool_default_pg_num
+  set_fact:
+    osd_pool_default_pg_num: "{{ ceph_conf_overrides.get('global', {}).get('osd_pool_default_pg_num', ceph_osd_pool_default_pg_num) }}"
+
+- name: set_fact osd_pool_default_size
+  set_fact:
+    osd_pool_default_size: "{{ ceph_conf_overrides.get('global', {}).get('osd_pool_default_size', ceph_osd_pool_default_size) }}"
+
+- name: import_tasks set_monitor_address.yml
+  import_tasks: set_monitor_address.yml
+
+- name: import_tasks set_radosgw_address.yml
+  import_tasks: set_radosgw_address.yml
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
+
+- name: set_fact rgw_instances
+  set_fact:
+    rgw_instances: "{{ rgw_instances|default([]) | union([{'instance_name': 'rgw' + item|string, 'radosgw_address': _radosgw_address, 'radosgw_frontend_port': radosgw_frontend_port|int + item|int}]) }}"
+  with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
+
+- name: set ntp service name depending on OS family
+  block:
+  - name: set ntp service name for Debian family
+    set_fact:
+      ntp_service_name: ntp
+    when: ansible_os_family == 'Debian'
+
+  - name: set ntp service name for Red Hat family
+    set_fact:
+      ntp_service_name: ntpd
+    when: ansible_os_family in ['RedHat', 'Suse']

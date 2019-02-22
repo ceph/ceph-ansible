@@ -51,13 +51,13 @@
     health_mon_check_retries: 5
     health_mon_check_delay: 15
     containerized_deployment: true
+    switch_to_containers: True
     mon_group_name:       mons
   hosts:
     - "{{ mon_group_name|default('mons') }}"
   serial: 1
   become: true
-  tasks:
-    # pre-tasks for following import -
+  pre_tasks:
     - name: select a running monitor
       set_fact: mon_host={{ item }}
       with_items: "{{ groups[mon_group_name] }}"
@@ -68,6 +68,14 @@
         name: "ceph-mon@{{ ansible_hostname }}"
         state: stopped
         enabled: no
+
+    - name: remove old systemd unit files
+      file:
+        path: /usr/lib/systemd/system/{{ item }}
+        state: absent
+      with_items:
+        - ceph-mon@.service
+        - ceph-mon.target
 
     - name: set_fact ceph_uid for ubuntu
       set_fact:
@@ -112,31 +120,30 @@
       changed_when: false
       failed_when: false
 
+  tasks:
     - import_role:
         name: ceph-defaults
-        private: false
+
+    - import_role:
+        name: ceph-facts
+
     - import_role:
         name: ceph-handler
-        private: false
+
     - import_role:
         name: ceph-container-common
-        private: false
+
     - import_role:
         name: ceph-mon
-        private: false
 
-    # post-tasks for preceding import -
   post_tasks:
-    # We don't do a container test by running 'docker exec ...' since not all the monitors have switched to containers yet.
-    # Thus, we continue to use the 'ceph' binary from the host, there is no issue with that.
-    - name: non container | waiting for the monitor to join the quorum...
-      command: ceph --cluster "{{ cluster }}" -s --format json
+    - name: waiting for the monitor to join the quorum...
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s --format json"
       register: ceph_health_raw
       until: >
         hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
-      delegate_to: "{{ mon_host }}"
 
 - name: switching from non-containerized to containerized ceph mgr
 
@@ -149,8 +156,7 @@
 
   serial: 1
   become: true
-  tasks:
-    # pre-tasks for following import -
+  pre_tasks:
     # failed_when: false is here because if we're
     # working with a jewel cluster then ceph mgr
     # will not exist
@@ -160,6 +166,14 @@
         state: stopped
         enabled: no
       failed_when: false
+
+    - name: remove old systemd unit files
+      file:
+        path: /usr/lib/systemd/system/{{ item }}
+        state: absent
+      with_items:
+        - ceph-mgr@.service
+        - ceph-mgr.target
 
     - set_fact:
         ceph_uid: 64045
@@ -178,21 +192,21 @@
         - /var/lib/ceph
         - /etc/ceph
 
+  tasks:
     - import_role:
         name: ceph-defaults
-        private: false
+
+    - import_role:
+        name: ceph-facts
 
     - import_role:
         name: ceph-handler
-        private: false
 
     - import_role:
         name: ceph-container-common
-        private: false
 
     - import_role:
         name: ceph-mgr
-        private: false
 
 
 - name: switching from non-containerized to containerized ceph osd
@@ -208,13 +222,11 @@
 
   serial: 1
   become: true
-  tasks:
+  pre_tasks:
 
     - import_role:
         name: ceph-defaults
-        private: false
 
-    # pre-tasks for following importing
     - name: collect running osds and ceph-disk unit(s)
       shell: |
         systemctl list-units | grep "loaded active" | grep -Eo 'ceph-osd@[0-9]+.service|ceph-disk@dev-[a-z]{3,4}[0-9]{1}.service|ceph-volume|ceph\.target'
@@ -238,7 +250,6 @@
         - /usr/lib/systemd/system/ceph-osd.target
         - /usr/lib/systemd/system/ceph-osd@.service
         - /usr/lib/systemd/system/ceph-volume@.service
-        - /etc/systemd/system/ceph.target.wants
 
     - set_fact:
         ceph_uid: 64045
@@ -299,23 +310,23 @@
       when:
         - osd_running.rc != 0
 
+  tasks:
     - import_role:
         name: ceph-defaults
-        private: false
+
+    - import_role:
+        name: ceph-facts
 
     - import_role:
         name: ceph-handler
-        private: false
 
     - import_role:
         name: ceph-container-common
-        private: false
 
     - import_role:
         name: ceph-osd
-        private: false
 
-    # post-task for preceding import -
+  post_tasks:
     - name: get num_pgs
       command: >
         {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json
@@ -348,14 +359,21 @@
 
   serial: 1
   become: true
-  tasks:
+  pre_tasks:
 
-    # pre-tasks for following inmport
     - name: stop non-containerized ceph mds(s)
       service:
         name: "ceph-mds@{{ ansible_hostname }}"
         state: stopped
         enabled: no
+
+    - name: remove old systemd unit files
+      file:
+        path: /usr/lib/systemd/system/{{ item }}
+        state: absent
+      with_items:
+        - ceph-mds@.service
+        - ceph-mds.target
 
     - set_fact:
         ceph_uid: 64045
@@ -374,21 +392,21 @@
         - /var/lib/ceph
         - /etc/ceph
 
+  tasks:
     - import_role:
         name: ceph-defaults
-        private: false
+
+    - import_role:
+        name: ceph-facts
 
     - import_role:
         name: ceph-handler
-        private: false
 
     - import_role:
         name: ceph-container-common
-        private: false
 
     - import_role:
          name: ceph-mds
-         private: false
 
 
 - name: switching from non-containerized to containerized ceph rgw
@@ -402,15 +420,7 @@
 
   serial: 1
   become: true
-  tasks:
-
-    # pre-tasks for following import -
-    - name: stop non-containerized ceph rgw(s)
-      service:
-        name: "ceph-radosgw@rgw.{{ ansible_hostname }}"
-        state: stopped
-        enabled: no
-
+  pre_tasks:
     - set_fact:
         ceph_uid: 64045
       when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
@@ -428,21 +438,33 @@
         - /var/lib/ceph
         - /etc/ceph
 
+  tasks:
     - import_role:
         name: ceph-defaults
-        private: false
+
+    - import_role:
+        name: ceph-facts
+
+    - name: stop non-containerized ceph rgw(s)
+      service:
+        name: "ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}"
+        state: stopped
+        enabled: no
+      with_items: "{{ rgw_instances }}"
+
+    - name: remove old systemd unit file
+      file:
+        path: /usr/lib/systemd/system/ceph-radosgw@.service
+        state: absent
 
     - import_role:
         name: ceph-handler
-        private: false
 
     - import_role:
         name: ceph-container-common
-        private: false
 
     - import_role:
         name: ceph-rgw
-        private: false
 
 
 - name: switching from non-containerized to containerized ceph rbd-mirror
@@ -456,13 +478,20 @@
 
   serial: 1
   become: true
-  tasks:
-    # pre-tasks for following import -
+  pre_tasks:
     - name: stop non-containerized ceph rbd mirror(s)
       service:
         name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
         state: stopped
         enabled: no
+
+    - name: remove old systemd unit files
+      file:
+        path: /usr/lib/systemd/system/{{ item }}
+        state: absent
+      with_items:
+        - ceph-rbd-mirror@.service
+        - ceph-rbd-mirror.target
 
     - set_fact:
         ceph_uid: 64045
@@ -481,21 +510,21 @@
         - /var/lib/ceph
         - /etc/ceph
 
+  tasks:
     - import_role:
         name: ceph-defaults
-        private: false
+
+    - import_role:
+        name: ceph-facts
 
     - import_role:
         name: ceph-handler
-        private: false
 
     - import_role:
         name: ceph-container-common
-        private: false
 
     - import_role:
         name: ceph-rbd-mirror
-        private: false
 
 
 - name: switching from non-containerized to containerized ceph nfs
@@ -509,9 +538,8 @@
 
   serial: 1
   become: true
-  tasks:
+  pre_tasks:
 
-    # pre-tasks for following import -
     # failed_when: false is here because if we're
     # working with a jewel cluster then ceph nfs
     # will not exist
@@ -539,18 +567,18 @@
         - /var/lib/ceph
         - /etc/ceph
 
+  tasks:
     - import_role:
         name: ceph-defaults
-        private: false
+
+    - import_role:
+        name: ceph-facts
 
     - import_role:
         name: ceph-handler
-        private: false
 
     - import_role:
         name: ceph-container-common
-        private: false
 
     - import_role:
         name: ceph-nfs
-        private: false

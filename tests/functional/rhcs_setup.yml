@@ -73,13 +73,15 @@
     - name: set MTU on eth0
       command: "ifconfig eth0 mtu 1400 up"
 
-    - name: set MTU on eth1
-      command: "ifconfig eth1 mtu 1400 up"
+    - name: set MTU on ens6
+      command: "ifconfig ens6 mtu 1400 up"
 
     - name: install docker
       package:
         name: docker
         state: present
+      register: result
+      until: result is succeeded
       when: ansible_os_family == 'RedHat'
 
     - name: allow insecure docker registries

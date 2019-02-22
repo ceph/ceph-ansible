@@ -52,9 +52,17 @@ function expose_partitions {
   fi
 }
 
+{% endif -%}
+
 expose_partitions "$1"
 
-{% endif -%}
+# discover osd_objectstore for ceph-disk based osds
+if [[ $DOCKER_ENV =~ "BLUESTORE" ]]; then
+  DOCKER_ENV="$DOCKER_ENV -e OSD_BLUESTORE=1"
+elif [[ $DOCKER_ENV =~ "JOURNAL" ]]; then
+  DOCKER_ENV="$DOCKER_ENV -e OSD_FILESTORE=1"
+fi
+
 {% endif -%}
 
 
@@ -84,36 +92,21 @@ expose_partitions "$1"
   -v /var/lib/ceph:/var/lib/ceph:z \
   -v /etc/ceph:/etc/ceph:z \
   -v /var/run/ceph:/var/run/ceph:z \
+  -v /var/run/udev/:/var/run/udev/:z \
   {% if ansible_distribution == 'Ubuntu' -%}
   --security-opt apparmor:unconfined \
   {% endif -%}
-  {% if containerized_deployment_with_kv -%}
-  -e KV_TYPE={{ kv_type }} \
-  -e KV_IP={{ kv_endpoint }} \
-  -e KV_PORT={{ kv_port }} \
-  {% endif -%}
-  {% if osd_objectstore == 'filestore' and not dmcrypt -%}
-  -e OSD_FILESTORE=1 \
-  -e OSD_DMCRYPT=0 \
-  {% endif -%}
-  {% if osd_objectstore == 'filestore' and dmcrypt -%}
-  -e OSD_FILESTORE=1 \
+  {% if dmcrypt -%}
   -e OSD_DMCRYPT=1 \
-  {% endif -%}
-  {% if osd_objectstore == 'bluestore' and not dmcrypt -%}
-  -e OSD_BLUESTORE=1 \
+  {% else -%}
   -e OSD_DMCRYPT=0 \
-  {% endif -%}
-  {% if osd_objectstore == 'bluestore' and dmcrypt -%}
-  -e OSD_BLUESTORE=1 \
-  -e OSD_DMCRYPT=1 \
   {% endif -%}
   -e CLUSTER={{ cluster }} \
   {% if (ceph_tcmalloc_max_total_thread_cache | int) > 0 and osd_objectstore == 'filestore' -%}
   -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
   {% endif -%}
   {% if osd_scenario == 'lvm' -%}
-  -v /run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket \
+  -v /run/lvm/:/run/lvm/ \
   -e CEPH_DAEMON=OSD_CEPH_VOLUME_ACTIVATE \
   -e OSD_ID="$1" \
   --name=ceph-osd-"$1" \
