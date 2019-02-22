@@ -1,4 +1,9 @@
 ---
+- name: include create_ceph_initial_dirs.yml
+  include_tasks: create_ceph_initial_dirs.yml
+  when:
+    - containerized_deployment|bool
+
 - block:
   - name: count number of osds for ceph-disk scenarios
     set_fact:
@@ -121,9 +126,6 @@
     - not containerized_deployment|bool
 
 - block:
-  - name: include create_ceph_initial_dirs.yml
-    include_tasks: create_ceph_initial_dirs.yml
-
   - name: create a local fetch directory if it does not exist
     file:
       path: "{{ fetch_directory }}"

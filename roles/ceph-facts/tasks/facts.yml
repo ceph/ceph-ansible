@@ -19,7 +19,7 @@
 
 - name: set_fact container_binary
   set_fact:
-    container_binary: "{{ 'podman' if is_podman and ansible_distribution == 'Fedora' else 'docker' }}"
+    container_binary: "{{ 'podman' if (podman_binary.stat.exists and ansible_distribution == 'Fedora') or (ansible_os_family == 'RedHat' and ansible_distribution_major_version == '8') else 'docker' }}"
   when: containerized_deployment
 
 # Set ceph_release to ceph_stable by default
@@ -51,7 +51,7 @@
 # because it blindly picks a mon, which may be down because
 # of the rolling update
 - name: is ceph running already?
-  command: "timeout 5 {{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
+  command: "{{ timeout_command }} {{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
   changed_when: false
   failed_when: false
   check_mode: no
@@ -212,7 +212,8 @@
     ceph_uid: 167
   when:
     - containerized_deployment
-    - ceph_docker_image_tag | string is search("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
+    - (ceph_docker_image_tag | string is search("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
+      or (ansible_distribution == 'RedHat'))
 
 - name: set_fact ceph_uid for red hat
   set_fact:
@@ -258,3 +259,15 @@
   with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
+
+- name: set ntp service name depending on OS family
+  block:
+  - name: set ntp service name for Debian family
+    set_fact:
+      ntp_service_name: ntp
+    when: ansible_os_family == 'Debian'
+
+  - name: set ntp service name for Red Hat family
+    set_fact:
+      ntp_service_name: ntpd
+    when: ansible_os_family in ['RedHat', 'Suse']

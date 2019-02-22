@@ -51,6 +51,7 @@
     health_mon_check_retries: 5
     health_mon_check_delay: 15
     containerized_deployment: true
+    switch_to_containers: True
     mon_group_name:       mons
   hosts:
     - "{{ mon_group_name|default('mons') }}"
@@ -67,6 +68,14 @@
         name: "ceph-mon@{{ ansible_hostname }}"
         state: stopped
         enabled: no
+
+    - name: remove old systemd unit files
+      file:
+        path: /usr/lib/systemd/system/{{ item }}
+        state: absent
+      with_items:
+        - ceph-mon@.service
+        - ceph-mon.target
 
     - name: set_fact ceph_uid for ubuntu
       set_fact:
@@ -128,16 +137,13 @@
         name: ceph-mon
 
   post_tasks:
-    # We don't do a container test by running 'docker exec ...' since not all the monitors have switched to containers yet.
-    # Thus, we continue to use the 'ceph' binary from the host, there is no issue with that.
-    - name: non container | waiting for the monitor to join the quorum...
-      command: ceph --cluster "{{ cluster }}" -s --format json
+    - name: waiting for the monitor to join the quorum...
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s --format json"
       register: ceph_health_raw
       until: >
         hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
-      delegate_to: "{{ mon_host }}"
 
 - name: switching from non-containerized to containerized ceph mgr
 
@@ -160,6 +166,14 @@
         state: stopped
         enabled: no
       failed_when: false
+
+    - name: remove old systemd unit files
+      file:
+        path: /usr/lib/systemd/system/{{ item }}
+        state: absent
+      with_items:
+        - ceph-mgr@.service
+        - ceph-mgr.target
 
     - set_fact:
         ceph_uid: 64045
@@ -236,7 +250,6 @@
         - /usr/lib/systemd/system/ceph-osd.target
         - /usr/lib/systemd/system/ceph-osd@.service
         - /usr/lib/systemd/system/ceph-volume@.service
-        - /etc/systemd/system/ceph.target.wants
 
     - set_fact:
         ceph_uid: 64045
@@ -354,6 +367,14 @@
         state: stopped
         enabled: no
 
+    - name: remove old systemd unit files
+      file:
+        path: /usr/lib/systemd/system/{{ item }}
+        state: absent
+      with_items:
+        - ceph-mds@.service
+        - ceph-mds.target
+
     - set_fact:
         ceph_uid: 64045
       when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
@@ -400,13 +421,6 @@
   serial: 1
   become: true
   pre_tasks:
-
-    - name: stop non-containerized ceph rgw(s)
-      service:
-        name: "ceph-radosgw@rgw.{{ ansible_hostname }}"
-        state: stopped
-        enabled: no
-
     - set_fact:
         ceph_uid: 64045
       when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
@@ -430,6 +444,18 @@
 
     - import_role:
         name: ceph-facts
+
+    - name: stop non-containerized ceph rgw(s)
+      service:
+        name: "ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}"
+        state: stopped
+        enabled: no
+      with_items: "{{ rgw_instances }}"
+
+    - name: remove old systemd unit file
+      file:
+        path: /usr/lib/systemd/system/ceph-radosgw@.service
+        state: absent
 
     - import_role:
         name: ceph-handler
@@ -458,6 +484,14 @@
         name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
         state: stopped
         enabled: no
+
+    - name: remove old systemd unit files
+      file:
+        path: /usr/lib/systemd/system/{{ item }}
+        state: absent
+      with_items:
+        - ceph-rbd-mirror@.service
+        - ceph-rbd-mirror.target
 
     - set_fact:
         ceph_uid: 64045
