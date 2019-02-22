@@ -8,8 +8,6 @@ def setup(host):
     container_binary = ""
     osd_ids = []
     osds = []
-    public_interface = "ens6"
-    cluster_interface = "ens7"
 
     ansible_vars = host.ansible.get_variables()
     ansible_facts = host.ansible("setup")
@@ -18,6 +16,8 @@ def setup(host):
     osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
     group_names = ansible_vars["group_names"]
     fsid = ansible_vars.get("fsid")
+
+    ansible_distribution = ansible_facts["ansible_facts"]["ansible_distribution"]
 
     subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
     num_mons = len(ansible_vars["groups"]["mons"])
@@ -29,6 +29,13 @@ def setup(host):
         num_osds = len(ansible_vars.get("lvm_volumes", []))
     osds_per_device = ansible_vars.get("osds_per_device", 1)
     num_osds = num_osds * osds_per_device
+
+    if ansible_distribution == "RedHat":
+        public_interface = "ens6"
+        cluster_interface = "ens7"
+    else:
+        public_interface = "eth1"
+        cluster_interface = "eth2"
 
     # If number of devices doesn't map to number of OSDs, allow tests to define
     # that custom number, defaulting it to ``num_devices``
