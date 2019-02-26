@@ -23,6 +23,12 @@ ExecStart=/usr/bin/docker run --rm --net=host \
   -e KV_PORT={{ kv_port }} \
   {% endif -%}
   -v /etc/localtime:/etc/localtime:ro \
+  {% if ansible_distribution == 'RedHat' -%}
+  -v /etc/pki/ca-trust/extracted:/etc/pki/ca-trust/extracted:ro \
+  -v /etc/pki/ca-trust/source/anchors:/etc/pki/ca-trust/source/anchors:ro \
+  {% elif ansible_distribution == 'Ubuntu' -%}
+  -v /etc/ssl/certs:/etc/ssl/certs:ro \
+  {% endif -%}
   -e CEPH_DAEMON=RGW \
   -e CLUSTER={{ cluster }} \
   --name=ceph-rgw-{{ ansible_hostname }} \
