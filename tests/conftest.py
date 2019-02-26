@@ -8,8 +8,6 @@ def setup(host):
     container_binary = ""
     osd_ids = []
     osds = []
-    public_interface = "ens6"
-    cluster_interface = "ens7"
 
     ansible_vars = host.ansible.get_variables()
     ansible_facts = host.ansible("setup")
@@ -18,6 +16,15 @@ def setup(host):
     osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
     group_names = ansible_vars["group_names"]
     fsid = ansible_vars.get("fsid")
+
+    ansible_distribution = ansible_facts["ansible_facts"]["ansible_distribution"]
+
+    if ansible_distribution == "CentOS":
+        public_interface = "eth1"
+        cluster_interface = "eth2"
+    else:
+        public_interface = "ens6"
+        cluster_interface = "ens7"
 
     subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
     num_mons = len(ansible_vars["groups"]["mons"])
@@ -64,6 +71,8 @@ def setup(host):
         address=address,
         osds=osds,
         conf_path=conf_path,
+        public_interface=public_interface,
+        cluster_interface=cluster_interface,
         cluster_address=cluster_address,
         container_binary=container_binary)
 

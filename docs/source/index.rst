@@ -210,7 +210,7 @@ An example configuration that deploys the upstream ``jewel`` version of Ceph wit
    ceph_stable_release: jewel
    public_network: "192.168.3.0/24"
    cluster_network: "192.168.4.0/24"
-   monitor_interface: ens6
+   monitor_interface: eth1
    devices:
      - '/dev/sda'
      - '/dev/sdb'
