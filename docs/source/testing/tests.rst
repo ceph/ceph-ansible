@@ -65,7 +65,7 @@ many fixtures as needed) like ``File``:
 The ``node`` fixture contains a few useful pieces of information about the node
 where the test is being executed, this is captured once, before tests run:
 
-* ``address``: The IP for the ``ens6`` interface
+* ``address``: The IP for the ``eth1`` interface
 * ``subnet``: The subnet that ``address`` belongs to
 * ``vars``: all the Ansible vars set for the current run
 * ``osd_ids``: a list of all the OSD IDs
