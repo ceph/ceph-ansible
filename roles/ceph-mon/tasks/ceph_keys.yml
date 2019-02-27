@@ -47,7 +47,8 @@
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
     with_items:
       - "{{ groups.get(mgr_group_name, []) }}" # this honors the condition where mgrs run on separate machines
-      - "{{ groups.get(mon_group_name, []) }}" # this honors the new rule where mgrs are always collocated with mons
+      - "{{ groups.get(mon_group_name, []) if groups.get(mgr_group_name, []) | length == 0 else [] }}" # this honors the new rule where mgrs are always collocated with mons
+    run_once: True
     delegate_to: "{{ groups[mon_group_name][0] }}"
 
   - name: copy ceph mgr key(s) to the ansible server
@@ -57,7 +58,7 @@
       flat: yes
     with_items:
       - "{{ groups.get(mgr_group_name, []) }}" # this honors the condition where mgrs run on separate machines
-      - "{{ groups.get(mon_group_name, []) }}" # this honors the new rule where mgrs are always collocated with mons
+      - "{{ groups.get(mon_group_name, []) if groups.get(mgr_group_name, []) | length == 0 else [] }}" # this honors the new rule where mgrs are always collocated with mons
     delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
     - cephx
