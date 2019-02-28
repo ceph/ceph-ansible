@@ -182,8 +182,14 @@ def container_exec(binary, container_image):
     '''
     Build the docker CLI to run a command inside a container
     '''
+<<<<<<< HEAD
 
     command_exec = ['docker', 'run', '--rm', '--privileged', '--net=host',
+=======
+    container_binary = os.getenv('CEPH_CONTAINER_BINARY')
+    command_exec = [container_binary, 'run',
+                    '--rm', '--privileged', '--net=host', '--ipc=host',
+>>>>>>> 15812970... cv: expose host ipc namespace to ceph-volume container
                     '-v', '/run/lock/lvm:/run/lock/lvm:z',
                     '-v', '/var/run/udev/:/var/run/udev/:z',
                     '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',
