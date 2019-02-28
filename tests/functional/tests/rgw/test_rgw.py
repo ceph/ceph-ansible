@@ -27,10 +27,10 @@ class TestRGWs(object):
             )
             assert host.service(service_name).is_enabled
 
-    def test_rgw_is_up(self, node, host):
+    def test_rgw_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
-        cluster = node["cluster_name"]
-        container_binary = node["container_binary"]
+        cluster = setup["cluster_name"]
+        container_binary = setup["container_binary"]
         if node['docker']:
             container_exec_cmd = '{container_binary} exec ceph-rgw-{hostname}-rgw0'.format(  # noqa E501
                 hostname=hostname, container_binary=container_binary)
@@ -52,9 +52,9 @@ class TestRGWs(object):
             assert instance_name in daemons
 
     @pytest.mark.no_docker
-    def test_rgw_http_endpoint(self, node, host):
-        # rgw frontends ip_addr is configured on eth1
-        ip_addr = host.interface("eth1").addresses[0]
+    def test_rgw_http_endpoint(self, node, host, setup):
+        # rgw frontends ip_addr is configured on public_interface
+        ip_addr = host.interface(setup['public_interface']).addresses[0]
         for i in range(int(node["radosgw_num_instances"])):
             assert host.socket(
                 "tcp://{ip_addr}:{port}".format(ip_addr=ip_addr,
