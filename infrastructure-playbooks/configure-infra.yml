@@ -1,0 +1,144 @@
+---
+# This playbook runs the ceph-infra role
+
+- name: confirm whether user really meant to run the ceph-infra role
+
+  hosts:
+    - localhost
+
+  gather_facts: false
+
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to run the ceph-infra role? It might involve machine reboot.
+      default: "no"
+      private: no
+
+  tasks:
+    - name: exit playbook, if user did not mean to run the ceph-infra role
+      fail:
+        msg: >
+          "Exiting playbook,
+           To run the playbook, either say 'yes' on the prompt or
+           or use `-e ireallymeanit=yes` on the command line when
+           invoking the playbook"
+      when: ireallymeanit != 'yes'
+
+- name: gather facts
+
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+
+  become: true
+
+  tasks:
+    - name: gather and delegate facts
+      setup:
+      delegate_to: "{{ item }}"
+      delegate_facts: True
+      with_items: "{{ groups['all'] }}"
+
+- name: run ceph-infra on ceph mon
+  vars:
+    health_mon_check_retries: 5
+    health_mon_check_delay: 15
+
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+  serial: 1
+  become: true
+  pre_tasks:
+    - name: select a running monitor
+      set_fact: mon_host={{ item }}
+      with_items: "{{ groups[mon_group_name] }}"
+      when: item != inventory_hostname
+
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+
+    - import_role:
+        name: ceph-infra
+
+  post_tasks:
+    - name: waiting for the monitor to join the quorum...
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s --format json"
+      register: ceph_health_raw
+      until: >
+        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
+      retries: "{{ health_mon_check_retries }}"
+      delay: "{{ health_mon_check_delay }}"
+
+- name: run ceph-infra on ceph osd
+
+  hosts:
+    - "{{ osd_group_name|default('osds') }}"
+
+  vars:
+    health_osd_check_retries: 5
+    health_osd_check_delay: 15
+
+  serial: 1
+  become: true
+
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+
+    - import_role:
+        name: ceph-infra
+
+  post_tasks:
+    - name: get num_pgs
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json
+      register: ceph_pgs
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: container - waiting for clean pgs...
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json
+      register: ceph_health_post
+      until: >
+        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) > 0)
+        and
+        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | selectattr('state_name', 'search', '^active\\+clean') | map(attribute='count') | list | sum) == (ceph_pgs.stdout | from_json).pgmap.num_pgs)
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      retries: "{{ health_osd_check_retries }}"
+      delay: "{{ health_osd_check_delay }}"
+      when:
+        - (ceph_pgs.stdout | from_json).pgmap.num_pgs != 0
+
+- name: run ceph-infra on ceph mds
+
+  hosts:
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+
+  serial: 1
+  become: true
+
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+
+    - import_role:
+        name: ceph-infra
