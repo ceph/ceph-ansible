@@ -518,12 +518,20 @@ ceph_conf_overrides: {}
 # OS TUNING #
 #############
 
+# Kernel tuning params that can be changed on a live systemd
+# Changes will persist across reboots
 disable_transparent_hugepage: "{{ false if osd_objectstore == 'bluestore' else true }}"
 os_tuning_params:
   - { name: fs.file-max, value: 26234859 }
   - { name: vm.zone_reclaim_mode, value: 0 }
   - { name: vm.swappiness, value: 10 }
   - { name: vm.min_free_kbytes, value: "{{ vm_min_free_kbytes }}" }
+
+# Kernel tuning params that require a system reboot
+# Complete list of parameters https://www.kernel.org/doc/Documentation/admin-guide/kernel-parameters.txt
+# Multiple, space separated arguments may be used. If an argument already exists the new value replaces the old values.
+# e.g. tune_kernel_parameters: "foo=bar toto=tata"
+tune_kernel_parameters:
 
 # For Debian & Red Hat/CentOS installs set TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES
 # Set this to a byte value (e.g. 134217728)

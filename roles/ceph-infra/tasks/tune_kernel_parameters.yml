@@ -1,0 +1,32 @@
+---
+- name: "tune kernel parameters {{ tune_kernel_parameters }} and merge with existing templates from /etc/grub.d"
+  command: >
+    grubby
+    --update-kernel=ALL
+    --copy-default
+    --args="{{ tune_kernel_parameters | quote }}"
+  changed_when: false
+
+- name: reboot the system to apply new kernel parameters
+  shell: sleep 2 && shutdown -r now
+  become: yes
+  async: 1
+  poll: 0
+
+- name: waiting up to 15 minutes for the machines to come back
+  wait_for:
+    host: "{{ ansible_default_ipv4.address }}"
+    port: 22
+    state: started
+    delay: 30
+    timeout: 900
+  delegate_to: localhost
+
+- name: uptime
+  command: uptime
+  changed_when: false
+
+- name: display bootloader cmdline
+  command: >
+    cat /proc/cmdline
+  changed_when: false
