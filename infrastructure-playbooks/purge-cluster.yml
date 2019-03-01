@@ -208,6 +208,26 @@
     failed_when: false
     when: ansible_service_mgr == 'systemd'
 
+- name: purge rgwloadbalancer cluster
+
+  vars:
+    rgwloadbalancer_group_name: rgwloadbalancers
+
+  hosts:
+    - "{{ rgwloadbalancer_group_name|default('rgwloadbalancers') }}"
+
+  gather_facts: false # Already gathered previously
+
+  become: true
+
+  tasks:
+
+  - name: stop rgwloadbalancer services
+    service:
+      name: ['keepalived', 'haproxy']
+      state: stopped
+      enabled: no
+    failed_when: false
 
 - name: purge ceph rgw cluster
 
@@ -576,6 +596,10 @@
       - python-rados
       - python-rbd
 
+    extra_packages:
+      - keepalived
+      - haproxy
+
   hosts:
     - "{{ mon_group_name|default('mons') }}"
     - "{{ osd_group_name|default('osds') }}"
@@ -652,10 +676,38 @@
       - ansible_pkg_mgr == 'apt'
       - purge_all_packages == true
 
+  - name: purge extra packages with yum
+    yum:
+      name: "{{ extra_packages }}"
+      state: absent
+    when:
+      - ansible_pkg_mgr == 'yum'
+      - purge_all_packages == true
+
+  - name: purge extra packages with dnf
+    dnf:
+      name: "{{ extra_packages }}"
+      state: absent
+    when:
+      - ansible_pkg_mgr == 'dnf'
+      - purge_all_packages == true
+
+  - name: purge extra packages with apt
+    apt:
+      name: "{{ extra_packages }}"
+      state: absent
+    when:
+      - ansible_pkg_mgr == 'apt'
+      - purge_all_packages == true
+
   - name: remove config
     file:
-     path: /etc/ceph
-     state: absent
+      path: "{{ item }}"
+      state: absent
+    with_items:
+      - /etc/ceph
+      - /etc/keepalived
+      - /etc/haproxy
 
   - name: remove logs
     file:
