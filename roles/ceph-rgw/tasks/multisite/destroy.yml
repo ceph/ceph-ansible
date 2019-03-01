@@ -3,11 +3,15 @@
   command: radosgw-admin user rm --uid=zone.user
   run_once: true
   failed_when: false
+  register: rgw_delete_the_zone_user
+  changed_when: rgw_delete_the_zone_user.rc == 0
 
 - name: remove zone from zonegroup
   command: radosgw-admin zonegroup remove --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }}
   run_once: true
   failed_when: false
+  register: rgw_remove_zone_from_zonegroup
+  changed_when: rgw_remove_zone_from_zonegroup.rc == 0
   notify:
     - update period
 
@@ -15,16 +19,22 @@
   command: radosgw-admin zone delete --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }}
   run_once: true
   failed_when: false
+  register: rgw_delete_the_zone
+  changed_when: rgw_delete_the_zone.rc == 0
 
 - name: delete the zonegroup
   command: radosgw-admin zonegroup delete --rgw-zonegroup={{ rgw_zonegroup }}
   run_once: true
   failed_when: false
+  register: rgw_delete_the_zonegroup
+  changed_when: rgw_delete_the_zonegroup.rc == 0
 
 - name: delete the realm
   command: radosgw-admin realm delete --rgw-realm={{ rgw_realm }}
   run_once: true
   failed_when: false
+  register: rgw_delete_the_realm
+  changed_when: rgw_delete_the_realm.rc == 0
 
 - name: delete zone from rgw stanza in ceph.conf
   lineinfile:
