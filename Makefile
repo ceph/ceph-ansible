@@ -7,16 +7,16 @@ NAME = ceph-ansible
 # Examples:
 #
 #  A "git describe" value of "v2.2.0beta1" would create an NVR
-#  "ceph-ansible-2.2.0-0.beta1.1.el7"
+#  "ceph-ansible-2.2.0-0.beta1.1.el8"
 #
 #  A "git describe" value of "v2.2.0rc1" would create an NVR
-#  "ceph-ansible-2.2.0-0.rc1.1.el7"
+#  "ceph-ansible-2.2.0-0.rc1.1.el8"
 #
 #  A "git describe" value of "v2.2.0rc1-1-gc465f85" would create an NVR
-#  "ceph-ansible-2.2.0-0.rc1.1.gc465f85.el7"
+#  "ceph-ansible-2.2.0-0.rc1.1.gc465f85.el8"
 #
 #  A "git describe" value of "v2.2.0" creates an NVR
-#  "ceph-ansible-2.2.0-1.el7"
+#  "ceph-ansible-2.2.0-1.el8"
 
 TAG := $(shell git describe --tags --abbrev=0 --match 'v*')
 VERSION := $(shell echo $(TAG) | sed 's/^v//')
@@ -46,7 +46,7 @@ ifneq (,$(shell echo $(VERSION) | grep [a-zA-Z]))
     $(error cannot translate Git tag version $(VERSION) to an RPM NVR)
 endif
 
-NVR := $(NAME)-$(VERSION)-$(RELEASE).el7
+NVR := $(NAME)-$(VERSION)-$(RELEASE).el8
 
 all: srpm
 
@@ -77,12 +77,12 @@ srpm: dist spec
 	  --define "_topdir ." \
 	  --define "_sourcedir ." \
 	  --define "_srcrpmdir ." \
-	  --define "dist .el7"
+	  --define "dist .el8"
 
 rpm: dist srpm
 	mock -r epel-7-x86_64 rebuild $(NVR).src.rpm \
 	  --resultdir=. \
-	  --define "dist .el7"
+	  --define "dist .el8"
 
 tag:
 	$(eval BRANCH := $(shell git rev-parse --abbrev-ref HEAD))

@@ -184,7 +184,7 @@
     - item.value.sectors != "0"
     - item.value.partitions|count == 0
     - item.value.holders|count == 0
-    - "'dm-' not in item.key"
+    - item.key is not match osd_auto_discovery_exclude
 
 - name: set_fact ceph_uid for debian based system - non container
   set_fact:
@@ -212,7 +212,8 @@
     ceph_uid: 167
   when:
     - containerized_deployment
-    - ceph_docker_image_tag | string is search("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
+    - (ceph_docker_image_tag | string is search("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
+      or (ansible_distribution == 'RedHat'))
 
 - name: set_fact ceph_uid for red hat
   set_fact:
@@ -258,3 +259,15 @@
   with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
+
+- name: set ntp service name depending on OS family
+  block:
+  - name: set ntp service name for Debian family
+    set_fact:
+      ntp_service_name: ntp
+    when: ansible_os_family == 'Debian'
+
+  - name: set ntp service name for Red Hat family
+    set_fact:
+      ntp_service_name: ntpd
+    when: ansible_os_family in ['RedHat', 'Suse']
