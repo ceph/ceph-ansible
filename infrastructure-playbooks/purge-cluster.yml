@@ -118,7 +118,7 @@
 - name: purge ceph rbd-mirror cluster
 
   vars:
-    rbdmirror_group_name: rbd-mirrors
+    rbdmirror_group_name: rbdmirrors
 
   hosts:
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
@@ -131,7 +131,7 @@
 
   - name: stop ceph rbd mirror with systemd
     service:
-      name: ceph-rbd-mirror@admin.service
+      name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
       state: stopped
     failed_when: false
 
@@ -304,7 +304,7 @@
     register: ceph_lockbox_partition_to_erase_path
 
   - name: see if ceph-volume is installed
-    command: "command -v ceph-volume"
+    shell: "command -v ceph-volume"
     failed_when: false
     register: ceph_volume_present
 
@@ -580,7 +580,7 @@
       state: absent
 
   - name: clean apt
-    shell: apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    command: apt-get clean
     when: ansible_pkg_mgr == 'apt'
 
   - name: purge rh_storage.repo file in /etc/yum.repos.d
