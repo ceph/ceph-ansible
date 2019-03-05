@@ -1,0 +1,49 @@
+# This playbook migrates all OSDs running on the system to ceph-volume using
+# the `ceph-volume simple` command. It assumes that all running OSDs on the system
+# were created with ceph-disk.
+---
+
+- hosts: osds
+  become: yes
+
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to upgrade all ceph-disk osds to ceph-volume? Type 'yes' if so.
+      default: 'no'
+      private: no
+
+  tasks:
+    - name: exit playbook, if user did not mean to upgrade ceph-disk osds to ceph-volume 
+      fail:
+        msg: >
+          "Exiting playbook, ceph-disk osds were NOT upgraded.
+           To continue, either say 'yes' on the prompt or
+           use `-e ireallymeanit=yes` on the command line when
+           invoking the playbook"
+      when: ireallymeanit != 'yes'
+
+    - name: list all osd directories
+      find:
+        paths: /var/lib/ceph/osd
+        file_type: directory
+      register: osd_paths
+
+    - name: scan all osd directories
+      command: "ceph-volume --cluster={{ cluster }} simple scan {{ item.path }}"
+      environment:
+        CEPH_VOLUME_DEBUG: 1
+      with_items:
+        - "{{ osd_paths.files }}"
+
+    - name: list all osd json files
+      find:
+        paths: /etc/ceph/osd
+        file_type: file
+      register: osd_configs
+
+    - name: activate all scanned osds
+      command: "ceph-volume --cluster={{ cluster }} simple activate --file {{ item.path }}"
+      environment:
+        CEPH_VOLUME_DEBUG: 1
+      with_items:
+        - "{{ osd_configs.files }}"
