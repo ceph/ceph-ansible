@@ -7,10 +7,6 @@
 # file as a good configuration file when no variable in it.
 dummy:
 
-# You can override default vars defined in defaults/main.yml here,
-# but I would advice to use host or group vars instead
-
-
 ###########
 # GENERAL #
 ###########
@@ -47,7 +43,6 @@ dummy:
 
 
 #'osd_auto_discovery'  mode prevents you from filling out the 'devices' variable above.
-#  You can use this option with First and Forth and Fifth OSDS scenario.
 # Device discovery is based on the Ansible fact 'ansible_devices'
 # which reports all the devices on a system. If chosen all the disks
 # found will be passed to ceph-disk. You should not be worried on using
@@ -129,7 +124,8 @@ dummy:
 # 'data' is only 100MB big and do not store any of your data, it's just a bunch of Ceph metadata.
 # 'block' will store all your actual data.
 # - The devices in 'dedicated_devices' will get 1 partition for RocksDB DB, called 'block.db'
-#  and one for RocksDB WAL, called 'block.wal'
+#  and one for RocksDB WAL, called 'block.wal'. To use a single partition for RocksDB and WAL together
+#  set bluestore_wal_devices to [] (supported only for non-containerized deployment).
 #
 # By default dedicated_devices will represent block.db
 #
@@ -152,6 +148,8 @@ dummy:
 #
 # By default, if 'bluestore_wal_devices' is empty, it will get the content of 'dedicated_devices'.
 # If set, then you will have a dedicated partition on a specific device for block.wal.
+#
+# Set bluestore_wal_devices: [] to use the same partition for RocksDB and WAL (supported only for non-containerized deployment).
 #
 # Example of what you will get:
 # [root@ceph-osd0 ~]# blkid /dev/sd*
@@ -233,7 +231,7 @@ dummy:
 # For the whole list of limits you can apply see: docs.docker.com/engine/admin/resource_constraints
 # Default values are based from: https://access.redhat.com/documentation/en-us/red_hat_ceph_storage/2/html/red_hat_ceph_storage_hardware_guide/minimum_recommendations
 # These options can be passed using the 'ceph_osd_docker_extra_env' variable.
-#ceph_osd_docker_memory_limit: 5g
+#ceph_osd_docker_memory_limit: "{{ ansible_memtotal_mb }}m"
 #ceph_osd_docker_cpu_limit: 1
 
 # The next two variables are undefined, and thus, unused by default.
@@ -268,3 +266,10 @@ dummy:
 #  Service:
 #    PrivateDevices: False
 
+
+###########
+#  CHECK  #
+###########
+
+#nb_retry_wait_osd_up: 60
+#delay_wait_osd_up: 10

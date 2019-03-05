@@ -3,6 +3,8 @@
   package:
     name: nss-tools
     state: present
+  register: result
+  until: result is succeeded
   when:
     - ansible_pkg_mgr == 'yum' or ansible_pkg_mgr == 'dnf'
 
@@ -10,6 +12,8 @@
   package:
     name: libnss3-tools
     state: present
+  register: result
+  until: result is succeeded
   when:
     - ansible_pkg_mgr == 'apt'
 
@@ -23,6 +27,11 @@
 
 - name: create nss entries for keystone certificates
   shell: "{{ item }}"
+  args:
+    warn: no
+  changed_when: false
   with_items:
-    - "openssl x509 -in /etc/keystone/ssl/certs/ca.pem -pubkey |certutil -d {{ radosgw_nss_db_path }} -A -n ca -t 'TCu,Cu,Tuw'"
+    - "openssl x509 -in /etc/keystone/ssl/certs/ca.pem -pubkey | certutil -d {{ radosgw_nss_db_path }} -A -n ca -t 'TCu,Cu,Tuw'"
     - "openssl x509 -in /etc/keystone/ssl/certs/signing_cert.pem -pubkey | certutil -A -d {{ radosgw_nss_db_path }} -n signing_cert -t 'P,P,P'"
+  tags:
+    - skip_ansible_lint

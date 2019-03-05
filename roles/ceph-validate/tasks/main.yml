@@ -10,23 +10,40 @@
     - mon_use_fqdn or mds_use_fqdn
     - not use_fqdn_yes_i_am_sure
 
-- name: fail if local scenario is enabled on debian
-  fail:
-    msg: "'local' installation scenario not supported on Debian systems"
+- name: debian based systems tasks
+  block:
+    - name: fail if local scenario is enabled on debian
+      fail:
+        msg: "'local' installation scenario not supported on Debian systems"
+      when:
+        - ceph_origin == 'local'
+    - name: verify that ceph_rhcs_cdn_debian_repo url is valid for red hat storage
+      fail:
+        msg: "ceph_rhcs_cdn_debian_repo url is invalid, please set your customername:customerpasswd"
+      when:
+        - ceph_origin == 'repository'
+        - ceph_repository == 'rhcs'
+        - ceph_repository_type == 'cdn'
+        - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
+        - ceph_repository not in ['rhcs', 'dev', 'obs']
   when:
     - ansible_os_family == 'Debian'
-    - ceph_origin == 'local'
 
-- name: verify that ceph_rhcs_cdn_debian_repo url is valid for red hat storage
+- name: validate ntp daemon type
   fail:
-    msg: "ceph_rhcs_cdn_debian_repo url is invalid, please set your customername:customerpasswd"
+    msg: "ntp_daemon_type must be one of chronyd, ntpd, or timesyncd"
   when:
-    - ceph_origin == 'repository'
-    - ceph_repository == 'rhcs'
-    - ceph_repository_type == 'cdn'
-    - ansible_os_family == 'Debian'
-    - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
-    - ceph_repository not in ['rhcs', 'dev', 'obs']
+    - ntp_service_enabled
+    - ntp_daemon_type not in ['chronyd', 'ntpd', 'timesyncd']
+
+# Since NTPd can not be installed on Atomic...
+- name: abort if ntp_daemon_type is ntpd on Atomic
+  fail:
+    msg: installation can't happen on Atomic and ntpd needs to be installed
+  when:
+    - is_atomic | default(False)
+    - ansible_os_family == 'RedHat'
+    - ntp_daemon_type == 'ntpd'
 
 - name: make sure journal_size configured
   debug:
@@ -36,27 +53,6 @@
     - osd_objectstore == 'filestore'
     - osd_group_name in group_names
 
-- name: check if osd_scenario lvm is supported by the selected ceph version
-  fail:
-    msg: "osd_scenario lvm is not supported by the selected Ceph version, use Luminous or newer."
-  when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - ceph_repository not in ['rhcs', 'dev']
-    - not containerized_deployment
-    - osd_scenario == "lvm"
-    - ceph_release_num[ceph_release] < ceph_release_num.luminous
-
-- name: check if bluestore is supported by the selected ceph version
-  fail:
-    msg: "bluestore is not supported by the selected Ceph version, use Luminous or above."
-  when:
-    - osd_group_name is defined
-    - osd_group_name in group_names
-    - ceph_repository not in ['rhcs', 'dev']
-    - osd_objectstore == 'bluestore'
-    - ceph_release_num[ceph_release] < ceph_release_num.luminous
-
 - name: include check_system.yml
   include_tasks: check_system.yml
 
@@ -65,7 +61,6 @@
   when:
     - osd_group_name in group_names
     - not osd_auto_discovery | default(False)
-    - osd_scenario != "lvm" and devices is not defined
 
 - name: include check_eth_mon.yml
   include_tasks: check_eth_mon.yml
@@ -82,3 +77,14 @@
     - radosgw_interface != "dummy"
     - radosgw_address == "0.0.0.0"
     - radosgw_address_block == "subnet"
+
+- name: include check_rgw_multisite.yml
+  include_tasks: check_rgw_multisite.yml
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
+    - rgw_multisite
+
+- name: include check_iscsi.yml
+  include_tasks: check_iscsi.yml
+  when:
+    - iscsi_gw_group_name in group_names

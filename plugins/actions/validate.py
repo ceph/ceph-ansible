@@ -1,5 +1,8 @@
 
 from ansible.plugins.action import ActionBase
+from distutils.version import LooseVersion
+from ansible.module_utils.six import string_types
+from ansible.errors import AnsibleUndefinedVariable
 
 try:
     from __main__ import display
@@ -14,20 +17,25 @@ except ImportError:
     display.error(msg)
     raise SystemExit(msg)
 
+if LooseVersion(notario.__version__) < LooseVersion("0.0.13"):
+    msg = "The python-notario libary has an incompatible version. Version >= 0.0.13 is needed, current version: %s" % notario.__version__
+    display.error(msg)
+    raise SystemExit(msg)
+
 from notario.exceptions import Invalid
 from notario.validators import types, chainable, iterables
 from notario.decorators import optional
 from notario.store import store as notario_store
 
 
-CEPH_RELEASES = ['jewel', 'kraken', 'luminous', 'mimic']
+CEPH_RELEASES = ['jewel', 'kraken', 'luminous', 'mimic', 'nautilus']
 
 
 class ActionModule(ActionBase):
 
     def run(self, tmp=None, task_vars=None):
         # we must use vars, since task_vars will have un-processed variables
-        host_vars = task_vars['vars']
+        host_vars = self.expand_all_jinja2_templates(task_vars['vars'])
         host = host_vars['ansible_hostname']
         mode = self._task.args.get('mode', 'permissive')
 
@@ -42,7 +50,7 @@ class ActionModule(ActionBase):
             notario_store["containerized_deployment"] = host_vars["containerized_deployment"]
             notario.validate(host_vars, install_options, defined_keys=True)
 
-            if host_vars["ceph_origin"] == "repository":
+            if host_vars["ceph_origin"] == "repository" and not host_vars["containerized_deployment"]:
                 notario.validate(host_vars, ceph_origin_repository, defined_keys=True)
 
                 if host_vars["ceph_repository"] == "community":
@@ -82,22 +90,34 @@ class ActionModule(ActionBase):
                     notario.validate(host_vars, non_collocated_osd_scenario, defined_keys=True)
 
                 if host_vars["osd_scenario"] == "lvm":
-                    if host_vars.get("devices"):
-                        notario.validate(host_vars, lvm_batch_scenario, defined_keys=True)
-                    elif notario_store['osd_objectstore'] == 'filestore':
-                        notario.validate(host_vars, lvm_filestore_scenario, defined_keys=True)
-                    elif notario_store['osd_objectstore'] == 'bluestore':
-                        notario.validate(host_vars, lvm_bluestore_scenario, defined_keys=True)
+                    if not host_vars.get("osd_auto_discovery", False):
+                        if host_vars.get("devices"):
+                            notario.validate(host_vars, lvm_batch_scenario, defined_keys=True)
+                        elif notario_store['osd_objectstore'] == 'filestore':
+                            notario.validate(host_vars, lvm_filestore_scenario, defined_keys=True)
+                        elif notario_store['osd_objectstore'] == 'bluestore':
+                            notario.validate(host_vars, lvm_bluestore_scenario, defined_keys=True)
 
         except Invalid as error:
-            display.vvvv("Notario Failure: %s" % str(error))
-            msg = "[{}] Validation failed for variable: {}".format(host, error.path[0])
-            display.error(msg)
-            reason = "[{}] Reason: {}".format(host, error.reason)
+            display.vvv("Notario Failure: %s" % str(error))
+            msg = ""
+            if error.path:
+                msg = "[{}] Validation failed for variable: {}".format(host, error.path[0])
+                display.error(msg)
+                reason = "[{}] Reason: {}".format(host, error.reason)
+            else:
+                reason = "[{}] Reason: {}".format(host, str(error))
+            given = ""
             try:
                 if "schema is missing" not in error.message:
-                    given = "[{}] Given value for {}: {}".format(host, error.path[0], error.path[1])
-                    display.error(given)
+                    for i in range(0, len(error.path)):
+                        if i == 0:
+                            given = "[{}] Given value for {}".format(
+                                    host, error.path[0])
+                        else:
+                            given = given + ": {}".format(error.path[i])
+                    if given:
+                        display.error(given)
                 else:
                     given = ""
                     reason = "[{}] Reason: {}".format(host, error.message)
@@ -105,10 +125,32 @@ class ActionModule(ActionBase):
                 given = ""
             display.error(reason)
             result['failed'] = mode == 'strict'
-            result['msg'] = "\n".join([msg, reason, given])
-            result['stderr_lines'] = msg.split('\n')
+            result['msg'] = "\n".join([s for s in (msg, reason, given) if len(s) > 0])
+            result['stderr_lines'] = result['msg'].split('\n')
+
 
         return result
+
+    def expand_all_jinja2_templates(self, variables):
+        for k, v in variables.items():
+            try:
+                if self._templar.is_template(v):
+                    variables[k] = self.expand_jinja2_template(v)
+            except AnsibleUndefinedVariable as e:
+                variables[k] = u"VARIABLE IS NOT DEFINED!"
+
+        return variables
+
+    def expand_jinja2_template(self, var):
+        expanded_var = self._templar.template(var, convert_bare=True,
+                                              fail_on_undefined=True)
+        if expanded_var == var:
+            if not isinstance(expanded_var, string_types):
+                raise AnsibleUndefinedVariable
+            expanded_var = self._templar.template("{{%s}}" % expanded_var,
+                                                  convert_bare=True,
+                                                  fail_on_undefined=True)
+        return expanded_var
 
 # Schemas
 
@@ -123,7 +165,7 @@ def ceph_origin_choices(value):
 
 
 def ceph_repository_choices(value):
-    assert value in ['community', 'rhcs', 'dev'], "ceph_repository must be either 'community', 'rhcs' or 'dev'"
+    assert value in ['community', 'rhcs', 'dev', 'custom'], "ceph_repository must be either 'community', 'rhcs', 'dev', or 'custom'"
 
 
 def ceph_repository_type_choices(value):
@@ -144,6 +186,14 @@ def validate_monitor_options(value):
     assert any([monitor_address_given, monitor_address_block_given, monitor_interface_given]), msg
 
 
+def validate_dmcrypt_bool_value(value):
+    assert value in ["true", True, "false", False], "dmcrypt can be set to true/True or false/False (default)"
+
+
+def validate_osd_auto_discovery_bool_value(value):
+    assert value in ["true", True, "false", False], "osd_auto_discovery can be set to true/True or false/False (default)"
+
+
 def validate_osd_scenarios(value):
     assert value in ["collocated", "non-collocated", "lvm"], "osd_scenario must be set to 'collocated', 'non-collocated' or 'lvm'"
 
@@ -161,7 +211,7 @@ def validate_rados_options(value):
     Either radosgw_interface, radosgw_address or radosgw_address_block must
     be defined.
     """
-    radosgw_address_given = notario_store["radosgw_address"] != "address"
+    radosgw_address_given = notario_store["radosgw_address"] != "0.0.0.0"
     radosgw_address_block_given = notario_store["radosgw_address_block"] != "subnet"
     radosgw_interface_given = notario_store["radosgw_interface"] != "interface"
 
@@ -211,8 +261,8 @@ rados_options = (
 )
 
 osd_options = (
-    (optional("dmcrypt"), types.boolean),
-    (optional("osd_auto_discovery"), types.boolean),
+    (optional("dmcrypt"), validate_dmcrypt_bool_value),
+    (optional("osd_auto_discovery"), validate_osd_auto_discovery_bool_value),
     ("osd_scenario", validate_osd_scenarios),
 )
 

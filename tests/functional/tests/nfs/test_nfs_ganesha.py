@@ -1,6 +1,7 @@
 import json
 import pytest
 
+
 class TestNFSs(object):
 
     @pytest.mark.no_docker
@@ -21,25 +22,29 @@ class TestNFSs(object):
 
     @pytest.mark.no_docker
     def test_nfs_config_override(self, node, host):
-        assert host.file("/etc/ganesha/ganesha.conf").contains("Entries_HWMark")
+        assert host.file(
+            "/etc/ganesha/ganesha.conf").contains("Entries_HWMark")
 
-    def test_nfs_is_up(self, node, host):
+    def test_nfs_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
-        cluster = node['cluster_name']
+        cluster = setup['cluster_name']
+        container_binary = setup["container_binary"]
         if node['docker']:
-            docker_exec_cmd = 'docker exec ceph-nfs-{hostname}'.format(hostname=hostname)
+            container_exec_cmd = '{container_binary} exec ceph-nfs-{hostname}'.format(  # noqa E501
+                hostname=hostname, container_binary=container_binary)
         else:
-            docker_exec_cmd = ''
-        cmd = "sudo {docker_exec_cmd} ceph --name client.rgw.{hostname} --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
-            docker_exec_cmd=docker_exec_cmd,
+            container_exec_cmd = ''
+        cmd = "sudo {container_exec_cmd} ceph --name client.rgw.{hostname} --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(  # noqa E501
+            container_exec_cmd=container_exec_cmd,
             hostname=hostname,
             cluster=cluster
         )
         output = host.check_output(cmd)
-        daemons = [i for i in json.loads(output)["servicemap"]["services"]["rgw-nfs"]["daemons"]]
+        daemons = [i for i in json.loads(
+            output)["servicemap"]["services"]["rgw-nfs"]["daemons"]]
         assert hostname in daemons
 
-#NOTE (guits): This check must be fixed. (Permission denied error)
+# NOTE (guits): This check must be fixed. (Permission denied error)
 #    @pytest.mark.no_docker
 #    def test_nfs_rgw_fsal_export(self, node, host):
 #        if(host.mount_point("/mnt").exists):

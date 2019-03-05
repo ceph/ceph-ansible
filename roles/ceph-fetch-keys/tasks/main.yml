@@ -1,33 +1,21 @@
 ---
-- name: find ceph keys
+- name: lookup keys in /etc/ceph
   shell: ls -1 /etc/ceph/*.keyring
   changed_when: false
   register: ceph_keys
-  check_mode: no
 
-- name: set keys permissions
-  file:
-    path: "{{ item }}"
-    mode: "{{ ceph_keyring_permissions }}"
-    owner: root
-    group: root
-  with_items:
-    - "{{ ceph_keys.stdout_lines }}"
 
-- name: set_fact bootstrap_rbd_keyring
-  set_fact:
-    bootstrap_rbd_keyring: "/var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring"
-  when: ceph_release_num[ceph_release] >= ceph_release_num.luminous
-
-- name: copy keys to the ansible server
+- name: "copy ceph user and bootstrap keys to the ansible server in {{ fetch_directory }}/{{ fsid }}/"
   fetch:
     src: "{{ item }}"
     dest: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
     flat: yes
+    fail_on_missing: false
   run_once: true
   with_items:
     - "{{ ceph_keys.stdout_lines }}"
     - "/var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring"
     - "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring"
     - "/var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring"
-    - "{{ bootstrap_rbd_keyring | default([]) }}"
+    - "/var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring"
+    - "/var/lib/ceph/bootstrap-mgr/{{ cluster }}.keyring"

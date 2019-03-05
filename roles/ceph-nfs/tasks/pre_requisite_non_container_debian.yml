@@ -1,0 +1,102 @@
+---
+- name: debian based systems - repo handling
+  block:
+    - name: stable repos specific tasks
+      block:
+        - name: add nfs-ganesha stable repository
+          apt_repository:
+            repo: "deb {{ nfs_ganesha_stable_deb_repo }} {{ ceph_stable_distro_source | default(ansible_lsb.codename) }} main"
+            state: present
+            update_cache: no
+          register: add_ganesha_apt_repo
+
+        - name: update apt cache
+          apt:
+            update_cache: yes
+          register: update_ganesha_apt_cache
+          retries: 5
+          delay: 2
+          until: update_ganesha_apt_cache | success
+          when:
+            - add_ganesha_apt_repo | changed
+      when:
+        - nfs_ganesha_stable
+        - ceph_repository == 'community'
+
+    - name: debian based systems - dev repos specific tasks
+      block:
+        - name: fetch nfs-ganesha development repository
+          uri:
+            url: https://shaman.ceph.com/api/repos/nfs-ganesha/next/latest/{{ ansible_distribution | lower }}/{{ ansible_distribution_release }}/flavors/{{ nfs_ganesha_flavor }}/repo
+            return_content: yes
+          register: nfs_ganesha_dev_apt_repo
+
+        - name: add nfs-ganesha development repository
+          copy:
+            content: "{{ nfs_ganesha_dev_apt_repo.content }}"
+            dest: /etc/apt/sources.list.d/nfs-ganesha-dev.list
+            owner: root
+            group: root
+            backup: yes
+      when:
+        - nfs_ganesha_dev
+        - ceph_repository == 'dev'
+  when:
+    - ceph_origin == 'repository'
+
+- name: debain based systems - install required packages
+  block:
+    - name: debian based systems- non-rhcs installation
+      block:
+        - name: install jemalloc for debian
+          apt:
+            name: libjemalloc1
+            state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+            update_cache: yes
+          register: result
+          until: result is succeeded
+        - name: install nfs rgw/cephfs gateway - debian
+          apt:
+            name: ['nfs-ganesha-rgw', 'radosgw']
+            allow_unauthenticated: yes
+          register: result
+          until: result is succeeded
+          when: nfs_obj_gw
+        - name: install nfs rgw/cephfs gateway - debian
+          apt:
+            name: nfs-ganesha-ceph
+            allow_unauthenticated: yes
+          register: result
+          until: result is succeeded
+          when: nfs_file_gw
+      when:
+        - (ceph_origin == 'repository' or ceph_origin == 'distro')
+        - ceph_repository != 'rhcs'
+
+    - name: debian based systems - rhcs installation
+      block:
+        - name: install red hat storage nfs gateway for debian
+          apt:
+            name: nfs-ganesha
+            state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+          register: result
+          until: result is succeeded
+        - name: install red hat storage nfs file gateway
+          apt:
+            name: nfs-ganesha-ceph
+            state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+          register: result
+          until: result is succeeded
+          when:
+            - nfs_file_gw
+        - name: install red hat storage nfs obj gateway
+          apt:
+            name: nfs-ganesha-rgw
+            state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+          register: result
+          until: result is succeeded
+          when:
+            - nfs_obj_gw
+      when:
+        - (ceph_origin == 'repository' or ceph_origin == 'distro')
+        - ceph_repository == 'rhcs'

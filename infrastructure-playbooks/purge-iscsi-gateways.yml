@@ -35,5 +35,17 @@
       igw_purge: mode="disks"
       when: igw_purge_type == 'all'
 
+    - name: stop and disable daemons
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      when: igw_purge_type == 'all'
+      with_items:
+        - rbd-target-api
+        - rbd-target-gw
+        - tcmu-runner
+
     - name: restart rbd-target-gw daemons
       service: name=rbd-target-gw state=restarted
+      when: igw_purge_type == 'lio'

@@ -27,11 +27,19 @@
       file: lv_vars.yaml
     failed_when: false
 
+  # ensure nvme_device is set
+  - name: fail if nvme_device is not undefined
+    fail:
+      msg: "nvme_device has not been set by the user"
+    when: nvme_device is undefined or nvme_device == 'dummy'
+
   # need to check if lvm2 is installed
   - name: install lvm2
     package:
       name: lvm2
       state: present
+    register: result
+    until: result is succeeded
 
   # Make entire nvme device a VG
   - name: add nvme device as lvm pv

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+RETRIES="{{ handler_health_mds_check_retries }}"
+DELAY="{{ handler_health_mds_check_delay }}"
+MDS_NAME="{{ mds_name }}"
+{% if containerized_deployment %}
+DOCKER_EXEC="{{ container_binary }} exec ceph-mds-{{ ansible_hostname }}"
+{% endif %}
+
+# Backward compatibility
+$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-mds.{{ ansible_fqdn }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-mds.{{ ansible_fqdn }}.asok
+$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-mds.{{ ansible_hostname }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-mds.{{ ansible_hostname }}.asok
+
+# First, restart the daemon
+systemctl restart ceph-mds@${MDS_NAME}
+
+# Wait and ensure the socket exists after restarting the daemds
+while [ $RETRIES -ne 0 ]; do
+  $DOCKER_EXEC test -S $SOCKET && exit 0
+  sleep $DELAY
+  let RETRIES=RETRIES-1
+done
+# If we reach this point, it means the socket is not present.
+echo "Socket file ${SOCKET} could not be found, which means the Metadata Server is not running. Showing ceph-mds unit logs now:"
+journalctl -u ceph-mds@${MDS_NAME}
+exit 1

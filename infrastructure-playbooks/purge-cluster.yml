@@ -68,16 +68,7 @@
       state: stopped
       enabled: no
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
 
-  - name: stop ceph mdss
-    shell: "service ceph status mds ; if [ $? == 0 ] ; then service ceph stop mds ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph mdss on ubuntu
-    command: initctl stop ceph-mds cluster={{ cluster }} id={{ ansible_hostname }}
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
 - name: purge ceph mgr cluster
 
@@ -101,6 +92,7 @@
     failed_when: false
     when: ansible_service_mgr == 'systemd'
 
+
 - name: purge ceph rgw cluster
 
   vars:
@@ -117,26 +109,16 @@
 
   - name: stop ceph rgws with systemd
     service:
-      name: ceph-radosgw@rgw.{{ ansible_hostname }}
+      name: ceph-radosgw@rgw.*
       state: stopped
       enabled: no
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
-
-  - name: stop ceph rgws
-    shell: "service ceph-radosgw status ; if [ $? == 0 ] ; then service ceph-radosgw stop ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph rgws on ubuntu
-    command: initctl stop radosgw cluster={{ cluster }} id={{ ansible_hostname }}
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph rbd-mirror cluster
 
   vars:
-    rbdmirror_group_name: rbd-mirrors
+    rbdmirror_group_name: rbdmirrors
 
   hosts:
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
@@ -149,15 +131,9 @@
 
   - name: stop ceph rbd mirror with systemd
     service:
-      name: ceph-rbd-mirror@admin.service
+      name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
       state: stopped
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
-
-  - name: stop ceph rbd mirror on ubuntu
-    command: initctl stop ceph-rbd-mirror cluster={{ cluster }} id=admin
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph nfs cluster
@@ -180,15 +156,6 @@
       state: stopped
     failed_when: false
     when: ansible_service_mgr == 'systemd'
-
-  - name: stop ceph nfss
-    shell: "service nfs-ganesha status ; if [ $? == 0 ] ; then service nfs-ganesha stop ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph nfss on ubuntu
-    command: initctl stop nfs-ganesha
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
 
 - name: purge ceph osd cluster
@@ -244,20 +211,6 @@
     with_items: "{{ osd_ids.stdout_lines }}"
     when: ansible_service_mgr == 'systemd'
 
-  # before infernalis release, using sysvinit scripts
-  # we use this test so we do not have to know which RPM contains the boot script
-  # or where it is placed.
-
-  - name: stop ceph osds
-    shell: "service ceph status osd ; if [ $? == 0 ] ; then service ceph stop osd ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph osds on ubuntu
-    command: initctl stop ceph-osd cluster={{ cluster }} id={{ item }}
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
-    with_items: "{{ osd_ids.stdout_lines }}"
-
   - name: remove ceph udev rules
     file:
       path: "{{ item }}"
@@ -312,23 +265,23 @@
   - name: wipe table on dm-crypt devices
     command: dmsetup wipe_table --force "{{ item }}"
     with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
-    when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
+    when: encrypted_ceph_partuuid.stdout_lines | length > 0
 
   - name: delete dm-crypt devices if any
     command: dmsetup remove --retry --force {{ item }}
     with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
-    when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
+    when: encrypted_ceph_partuuid.stdout_lines | length > 0
 
   - name: get payload_offset
     shell: cryptsetup luksDump /dev/disk/by-partuuid/{{ item }} | awk '/Payload offset:/ { print $3 }'
     register: payload_offset
     with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
-    when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
+    when: encrypted_ceph_partuuid.stdout_lines | length > 0
 
   - name: get physical sector size
     command: blockdev --getpbsz /dev/disk/by-partuuid/{{ item }}
     with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
-    when: "{{ encrypted_ceph_partuuid.stdout_lines | length > 0 }}"
+    when: encrypted_ceph_partuuid.stdout_lines | length > 0
     register: phys_sector_size
 
   - name: wipe dmcrypt device
@@ -350,7 +303,12 @@
     failed_when: false
     register: ceph_lockbox_partition_to_erase_path
 
-  - name: zap and destroy OSDs created by ceph-volume
+  - name: see if ceph-volume is installed
+    shell: "command -v ceph-volume"
+    failed_when: false
+    register: ceph_volume_present
+
+  - name: zap and destroy osds created by ceph-volume with lvm_volumes
     ceph_volume:
       data: "{{ item.data }}"
       data_vg: "{{ item.data_vg|default(omit) }}"
@@ -366,6 +324,18 @@
     with_items: "{{ lvm_volumes }}"
     when:
       - osd_scenario == "lvm"
+      - ceph_volume_present.rc == 0
+
+  - name: zap and destroy osds created by ceph-volume with devices
+    ceph_volume:
+      data: "{{ item }}"
+      action: "zap"
+    environment:
+      CEPH_VOLUME_DEBUG: 1
+    with_items: "{{ devices | default([]) }}"
+    when:
+      - osd_scenario == "lvm"
+      - ceph_volume_present.rc == 0
 
   - name: get ceph block partitions
     shell: |
@@ -437,7 +407,6 @@
 
   vars:
     mon_group_name:       mons
-    restapi_group_name:   restapis
 
   hosts:
     - "{{ mon_group_name|default('mons') }}"
@@ -450,20 +419,14 @@
 
   - name: stop ceph mons with systemd
     service:
-      name: ceph-mon@{{ ansible_hostname }}
+      name: "ceph-{{ item }}@{{ ansible_hostname }}"
       state: stopped
       enabled: no
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
+    with_items:
+      - mon
+      - mgr
 
-  - name: stop ceph mons
-    shell: "service ceph status mon ; if [ $? == 0 ] ; then service ceph stop mon ; else echo ; fi"
-    when: ansible_service_mgr == 'sysvinit'
-
-  - name: stop ceph mons on ubuntu
-    command: initctl stop ceph-mon cluster={{ cluster }} id={{ ansible_hostname }}
-    failed_when: false
-    when: ansible_service_mgr == 'upstart'
 
   - name: remove monitor store and bootstrap keys
     file:
@@ -541,48 +504,43 @@
 
   - name: purge ceph packages with yum
     yum:
-      name: "{{ item }}"
+      name: "{{ ceph_packages }}"
       state: absent
-    with_items: "{{ ceph_packages }}"
     when: ansible_pkg_mgr == 'yum'
 
   - name: purge ceph packages with dnf
     dnf:
-      name: "{{ item }}"
+      name: "{{ ceph_packages }}"
       state: absent
-    with_items: "{{ ceph_packages }}"
     when: ansible_pkg_mgr == 'dnf'
 
   - name: purge ceph packages with apt
     apt:
-      name: "{{ item }}"
+      name: "{{ ceph_packages }}"
       state: absent
-    with_items: "{{ ceph_packages }}"
+      purge: true
     when: ansible_pkg_mgr == 'apt'
 
   - name: purge remaining ceph packages with yum
     yum:
-      name: "{{ item }}"
+      name: "{{ ceph_remaining_packages }}"
       state: absent
-    with_items: "{{ ceph_remaining_packages }}"
     when:
       - ansible_pkg_mgr == 'yum'
       - purge_all_packages == true
 
   - name: purge remaining ceph packages with dnf
     dnf:
-      name: "{{ item }}"
+      name: "{{ ceph_remaining_packages }}"
       state: absent
-    with_items: "{{ ceph_remaining_packages }}"
     when:
       - ansible_pkg_mgr == 'dnf'
       - purge_all_packages == true
 
   - name: purge remaining ceph packages with apt
     apt:
-      name: "{{ item }}"
+      name: "{{ ceph_remaining_packages }}"
       state: absent
-    with_items: "{{ ceph_remaining_packages }}"
     when:
       - ansible_pkg_mgr == 'apt'
       - purge_all_packages == true
@@ -615,7 +573,7 @@
       state: absent
 
   - name: clean apt
-    shell: apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    command: apt-get clean
     when: ansible_pkg_mgr == 'apt'
 
   - name: purge rh_storage.repo file in /etc/yum.repos.d
@@ -633,6 +591,8 @@
     find:
       paths: "/etc/systemd/system"
       pattern: "ceph*"
+      recurse: true
+      file_type: any
     register: systemd_files
 
   - name: remove ceph systemd unit files

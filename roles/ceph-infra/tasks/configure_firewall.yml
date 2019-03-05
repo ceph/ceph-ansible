@@ -1,0 +1,172 @@
+---
+- name: check firewalld installation on redhat or suse
+  command: rpm -q firewalld
+  args:
+    warn: no
+  register: firewalld_pkg_query
+  ignore_errors: true
+  check_mode: no
+  changed_when: false
+  tags:
+    - firewall
+  when:
+    - not containerized_deployment
+
+- block:
+  - name: start firewalld
+    service:
+      name: firewalld
+      state: started
+      enabled: yes
+
+  - name: open monitor and manager ports
+    firewalld:
+      service: "{{ item.service }}"
+      zone: "{{ item.zone }}"
+      source: "{{ public_network }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    with_items:
+      - { 'service': 'ceph-mon', 'zone': "{{ ceph_mon_firewall_zone }}" }
+      - { 'service': 'ceph', 'zone': "{{ ceph_mgr_firewall_zone }}" }
+    when:
+      - mon_group_name is defined
+      - mon_group_name in group_names
+    tags:
+      - firewall
+
+  - name: open manager ports
+    firewalld:
+      service: ceph
+      zone: "{{ ceph_mgr_firewall_zone }}"
+      source: "{{ public_network }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    when:
+      - mgr_group_name is defined
+      - mgr_group_name in group_names
+    tags:
+      - firewall
+
+  - name: open osd ports
+    firewalld:
+      service: ceph
+      zone: "{{ ceph_osd_firewall_zone }}"
+      source: "{{ item }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    with_items:
+      - "{{ public_network }}"
+      - "{{ cluster_network }}"
+    when:
+      - osd_group_name is defined
+      - osd_group_name in group_names
+    tags:
+      - firewall
+
+  - name: open rgw ports
+    firewalld:
+      port: "{{ radosgw_frontend_port }}/tcp"
+      zone: "{{ ceph_rgw_firewall_zone }}"
+      source: "{{ public_network }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    when:
+      - rgw_group_name is defined
+      - rgw_group_name in group_names
+    tags:
+      - firewall
+
+  - name: open mds ports
+    firewalld:
+      service: ceph
+      zone: "{{ ceph_mds_firewall_zone }}"
+      source: "{{ public_network }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    when:
+      - mds_group_name is defined
+      - mds_group_name in group_names
+    tags:
+      - firewall
+
+  - name: open nfs ports
+    firewalld:
+      service: nfs
+      zone: "{{ ceph_nfs_firewall_zone }}"
+      source: "{{ public_network }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    when:
+      - nfs_group_name is defined
+      - nfs_group_name in group_names
+    tags:
+      - firewall
+
+  - name: open nfs ports (portmapper)
+    firewalld:
+      port: "111/tcp"
+      zone: "{{ ceph_nfs_firewall_zone }}"
+      source: "{{ public_network }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    when:
+      - nfs_group_name is defined
+      - nfs_group_name in group_names
+    tags:
+      - firewall
+
+  - name: open rbdmirror ports
+    firewalld:
+      service: ceph
+      zone: "{{ ceph_rbdmirror_firewall_zone }}"
+      source: "{{ public_network }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    when:
+      - rbdmirror_group_name is defined
+      - rbdmirror_group_name in group_names
+    tags:
+      - firewall
+
+  - name: open iscsi target ports
+    firewalld:
+      port: "3260/tcp"
+      zone: "{{ ceph_iscsi_firewall_zone }}"
+      source: "{{ public_network }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    when:
+      - iscsi_gw_group_name is defined
+      - iscsi_gw_group_name in group_names
+    tags:
+      - firewall
+
+  - name: open iscsi api ports
+    firewalld:
+      port: "{{ api_port | default(5000) }}/tcp"
+      zone: "{{ ceph_iscsi_firewall_zone }}"
+      source: "{{ public_network }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    when:
+      - iscsi_gw_group_name is defined
+      - iscsi_gw_group_name in group_names
+    tags:
+      - firewall
+
+  when:
+    - (firewalld_pkg_query.get('rc', 1) == 0
+      or is_atomic)
+
+- meta: flush_handlers

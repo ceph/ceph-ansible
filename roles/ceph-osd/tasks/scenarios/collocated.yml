@@ -3,8 +3,8 @@
 # to ensure osd disk prepare finishes before
 # starting the next task
 - name: prepare ceph containerized osd disk collocated
-  shell: |
-    docker run --net=host \
+  command: |
+    {{ container_binary }} run --net=host \
     --pid=host \
     --privileged=true \
     --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.1 | regex_replace('/dev/', '') }} \
@@ -28,8 +28,8 @@
     - item.0.partitions|length == 0
 
 - name: automatic prepare ceph containerized osd disk collocated
-  shell: |
-    docker run --net=host \
+  command: |
+    {{ container_binary }} run --net=host \
     --pid=host \
     --privileged=true \
     --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.split('/')[-1] }} \

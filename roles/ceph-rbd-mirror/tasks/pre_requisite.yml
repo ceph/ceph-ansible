@@ -5,36 +5,7 @@
   package:
     name: rbd-mirror
     state: present
+  register: result
+  until: result is succeeded
   tags:
     - package-install
-
-- name: copy ceph admin key
-  copy:
-    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.client.admin.keyring"
-    dest: "/etc/ceph/{{ cluster }}.client.admin.keyring"
-    owner: "{{ ceph_uid }}"
-    group: "{{ ceph_uid }}"
-    mode: "0600"
-  when:
-    - cephx
-    - ceph_release_num[ceph_release] < ceph_release_num.luminous
-
-- name: create rbd-mirror keyring
-  command: ceph --cluster {{ cluster }} --name client.bootstrap-rbd --keyring /var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring auth get-or-create client.rbd-mirror.{{ ansible_hostname }} mon 'profile rbd' osd 'profile rbd' -o /etc/ceph/{{ cluster }}.client.rbd-mirror.{{ ansible_hostname }}.keyring
-  args:
-    creates: /etc/ceph/{{ cluster }}.client.rbd-mirror.{{ ansible_hostname }}.keyring
-  changed_when: false
-  when:
-    - cephx
-    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
-
-- name: set rbd-mirror key permissions
-  file:
-    path: /etc/ceph/{{ cluster }}.client.rbd-mirror.{{ ansible_hostname }}.keyring
-    owner: "ceph"
-    group: "ceph"
-    mode: "{{ ceph_keyring_permissions }}"
-  when:
-    - cephx
-    - ceph_release_num[ceph_release] >= ceph_release_num.luminous
-

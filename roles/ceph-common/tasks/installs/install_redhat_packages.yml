@@ -3,6 +3,8 @@
   package:
     name: "{{ redhat_package_dependencies }}"
     state: present
+  register: result
+  until: result is succeeded
   when:
     - ansible_distribution == 'RedHat'
 
@@ -10,6 +12,8 @@
   yum:
     name: "{{ centos_package_dependencies }}"
     state: present
+  register: result
+  until: result is succeeded
   when:
     - ansible_distribution == 'CentOS'
 
@@ -17,3 +21,5 @@
   package:
     name: "{{ redhat_ceph_pkgs | unique }}"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  register: result
+  until: result is succeeded
