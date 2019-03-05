@@ -60,7 +60,7 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
       when:
-        - item.min_size | default(osd_pool_default_min_size) > ceph_osd_pool_default_min_size
+        - (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
 
     - name: assign application to pool(s)
       command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
