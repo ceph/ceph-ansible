@@ -113,6 +113,25 @@
         - pools | length > 0
         - item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
 
+    - name: customize pool min_size
+      command: >
+        {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        osd pool set {{ item.name }} min_size {{ item.min_size | default(osd_pool_default_min_size) }}
+      with_items: "{{ pools | unique }}"
+      delegate_to: "{{ delegated_node }}"
+      changed_when: false
+      when:
+        - pools | length > 0
+        - item.min_size | default(osd_pool_default_min_size) > ceph_osd_pool_default_min_size
+
+    - name: assign application to pool(s)
+      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
+      with_items: "{{ pools | unique }}"
+      changed_when: false
+      delegate_to: "{{ delegated_node }}"
+      when:
+        - item.application is defined
+
 - name: get client cephx keys
   copy:
     dest: "{{ item.source }}"

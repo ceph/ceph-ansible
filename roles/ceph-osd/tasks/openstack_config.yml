@@ -52,6 +52,16 @@
       when:
         - item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
 
+    - name: customize pool min_size
+      command: >
+        {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
+        osd pool set {{ item.name }} min_size {{ item.min_size | default(osd_pool_default_min_size) }}
+      with_items: "{{ openstack_pools | unique }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when:
+        - item.min_size | default(osd_pool_default_min_size) > ceph_osd_pool_default_min_size
+
     - name: assign application to pool(s)
       command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
       with_items: "{{ openstack_pools | unique }}"
