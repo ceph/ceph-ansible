@@ -332,9 +332,8 @@ def create_key(module, result, cluster, name, secret, caps, import_key, dest, co
 
     if import_key:
         user = "client.admin"
-        user = "client.admin"
         user_key = os.path.join(
-            "/etc/ceph/" + cluster + ".client.admin.keyring")
+            "/etc/ceph/" + cluster + "." + user + ".keyring")
         cmd_list.append(generate_ceph_cmd(
             cluster, args, user, user_key, container_image))
 
@@ -356,7 +355,7 @@ def update_key(cluster, name, caps, container_image=None):
     args = generate_caps(args, "ceph", caps)
     user = "client.admin"
     user_key = os.path.join(
-        "/etc/ceph/" + cluster + ".client.admin.keyring")
+        "/etc/ceph/" + cluster + "." + user + ".keyring")
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key, container_image))
 
@@ -377,7 +376,7 @@ def delete_key(cluster, name, container_image=None):
 
     user = "client.admin"
     user_key = os.path.join(
-        "/etc/ceph/" + cluster + ".client.admin.keyring")
+        "/etc/ceph/" + cluster + "." + user + ".keyring")
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key, container_image))
 
@@ -400,7 +399,7 @@ def get_key(cluster, name, dest, container_image=None):
 
     user = "client.admin"
     user_key = os.path.join(
-        "/etc/ceph/" + cluster + ".client.admin.keyring")
+        "/etc/ceph/" + cluster + "." + user + ".keyring")
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key, container_image))
 
@@ -564,7 +563,7 @@ def run_module():
     if import_key:
         user = "client.admin"
         user_key = os.path.join(
-            "/etc/ceph/" + cluster + ".client.admin.keyring")
+            "/etc/ceph/" + cluster + "." + user + ".keyring")
         output_format = "json"
         rc, cmd, out, err = exec_commands(
             module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
@@ -630,7 +629,7 @@ def run_module():
 
         user = "client.admin"
         user_key = os.path.join(
-            "/etc/ceph/" + cluster + ".client.admin.keyring")
+            "/etc/ceph/" + cluster + "." + user + ".keyring")
         output_format = "json"
         rc, cmd, out, err = exec_commands(
             module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
@@ -638,7 +637,7 @@ def run_module():
     elif state == "list":
         user = "client.admin"
         user_key = os.path.join(
-            "/etc/ceph/" + cluster + ".client.admin.keyring")
+            "/etc/ceph/" + cluster + "." + user + ".keyring")
         rc, cmd, out, err = exec_commands(
             module, list_keys(cluster, user, user_key, container_image))
 
