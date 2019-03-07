@@ -81,7 +81,7 @@
 
     - name: set_fact osd_hosts
       set_fact:
-        osd_hosts: "{{ osd_hosts | default([]) + [ [ (item.stdout | from_json).crush_location.host, (item.stdout | from_json).osd_fsid ] ] }}"
+        osd_hosts: "{{ osd_hosts | default([]) + [ { 'host': (item.stdout | from_json).crush_location.host, 'id': (item.stdout | from_json).osd } ] }}"
       with_items: "{{ find_osd_hosts.results }}"
 
     - name: mark osd(s) out of the cluster
@@ -90,23 +90,34 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ osd_to_kill.split(',') }}"
 
+    - name: get lvm osds information
+      command: "{{ 'docker exec ceph-osd-' + item.id | string + ' ' if containerized_deployment else '' }} ceph-volume --cluster {{ cluster }} lvm list --format json"
+      register: lvm_osds_info
+      with_items: "{{ osd_hosts }}"
+      delegate_to: "{{ item.host }}"
+
+    - name: convert lvm_osds_information to a dict
+      set_fact:
+        _lvm_osds_info: "{{ _lvm_osds_info | default({}) | combine(item.stdout | from_json, recursive=True) }}"
+      with_items: "{{ lvm_osds_info.results }}"
+
     - name: stop osd(s) service
       service:
-        name: ceph-osd@{{ item.0 }}
+        name: ceph-osd@{{ item.id }}
         state: stopped
         enabled: no
-      loop: "{{ osd_to_kill.split(',')|zip(osd_hosts)|list }}"
-      delegate_to: "{{ item.1.0 }}"
+      with_items: "{{ osd_hosts }}"
+      delegate_to: "{{ item.host }}"
 
     - name: zap osd devices
       ceph_volume:
         action: "zap"
-        osd_fsid: "{{ item.1 }}"
+        osd_fsid: "{{ _lvm_osds_info[item.id|string][0]['tags']['ceph.osd_fsid'] }}"
       environment:
         CEPH_VOLUME_DEBUG: 1
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      delegate_to: "{{ item.0 }}"
+      delegate_to: "{{ item.host }}"
       loop: "{{ osd_hosts }}"
 
     - name: purge osd(s) from the cluster
