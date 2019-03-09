@@ -11,8 +11,16 @@
     when:
       - ceph_docker_on_openstack
 
+  - name: test if the container image has directory {{ container_bin_path }}
+    command: "docker run --rm --entrypoint=test {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} -d {{ container_bin_path }}"
+    changed_when: false
+    failed_when: false
+    register: test_container_bin_path
+    when:
+      - osd_scenario != 'lvm'
+
   - name: test if the container image has the disk_list function
-    command: docker run --rm --entrypoint=stat {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list.sh
+    command: "docker run --rm --entrypoint=stat {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} {{ container_bin_path + '/disk_list.sh' if test_container_bin_path.rc == 0 else 'disk_list.sh' }}"
     changed_when: false
     failed_when: false
     register: disk_list
