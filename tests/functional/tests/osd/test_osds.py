@@ -75,8 +75,8 @@ class TestOSDs(object):
     @pytest.mark.docker
     def test_all_docker_osds_are_up_and_in(self, node, host, setup):
         container_binary = setup["container_binary"]
-        osd_id = host.check_output(os.path.join(
-            container_binary + " ps -q --filter='name=ceph-osd' | head -1"))
+        osd_id = host.check_output(container_binary + " ps -q --filter='name="
+                                   "ceph-osd' | head -1")
         cmd = "sudo {container_binary} exec {osd_id} ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(  # noqa E501
             osd_id=osd_id,
             cluster=setup["cluster_name"],
