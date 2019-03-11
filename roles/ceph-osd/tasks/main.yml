@@ -10,6 +10,17 @@
     - not containerized_deployment
     - ansible_os_family != 'ClearLinux'
 
+- name: install numactl when needed
+  package:
+    name: numactl
+  register: result
+  until: result is succeeded
+  when:
+    - containerized_deployment
+    - ceph_osd_numactl_opts != ""
+  tags:
+    - with_pkg
+
 - name: include_tasks common.yml
   include_tasks: common.yml
 
