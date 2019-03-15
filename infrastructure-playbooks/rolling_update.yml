@@ -83,6 +83,13 @@
   serial: 1
   become: True
   tasks:
+    - name: remove ceph aliases
+      file:
+        path: /etc/profile.d/ceph-aliases.sh
+        state: absent
+      when:
+        - containerized_deployment
+
     - name: set mon_host_count
       set_fact:
         mon_host_count: "{{ groups[mon_group_name] | length }}"
