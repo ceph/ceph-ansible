@@ -242,3 +242,20 @@
 - name: set_fact osd_pool_default_size
   set_fact:
     osd_pool_default_size: "{{ ceph_conf_overrides.get('global', {}).get('osd_pool_default_size', ceph_osd_pool_default_size) }}"
+
+- name: check if the ceph conf exists
+  stat:
+    path: '/etc/ceph/{{ cluster }}.conf'
+  register: ceph_conf
+
+- name: get default crush rule value from ceph configuration
+  command: grep 'osd pool default crush rule' /etc/ceph/{{ cluster }}.conf
+  register: crush_rule_variable
+  changed_when: false
+  failed_when: false
+  when: ceph_conf.stat.exists
+
+- name: set_fact osd_pool_default_crush_rule
+  set_fact:
+    osd_pool_default_crush_rule: "{% if crush_rule_variable.rc == 0 %}{{ crush_rule_variable.stdout.split(' = ')[1] }}{% else %}{{ ceph_osd_pool_default_crush_rule }}{% endif %}"
+  when: ceph_conf.stat.exists
