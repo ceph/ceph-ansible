@@ -1,4 +1,12 @@
 ---
+- name: install yum plugin priorities
+  package:
+    name: yum-plugin-priorities
+  register: result
+  until: result is succeeded
+  tags:
+    - with_pkg
+
 - name: configure red hat ceph community repository stable key
   rpm_key:
     key: "{{ ceph_stable_key }}"
@@ -15,6 +23,7 @@
     gpgkey: "{{ ceph_stable_key }}"
     baseurl: "{{ ceph_mirror }}/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/$basearch"
     file: ceph_stable
+    priority: 2
   register: result
   until: result is succeeded
 
@@ -27,5 +36,6 @@
     gpgkey: "{{ ceph_stable_key }}"
     baseurl: "{{ ceph_mirror }}/rpm-{{ ceph_stable_release }}/{{ ceph_stable_redhat_distro }}/noarch"
     file: ceph_stable
+    priority: 2
   register: result
   until: result is succeeded
