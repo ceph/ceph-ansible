@@ -121,7 +121,7 @@ caps:
 
 - name: create monitor initial keyring
   ceph_key:
-    name: mon.
+    name: mon
     state: present
     secret: AQAin8tUMICVFBAALRHNrV0Z4MXupRw4v9JQ6Q==
     caps:
