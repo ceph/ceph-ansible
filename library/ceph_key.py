@@ -209,8 +209,7 @@ def container_exec(binary, container_image):
                     '-v', '/etc/ceph:/etc/ceph:z',
                     '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                     '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                    os.path.join('--entrypoint=' + binary),
-                    container_image]
+                    '--entrypoint=' + binary, container_image]
     return command_exec
 
 
@@ -332,9 +331,8 @@ def create_key(module, result, cluster, name, secret, caps, import_key, dest, co
 
     if import_key:
         user = "client.admin"
-        user = "client.admin"
-        user_key = os.path.join(
-            "/etc/ceph/" + cluster + ".client.admin.keyring")
+        keyring_filename = cluster + "." + user + ".keyring"
+        user_key = os.path.join("/etc/ceph/", keyring_filename)
         cmd_list.append(generate_ceph_cmd(
             cluster, args, user, user_key, container_image))
 
@@ -355,8 +353,8 @@ def update_key(cluster, name, caps, container_image=None):
 
     args = generate_caps(args, "ceph", caps)
     user = "client.admin"
-    user_key = os.path.join(
-        "/etc/ceph/" + cluster + ".client.admin.keyring")
+    keyring_filename = cluster + "." + user + ".keyring"
+    user_key = os.path.join("/etc/ceph/", keyring_filename)
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key, container_image))
 
@@ -376,8 +374,8 @@ def delete_key(cluster, name, container_image=None):
     ]
 
     user = "client.admin"
-    user_key = os.path.join(
-        "/etc/ceph/" + cluster + ".client.admin.keyring")
+    keyring_filename = cluster + "." + user + ".keyring"
+    user_key = os.path.join("/etc/ceph/", keyring_filename)
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key, container_image))
 
@@ -399,8 +397,8 @@ def get_key(cluster, name, dest, container_image=None):
     ]
 
     user = "client.admin"
-    user_key = os.path.join(
-        "/etc/ceph/" + cluster + ".client.admin.keyring")
+    keyring_filename = cluster + "." + user + ".keyring"
+    user_key = os.path.join("/etc/ceph/", keyring_filename)
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key, container_image))
 
@@ -498,16 +496,16 @@ def build_key_path(cluster, entity):
 
     if "admin" in entity:
         path = "/etc/ceph"
-        key_path = os.path.join(
-            path + "/" + cluster + "." + entity + ".keyring")
+        keyring_filename = cluster + "." + entity + ".keyring"
+        key_path = os.path.join(path, keyring_filename)
     elif "bootstrap" in entity:
         path = "/var/lib/ceph"
         # bootstrap keys show up as 'client.boostrap-osd'
         # however the directory is called '/var/lib/ceph/bootstrap-osd'
         # so we need to substring 'client.'
         entity_split = entity.split('.')[1]
-        key_path = os.path.join(
-            path + "/" + entity_split + "/" + cluster + ".keyring")
+        keyring_filename = cluster + ".keyring"
+        key_path = os.path.join(path, entity_split, keyring_filename)
     else:
         return None
 
@@ -563,8 +561,8 @@ def run_module():
     # There is no guarantee that any cluster is running and we don't need one
     if import_key:
         user = "client.admin"
-        user_key = os.path.join(
-            "/etc/ceph/" + cluster + ".client.admin.keyring")
+        keyring_filename = cluster + '.' + user + '.keyring'
+        user_key = os.path.join("/etc/ceph/", keyring_filename)
         output_format = "json"
         rc, cmd, out, err = exec_commands(
             module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
@@ -580,10 +578,11 @@ def run_module():
         elif 'bootstrap' in dest:
             # Build a different path for bootstrap keys as there are stored as
             # /var/lib/ceph/bootstrap-rbd/ceph.keyring
-            file_path = os.path.join(dest + "/" + cluster + ".keyring")
+            keyring_filename = cluster + '.keyring'
+            file_path = os.path.join(dest, keyring_filename)
         else:
-            file_path = os.path.join(dest + "/" + cluster +
-                                     "." + name + ".keyring")
+            keyring_filename = cluster + "." + name + ".keyring"
+            file_path = os.path.join(dest, keyring_filename)
 
         # We allow 'present' to override any existing key
         # ONLY if a secret is provided
@@ -629,24 +628,24 @@ def run_module():
             module.exit_json(**result)
 
         user = "client.admin"
-        user_key = os.path.join(
-            "/etc/ceph/" + cluster + ".client.admin.keyring")
+        keyring_filename = cluster + '.' + user + '.keyring'
+        user_key = os.path.join("/etc/ceph/", keyring_filename)
         output_format = "json"
         rc, cmd, out, err = exec_commands(
             module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
 
     elif state == "list":
         user = "client.admin"
-        user_key = os.path.join(
-            "/etc/ceph/" + cluster + ".client.admin.keyring")
+        keyring_filename = cluster + '.' + user + '.keyring'
+        user_key = os.path.join("/etc/ceph/", keyring_filename)
         rc, cmd, out, err = exec_commands(
             module, list_keys(cluster, user, user_key, container_image))
 
     elif state == "fetch_initial_keys":
         hostname = socket.gethostname().split('.', 1)[0]
         user = "mon."
-        user_key = os.path.join(
-            "/var/lib/ceph/mon/" + cluster + "-" + hostname + "/keyring")
+        keyring_filename = cluster + "-" + hostname + "/keyring"
+        user_key = os.path.join("/var/lib/ceph/mon/", keyring_filename)
         rc, cmd, out, err = exec_commands(
             module, list_keys(cluster, user, user_key, container_image))
         if rc != 0:

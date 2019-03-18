@@ -11,8 +11,16 @@
     when:
       - ceph_docker_on_openstack
 
+  - name: test if the container image has directory {{ container_bin_path }}
+    command: "{{ container_binary }} run --rm --net=host --entrypoint=test {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} -d {{ container_bin_path }}"
+    changed_when: false
+    failed_when: false
+    register: test_container_bin_path
+    when:
+      - osd_scenario != 'lvm'
+
   - name: test if the container image has the disk_list function
-    command: "{{ container_binary }} run --rm --net=host --entrypoint=stat {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list.sh"
+    command: "{{ container_binary }} run --rm --net=host --entrypoint=stat {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} {{ container_bin_path + '/disk_list.sh' if test_container_bin_path.rc == 0 else 'disk_list.sh' }}"
     changed_when: false
     failed_when: false
     register: disk_list
@@ -45,8 +53,7 @@
     docker_exec_start_osd: "{{ '{{ container_binary }} run --rm --net=host --privileged=true -v /var/run/udev/:/var/run/udev/:z -v /run/lvm/:/run/lvm/ -v /etc/ceph:/etc/ceph:z -v /dev:/dev --entrypoint=ceph-volume ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'ceph-volume' }}"
 
 - name: collect osd ids
-  shell: >
-    {{ docker_exec_start_osd }} lvm list --format json
+  command: "{{ docker_exec_start_osd }} lvm list --format json"
   changed_when: false
   failed_when: false
   register: ceph_osd_ids
