@@ -222,6 +222,20 @@
       when:
         - containerized_deployment
 
+    - name: ensure /var/lib/ceph/bootstrap-rbd-mirror is present
+      file:
+        path: /var/lib/ceph/bootstrap-rbd-mirror
+        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        mode: '755'
+        state: directory
+      when:
+        - cephx
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups[mon_group_name] }}"
+      when:
+        - inventory_hostname == groups[mon_group_name][0]
+
     - name: create potentially missing keys (rbd and rbd-mirror)
       ceph_key:
         name: "client.{{ item.0 }}"
