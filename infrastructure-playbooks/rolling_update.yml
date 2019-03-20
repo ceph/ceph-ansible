@@ -797,6 +797,27 @@
         name: ceph-client
 
 
+    - name: container | enable msgr2 protocol
+      command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph mon enable-msgr2"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: True
+      when: containerized_deployment
+
+    - name: non container | enable msgr2 protocol
+      command: ceph mon enable-msgr2
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: True
+      when: not containerized_deployment
+
+    - import_role:
+        name: ceph-handler
+    - name: import_role ceph-config
+      import_role:
+        name: ceph-config
+      vars:
+        msgr2_migration: True
+
+
 - name: show ceph status
   hosts:
     - "{{ mon_group_name|default('mons') }}"
