@@ -16,21 +16,19 @@
   delay: "{{ handler_health_mon_check_delay }}"
   changed_when: false
 
-- name: fetch ceph initial keys
-  ceph_key:
-    state: fetch_initial_keys
-    cluster: "{{ cluster }}"
-    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    mode: "0400"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-    CEPH_ROLLING_UPDATE: "{{ rolling_update }}"
-  when:
-    - cephx
-
 - block:
+  - name: fetch ceph initial keys
+    ceph_key:
+      state: fetch_initial_keys
+      cluster: "{{ cluster }}"
+      owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+      group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+      mode: "0400"
+    environment:
+      CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+      CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      CEPH_ROLLING_UPDATE: "{{ rolling_update }}"
+
   - name: create ceph mgr keyring(s)
     ceph_key:
       name: "mgr.{{ hostvars[item]['ansible_hostname'] }}"
@@ -62,7 +60,6 @@
     delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
     - cephx
-    - not rolling_update
 
 - name: copy keys to the ansible server
   fetch:
