@@ -185,6 +185,18 @@ CEPH_INITIAL_KEYS = ['client.admin', 'client.bootstrap-mds', 'client.bootstrap-m
                      'client.bootstrap-osd', 'client.bootstrap-rbd', 'client.bootstrap-rbd-mirror', 'client.bootstrap-rgw']  # noqa E501
 
 
+def str_to_bool(val):
+    try:
+        val = val.lower()
+    except AttributeError:
+        val = str(val).lower()
+    if val == 'true':
+        return True
+    elif val == 'false':
+        return False
+    else:
+        raise ValueError("Invalid input value: %s" % val)
+
 def fatal(message, module):
     '''
     Report a fatal error and exit
@@ -478,7 +490,7 @@ def lookup_ceph_initial_entities(module, out):
     else:
         fatal("'auth_dump' key not present in json output:", module)  # noqa E501
 
-    if len(entities) != len(CEPH_INITIAL_KEYS):
+    if len(entities) != len(CEPH_INITIAL_KEYS) and not str_to_bool(os.environ.get('CEPH_ROLLING_UPDATE', False)):
         # must be missing in auth_dump, as if it were in CEPH_INITIAL_KEYS
         # it'd be in entities from the above test. Report what's missing.
         missing = []
