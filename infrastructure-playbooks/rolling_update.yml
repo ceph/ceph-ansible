@@ -83,13 +83,18 @@
   become: True
   tasks:
     - name: set mon_host_count
-      set_fact: mon_host_count={{ groups[mon_group_name] | length }}
+      set_fact:
+        mon_host_count: "{{ groups[mon_group_name] | length }}"
 
     - name: fail when less than three monitors
       fail:
         msg: "Upgrade of cluster with less than three monitors is not supported."
       when:
         - mon_host_count | int < 3
+
+    - name: select a running monitor
+      set_fact:
+        mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last }}"
 
     - name: stop ceph mon - shortname
       systemd:
@@ -138,6 +143,27 @@
         name: ceph-mgr
       when: groups.get(mgr_group_name, []) | length == 0
 
+    - name: set osd flags
+      command: ceph --cluster {{ cluster }} osd set {{ item }}
+      with_items:
+        - noout
+        - norebalance
+      delegate_to: "{{ mon_host }}"
+      when:
+        - inventory_hostname == groups[mon_group_name][0]
+        - not containerized_deployment
+
+    - name: set containerized osd flags
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
+      with_items:
+        - noout
+        - norebalance
+      delegate_to: "{{ mon_host }}"
+      when:
+        - inventory_hostname == groups[mon_group_name][0]
+        - containerized_deployment
+
     - name: start ceph mon
       systemd:
         name: ceph-mon@{{ monitor_name }}
@@ -173,13 +199,6 @@
       ignore_errors: True # if no mgr collocated with mons
       when:
         - containerized_deployment
-
-    - name: set mon_host_count
-      set_fact: mon_host_count={{ groups[mon_group_name] | length }}
-
-    - name: select a running monitor
-      set_fact:
-        mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last }}"
 
     - name: non container | waiting for the monitor to join the quorum...
       command: ceph --cluster "{{ cluster }}" -s --format json
@@ -222,22 +241,6 @@
         - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
         - "{{ groups[mon_group_name] | difference([mon_host]) }}" # so the key goes on all the nodes
 
-    - name: set osd flags
-      command: ceph --cluster {{ cluster }} osd set {{ item }}
-      with_items:
-        - noout
-        - norebalance
-      delegate_to: "{{ mon_host }}"
-      when: not containerized_deployment
-
-    - name: set containerized osd flags
-      command: >
-        {{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
-      with_items:
-        - noout
-        - norebalance
-      delegate_to: "{{ mon_host }}"
-      when: containerized_deployment
 
 
 - name: upgrade ceph mgr node
