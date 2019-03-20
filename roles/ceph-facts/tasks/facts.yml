@@ -81,6 +81,19 @@
   when:
     - (cephx or generate_fsid)
 
+- name: get current fsid
+  command: "{{ timeout_command }} {{ docker_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }} config get fsid"
+  register: rolling_update_fsid
+  delegate_to: "{{ mon_host | default(groups[mon_group_name][0]) }}"
+  when:
+    - rolling_update
+
+- name: set_fact fsid
+  set_fact:
+    fsid: "{{ (rolling_update_fsid.stdout | from_json).fsid }}"
+  when:
+    - rolling_update
+
 - name: set_fact ceph_current_status (convert to json)
   set_fact:
     ceph_current_status: "{{ ceph_current_status.stdout | from_json }}"
@@ -109,6 +122,7 @@
   when:
     - generate_fsid
     - ceph_current_status.fsid is undefined
+    - not rolling_update
 
 - name: set_fact mds_name ansible_hostname
   set_fact:
