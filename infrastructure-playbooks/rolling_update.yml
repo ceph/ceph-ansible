@@ -608,22 +608,12 @@
   serial: 1
   become: True
   tasks:
-    # NOTE(leseb): these tasks have a 'failed_when: false'
-    # in case we run before luminous or after
-    - name: stop ceph rbd mirror before luminous
-      systemd:
-        name: "ceph-rbd-mirror@{{ ceph_rbd_mirror_local_user }}"
-        state: stopped
-        enabled: no
-      failed_when: false
-
-    - name: stop ceph rbd mirror for and after luminous
+    - name: stop ceph rbd mirror
       systemd:
         name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
         state: stopped
         enabled: no
         masked: yes
-      failed_when: false
 
     - import_role:
         name: ceph-defaults
