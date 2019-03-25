@@ -557,19 +557,30 @@
   serial: 1
   become: True
   tasks:
-    - name: stop ceph rgw
-      systemd:
-        name: ceph-radosgw@rgw.{{ ansible_hostname }}
-        state: stopped
-        enabled: no
-        masked: yes
-      when:
-        - not containerized_deployment
 
     - import_role:
         name: ceph-defaults
     - import_role:
         name: ceph-facts
+
+    - name: stop ceph rgw when upgrading from stable-3.2
+      systemd:
+        name: ceph-radosgw@rgw.{{ ansible_hostname }}
+        state: stopped
+        enabled: no
+        masked: yes
+      ignore_errors: True
+
+    - name: stop ceph rgw
+      systemd:
+        name: ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}
+        state: stopped
+        enabled: no
+        masked: yes
+      with_items: "{{ rgw_instances }}"
+      when:
+        - not containerized_deployment
+
     - import_role:
         name: ceph-handler
     - import_role:
@@ -582,15 +593,6 @@
         name: ceph-config
     - import_role:
         name: ceph-rgw
-
-    - name: start ceph rgw
-      systemd:
-        name: ceph-radosgw@rgw.{{ ansible_hostname }}
-        state: started
-        enabled: yes
-        masked: no
-      when:
-        - not containerized_deployment
 
     - name: restart containerized ceph rgw
       systemd:
