@@ -97,6 +97,43 @@
       set_fact:
         mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last }}"
 
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+
+    - name: ensure /var/lib/ceph/bootstrap-rbd-mirror is present
+      file:
+        path: /var/lib/ceph/bootstrap-rbd-mirror
+        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        mode: '755'
+        state: directory
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups[mon_group_name] }}"
+      when:
+        - cephx
+        - inventory_hostname == groups[mon_group_name][0]
+
+    - name: create potentially missing keys (rbd and rbd-mirror)
+      ceph_key:
+        name: "client.{{ item.0 }}"
+        state: present
+        dest: "/var/lib/ceph/{{ item.0 }}/"
+        caps:
+          mon: "allow profile {{ item.0 }}"
+        cluster: "{{ cluster }}"
+      delegate_to: "{{ item.1 }}"
+      with_nested:
+        - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
+        - "{{ groups[mon_group_name] }}" # so the key goes on all the nodes
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      when:
+        - cephx
+        - inventory_hostname == groups[mon_group_name][0]
+
     # NOTE: we mask the service so the RPM can't restart it
     # after the package gets upgraded
     - name: stop ceph mon - shortname
@@ -131,10 +168,6 @@
         - inventory_hostname in groups[mgr_group_name]
           or groups[mgr_group_name] | length == 0
 
-    - import_role:
-        name: ceph-defaults
-    - import_role:
-        name: ceph-facts
     - import_role:
         name: ceph-handler
     - import_role:
@@ -209,7 +242,7 @@
 
     - name: container | waiting for the containerized monitor to join the quorum...
       command: >
-        {{ container_binary }} exec ceph-mon-{{ hostvars[inventory_hostname]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
+        {{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
       register: ceph_health_raw
       until: >
         hostvars[inventory_hostname]['ansible_hostname'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"] or
@@ -219,36 +252,6 @@
       delegate_to: "{{ mon_host }}"
       when:
         - containerized_deployment
-
-    - name: ensure /var/lib/ceph/bootstrap-rbd-mirror is present
-      file:
-        path: /var/lib/ceph/bootstrap-rbd-mirror
-        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-        mode: '755'
-        state: directory
-      when:
-        - cephx
-      delegate_to: "{{ item }}"
-      with_items: "{{ groups[mon_group_name] }}"
-      when:
-        - inventory_hostname == groups[mon_group_name][0]
-
-    - name: create potentially missing keys (rbd and rbd-mirror)
-      ceph_key:
-        name: "client.{{ item.0 }}"
-        state: present
-        dest: "/var/lib/ceph/{{ item.0 }}/"
-        caps:
-          mon: "allow profile {{ item.0 }}"
-        cluster: "{{ cluster }}"
-      when:
-        - cephx
-      delegate_to: "{{ item.1 }}"
-      ignore_errors: True # this might fail for upgrade from J to L on rbd-mirror and also on partially updated clusters
-      with_nested:
-        - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
-        - "{{ groups[mon_group_name] | difference([inventory_hostname]) }}" # so the key goes on all the nodes
 
 - name: upgrade ceph mgr nodes when implicitly collocated on monitors
   vars:

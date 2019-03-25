@@ -41,8 +41,7 @@
 
 - name: set_fact docker_exec_cmd
   set_fact:
-    docker_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
+    docker_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] if not rolling_update else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}"
   when:
     - containerized_deployment
     - groups.get(mon_group_name, []) | length > 0
