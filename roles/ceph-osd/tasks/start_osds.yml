@@ -76,6 +76,7 @@
     name: ceph-osd@{{ item | regex_replace('/dev/', '') if osd_scenario != 'lvm' and containerized_deployment else item }}
     state: started
     enabled: yes
+    masked: no
     daemon_reload: yes
   with_items: "{{ devices if osd_scenario != 'lvm' and containerized_deployment else ((ceph_osd_ids.stdout | from_json).keys() | list) if osd_scenario == 'lvm' and not containerized_deployment else osd_ids_non_container.stdout_lines }}"
 
