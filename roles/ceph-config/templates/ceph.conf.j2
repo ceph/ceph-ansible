@@ -47,7 +47,11 @@ mon cluster log file = /dev/null
 {% endif %}
 mon host = {% if nb_mon > 0 %}
 {% for host in _monitor_addresses -%}
+{% if msgr2_migration | default(False) or not rolling_update %}
 [{{ "v2:" + host.addr + mon_host_v2_suffix }},{{ "v1:" + host.addr + mon_host_v1_suffix }}]
+{%- else -%}
+{{ host.addr }}
+{%- endif %}
 {%- if not loop.last -%},{%- endif %}
 {%- endfor %}
 {% elif nb_mon == 0 and inventory_hostname in groups.get(client_group_name, []) %}
