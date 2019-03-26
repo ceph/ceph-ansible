@@ -62,6 +62,9 @@ class ActionModule(ActionBase):
                 if host_vars["ceph_repository"] == "dev":
                     notario.validate(host_vars, ceph_repository_dev, defined_keys=True)
 
+                if host_vars["ceph_repository"] == "uca":
+                    notario.validate(host_vars, ceph_repository_uca, defined_keys=True)
+
             # store these values because one must be defined and the validation method
             # will need access to all three through the store
             notario_store["monitor_address"] = host_vars.get("monitor_address", None)
@@ -165,7 +168,8 @@ def ceph_origin_choices(value):
 
 
 def ceph_repository_choices(value):
-    assert value in ['community', 'rhcs', 'dev', 'custom'], "ceph_repository must be either 'community', 'rhcs', 'dev', or 'custom'"
+    msg = "ceph_repository must be either 'community', 'rhcs', 'dev', 'custom' or 'uca'"
+    assert value in ['community', 'rhcs', 'dev', 'custom', 'uca'], msg
 
 
 def ceph_repository_type_choices(value):
@@ -243,6 +247,12 @@ ceph_repository_rhcs = (
 ceph_repository_dev = (
     ("ceph_dev_branch", types.string),
     ("ceph_dev_sha1", types.string),
+)
+
+ceph_repository_uca = (
+    ("ceph_stable_repo_uca", types.string),
+    ("ceph_stable_openstack_release_uca", types.string),
+    ("ceph_stable_release_uca", types.string),
 )
 
 monitor_options = (
