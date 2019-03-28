@@ -3,6 +3,8 @@
   include_tasks: remove_ceph_udev_rules.yml
 
 - name: debian based systems tasks
+  when:
+    - ansible_distribution == 'Debian'
   block:
     - name: include debian_prerequisites.yml
       include_tasks: debian_prerequisites.yml
@@ -17,10 +19,12 @@
       until: result is succeeded
       tags:
         with_pkg
-  when:
-    - ansible_distribution == 'Debian'
 
 - name: ubuntu based systems tasks
+  when:
+    - ansible_distribution == 'Ubuntu'
+  tags:
+    with_pkg
   block:
     - name: install docker on ubuntu
       package:
@@ -29,7 +33,6 @@
         update_cache: yes
       register: result
       until: result is succeeded
-
     - name: install python3-docker on bionic
       package:
         name: python3-docker
@@ -38,10 +41,6 @@
       register: result
       until: result is succeeded
       when: ansible_lsb.codename == 'bionic'
-  when:
-    - ansible_distribution == 'Ubuntu'
-  tags:
-    with_pkg
 
 # ensure extras enabled for docker
 - name: enable extras on centos
@@ -56,6 +55,9 @@
     with_pkg
 
 - name: red hat 7 based systems tasks
+  when:
+    - ansible_os_family == 'RedHat'
+    - ansible_distribution_major_version == '7'
   block:
     - name: install python-docker-py on red hat / centos
       package:
@@ -81,11 +83,10 @@
       tags:
         with_pkg
 
+- name: red hat 8 based systems tasks
   when:
     - ansible_os_family == 'RedHat'
-    - ansible_distribution_major_version == '7'
-
-- name: red hat 8 based systems tasks
+    - ansible_distribution_major_version == '8'
   block:
     - name: install podman
       package:
@@ -95,9 +96,6 @@
       until: result is succeeded
       tags:
         with_pkg
-  when:
-    - ansible_os_family == 'RedHat'
-    - ansible_distribution_major_version == '8'
 
 - name: ensure tmpfiles.d is present
   lineinfile:

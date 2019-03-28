@@ -1,7 +1,13 @@
 ---
 - name: red hat based systems tasks
+  when:
+    - ansible_os_family == 'RedHat'
   block:
     - name: when ceph_iscsi_config_dev is true
+      when:
+        - ceph_origin == 'repository'
+        - ceph_repository == 'dev'
+        - ceph_iscsi_config_dev
       block:
         - name: set_fact ceph_iscsi_repos
           set_fact:
@@ -28,10 +34,6 @@
           with_together:
             - "{{ ceph_iscsi_config_dev_yum_repo.results }}"
             - "{{ ceph_iscsi_repos }}"
-      when:
-        - ceph_origin == 'repository'
-        - ceph_repository == 'dev'
-        - ceph_iscsi_config_dev
 
     - name: install ceph iscsi package
       package:
@@ -45,8 +47,6 @@
         - targetcli
         - python-rtslib
         - ceph-iscsi-cli
-  when:
-    - ansible_os_family == 'RedHat'
 
 - name: check the status of the target.service override
   stat:
