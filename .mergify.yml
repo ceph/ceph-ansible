@@ -62,6 +62,19 @@ pull_request_rules:
         strict: smart
       dismiss_reviews: {}
       delete_head_branch: {}
+  - name: automerge backport 4.0
+    conditions:
+      - author=mergify[bot]
+      - base=stable-4.0
+      - label!=DNM
+      - 'status-success=Testing: ceph-ansible PR Pipeline'
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+      dismiss_reviews: {}
+      delete_head_branch: {}
 # Backports
   - actions:
       backport:
@@ -84,3 +97,10 @@ pull_request_rules:
     conditions:
       - label=backport-stable-3.2
     name: backport stable-3.2
+  - actions:
+      backport:
+        branches:
+        - stable-4.0
+    conditions:
+      - label=backport-stable-4.0
+    name: backport stable-4.0
