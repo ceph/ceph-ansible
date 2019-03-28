@@ -62,18 +62,17 @@
       - "{{ groups.get(mon_group_name) if groups.get(mgr_group_name, []) | length == 0 else groups.get(mgr_group_name, []) }}"
     delegate_to: "{{ groups[mon_group_name][0] }}"
 
-- name: copy keys to the ansible server
-  fetch:
-    src: "{{ item }}"
-    dest: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
-    flat: yes
-  with_items:
-    - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
-    - /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
-    - /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring
-    - /var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring
-    - /var/lib/ceph/bootstrap-rbd-mirror/{{ cluster }}.keyring
-    - /etc/ceph/{{ cluster }}.client.admin.keyring
-  when:
-    - cephx
-    - inventory_hostname == groups[mon_group_name] | last
+  - name: copy keys to the ansible server
+    fetch:
+      src: "{{ item }}"
+      dest: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
+      flat: yes
+    with_items:
+      - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
+      - /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
+      - /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring
+      - /var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring
+      - /var/lib/ceph/bootstrap-rbd-mirror/{{ cluster }}.keyring
+      - /etc/ceph/{{ cluster }}.client.admin.keyring
+    when:
+      - inventory_hostname == groups[mon_group_name] | last
