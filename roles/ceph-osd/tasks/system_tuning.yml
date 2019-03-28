@@ -1,5 +1,8 @@
 ---
 - name: debian based systems tasks
+  when:
+    - osd_objectstore == 'filestore'
+    - ansible_os_family == "Debian"
   block:
     - name: disable osd directory parsing by updatedb
       command: updatedb -e /var/lib/ceph
@@ -11,9 +14,6 @@
         regexp: '^(PRUNEPATHS(?!.*/var/lib/ceph).*)"$'
         replace: '\1 /var/lib/ceph"'
       failed_when: false
-  when:
-    - osd_objectstore == 'filestore'
-    - ansible_os_family == "Debian"
 
 - name: create tmpfiles.d directory
   file:

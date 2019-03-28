@@ -106,7 +106,12 @@
   when:
     - ceph_current_status.fsid is defined
 
-- block:
+- name: fsid realted tasks
+  when:
+    - generate_fsid
+    - ceph_current_status.fsid is undefined
+    - not rolling_update
+  block:
   - name: generate cluster fsid
     shell: python -c 'import uuid; print(str(uuid.uuid4()))'
     register: cluster_uuid
@@ -117,11 +122,6 @@
   - name: set_fact fsid
     set_fact:
       fsid: "{{ cluster_uuid.stdout }}"
-
-  when:
-    - generate_fsid
-    - ceph_current_status.fsid is undefined
-    - not rolling_update
 
 - name: set_fact mds_name ansible_hostname
   set_fact:

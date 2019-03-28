@@ -12,7 +12,10 @@
   when:
     - not containerized_deployment
 
-- block:
+- when:
+    - (firewalld_pkg_query.get('rc', 1) == 0
+      or is_atomic)
+  block:
   - name: start firewalld
     service:
       name: firewalld
@@ -164,9 +167,5 @@
       - iscsi_gw_group_name in group_names
     tags:
       - firewall
-
-  when:
-    - (firewalld_pkg_query.get('rc', 1) == 0
-      or is_atomic)
 
 - meta: flush_handlers
