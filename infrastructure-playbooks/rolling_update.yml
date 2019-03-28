@@ -359,6 +359,12 @@
       changed_when: false
       when: containerized_deployment
 
+    - name: set num_osds for container
+      set_fact:
+        num_osds: "{{ osd_names.stdout_lines|default([])|length }}"
+      when:
+        - containerized_deployment
+
     - name: stop ceph osd
       systemd:
         name: ceph-osd@{{ item }}
@@ -366,6 +372,12 @@
         enabled: no
         masked: yes
       with_items: "{{ osd_ids.stdout_lines }}"
+      when:
+        - not containerized_deployment
+
+    - name: set num_osds for non container
+      set_fact:
+        num_osds: "{{ osd_ids.stdout_lines|default([])|length }}"
       when:
         - not containerized_deployment
 
