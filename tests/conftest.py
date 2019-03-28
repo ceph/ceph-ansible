@@ -1,6 +1,18 @@
 import pytest
+import json
 import os
 
+def str_to_bool(val):
+    try:
+        val = val.lower()
+    except AttributeError:
+        val = str(val).lower()
+    if val == 'true':
+        return True
+    elif val == 'false':
+        return False
+    else:
+        raise ValueError("Invalid input value: %s" % val)
 
 @pytest.fixture()
 def node(host, request):
@@ -18,13 +30,14 @@ def node(host, request):
     # because testinfra does not collect and provide ansible config passed in
     # from using --extra-vars
     ceph_stable_release = os.environ.get("CEPH_STABLE_RELEASE", "luminous")
-    rolling_update = os.environ.get("ROLLING_UPDATE", "False")
+    rolling_update = str_to_bool(os.environ.get("ROLLING_UPDATE", False))
     group_names = ansible_vars["group_names"]
     docker = ansible_vars.get("docker")
     fsid = ansible_vars.get("fsid")
     osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
     osd_scenario = ansible_vars.get("osd_scenario")
     lvm_scenario = osd_scenario in ['lvm', 'lvm-batch']
+    devices = ansible_vars.get("devices", [])
     ceph_release_num = {
         'jewel': 10,
         'kraken': 11,
@@ -62,9 +75,6 @@ def node(host, request):
     if request.node.get_closest_marker("journal_collocation") and not journal_collocation_test:  # noqa E501
         pytest.skip("Scenario is not using journal collocation")
 
-    osd_ids = []
-    osds = []
-    cluster_address = ""
     # I can assume eth1 because I know all the vagrant
     # boxes we test with use that interface
     address = host.interface("eth1").addresses[0]
@@ -82,36 +92,23 @@ def node(host, request):
     # If number of devices doesn't map to number of OSDs, allow tests to define
     # that custom number, defaulting it to ``num_devices``
     num_osds = ansible_vars.get('num_osds', num_osds)
-    cluster_name = ansible_vars.get("cluster", "ceph")
+    if rolling_update:
+        cluster_name = "test"
+    else:
+        cluster_name = ansible_vars.get("cluster", "ceph")
     conf_path = "/etc/ceph/{}.conf".format(cluster_name)
-    if "osds" in group_names:
-        # I can assume eth2 because I know all the vagrant
-        # boxes we test with use that interface. OSDs are the only
-        # nodes that have this interface.
-        cluster_address = host.interface("eth2").addresses[0]
-        cmd = host.run('sudo ls /var/lib/ceph/osd/ | sed "s/.*-//"')
-        if cmd.rc == 0:
-            osd_ids = cmd.stdout.rstrip("\n").split("\n")
-            osds = osd_ids
-            if docker and fsid == "6e008d48-1661-11e8-8546-008c3214218a":
-                osds = []
-                for device in ansible_vars.get("devices", []):
-                    real_dev = host.run("sudo readlink -f %s" % device)
-                    real_dev_split = real_dev.stdout.split("/")[-1]
-                    osds.append(real_dev_split)
 
     data = dict(
         address=address,
         subnet=subnet,
         vars=ansible_vars,
-        osd_ids=osd_ids,
         num_mons=num_mons,
         num_osds=num_osds,
         cluster_name=cluster_name,
         conf_path=conf_path,
-        cluster_address=cluster_address,
         docker=docker,
-        osds=osds,
+        fsid=fsid,
+        devices=devices,
         ceph_stable_release=ceph_stable_release,
         ceph_release_num=ceph_release_num,
         rolling_update=rolling_update,
