@@ -445,11 +445,6 @@
           state: absent
         with_items:
           - "{{ resolved_parent_device }}"
-
-      - name: remove ceph osd service
-        file:
-          path: /etc/systemd/system/ceph-osd@.service
-          state: absent
     when:
       - osd_scenario != "lvm"
 
@@ -483,6 +478,11 @@
         with_items: "{{ devices | default([]) }}"
     when:
       - osd_scenario == "lvm"
+
+  - name: remove ceph osd service
+    file:
+      path: /etc/systemd/system/ceph-osd@.service
+      state: absent
 
   - name: remove ceph osd image
     docker_image:
