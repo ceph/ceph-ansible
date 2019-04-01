@@ -2,8 +2,7 @@
 - name: set_fact _monitor_address to monitor_address_block ipv4
   set_fact:
     _monitor_addresses: "{{ _monitor_addresses | default([]) + [{ 'name': item, 'addr': hostvars[item]['ansible_all_ipv4_addresses'] | ipaddr(hostvars[item]['monitor_address_block']) | first }] }}"
-  with_items:
-    - "{{ groups.get(mon_group_name, []) }}"
+  with_items: "{{ groups.get(mon_group_name, []) }}"
   when:
     - "item not in _monitor_addresses | default([]) | selectattr('name', 'defined') |  map(attribute='name') | list"
     - hostvars[item]['monitor_address_block'] is defined
@@ -13,8 +12,7 @@
 - name: set_fact _monitor_address to monitor_address_block ipv6
   set_fact:
     _monitor_addresses: "{{ _monitor_addresses | default([]) + [{ 'name': item, 'addr': hostvars[item]['ansible_all_ipv6_addresses'] | ipaddr(hostvars[item]['monitor_address_block']) | last | ipwrap }] }}"
-  with_items:
-    - "{{ groups.get(mon_group_name, []) }}"
+  with_items: "{{ groups.get(mon_group_name, []) }}"
   when:
     - "item not in _monitor_addresses | default([]) | selectattr('name', 'defined') |  map(attribute='name') | list"
     - hostvars[item]['monitor_address_block'] is defined
@@ -24,8 +22,7 @@
 - name: set_fact _monitor_address to monitor_address
   set_fact:
     _monitor_addresses: "{{ _monitor_addresses | default([]) + [{ 'name': item, 'addr': hostvars[item]['monitor_address'] | ipwrap}] }}"
-  with_items:
-    - "{{ groups.get(mon_group_name, []) }}"
+  with_items: "{{ groups.get(mon_group_name, []) }}"
   when:
     - "item not in _monitor_addresses | default([]) | selectattr('name', 'defined') | map(attribute='name') | list"
     - hostvars[item]['monitor_address'] is defined
@@ -34,8 +31,7 @@
 - name: set_fact _monitor_address to monitor_interface - ipv4
   set_fact:
     _monitor_addresses: "{{ _monitor_addresses | default([]) + [{ 'name': item, 'addr': hostvars[item]['ansible_' + (hostvars[item]['monitor_interface']|replace('-', '_'))][ip_version]['address'] | ipwrap }]  }}"
-  with_items:
-    - "{{ groups.get(mon_group_name, []) }}"
+  with_items: "{{ groups.get(mon_group_name, []) }}"
   when:
     - "item not in _monitor_addresses | default([]) | selectattr('name', 'defined') | map(attribute='name') | list"
     - ip_version == 'ipv4'
@@ -46,8 +42,7 @@
 - name: set_fact _monitor_address to monitor_interface - ipv6
   set_fact:
     _monitor_addresses: "{{ _monitor_addresses | default([]) + [{ 'name': item, 'addr': hostvars[item]['ansible_' + (hostvars[item]['monitor_interface']|replace('-', '_'))][ip_version][0]['address'] | ipwrap }] }}"
-  with_items:
-    - "{{ groups.get(mon_group_name, []) }}"
+  with_items: "{{ groups.get(mon_group_name, []) }}"
   when:
     - "item not in _monitor_addresses | default([]) | selectattr('name', 'defined') | map(attribute='name') | list"
     - ip_version == 'ipv6'

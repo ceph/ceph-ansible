@@ -1,7 +1,6 @@
 ---
 - name: red hat based systems - repo handling
-  when:
-    - ceph_origin == 'repository'
+  when: ceph_origin == 'repository'
   block:
     - name: add nfs-ganesha stable repository
       yum_repository:
@@ -42,8 +41,7 @@
         state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
       register: result
       until: result is succeeded
-      when:
-        - nfs_file_gw
+      when: nfs_file_gw
 
     - name: install redhat nfs-ganesha-rgw and ceph-radosgw packages
       package:
@@ -51,5 +49,4 @@
         state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
       register: result
       until: result is succeeded
-      when:
-        - nfs_obj_gw
+      when: nfs_obj_gw

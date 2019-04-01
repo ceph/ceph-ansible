@@ -23,8 +23,7 @@
   when: rgw_multisite
 
 - name: rgw pool related tasks
-  when:
-    - rgw_create_pools is defined
+  when: rgw_create_pools is defined
   block:
     - name: create rgw pools if rgw_create_pools is defined
       command: "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num | default(osd_pool_default_pg_num) }}"
@@ -43,5 +42,4 @@
       run_once: true
       register: result
       until: result is succeeded
-      when:
-        - item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
+      when: item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size

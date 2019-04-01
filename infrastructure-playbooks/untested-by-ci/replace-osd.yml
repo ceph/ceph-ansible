@@ -26,8 +26,7 @@
     - debug: msg="gather facts on all Ceph hosts for following reference"
 
 - name: confirm whether user really meant to replace osd(s)
-  hosts:
-    - localhost
+  hosts: localhost
   become: true
   vars_prompt:
     - name: ireallymeanit
@@ -90,8 +89,7 @@
       with_items: "{{ osd_hosts }}"
       delegate_to: "{{ item }}"
       failed_when: false
-      when:
-        - not containerized_deployment
+      when: not containerized_deployment
 
     - name: fail when admin key is not present
       fail:
@@ -112,8 +110,7 @@
         - "{{ osd_to_replace.split(',') }}"
       register: osd_to_replace_disks
       delegate_to: "{{ item.0 }}"
-      when:
-        - containerized_deployment
+      when: containerized_deployment
 
     - name: zapping osd(s) - container
       shell: >
@@ -125,8 +122,7 @@
         - "{{ osd_hosts }}"
         - "{{ osd_to_replace_disks.results }}"
       delegate_to: "{{ item.0 }}"
-      when:
-        - containerized_deployment
+      when: containerized_deployment
 
     - name: zapping osd(s) - non container
       command: ceph-disk zap --cluster {{ cluster }} {{ item.1 }}
@@ -135,8 +131,7 @@
         - "{{ osd_hosts }}"
         - "{{ osd_to_replace_disks.results }}"
       delegate_to: "{{ item.0 }}"
-      when:
-        - not containerized_deployment
+      when: not containerized_deployment
 
     - name: destroying osd(s)
       command: ceph-disk destroy --cluster {{ cluster }} --destroy-by-id {{ item.1 }} --zap
@@ -145,8 +140,7 @@
         - "{{ osd_hosts }}"
         - "{{ osd_to_replace.split(',') }}"
       delegate_to: "{{ item.0 }}"
-      when:
-        - not containerized_deployment
+      when: not containerized_deployment
 
     - name: replace osd(s) - prepare - non container
       command: ceph-disk prepare {{ item.1 }}  --osd-id {{ item.2 }} --osd-uuid $(uuidgen)

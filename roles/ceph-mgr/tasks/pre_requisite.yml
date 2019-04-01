@@ -5,8 +5,7 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   register: result
   until: result is succeeded
-  when:
-    - ansible_os_family in ['RedHat', 'Suse']
+  when: ansible_os_family in ['RedHat', 'Suse']
 
 - name: install ceph-mgr packages for debian
   apt:
@@ -15,5 +14,4 @@
     default_release: "{{ ceph_stable_release_uca | default('') if ceph_origin == 'repository' and ceph_repository == 'uca' else ''}}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else '' }}"
   register: result
   until: result is succeeded
-  when:
-    - ansible_os_family == 'Debian'
+  when: ansible_os_family == 'Debian'

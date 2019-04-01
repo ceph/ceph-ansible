@@ -2,20 +2,17 @@
 - name: fail on unsupported system
   fail:
     msg: "System not supported {{ ansible_system }}"
-  when:
-    - ansible_system not in ['Linux']
+  when: ansible_system not in ['Linux']
 
 - name: fail on unsupported architecture
   fail:
     msg: "Architecture not supported {{ ansible_architecture }}"
-  when:
-    - ansible_architecture not in ['x86_64', 'ppc64le', 'armv7l', 'aarch64']
+  when: ansible_architecture not in ['x86_64', 'ppc64le', 'armv7l', 'aarch64']
 
 - name: fail on unsupported distribution
   fail:
     msg: "Distribution not supported {{ ansible_os_family }}"
-  when:
-    - ansible_os_family not in ['Debian', 'RedHat', 'ClearLinux', 'Suse']
+  when: ansible_os_family not in ['Debian', 'RedHat', 'ClearLinux', 'Suse']
 
 - name: red hat based systems tasks
   when:
@@ -25,12 +22,10 @@
     - name: fail on unsupported distribution for red hat ceph storage
       fail:
         msg: "Distribution not supported {{ ansible_distribution_version }} by Red Hat Ceph Storage, only RHEL >= 7.3"
-      when:
-        - ansible_distribution_version | version_compare('7.3', '<')
+      when: ansible_distribution_version | version_compare('7.3', '<')
 
     - name: subscription manager related tasks
-      when:
-        - ceph_repository_type == 'cdn'
+      when: ceph_repository_type == 'cdn'
       block:
         - name: determine if node is registered with subscription-manager
           command: subscription-manager identity
@@ -42,8 +37,7 @@
         - name: fail on unregistered red hat rhcs linux
           fail:
             msg: "You must register your machine with subscription-manager"
-          when:
-            - subscription.rc != '0'
+          when: subscription.rc != '0'
 
 - name: fail on unsupported distribution for ubuntu cloud archive
   fail:
@@ -62,8 +56,7 @@
 - name: fail on unsupported ansible version (1.X)
   fail:
     msg: "Ansible version must be >= 2.7.x, please update!"
-  when:
-    - ansible_version.major|int < 2
+  when: ansible_version.major|int < 2
 
 - name: fail on unsupported ansible version
   fail:
@@ -75,16 +68,14 @@
 - name: fail if systemd is not present
   fail:
     msg: "Systemd must be present"
-  when:
-    - ansible_service_mgr != 'systemd'
+  when: ansible_service_mgr != 'systemd'
 
 - name: check if iscsi gateways is target on supported distros and versions
   block:
     - name: fail on unsupported distribution for iscsi gateways
       fail:
         msg: "iSCSI gateways can only be deployed on Red Hat Enterprise Linux, CentOS or Fedora"
-      when:
-        - ansible_distribution not in ['RedHat', 'CentOS', 'Fedora']
+      when: ansible_distribution not in ['RedHat', 'CentOS', 'Fedora']
 
     - name: fail on unsupported distribution version for iscsi gateways
       fail:
@@ -92,6 +83,5 @@
       when:
         - ansible_distribution_version < '7.4'
         - ansible_distribution in ['RedHat', 'CentOS']
-  when:
-    - iscsi_gw_group_name in group_names
+  when: iscsi_gw_group_name in group_names
 

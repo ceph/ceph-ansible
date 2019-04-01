@@ -7,8 +7,7 @@
   set_fact:
     admin_keyring:
       - "/etc/ceph/{{ cluster }}.client.admin.keyring"
-  when:
-    - copy_admin_key
+  when: copy_admin_key
 
 - name: set_fact ceph_config_keys
   set_fact:
@@ -18,8 +17,7 @@
 - name: merge ceph_config_keys and admin_keyring
   set_fact:
     ceph_config_keys: "{{ ceph_config_keys + admin_keyring }}"
-  when:
-    - copy_admin_key
+  when: copy_admin_key
 
 - name: stat for ceph config and keys
   stat:
@@ -53,8 +51,7 @@
     owner: "root"
     group: "root"
     mode: "0644"
-  notify:
-    - restart ceph mdss
+  notify: restart ceph mdss
 
 - name: systemd start mds container
   systemd:

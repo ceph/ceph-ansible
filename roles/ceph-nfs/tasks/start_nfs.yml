@@ -2,8 +2,7 @@
 - name: set_fact docker_exec_cmd_nfs
   set_fact:
     docker_exec_cmd_nfs: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-  when:
-    - containerized_deployment
+  when: containerized_deployment
 
 - name: check if rados index object exists
   shell: "{{ docker_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
@@ -11,8 +10,7 @@
   failed_when: false
   register: rados_index_exists
   check_mode: no
-  when:
-    - ceph_nfs_rados_backend
+  when: ceph_nfs_rados_backend
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
 
@@ -41,8 +39,7 @@
     group: "root"
     mode: "0644"
     config_type: ini
-  notify:
-    - restart ceph nfss
+  notify: restart ceph nfss
 
 - name: create exports directory
   file:
@@ -51,8 +48,7 @@
     owner: "root"
     group: "root"
     mode: "0755"
-  when:
-    - ceph_nfs_dynamic_exports
+  when: ceph_nfs_dynamic_exports
 
 - name: create exports dir index file
   copy:
@@ -62,8 +58,7 @@
     owner: "root"
     group: "root"
     mode: "0644"
-  when:
-    - ceph_nfs_dynamic_exports
+  when: ceph_nfs_dynamic_exports
 
 - name: generate systemd unit file
   become: true
@@ -73,10 +68,8 @@
     owner: "root"
     group: "root"
     mode: "0644"
-  when:
-    - containerized_deployment
-  notify:
-    - restart ceph nfss
+  when: containerized_deployment
+  notify: restart ceph nfss
 
 - name: systemd start nfs container
   systemd:

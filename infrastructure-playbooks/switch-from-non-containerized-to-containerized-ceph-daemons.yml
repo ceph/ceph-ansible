@@ -3,8 +3,7 @@
 
 - name: confirm whether user really meant to switch from non-containerized to containerized ceph daemons
 
-  hosts:
-    - localhost
+  hosts: localhost
 
   gather_facts: false
 
@@ -53,8 +52,7 @@
     containerized_deployment: true
     switch_to_containers: True
     mon_group_name:       mons
-  hosts:
-    - "{{ mon_group_name|default('mons') }}"
+  hosts: "{{ mon_group_name|default('mons') }}"
   serial: 1
   become: true
   pre_tasks:
@@ -147,8 +145,7 @@
 
 - name: switching from non-containerized to containerized ceph mgr
 
-  hosts:
-    - "{{ mgr_group_name|default('mgrs') }}"
+  hosts: "{{ mgr_group_name|default('mgrs') }}"
 
   vars:
     containerized_deployment: true
@@ -217,8 +214,7 @@
     containerized_deployment: true
     osd_group_name: osds
 
-  hosts:
-    - "{{ osd_group_name|default('osds') }}"
+  hosts: "{{ osd_group_name|default('osds') }}"
 
   serial: 1
   become: true
@@ -284,8 +280,7 @@
       shell: rename -v .ldb .sst /var/lib/ceph/osd/*/current/omap/*.ldb
       changed_when: false
       failed_when: false
-      when:
-        - ldb_files.rc == 0
+      when: ldb_files.rc == 0
 
     - name: check if containerized osds are already running
       command: >
@@ -305,10 +300,8 @@
         umount /var/lib/ceph/osd/{{ item }}
       changed_when: false
       failed_when: false
-      with_items:
-        - "{{ osd_dirs.stdout_lines }}"
-      when:
-        - osd_running.rc != 0
+      with_items: "{{ osd_dirs.stdout_lines }}"
+      when: osd_running.rc != 0
 
   tasks:
     - import_role:
@@ -344,14 +337,12 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
-      when:
-        - (ceph_pgs.stdout | from_json).pgmap.num_pgs != 0
+      when: (ceph_pgs.stdout | from_json).pgmap.num_pgs != 0
 
 
 - name: switching from non-containerized to containerized ceph mds
 
-  hosts:
-    - "{{ mds_group_name|default('mdss') }}"
+  hosts: "{{ mds_group_name|default('mdss') }}"
 
   vars:
     containerized_deployment: true
@@ -411,8 +402,7 @@
 
 - name: switching from non-containerized to containerized ceph rgw
 
-  hosts:
-    - "{{ rgw_group_name|default('rgws') }}"
+  hosts: "{{ rgw_group_name|default('rgws') }}"
 
   vars:
     containerized_deployment: true
@@ -469,8 +459,7 @@
 
 - name: switching from non-containerized to containerized ceph rbd-mirror
 
-  hosts:
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+  hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
 
   vars:
     containerized_deployment: true
@@ -529,8 +518,7 @@
 
 - name: switching from non-containerized to containerized ceph nfs
 
-  hosts:
-    - "{{ nfs_group_name|default('nfss') }}"
+  hosts: "{{ nfs_group_name|default('nfss') }}"
 
   vars:
     containerized_deployment: true

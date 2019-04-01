@@ -1,8 +1,7 @@
 ---
 - name: include create_ceph_initial_dirs.yml
   include_tasks: create_ceph_initial_dirs.yml
-  when:
-    - containerized_deployment|bool
+  when: containerized_deployment|bool
 
 - name: config file operations related to OSDs
   when:
@@ -14,8 +13,7 @@
   - name: count number of osds for lvm scenario
     set_fact:
       num_osds: "{{ lvm_volumes | length | int }}"
-    when:
-      - lvm_volumes | default([]) | length > 0
+    when: lvm_volumes | default([]) | length > 0
 
   - name: run 'ceph-volume lvm batch --report' to see how many osds are to be created
     ceph_volume:
@@ -33,8 +31,7 @@
       CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       PYTHONIOENCODING: utf-8
-    when:
-      - devices | default([]) | length > 0
+    when: devices | default([]) | length > 0
 
   - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report'
     set_fact:
@@ -65,8 +62,7 @@
 
 # ceph-common
 - name: config file operation for non-containerized scenarios
-  when:
-    - not containerized_deployment|bool
+  when: not containerized_deployment|bool
   block:
   - name: create ceph conf directory
     file:
@@ -102,8 +98,7 @@
       state: directory
       mode: "0755"
     delegate_to: localhost
-    when:
-      - ceph_conf_local
+    when: ceph_conf_local
 
   - name: "generate {{ cluster }}.conf configuration file locally"
     config_template:
@@ -120,8 +115,7 @@
       - ceph_conf_local
 
 - name: config file operations for containerized scenarios
-  when:
-    - containerized_deployment|bool
+  when: containerized_deployment|bool
   block:
   - name: create a local fetch directory if it does not exist
     file:

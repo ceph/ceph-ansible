@@ -40,15 +40,13 @@
       command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }}"
       with_items: "{{ cephfs_pools | unique }}"
       changed_when: false
-      when:
-        - item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
+      when: item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
 
     - name: customize pool min_size
       command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} min_size {{ item.min_size | default(osd_pool_default_min_size) }}"
       with_items: "{{ cephfs_pools | unique }}"
       changed_when: false
-      when:
-        - (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
+      when: (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
 
 - name: check if ceph filesystem already exists
   command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs get {{ cephfs }}"
@@ -61,8 +59,7 @@
   command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs new {{ cephfs }} {{ cephfs_metadata }} {{ cephfs_data }}"
   changed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  when:
-    - check_existing_cephfs.rc != 0
+  when: check_existing_cephfs.rc != 0
 
 - name: assign application to cephfs pools
   command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item }} cephfs"
@@ -71,12 +68,10 @@
     - "{{ cephfs_metadata }}"
   changed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  when:
-    - check_existing_cephfs.rc != 0
+  when: check_existing_cephfs.rc != 0
 
 - name: set max_mds
   command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds {{ mds_max_mds }}"
   changed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  when:
-    - mds_max_mds > 1
+  when: mds_max_mds > 1
