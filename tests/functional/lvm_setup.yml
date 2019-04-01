@@ -13,13 +13,11 @@
       stat:
         path: /run/ostree-booted
       register: stat_ostree
-      tags:
-        - always
+      tags: always
     - name: set_fact is_atomic
       set_fact:
         is_atomic: '{{ stat_ostree.stat.exists }}'
-      tags:
-        - always
+      tags: always
     # Some images may not have lvm2 installed
     - name: install lvm2
       package:
@@ -27,8 +25,7 @@
         state: present
       register: result
       until: result is succeeded
-      when:
-        - not is_atomic
+      when: not is_atomic
     - name: create physical volume
       command: pvcreate /dev/sdb
       failed_when: false

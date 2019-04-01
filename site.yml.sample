@@ -18,8 +18,7 @@
   any_errors_fatal: true
   become: true
 
-  tags:
-    - always
+  tags: always
 
   vars:
     delegate_facts_host: True
@@ -32,8 +31,7 @@
 
     - name: gather facts
       setup:
-      when:
-        - not delegate_facts_host | bool
+      when: not delegate_facts_host | bool
 
     - name: gather and delegate facts
       setup:
@@ -41,8 +39,7 @@
       delegate_facts: True
       with_items: "{{ groups['all'] }}"
       run_once: true
-      when:
-        - delegate_facts_host | bool
+      when: delegate_facts_host | bool
 
     - name: install required packages for fedora > 23
       raw: sudo dnf -y install python2-dnf libselinux-python ntp
@@ -56,14 +53,12 @@
       stat:
         path: /run/ostree-booted
       register: stat_ostree
-      tags:
-        - always
+      tags: always
 
     - name: set_fact is_atomic
       set_fact:
         is_atomic: '{{ stat_ostree.stat.exists }}'
-      tags:
-        - always
+      tags: always
 
   tasks:
     - import_role:

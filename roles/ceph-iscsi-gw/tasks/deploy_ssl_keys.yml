@@ -26,8 +26,7 @@
   become: False
   run_once: True
   with_items: "{{ crt_files_exist.results }}"
-  when:
-    - not item.stat.exists
+  when: not item.stat.exists
 
 - name: create pem
   shell: >
@@ -38,8 +37,7 @@
   run_once: True
   register: pem
   with_items: "{{ crt_files_exist.results }}"
-  when:
-    - not item.stat.exists
+  when: not item.stat.exists
 
 - name: create public key from pem
   shell: >
@@ -48,10 +46,8 @@
   delegate_to: localhost
   become: False
   run_once: True
-  when:
-    - pem.changed
-  tags:
-    - skip_ansible_lint
+  when: pem.changed
+  tags: skip_ansible_lint
 
 - name: copy crt file(s) to gateway nodes
   copy:

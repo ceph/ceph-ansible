@@ -3,15 +3,13 @@
   command: "{{ docker_exec_cmd }} radosgw-admin realm pull --url={{ rgw_pull_proto }}://{{ rgw_pullhost }}:{{ rgw_pull_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when:
-    - "'No such file or directory' in realmcheck.stderr"
+  when: "'No such file or directory' in realmcheck.stderr"
 
 - name: fetch the period
   command: "{{ docker_exec_cmd }} radosgw-admin period pull --url={{ rgw_pull_proto }}://{{ rgw_pullhost }}:{{ rgw_pull_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when:
-    - "'No such file or directory' in realmcheck.stderr"
+  when: "'No such file or directory' in realmcheck.stderr"
 
 - name: set default realm
   command: "{{ docker_exec_cmd }} radosgw-admin realm default --rgw-realm={{ rgw_realm }}"
@@ -29,16 +27,12 @@
   command: "{{ docker_exec_cmd }} radosgw-admin zone create --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --endpoints={{ rgw_multisite_proto }}://{{ rgw_multisite_endpoint_addr }}:{{ radosgw_frontend_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }} --default"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when:
-    - "'No such file or directory' in zonecheck.stderr"
-  notify:
-    - update period
+  when: "'No such file or directory' in zonecheck.stderr"
+  notify: update period
 
 - name: add other endpoints to the zone
   command: "{{ docker_exec_cmd }} radosgw-admin zone modify --rgw-zone={{ rgw_zone }} --endpoints {{ rgw_multisite_endpoints_list }}" 
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when:
-    - rgw_multisite_endpoints_list is defined
-  notify:
-    - update period
+  when: rgw_multisite_endpoints_list is defined
+  notify: update period

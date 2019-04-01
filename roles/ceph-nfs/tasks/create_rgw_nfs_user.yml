@@ -2,8 +2,7 @@
 - name: set_fact docker_exec_cmd_nfs
   set_fact:
     docker_exec_cmd_nfs: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-  when:
-    - containerized_deployment
+  when: containerized_deployment
 
 - name: check if "{{ ceph_nfs_rgw_user }}" exists
   command: "{{ docker_exec_cmd_nfs | default('') }} radosgw-admin --cluster {{ cluster }} user info --uid={{ ceph_nfs_rgw_user }}"
@@ -12,8 +11,7 @@
   changed_when: false
   failed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  when:
-    - nfs_obj_gw
+  when: nfs_obj_gw
 
 - name: create rgw nfs user "{{ ceph_nfs_rgw_user }}"
   command: "{{ docker_exec_cmd_nfs | default('') }} radosgw-admin --cluster {{ cluster }} user create --uid={{ ceph_nfs_rgw_user }} --display-name='RGW NFS User'"

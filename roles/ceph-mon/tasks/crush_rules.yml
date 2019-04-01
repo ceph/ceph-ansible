@@ -15,8 +15,7 @@
   command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush rule create-simple {{ item.name }} {{ item.root }} {{ item.type }}"
   with_items: "{{ crush_rules | unique }}"
   changed_when: false
-  when:
-    - inventory_hostname == groups.get(mon_group_name) | last
+  when: inventory_hostname == groups.get(mon_group_name) | last
 
 - name: get id for new default crush rule
   command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd -f json crush rule dump {{ item.name }}"

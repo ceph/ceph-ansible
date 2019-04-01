@@ -1,7 +1,6 @@
 - name: creates logical volumes for the bucket index or fs journals on a single device. 
   become: true
-  hosts:
-  - osds
+  hosts: osds
 
   vars:
     logfile: |
@@ -56,16 +55,14 @@
       vg: "{{ nvme_vg_name }}"
       size: "{{ journal_size }}"
       pvs: "{{ nvme_device }}"
-    with_items:
-      - "{{ nvme_device_lvs }}"
+    with_items: "{{ nvme_device_lvs }}"
 
   - name: create lvs for fs journals for hdd devices
     lvol:
       lv: "{{ hdd_journal_prefix }}-{{ item.split('/')[-1] }}"
       vg: "{{ nvme_vg_name }}"
       size: "{{ journal_size }}"
-    with_items:
-      - "{{ hdd_devices }}"
+    with_items: "{{ hdd_devices }}"
 
   - name: create the lv for data portion of the bucket index on the nvme device
     lvol:
@@ -73,8 +70,7 @@
       vg: "{{ nvme_vg_name }}"
       size: "{{ item.size }}"
       pvs: "{{ nvme_device }}"
-    with_items:
-      - "{{ nvme_device_lvs }}"
+    with_items: "{{ nvme_device_lvs }}"
 
     # Make sure all hdd devices have a unique volume group
   - name: create vgs for all hdd devices
@@ -84,8 +80,7 @@
       pesize: 4
       state: present
       vg: "{{ hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
-    with_items:
-      - "{{ hdd_devices }}"
+    with_items: "{{ hdd_devices }}"
 
   - name: create lvs for the data portion on hdd devices
     lvol:
@@ -93,8 +88,7 @@
       vg: "{{ hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
       size: "{{ hdd_lv_size }}"
       pvs: "{{ item }}"
-    with_items:
-      - "{{ hdd_devices }}"
+    with_items: "{{ hdd_devices }}"
 
   - name: "write output for osds.yml to {{ logfile_path }}"
     become: false

@@ -2,15 +2,13 @@
 - name: set_fact keys_tmp - preserve backward compatibility after the introduction of the ceph_keys module
   set_fact:
     keys_tmp: "{{ keys_tmp|default([]) + [ { 'key': item.key, 'name': item.name, 'caps': { 'mon': item.mon_cap, 'osd': item.osd_cap|default(''), 'mds': item.mds_cap|default(''), 'mgr': item.mgr_cap|default('') } , 'mode': item.mode } ] }}"
-  when:
-    - item.get('mon_cap', None) # it's enough to assume we are running an old-fashionned syntax simply by checking the presence of mon_cap since every key needs this cap
+  when: item.get('mon_cap', None) # it's enough to assume we are running an old-fashionned syntax simply by checking the presence of mon_cap since every key needs this cap
   with_items: "{{ keys }}"
 
 - name: set_fact keys - override keys_tmp with keys
   set_fact:
     keys: "{{ keys_tmp }}"
-  when:
-    - keys_tmp is defined
+  when: keys_tmp is defined
 
 # dummy container setup is only supported on x86_64
 # when running with containerized_deployment: true this task
@@ -22,8 +20,7 @@
     name: "{{ item }}"
     groups: _filtered_clients
   with_items: "{{ groups[client_group_name] }}"
-  when:
-    - (hostvars[item]['ansible_architecture'] == 'x86_64') or (not containerized_deployment)
+  when: (hostvars[item]['ansible_architecture'] == 'x86_64') or (not containerized_deployment)
 
 - name: set_fact delegated_node
   set_fact:
@@ -58,8 +55,7 @@
 - name: slurp client cephx key(s)
   slurp:
     src: "{{ ceph_conf_key_directory }}/{{ cluster }}.{{ item.name }}.keyring"
-  with_items:
-    - "{{ keys }}"
+  with_items: "{{ keys }}"
   register: slurp_client_keys
   delegate_to: "{{ delegated_node }}"
   when:
@@ -129,8 +125,7 @@
       with_items: "{{ pools | unique }}"
       changed_when: false
       delegate_to: "{{ delegated_node }}"
-      when:
-        - item.application is defined
+      when: item.application is defined
 
 - name: get client cephx keys
   copy:
@@ -139,7 +134,5 @@
     mode: "{{ item.item.get('mode', '0600') }}"
     owner: "{{ ceph_uid }}"
     group: "{{ ceph_uid }}"
-  with_items:
-    - "{{ hostvars[groups['_filtered_clients'][0]]['slurp_client_keys']['results'] }}"
-  when:
-    - not item.get('skipped', False)
+  with_items: "{{ hostvars[groups['_filtered_clients'][0]]['slurp_client_keys']['results'] }}"
+  when: not item.get('skipped', False)

@@ -1,11 +1,9 @@
 ---
 - name: debian based systems - repo handling
-  when:
-    - ceph_origin == 'repository'
+  when: ceph_origin == 'repository'
   block:
     - name: stable repos specific tasks
-      when:
-        - nfs_ganesha_stable
+      when: nfs_ganesha_stable
         - ceph_repository == 'community'
       block:
         - name: add nfs-ganesha stable repository
@@ -22,8 +20,7 @@
           retries: 5
           delay: 2
           until: update_ganesha_apt_cache | success
-          when:
-            - add_ganesha_apt_repo | changed
+          when: add_ganesha_apt_repo | changed
 
     - name: debian based systems - dev repos specific tasks
       when:
@@ -90,13 +87,11 @@
             state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
           register: result
           until: result is succeeded
-          when:
-            - nfs_file_gw
+          when: nfs_file_gw
         - name: install red hat storage nfs obj gateway
           apt:
             name: nfs-ganesha-rgw
             state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
           register: result
           until: result is succeeded
-          when:
-            - nfs_obj_gw
+          when: nfs_obj_gw
