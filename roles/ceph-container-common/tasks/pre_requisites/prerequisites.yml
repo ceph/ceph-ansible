@@ -78,14 +78,6 @@
           tags:
             with_pkg
 
-        - name: start docker service
-          service:
-            name: docker
-            state: started
-            enabled: yes
-          tags:
-            with_pkg
-
     - name: red hat 8 based systems tasks
       when:
         - ansible_distribution_major_version == '8'
@@ -98,6 +90,16 @@
           until: result is succeeded
           tags:
             with_pkg
+
+- name: start docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  tags:
+    with_pkg
+  when: not (ansible_os_family == 'RedHat' and
+             ansible_distribution_major_version == '8')
 
 - name: ensure tmpfiles.d is present
   lineinfile:
