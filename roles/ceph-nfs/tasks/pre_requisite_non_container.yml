@@ -1,13 +1,11 @@
 ---
 - name: include red hat based system related tasks
   include_tasks: pre_requisite_non_container_red_hat.yml
-  when:
-    - ansible_os_family == 'RedHat'
+  when: ansible_os_family == 'RedHat'
 
 - name: include debian based system related tasks
   include_tasks: pre_requisite_non_container_debian.yml
-  when:
-    - ansible_os_family == 'Debian'
+  when: ansible_os_family == 'Debian'
 
 - name: install nfs rgw/cephfs gateway - suse
   zypper:
@@ -41,12 +39,10 @@
     - { name: "{{ rbd_client_admin_socket_path }}", create: "{{ nfs_obj_gw }}" }
     - { name: "/var/log/ceph", create: true }
     - { name: "/var/run/ceph", create: true }
-  when:
-    - item.create|bool
+  when: item.create|bool
 
 - name: cephx related tasks
-  when:
-    - cephx
+  when: cephx
   block:
     - name: copy bootstrap cephx keys
       copy:
@@ -55,14 +51,11 @@
         owner: "ceph"
         group: "ceph"
         mode: "0600"
-      with_items:
-        - { name: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring", copy_key: "{{ nfs_obj_gw }}" }
-      when:
-        - item.copy_key|bool
+      with_items: { name: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring", copy_key: "{{ nfs_obj_gw }}" }
+      when: item.copy_key|bool
 
     - name: nfs object gateway related tasks
-      when:
-        - nfs_obj_gw
+      when: nfs_obj_gw
       block:
         - name: create rados gateway keyring
           command: ceph --cluster {{ cluster }} --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring

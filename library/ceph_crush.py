@@ -56,8 +56,7 @@ EXAMPLES = '''
     location: "{{ hostvars[item]['osd_crush_location'] }}"
     containerized: "{{ docker_exec_cmd }}"
   with_items: "{{ groups[osd_group_name] }}"
-  when:
-    - crush_rule_config
+  when: crush_rule_config
 '''
 
 RETURN = '''#  '''

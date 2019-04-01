@@ -39,8 +39,7 @@
         - "{{ created_pools.results }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when:
-        - item.1.get('rc', 0) != 0
+      when: item.1.get('rc', 0) != 0
 
     - name: customize pool size
       command: >
@@ -49,8 +48,7 @@
       with_items: "{{ openstack_pools | unique }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
-      when:
-        - item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
+      when: item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
 
     - name: customize pool min_size
       command: >
@@ -59,16 +57,14 @@
       with_items: "{{ openstack_pools | unique }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
-      when:
-        - (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
+      when: (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
 
     - name: assign application to pool(s)
       command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
       with_items: "{{ openstack_pools | unique }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when:
-        - item.application is defined
+      when: item.application is defined
 
 - name: create openstack cephx key(s)
   ceph_key:

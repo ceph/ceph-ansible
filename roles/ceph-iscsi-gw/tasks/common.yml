@@ -2,8 +2,7 @@
 - name: make sure gateway_ip_list is configured
   fail:
     msg: "you must set a list of IPs (comma separated) for gateway_ip_list"
-  when:
-    - gateway_ip_list == "0.0.0.0"
+  when: gateway_ip_list == "0.0.0.0"
 
 - name: copy admin key
   copy:
@@ -12,8 +11,7 @@
     owner: "root"
     group: "root"
     mode: "{{ ceph_keyring_permissions }}"
-  when:
-    - cephx
+  when: cephx
 
 - name: deploy gateway settings, used by the ceph_iscsi_config modules
   template:
@@ -44,5 +42,4 @@
       command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set rbd size {{ rbd_pool_size | default(osd_pool_default_size) }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
-      when:
-        - rbd_pool_size | default(osd_pool_default_size) != ceph_osd_pool_default_size
+      when: rbd_pool_size | default(osd_pool_default_size) != ceph_osd_pool_default_size

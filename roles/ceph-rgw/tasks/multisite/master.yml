@@ -3,37 +3,30 @@
   command: "{{ docker_exec_cmd }} radosgw-admin realm create --rgw-realm={{ rgw_realm }} --default"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when:
-    - "'No such file or directory' in realmcheck.stderr"
+  when: "'No such file or directory' in realmcheck.stderr"
 
 - name: create the zonegroup
   command: "{{ docker_exec_cmd }} radosgw-admin zonegroup create --rgw-zonegroup={{ rgw_zonegroup }} --endpoints={{ rgw_multisite_proto }}://{{ rgw_multisite_endpoint_addr }}:{{ radosgw_frontend_port }} --master --default"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when:
-    - "'No such file or directory' in zonegroupcheck.stderr"
+  when: "'No such file or directory' in zonegroupcheck.stderr"
 
 - name: create the zone
   command: "{{ docker_exec_cmd }} radosgw-admin zone create --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --endpoints={{ rgw_multisite_proto }}://{{ rgw_multisite_endpoint_addr }}:{{ radosgw_frontend_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }} --default --master"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when:
-    - "'No such file or directory' in zonecheck.stderr"
+  when: "'No such file or directory' in zonecheck.stderr"
 
 - name: create the zone user
   command: "{{ docker_exec_cmd }} radosgw-admin user create --uid={{ rgw_zone_user }} --display-name=\"Zone User\" --access-key={{ system_access_key }} --secret={{ system_secret_key }} --system"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when:
-    - "'could not fetch user info: no user info saved' in usercheck.stderr"
-  notify:
-    - update period
+  when: "'could not fetch user info: no user info saved' in usercheck.stderr"
+  notify: update period
 
 - name: add other endpoints to the zone
   command: "{{ docker_exec_cmd }} radosgw-admin zone modify --rgw-zone={{ rgw_zone }} --endpoints {{ rgw_multisite_endpoints_list }}" 
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when:
-    - rgw_multisite_endpoints_list is defined
-  notify:
-    - update period
+  when: rgw_multisite_endpoints_list is defined
+  notify: update period

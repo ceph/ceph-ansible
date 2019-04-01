@@ -2,27 +2,22 @@
 - name: include_tasks installs/install_on_redhat.yml
   include_tasks: installs/install_on_redhat.yml
   when: ansible_os_family == 'RedHat'
-  tags:
-    - package-install
+  tags: package-install
 
 - name: include_tasks installs/install_on_suse.yml
   include_tasks: installs/install_on_suse.yml
   when: ansible_os_family == 'Suse'
-  tags:
-    - package-install
+  tags: package-install
 
 - name: include installs/install_on_debian.yml
   include_tasks: installs/install_on_debian.yml
-  tags:
-    - package-install
-  when:
-    - ansible_os_family == 'Debian'
+  tags: package-install
+  when: ansible_os_family == 'Debian'
 
 - name: include_tasks installs/install_on_clear.yml
   include_tasks: installs/install_on_clear.yml
   when: ansible_os_family == 'ClearLinux'
-  tags:
-    - package-install
+  tags: package-install
 
 - name: get ceph version
   command: ceph --version
@@ -37,12 +32,10 @@
 # override ceph_stable_release for ceph_dev and rhcs installations since ceph_stable_release is not mandatory
 - name: include release-rhcs.yml
   include_tasks: release-rhcs.yml
-  when:
-    - ceph_repository in ['rhcs', 'dev']
+  when: ceph_repository in ['rhcs', 'dev']
       or
       ceph_origin == 'distro'
-  tags:
-    - always
+  tags: always
 
 - name: set_fact ceph_release - override ceph_release with ceph_stable_release
   set_fact:
@@ -50,8 +43,7 @@
   when:
     - ceph_origin == 'repository'
     - ceph_repository not in ['dev', 'rhcs']
-  tags:
-    - always
+  tags: always
 
 - name: include create_rbd_client_dir.yml
   include_tasks: create_rbd_client_dir.yml

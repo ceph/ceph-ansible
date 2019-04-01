@@ -3,8 +3,7 @@
   set_fact:
     admin_keyring:
       - "/etc/ceph/{{ cluster }}.client.admin.keyring"
-  when:
-    - copy_admin_key
+  when: copy_admin_key
 
 - name: set_fact ceph_config_keys
   set_fact:
@@ -14,8 +13,7 @@
 - name: merge ceph_config_keys and admin_keyring
   set_fact:
     ceph_config_keys: "{{ ceph_config_keys + admin_keyring }}"
-  when:
-    - copy_admin_key
+  when: copy_admin_key
 
 - name: stat for config and keys
   stat:
@@ -39,8 +37,7 @@
   with_together:
     - "{{ ceph_config_keys }}"
     - "{{ statconfig.results }}"
-  when:
-    - item.1.stat.exists
+  when: item.1.stat.exists
 
 - name: create dbus service file
   become: true
@@ -50,10 +47,8 @@
     owner: "root"
     group: "root"
     mode: "0644"
-  when:
-    - ceph_nfs_dynamic_exports
+  when: ceph_nfs_dynamic_exports
 
 - name: reload dbus configuration
   command: "killall -SIGHUP dbus-daemon"
-  when:
-    - ceph_nfs_dynamic_exports
+  when: ceph_nfs_dynamic_exports
