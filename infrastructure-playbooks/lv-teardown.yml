@@ -1,7 +1,6 @@
 - name: tear down existing osd filesystems then logical volumes, volume groups, and physical volumes
   become: true
-  hosts:
-  - osds
+  hosts: osds
 
   vars_prompt:
     - name: ireallymeanit
@@ -52,8 +51,7 @@
       vg: "{{ nvme_vg_name }}"
       state: absent
       force: yes
-    with_items:
-      - "{{ nvme_device_lvs }}"
+    with_items: "{{ nvme_device_lvs }}"
 
   - name: tear down any existing hdd data lvs 
     lvol:
@@ -61,8 +59,7 @@
       vg: "{{ hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
       state: absent
       force: yes
-    with_items:
-      - "{{ hdd_devices }}"
+    with_items: "{{ hdd_devices }}"
 
   - name: tear down any existing lv of journal for bucket index
     lvol:
@@ -70,8 +67,7 @@
       vg: "{{ nvme_vg_name }}"
       state: absent
       force: yes
-    with_items:
-      - "{{ nvme_device_lvs }}"
+    with_items: "{{ nvme_device_lvs }}"
 
   - name: tear down any existing lvs of hdd journals
     lvol:
@@ -79,8 +75,7 @@
       vg: "{{ nvme_vg_name }}"
       state: absent
       force: yes
-    with_items:
-      - "{{ hdd_devices }}"
+    with_items: "{{ hdd_devices }}"
 
   ## Volume Groups
   - name: remove vg on nvme device
@@ -94,8 +89,7 @@
       vg: "{{ hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
       state: absent
       force: yes
-    with_items:
-      - "{{ hdd_devices }}"
+    with_items: "{{ hdd_devices }}"
 
   ## Physical Vols
   - name: tear down pv for nvme device
@@ -103,5 +97,4 @@
 
   - name: tear down pv for each hdd device
     command: "pvremove --force --yes {{ item }}"
-    with_items:
-      - "{{ hdd_devices }}"
+    with_items: "{{ hdd_devices }}"

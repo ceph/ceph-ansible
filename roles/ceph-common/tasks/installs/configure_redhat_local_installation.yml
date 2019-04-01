@@ -3,29 +3,25 @@
   file:
     path: /tmp
     state: directory
-  when:
-    - use_installer
+  when: use_installer
 
 - name: use mktemp to create name for rundep
   command: "mktemp /tmp/rundep.XXXXXXXX"
   register: rundep_location
-  when:
-    - use_installer
+  when: use_installer
 
 - name: copy rundep
   copy:
     src: "{{ ansible_dir }}/rundep"
     dest: "{{ item }}"
   with_items: "{{ (rundep_location|default({})).stdout_lines|default([]) }}"
-  when:
-    - use_installer
+  when: use_installer
 
 - name: install ceph dependencies
   script: "{{ ansible_dir }}/rundep_installer.sh {{ item }}"
   become: true
   with_items: "{{ (rundep_location|default({})).stdout_lines|default([]) }}"
-  when:
-    - use_installer
+  when: use_installer
 
 - name: ensure rsync is installed
   package:

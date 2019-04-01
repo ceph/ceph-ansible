@@ -1,7 +1,6 @@
 ---
 - name: container specific tasks
-  when:
-    - containerized_deployment
+  when: containerized_deployment
   block:
   - name: umount ceph disk (if on openstack)
     mount:
@@ -9,8 +8,7 @@
       src: /dev/vdb
       fstype: ext3
       state: unmounted
-    when:
-      - ceph_docker_on_openstack
+    when: ceph_docker_on_openstack
 
   - name: generate ceph osd docker run script
     become: true
@@ -21,8 +19,7 @@
       group: "root"
       mode: "0744"
       setype: "bin_t"
-    notify:
-      - restart ceph osds
+    notify: restart ceph osds
 
 # this is for ceph-disk, the ceph-disk command is gone so we have to list /var/lib/ceph
 - name: get osd ids
@@ -49,10 +46,8 @@
     owner: "root"
     group: "root"
     mode: "0644"
-  notify:
-    - restart ceph osds
-  when:
-    - containerized_deployment
+  notify: restart ceph osds
+  when: containerized_deployment
 
 - name: systemd start osd
   systemd:
