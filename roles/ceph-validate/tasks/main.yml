@@ -11,6 +11,8 @@
     - not use_fqdn_yes_i_am_sure
 
 - name: debian based systems tasks
+  when:
+    - ansible_os_family == 'Debian'
   block:
     - name: fail if local scenario is enabled on debian
       fail:
@@ -26,8 +28,6 @@
         - ceph_repository_type == 'cdn'
         - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
         - ceph_repository not in ['rhcs', 'dev', 'obs']
-  when:
-    - ansible_os_family == 'Debian'
 
 - name: validate ntp daemon type
   fail:
@@ -61,7 +61,6 @@
   when:
     - osd_group_name in group_names
     - not osd_auto_discovery | default(False)
-    - osd_scenario != "lvm" and devices is not defined
 
 - name: include check_eth_mon.yml
   include_tasks: check_eth_mon.yml
@@ -70,6 +69,14 @@
     - monitor_interface != "dummy"
     - monitor_address == "0.0.0.0"
     - monitor_address_block == "subnet"
+
+- name: include check_ipaddr_mon.yml
+  include_tasks: check_ipaddr_mon.yml
+  when:
+    - mon_group_name in group_names
+    - monitor_interface == "interface"
+    - monitor_address == "0.0.0.0"
+    - monitor_address_block != "subnet"
 
 - name: include check_eth_rgw.yml
   include_tasks: check_eth_rgw.yml

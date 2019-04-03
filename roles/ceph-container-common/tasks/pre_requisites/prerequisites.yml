@@ -3,6 +3,8 @@
   include_tasks: remove_ceph_udev_rules.yml
 
 - name: debian based systems tasks
+  when:
+    - ansible_distribution == 'Debian'
   block:
     - name: include debian_prerequisites.yml
       include_tasks: debian_prerequisites.yml
@@ -17,10 +19,12 @@
       until: result is succeeded
       tags:
         with_pkg
-  when:
-    - ansible_distribution == 'Debian'
 
 - name: ubuntu based systems tasks
+  when:
+    - ansible_distribution == 'Ubuntu'
+  tags:
+    with_pkg
   block:
     - name: install docker on ubuntu
       package:
@@ -29,10 +33,14 @@
         update_cache: yes
       register: result
       until: result is succeeded
-      tags:
-        with_pkg
-  when:
-    - ansible_distribution == 'Ubuntu'
+    - name: install python3-docker on bionic
+      package:
+        name: python3-docker
+        state: present
+        update_cache: yes
+      register: result
+      until: result is succeeded
+      when: ansible_lsb.codename == 'bionic'
 
 # ensure extras enabled for docker
 - name: enable extras on centos
@@ -46,49 +54,50 @@
   tags:
     with_pkg
 
-- name: red hat 7 based systems tasks
+- name: red hat based systems tasks
+  when:
+    - ansible_os_family == 'RedHat'
   block:
-    - name: install python-docker-py on red hat / centos
-      package:
-        name: ['docker', 'python-docker-py']
-        state: present
-      register: result
-      until: result is succeeded
-      tags:
-        with_pkg
-
-    - name: pause after docker install before starting (on openstack vms)
-      pause: seconds=5
+    - name: red hat 7 based systems tasks
       when:
-        - ceph_docker_on_openstack
-      tags:
-        with_pkg
+        - ansible_distribution_major_version == '7'
+      block:
+        - name: install python-docker-py on red hat / centos
+          package:
+            name: ['docker', 'python-docker-py']
+            state: present
+          register: result
+          until: result is succeeded
+          tags:
+            with_pkg
 
-    - name: start docker service
-      service:
-        name: docker
-        state: started
-        enabled: yes
-      tags:
-        with_pkg
+        - name: pause after docker install before starting (on openstack vms)
+          pause: seconds=5
+          when:
+            - ceph_docker_on_openstack
+          tags:
+            with_pkg
 
-  when:
-    - ansible_os_family == 'RedHat'
-    - ansible_distribution_major_version == '7'
+        - name: start docker service
+          service:
+            name: docker
+            state: started
+            enabled: yes
+          tags:
+            with_pkg
 
-- name: red hat 8 based systems tasks
-  block:
-    - name: install podman
-      package:
-        name: 'podman'
-        state: present
-      register: result
-      until: result is succeeded
-      tags:
-        with_pkg
-  when:
-    - ansible_os_family == 'RedHat'
-    - ansible_distribution_major_version == '8'
+    - name: red hat 8 based systems tasks
+      when:
+        - ansible_distribution_major_version == '8'
+      block:
+        - name: install podman
+          package:
+            name: 'podman'
+            state: present
+          register: result
+          until: result is succeeded
+          tags:
+            with_pkg
 
 - name: ensure tmpfiles.d is present
   lineinfile:

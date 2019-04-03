@@ -18,6 +18,9 @@
     - ansible_os_family not in ['Debian', 'RedHat', 'ClearLinux', 'Suse']
 
 - name: red hat based systems tasks
+  when:
+    - ceph_repository == 'rhcs'
+    - ansible_distribution == 'Red Hat Enterprise Linux'
   block:
     - name: fail on unsupported distribution for red hat ceph storage
       fail:
@@ -26,6 +29,8 @@
         - ansible_distribution_version | version_compare('7.3', '<')
 
     - name: subscription manager related tasks
+      when:
+        - ceph_repository_type == 'cdn'
       block:
         - name: determine if node is registered with subscription-manager
           command: subscription-manager identity
@@ -39,11 +44,6 @@
             msg: "You must register your machine with subscription-manager"
           when:
             - subscription.rc != '0'
-      when:
-        - ceph_repository_type == 'cdn'
-  when:
-    - ceph_repository == 'rhcs'
-    - ansible_distribution == 'Red Hat Enterprise Linux'
 
 - name: fail on unsupported distribution for ubuntu cloud archive
   fail:
