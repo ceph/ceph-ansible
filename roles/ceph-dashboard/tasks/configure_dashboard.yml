@@ -77,6 +77,10 @@
     {{ mgr_prefix }} ceph config set mgr mgr/dashboard/server_port {{ dashboard_port }} || \
     {{ mgr_prefix }} ceph config-key set mgr/dashboard/server_port {{ dashboard_port }}
 
+- name: "set the dashboard SSL port ({{ dashboard_port }})"
+  command: "{{ mgr_prefix }} ceph config set mgr mgr/dashboard/ssl_server_port {{ dashboard_port }}" # Do not use the old fashioned config-key way ssl_server_port, it was not supported when this option was introduced
+  failed_when: false # Do not fail if the option does not exist, it only exists post-14.2.0
+
 - name: disable mgr dashboard module (restart)
   command: "{{ mgr_prefix }} ceph mgr module disable dashboard"
   changed_when: false
