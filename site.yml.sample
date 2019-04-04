@@ -14,6 +14,7 @@
   - iscsigws
   - iscsi-gws # for backward compatibility only!
   - grafana-server
+  - rgwloadbalancers
 
   gather_facts: false
   any_errors_fatal: true
@@ -463,6 +464,39 @@
       set_stats:
         data:
           installer_phase_ceph_iscsi_gw:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- hosts:
+    - rgwloadbalancers
+  gather_facts: false
+  become: True
+  any_errors_fatal: true
+  pre_tasks:
+    - name: set ceph rgw loadbalancer install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_rgw_loadbalancer:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+  tasks:
+    - import_role:
+        name: ceph-defaults
+      tags: ['ceph_update_config']
+    - import_role:
+        name: ceph-facts
+      tags: ['ceph_update_config']
+    - import_role:
+        name: ceph-rgw-loadbalancer
+
+  post_tasks:
+    - name: set ceph rgw loadbalancer install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_rgw_loadbalancer:
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
