@@ -1,0 +1,43 @@
+# {{ ansible_managed  }}
+global
+    log         127.0.0.1 local2
+
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     8000
+    user        haproxy
+    group       haproxy
+    daemon
+    stats socket /var/lib/haproxy/stats
+
+defaults
+    mode                    http
+    log                     global
+    option                  httplog
+    option                  dontlognull
+    option http-server-close
+    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    10s
+    timeout queue           1m
+    timeout connect         10s
+    timeout client          1m
+    timeout server          1m
+    timeout http-keep-alive 10s
+    timeout check           10s
+    maxconn                 8000
+
+frontend rgw-frontend
+    bind *:{{ haproxy_frontend_port }}
+    default_backend rgw-backend
+
+backend rgw-backend
+    option forwardfor
+    balance static-rr
+    option httpchk Get /
+{% for host in groups[rgw_group_name] %}
+{% for instance in hostvars[host]['rgw_instances'] %}
+	server {{ 'server-' + hostvars[host]['ansible_hostname'] + '-' + instance['instance_name'] }} {{ instance['radosgw_address'] }}:{{ instance['radosgw_frontend_port'] }} weight 100
+{% endfor %}
+{% endfor %}

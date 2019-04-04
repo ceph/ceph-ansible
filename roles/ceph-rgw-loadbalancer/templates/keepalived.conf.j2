@@ -1,0 +1,35 @@
+# {{ ansible_managed }}
+! Configuration File for keepalived
+
+global_defs {
+   router_id CEPH_RGW
+}
+
+vrrp_script check_haproxy {
+    script "killall -0 haproxy"
+    weight -20
+    interval 2
+    rise 2
+    fall 2
+}
+
+{% for instance in vrrp_instances %}
+vrrp_instance {{ instance['name'] }} {
+    state {{ 'MASTER' if ansible_hostname == instance['master'] else 'BACKUP' }}
+    priority {{ '100' if ansible_hostname == instance['master'] else '90' }}
+    interface {{ virtual_ip_interface }}
+    virtual_router_id {{ 50 + loop.index }}
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1234
+    }
+    virtual_ipaddress {
+        {{ instance['vip'] }}/{{ virtual_ip_netmask }} dev {{ virtual_ip_interface }}
+    }
+    track_script {
+        check_haproxy
+    }
+}
+
+{% endfor %}
