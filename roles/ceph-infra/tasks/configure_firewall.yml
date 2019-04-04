@@ -189,4 +189,30 @@
           state: enabled
     when: dashboard_enabled
 
+  - name: open haproxy ports
+    firewalld:
+      port: "{{ haproxy_frontend_port | default(80) }}/tcp"
+      zone: "{{ ceph_rgwloadbalancer_firewall_zone }}"
+      source: "{{ public_network }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    when:
+      - rgwloadbalancer_group_name is defined
+      - rgwloadbalancer_group_name in group_names
+    tags:
+      - firewall
+
+  - name: add rich rule for keepalived vrrp
+    firewalld:
+      rich_rule: 'rule protocol value="vrrp" accept'
+      permanent: true
+      immediate: true
+      state: enabled
+    when:
+      - rgwloadbalancer_group_name is defined
+      - rgwloadbalancer_group_name in group_names
+    tags:
+      - firewall
+
 - meta: flush_handlers
