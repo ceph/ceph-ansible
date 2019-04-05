@@ -5,6 +5,7 @@
 ########
 # MAIN #
 ########
+{% set cpu_limit = ansible_processor_vcpus|int if ceph_osd_docker_cpu_limit|int > ansible_processor_vcpus|int else ceph_osd_docker_cpu_limit|int %}
 
 {% if ceph_osd_numactl_opts != "" %}
 numactl \
@@ -20,9 +21,9 @@ numactl \
   --memory={{ ceph_osd_docker_memory_limit }} \
   {% endif -%}
   {% if (container_binary == 'docker' and ceph_docker_version.split('.')[0] is version_compare('13', '>=')) or container_binary == 'podman' -%}
-  --cpus={{ ceph_osd_docker_cpu_limit }} \
+  --cpus={{ cpu_limit }} \
   {% else -%}
-  --cpu-quota={{ ceph_osd_docker_cpu_limit * 100000 }} \
+  --cpu-quota={{ cpu_limit * 100000 }} \
   {% endif -%}
   {% if ceph_osd_docker_cpuset_cpus is defined -%}
   --cpuset-cpus='{{ ceph_osd_docker_cpuset_cpus }}' \
