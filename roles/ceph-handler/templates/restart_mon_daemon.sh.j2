@@ -7,6 +7,12 @@ MONITOR_NAME="{{ monitor_name }}"
 DOCKER_EXEC="{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
 {% endif %}
 
+# if daemon is uninstalled, no restarting is needed; so exit with success
+systemctl status ceph-mon@{{ ansible_hostname }} > /dev/null
+if [[ $? -ne 0 ]]; then
+  exit 0
+fi
+
 # Backward compatibility
 $DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-mon.{{ ansible_fqdn }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-mon.{{ ansible_fqdn }}.asok
 $DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-mon.{{ ansible_hostname }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-mon.{{ ansible_hostname }}.asok
