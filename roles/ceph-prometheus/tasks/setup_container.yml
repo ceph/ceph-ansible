@@ -10,35 +10,25 @@
     state: stopped
   failed_when: false
 
+# Make sure we re-create the container
+- name: remove old alertmanager container
+  command: "{{ container_binary }} rm -f alertmanager"
+  changed_when: false
+  failed_when: false
+
 - name: start alertmanager container
-  docker_container:
-    name: alertmanager
-    image: "{{ alertmanager_container_image }}"
-    state: started
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
-    # restart to allow updates
-    restart: true
-    restart_policy: no
-    force_kill: yes
-    published_ports: '9093:9093'
-    detach: true
-    volumes:
-      - "{{ alertmanager_conf_dir }}:/etc/alertmanager:Z"
-      - "{{ alertmanager_data_dir }}:/alertmanager:Z"
-    networks:
-      - name: "{{ dashboard_network_name }}"
-    keep_volumes: true
-    pull: true
-    cpu_period: "{{ alertmanager_container_cpu_period }}"
-    # As of ansible-2.5.2, this module doesn't support the equivalent of the
-    # --cpus flag, so we must use period/quota for now
-    cpu_quota: "{{ alertmanager_container_cpu_period * alertmanager_container_cpu_cores }}"
-    #memory: 0
-    #memory_swap: 0
-    memory: "{{ alertmanager_container_memory }}GB"
-    memory_swap: "{{ alertmanager_container_memory * 2 }}GB"
+  shell: |
+    {{ container_binary }} run --detach  --name alertmanager \
+      -v "{{ alertmanager_conf_dir }}:/etc/alertmanager:Z" \
+      -v "{{ alertmanager_data_dir }}:/alertmanager:Z" \
+      "--net=host" \
+      "--cpu-period={{ alertmanager_container_cpu_period }}" \
+      "--cpu-quota={{ alertmanager_container_cpu_period * alertmanager_container_cpu_cores }}" \
+      "--memory={{ alertmanager_container_memory }}GB" \
+      "--memory-swap={{ alertmanager_container_memory * 2 }}GB" \
+      "{{ alertmanager_container_image }}" \
+      "--config.file=/etc/alertmanager/alertmanager.yml" \
+      "--storage.path=/alertmanager"
   notify: service handler
 
 - name: make sure the prometheus service is down
@@ -47,41 +37,31 @@
     state: stopped
   failed_when: false
 
-- name: start prometheus docker container
-  docker_container:
-    name: prometheus
-    image: "{{ prometheus_container_image }}"
-    state: started
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.external-url=http://{{ inventory_hostname }}:9090/'
-    # restart to allow updates
-    restart: true
-    restart_policy: no
-    force_kill: yes
-    published_ports: '9090:9090'
-    detach: true
-    volumes:
-      - "{{ prometheus_conf_dir }}:/etc/prometheus:Z"
-      - "{{ prometheus_data_dir }}:/prometheus:Z"
-    networks:
-      - name: "{{ dashboard_network_name }}"
-    user: "{{ prometheus_user_id }}"
-    keep_volumes: true
-    pull: true
-    cpu_period: "{{ prometheus_container_cpu_period }}"
-    # As of ansible-2.5.2, this module doesn't support the equivalent of the
-    # --cpus flag, so we must use period/quota for now
-    cpu_quota: "{{ prometheus_container_cpu_period * prometheus_container_cpu_cores }}"
-    #memory: 0
-    #memory_swap: 0
-    memory: "{{ prometheus_container_memory }}GB"
-    memory_swap: "{{ prometheus_container_memory * 2 }}GB"
+# Make sure we re-create the container
+- name: remove old prometheus container
+  command: "{{ container_binary }} rm -f prometheus"
+  changed_when: false
+  failed_when: false
+
+- name: start prometheus container
+  shell: |
+    {{ container_binary }} run --detach  --name prometheus \
+      -v "{{ prometheus_conf_dir }}:/etc/prometheus:Z" \
+      -v "{{ prometheus_data_dir }}:/prometheus:Z" \
+      "--net=host" \
+      "--user={{ prometheus_user_id }}" \
+      "--cpu-period={{ prometheus_container_cpu_period }}" \
+      "--cpu-quota={{ prometheus_container_cpu_period * prometheus_container_cpu_cores }}" \
+      "--memory={{ prometheus_container_memory }}GB" \
+      "--memory-swap={{ prometheus_container_memory * 2 }}GB" \
+      "{{ prometheus_container_image }}" \
+      "--config.file=/etc/prometheus/prometheus.yml" \
+      "--storage.tsdb.path=/prometheus" \
+      "--web.external-url=http://{{ inventory_hostname }}:9090/"
   notify: service handler
 
 - name: ship systemd services
-  copy:
+  template:
     src: "{{ item }}"
     dest: "/etc/systemd/system/"
     owner: root
