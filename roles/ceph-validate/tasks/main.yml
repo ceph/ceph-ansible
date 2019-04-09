@@ -8,7 +8,7 @@
     msg: "fqdn configuration is not supported anymore. Use 'use_fqdn_yes_i_am_sure: true' if you really want to use it. See release notes for more details"
   when:
     - mon_use_fqdn or mds_use_fqdn
-    - not use_fqdn_yes_i_am_sure
+    - not use_fqdn_yes_i_am_sure | bool
 
 - name: debian based systems tasks
   when:
@@ -33,7 +33,7 @@
   fail:
     msg: "ntp_daemon_type must be one of chronyd, ntpd, or timesyncd"
   when:
-    - ntp_service_enabled
+    - ntp_service_enabled | bool
     - ntp_daemon_type not in ['chronyd', 'ntpd', 'timesyncd']
 
 # Since NTPd can not be installed on Atomic...
@@ -91,7 +91,7 @@
   include_tasks: check_rgw_multisite.yml
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
-    - rgw_multisite
+    - rgw_multisite | bool
 
 - name: include check_iscsi.yml
   include_tasks: check_iscsi.yml

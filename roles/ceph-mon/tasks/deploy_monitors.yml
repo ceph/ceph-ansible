@@ -6,7 +6,7 @@
     header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ;
     print(base64.b64encode(header + key).decode())"
   register: monitor_keyring
-  when: cephx
+  when: cephx | bool
   run_once: true # must run on a single mon only
 
   # add code to read the key or/and try to find it on other nodes
@@ -27,15 +27,15 @@
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-  when: cephx
+  when: cephx | bool
 
 - name: copy the initial key in /etc/ceph (for containers)
   command: >
     cp /var/lib/ceph/tmp/{{ cluster }}.mon..keyring /etc/ceph/{{ cluster }}.mon.keyring
   changed_when: false
   when:
-    - cephx
-    - containerized_deployment
+    - cephx | bool
+    - containerized_deployment | bool
 
 - name: create (and fix ownership of) monitor directory
   file:
@@ -62,7 +62,7 @@
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: create_custom_admin_secret
   when:
-    - cephx
+    - cephx | bool
     - admin_secret != 'admin_secret'
 
 - name: set_fact ceph-authtool container command
@@ -75,7 +75,7 @@
      /var/lib/ceph/tmp/{{ cluster }}.mon..keyring --import-keyring /etc/ceph/{{ cluster }}.client.admin.keyring
   when:
     - not create_custom_admin_secret.get('skipped')
-    - cephx
+    - cephx | bool
     - admin_secret != 'admin_secret'
 
 - name: set_fact ceph-mon container command
@@ -95,7 +95,7 @@
   args:
     creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring
   when:
-    - cephx
+    - cephx | bool
 
 - name: ceph monitor mkfs without keyring
   command: >
@@ -109,4 +109,4 @@
   args:
     creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/store.db
   when:
-    - not cephx
+    - not cephx | bool

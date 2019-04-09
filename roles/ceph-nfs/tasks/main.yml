@@ -3,7 +3,7 @@
   set_fact:
     docker_exec_cmd: "{{ container_binary }} exec ceph-nfs-{{ ansible_hostname }}"
   when:
-    - containerized_deployment
+    - containerized_deployment | bool
 
 - name: include common.yml
   include_tasks: common.yml
@@ -11,12 +11,12 @@
 - name: include pre_requisite_non_container.yml
   include_tasks: pre_requisite_non_container.yml
   when:
-    - not containerized_deployment
+    - not containerized_deployment | bool
 
 - name: include pre_requisite_container.yml
   include_tasks: pre_requisite_container.yml
   when:
-    - containerized_deployment
+    - containerized_deployment | bool
 
 - name: include create_rgw_nfs_user.yml
   import_tasks: create_rgw_nfs_user.yml
@@ -25,7 +25,7 @@
 - name: include ganesha_selinux_fix.yml
   import_tasks: ganesha_selinux_fix.yml
   when:
-    - not containerized_deployment
+    - not containerized_deployment | bool
     - ansible_os_family == 'RedHat'
     - ansible_distribution_version >= '7.4'
 

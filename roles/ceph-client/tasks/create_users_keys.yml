@@ -51,7 +51,7 @@
   with_items: "{{ keys }}"
   delegate_to: "{{ delegated_node }}"
   when:
-    - cephx
+    - cephx | bool
     - keys | length > 0
     - inventory_hostname == groups.get('_filtered_clients') | first
 
@@ -63,13 +63,13 @@
   register: slurp_client_keys
   delegate_to: "{{ delegated_node }}"
   when:
-    - cephx
+    - cephx | bool
     - keys | length > 0
     - inventory_hostname == groups.get('_filtered_clients') | first
 
 - name: pool related tasks
   when:
-    - condition_copy_admin_key
+    - condition_copy_admin_key | bool
     - inventory_hostname == groups.get('_filtered_clients', []) | first
   block:
     - name: list existing pool(s)

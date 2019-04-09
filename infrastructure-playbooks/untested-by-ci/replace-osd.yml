@@ -62,7 +62,7 @@
     - name: set_fact docker_exec_cmd build docker exec command (containerized)
       set_fact:
         docker_exec_cmd: "docker exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-      when: containerized_deployment
+      when: containerized_deployment | bool
 
     - name: exit playbook, if can not connect to the cluster
       command: "{{ docker_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} health"
@@ -91,15 +91,15 @@
       delegate_to: "{{ item }}"
       failed_when: false
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - name: fail when admin key is not present
       fail:
         msg: "The Ceph admin key is not present on the OSD node, please add it and remove it after the playbook is done."
       with_items: "{{ ceph_admin_key.results }}"
       when:
-        - not containerized_deployment
-        - item.stat.exists == false
+        - not containerized_deployment | bool
+        - not item.stat.exists | bool
 
     # NOTE(leseb): using '>' is the only way I could have the command working
     - name: find osd device based on the id
@@ -113,7 +113,7 @@
       register: osd_to_replace_disks
       delegate_to: "{{ item.0 }}"
       when:
-        - containerized_deployment
+        - containerized_deployment | bool
 
     - name: zapping osd(s) - container
       shell: >
@@ -126,7 +126,7 @@
         - "{{ osd_to_replace_disks.results }}"
       delegate_to: "{{ item.0 }}"
       when:
-        - containerized_deployment
+        - containerized_deployment | bool
 
     - name: zapping osd(s) - non container
       command: ceph-disk zap --cluster {{ cluster }} {{ item.1 }}
@@ -136,7 +136,7 @@
         - "{{ osd_to_replace_disks.results }}"
       delegate_to: "{{ item.0 }}"
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - name: destroying osd(s)
       command: ceph-disk destroy --cluster {{ cluster }} --destroy-by-id {{ item.1 }} --zap
@@ -146,7 +146,7 @@
         - "{{ osd_to_replace.split(',') }}"
       delegate_to: "{{ item.0 }}"
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - name: replace osd(s) - prepare - non container
       command: ceph-disk prepare {{ item.1 }}  --osd-id {{ item.2 }} --osd-uuid $(uuidgen)

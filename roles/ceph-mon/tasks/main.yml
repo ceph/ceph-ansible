@@ -3,7 +3,7 @@
   set_fact:
     docker_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
   when:
-    - containerized_deployment
+    - containerized_deployment | bool
 
 - name: include deploy_monitors.yml
   include_tasks: deploy_monitors.yml
@@ -23,10 +23,10 @@
 - name: include secure_cluster.yml
   include_tasks: secure_cluster.yml
   when:
-    - secure_cluster
+    - secure_cluster | bool
     - inventory_hostname == groups[mon_group_name] | first
 
 - name: crush_rules.yml
   include_tasks: crush_rules.yml
   when:
-    - crush_rule_config
+    - crush_rule_config | bool

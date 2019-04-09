@@ -22,13 +22,13 @@
       register: result
       until: result is succeeded
       when:
-        - not is_atomic
+        - not is_atomic | bool
 
     - name: generate and upload a random 10Mb file - containerized deployment
       command: >
         docker run --rm --name=rgw_multisite_test --entrypoint=/bin/bash {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} -c 'dd if=/dev/urandom of=/tmp/testinfra.img bs=1M count=10; {{ s3cmd_cmd }} mb s3://testinfra; {{ s3cmd_cmd }} put /tmp/testinfra.img s3://testinfra'
       when:
-        - rgw_zonemaster
+        - rgw_zonemaster | bool
         - containerized_deployment | default(False)
 
     - name: generate and upload a random a 10Mb file - non containerized

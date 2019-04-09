@@ -2,7 +2,7 @@
 - name: install ceph mds for debian
   apt:
     name: ceph-mds
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    state: "{{ (upgrade_ceph_packages | bool) | ternary('latest','present') }}"
     default_release: "{{ ceph_stable_release_uca | default('') if ceph_origin == 'repository' and ceph_repository == 'uca' else '' }}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else '' }}"
   when:
     - mds_group_name in group_names
@@ -13,7 +13,7 @@
 - name: install redhat ceph-mds package
   package:
     name: "ceph-mds"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    state: "{{ (upgrade_ceph_packages | bool) | ternary('latest','present') }}"
   register: result
   until: result is succeeded
   when:
@@ -25,7 +25,7 @@
   args:
     creates: /var/lib/ceph/mds/{{ cluster }}-{{ mds_name }}/keyring
   changed_when: false
-  when: cephx
+  when: cephx | bool
 
 - name: set mds key permissions
   file:
@@ -33,7 +33,7 @@
     owner: "ceph"
     group: "ceph"
     mode: "0600"
-  when: cephx
+  when: cephx | bool
 
 - name: ensure systemd service override directory exists
   file:

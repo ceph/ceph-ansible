@@ -20,7 +20,7 @@
 - name: set_fact container_binary
   set_fact:
     container_binary: "{{ 'podman' if (podman_binary.stat.exists and ansible_distribution == 'Fedora') or (ansible_os_family == 'RedHat' and ansible_distribution_major_version == '8') else 'docker' }}"
-  when: containerized_deployment
+  when: containerized_deployment | bool
 
 # Set ceph_release to ceph_stable by default
 - name: set_fact ceph_release ceph_stable_release
@@ -43,7 +43,7 @@
   set_fact:
     docker_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] if not rolling_update else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}"
   when:
-    - containerized_deployment
+    - containerized_deployment | bool
     - groups.get(mon_group_name, []) | length > 0
 
 # this task shouldn't run in a rolling_update situation
@@ -58,7 +58,7 @@
   run_once: true
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
-    - not rolling_update
+    - not rolling_update | bool
     - groups.get(mon_group_name, []) | length > 0
 
 # set this as a default when performing a rolling_update
@@ -85,19 +85,19 @@
   register: rolling_update_fsid
   delegate_to: "{{ mon_host | default(groups[mon_group_name][0]) }}"
   when:
-    - rolling_update
+    - rolling_update | bool
 
 - name: set_fact fsid
   set_fact:
     fsid: "{{ (rolling_update_fsid.stdout | from_json).fsid }}"
   when:
-    - rolling_update
+    - rolling_update | bool
 
 - name: set_fact ceph_current_status (convert to json)
   set_fact:
     ceph_current_status: "{{ ceph_current_status.stdout | from_json }}"
   when:
-    - not rolling_update
+    - not rolling_update | bool
     - ceph_current_status.rc == 0
 
 - name: set_fact fsid from ceph_current_status
@@ -108,9 +108,9 @@
 
 - name: fsid realted tasks
   when:
-    - generate_fsid
+    - generate_fsid | bool
     - ceph_current_status.fsid is undefined
-    - not rolling_update
+    - not rolling_update | bool
   block:
   - name: generate cluster fsid
     shell: python -c 'import uuid; print(str(uuid.uuid4()))'
@@ -200,28 +200,28 @@
   set_fact:
     ceph_uid: 64045
   when:
-    - not containerized_deployment
+    - not containerized_deployment | bool
     - ansible_os_family == 'Debian'
 
 - name: set_fact ceph_uid for red hat or suse based system - non container
   set_fact:
     ceph_uid: 167
   when:
-    - not containerized_deployment
+    - not containerized_deployment | bool
     - ansible_os_family in ['RedHat', 'Suse']
 
 - name: set_fact ceph_uid for debian based system - container
   set_fact:
     ceph_uid: 64045
   when:
-    - containerized_deployment
+    - containerized_deployment | bool
     - ceph_docker_image_tag | string is search("ubuntu")
 
 - name: set_fact ceph_uid for red hat based system - container
   set_fact:
     ceph_uid: 167
   when:
-    - containerized_deployment
+    - containerized_deployment | bool
     - (ceph_docker_image_tag | string is search("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
       or (ansible_distribution == 'RedHat'))
 
@@ -229,7 +229,7 @@
   set_fact:
     ceph_uid: 167
   when:
-    - containerized_deployment
+    - containerized_deployment | bool
     - ceph_docker_image is search("rhceph")
 
 - name: set_fact rgw_hostname
@@ -269,12 +269,12 @@
   register: crush_rule_variable
   changed_when: false
   failed_when: false
-  when: ceph_conf.stat.exists
+  when: ceph_conf.stat.exists | bool
 
 - name: set_fact osd_pool_default_crush_rule
   set_fact:
     osd_pool_default_crush_rule: "{% if crush_rule_variable.rc == 0 %}{{ crush_rule_variable.stdout.split(' = ')[1] }}{% else %}{{ ceph_osd_pool_default_crush_rule }}{% endif %}"
-  when: ceph_conf.stat.exists
+  when: ceph_conf.stat.exists | bool
 
 - name: import_tasks set_monitor_address.yml
   import_tasks: set_monitor_address.yml

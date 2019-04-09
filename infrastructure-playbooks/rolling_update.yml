@@ -88,7 +88,7 @@
         path: /etc/profile.d/ceph-aliases.sh
         state: absent
       when:
-        - containerized_deployment
+        - containerized_deployment | bool
 
     - name: set mon_host_count
       set_fact:
@@ -119,7 +119,7 @@
       delegate_to: "{{ item }}"
       with_items: "{{ groups[mon_group_name] }}"
       when:
-        - cephx
+        - cephx | bool
         - inventory_hostname == groups[mon_group_name][0]
 
     - name: create potentially missing keys (rbd and rbd-mirror)
@@ -138,7 +138,7 @@
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       when:
-        - cephx
+        - cephx | bool
         - inventory_hostname == groups[mon_group_name][0]
 
     # NOTE: we mask the service so the RPM can't restart it
@@ -151,7 +151,7 @@
         masked: yes
       ignore_errors: True
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     # NOTE: we mask the service so the RPM can't restart it
     # after the package gets upgraded
@@ -163,7 +163,7 @@
         masked: yes
       ignore_errors: True
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     # only mask the service for mgr because it must be upgraded
     # after ALL monitors, even when collocated
@@ -179,10 +179,10 @@
         name: ceph-handler
     - import_role:
         name: ceph-common
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
     - import_role:
         name: ceph-container-common
-      when: containerized_deployment
+      when: containerized_deployment | bool
     - import_role:
         name: ceph-config
     - import_role:
@@ -196,7 +196,7 @@
       delegate_to: "{{ mon_host }}"
       when:
         - inventory_hostname == groups[mon_group_name][0]
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - name: set containerized osd flags
       command: >
@@ -207,7 +207,7 @@
       delegate_to: "{{ mon_host }}"
       when:
         - inventory_hostname == groups[mon_group_name][0]
-        - containerized_deployment
+        - containerized_deployment | bool
 
     - name: start ceph mon
       systemd:
@@ -215,7 +215,7 @@
         state: started
         enabled: yes
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - name: start ceph mgr
       systemd:
@@ -224,7 +224,7 @@
         enabled: yes
       ignore_errors: True # if no mgr collocated with mons
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - name: restart containerized ceph mon
       systemd:
@@ -233,7 +233,7 @@
         enabled: yes
         daemon_reload: yes
       when:
-        - containerized_deployment
+        - containerized_deployment | bool
 
     - name: non container | waiting for the monitor to join the quorum...
       command: ceph --cluster "{{ cluster }}" -s --format json
@@ -245,7 +245,7 @@
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - name: container | waiting for the containerized monitor to join the quorum...
       command: >
@@ -258,7 +258,7 @@
       delay: "{{ health_mon_check_delay }}"
       delegate_to: "{{ mon_host }}"
       when:
-        - containerized_deployment
+        - containerized_deployment | bool
 
 - name: upgrade ceph mgr nodes when implicitly collocated on monitors
   vars:
@@ -289,10 +289,10 @@
             name: ceph-handler
         - import_role:
             name: ceph-common
-          when: not containerized_deployment
+          when: not containerized_deployment | bool
         - import_role:
             name: ceph-container-common
-          when: containerized_deployment
+          when: containerized_deployment | bool
         - import_role:
             name: ceph-config
         - import_role:
@@ -326,10 +326,10 @@
         name: ceph-handler
     - import_role:
         name: ceph-common
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
     - import_role:
         name: ceph-container-common
-      when: containerized_deployment
+      when: containerized_deployment | bool
     - import_role:
         name: ceph-config
     - import_role:
@@ -351,13 +351,13 @@
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
       register: osd_ids
       changed_when: false
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
 
     - name: get osd unit names - container
       shell: systemctl list-units | grep -E "loaded * active" | grep -oE "ceph-osd@([a-z0-9]+).service"
       register: osd_names
       changed_when: false
-      when: containerized_deployment
+      when: containerized_deployment | bool
 
     - name: stop ceph osd
       systemd:
@@ -367,7 +367,7 @@
         masked: yes
       with_items: "{{ osd_ids.stdout_lines }}"
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - import_role:
         name: ceph-defaults
@@ -377,10 +377,10 @@
         name: ceph-handler
     - import_role:
         name: ceph-common
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
     - import_role:
         name: ceph-container-common
-      when: containerized_deployment
+      when: containerized_deployment | bool
     - import_role:
         name: ceph-config
     - import_role:
@@ -390,7 +390,7 @@
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
       register: osd_ids
       changed_when: false
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
 
     - name: start ceph osd
       systemd:
@@ -400,7 +400,7 @@
         masked: no
       with_items: "{{ osd_ids.stdout_lines }}"
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - name: restart containerized ceph osd
       systemd:
@@ -411,13 +411,13 @@
         daemon_reload: yes
       with_items: "{{ osd_names.stdout_lines }}"
       when:
-        - containerized_deployment
+        - containerized_deployment | bool
 
     - name: set_fact docker_exec_cmd_osd
       set_fact:
         docker_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when:
-        - containerized_deployment
+        - containerized_deployment | bool
 
     - name: get osd versions
       command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
@@ -474,7 +474,7 @@
       set_fact:
         docker_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when:
-        - containerized_deployment
+        - containerized_deployment | bool
 
     - name: unset osd flags
       command: "{{ docker_exec_cmd_update_osd|default('') }} ceph osd unset {{ item }} --cluster {{ cluster }}"
@@ -517,7 +517,7 @@
         enabled: no
         masked: yes
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - import_role:
         name: ceph-defaults
@@ -527,10 +527,10 @@
         name: ceph-handler
     - import_role:
         name: ceph-common
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
     - import_role:
         name: ceph-container-common
-      when: containerized_deployment
+      when: containerized_deployment | bool
     - import_role:
         name: ceph-config
     - import_role:
@@ -543,7 +543,7 @@
         enabled: yes
         masked: no
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - name: restart ceph mds
       systemd:
@@ -553,7 +553,7 @@
         masked: no
         daemon_reload: yes
       when:
-        - containerized_deployment
+        - containerized_deployment | bool
 
 
 - name: upgrade ceph rgws cluster
@@ -586,16 +586,16 @@
         masked: yes
       with_items: "{{ rgw_instances }}"
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - import_role:
         name: ceph-handler
     - import_role:
         name: ceph-common
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
     - import_role:
         name: ceph-container-common
-      when: containerized_deployment
+      when: containerized_deployment | bool
     - import_role:
         name: ceph-config
     - import_role:
@@ -610,7 +610,7 @@
         daemon_reload: yes
       with_items: "{{ rgw_instances }}"
       when:
-        - containerized_deployment
+        - containerized_deployment | bool
 
 
 - name: upgrade ceph rbd mirror node
@@ -636,10 +636,10 @@
         name: ceph-handler
     - import_role:
         name: ceph-common
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
     - import_role:
         name: ceph-container-common
-      when: containerized_deployment
+      when: containerized_deployment | bool
     - import_role:
         name: ceph-config
     - import_role:
@@ -652,7 +652,7 @@
         enabled: yes
         masked: no
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - name: restart containerized ceph rbd mirror
       systemd:
@@ -662,7 +662,7 @@
         masked: no
         daemon_reload: yes
       when:
-        - containerized_deployment
+        - containerized_deployment | bool
 
 
 - name: upgrade ceph nfs node
@@ -684,7 +684,7 @@
         masked: yes
       failed_when: false
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - import_role:
         name: ceph-defaults
@@ -694,10 +694,10 @@
         name: ceph-handler
     - import_role:
         name: ceph-common
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
     - import_role:
         name: ceph-container-common
-      when: containerized_deployment
+      when: containerized_deployment | bool
     - import_role:
         name: ceph-config
     - import_role:
@@ -710,8 +710,8 @@
         enabled: yes
         masked: no
       when:
-        - not containerized_deployment
-        - ceph_nfs_enable_service
+        - not containerized_deployment | bool
+        - ceph_nfs_enable_service | bool
 
     - name: systemd restart nfs container
       systemd:
@@ -721,8 +721,8 @@
         masked: no
         daemon_reload: yes
       when:
-        - ceph_nfs_enable_service
-        - containerized_deployment
+        - ceph_nfs_enable_service | bool
+        - containerized_deployment | bool
 
 
 - name: upgrade ceph iscsi gateway node
@@ -745,7 +745,7 @@
         masked: yes
       failed_when: false
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
     - import_role:
         name: ceph-defaults
@@ -755,10 +755,10 @@
         name: ceph-handler
     - import_role:
         name: ceph-common
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
     - import_role:
         name: ceph-container-common
-      when: containerized_deployment
+      when: containerized_deployment | bool
     - import_role:
         name: ceph-config
     - import_role:
@@ -771,7 +771,7 @@
         enabled: yes
         masked: no
       when:
-        - not containerized_deployment
+        - not containerized_deployment | bool
 
 
 - name: upgrade ceph client node
@@ -790,10 +790,10 @@
         name: ceph-handler
     - import_role:
         name: ceph-common
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
     - import_role:
         name: ceph-container-common
-      when: containerized_deployment
+      when: containerized_deployment | bool
     - import_role:
         name: ceph-config
     - import_role:
@@ -813,25 +813,25 @@
       command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph osd require-osd-release nautilus"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
-      when: containerized_deployment
+      when: containerized_deployment | bool
 
     - name: non container | disallow pre-nautilus OSDs and enable all new nautilus-only functionality
       command: ceph osd require-osd-release nautilus
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
 
     - name: container | enable msgr2 protocol
       command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph mon enable-msgr2"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
-      when: containerized_deployment
+      when: containerized_deployment | bool
 
     - name: non container | enable msgr2 protocol
       command: ceph mon enable-msgr2
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
-      when: not containerized_deployment
+      when: not containerized_deployment | bool
 
     - import_role:
         name: ceph-handler
@@ -854,7 +854,7 @@
       set_fact:
         docker_exec_cmd_status: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when:
-        - containerized_deployment
+        - containerized_deployment | bool
 
     - name: show ceph status
       command: "{{ docker_exec_cmd_status|default('') }} ceph --cluster {{ cluster }} -s"
