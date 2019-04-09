@@ -1,10 +1,19 @@
 ---
-- name: set_fact _radosgw_address to radosgw_address_block
+- name: set_fact _radosgw_address to radosgw_address_block ipv4
   set_fact:
-    _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first | ipwrap }}"
+    _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_all_ipv4_addresses'] | ipaddr(radosgw_address_block) | first }}"
   when:
     - radosgw_address_block is defined
     - radosgw_address_block != 'subnet'
+    - ip_version == 'ipv4'
+
+- name: set_fact _radosgw_address to radosgw_address_block ipv6
+  set_fact:
+    _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_all_ipv6_addresses'] | ipaddr(radosgw_address_block) | last | ipwrap }}"
+  when:
+    - radosgw_address_block is defined
+    - radosgw_address_block != 'subnet'
+    - ip_version == 'ipv6'
 
 - name: set_fact _radosgw_address to radosgw_address
   set_fact:
