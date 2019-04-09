@@ -105,6 +105,8 @@ def node(host, request):
         'kraken': 11,
         'luminous': 12,
         'mimic': 13,
+        'nautilus': 14,
+        'octopus': 15,
         'dev': 99
     }
 
