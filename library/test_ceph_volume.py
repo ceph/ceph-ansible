@@ -1,7 +1,17 @@
 from . import ceph_volume
-from ansible.compat.tests.mock import MagicMock
 import mock
 import os
+
+
+# Python 3
+try:
+    from unittest.mock import MagicMock
+except ImportError:
+    # Python 2
+    try:
+        from mock import MagicMock
+    except ImportError:
+        print('You need the mock library installed on python2.x to run tests')
 
 
 @mock.patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'docker'})
