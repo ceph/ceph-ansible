@@ -151,6 +151,3 @@ texinfo_documents = [
      author, 'ceph-ansible', 'One line description of project.',
      'Miscellaneous'),
 ]
-
-
-
