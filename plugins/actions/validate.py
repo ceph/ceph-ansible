@@ -1,4 +1,8 @@
 
+from notario.exceptions import Invalid
+from notario.validators import types, chainable, iterables
+from notario.decorators import optional
+from notario.store import store as notario_store
 from ansible.plugins.action import ActionBase
 from distutils.version import LooseVersion
 from ansible.module_utils.six import string_types
@@ -22,10 +26,6 @@ if LooseVersion(notario.__version__) < LooseVersion("0.0.13"):
     display.error(msg)
     raise SystemExit(msg)
 
-from notario.exceptions import Invalid
-from notario.validators import types, chainable, iterables
-from notario.decorators import optional
-from notario.store import store as notario_store
 
 
 CEPH_RELEASES = ['jewel', 'kraken', 'luminous', 'mimic', 'nautilus']
