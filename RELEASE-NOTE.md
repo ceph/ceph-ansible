@@ -556,7 +556,7 @@ Notable changes from stable-3.1
 * [98cb6ed8](https://github.com/ceph/ceph-ansible/commit/98cb6ed8) - tests: avoid yum failures (Guillaume Abrioux)
 * [144b2fce](https://github.com/ceph/ceph-ansible/commit/144b2fce) - python-netaddr is required to generate ceph.conf (Ha Phan)
 * [e91648a7](https://github.com/ceph/ceph-ansible/commit/e91648a7) - rolling_update: add role ceph-iscsi-gw (Sébastien Han)
-* [2890b57c](https://github.com/ceph/ceph-ansible/commit/2890b57c) - Add privilege escalation to iscsi purge tasks (Paul Cuzner)
+* [2890b57c](https://github.com/ceph/ceph-ansible/commit/2890b57c) - Add privilege escalation to iscsi purge tasks (Paul Cuzner)
 * [608ea947](https://github.com/ceph/ceph-ansible/commit/608ea947) - mds: move mds fs pools creation (Guillaume Abrioux)
 * [1c084efb](https://github.com/ceph/ceph-ansible/commit/1c084efb) - rgw: container add option to configure multi-site zone (Sébastien Han)
 * [82884801](https://github.com/ceph/ceph-ansible/commit/82884801) - playbook: follow up on #2553 (Guillaume Abrioux)

@@ -3,7 +3,7 @@
   shell: >
     test "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" -gt 0 &&
     test "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" =
-    "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_up_osds"])')"
+    "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_up_osds"])')"
   register: wait_for_all_osds_up
   retries: "{{ nb_retry_wait_osd_up }}"
   delay: "{{ delay_wait_osd_up }}"
@@ -83,7 +83,7 @@
 
 - name: copy to other mons the openstack cephx key(s)
   copy:
-    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
+    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
     dest: "/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
     owner: "{{ ceph_uid }}"
     group: "{{ ceph_uid }}"
