@@ -5,6 +5,10 @@
 #
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from ansible.module_utils.basic import AnsibleModule
+from socket import error as socket_error
+import boto
+import radosgw
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
     'status': ['preview'],
@@ -287,10 +291,6 @@ added_buckets:
 
 '''
 
-from ansible.module_utils.basic import AnsibleModule
-from socket import error as socket_error
-import boto
-import radosgw
 
 
 def create_users(rgw, users, result):
