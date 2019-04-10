@@ -99,6 +99,16 @@
     - ansible_os_family == 'RedHat'
     - ansible_distribution_major_version == '8'
 
+- name: start docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  tags:
+    with_pkg
+  when: not (ansible_os_family == 'RedHat' and
+             ansible_distribution_major_version == '8')
+
 - name: ensure tmpfiles.d is present
   lineinfile:
     path: /etc/tmpfiles.d/ceph-common.conf
