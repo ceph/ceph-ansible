@@ -1,24 +1,24 @@
 ---
-- name: check if /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring already exists
+- name: check if /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring already exists
   stat:
-    path: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring
+    path: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring
   register: initial_mon_keyring
 
-- name: fail if /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring doesn't exist
+- name: fail if /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring doesn't exist
   fail:
-    msg: "/var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring not found"
+    msg: "/var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring not found"
   when:
     - not initial_mon_keyring.stat.exists
 
 - name: get existing initial mon keyring if it already exists but not monitor_keyring.conf in {{ fetch_directory }}
   shell: |
-    grep key /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring | sed 's/^.*= //'
+    grep key /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring | sed 's/^.*= //'
   register: monitor_keyring
   when:
     - not monitor_keyring_conf.stat.exists
 
 - name: test existing initial mon keyring
-  command: ceph --connect-timeout 3 --cluster {{ cluster }} --keyring /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring -n mon. fsid
+  command: ceph --connect-timeout 3 --cluster {{ cluster }} --keyring /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring -n mon. fsid
   register: test_initial_monitor_keyring
   ignore_errors: true
 
