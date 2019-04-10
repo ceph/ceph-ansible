@@ -344,14 +344,14 @@ def create_key(module, result, cluster, name, secret, caps, import_key, dest, co
     if import_key:
         user = "client.admin"
         keyring_filename = cluster + "." + user + ".keyring"
-        user_key = os.path.join("/etc/ceph/", keyring_filename)
+        user_key = os.path.join(dest, keyring_filename)
         cmd_list.append(generate_ceph_cmd(
             cluster, args, user, user_key, container_image))
 
     return cmd_list
 
 
-def update_key(cluster, name, caps, container_image=None):
+def update_key(cluster, name, caps, dest, container_image=None):
     '''
     Update a CephX key's capabilities
     '''
@@ -366,14 +366,14 @@ def update_key(cluster, name, caps, container_image=None):
     args = generate_caps(args, "ceph", caps)
     user = "client.admin"
     keyring_filename = cluster + "." + user + ".keyring"
-    user_key = os.path.join("/etc/ceph/", keyring_filename)
+    user_key = os.path.join(dest, keyring_filename)
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key, container_image))
 
     return cmd_list
 
 
-def delete_key(cluster, name, container_image=None):
+def delete_key(cluster, name, dest, container_image=None):
     '''
     Delete a CephX key
     '''
@@ -387,7 +387,7 @@ def delete_key(cluster, name, container_image=None):
 
     user = "client.admin"
     keyring_filename = cluster + "." + user + ".keyring"
-    user_key = os.path.join("/etc/ceph/", keyring_filename)
+    user_key = os.path.join(dest, keyring_filename)
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key, container_image))
 
@@ -410,7 +410,7 @@ def get_key(cluster, name, dest, container_image=None):
 
     user = "client.admin"
     keyring_filename = cluster + "." + user + ".keyring"
-    user_key = os.path.join("/etc/ceph/", keyring_filename)
+    user_key = os.path.join(dest, keyring_filename)
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key, container_image))
 
@@ -574,7 +574,7 @@ def run_module():
     if import_key:
         user = "client.admin"
         keyring_filename = cluster + '.' + user + '.keyring'
-        user_key = os.path.join("/etc/ceph/", keyring_filename)
+        user_key = os.path.join(dest, keyring_filename)
         output_format = "json"
         rc, cmd, out, err = exec_commands(
             module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
@@ -625,13 +625,13 @@ def run_module():
             module.exit_json(**result)
 
         rc, cmd, out, err = exec_commands(
-            module, update_key(cluster, name, caps, container_image))
+            module, update_key(cluster, name, caps, dest, container_image))
         # After the update we don't need to overwrite the key on the filesystem
         # since the secret has not changed
 
     elif state == "absent":
         rc, cmd, out, err = exec_commands(
-            module, delete_key(cluster, name, container_image))
+            module, delete_key(cluster, name, dest, container_image))
 
     elif state == "info":
         if rc != 0:
@@ -641,7 +641,7 @@ def run_module():
 
         user = "client.admin"
         keyring_filename = cluster + '.' + user + '.keyring'
-        user_key = os.path.join("/etc/ceph/", keyring_filename)
+        user_key = os.path.join(dest, keyring_filename)
         output_format = "json"
         rc, cmd, out, err = exec_commands(
             module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
@@ -649,7 +649,7 @@ def run_module():
     elif state == "list":
         user = "client.admin"
         keyring_filename = cluster + '.' + user + '.keyring'
-        user_key = os.path.join("/etc/ceph/", keyring_filename)
+        user_key = os.path.join(dest, keyring_filename)
         rc, cmd, out, err = exec_commands(
             module, list_keys(cluster, user, user_key, container_image))
 
