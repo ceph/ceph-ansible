@@ -227,21 +227,6 @@
     - import_role:
         name: ceph-defaults
 
-    - name: collect running osds and ceph-disk unit(s)
-      shell: |
-        systemctl list-units | grep "loaded active" | grep -Eo 'ceph-osd@[0-9]+.service|ceph-disk@dev-[a-z]{3,4}[0-9]{1}.service|ceph-volume|ceph\.target'
-      register: running_osds
-      changed_when: false
-      failed_when: false
-
-    - name: stop/disable/mask non-containerized ceph osd(s) and ceph-disk units (if any)
-      systemd:
-        name: "{{ item }}"
-        state: stopped
-        enabled: no
-      with_items: "{{ running_osds.stdout_lines | default([])}}"
-      when: running_osds != []
-
     - name: remove old ceph-osd systemd units
       file:
         path: "{{ item }}"
