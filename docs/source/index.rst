@@ -235,11 +235,11 @@ new configuration options.
 
 The following sections in ``ceph.conf`` are supported:
 
-* ``[global]``,
+* ``[global]``
 * ``[mon]``
 * ``[osd]``
 * ``[mds]``
-* ``[rgw]``
+* ``[client.rgw.{instance_name}]``
 
 An example:
 
