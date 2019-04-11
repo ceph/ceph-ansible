@@ -12,22 +12,6 @@
     when:
       - ceph_docker_on_openstack
 
-  - name: test if the container image has directory {{ container_bin_path }}
-    command: "{{ container_binary }} run --rm --net=host --entrypoint=test {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} -d {{ container_bin_path }}"
-    changed_when: false
-    failed_when: false
-    register: test_container_bin_path
-    when:
-      - osd_scenario != 'lvm'
-
-  - name: test if the container image has the disk_list function
-    command: "{{ container_binary }} run --rm --net=host --entrypoint=stat {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} {{ container_bin_path + '/disk_list.sh' if test_container_bin_path.rc == 0 else 'disk_list.sh' }}"
-    changed_when: false
-    failed_when: false
-    register: disk_list
-    when:
-      - osd_scenario != 'lvm'
-
   - name: generate ceph osd docker run script
     become: true
     template:
@@ -72,12 +56,12 @@
 
 - name: systemd start osd
   systemd:
-    name: ceph-osd@{{ item | regex_replace('/dev/', '') if osd_scenario != 'lvm' and containerized_deployment else item }}
+    name: ceph-osd@{{ item }}
     state: started
     enabled: yes
     masked: no
     daemon_reload: yes
-  with_items: "{{ devices if osd_scenario != 'lvm' and containerized_deployment else ((ceph_osd_ids.stdout | from_json).keys() | list) if osd_scenario == 'lvm' and not containerized_deployment else osd_ids_non_container.stdout_lines }}"
+  with_items: "{{ ((ceph_osd_ids.stdout | from_json).keys() | list) if not containerized_deployment else osd_ids_non_container.stdout_lines }}"
 
 - name: ensure systemd service override directory exists
   file:

@@ -8,19 +8,11 @@
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
   block:
-  - name: count number of osds for ceph-disk scenarios
-    set_fact:
-      num_osds: "{{ devices | length | int }}"
-    when:
-      - devices | default([]) | length > 0
-      - osd_scenario in ['collocated', 'non-collocated']
-
   - name: count number of osds for lvm scenario
     set_fact:
       num_osds: "{{ lvm_volumes | length | int }}"
     when:
       - lvm_volumes | default([]) | length > 0
-      - osd_scenario == 'lvm'
 
   - name: run 'ceph-volume lvm batch --report' to see how many osds are to be created
     ceph_volume:
@@ -40,14 +32,12 @@
       PYTHONIOENCODING: utf-8
     when:
       - devices | default([]) | length > 0
-      - osd_scenario == 'lvm'
 
   - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report'
     set_fact:
       num_osds: "{{ (lvm_batch_report.stdout | from_json).osds | length | int }}"
     when:
       - devices | default([]) | length > 0
-      - osd_scenario == 'lvm'
       - (lvm_batch_report.stdout | from_json).changed
 
   - name: run 'ceph-volume lvm list' to see how many osds have already been created
@@ -61,7 +51,6 @@
       PYTHONIOENCODING: utf-8
     when:
       - devices | default([]) | length > 0
-      - osd_scenario == 'lvm'
       - not (lvm_batch_report.stdout | from_json).changed
 
   - name: set_fact num_osds from the output of 'ceph-volume lvm list'
@@ -69,7 +58,6 @@
       num_osds: "{{ lvm_list.stdout | from_json | length | int }}"
     when:
       - devices | default([]) | length > 0
-      - osd_scenario == 'lvm'
       - not (lvm_batch_report.stdout | from_json).changed
 
 # ceph-common
