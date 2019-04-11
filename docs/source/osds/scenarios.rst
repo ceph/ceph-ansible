@@ -1,23 +1,21 @@
 OSD Scenario
 ============
 
-As of stable-3.2, the following scenarios are not supported anymore since they are associated to ``ceph-disk``:
+As of stable-4.0, the following scenarios are not supported anymore since they are associated to ``ceph-disk``:
 
 * `collocated`
 * `non-collocated`
 
-``ceph-disk`` was deprecated during the ceph-ansible 3.2 cycle and has been removed entirely from Ceph itself in the Nautilus version.
-Supported values for the required ``osd_scenario`` variable are:
+Since the Ceph luminous release, it is preferred to use the :ref:`lvm scenario
+<osd_scenario_lvm>` that uses the ``ceph-volume`` provisioning tool. Any other
+scenario will cause deprecation warnings.
 
-At present (starting from stable-3.2), there is only one scenario, which defaults to ``lvm``, see:
+``ceph-disk`` was deprecated during the ceph-ansible 3.2 cycle and has been removed entirely from Ceph itself in the Nautilus version.
+At present (starting from stable-4.0), there is only one scenario, which defaults to ``lvm``, see:
 
 * :ref:`lvm <osd_scenario_lvm>`
 
 So there is no need to configure ``osd_scenario`` anymore, it defaults to ``lvm``.
-
-Since the Ceph luminous release, it is preferred to use the :ref:`lvm scenario
-<osd_scenario_lvm>` that uses the ``ceph-volume`` provisioning tool. Any other
-scenario will cause deprecation warnings.
 
 The ``lvm`` scenario mentionned above support both containerized and non-containerized cluster.
 As a reminder, deploying a containerized cluster can be done by setting ``containerized_deployment``
@@ -30,13 +28,7 @@ lvm
 
 This OSD scenario uses ``ceph-volume`` to create OSDs, primarily using LVM, and
 is only available when the Ceph release is luminous or newer.
-
-**It is the preferred method of provisioning OSDs.**
-
-It is enabled with the following setting::
-
-
-    osd_scenario: lvm
+It is automatically enabled.
 
 Other (optional) supported settings:
 
@@ -72,7 +64,6 @@ Ceph usage, the configuration would be:
 
 .. code-block:: yaml
 
-   osd_scenario: lvm
    devices:
      - /dev/sda
      - /dev/sdb
@@ -85,7 +76,6 @@ devices, for example:
 
 .. code-block:: yaml
 
-   osd_scenario: lvm
    devices:
      - /dev/sda
      - /dev/sdb
@@ -102,7 +92,6 @@ This option can also be used with ``osd_auto_discovery``, meaning that you do no
 
 .. code-block:: yaml
 
-   osd_scenario: lvm
    osd_auto_discovery: true
 
 Other (optional) supported settings:
@@ -176,7 +165,6 @@ Supported ``lvm_volumes`` configuration settings:
 .. code-block:: yaml
 
    osd_objectstore: bluestore
-   osd_scenario: lvm
    lvm_volumes:
      - data: /dev/sda
      - data: /dev/sdb
@@ -189,7 +177,6 @@ Supported ``lvm_volumes`` configuration settings:
 .. code-block:: yaml
 
    osd_objectstore: bluestore
-   osd_scenario: lvm
    lvm_volumes:
      - data: data-lv1
        data_vg: data-vg1
@@ -204,7 +191,6 @@ Supported ``lvm_volumes`` configuration settings:
 .. code-block:: yaml
 
    osd_objectstore: bluestore
-   osd_scenario: lvm
    lvm_volumes:
      - data: data-lv1
        data_vg: data-vg1
@@ -227,7 +213,6 @@ Supported ``lvm_volumes`` configuration settings:
 .. code-block:: yaml
 
    osd_objectstore: filestore
-   osd_scenario: lvm
    lvm_volumes:
      - data: data-lv1
        data_vg: data-vg1
