@@ -201,20 +201,19 @@ At the most basic level you must tell ``ceph-ansible`` what version of Ceph you 
 how you want your OSDs configured. To begin your configuration rename each file in ``group_vars/`` you wish to use so that it does not include the ``.sample``
 at the end of the filename, uncomment the options you wish to change and provide your own value.
 
-An example configuration that deploys the upstream ``jewel`` version of Ceph with OSDs that have collocated journals would look like this in ``group_vars/all.yml``:
+An example configuration that deploys the upstream ``octopus`` version of Ceph with lvm batch method would look like this in ``group_vars/all.yml``:
 
 .. code-block:: yaml
 
    ceph_origin: repository
    ceph_repository: community
-   ceph_stable_release: jewel
+   ceph_stable_release: octopus
    public_network: "192.168.3.0/24"
    cluster_network: "192.168.4.0/24"
    monitor_interface: eth1
    devices:
      - '/dev/sda'
      - '/dev/sdb'
-   osd_scenario: collocated
 
 The following config options are required to be changed on all installations but there could be other required options depending on your OSD scenario
 selection or other aspects of your cluster.
@@ -222,7 +221,6 @@ selection or other aspects of your cluster.
 - ``ceph_origin``
 - ``ceph_stable_release``
 - ``public_network``
-- ``osd_scenario``
 - ``monitor_interface`` or ``monitor_address``
 
 
@@ -264,9 +262,8 @@ Full documentation for configuring each of the Ceph daemon types are in the foll
 OSD Configuration
 -----------------
 
-OSD configuration is set by selecting an OSD scenario and providing the configuration needed for
-that scenario. Each scenario is different in it's requirements. Selecting your OSD scenario is done
-by setting the ``osd_scenario`` configuration option.
+OSD configuration was used to be set by selecting an OSD scenario and providing the configuration needed for
+that scenario. As of nautilus in stable-4.0, the only scenarios available is ``lvm``.
 
 .. toctree::
    :maxdepth: 1
