@@ -41,14 +41,17 @@ fsid = {{ fsid }}
 log file = /dev/null
 mon cluster log file = /dev/null
 {% endif %}
-{% if ceph_release not in ['jewel', 'kraken', 'luminous', 'mimic'] %}
-{% set mon_host_v1_suffix = ":6789" %}
-{% set mon_host_v2_suffix = ":3300" %}
-{% endif %}
+
 mon host = {% if nb_mon > 0 %}
 {% for host in _monitor_addresses -%}
 {% if msgr2_migration | default(False) or not rolling_update %}
-[{{ "v2:" + host.addr + mon_host_v2_suffix }},{{ "v1:" + host.addr + mon_host_v1_suffix }}]
+{%- if mon_host_v1_port and mon_host_v2_port -%}
+[{{ "v2:" + host.addr + ":" + mon_host_v2_port }},{{ "v1:" + host.addr + ":" + mon_host_v1_port }}]
+{%- elif not mon_host_v1_port and mon_host_v2_port -%}
+[{{ "v2:" + host.addr + ":" + mon_host_v2_port }}]
+{%- else -%}
+{{ host.addr }}
+{%- endif -%}
 {%- else -%}
 {{ host.addr }}
 {%- endif %}
@@ -76,7 +79,6 @@ rgw bucket default quota max objects = {{ rgw_bucket_default_quota_max_objects }
 admin socket = {{ rbd_client_admin_socket_path }}/$cluster-$type.$id.$pid.$cctid.asok # must be writable by QEMU and allowed by SELinux or AppArmor
 log file = {{ rbd_client_log_file }} # must be writable by QEMU and allowed by SELinux or AppArmor
 {% endif %}
-
 {% if inventory_hostname in groups.get(osd_group_name, []) %}
 {% if osd_objectstore == 'filestore' %}
 [osd]
