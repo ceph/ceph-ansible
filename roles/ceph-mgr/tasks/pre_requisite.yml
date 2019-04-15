@@ -1,16 +1,16 @@
 ---
-- name: install ceph-mgr package on RedHat or SUSE
+- name: install ceph-mgr packages on RedHat or SUSE
   package:
-    name: ceph-mgr
+    name: '{{ ceph_mgr_packages }}'
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   register: result
   until: result is succeeded
   when:
     - ansible_os_family in ['RedHat', 'Suse']
 
-- name: install ceph mgr for debian
+- name: install ceph-mgr packages for debian
   apt:
-    name: ceph-mgr
+    name: '{{ ceph_mgr_packages }}'
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
     default_release: "{{ ceph_stable_release_uca | default('') if ceph_origin == 'repository' and ceph_repository == 'uca' else ''}}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else '' }}"
   register: result
