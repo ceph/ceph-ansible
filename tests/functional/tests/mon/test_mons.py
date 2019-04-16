@@ -8,8 +8,12 @@ class TestMons(object):
     def test_ceph_mon_package_is_installed(self, node, host):
         assert host.package("ceph-mon").is_installed
 
-    def test_mon_listens_on_6789(self, node, host, setup):
-        assert host.socket("tcp://%s:6789" % setup["address"]).is_listening
+    @pytest.mark.parametrize("mon_port", [3300, 6789])
+    def test_mon_listens(self, node, host, setup, mon_port):
+        assert host.socket("tcp://{address}:{port}".format(
+            address=setup["address"],
+            port=mon_port
+        )).is_listening
 
     def test_mon_service_is_running(self, node, host):
         service_name = "ceph-mon@{hostname}".format(
