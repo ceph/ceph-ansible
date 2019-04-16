@@ -41,16 +41,17 @@ fsid = {{ fsid }}
 log file = /dev/null
 mon cluster log file = /dev/null
 {% endif %}
-{% if ceph_release not in ['jewel', 'kraken', 'luminous', 'mimic'] %}
-{% set mon_host_v1_suffix = ":6789" %}
-{% set mon_host_v2_suffix = ":3300" %}
-{% endif %}
 mon host = {% if nb_mon > 0 %}
 {% for host in _monitor_addresses -%}
-{% if msgr2_migration | default(False) or not rolling_update %}
-[{{ "v2:" + host.addr + mon_host_v2_suffix }},{{ "v1:" + host.addr + mon_host_v1_suffix }}]
-{%- else -%}
+{% if msgr2_migration | default(False) %}
+[{{ "v2:" + host.addr + mon_host_v2.suffix }},{{ "v1:" + host.addr + mon_host_v1.suffix }}]
+{%- elif not msgr2_migration | default(False) and rolling_update -%}
 {{ host.addr }}
+{%- else -%}
+{% if mon_host_v1.enabled %}
+{% set _v1 = ',v1:' + host.addr + mon_host_v1.suffix %}
+{% endif %}
+[{{ "v2:" + host.addr + mon_host_v2.suffix }}{{ _v1 | default('') }}]
 {%- endif %}
 {%- if not loop.last -%},{%- endif %}
 {%- endfor %}
