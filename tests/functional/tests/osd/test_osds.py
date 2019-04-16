@@ -26,7 +26,6 @@ class TestOSDs(object):
         for osd in setup["osds"]:
             assert host.service("ceph-osd@%s" % osd).is_running
 
-    @pytest.mark.no_lvm_scenario
     def test_osd_services_are_enabled(self, node, host, setup):
         # TODO: figure out way to paramaterize node['osds'] for this test
         for osd in setup["osds"]:
@@ -42,13 +41,13 @@ class TestOSDs(object):
             )
             assert host.mount_point(osd_path).exists
 
-    @pytest.mark.lvm_scenario
+    @pytest.mark.no_docker
     def test_ceph_volume_is_installed(self, node, host):
-        host.exists('ceph-volume')
+        assert host.exists('ceph-volume')
 
-    @pytest.mark.lvm_scenario
+    @pytest.mark.no_docker
     def test_ceph_volume_systemd_is_installed(self, node, host):
-        host.exists('ceph-volume-systemd')
+        assert host.exists('ceph-volume-systemd')
 
     def _get_osd_id_from_host(self, node, osd_tree):
         children = []
