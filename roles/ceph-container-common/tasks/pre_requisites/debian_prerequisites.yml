@@ -1,70 +1,22 @@
 ---
+- name: uninstall old docker versions
+  package:
+    name: ['docker', 'docker-engine', 'docker.io', 'containerd', 'runc']
+    state: absent
+
 - name: allow apt to use a repository over https (debian)
   package:
-    name: ['apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common']
-    state: present
+    name: ['apt-transport-https', 'ca-certificates', 'software-properties-common']
     update_cache: yes
   register: result
   until: result is succeeded
 
 - name: add docker's gpg key
   apt_key:
-    url: https://apt.dockerproject.org/gpg
-    state: present
+    url: 'https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg'
   register: result
   until: result is succeeded
 
-- name: add docker and debian testing repository
+- name: add docker repository
   apt_repository:
-    repo: "{{ item }}"
-    state: present
-    update_cache: no
-  register: add_docker_apt_repo
-  with_items:
-    - "deb https://apt.dockerproject.org/repo/ debian-{{ ansible_distribution_release }} main"
-    - "deb http://http.us.debian.org/debian/ testing contrib main"
-
-- name: update apt cache
-  apt:
-    update_cache: yes
-  when: add_docker_apt_repo | changed
-  register: update_docker_apt_cache
-  until: update_docker_apt_cache | success
-  retries: 5
-  delay: 2
-
-- name: install pip from testing on debian
-  package:
-    name: python-pip
-    state: present
-    default_release: testing
-    update_cache: yes
-  register: result
-  until: result is succeeded
-
-- name: install docker-py via pip for debian
-  pip:
-    name: docker-py
-    state: latest
-  register: result
-  until: result is succeeded
-  tags:
-    - skip_ansible_lint
-
-
-- name: install docker on debian
-  package:
-    name: "{{ 'docker-ce' if ansible_architecture == 'aarch64' else 'docker-engine' }}"
-    state: present
-    update_cache: yes
-  register: result
-  until: result is succeeded
-
-# NOTE (jimcurtis): need at least version 1.9.0 of six or we get:
-# re:NameError: global name 'DEFAULT_DOCKER_API_VERSION' is not defined
-- name: install six via pip
-  pip:
-    name: six
-    version: 1.9.0
-  register: result
-  until: result is succeeded
+    repo: "deb https://download.docker.com/linux/{{ ansible_distribution | lower}} {{ ansible_distribution_release }} stable"

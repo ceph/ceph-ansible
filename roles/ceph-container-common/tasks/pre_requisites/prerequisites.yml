@@ -1,46 +1,20 @@
 ---
+- name: include specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml"
+    - "{{ ansible_os_family }}.yml"
+
 - name: include remove_ceph_udev_rules.yml
   include_tasks: remove_ceph_udev_rules.yml
 
 - name: debian based systems tasks
+  include_tasks: debian_prerequisites.yml
   when:
-    - ansible_distribution == 'Debian'
-  block:
-    - name: include debian_prerequisites.yml
-      include_tasks: debian_prerequisites.yml
-      tags:
-        with_pkg
-    - name: install python-six
-      package:
-        name: python-six
-        state: present
-        update_cache: yes
-      register: result
-      until: result is succeeded
-      tags:
-        with_pkg
-
-- name: ubuntu based systems tasks
-  when:
-    - ansible_distribution == 'Ubuntu'
+    - ansible_os_family == 'Debian'
+    - container_package_name == 'docker-ce'
   tags:
     with_pkg
-  block:
-    - name: install docker on ubuntu
-      package:
-        name: ['docker.io', 'python-docker']
-        state: present
-        update_cache: yes
-      register: result
-      until: result is succeeded
-    - name: install python3-docker on bionic
-      package:
-        name: python3-docker
-        state: present
-        update_cache: yes
-      register: result
-      until: result is succeeded
-      when: ansible_lsb.codename == 'bionic'
 
 # ensure extras enabled for docker
 - name: enable extras on centos
@@ -54,46 +28,16 @@
   tags:
     with_pkg
 
-- name: red hat based systems tasks
-  when:
-    - ansible_os_family == 'RedHat'
-  block:
-    - name: red hat 7 based systems tasks
-      when:
-        - ansible_distribution_major_version == '7'
-      block:
-        - name: install python-docker-py on red hat / centos
-          package:
-            name: ['docker', 'python-docker-py']
-            state: present
-          register: result
-          until: result is succeeded
-          tags:
-            with_pkg
+- name: install container package
+  package:
+    name: ['{{ container_package_name }}', '{{ container_binding_name }}']
+    update_cache: true
+  tags:
+    with_pkg
 
-        - name: pause after docker install before starting (on openstack vms)
-          pause: seconds=5
-          when:
-            - ceph_docker_on_openstack
-          tags:
-            with_pkg
-
-    - name: red hat 8 based systems tasks
-      when:
-        - ansible_distribution_major_version == '8'
-      block:
-        - name: install podman
-          package:
-            name: 'podman'
-            state: present
-          register: result
-          until: result is succeeded
-          tags:
-            with_pkg
-
-- name: start docker service
+- name: start container service
   service:
-    name: docker
+    name: '{{ container_service_name }}'
     state: started
     enabled: yes
   tags:
