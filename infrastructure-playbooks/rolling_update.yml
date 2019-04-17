@@ -175,19 +175,6 @@
         - inventory_hostname in groups[mgr_group_name] | default([])
           or groups[mgr_group_name] | default([]) | length == 0
 
-    - import_role:
-        name: ceph-handler
-    - import_role:
-        name: ceph-common
-      when: not containerized_deployment
-    - import_role:
-        name: ceph-container-common
-      when: containerized_deployment
-    - import_role:
-        name: ceph-config
-    - import_role:
-        name: ceph-mon
-
     - name: set osd flags
       command: ceph --cluster {{ cluster }} osd set {{ item }}
       with_items:
@@ -208,6 +195,19 @@
       when:
         - inventory_hostname == groups[mon_group_name][0]
         - containerized_deployment
+
+    - import_role:
+        name: ceph-handler
+    - import_role:
+        name: ceph-common
+      when: not containerized_deployment
+    - import_role:
+        name: ceph-container-common
+      when: containerized_deployment
+    - import_role:
+        name: ceph-config
+    - import_role:
+        name: ceph-mon
 
     - name: start ceph mon
       systemd:
