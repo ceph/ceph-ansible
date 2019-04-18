@@ -1,6 +1,5 @@
 import pytest
 import json
-import os
 
 
 class TestOSDs(object):
@@ -21,15 +20,12 @@ class TestOSDs(object):
         assert host.check_output("netstat -lntp | grep ceph-osd | grep %s | wc -l" %  # noqa E501
                                  (setup["cluster_address"])) == str(nb_port)
 
-    def test_osd_services_are_running(self, node, host, setup):
+    def test_osd_service_enabled_and_running(self, node, host, setup):
         # TODO: figure out way to paramaterize node['osds'] for this test
         for osd in setup["osds"]:
-            assert host.service("ceph-osd@%s" % osd).is_running
-
-    def test_osd_services_are_enabled(self, node, host, setup):
-        # TODO: figure out way to paramaterize node['osds'] for this test
-        for osd in setup["osds"]:
-            assert host.service("ceph-osd@%s" % osd).is_enabled
+            s = host.service("ceph-osd@%s" % osd)
+            assert s.is_enabled
+            assert s.is_running
 
     @pytest.mark.no_docker
     def test_osd_are_mounted(self, node, host, setup):
@@ -42,12 +38,12 @@ class TestOSDs(object):
             assert host.mount_point(osd_path).exists
 
     @pytest.mark.no_docker
-    def test_ceph_volume_is_installed(self, node, host):
-        assert host.exists('ceph-volume')
-
-    @pytest.mark.no_docker
-    def test_ceph_volume_systemd_is_installed(self, node, host):
-        assert host.exists('ceph-volume-systemd')
+    @pytest.mark.parametrize('cmd', [
+        'ceph-volume',
+        'ceph-volume-systemd'
+    ])
+    def test_ceph_volume_command_exists(self, node, host, cmd):
+        assert host.exists(cmd)
 
     def _get_osd_id_from_host(self, node, osd_tree):
         children = []
