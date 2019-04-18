@@ -6,25 +6,28 @@
   failed_when: false
   check_mode: no
 
-- name: install policycoreutils-python to get semanage
-  package:
-    name: policycoreutils-python
-    state: present
-  register: result
-  until: result is succeeded
+- name: if selinux is not disable
   when: selinuxstatus.stdout != 'Disabled'
+  block:
+    - name: install policycoreutils-python
+      package:
+        name: policycoreutils-python
+        state: present
+      register: result
+      until: result is succeeded
+      when: ansible_distribution_major_version == '7'
 
-- name: test if ganesha_t is already permissive
-  shell: |
-    semanage permissive -l | grep -soq ganesha_t
-  changed_when: false
-  failed_when: false
-  register: ganesha_t_permissive
+    - name: add ganesha_t to permissive domain
+      selinux_permissive:
+        name: ganesha_t
+        permissive: true
+      failed_when: false
+      when: ansible_distribution_major_version == '7'
 
-- name: run semanage permissive -a ganesha_t
-  command: semanage permissive -a ganesha_t
-  changed_when: false
-  failed_when: false
-  when:
-    - selinuxstatus.stdout != 'Disabled'
-    - ganesha_t_permissive.rc != 0
+    - name: install nfs-ganesha-selinux on RHEL 8
+      package:
+        name: nfs-ganesha-selinux
+        state: present
+      register: result
+      until: result is succeeded
+      when: ansible_distribution_major_version == '8'
