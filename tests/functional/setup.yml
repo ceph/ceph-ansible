@@ -13,6 +13,21 @@
       set_fact:
         is_atomic: '{{ stat_ostree.stat.exists }}'
 
+    - name: get root mount information
+      set_fact:
+        rootmount: "{{ ansible_mounts|json_query('[?mount==`/`]|[0]') }}"
+
+    # mount -o remount doesn't work on RHEL 8 for now
+    - name: add mount options to /
+      mount:
+        path: '{{ rootmount.mount }}'
+        src: '{{ rootmount.device }}'
+        opts: noatime,nodiratime,nobarrier
+        fstype: '{{ rootmount.fstype }}'
+        state: mounted
+      when: not (ansible_os_family == 'RedHat' and
+                 ansible_distribution_major_version == '8')
+
       # we need to install this so the Socket testinfra module
       # can use netcat for testing
     - name: install net-tools
