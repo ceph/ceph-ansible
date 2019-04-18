@@ -175,19 +175,6 @@
         - inventory_hostname in groups[mgr_group_name] | default([])
           or groups[mgr_group_name] | default([]) | length == 0
 
-    - import_role:
-        name: ceph-handler
-    - import_role:
-        name: ceph-common
-      when: not containerized_deployment
-    - import_role:
-        name: ceph-container-common
-      when: containerized_deployment
-    - import_role:
-        name: ceph-config
-    - import_role:
-        name: ceph-mon
-
     - name: set osd flags
       command: ceph --cluster {{ cluster }} osd set {{ item }}
       with_items:
@@ -208,6 +195,19 @@
       when:
         - inventory_hostname == groups[mon_group_name][0]
         - containerized_deployment
+
+    - import_role:
+        name: ceph-handler
+    - import_role:
+        name: ceph-common
+      when: not containerized_deployment
+    - import_role:
+        name: ceph-container-common
+      when: containerized_deployment
+    - import_role:
+        name: ceph-config
+    - import_role:
+        name: ceph-mon
 
     - name: start ceph mon
       systemd:
@@ -236,27 +236,27 @@
         - containerized_deployment
 
     - name: non container | waiting for the monitor to join the quorum...
-      command: ceph --cluster "{{ cluster }}" -s --format json
+      command: ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" -s --format json
       register: ceph_health_raw
-      until: >
-        hostvars[inventory_hostname]['ansible_hostname'] in (ceph_health_raw.stdout | default('{}') |  from_json)["quorum_names"] or
-        hostvars[inventory_hostname]['ansible_fqdn'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"]
+      until:
+        - ceph_health_raw.rc == 0
+        - (hostvars[inventory_hostname]['ansible_hostname'] in (ceph_health_raw.stdout | default('{}') |  from_json)["quorum_names"] or
+          hostvars[inventory_hostname]['ansible_fqdn'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"])
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
-      delegate_to: "{{ mon_host }}"
       when:
         - not containerized_deployment
 
     - name: container | waiting for the containerized monitor to join the quorum...
       command: >
-        {{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster "{{ cluster }}" -s --format json
+        {{ container_binary }} exec ceph-mon-{{ ansible_hostname }} ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" -s --format json
       register: ceph_health_raw
-      until: >
-        hostvars[inventory_hostname]['ansible_hostname'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"] or
-        hostvars[inventory_hostname]['ansible_fqdn'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"]
+      until:
+        - ceph_health_raw.rc == 0
+        - (hostvars[inventory_hostname]['ansible_hostname'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"] or
+          hostvars[inventory_hostname]['ansible_fqdn'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"])
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
-      delegate_to: "{{ mon_host }}"
       when:
         - containerized_deployment
 
@@ -359,6 +359,12 @@
       changed_when: false
       when: containerized_deployment
 
+    - name: set num_osds for container
+      set_fact:
+        num_osds: "{{ osd_names.stdout_lines|default([])|length }}"
+      when:
+        - containerized_deployment
+
     - name: stop ceph osd
       systemd:
         name: ceph-osd@{{ item }}
@@ -366,6 +372,12 @@
         enabled: no
         masked: yes
       with_items: "{{ osd_ids.stdout_lines }}"
+      when:
+        - not containerized_deployment
+
+    - name: set num_osds for non container
+      set_fact:
+        num_osds: "{{ osd_ids.stdout_lines|default([])|length }}"
       when:
         - not containerized_deployment
 
@@ -412,6 +424,22 @@
       with_items: "{{ osd_names.stdout_lines }}"
       when:
         - containerized_deployment
+
+    - name: scan ceph-disk osds with ceph-volume if deploying nautilus
+      command: "ceph-volume --cluster={{ cluster }} simple scan"
+      environment:
+        CEPH_VOLUME_DEBUG: 1
+      when:
+        - ceph_release in ["nautilus", "octopus"]
+        - not containerized_deployment
+
+    - name: activate scanned ceph-disk osds and migrate to ceph-volume if deploying nautilus
+      command: "ceph-volume --cluster={{ cluster }} simple activate --all"
+      environment:
+        CEPH_VOLUME_DEBUG: 1
+      when:
+        - ceph_release in ["nautilus", "octopus"]
+        - not containerized_deployment
 
     - name: set_fact docker_exec_cmd_osd
       set_fact:
@@ -816,7 +844,7 @@
       when: containerized_deployment
 
     - name: non container | disallow pre-nautilus OSDs and enable all new nautilus-only functionality
-      command: ceph osd require-osd-release nautilus
+      command: "ceph --cluster {{ cluster }} osd require-osd-release nautilus"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
       when: not containerized_deployment
@@ -828,7 +856,7 @@
       when: containerized_deployment
 
     - name: non container | enable msgr2 protocol
-      command: ceph mon enable-msgr2
+      command: "ceph --cluster {{ cluster }} mon enable-msgr2"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
       when: not containerized_deployment
