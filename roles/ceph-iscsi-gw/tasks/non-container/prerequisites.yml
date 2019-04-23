@@ -61,16 +61,13 @@
     - target.stat.exists
     - not target.stat.islnk
 
-- name: enable the rbd-target-gw service and make sure it is running
+- name: start tcmu-runner, rbd-target-api and rbd-target-gw
   service:
-    name: rbd-target-gw
+    name: "{{ item }}"
+    state: started
     enabled: yes
     masked: no
-    state: started
-
-- name: enable the rbd-target-api service and make sure it is running
-  service:
-    name: rbd-target-api
-    enabled: yes
-    masked: no
-    state: started
+  with_items:
+    - tcmu-runner
+    - rbd-target-gw
+    - rbd-target-api
