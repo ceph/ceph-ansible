@@ -93,16 +93,21 @@ class ActionModule(ActionBase):
             if host_vars["osd_group_name"] in host_vars["group_names"]:
                 notario.validate(host_vars, osd_options, defined_keys=True)
                 notario_store['osd_objectstore'] = host_vars["osd_objectstore"]
+                notario_store['osd_auto_discovery'] = host_vars['osd_auto_discovery']
+                notario_store['lvm_volumes'] = host_vars['lvm_volumes']
 
+                if notario_store['osd_auto_discovery']:
+                    notario.validate(
+                        host_vars, osd_auto_discovery_scenario, defined_keys=True)
                 if host_vars.get("devices"):
-                    notario.validate(
-                        host_vars, lvm_batch_scenario, defined_keys=True)
-                elif notario_store['osd_objectstore'] == 'filestore':
-                    notario.validate(
-                        host_vars, lvm_filestore_scenario, defined_keys=True)  # noqa E501
-                elif notario_store['osd_objectstore'] == 'bluestore':
-                    notario.validate(
-                        host_vars, lvm_bluestore_scenario, defined_keys=True)  # noqa E501
+                  notario.validate(
+                      host_vars, lvm_batch_scenario, defined_keys=True)
+                if notario_store['osd_objectstore'] == 'filestore':
+                  notario.validate(
+                      host_vars, lvm_filestore_scenario, defined_keys=True)  # noqa E501
+                if notario_store['osd_objectstore'] == 'bluestore':
+                  notario.validate(
+                      host_vars, lvm_bluestore_scenario, defined_keys=True)  # noqa E501
 
         except Invalid as error:
             display.vvvv("Notario Failure: %s" % str(error))
@@ -227,6 +232,16 @@ def validate_rados_options(value):
     assert any([radosgw_address_given, radosgw_address_block_given,
                 radosgw_interface_given]), msg
 
+def check_no_devices_are_passed(value):
+    """
+    Check lvm_volumes is empty when osd_auto_discovery is True
+    """
+    lvm_volumes = notario_store["lvm_volumes"] == []
+
+    msg = "lvm_volumes must be empty"
+
+    assert lvm_volumes, msg
+
 
 install_options = (
     ("ceph_origin", ceph_origin_choices),
@@ -276,7 +291,11 @@ rados_options = (
 
 osd_options = (
     (optional("dmcrypt"), types.boolean),
-    (optional("osd_auto_discovery"), types.boolean),
+    (optional("osd_auto_discovery"), validate_osd_auto_discovery_bool_value),
+)
+
+osd_auto_discovery_scenario = (
+    ("lvm_volumes", check_no_devices_are_passed),
 )
 
 lvm_batch_scenario = ("devices", iterables.AllItems(types.string))
