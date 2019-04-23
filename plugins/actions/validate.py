@@ -111,7 +111,7 @@ class ActionModule(ActionBase):
             display.error(msg)
             reason = "[{}] Reason: {}".format(host, error.reason)
             try:
-                if "schema is missing" not str(error):
+                if "schema is missing" not in str(error):
                     for i in range(0, len(error.path)):
                         if i == 0:
                             given = "[{}] Given value for {}".format(
