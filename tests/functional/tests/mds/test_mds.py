@@ -8,17 +8,13 @@ class TestMDSs(object):
     def test_mds_is_installed(self, node, host):
         assert host.package("ceph-mds").is_installed
 
-    def test_mds_service_is_running(self, node, host):
+    def test_mds_service_enabled_and_running(self, node, host):
         service_name = "ceph-mds@{hostname}".format(
             hostname=node["vars"]["inventory_hostname"]
         )
-        assert host.service(service_name).is_running
-
-    def test_mds_service_is_enabled(self, node, host):
-        service_name = "ceph-mds@{hostname}".format(
-            hostname=node["vars"]["inventory_hostname"]
-        )
-        assert host.service(service_name).is_enabled
+        s = host.service(service_name)
+        assert s.is_enabled
+        assert s.is_running
 
     def test_mds_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
