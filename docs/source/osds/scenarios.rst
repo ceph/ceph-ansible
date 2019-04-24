@@ -372,12 +372,11 @@ Example of what you will get:
    /dev/sda2: PARTLABEL="ceph block" PARTUUID="ea454807-983a-4cf2-899e-b2680643bc1c"
    /dev/sdb: PTTYPE="gpt"
    /dev/sdb1: PARTLABEL="ceph block.db" PARTUUID="af5b2d74-4c08-42cf-be57-7248c739e217"
-   /dev/sdb2: PARTLABEL="ceph block.wal" PARTUUID="af3f8327-9aa9-4c2b-a497-cf0fe96d126a"
 
 There is more device granularity for Bluestore ONLY if ``osd_objectstore: bluestore`` is enabled by setting the
 ``bluestore_wal_devices`` config option.
 
-By default, if ``bluestore_wal_devices`` is empty, it will get the content of ``dedicated_devices``.
+By default, if ``bluestore_wal_devices`` is empty.
 If set, then you will have a dedicated partition on a specific device for block.wal.
 
 Example of what you will get:
