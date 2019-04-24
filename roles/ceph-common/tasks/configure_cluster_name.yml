@@ -20,6 +20,8 @@
 # - All previous versions from Canonical
 # - Infernalis from ceph.com
 - name: debian based systems - configure cluster name
+  when:
+    - ansible_os_family == "Debian"
   block:
     - name: check /etc/default/ceph exist
       stat:
@@ -28,6 +30,8 @@
       check_mode: no
 
     - name: configure cluster name
+      when:
+        - etc_default_ceph.stat.exists
       block:
         - name: when /etc/default/ceph is not dir
           lineinfile:
@@ -48,7 +52,3 @@
             line: "CLUSTER={{ cluster }}"
           when:
             - etc_default_ceph.stat.isdir
-      when:
-        - etc_default_ceph.stat.exists
-  when:
-    - ansible_os_family == "Debian"
