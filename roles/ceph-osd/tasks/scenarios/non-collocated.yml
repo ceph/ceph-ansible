@@ -29,6 +29,34 @@
     - osd_objectstore == 'filestore'
     - item.0.partitions|length == 0
 
+- name: prepare ceph "{{ osd_objectstore }}" containerized osd disk(s) non-collocated with a dedicated device for db
+  shell: |
+    docker run --net=host \
+    --pid=host \
+    --privileged=true \
+    --name=ceph-osd-prepare-{{ ansible_hostname }}-{{ item.1 | regex_replace('/dev/', '') }} \
+    -v /etc/ceph:/etc/ceph:z \
+    -v /var/lib/ceph/:/var/lib/ceph/:z \
+    -v /dev:/dev \
+    -v /etc/localtime:/etc/localtime:ro \
+    -e DEBUG=verbose \
+    -e CLUSTER={{ cluster }} \
+    -e CEPH_DAEMON=OSD_CEPH_DISK_PREPARE \
+    -e OSD_DEVICE={{ item.1 }} \
+    -e OSD_BLUESTORE_BLOCK_DB={{ item.2 }} \
+    {{ docker_env_args }} \
+    {{ ceph_osd_docker_prepare_env }} \
+    {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  with_together:
+    - "{{ parted_results.results | default([]) }}"
+    - "{{ devices }}"
+    - "{{ dedicated_devices }}"
+  when:
+    - containerized_deployment
+    - osd_objectstore == 'bluestore'
+    - item.0.partitions|length == 0
+    - bluestore_wal_devices|length == 0
+
 - name: prepare ceph "{{ osd_objectstore }}" containerized osd disk(s) non-collocated with a dedicated device for db and wal
   shell: |
     docker run --net=host \
@@ -57,6 +85,7 @@
     - containerized_deployment
     - osd_objectstore == 'bluestore'
     - item.0.partitions|length == 0
+    - bluestore_wal_devices|length > 0
 
 - name: prepare ceph "{{ osd_objectstore }}" non-containerized osd disk(s) non-collocated
   command: "ceph-disk prepare {{ ceph_disk_cli_options }} {{ item.1 }} {{ item.2 }}"
