@@ -1,7 +1,8 @@
 ---
-- block:
-  # For openstack VMs modify the mount point below depending on if the Openstack
-  # VM deploy tool defaults to mounting ephemeral disks
+- name: container specific tasks
+  when:
+    - containerized_deployment
+  block:
   - name: umount ceph disk (if on openstack)
     mount:
       name: /mnt
@@ -22,8 +23,6 @@
       setype: "bin_t"
     notify:
       - restart ceph osds
-  when:
-    - containerized_deployment
 
 # this is for ceph-disk, the ceph-disk command is gone so we have to list /var/lib/ceph
 - name: get osd ids

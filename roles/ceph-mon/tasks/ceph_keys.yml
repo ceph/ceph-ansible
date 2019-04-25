@@ -16,7 +16,10 @@
   delay: "{{ handler_health_mon_check_delay }}"
   changed_when: false
 
-- block:
+- name: tasks for MONs when cephx is enabled
+  when:
+    - cephx
+  block:
   - name: fetch ceph initial keys
     ceph_key:
       state: fetch_initial_keys
@@ -58,8 +61,6 @@
     with_items:
       - "{{ groups.get(mon_group_name) if groups.get(mgr_group_name, []) | length == 0 else groups.get(mgr_group_name, []) }}"
     delegate_to: "{{ groups[mon_group_name][0] }}"
-  when:
-    - cephx
 
 - name: copy keys to the ansible server
   fetch:
