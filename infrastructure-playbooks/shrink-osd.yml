@@ -81,8 +81,35 @@
 
     - name: set_fact osd_hosts
       set_fact:
-        osd_hosts: "{{ osd_hosts | default([]) + [ [ (item.stdout | from_json).crush_location.host, (item.stdout | from_json).osd_fsid ] ] }}"
+        osd_hosts: "{{ osd_hosts | default([]) + [ (item.stdout | from_json).crush_location.host ] }}"
       with_items: "{{ find_osd_hosts.results }}"
+
+    - name: find lvm osd volumes on each host
+      ceph_volume:
+        action: "list"
+      environment:
+        CEPH_VOLUME_DEBUG: 1
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+      with_items: "{{ osd_hosts }}"
+      delegate_to: "{{ item }}"
+      register: osd_volumes
+
+    - name: filter osd volumes to kill by osd - non container
+      set_fact:
+        osd_volumes_to_kill_non_container: "{{ osd_volumes_to_kill_non_container | default([]) + [ (item.1.stdout|from_json)[item.0] ] }}"
+      with_together:
+        - "{{ osd_to_kill.split(',') }}"
+        - "{{ osd_volumes.results }}"
+
+    - name: generate (host / volume) pairs to zap - non container
+      set_fact:
+        osd_host_volumes_to_kill_non_container: "{%- set _val = namespace(devs=[]) -%}
+        {%- for host in osd_hosts -%}
+        {%- for dev in osd_volumes_to_kill_non_container[loop.index-1] -%}
+        {%- set _val.devs = _val.devs + [{\"host\": host, \"path\": dev.path}] -%}
+        {%- endfor -%}
+        {%- endfor -%}
+        {{ _val.devs }}"
 
     - name: mark osd(s) out of the cluster
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ item }}"
@@ -95,19 +122,20 @@
         name: ceph-osd@{{ item.0 }}
         state: stopped
         enabled: no
-      loop: "{{ osd_to_kill.split(',')|zip(osd_hosts)|list }}"
-      delegate_to: "{{ item.1.0 }}"
+      with_together:
+        - "{{ osd_to_kill.split(',') }}"
+        - "{{ osd_hosts }}"
+      delegate_to: "{{ item.1 }}"
 
     - name: zap osd devices
       ceph_volume:
         action: "zap"
-        osd_fsid: "{{ item.1 }}"
+        data: "{{ item.path }}"
       environment:
         CEPH_VOLUME_DEBUG: 1
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      delegate_to: "{{ item.0 }}"
-      loop: "{{ osd_hosts }}"
+      delegate_to: "{{ item.host }}"
+      with_items: "{{ osd_host_volumes_to_kill_non_container }}"
 
     - name: purge osd(s) from the cluster
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it"
