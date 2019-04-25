@@ -83,19 +83,6 @@ class TestCephVolumeModule(object):
         result = ceph_volume.zap_devices(fake_module, fake_container_image)
         assert result == expected_command_list
 
-    def test_zap_osd_fsid(self):
-        fake_module = MagicMock()
-        fake_module.params = {'osd_fsid': 'a_uuid'}
-        fake_container_image = None
-        expected_command_list = ['ceph-volume',
-                                 'lvm',
-                                 'zap',
-                                 '--destroy',
-                                 '--osd-fsid',
-                                 'a_uuid']
-        result = ceph_volume.zap_devices(fake_module, fake_container_image)
-        assert result == expected_command_list
-
     def test_activate_osd(self):
         expected_command_list = ['ceph-volume',
                                  'lvm',
