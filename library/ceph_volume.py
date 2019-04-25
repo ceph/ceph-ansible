@@ -48,10 +48,6 @@ options:
         description:
             - If data is a lv, this must be the name of the volume group it belongs to.
         required: false
-    osd_fsid:
-        description:
-            - The OSD FSID
-        required: false
     journal:
         description:
             - The logical volume name or partition to use as a filestore journal.
@@ -428,7 +424,7 @@ def zap_devices(module, container_image):
     '''
 
     # get module variables
-    data = module.params.get('data', None)
+    data = module.params['data']
     data_vg = module.params.get('data_vg', None)
     journal = module.params.get('journal', None)
     journal_vg = module.params.get('journal_vg', None)
@@ -436,19 +432,13 @@ def zap_devices(module, container_image):
     db_vg = module.params.get('db_vg', None)
     wal = module.params.get('wal', None)
     wal_vg = module.params.get('wal_vg', None)
-    osd_fsid = module.params.get('osd_fsid', None)
+    data = get_data(data, data_vg)
 
     # build the CLI
     action = 'zap'
     cmd = build_ceph_volume_cmd(action, container_image)
     cmd.append('--destroy')
-
-    if osd_fsid:
-        cmd.extend(['--osd-fsid', osd_fsid])
-
-    if data:
-        data = get_data(data, data_vg)
-        cmd.append(data)
+    cmd.append(data)
 
     if journal:
         journal = get_journal(journal, journal_vg)
@@ -488,7 +478,6 @@ def run_module():
         block_db_size=dict(type='str', required=False, default='-1'),
         report=dict(type='bool', required=False, default=False),
         containerized=dict(type='str', required=False, default=False),
-        osd_fsid=dict(type='str', required=False),
     )
 
     module = AnsibleModule(
