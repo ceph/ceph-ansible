@@ -8,24 +8,13 @@ class TestRbdMirrors(object):
     def test_rbd_mirror_is_installed(self, node, host):
         assert host.package("rbd-mirror").is_installed
 
-    @pytest.mark.docker
-    def test_rbd_mirror_service_is_running_docker(self, node, host):
+    def test_rbd_mirror_service_enabled_and_running(self, node, host):
         service_name = "ceph-rbd-mirror@rbd-mirror.{hostname}".format(
             hostname=node["vars"]["inventory_hostname"]
         )
-        assert host.service(service_name).is_running
-
-    def test_rbd_mirror_service_is_running(self, node, host):
-        service_name = "ceph-rbd-mirror@rbd-mirror.{hostname}".format(
-            hostname=node["vars"]["inventory_hostname"]
-        )
-        assert host.service(service_name).is_running
-
-    def test_rbd_mirror_service_is_enabled(self, node, host):
-        service_name = "ceph-rbd-mirror@rbd-mirror.{hostname}".format(
-            hostname=node["vars"]["inventory_hostname"]
-        )
-        assert host.service(service_name).is_enabled
+        s = host.service(service_name)
+        assert s.is_enabled
+        assert s.is_running
 
     def test_rbd_mirror_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
