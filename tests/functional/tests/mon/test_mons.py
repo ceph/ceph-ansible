@@ -29,10 +29,10 @@ class TestMons(object):
         output = host.check_output(cmd)
         assert output.strip().startswith("cluster")
 
-    def test_ceph_config_has_inital_members_line(self, node, File, setup):
-        assert File(setup["conf_path"]).contains("^mon initial members = .*$")
+    def test_ceph_config_has_inital_members_line(self, node, host, setup):
+        assert host.file(setup["conf_path"]).contains("^mon initial members = .*$")
 
-    def test_initial_members_line_has_correct_value(self, node, host, File, setup):  # noqa E501
+    def test_initial_members_line_has_correct_value(self, node, host, setup):
         mon_initial_members_line = host.check_output("grep 'mon initial members = ' /etc/ceph/{cluster}.conf".format(cluster=setup['cluster_name']))  # noqa E501
         result = True
         for host in node["vars"]["groups"]["mons"]:
