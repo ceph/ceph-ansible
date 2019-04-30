@@ -3,6 +3,7 @@ Description=Ceph MDS
 {% if container_binary == 'docker' %}
 After=docker.service
 {% endif %}
+{% set cpu_limit = ansible_processor_vcpus|int if ceph_mds_docker_cpu_limit|int > ansible_processor_vcpus|int else ceph_mds_docker_cpu_limit|int %}
 
 [Service]
 EnvironmentFile=-/etc/environment
@@ -11,9 +12,9 @@ ExecStartPre=-/usr/bin/{{ container_binary }} rm ceph-mds-{{ ansible_hostname }}
 ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   --memory={{ ceph_mds_docker_memory_limit }} \
   {% if (container_binary == 'docker' and ceph_docker_version.split('.')[0] is version_compare('13', '>=')) or container_binary == 'podman' -%}
-  --cpus={{ ceph_mds_docker_cpu_limit }} \
+  --cpus={{ cpu_limit }} \
   {% else -%}
-  --cpu-quota={{ ceph_mds_docker_cpu_limit * 100000 }} \
+  --cpu-quota={{ cpu_limit * 100000 }} \
   {% endif -%}
   -v /var/lib/ceph:/var/lib/ceph:z \
   -v /etc/ceph:/etc/ceph:z \

@@ -729,13 +729,17 @@
     # failed_when: false is here so that if we upgrade
     # from a version of ceph that does not have iscsi gws
     # then this task will not fail
-    - name: stop rbd-target-gw
+    - name: stop ceph iscsi services
       systemd:
-        name: rbd-target-gw
+        name: '{{ item }}'
         state: stopped
         enabled: no
         masked: yes
       failed_when: false
+      with_items:
+        - tcmu-runner
+        - rbd-target-api
+        - rbd-target-gw
       when: not containerized_deployment
 
     - import_role:
@@ -755,12 +759,16 @@
     - import_role:
         name: ceph-iscsi-gw
 
-    - name: start rbd-target-gw
+    - name: start ceph iscsi services
       systemd:
-        name: rbd-target-gw
+        name: '{{ item }}'
         state: started
         enabled: yes
         masked: no
+      with_items:
+        - tcmu-runner
+        - rbd-target-api
+        - rbd-target-gw
       when: not containerized_deployment
 
 

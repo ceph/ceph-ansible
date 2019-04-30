@@ -11,21 +11,15 @@ class TestRGWs(object):
             result = host.package("ceph-radosgw").is_installed
         assert result
 
-    def test_rgw_service_is_running(self, node, host):
+    def test_rgw_service_enabled_and_running(self, node, host):
         for i in range(int(node["radosgw_num_instances"])):
             service_name = "ceph-radosgw@rgw.{hostname}.rgw{seq}".format(
                 hostname=node["vars"]["inventory_hostname"],
                 seq=i
             )
-            assert host.service(service_name).is_running
-
-    def test_rgw_service_is_enabled(self, node, host):
-        for i in range(int(node["radosgw_num_instances"])):
-            service_name = "ceph-radosgw@rgw.{hostname}.rgw{seq}".format(
-                hostname=node["vars"]["inventory_hostname"],
-                seq=i
-            )
-            assert host.service(service_name).is_enabled
+            s = host.service(service_name)
+            assert s.is_enabled
+            assert s.is_running
 
     def test_rgw_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
