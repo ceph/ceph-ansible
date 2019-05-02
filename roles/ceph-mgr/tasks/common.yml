@@ -26,20 +26,57 @@
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   when: groups.get(mgr_group_name, []) | length == 0 # the key is present already since one of the mons created it in "create ceph mgr keyring(s)"
 
+- name: create and copy keyrings
+  when: groups.get(mgr_group_name, []) | length > 0
+  block:
+    - name: create ceph mgr keyring(s) on a mon node
+      ceph_key:
+        name: "mgr.{{ hostvars[item]['ansible_hostname'] }}"
+        state: present
+        caps:
+          mon: allow profile mgr
+          osd: allow *
+          mds: allow *
+        cluster: "{{ cluster }}"
+        secret: "{{ (mgr_secret != 'mgr_secret') | ternary(mgr_secret, omit) }}"
+        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        mode: "0400"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      with_items: "{{ groups.get(mgr_group_name, []) }}"
+      run_once: True
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: copy ceph mgr key(s) from mon node to the ansible server
+      fetch:
+        src: "{{ ceph_conf_key_directory }}/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
+        dest: "{{ fetch_directory }}/{{ fsid }}/{{ ceph_conf_key_directory }}/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
+        flat: yes
+      with_items: "{{ groups.get(mgr_group_name, []) }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: copy ceph keyring(s) to mgr node
+      copy:
+        src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.mgr.{{ ansible_hostname }}.keyring"
+        dest: "/var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring"
+        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        mode: "{{ ceph_keyring_permissions }}"
+      when: cephx
+
 - name: copy ceph keyring(s) if needed
   copy:
-    src: "{{ fetch_directory }}/{{ fsid }}/{{ item.name }}"
-    dest: "{{ item.dest }}"
+    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.client.admin.keyring"
+    dest: "/etc/ceph/{{ cluster }}.client.admin.keyring"
     owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     mode: "{{ ceph_keyring_permissions }}"
-  with_items:
-    - { name: "/etc/ceph/{{ cluster }}.mgr.{{ ansible_hostname }}.keyring", dest: "/var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring", copy_key: "{{ True if groups.get(mgr_group_name, []) | length > 0 else False }}" }
-    - { name: "/etc/ceph/{{ cluster }}.client.admin.keyring", dest: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}" }
   when:
     - cephx
     - groups.get(mgr_group_name, []) | length > 0
-    - item.copy_key|bool
+    - copy_admin_key | bool
 
 - name: set mgr key permissions
   file:
