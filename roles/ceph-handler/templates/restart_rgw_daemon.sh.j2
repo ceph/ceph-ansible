@@ -14,19 +14,14 @@ fi
 declare -a DOCKER_EXECS
 for ((i=0; i<${RGW_NUMS}; i++)); do
   DOCKER_EXECS[i]=""
-{% if containerized_deployment %}
+{% if containerized_deployment | bool %}
   CONTAINER_NAME="ceph-rgw-${HOST_NAME}-rgw${i}"
   DOCKER_EXECS[i]="{{ container_binary }} exec ${CONTAINER_NAME}"
 {% endif %}
 done
 declare -a SOCKETS
-# Backward compatibility
-for ((i=0; i<${RGW_NUMS}; i++)); do
-  SOCKET[i]="EMPTY_SOCKET"
-  ${DOCKER_EXECS[i]} test -S /var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_fqdn }}.asok && SOCKETS[i]=/var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_fqdn }}.asok
-  ${DOCKER_EXECS[i]} test -S /var/run/ceph/{{ cluster }}-client.rgw.${HOST_NAME}.rgw${i}.asok && SOCKETS[i]=/var/run/ceph/{{ cluster }}-client.rgw.${HOST_NAME}.rgw${i}.asok
-done
 RGW_IP={{ hostvars[inventory_hostname]['_radosgw_address'] }}
+SOCKET_PREFIX="/var/run/ceph/ceph-client.rgw.${HOST_NAME}.rgw"
 
 check_socket() {
   local i=$1
@@ -34,6 +29,7 @@ check_socket() {
   local count=10
   # Wait and ensure the socket exists after restarting the daemon
   while [ $count -ne 0 ]; do
+    ${DOCKER_EXECS[i]} test -S ${SOCKET_PREFIX}${i}.*.*.asok && SOCKETS[i]=$(stat --printf=%n ${SOCKET_PREFIX}${i}.*.*.asok)
     ${DOCKER_EXECS[i]} test -S ${SOCKETS[i]} && succ=$((succ+1)) && break
     sleep $DELAY
     let count=count-1
@@ -48,7 +44,7 @@ check_socket() {
 check_for_curl_or_wget() {
   local i=$1
   if ${DOCKER_EXECS[i]} command -v wget &>/dev/null; then
-    rgw_test_command="wget --quiet"
+    rgw_test_command="wget --tries 1 --quiet -O /dev/null"
   elif ${DOCKER_EXECS[i]} command -v curl &>/dev/null; then
     rgw_test_command="curl --fail --silent --output /dev/null"
   else
@@ -63,28 +59,23 @@ check_rest() {
   check_for_curl_or_wget ${i}
   local succ=0
   while [ $RETRIES -ne 0 ]; do
-    test "$rgw_test_command $RGW_PROTOCOL://$RGW_IP:$((RGW_BASE_PORT+i))" && succ=$((succ+1)) && break
+    ${DOCKER_EXECS[i]} $rgw_test_command $RGW_PROTOCOL://$RGW_IP:$((RGW_BASE_PORT+i)) && succ=$((succ+1)) && break
     sleep $DELAY
     let RETRIES=RETRIES-1
   done
   if [ $succ -ne 1 ]; then
     # If we reach this point, it means there is a problem with the connection to rgw
-    echo "Error connecting locally to Rados Gateway service: $RGW_PROTOCOL://$rgw_listen"
+    echo "Error connecting locally to Rados Gateway service: $RGW_PROTOCOL://$RGW_IP:$((RGW_BASE_PORT+i))"
     exit 1
   fi
 }
 
-# First, restart the daemon
 for ((i=0; i<${RGW_NUMS}; i++)); do
+  SOCKETS[i]="EMPTY_SOCKET"
+  # First, restart the daemon
   systemctl restart ceph-radosgw@rgw.${HOST_NAME}.rgw${i}
-done
-
-# Check socket files
-for ((i=0; i<${RGW_NUMS}; i++)); do
+  # Check socket files
   check_socket ${i}
-done
-
-# Check rest
-for ((i=0; i<${RGW_NUMS}; i++)); do
+  # Check rest
   check_rest ${i}
 done
