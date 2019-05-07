@@ -4,10 +4,11 @@ RETRIES="{{ handler_health_rgw_check_retries }}"
 DELAY="{{ handler_health_rgw_check_delay }}"
 RGW_NAME="{{ ansible_hostname }}"
 RGW_PORT="{{ radosgw_frontend_port }}"
-{% if containerized_deployment %}
+{% if containerized_deployment | bool %}
 DOCKER_EXEC="docker exec ceph-rgw-{{ ansible_hostname }}"
 {% endif %}
 # Backward compatibility
+SOCKET="EMPTY_SOCKET"
 $DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_fqdn }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_fqdn }}.asok
 $DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_hostname }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_hostname }}.asok
 {% if hostvars[inventory_hostname]['radosgw_address_block'] is defined and hostvars[inventory_hostname]['radosgw_address_block'] != 'subnet' %}
@@ -52,7 +53,7 @@ RGW_IP=[{{ hostvars[inventory_hostname][interface][ip_version][0]['address'] }}]
 
 check_for_curl_or_wget() {
   if $DOCKER_EXEC command -v wget &>/dev/null; then
-    rgw_test_command="wget --quiet"
+    rgw_test_command="wget --tries 1 --quiet -O /dev/null"
   elif $DOCKER_EXEC command -v curl &>/dev/null; then
     rgw_test_command="curl --fail --silent --output /dev/null"
   else
@@ -65,12 +66,12 @@ check_for_curl_or_wget() {
 check_rest() {
   check_for_curl_or_wget
   while [ $RETRIES -ne 0 ]; do
-    test "$rgw_test_command http://$RGW_IP:$RGW_PORT" && exit 0
+    $DOCKER_EXEC $rgw_test_command http://$RGW_IP:$RGW_PORT && exit 0
     sleep $DELAY
     let RETRIES=RETRIES-1
   done
   # If we reach this point, it means there is a problem with the connection to rgw
-  echo "Error connecting locally to Rados Gateway service: http://$rgw_listen"
+  echo "Error connecting locally to Rados Gateway service: http://$RGW_IP:$RGW_PORT"
   exit 1
 }
 
