@@ -259,3 +259,32 @@
   set_fact:
     osd_pool_default_crush_rule: "{% if crush_rule_variable.rc == 0 %}{{ crush_rule_variable.stdout.split(' = ')[1] }}{% else %}{{ ceph_osd_pool_default_crush_rule }}{% endif %}"
   when: ceph_conf.stat.exists
+<<<<<<< HEAD
+=======
+
+- name: import_tasks set_monitor_address.yml
+  import_tasks: set_monitor_address.yml
+  when: groups.get(mon_group_name, []) | length > 0
+
+- name: import_tasks set_radosgw_address.yml
+  import_tasks: set_radosgw_address.yml
+  when: inventory_hostname in groups.get(rgw_group_name, [])
+
+- name: set_fact rgw_instances
+  set_fact:
+    rgw_instances: "{{ rgw_instances|default([]) | union([{'instance_name': 'rgw' + item|string, 'radosgw_address': _radosgw_address, 'radosgw_frontend_port': radosgw_frontend_port|int + item|int}]) }}"
+  with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
+  when: inventory_hostname in groups.get(rgw_group_name, [])
+
+- name: set ntp service name depending on OS family
+  block:
+  - name: set ntp service name for Debian family
+    set_fact:
+      ntp_service_name: ntp
+    when: ansible_os_family == 'Debian'
+
+  - name: set ntp service name for Red Hat family
+    set_fact:
+      ntp_service_name: ntpd
+    when: ansible_os_family in ['RedHat', 'Suse']
+>>>>>>> 936c6fca... facts: fix external cluster bug
