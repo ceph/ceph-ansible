@@ -1,9 +1,9 @@
 ---
 - name: wait for all osd to be up
   shell: >
-    test "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" -gt 0 &&
-    test "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" =
-    "$({{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_up_osds"])')"
+    test "$({{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" -gt 0 &&
+    test "$({{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" =
+    "$({{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_up_osds"])')"
   register: wait_for_all_osds_up
   retries: "{{ nb_retry_wait_osd_up }}"
   delay: "{{ delay_wait_osd_up }}"
@@ -15,7 +15,7 @@
   block:
     - name: list existing pool(s)
       command: >
-        {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
+        {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
         osd pool get {{ item.name }} size
       with_items: "{{ openstack_pools | unique }}"
       register: created_pools
@@ -24,7 +24,7 @@
 
     - name: create openstack pool(s)
       command: >
-        {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
+        {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
         osd pool create {{ item.0.name }}
         {{ item.0.pg_num | default(osd_pool_default_pg_num) }}
         {{ item.0.pgp_num | default(item.0.pg_num) | default(osd_pool_default_pg_num) }}
@@ -43,7 +43,7 @@
 
     - name: customize pool size
       command: >
-        {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
+        {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
         osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }}
       with_items: "{{ openstack_pools | unique }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -52,7 +52,7 @@
 
     - name: customize pool min_size
       command: >
-        {{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
+        {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
         osd pool set {{ item.name }} min_size {{ item.min_size | default(osd_pool_default_min_size) }}
       with_items: "{{ openstack_pools | unique }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -60,7 +60,7 @@
       when: (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
 
     - name: assign application to pool(s)
-      command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
+      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
       with_items: "{{ openstack_pools | unique }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
