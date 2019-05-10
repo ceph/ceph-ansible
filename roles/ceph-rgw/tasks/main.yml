@@ -43,3 +43,12 @@
       register: result
       until: result is succeeded
       when: item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
+
+    - name: set the rgw_create_pools pools application to rgw
+      command: "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool application enable {{ item.key }} rgw"
+      changed_when: false
+      with_dict: "{{ rgw_create_pools }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      register: result
+      until: result is succeeded
+      run_once: true
