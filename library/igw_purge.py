@@ -37,70 +37,75 @@ author:
 import os  # noqa E402
 import logging  # noqa E402
 import socket  # noqa E402
+import rados  # noqa E402
+import rbd  # noqa E402
 
 from logging.handlers import RotatingFileHandler  # noqa E402
 from ansible.module_utils.basic import *  # noqa E402
 
 import ceph_iscsi_config.settings as settings  # noqa E402
 from ceph_iscsi_config.common import Config  # noqa E402
-from ceph_iscsi_config.lio import LIO, Gateway  # noqa E402
-from ceph_iscsi_config.utils import ip_addresses, resolve_ip_addresses  # noqa E402
+from ceph_iscsi_config.lun import RBDDev  # noqa E402
 
 __author__ = 'pcuzner@redhat.com'
 
 
-def delete_group(module, image_list, cfg):
+def delete_images(cfg):
+    changes_made = False
 
-    logger.debug("RBD Images to delete are : {}".format(','.join(image_list)))
-    pending_list = list(image_list)
+    for disk_name, disk in cfg.config['disks'].items():
+        image = disk['image']
 
-    for rbd_path in image_list:
-        delete_rbd(module, rbd_path)
-        disk_key = rbd_path.replace('/', '.', 1)
-        cfg.del_item('disks', disk_key)
-        pending_list.remove(rbd_path)
-        cfg.changed = True
+        logger.debug("Deleing image {}".format(image))
 
-    if cfg.changed:
-        cfg.commit()
+        backstore = disk.get('backstore')
+        if backstore is None:
+            # ceph iscsi-config based.
+            rbd_dev = RBDDev(image, 0, disk['pool'])
+        else:
+            # ceph-iscsi based.
+            rbd_dev = RBDDev(image, 0, backstore, disk['pool'])
 
-    return pending_list
+        try:
+            rbd_dev.delete()
+        except rbd.ImageNotFound as err:
+            # Just log and ignore. If we crashed while purging we could delete
+            # the image but not removed it from the config
+            logger.debug("Image already deleted.")
+        except rbd.ImageHasSnapshots as err:
+            logger.error("Image still has snapshots.")
+            # Older versions of ceph-iscsi-config do not have a error_msg
+            # string.
+            if not rbd_dev.error_msg:
+                rbd_dev.error_msg = "Image has snapshots."
 
+        if rbd_dev.error:
+            if rbd_dev.error_msg:
+                logger.error("Could not remove {}. Error: {}. Manually run the "
+                             "rbd command line tool to delete.".
+                             format(image, rbd_error_msg))
+            else:
+                logger.error("Could not remove {}. Manually run the rbd "
+                             "command line tool to delete.".format(image))
+        else:
+            changes_made = True
 
-def delete_rbd(module, rbd_path):
+    return changes_made
 
-    logger.debug("issuing delete for {}".format(rbd_path))
-    rm_cmd = 'rbd --no-progress --conf {} rm {}'.format(settings.config.cephconf,  # noqa E501
-                                                        rbd_path)
-    rc, rm_out, err = module.run_command(rm_cmd, use_unsafe_shell=True)
-    logger.debug("delete RC = {}, {}".format(rc, rm_out, err))
-    if rc != 0:
-        logger.error("Could not fully cleanup image {}. Manually run the rbd "
-                     "command line tool to remove.".format(rbd_path))
+def delete_gateway_config(cfg):
+    ioctx = cfg._open_ioctx()
+    try:
+        size, mtime = ioctx.stat(cfg.config_name)
+    except rados.ObjectNotFound:
+        logger.debug("gateway.conf already removed.")
+        return false
 
+    try:
+        ioctx.remove_object(cfg.config_name)
+    except Exception as err:
+        module.fail_json(msg="Gateway config object failed: {}".format(err))
 
-def is_cleanup_host(config):
-    """
-    decide which gateway host should be responsible for any non-specific
-    updates to the config object
-    :param config: configuration dict from the rados pool
-    :return: boolean indicating whether the addition cleanup should be
-    performed by the running host
-    """
-    cleanup = False
-
-    if 'ip_list' in config.config["gateways"]:
-
-        gw_1 = config.config["gateways"]["ip_list"][0]
-
-        local_ips = ip_addresses()
-        usable_ips = resolve_ip_addresses(gw_1)
-        for ip in usable_ips:
-            if ip in local_ips:
-                cleanup = True
-                break
-
-    return cleanup
+    return True
 
 
 def ansible_main():
@@ -120,76 +125,15 @@ def ansible_main():
     logger.info("START - GATEWAY configuration PURGE started, run mode "
                 "is {}".format(run_mode))
     cfg = Config(logger)
-    this_host = socket.gethostname().split('.')[0]
-    perform_cleanup_tasks = is_cleanup_host(cfg)
-
     #
     # Purge gateway configuration, if the config has gateways
-    if run_mode == 'gateway' and len(cfg.config['gateways'].keys()) > 0:
-
-        lio = LIO()
-        gateway = Gateway(cfg)
-
-        if gateway.session_count() > 0:
-            module.fail_json(msg="Unable to purge - gateway still has active "
-                                 "sessions")
-
-        gateway.drop_target(this_host)
-        if gateway.error:
-            module.fail_json(msg=gateway.error_msg)
-
-        lio.drop_lun_maps(cfg, perform_cleanup_tasks)
-        if lio.error:
-            module.fail_json(msg=lio.error_msg)
-
-        if gateway.changed or lio.changed:
-
-            # each gateway removes it's own entry from the config
-            cfg.del_item("gateways", this_host)
-
-            if perform_cleanup_tasks:
-                cfg.reset = True
-
-                # drop all client definitions from the configuration object
-                client_names = cfg.config["clients"].keys()
-                for client in client_names:
-                    cfg.del_item("clients", client)
-
-                cfg.del_item("gateways", "iqn")
-                cfg.del_item("gateways", "created")
-                cfg.del_item("gateways", "ip_list")
-
-            cfg.commit()
-
-            changes_made = True
-
+    if run_mode == 'gateway':
+        changes_made = delete_gateway_config(cfg)
     elif run_mode == 'disks' and len(cfg.config['disks'].keys()) > 0:
         #
         # Remove the disks on this host, that have been registered in the
         # config object
-        #
-        # if the owner field for a disk is set to this host, this host can
-        # safely delete it
-        # nb. owner gets set at rbd allocation and mapping time
-        images_left = []
-
-        # delete_list will contain a list of pool/image names where the owner
-        # is this host
-        delete_list = [key.replace('.', '/', 1) for key in cfg.config['disks']
-                       if cfg.config['disks'][key]['owner'] == this_host]
-
-        if delete_list:
-            images_left = delete_group(module, delete_list, cfg)
-
-        # if the delete list still has entries we had problems deleting the
-        # images
-        if images_left:
-            module.fail_json(msg="Problems deleting the following rbd's : "
-                                 "{}".format(','.join(images_left)))
-
-        changes_made = cfg.changed
-
-        logger.debug("ending lock state variable {}".format(cfg.config_locked))
+        changes_made = delete_images(cfg)
 
     logger.info("END   - GATEWAY configuration PURGE complete")
 
