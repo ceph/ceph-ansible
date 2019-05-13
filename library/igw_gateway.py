@@ -63,6 +63,7 @@ from logging.handlers import RotatingFileHandler  # noqa E402
 from ansible.module_utils.basic import *  # noqa E402
 
 import ceph_iscsi_config.settings as settings  # noqa E402
+from ceph_iscsi_config.common import Config  # noqa E402
 
 from ceph_iscsi_config.gateway import GWTarget  # noqa E402
 from ceph_iscsi_config.utils import valid_ip  # noqa E402
@@ -84,6 +85,15 @@ def ansible_main():
 
     module = AnsibleModule(argument_spec=fields,  # noqa F405
                            supports_check_mode=False)
+
+    cfg = Config(logger)
+    if cfg.config['version'] > 3:
+        module.fail_json(msg="Unsupported iscsigws.yml/iscsi-gws.yml setting "
+                             "detected. Remove depreciated iSCSI target, LUN, "
+                             "client, and gateway settings from "
+                             "iscsigws.yml/iscsi-gws.yml. See "
+                             "iscsigws.yml.sample for list of supported "
+                             "settings")
 
     gateway_iqn = module.params['gateway_iqn']
     gateway_ip_list = module.params['gateway_ip_list'].split(',')
