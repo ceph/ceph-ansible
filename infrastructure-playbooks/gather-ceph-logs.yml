@@ -23,20 +23,19 @@
         prefix: ceph_ansible
       run_once: true
       register: localtempfile
+      become: false
 
     - name: set_fact lookup_ceph_config - lookup keys, conf and logs
-      shell: ls -1 {{ item }}
+      find:
+        paths:
+          - /etc/ceph
+          - /var/log/ceph
       register: ceph_collect
-      changed_when: false
-      with_items:
-        - /etc/ceph/*
-        - /var/log/ceph/*
 
     - name: collect ceph logs, config and keys in "{{ localtempfile.path }}" on the machine running ansible
       fetch:
-        src: "{{ item }}"
+        src: "{{ item.path }}"
         dest: "{{ localtempfile.path }}"
         fail_on_missing: no
         flat: no
-      with_items:
-        - "{{ ceph_collect.stdout_lines }}"
+      with_items: "{{ ceph_collect.files }}"
