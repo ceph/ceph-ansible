@@ -12,8 +12,20 @@ DOCKER_ENV=""
 #############
 # FUNCTIONS #
 #############
+function id_to_device () {
+{% if dmcrypt | bool %}
+  docker run --rm --net=host --ulimit nofile=1024:1024 --ipc=host --pid=host --privileged=true -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /dev:/dev -v /etc/localtime:/etc/localtime:ro -e DEBUG=verbose -e CLUSTER={{ cluster }} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} osd_ceph_disk_dmcrypt_data_map
+{% endif %}
+  DATA_PART=$(docker run --rm --ulimit nofile=1024:1024 --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z --entrypoint ceph-disk {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} list | grep ", osd\.${1}," | awk '{ print $1 }')
+  if [[ "${DATA_PART}" =~ ^/dev/(cciss|nvme) ]]; then
+    OSD_DEVICE=${DATA_PART:0:-2}
+  else
+    OSD_DEVICE=${DATA_PART:0:-1}
+  fi
+}
+
 function expose_partitions () {
-DOCKER_ENV=$(docker run --rm --net=host --name expose_partitions_${1} --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z -e CLUSTER={{ cluster }} -e OSD_DEVICE=/dev/${1} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list)
+  DOCKER_ENV=$(docker run --rm --net=host --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z -e CLUSTER={{ cluster }} -e OSD_DEVICE=${1} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list)
 }
 {% else -%}
 # NOTE(leseb): maintains backwards compatibility with old ceph-docker Jewel images
@@ -54,7 +66,8 @@ function expose_partitions {
 
 {% endif -%}
 
-expose_partitions "$1"
+id_to_device "$1"
+expose_partitions "${OSD_DEVICE}"
 
 # discover osd_objectstore for ceph-disk based osds
 if [[ $DOCKER_ENV =~ "BLUESTORE" ]]; then
@@ -122,12 +135,11 @@ numactl \
   -v /run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket \
   -e CEPH_DAEMON=OSD_CEPH_VOLUME_ACTIVATE \
   -e OSD_ID="$1" \
-  --name=ceph-osd-"$1" \
   {% else -%}
   $DOCKER_ENV \
   -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE \
-  -e OSD_DEVICE=/dev/"${1}" \
-  --name=ceph-osd-{{ ansible_hostname }}-"${1}" \
+  -e OSD_DEVICE="${OSD_DEVICE}" \
   {% endif -%}
+  --name=ceph-osd-"$1" \
   {{ ceph_osd_docker_extra_env }} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}

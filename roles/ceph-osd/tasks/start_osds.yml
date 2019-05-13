@@ -11,21 +11,52 @@
     when:
       - ceph_docker_on_openstack
 
-  - name: test if the container image has directory {{ container_bin_path }}
-    command: "docker run --rm --entrypoint=test {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} -d {{ container_bin_path }}"
-    changed_when: false
-    failed_when: false
-    register: test_container_bin_path
-    when:
-      - osd_scenario != 'lvm'
+  - name: with non lvm scenario
+    when: osd_scenario != 'lvm'
+    block:
+      - name: test if the container image has directory {{ container_bin_path }}
+        command: "docker run --rm --entrypoint=test {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} -d {{ container_bin_path }}"
+        changed_when: false
+        failed_when: false
+        register: test_container_bin_path
 
-  - name: test if the container image has the disk_list function
-    command: "docker run --rm --entrypoint=stat {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} {{ container_bin_path + '/disk_list.sh' if test_container_bin_path.rc == 0 else 'disk_list.sh' }}"
-    changed_when: false
-    failed_when: false
-    register: disk_list
-    when:
-      - osd_scenario != 'lvm'
+      - name: test if the container image has the disk_list function
+        command: "docker run --rm --entrypoint=stat {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} {{ container_bin_path + '/disk_list.sh' if test_container_bin_path.rc == 0 else 'disk_list.sh' }}"
+        changed_when: false
+        failed_when: false
+        register: disk_list
+
+      - name: test activated ceph-disk osds
+        shell: |
+          ls /var/lib/ceph/osd/ | sed 's/.*-//'
+        register: activated_osds
+
+      - name: activate containerized osd(s)
+        shell: |
+          DOCKER_ENV=$(docker run --rm --net=host --ulimit nofile=1024:1024 \
+          --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z \
+          -e CLUSTER={{ cluster }} -e OSD_DEVICE={{ item }} \
+          {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+          disk_list)
+          docker run --rm --net=host \
+          --ulimit nofile=1024:1024 \
+          --ipc=host --pid=host --privileged=true \
+          -v /etc/ceph:/etc/ceph:z \
+          -v /var/lib/ceph/:/var/lib/ceph/:z \
+          -v /dev:/dev \
+          -v /etc/localtime:/etc/localtime:ro \
+          -e DEBUG=verbose \
+          -e CLUSTER={{ cluster }} \
+          -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE_ONLY \
+          -e OSD_DEVICE={{ item }} \
+          ${DOCKER_ENV} \
+          {{ docker_env_args }} \
+          {{ ceph_osd_docker_prepare_env }} \
+          {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+        with_items: "{{ devices }}"
+        when:
+          - devices is defined
+          - devices | length > activated_osds.stdout_lines | length
 
   - name: generate ceph osd docker run script
     become: true
@@ -44,18 +75,21 @@
 - name: get osd ids
   shell: |
     ls /var/lib/ceph/osd/ | sed 's/.*-//'
-  register: osd_ids_non_container
+  register: ceph_disk_osd_ids
+  when: osd_scenario != 'lvm'
 
 - name: set_fact docker_exec_start_osd
   set_fact:
     docker_exec_start_osd: "{{ 'docker run --rm --ulimit nofile=1024:1024 --privileged=true -v /run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket -v /var/run/udev/:/var/run/udev/:z -v /etc/ceph:/etc/ceph:z -v /dev:/dev --entrypoint=ceph-volume ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'ceph-volume' }}"
+  when: osd_scenario == 'lvm'
 
 - name: collect osd ids
   shell: >
     {{ docker_exec_start_osd }} lvm list --format json
   changed_when: false
   failed_when: false
-  register: ceph_osd_ids
+  register: ceph_volume_osd_ids
+  when: osd_scenario == 'lvm'
 
 - name: generate systemd unit file
   become: true
@@ -70,13 +104,41 @@
   when:
     - containerized_deployment
 
+- name: device to ID migration
+  when:
+    - containerized_deployment | bool
+    - osd_scenario != 'lvm'
+  block:
+    - name: check ceph-osd service using device name
+      shell: |
+        systemctl list-units | grep -E "loaded * active" | grep -coE "ceph-osd@([a-z]+|nvme[0-9]+n[0-9]+).service"
+      register: ceph_osd_device_name
+      changed_when: false
+      failed_when: false
+
+    - name: copy systemd-device-to-id.sh script
+      template:
+        src: systemd-device-to-id.sh.j2
+        dest: /tmp/systemd-device-to-id.sh
+        owner: root
+        group: root
+        mode: 0750
+      when: ceph_osd_device_name.stdout|int != 0
+
+    - name: run the systemd-device-to-id.sh script
+      command: /usr/bin/env bash /tmp/systemd-device-to-id.sh
+      when: ceph_osd_device_name.stdout|int != 0
+      with_items: "{{ groups[osd_group_name] }}"
+      delegate_to: "{{ item }}"
+      run_once: true
+
 - name: systemd start osd
   systemd:
-    name: ceph-osd@{{ item | regex_replace('/dev/', '') if osd_scenario != 'lvm' and containerized_deployment else item }}
+    name: ceph-osd@{{ item }}
     state: started
     enabled: yes
     daemon_reload: yes
-  with_items: "{{ devices if osd_scenario != 'lvm' and containerized_deployment else ((ceph_osd_ids.stdout | from_json).keys() | list) if osd_scenario == 'lvm' and not containerized_deployment else osd_ids_non_container.stdout_lines }}"
+  with_items: "{{ ((ceph_volume_osd_ids.stdout | from_json).keys() | list) if osd_scenario == 'lvm' else ceph_disk_osd_ids.stdout_lines }}"
 
 - name: ensure systemd service override directory exists
   file:
