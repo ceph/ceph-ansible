@@ -31,6 +31,7 @@
       CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       PYTHONIOENCODING: utf-8
+    changed_when: false
     when: devices | default([]) | length > 0
 
   - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report'
@@ -49,6 +50,7 @@
       CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       PYTHONIOENCODING: utf-8
+    changed_when: false
     when:
       - devices | default([]) | length > 0
       - not (lvm_batch_report.stdout | from_json).changed
