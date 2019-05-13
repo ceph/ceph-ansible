@@ -517,33 +517,13 @@
     when: not is_atomic
     ignore_errors: true
 
-  - name: debian based systems tasks
-    block:
-      - name: remove docker-py on debian
-        pip:
-          name: docker-py
-          state: absent
-
-      - name: remove six on debian
-        pip:
-          name: six
-          state: absent
-
-      - name: remove pip and docker on debian
-        apt:
-          name: ['python-pip', 'docker-engine']
-          state: absent
-          update_cache: yes
-          autoremove: yes
-    when: ansible_distribution == 'Debian'
-
-  - name: remove pip and docker on ubuntu
+  - name: remove docker on debian/ubuntu
     apt:
-      name: ['python-pip', 'docker', 'docker.io']
+      name: ['docker-ce', 'docker-engine', 'docker.io', 'python-docker', 'python3-docker']
       state: absent
       update_cache: yes
       autoremove: yes
-    when: ansible_distribution == 'Ubuntu'
+    when: ansible_os_family == 'Debian'
 
   - name: red hat based systems tasks
     block:
@@ -551,7 +531,7 @@
         block:
           - name: remove packages on redhat
             yum:
-              name: ['epel-release', 'python-pip', 'docker-engine', 'docker']
+              name: ['epel-release', 'docker', 'python-docker-py']
               state: absent
 
           - name: remove package dependencies on redhat
@@ -568,9 +548,9 @@
 
       - name: dnf related tasks on red hat
         block:
-          - name: remove pip and docker on redhat
+          - name: remove docker on redhat
             dnf:
-              name: ['python-pip', 'docker-engine', 'docker']
+              name: ['docker', 'python3-docker']
               state: absent
 
           - name: remove package dependencies on redhat
@@ -613,7 +593,7 @@
       - /var/log/ceph
 
   - name: remove data
-    shell: rm -rf /var/lib/ceph/*
+    shell: rm -rf /var/lib/ceph/* /var/lib/docker/*
 
 - name: purge fetch directory
 
