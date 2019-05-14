@@ -421,13 +421,13 @@
         - ceph_release in ["nautilus", "octopus"]
         - not containerized_deployment
 
-    - name: set_fact docker_exec_cmd_osd
+    - name: set_fact container_exec_cmd_osd
       set_fact:
-        docker_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        container_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when: containerized_deployment
 
     - name: get osd versions
-      command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
+      command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
       register: ceph_versions
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
@@ -439,19 +439,19 @@
     # length == 1 means there is a single osds versions entry
     # thus all the osds are running the same version
     - name: osd set sortbitwise
-      command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} osd set sortbitwise"
+      command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} osd set sortbitwise"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when:
         - (ceph_versions.get('stdout', '{}')|from_json).get('osd', {}) | length == 1
         - ceph_versions_osd | string is search("ceph version 10")
 
     - name: get num_pgs - non container
-      command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} -s --format json"
+      command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} -s --format json"
       register: ceph_pgs
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: waiting for clean pgs...
-      command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} -s --format json"
+      command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} -s --format json"
       register: ceph_health_post
       until: >
         (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) > 0)
@@ -475,20 +475,20 @@
     - import_role:
         name: ceph-facts
 
-    - name: set_fact docker_exec_cmd_osd
+    - name: set_fact container_exec_cmd_osd
       set_fact:
-        docker_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        container_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when: containerized_deployment
 
     - name: unset osd flags
-      command: "{{ docker_exec_cmd_update_osd|default('') }} ceph osd unset {{ item }} --cluster {{ cluster }}"
+      command: "{{ container_exec_cmd_update_osd|default('') }} ceph osd unset {{ item }} --cluster {{ cluster }}"
       with_items:
         - noout
         - norebalance
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: get osd versions
-      command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
+      command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
       register: ceph_versions
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
@@ -500,7 +500,7 @@
     # length == 1 means there is a single osds versions entry
     # thus all the osds are running the same version
     - name: complete osds upgrade
-      command: "{{ docker_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} osd require-osd-release luminous"
+      command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} osd require-osd-release luminous"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when:
         - (ceph_versions.get('stdout', '{}')|from_json).get('osd', {}) | length == 1
@@ -845,17 +845,17 @@
     - import_role:
         name: ceph-defaults
 
-    - name: set_fact docker_exec_cmd_status
+    - name: set_fact container_exec_cmd_status
       set_fact:
-        docker_exec_cmd_status: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        container_exec_cmd_status: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when: containerized_deployment
 
     - name: show ceph status
-      command: "{{ docker_exec_cmd_status|default('') }} ceph --cluster {{ cluster }} -s"
+      command: "{{ container_exec_cmd_status|default('') }} ceph --cluster {{ cluster }} -s"
       run_once: True
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: show all daemons version
-      command: "{{ docker_exec_cmd_status|default('') }} ceph --cluster {{ cluster }} versions"
+      command: "{{ container_exec_cmd_status|default('') }} ceph --cluster {{ cluster }} versions"
       run_once: True
       delegate_to: "{{ groups[mon_group_name][0] }}"
