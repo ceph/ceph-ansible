@@ -1,7 +1,7 @@
 ---
-- name: set_fact docker_exec_cmd mds
+- name: set_fact container_exec_cmd mds
   set_fact:
-    docker_exec_cmd: "{{ container_binary }} exec ceph-mds-{{ ansible_hostname }}"
+    container_exec_cmd: "{{ container_binary }} exec ceph-mds-{{ ansible_hostname }}"
 
 - name: set_fact admin_keyring
   set_fact:
@@ -62,7 +62,7 @@
     daemon_reload: yes
 
 - name: wait for mds socket to exist
-  command: "{{ docker_exec_cmd }} sh -c 'stat /var/run/ceph/{{ cluster }}-mds.{{ ansible_hostname }}.asok || stat /var/run/ceph/{{ cluster }}-mds.{{ ansible_fqdn }}.asok'"
+  command: "{{ container_exec_cmd }} sh -c 'stat /var/run/ceph/{{ cluster }}-mds.{{ ansible_hostname }}.asok || stat /var/run/ceph/{{ cluster }}-mds.{{ ansible_fqdn }}.asok'"
   changed_when: false
   register: multi_mds_socket
   retries: 5

@@ -36,9 +36,9 @@
     monitor_name: "{{ ansible_fqdn }}"
   when: mon_use_fqdn
 
-- name: set_fact docker_exec_cmd
+- name: set_fact container_exec_cmd
   set_fact:
-    docker_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] if not rolling_update else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}"
+    container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] if not rolling_update else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}"
   when:
     - containerized_deployment
     - groups.get(mon_group_name, []) | length > 0
@@ -47,7 +47,7 @@
 # because it blindly picks a mon, which may be down because
 # of the rolling update
 - name: is ceph running already?
-  command: "{{ timeout_command }} {{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
+  command: "{{ timeout_command }} {{ container_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
   changed_when: false
   failed_when: false
   check_mode: no
@@ -76,7 +76,7 @@
   when: cephx or generate_fsid
 
 - name: get current fsid
-  command: "{{ timeout_command }} {{ docker_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }} config get fsid"
+  command: "{{ timeout_command }} {{ container_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }} config get fsid"
   register: rolling_update_fsid
   delegate_to: "{{ mon_host | default(groups[mon_group_name][0]) }}"
   when: rolling_update
