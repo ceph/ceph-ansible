@@ -54,7 +54,7 @@ EXAMPLES = '''
   ceph_crush:
     cluster: "{{ cluster }}"
     location: "{{ hostvars[item]['osd_crush_location'] }}"
-    containerized: "{{ docker_exec_cmd }}"
+    containerized: "{{ container_exec_cmd }}"
   with_items: "{{ groups[osd_group_name] }}"
   when: crush_rule_config
 '''
