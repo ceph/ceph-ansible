@@ -94,9 +94,6 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
-    - import_role:
         name: ceph-common
     - import_role:
         name: ceph-config
@@ -139,9 +136,6 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
-    - import_role:
         name: ceph-common
     - import_role:
         name: ceph-config
@@ -180,9 +174,6 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
     - import_role:
         name: ceph-common
     - import_role:
@@ -223,9 +214,6 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
-    - import_role:
         name: ceph-common
     - import_role:
         name: ceph-config
@@ -264,9 +252,6 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
     - import_role:
         name: ceph-common
     - import_role:
@@ -307,9 +292,6 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
-    - import_role:
         name: ceph-common
     - import_role:
         name: ceph-config
@@ -348,9 +330,6 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
     - import_role:
         name: ceph-common
     - import_role:
@@ -391,9 +370,6 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
-    - import_role:
         name: ceph-common
     - import_role:
         name: ceph-config
@@ -432,9 +408,6 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
     - import_role:
         name: ceph-common
     - import_role:
@@ -477,9 +450,6 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
-    - import_role:
         name: ceph-common
     - import_role:
         name: ceph-config
@@ -517,6 +487,23 @@
       run_once: true
       when: not ceph_status.failed
 
+- hosts: all
+  become: true
+  tasks:
+    - block:
+        - import_role:
+            name: ceph-defaults
+        - import_role:
+            name: ceph-facts
+        - import_role:
+            name: ceph-handler
+        - import_role:
+            name: ceph-container-common
+        - import_role:
+            name: ceph-node-exporter
+      when: dashboard_enabled
+
+
 - hosts: grafana-server
   become: true
   tasks:
@@ -530,9 +517,6 @@
       when: dashboard_enabled
     - import_role:
         name: ceph-handler
-      when: dashboard_enabled
-    - import_role:
-        name: ceph-node-exporter
       when: dashboard_enabled
     - import_role:
         name: ceph-common
