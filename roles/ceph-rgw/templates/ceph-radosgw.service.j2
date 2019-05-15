@@ -1,17 +1,26 @@
 [Unit]
 Description=Ceph RGW
+{% if container_binary == 'docker' %}
 After=docker.service
+{% endif %}
+{% set cpu_limit = ansible_processor_vcpus|int if ceph_rgw_docker_cpu_limit|int > ansible_processor_vcpus|int else ceph_rgw_docker_cpu_limit|int %}
 
 [Service]
-EnvironmentFile=/var/lib/ceph/radosgw/ceph-%i/EnvironmentFile
+EnvironmentFile=/var/lib/ceph/radosgw/{{ cluster }}-%i/EnvironmentFile
 ExecStartPre=-/usr/bin/{{ container_binary }} stop ceph-rgw-{{ ansible_hostname }}-${INST_NAME}
 ExecStartPre=-/usr/bin/{{ container_binary }} rm ceph-rgw-{{ ansible_hostname }}-${INST_NAME}
 ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   --memory={{ ceph_rgw_docker_memory_limit }} \
   {% if (container_binary == 'docker' and ceph_docker_version.split('.')[0] is version_compare('13', '>=')) or container_binary == 'podman' -%}
-  --cpus={{ ceph_rgw_docker_cpu_limit }} \
+  --cpus={{ cpu_limit }} \
   {% else -%}
-  --cpu-quota={{ ceph_rgw_docker_cpu_limit * 100000 }} \
+  --cpu-quota={{ cpu_limit * 100000 }} \
+  {% endif -%}
+  {% if ceph_rgw_docker_cpuset_cpus is defined -%}
+  --cpuset-cpus="{{ ceph_rgw_docker_cpuset_cpus }}" \
+  {% endif -%}
+  {% if ceph_rgw_docker_cpuset_mems is defined -%}
+  --cpuset-mems="{{ ceph_rgw_docker_cpuset_mems }}" \
   {% endif -%}
   -v /var/lib/ceph:/var/lib/ceph:z \
   -v /etc/ceph:/etc/ceph:z \
@@ -24,6 +33,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   -e CLUSTER={{ cluster }} \
   -e RGW_NAME={{ ansible_hostname }}.${INST_NAME} \
   -e RGW_CIVETWEB_PORT=${INST_PORT} \
+  -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
   --name=ceph-rgw-{{ ansible_hostname }}-${INST_NAME} \
   {{ ceph_rgw_docker_extra_env }} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}

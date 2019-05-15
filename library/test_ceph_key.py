@@ -104,8 +104,8 @@ class TestCephKeyModule(object):
             'osd': 'allow rwx',
         }
         fake_dest = "/fake/ceph"
-        fake_file_destination = os.path.join(
-            fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         expected_command_list = [
             'ceph-authtool',
             '--create-keyring',
@@ -134,8 +134,8 @@ class TestCephKeyModule(object):
             'osd': 'allow rwx',
         }
         fake_dest = "/fake/ceph"
-        fake_file_destination = os.path.join(
-            fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker',
                                  'run',
@@ -174,8 +174,8 @@ class TestCephKeyModule(object):
         }
         fake_import_key = True
         fake_dest = "/fake/ceph"
-        fake_file_destination = os.path.join(
-            fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         expected_command_list = [
             ['ceph-authtool', '--create-keyring', fake_file_destination, '--name', fake_name,  # noqa E501
                 '--add-key', fake_secret, '--cap', 'mon', 'allow *', '--cap', 'osd', 'allow rwx'],  # noqa E501
@@ -198,8 +198,8 @@ class TestCephKeyModule(object):
         }
         fake_dest = "/fake/ceph"
         fake_import_key = True
-        fake_file_destination = os.path.join(
-            fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = [
             ['docker',   # noqa E128
@@ -247,8 +247,8 @@ class TestCephKeyModule(object):
         }
         fake_dest = "/fake/ceph"
         fake_import_key = False
-        fake_file_destination = os.path.join(
-            fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         # create_key passes (one for ceph-authtool and one for itself) itw own array so the expected result is an array within an array # noqa E501
         expected_command_list = [[
             'ceph-authtool',
@@ -281,8 +281,8 @@ class TestCephKeyModule(object):
         }
         fake_dest = "/fake/ceph"
         fake_import_key = False
-        fake_file_destination = os.path.join(
-            fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         # create_key passes (one for ceph-authtool and one for itself) itw own array so the expected result is an array within an array # noqa E501
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = [['docker',   # noqa E128
@@ -440,8 +440,8 @@ class TestCephKeyModule(object):
         fake_name = "client.fake"
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         fake_dest = "/fake/ceph"
-        fake_file_destination = os.path.join(
-            fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         expected_command_list = [['docker',   # noqa E128
                                  'run',
                                  '--rm',
@@ -465,8 +465,8 @@ class TestCephKeyModule(object):
         fake_cluster = "fake"
         fake_dest = "/fake/ceph"
         fake_name = "client.fake"
-        fake_file_destination = os.path.join(
-            fake_dest + "/" + fake_cluster + "." + fake_name + ".keyring")
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         expected_command_list = [
             ['ceph', '-n', "client.admin", '-k', "/etc/ceph/fake.client.admin.keyring",  # noqa E501
                 '--cluster', fake_cluster, 'auth', 'get', fake_name, '-o', fake_file_destination],  # noqa E501
@@ -479,7 +479,8 @@ class TestCephKeyModule(object):
         fake_hostname = "mon01"
         fake_cluster = "fake"
         fake_user = "mon."
-        fake_key = os.path.join("/var/lib/ceph/mon/" + fake_cluster + "-" + fake_hostname + "/keyring") # noqa E501
+        fake_keyring_dirname = fake_cluster + "-" + fake_hostname
+        fake_key = os.path.join("/var/lib/ceph/mon/", fake_keyring_dirname, 'keyring') # noqa E501
         expected_command_list = [
             ['ceph', '-n', "mon.", '-k', "/var/lib/ceph/mon/fake-mon01/keyring",  # noqa E501
                 '--cluster', fake_cluster, 'auth', 'ls', '-f', 'json'],
@@ -491,7 +492,8 @@ class TestCephKeyModule(object):
         fake_hostname = "mon01"
         fake_cluster = "fake"
         fake_user = "mon."
-        fake_key = os.path.join("/var/lib/ceph/mon/" + fake_cluster + "-" + fake_hostname + "/keyring") # noqa E501
+        fake_keyring_dirname = fake_cluster + "-" + fake_hostname
+        fake_key = os.path.join("/var/lib/ceph/mon/", fake_keyring_dirname, 'keyring') # noqa E501
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = [['docker',   # noqa E128
                                  'run',

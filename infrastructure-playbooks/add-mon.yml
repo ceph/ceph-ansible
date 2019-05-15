@@ -1,0 +1,67 @@
+---
+# This playbook is used to add a new MON to
+# an existing cluster. It can run from any machine. Even if the fetch
+# directory is not present it will be created.
+#
+# Ensure that all monitors are present in the mons
+# group in your inventory so that the ceph configuration file
+# is created correctly for the new OSD(s).
+- hosts: mons
+  gather_facts: false
+  vars:
+    delegate_facts_host: true
+  pre_tasks:
+    - name: gather facts
+      setup:
+      when: not delegate_facts_host | bool
+    - import_role:
+        name: ceph-defaults
+    - name: gather and delegate facts
+      setup:
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      with_items: "{{ groups[mon_group_name] }}"
+      run_once: true
+      when: delegate_facts_host | bool
+  tasks:
+    - import_role:
+        name: ceph-facts
+    - import_role:
+        name: ceph-validate
+
+- hosts: mons
+  gather_facts: false
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+    - import_role:
+        name: ceph-handler
+    - import_role:
+        name: ceph-common
+      when: not containerized_deployment | bool
+    - import_role:
+        name: ceph-container-common
+      when: containerized_deployment | bool
+    - import_role:
+        name: ceph-config
+    - import_role:
+        name: ceph-infra
+    - import_role:
+        name: ceph-mon
+
+# update config files on OSD nodes
+- hosts: osds
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+    - import_role:
+        name: ceph-handler
+    - import_role:
+        name: ceph-config

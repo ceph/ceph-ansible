@@ -76,23 +76,16 @@ fetch_directory: ~/ceph-ansible-keys
 ############
 # PACKAGES #
 ############
-#debian_package_dependencies:
-#  - python-pycurl
+#debian_package_dependencies: []
 
 #centos_package_dependencies:
-#  - python-pycurl
 #  - epel-release
-#  - python-setuptools
 #  - libselinux-python
 
-#redhat_package_dependencies:
-#  - python-pycurl
-#  - python-setuptools
+#redhat_package_dependencies: []
 
 #suse_package_dependencies:
-#  - python-pycurl
 #  - python-xml
-#  - python-setuptools
 
 # Whether or not to install the ceph-test package.
 #ceph_test: false
@@ -173,23 +166,13 @@ ceph_repository: rhcs
 #ceph_stable_redhat_distro: el7
 
 
-# REPOSITORY: RHCS VERSION RED HAT STORAGE (from 1.3)
+# REPOSITORY: RHCS VERSION RED HAT STORAGE (from 4.0)
 #
 # Enabled when ceph_repository == 'rhcs'
 #
-# This version is only supported on RHEL >= 7.1
-# As of RHEL 7.1, libceph.ko and rbd.ko are now included in Red Hat's kernel
-# packages natively. The RHEL 7.1 kernel packages are more stable and secure than
-# using these 3rd-party kmods with RHEL 7.0. Please update your systems to RHEL
-# 7.1 or later if you want to use the kernel RBD client.
+# This version is only supported on RHEL >= 8.0
 #
-# The CephFS kernel client is undergoing rapid development upstream, and we do
-# not recommend running the CephFS kernel module on RHEL 7's 3.10 kernel at this
-# time. Please use ELRepo's latest upstream 4.x kernels if you want to run CephFS
-# on RHEL 7.
-#
-#
-ceph_rhcs_version: 3
+ceph_rhcs_version: 4
 #valid_ceph_repository_type:
 #  - cdn
 #  - iso
@@ -212,7 +195,7 @@ ceph_rhcs_version: 3
 #
 #ceph_stable_repo_uca: "http://ubuntu-cloud.archive.canonical.com/ubuntu"
 #ceph_stable_openstack_release_uca: queens
-#ceph_stable_release_uca: "{{ansible_lsb.codename}}-updates/{{ceph_stable_openstack_release_uca}}"
+#ceph_stable_release_uca: "{{ ansible_lsb.codename }}-updates/{{ ceph_stable_openstack_release_uca }}"
 
 # REPOSITORY: openSUSE OBS
 #
@@ -344,6 +327,12 @@ ceph_rhcs_version: 3
 #ip_version: ipv4
 #mon_use_fqdn: false # if set to true, the MON name used will be the fqdn in the ceph.conf
 
+#mon_host_v1:
+#  enabled: True
+#  suffix: ':6789'
+#mon_host_v2:
+#  suffix: ':3300'
+
 ##########
 # CEPHFS #
 ##########
@@ -351,9 +340,24 @@ ceph_rhcs_version: 3
 #cephfs_data: cephfs_data # name of the data pool for a given filesystem
 #cephfs_metadata: cephfs_metadata # name of the metadata pool for a given filesystem
 
+#cephfs_data_pool:
+#  name: "{{ cephfs_data }}"
+#  pgs: "{{ osd_pool_default_pg_num }}"
+#  size: "{{ osd_pool_default_size }}"
+#  min_size: "{{ osd_pool_default_min_size }}"
+#  rule_name: "replicated_rule"
+
+#cephfs_metadata_pool:
+#  name: "{{ cephfs_metadata }}"
+#  pgs: "{{ osd_pool_default_pg_num }}"
+#  size: "{{ osd_pool_default_size }}"
+#  min_size: "{{ osd_pool_default_min_size }}"
+#  rule_name: "replicated_rule"
+
+
 #cephfs_pools:
-#  - { name: "{{ cephfs_data }}", pgs: "{{ osd_pool_default_pg_num }}", size: "{{ osd_pool_default_size }}" }
-#  - { name: "{{ cephfs_metadata }}", pgs: "{{ osd_pool_default_pg_num }}", size: "{{ osd_pool_default_size }}" }
+#  - "{{ cephfs_data_pool }}"
+#  - "{{ cephfs_metadata_pool }}"
 
 ## OSD options
 #
@@ -387,17 +391,18 @@ ceph_rhcs_version: 3
 
 ## Rados Gateway options
 #
-#radosgw_frontend_type: civetweb # For additionnal frontends see: http://docs.ceph.com/docs/mimic/radosgw/frontends/
+#radosgw_frontend_type: beast # For additionnal frontends see: http://docs.ceph.com/docs/nautilus/radosgw/frontends/
 
 #radosgw_civetweb_port: 8080
-#radosgw_civetweb_num_threads: 100
+#radosgw_civetweb_num_threads: 512
 #radosgw_civetweb_options: "num_threads={{ radosgw_civetweb_num_threads }}"
 # For additional civetweb configuration options available such as SSL, logging,
 # keepalive, and timeout settings, please see the civetweb docs at
 # https://github.com/civetweb/civetweb/blob/master/docs/UserManual.md
 
 #radosgw_frontend_port: "{{ radosgw_civetweb_port if radosgw_frontend_type == 'civetweb' else '8080' }}"
-#radosgw_frontend_options: "{{ radosgw_civetweb_options if radosgw_frontend_type == 'civetweb' }}"
+#radosgw_frontend_options: "{{ radosgw_civetweb_options if radosgw_frontend_type == 'civetweb' else '' }}"
+#radosgw_thread_pool_size: 512
 
 
 # You must define either radosgw_interface, radosgw_address.
@@ -478,13 +483,22 @@ ceph_rhcs_version: 3
 #rgw_multisite: false
 
 # The following Multi-site related variables should be set by the user.
+#
+# If there is more than 1 RGW in a master or secondary cluster than rgw_multisite_endpoints needs to be a comma seperated list (with no spaces) of the RGW endpoints in the format:
+# {{ rgw_multisite_proto }}://{{ ansible_fqdn }}:{{ radosgw_frontend_port }}
+# ex: rgw_multisite_endpoints: http://foo.example.com:8080,http://bar.example.com:8080,http://baz.example.com:8080
+#
+# If there is only 1 RGW in the inventory, rgw_multisite_endpoints does not need to change
+#
 # rgw_zone is set to "default" to enable compression for clusters configured without rgw multi-site
 # If multisite is configured rgw_zone should not be set to "default". See README-MULTISITE.md for an example.
 #rgw_zone: default
 
 #rgw_zonemaster: true
 #rgw_zonesecondary: false
+#rgw_multisite_proto: "http"
 #rgw_multisite_endpoint_addr: "{{ ansible_fqdn }}"
+#rgw_multisite_endpoints_list: "{{ rgw_multisite_proto }}://{{ ansible_fqdn }}:{{ radosgw_frontend_port }}"
 #rgw_zonegroup: solarsystem # should be set by the user
 #rgw_zone_user: zone.user
 #rgw_realm: milkyway # should be set by the user
@@ -493,8 +507,8 @@ ceph_rhcs_version: 3
 
 # Multi-site remote pull URL variables
 #rgw_pull_port: "{{ radosgw_civetweb_port }}"
-#rgw_pull_proto: "http"
-#rgw_pullhost: localhost # rgw_pullhost only needs to be declared if there is a zone secondary. It should be the same as rgw_multisite_endpoint_addr for the master cluster
+#rgw_pull_proto: "http" # should be the same as rgw_multisite_proto for the master zone cluster
+#rgw_pullhost: localhost # rgw_pullhost only needs to be declared if there is a zone secondary. It should be the same as rgw_multisite_endpoint_addr for the master zone cluster
 
 
 ###################
@@ -544,9 +558,9 @@ ceph_rhcs_version: 3
 ##########
 #docker_exec_cmd:
 #docker: false
-ceph_docker_image: "rhceph-3-rhel7"
+ceph_docker_image: "rhceph/rhceph-4-rhel8"
 ceph_docker_image_tag: "latest"
-ceph_docker_registry: "registry.access.redhat.com/rhceph/"
+ceph_docker_registry: "registry.access.redhat.com"
 ## Client only docker image - defaults to {{ ceph_docker_image }}
 #ceph_client_docker_image: "{{ ceph_docker_image }}"
 #ceph_client_docker_image_tag: "{{ ceph_docker_image_tag }}"
@@ -583,6 +597,7 @@ ceph_docker_registry: "registry.access.redhat.com/rhceph/"
 #  expected_num_objects: ""
 #  application: "rbd"
 #  size: "{{ osd_pool_default_size }}"
+#  min_size: "{{ osd_pool_default_min_size }}"
 #openstack_cinder_pool:
 #  name: "volumes"
 #  pg_num: "{{ osd_pool_default_pg_num }}"
@@ -593,6 +608,7 @@ ceph_docker_registry: "registry.access.redhat.com/rhceph/"
 #  expected_num_objects: ""
 #  application: "rbd"
 #  size: "{{ osd_pool_default_size }}"
+#  min_size: "{{ osd_pool_default_min_size }}"
 #openstack_nova_pool:
 #  name: "vms"
 #  pg_num: "{{ osd_pool_default_pg_num }}"
@@ -603,6 +619,7 @@ ceph_docker_registry: "registry.access.redhat.com/rhceph/"
 #  expected_num_objects: ""
 #  application: "rbd"
 #  size: "{{ osd_pool_default_size }}"
+#  min_size: "{{ osd_pool_default_min_size }}"
 #openstack_cinder_backup_pool:
 #  name: "backups"
 #  pg_num: "{{ osd_pool_default_pg_num }}"
@@ -613,6 +630,7 @@ ceph_docker_registry: "registry.access.redhat.com/rhceph/"
 #  expected_num_objects: ""
 #  application: "rbd"
 #  size: "{{ osd_pool_default_size }}"
+#  min_size: "{{ osd_pool_default_min_size }}"
 #openstack_gnocchi_pool:
 #  name: "metrics"
 #  pg_num: "{{ osd_pool_default_pg_num }}"
@@ -623,6 +641,7 @@ ceph_docker_registry: "registry.access.redhat.com/rhceph/"
 #  expected_num_objects: ""
 #  application: "rbd"
 #  size: "{{ osd_pool_default_size }}"
+#  min_size: "{{ osd_pool_default_min_size }}"
 #openstack_cephfs_data_pool:
 #  name: "manila_data"
 #  pg_num: "{{ osd_pool_default_pg_num }}"
@@ -633,6 +652,7 @@ ceph_docker_registry: "registry.access.redhat.com/rhceph/"
 #  expected_num_objects: ""
 #  application: "rbd"
 #  size: "{{ osd_pool_default_size }}"
+#  min_size: "{{ osd_pool_default_min_size }}"
 #openstack_cephfs_metadata_pool:
 #  name: "manila_metadata"
 #  pg_num: "{{ osd_pool_default_pg_num }}"
@@ -643,6 +663,7 @@ ceph_docker_registry: "registry.access.redhat.com/rhceph/"
 #  expected_num_objects: ""
 #  application: "rbd"
 #  size: "{{ osd_pool_default_size }}"
+#  min_size: "{{ osd_pool_default_min_size }}"
 
 #openstack_pools:
 #  - "{{ openstack_glance_pool }}"

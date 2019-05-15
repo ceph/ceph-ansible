@@ -1,23 +1,19 @@
 ---
 - name: include create_ceph_initial_dirs.yml
   include_tasks: create_ceph_initial_dirs.yml
+  when: containerized_deployment|bool
+
+- name: config file operations related to OSDs
   when:
-    - containerized_deployment|bool
-
-- block:
-  - name: count number of osds for ceph-disk scenarios
-    set_fact:
-      num_osds: "{{ devices | length | int }}"
-    when:
-      - devices | default([]) | length > 0
-      - osd_scenario in ['collocated', 'non-collocated']
-
+    - inventory_hostname in groups.get(osd_group_name, [])
+    # the rolling_update.yml playbook sets num_osds to the number of currently
+    # running osds
+    - not rolling_update
+  block:
   - name: count number of osds for lvm scenario
     set_fact:
       num_osds: "{{ lvm_volumes | length | int }}"
-    when:
-      - lvm_volumes | default([]) | length > 0
-      - osd_scenario == 'lvm'
+    when: lvm_volumes | default([]) | length > 0
 
   - name: run 'ceph-volume lvm batch --report' to see how many osds are to be created
     ceph_volume:
@@ -34,16 +30,14 @@
       CEPH_VOLUME_DEBUG: 1
       CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-    when:
-      - devices | default([]) | length > 0
-      - osd_scenario == 'lvm'
+      PYTHONIOENCODING: utf-8
+    when: devices | default([]) | length > 0
 
   - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report'
     set_fact:
       num_osds: "{{ (lvm_batch_report.stdout | from_json).osds | length | int }}"
     when:
       - devices | default([]) | length > 0
-      - osd_scenario == 'lvm'
       - (lvm_batch_report.stdout | from_json).changed
 
   - name: run 'ceph-volume lvm list' to see how many osds have already been created
@@ -54,9 +48,9 @@
       CEPH_VOLUME_DEBUG: 1
       CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      PYTHONIOENCODING: utf-8
     when:
       - devices | default([]) | length > 0
-      - osd_scenario == 'lvm'
       - not (lvm_batch_report.stdout | from_json).changed
 
   - name: set_fact num_osds from the output of 'ceph-volume lvm list'
@@ -64,14 +58,12 @@
       num_osds: "{{ lvm_list.stdout | from_json | length | int }}"
     when:
       - devices | default([]) | length > 0
-      - osd_scenario == 'lvm'
       - not (lvm_batch_report.stdout | from_json).changed
 
-  when:
-      - inventory_hostname in groups.get(osd_group_name, [])
-
 # ceph-common
-- block:
+- name: config file operation for non-containerized scenarios
+  when: not containerized_deployment|bool
+  block:
   - name: create ceph conf directory
     file:
       path: "/etc/ceph"
@@ -106,8 +98,7 @@
       state: directory
       mode: "0755"
     delegate_to: localhost
-    when:
-      - ceph_conf_local
+    when: ceph_conf_local
 
   - name: "generate {{ cluster }}.conf configuration file locally"
     config_template:
@@ -122,10 +113,10 @@
     when:
       - inventory_hostname in groups[mon_group_name]
       - ceph_conf_local
-  when:
-    - not containerized_deployment|bool
 
-- block:
+- name: config file operations for containerized scenarios
+  when: containerized_deployment|bool
+  block:
   - name: create a local fetch directory if it does not exist
     file:
       path: "{{ fetch_directory }}"
@@ -156,6 +147,3 @@
       - restart ceph rgws
       - restart ceph mgrs
       - restart ceph rbdmirrors
-
-  when:
-    - containerized_deployment|bool

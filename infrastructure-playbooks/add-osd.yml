@@ -20,6 +20,7 @@
   - osds
 
   gather_facts: False
+  become: true
 
   vars:
     delegate_facts_host: True
@@ -27,24 +28,22 @@
   pre_tasks:
     - name: gather facts
       setup:
-      when:
-        - not delegate_facts_host | bool
+      when: not delegate_facts_host | bool
+
+    - import_role:
+        name: ceph-defaults
 
     - name: gather and delegate facts
       setup:
       delegate_to: "{{ item }}"
       delegate_facts: True
       with_items:
-        - "{{ groups['mons'] }}"
-        - "{{ groups['osds'] }}"
+        - "{{ groups[mon_group_name] }}"
+        - "{{ groups[osd_group_name] }}"
       run_once: True
-      when:
-        - delegate_facts_host | bool
+      when: delegate_facts_host | bool
 
   tasks:
-    - import_role:
-        name: ceph-defaults
-
     - import_role:
         name: ceph-facts
 
@@ -62,19 +61,20 @@
 
     - name: gather facts
       setup:
-      when:
-        - not delegate_facts_host | bool
+      when: not delegate_facts_host | bool
+
+    - import_role:
+        name: ceph-defaults
 
     - name: gather and delegate facts
       setup:
       delegate_to: "{{ item }}"
       delegate_facts: True
       with_items:
-        - "{{ groups['mons'] }}"
-        - "{{ groups['osds'] }}"
+        - "{{ groups[mon_group_name] }}"
+        - "{{ groups[osd_group_name] }}"
       run_once: True
-      when:
-        - delegate_facts_host | bool
+      when: delegate_facts_host | bool
 
     # this task is needed so we can skip the openstack_config.yml include in roles/ceph-osd
     - name: set_fact add_osd
@@ -88,9 +88,6 @@
       changed_when: False
 
   tasks:
-    - import_role:
-        name: ceph-defaults
-
     - import_role:
         name: ceph-facts
 

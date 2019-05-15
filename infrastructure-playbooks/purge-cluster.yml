@@ -41,7 +41,7 @@
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
 
   become: true
 
@@ -53,8 +53,7 @@
   vars:
     mds_group_name: mdss
 
-  hosts:
-    - "{{ mds_group_name|default('mdss') }}"
+  hosts: "{{ mds_group_name|default('mdss') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -75,8 +74,7 @@
   vars:
     mgr_group_name: mgrs
 
-  hosts:
-    - "{{ mgr_group_name|default('mgrs') }}"
+  hosts: "{{ mgr_group_name|default('mgrs') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -98,8 +96,7 @@
   vars:
     rgw_group_name: rgws
 
-  hosts:
-    - "{{ rgw_group_name|default('rgws') }}"
+  hosts: "{{ rgw_group_name|default('rgws') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -120,8 +117,7 @@
   vars:
     rbdmirror_group_name: rbdmirrors
 
-  hosts:
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+  hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -141,8 +137,7 @@
   vars:
     nfs_group_name: nfss
 
-  hosts:
-    - "{{ nfs_group_name|default('nfss') }}"
+  hosts: "{{ nfs_group_name|default('nfss') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -164,8 +159,7 @@
     osd_group_name: osds
     reboot_osd_node: False
 
-  hosts:
-    - "{{ osd_group_name|default('osds') }}"
+  hosts: "{{ osd_group_name|default('osds') }}"
 
   gather_facts: false # Already gathered previously
 
@@ -257,11 +251,6 @@
       - reboot_osd_node
       - remove_osd_mountpoints.failed is defined
 
-  - name: see if ceph-disk is installed
-    shell: "which ceph-disk"
-    failed_when: false
-    register: ceph_disk_present
-
   - name: wipe table on dm-crypt devices
     command: dmsetup wipe_table --force "{{ item }}"
     with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
@@ -323,7 +312,7 @@
       CEPH_VOLUME_DEBUG: 1
     with_items: "{{ lvm_volumes }}"
     when:
-      - osd_scenario == "lvm"
+      - lvm_volumes | default([]) | length > 0
       - ceph_volume_present.rc == 0
 
   - name: zap and destroy osds created by ceph-volume with devices
@@ -334,7 +323,7 @@
       CEPH_VOLUME_DEBUG: 1
     with_items: "{{ devices | default([]) }}"
     when:
-      - osd_scenario == "lvm"
+      - devices | default([]) | length > 0
       - ceph_volume_present.rc == 0
 
   - name: get ceph block partitions
@@ -373,8 +362,7 @@
   - name: resolve parent device
     command: lsblk --nodeps -no pkname "{{ item }}"
     register: tmp_resolved_parent_device
-    with_items:
-      - "{{ combined_devices_list }}"
+    with_items: "{{ combined_devices_list }}"
 
   - name: set_fact resolved_parent_device
     set_fact:
@@ -383,7 +371,7 @@
   - name: wipe partitions
     shell: |
       wipefs --all "{{ item }}"
-      dd if=/dev/zero of="{{ item }}" bs=1 count=4096
+      dd if=/dev/zero of="{{ item }}" bs=1 count=4096
     with_items: "{{ combined_devices_list }}"
 
   - name: zap ceph journal/block db/block wal partitions
@@ -400,16 +388,14 @@
       parted -s /dev/"{{ item }}" mklabel gpt
       partprobe /dev/"{{ item }}"
       udevadm settle --timeout=600
-    with_items:
-      - "{{ resolved_parent_device }}"
+    with_items: "{{ resolved_parent_device }}"
 
 - name: purge ceph mon cluster
 
   vars:
     mon_group_name:       mons
 
-  hosts:
-    - "{{ mon_group_name|default('mons') }}"
+  hosts: "{{ mon_group_name|default('mons') }}"
 
   gather_facts: false # already gathered previously
 
@@ -466,6 +452,7 @@
       - librados2
       - libradosstriper1
       - librbd1
+      - python-ceph-argparse
       - python-cephfs
       - python-rados
       - python-rbd
@@ -560,8 +547,7 @@
       module: command
         echo requesting data removal
     become: false
-    notify:
-      - remove data
+    notify: remove data
 
   - name: purge dnf cache
     command: dnf clean all
@@ -599,15 +585,13 @@
     file:
       path: "{{ item.path }}"
       state: absent
-    with_items:
-      - "{{ systemd_files.files }}"
+    with_items: "{{ systemd_files.files }}"
     when: ansible_service_mgr == 'systemd'
 
 
 - name: purge fetch directory
 
-  hosts:
-    - localhost
+  hosts: localhost
 
   gather_facts: false
 

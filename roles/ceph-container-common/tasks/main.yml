@@ -1,27 +1,23 @@
 ---
 - name: include pre_requisites/prerequisites.yml
   include_tasks: pre_requisites/prerequisites.yml
-  when:
-    - not is_atomic
+  when: not is_atomic
 
 - name: get docker version
   command: docker --version
   changed_when: false
   check_mode: no
   register: ceph_docker_version
-  when:
-    - container_binary == 'docker'
+  when: container_binary == 'docker'
 
 - name: set_fact ceph_docker_version ceph_docker_version.stdout.split
   set_fact:
     ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
-  when:
-    - container_binary == 'docker'
+  when: container_binary == 'docker'
 
 - name: include fetch_image.yml
   include_tasks: fetch_image.yml
-  tags:
-    - fetch_container_image
+  tags: fetch_container_image
 
 - name: get ceph version
   command: >

@@ -1,7 +1,11 @@
 ---
 - name: debian based systems - repo handling
+  when: ceph_origin == 'repository'
   block:
     - name: stable repos specific tasks
+      when:
+        - nfs_ganesha_stable
+        - ceph_repository == 'community'
       block:
         - name: add nfs-ganesha stable repository
           apt_repository:
@@ -17,13 +21,12 @@
           retries: 5
           delay: 2
           until: update_ganesha_apt_cache | success
-          when:
-            - add_ganesha_apt_repo | changed
-      when:
-        - nfs_ganesha_stable
-        - ceph_repository == 'community'
+          when: add_ganesha_apt_repo | changed
 
     - name: debian based systems - dev repos specific tasks
+      when:
+        - nfs_ganesha_dev
+        - ceph_repository == 'dev'
       block:
         - name: fetch nfs-ganesha development repository
           uri:
@@ -38,15 +41,13 @@
             owner: root
             group: root
             backup: yes
-      when:
-        - nfs_ganesha_dev
-        - ceph_repository == 'dev'
-  when:
-    - ceph_origin == 'repository'
 
 - name: debain based systems - install required packages
   block:
     - name: debian based systems- non-rhcs installation
+      when:
+        - (ceph_origin == 'repository' or ceph_origin == 'distro')
+        - ceph_repository != 'rhcs'
       block:
         - name: install jemalloc for debian
           apt:
@@ -69,11 +70,11 @@
           register: result
           until: result is succeeded
           when: nfs_file_gw
-      when:
-        - (ceph_origin == 'repository' or ceph_origin == 'distro')
-        - ceph_repository != 'rhcs'
 
     - name: debian based systems - rhcs installation
+      when:
+        - (ceph_origin == 'repository' or ceph_origin == 'distro')
+        - ceph_repository == 'rhcs'
       block:
         - name: install red hat storage nfs gateway for debian
           apt:
@@ -87,16 +88,11 @@
             state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
           register: result
           until: result is succeeded
-          when:
-            - nfs_file_gw
+          when: nfs_file_gw
         - name: install red hat storage nfs obj gateway
           apt:
             name: nfs-ganesha-rgw
             state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
           register: result
           until: result is succeeded
-          when:
-            - nfs_obj_gw
-      when:
-        - (ceph_origin == 'repository' or ceph_origin == 'distro')
-        - ceph_repository == 'rhcs'
+          when: nfs_obj_gw

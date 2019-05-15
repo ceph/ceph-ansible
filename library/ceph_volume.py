@@ -196,8 +196,7 @@ def container_exec(binary, container_image):
                     '-v', '/run/lvm/:/run/lvm/',
                     '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                     '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                    os.path.join('--entrypoint=' + binary),
-                    container_image]
+                    '--entrypoint=' + binary, container_image]
     return command_exec
 
 

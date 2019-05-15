@@ -12,14 +12,29 @@
     - not containerized_deployment
     - ansible_os_family != 'ClearLinux'
 
+- name: install numactl when needed
+  package:
+    name: numactl
+  register: result
+  until: result is succeeded
+  when:
+    - containerized_deployment
+    - ceph_osd_numactl_opts != ""
+  tags: with_pkg
+
+- name: install lvm2
+  package:
+    name: lvm2
+  register: result
+  until: result is succeeded
+  when: not is_atomic
+  tags: with_pkg
+
 - name: include_tasks common.yml
   include_tasks: common.yml
 
-- name: include ceph_disk_cli_options_facts.yml
-  include_tasks: ceph_disk_cli_options_facts.yml
-
-- name: include build_devices.yml
-  include_tasks: build_devices.yml
+- name: include container_options_facts.yml
+  include_tasks: container_options_facts.yml
 
 - name: read information about the devices
   parted:
@@ -28,43 +43,17 @@
   register: parted_results
   with_items: "{{ devices }}"
 
-- name: include check_gpt.yml
-  include_tasks: check_gpt.yml
-  when:
-    - osd_scenario != 'lvm'
-
-- name: include_tasks scenarios/collocated.yml
-  include_tasks: scenarios/collocated.yml
-  when:
-    - osd_scenario == 'collocated'
-
-- name: include_tasks scenarios/non-collocated.yml
-  include_tasks: scenarios/non-collocated.yml
-  when:
-    - not osd_auto_discovery
-    - osd_scenario == 'non-collocated'
-
 - name: include_tasks scenarios/lvm.yml
   include_tasks: scenarios/lvm.yml
   when:
-    - osd_scenario == 'lvm'
     - lvm_volumes|length > 0
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
+    - not rolling_update|default(False)
 
 - name: include_tasks scenarios/lvm-batch.yml
   include_tasks: scenarios/lvm-batch.yml
   when:
-    - osd_scenario == 'lvm'
     - devices|length > 0
-  # Hard code this so we will skip the entire file instead of individual tasks (Default isn't Consistent)
-  static: False
-
-- name: include_tasks activate_osds.yml
-  include_tasks: activate_osds.yml
-  when:
-    - not containerized_deployment
-    - osd_scenario != 'lvm'
+    - not rolling_update|default(False)
 
 - name: include_tasks start_osds.yml
   include_tasks: start_osds.yml

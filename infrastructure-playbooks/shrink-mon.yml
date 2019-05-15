@@ -14,8 +14,7 @@
 
 - name: gather facts and check the init system
 
-  hosts:
-    - "{{ mon_group_name|default('mons') }}"
+  hosts: "{{ mon_group_name|default('mons') }}"
 
   become: true
 
@@ -23,8 +22,7 @@
     - debug: msg="gather facts on all Ceph hosts for following reference"
 
 - name: confirm whether user really meant to remove monitor from the ceph cluster
-  hosts:
-    - localhost
+  hosts: localhost
   become: true
   vars_prompt:
     - name: ireallymeanit
@@ -40,8 +38,7 @@
       fail:
         msg: "You are about to shrink the only monitor present in the cluster.
               If you really want to do that, please use the purge-cluster playbook."
-      when:
-        - groups[mon_group_name] | length | int == 1
+      when: groups[mon_group_name] | length | int == 1
 
     - name: exit playbook, if no monitor was given
       fail:
@@ -49,14 +46,12 @@
           Exiting shrink-cluster playbook, no monitor was removed.
            On the command line when invoking the playbook, you can use
            -e mon_to_kill=ceph-mon01 argument. You can only remove a single monitor each time the playbook runs."
-      when:
-        - mon_to_kill is not defined
+      when: mon_to_kill is not defined
 
     - name: exit playbook, if the monitor is not part of the inventory
       fail:
         msg: "It seems that the host given is not part of your inventory, please make sure it is."
-      when:
-        - mon_to_kill not in groups[mon_group_name]
+      when: mon_to_kill not in groups[mon_group_name]
 
     - name: exit playbook, if user did not mean to shrink cluster
       fail:
@@ -64,8 +59,7 @@
            To shrink the cluster, either say 'yes' on the prompt or
            or use `-e ireallymeanit=yes` on the command line when
            invoking the playbook"
-      when:
-        - ireallymeanit != 'yes'
+      when: ireallymeanit != 'yes'
 
     - import_role:
         name: ceph-defaults
@@ -78,8 +72,7 @@
       set_fact:
         mon_host: "{{ item }}"
       with_items: "{{ groups[mon_group_name] }}"
-      when:
-        - item != mon_to_kill
+      when: item != mon_to_kill
 
     - name: "set_fact docker_exec_cmd build {{ container_binary }} exec command (containerized)"
       set_fact:
@@ -136,15 +129,13 @@
           msg: "The monitor has been successfully removed from the cluster.
           Please remove the monitor entry from the rest of your ceph configuration files, cluster wide."
       run_once: true
-      when:
-        - mon_to_kill_hostname not in result.stdout
+      when: mon_to_kill_hostname not in result.stdout
 
     - name: fail if monitor is still part of the cluster
       fail:
           msg: "Monitor appears to still be part of the cluster, please check what happened."
       run_once: true
-      when:
-        - mon_to_kill_hostname in result.stdout
+      when: mon_to_kill_hostname in result.stdout
 
     - name: show ceph health
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s"
