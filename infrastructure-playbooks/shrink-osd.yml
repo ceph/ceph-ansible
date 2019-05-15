@@ -87,12 +87,6 @@
         osd_hosts: "{{ osd_hosts | default([]) + [ [ (item.stdout | from_json).crush_location.host, (item.stdout | from_json).osd_fsid ] ] }}"
       with_items: "{{ find_osd_hosts.results }}"
 
-    - name: mark osd(s) out of the cluster
-      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ item }}"
-      run_once: true
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      with_items: "{{ osd_to_kill.split(',') }}"
-
     - name: stop osd(s) service
       service:
         name: ceph-osd@{{ item.0 }}
@@ -100,6 +94,12 @@
         enabled: no
       loop: "{{ osd_to_kill.split(',')|zip(osd_hosts)|list }}"
       delegate_to: "{{ item.1.0 }}"
+
+    - name: mark osd(s) out of the cluster
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ item }}"
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items: "{{ osd_to_kill.split(',') }}"
 
     - name: zap osd devices
       ceph_volume:
