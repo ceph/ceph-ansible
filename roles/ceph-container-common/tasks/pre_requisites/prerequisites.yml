@@ -1,10 +1,4 @@
 ---
-- name: include specific variables
-  include_vars: "{{ item }}"
-  with_first_found:
-    - "{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml"
-    - "{{ ansible_os_family }}.yml"
-
 - name: include remove_ceph_udev_rules.yml
   include_tasks: remove_ceph_udev_rules.yml
 
@@ -32,15 +26,6 @@
     name: ['{{ container_package_name }}', '{{ container_binding_name }}']
     update_cache: true
   tags: with_pkg
-
-- name: start container service
-  service:
-    name: '{{ container_service_name }}'
-    state: started
-    enabled: yes
-  tags:
-    with_pkg
-  when: container_service_name == 'docker'
 
 - name: ensure tmpfiles.d is present
   lineinfile:

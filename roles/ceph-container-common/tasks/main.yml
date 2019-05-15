@@ -1,7 +1,22 @@
 ---
+- name: include specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml"
+    - "{{ ansible_os_family }}.yml"
+
 - name: include pre_requisites/prerequisites.yml
   include_tasks: pre_requisites/prerequisites.yml
   when: not is_atomic
+
+- name: start container service
+  service:
+    name: '{{ container_service_name }}'
+    state: started
+    enabled: yes
+  tags:
+    with_pkg
+  when: container_service_name == 'docker'
 
 - name: get docker version
   command: docker --version
