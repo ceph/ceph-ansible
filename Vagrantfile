@@ -93,7 +93,6 @@ ansible_provision = proc do |ansible|
     ansible.extra_vars = ansible.extra_vars.merge({
       cluster_network: "#{CLUSTER_SUBNET}.0/16",
       devices: ['/dev/sdc'], # hardcode leftover disk
-      osd_scenario: 'collocated',
       monitor_address_block: "#{PUBLIC_SUBNET}.0/16",
       radosgw_address_block: "#{PUBLIC_SUBNET}.0/16",
       public_network: "#{PUBLIC_SUBNET}.0/16",

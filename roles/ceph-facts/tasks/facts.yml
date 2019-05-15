@@ -30,19 +30,16 @@
 - name: set_fact monitor_name ansible_hostname
   set_fact:
     monitor_name: "{{ ansible_hostname }}"
-  when:
-    - not mon_use_fqdn
+  when: not mon_use_fqdn
 
 - name: set_fact monitor_name ansible_fqdn
   set_fact:
     monitor_name: "{{ ansible_fqdn }}"
-  when:
-    - mon_use_fqdn
+  when: mon_use_fqdn
 
 - name: set_fact docker_exec_cmd
   set_fact:
-    docker_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
+    docker_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] if not rolling_update else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}"
   when:
     - containerized_deployment
     - groups.get(mon_group_name, []) | length > 0
@@ -68,8 +65,7 @@
   set_fact:
     ceph_current_status:
       rc: 1
-  when:
-    - rolling_update or groups.get(mon_group_name, []) | length == 0
+  when: rolling_update or groups.get(mon_group_name, []) | length == 0
 
 - name: create a local fetch directory if it does not exist
   file:
@@ -78,8 +74,18 @@
   delegate_to: localhost
   changed_when: false
   become: false
-  when:
-    - (cephx or generate_fsid)
+  when: cephx or generate_fsid
+
+- name: get current fsid
+  command: "{{ timeout_command }} {{ docker_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }} config get fsid"
+  register: rolling_update_fsid
+  delegate_to: "{{ mon_host | default(groups[mon_group_name][0]) }}"
+  when: rolling_update
+
+- name: set_fact fsid
+  set_fact:
+    fsid: "{{ (rolling_update_fsid.stdout | from_json).fsid }}"
+  when: rolling_update
 
 - name: set_fact ceph_current_status (convert to json)
   set_fact:
@@ -91,10 +97,14 @@
 - name: set_fact fsid from ceph_current_status
   set_fact:
     fsid: "{{ ceph_current_status.fsid }}"
-  when:
-    - ceph_current_status.fsid is defined
+  when: ceph_current_status.fsid is defined
 
-- block:
+- name: fsid realted tasks
+  when:
+    - generate_fsid
+    - ceph_current_status.fsid is undefined
+    - not rolling_update
+  block:
   - name: generate cluster fsid
     shell: python -c 'import uuid; print(str(uuid.uuid4()))'
     register: cluster_uuid
@@ -106,53 +116,44 @@
     set_fact:
       fsid: "{{ cluster_uuid.stdout }}"
 
-  when:
-    - generate_fsid
-    - ceph_current_status.fsid is undefined
-
 - name: set_fact mds_name ansible_hostname
   set_fact:
     mds_name: "{{ ansible_hostname }}"
-  when:
-    - not mds_use_fqdn
+  when: not mds_use_fqdn
 
 - name: set_fact mds_name ansible_fqdn
   set_fact:
     mds_name: "{{ ansible_fqdn }}"
-  when:
-    - mds_use_fqdn
+  when: mds_use_fqdn
 
 - name: set_fact rbd_client_directory_owner ceph
   set_fact:
     rbd_client_directory_owner: ceph
-  when:
-    - rbd_client_directory_owner is not defined
+  when: rbd_client_directory_owner is not defined
       or not rbd_client_directory_owner
 
 - name: set_fact rbd_client_directory_group rbd_client_directory_group
   set_fact:
     rbd_client_directory_group: ceph
-  when:
-    - rbd_client_directory_group is not defined
+  when: rbd_client_directory_group is not defined
       or not rbd_client_directory_group
 
 - name: set_fact rbd_client_directory_mode 0770
   set_fact:
     rbd_client_directory_mode: "0770"
-  when:
-    - rbd_client_directory_mode is not defined
+  when: rbd_client_directory_mode is not defined
       or not rbd_client_directory_mode
 
 - name: resolve device link(s)
   command: readlink -f {{ item }}
   changed_when: false
+  check_mode: no
   with_items: "{{ devices }}"
   register: devices_prepare_canonicalize
   when:
     - devices is defined
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
-    - osd_scenario|default('dummy') != 'lvm'
 
 - name: set_fact build devices from resolved symlinks
   set_fact:
@@ -162,7 +163,6 @@
     - devices is defined
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
-    - osd_scenario|default('dummy') != 'lvm'
 
 - name: set_fact build final devices list
   set_fact:
@@ -171,7 +171,6 @@
     - devices is defined
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
-    - osd_scenario|default('dummy') != 'lvm'
 
 - name: set_fact devices generate device list when osd_auto_discovery
   set_fact:
@@ -245,20 +244,41 @@
   set_fact:
     osd_pool_default_size: "{{ ceph_conf_overrides.get('global', {}).get('osd_pool_default_size', ceph_osd_pool_default_size) }}"
 
+- name: set_fact osd_pool_default_min_size
+  set_fact:
+    osd_pool_default_min_size: "{{ ceph_conf_overrides.get('global', {}).get('osd_pool_default_min_size', ceph_osd_pool_default_min_size) }}"
+
+- name: check if the ceph conf exists
+  stat:
+    path: '/etc/ceph/{{ cluster }}.conf'
+  register: ceph_conf
+
+- name: get default crush rule value from ceph configuration
+  command: grep 'osd pool default crush rule' /etc/ceph/{{ cluster }}.conf
+  register: crush_rule_variable
+  changed_when: false
+  check_mode: no
+  failed_when: false
+  when: ceph_conf.stat.exists
+
+- name: set_fact osd_pool_default_crush_rule
+  set_fact:
+    osd_pool_default_crush_rule: "{% if crush_rule_variable.rc == 0 %}{{ crush_rule_variable.stdout.split(' = ')[1] }}{% else %}{{ ceph_osd_pool_default_crush_rule }}{% endif %}"
+  when: ceph_conf.stat.exists
+
 - name: import_tasks set_monitor_address.yml
   import_tasks: set_monitor_address.yml
+  when: groups.get(mon_group_name, []) | length > 0
 
 - name: import_tasks set_radosgw_address.yml
   import_tasks: set_radosgw_address.yml
-  when:
-    - inventory_hostname in groups.get(rgw_group_name, [])
+  when: inventory_hostname in groups.get(rgw_group_name, [])
 
 - name: set_fact rgw_instances
   set_fact:
     rgw_instances: "{{ rgw_instances|default([]) | union([{'instance_name': 'rgw' + item|string, 'radosgw_address': _radosgw_address, 'radosgw_frontend_port': radosgw_frontend_port|int + item|int}]) }}"
   with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
-  when:
-    - inventory_hostname in groups.get(rgw_group_name, [])
+  when: inventory_hostname in groups.get(rgw_group_name, [])
 
 - name: set ntp service name depending on OS family
   block:

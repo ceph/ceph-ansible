@@ -2,21 +2,18 @@
 - name: set_fact docker_exec_cmd
   set_fact:
     docker_exec_cmd: "{{ container_binary }} exec ceph-nfs-{{ ansible_hostname }}"
-  when:
-    - containerized_deployment
+  when: containerized_deployment
 
 - name: include common.yml
   include_tasks: common.yml
 
 - name: include pre_requisite_non_container.yml
   include_tasks: pre_requisite_non_container.yml
-  when:
-    - not containerized_deployment
+  when: not containerized_deployment
 
 - name: include pre_requisite_container.yml
   include_tasks: pre_requisite_container.yml
-  when:
-    - containerized_deployment
+  when: containerized_deployment
 
 - name: include create_rgw_nfs_user.yml
   import_tasks: create_rgw_nfs_user.yml

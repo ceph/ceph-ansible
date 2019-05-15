@@ -1,0 +1,31 @@
+---
+docker: True
+ceph_origin: repository
+ceph_repository: community
+containerized_deployment: true
+cluster: ceph
+public_network: "192.168.71.0/24"
+cluster_network: "192.168.72.0/24"
+monitor_interface: "{{ 'eth1' if ansible_distribution == 'CentOS' else 'ens6' }}"
+radosgw_interface: "{{ 'eth1' if ansible_distribution == 'CentOS' else 'ens6' }}"
+journal_size: 100
+osd_objectstore: "bluestore"
+osd_scenario: lvm
+copy_admin_key: true
+# test-volume is created by tests/functional/lvm_setup.yml from /dev/sdb
+lvm_volumes:
+  - data: data-lv1
+    data_vg: test_group
+  - data: data-lv2
+    data_vg: test_group
+    db: journal1
+    db_vg: journals
+os_tuning_params:
+  - { name: fs.file-max, value: 26234859 }
+ceph_conf_overrides:
+  global:
+    osd_pool_default_size: 1
+ceph_osd_docker_run_script_path: /var/tmp
+rgw_override_bucket_index_max_shards: 16
+rgw_bucket_default_quota_max_objects: 1638400
+

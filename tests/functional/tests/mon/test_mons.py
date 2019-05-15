@@ -8,20 +8,20 @@ class TestMons(object):
     def test_ceph_mon_package_is_installed(self, node, host):
         assert host.package("ceph-mon").is_installed
 
-    def test_mon_listens_on_6789(self, node, host, setup):
-        assert host.socket("tcp://%s:6789" % setup["address"]).is_listening
+    @pytest.mark.parametrize("mon_port", [3300, 6789])
+    def test_mon_listens(self, node, host, setup, mon_port):
+        assert host.socket("tcp://{address}:{port}".format(
+            address=setup["address"],
+            port=mon_port
+        )).is_listening
 
-    def test_mon_service_is_running(self, node, host):
+    def test_mon_service_enabled_and_running(self, node, host):
         service_name = "ceph-mon@{hostname}".format(
             hostname=node["vars"]["inventory_hostname"]
         )
-        assert host.service(service_name).is_running
-
-    def test_mon_service_is_enabled(self, node, host):
-        service_name = "ceph-mon@{hostname}".format(
-            hostname=node["vars"]["inventory_hostname"]
-        )
-        assert host.service(service_name).is_enabled
+        s = host.service(service_name)
+        assert s.is_enabled
+        assert s.is_running
 
     @pytest.mark.no_docker
     def test_can_get_cluster_health(self, node, host, setup):
@@ -32,7 +32,7 @@ class TestMons(object):
     def test_ceph_config_has_inital_members_line(self, node, File, setup):
         assert File(setup["conf_path"]).contains("^mon initial members = .*$")
 
-    def test_initial_members_line_has_correct_value(self, node, host, File, setup):
+    def test_initial_members_line_has_correct_value(self, node, host, File, setup):  # noqa E501
         mon_initial_members_line = host.check_output("grep 'mon initial members = ' /etc/ceph/{cluster}.conf".format(cluster=setup['cluster_name']))  # noqa E501
         result = True
         for host in node["vars"]["groups"]["mons"]:

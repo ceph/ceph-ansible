@@ -2,8 +2,7 @@
 - name: set_fact docker_exec_cmd
   set_fact:
     docker_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
-  when:
-    - containerized_deployment
+  when: containerized_deployment
 
 - name: include deploy_monitors.yml
   include_tasks: deploy_monitors.yml
@@ -17,17 +16,15 @@
 
 - name: include_tasks ceph_keys.yml
   include_tasks: ceph_keys.yml
-  when:
-    - not switch_to_containers | default(False)
+  when: not switch_to_containers | default(False)
 
 - name: include secure_cluster.yml
   include_tasks: secure_cluster.yml
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
   when:
     - secure_cluster
+    - inventory_hostname == groups[mon_group_name] | first
 
 - name: crush_rules.yml
   include_tasks: crush_rules.yml
-  when:
-    - crush_rule_config
+  when: crush_rule_config
+

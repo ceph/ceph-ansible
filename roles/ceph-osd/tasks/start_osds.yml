@@ -1,23 +1,14 @@
 ---
-- block:
-  # For openstack VMs modify the mount point below depending on if the Openstack
-  # VM deploy tool defaults to mounting ephemeral disks
+- name: container specific tasks
+  when: containerized_deployment
+  block:
   - name: umount ceph disk (if on openstack)
     mount:
       name: /mnt
       src: /dev/vdb
       fstype: ext3
       state: unmounted
-    when:
-      - ceph_docker_on_openstack
-
-  - name: test if the container image has the disk_list function
-    command: "{{ container_binary }} run --rm --net=host --entrypoint=stat {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list.sh"
-    changed_when: false
-    failed_when: false
-    register: disk_list
-    when:
-      - osd_scenario != 'lvm'
+    when: ceph_docker_on_openstack
 
   - name: generate ceph osd docker run script
     become: true
@@ -28,10 +19,7 @@
       group: "root"
       mode: "0744"
       setype: "bin_t"
-    notify:
-      - restart ceph osds
-  when:
-    - containerized_deployment
+    notify: restart ceph osds
 
 # this is for ceph-disk, the ceph-disk command is gone so we have to list /var/lib/ceph
 - name: get osd ids
@@ -58,18 +46,17 @@
     owner: "root"
     group: "root"
     mode: "0644"
-  notify:
-    - restart ceph osds
-  when:
-    - containerized_deployment
+  notify: restart ceph osds
+  when: containerized_deployment
 
 - name: systemd start osd
   systemd:
-    name: ceph-osd@{{ item | regex_replace('/dev/', '') if osd_scenario != 'lvm' and containerized_deployment else item }}
+    name: ceph-osd@{{ item }}
     state: started
     enabled: yes
+    masked: no
     daemon_reload: yes
-  with_items: "{{ devices if osd_scenario != 'lvm' and containerized_deployment else ((ceph_osd_ids.stdout | from_json).keys() | list) if osd_scenario == 'lvm' and not containerized_deployment else osd_ids_non_container.stdout_lines }}"
+  with_items: "{{ ((ceph_osd_ids.stdout | from_json).keys() | list) if not containerized_deployment else osd_ids_non_container.stdout_lines }}"
 
 - name: ensure systemd service override directory exists
   file:

@@ -33,8 +33,7 @@
     osd_group_name: osds
     journal_typecode: 45b0969e-9b03-4f30-b4c6-b4b80ceff106
     osds_journal_devices: []
-  hosts:
-      - "{{ osd_group_name }}"
+  hosts: "{{ osd_group_name }}"
   serial: 1
   tasks:
 
@@ -51,8 +50,7 @@
         msg: exit playbook osd(s) is not on this host
     with_items: 
         osds_dir_stat.results
-    when:
-      -  osds_dir_stat is defined and item.stat.exists == false
+    when: osds_dir_stat is defined and item.stat.exists == false
 
   - name: install sgdisk(gdisk)
     package:
@@ -75,40 +73,33 @@
       --typecode={{ item.item[1].index }}:{{ journal_typecode }} 
       --partition-guid={{ item.item[1].index }}:{{ item.stdout }} 
       --mbrtogpt -- {{ item.item[0].device_name }}
-    with_items: 
-      - "{{ osds.results }}"
+    with_items:  "{{ osds.results }}"
 
   - name: stop osd(s) service
     service:
       name: "ceph-osd@{{ item.item[1].osd_id }}"
       state: stopped
-    with_items:
-      - "{{ osds.results }}"
+    with_items: "{{ osds.results }}"
 
   - name: flush osd(s) journal
     command: ceph-osd -i {{ item.item[1].osd_id }} --flush-journal --cluster {{ cluster }} 
-    with_items:
-      - "{{ osds.results }}"
+    with_items: "{{ osds.results }}"
     when: osds_journal_devices is defined
 
   - name: update osd(s) journal soft link
     command: ln -sf /dev/disk/by-partuuid/{{ item.stdout }} /var/lib/ceph/osd/{{ cluster }}-{{ item.item[1].osd_id }}/journal
-    with_items:
-      - "{{ osds.results }}"
+    with_items: "{{ osds.results }}"
 
   - name: update osd(s) journal uuid
     command: echo {{ item.stdout }} > /var/lib/ceph/osd/{{ cluster }}-{{ item.item[1].osd_id }}/journal_uuid
-    with_items:
-      - "{{ osds.results }}"
+    with_items: "{{ osds.results }}"
 
   - name: initialize osd(s) new journal 
     command: ceph-osd -i {{ item.item[1].osd_id }} --mkjournal --cluster {{ cluster }}
-    with_items:
-      - "{{ osds.results }}"
+    with_items: "{{ osds.results }}"
 
   - name: start osd(s) service
     service:
       name: "ceph-osd@{{ item.item[1].osd_id }}"
       state: started
-    with_items:
-      - "{{ osds.results }}"
+    with_items: "{{ osds.results }}"

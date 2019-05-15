@@ -15,8 +15,7 @@
   command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush rule create-simple {{ item.name }} {{ item.root }} {{ item.type }}"
   with_items: "{{ crush_rules | unique }}"
   changed_when: false
-  when:
-    - inventory_hostname == groups.get(mon_group_name) | last
+  when: inventory_hostname == groups.get(mon_group_name) | last
 
 - name: get id for new default crush rule
   command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd -f json crush rule dump {{ item.name }}"
@@ -38,12 +37,8 @@
     - inventory_hostname == groups.get(mon_group_name) | last
     - not item.get('skipped', false)
 
-- name: set_fact osd_pool_default_crush_rule
-  set_fact:
-    osd_pool_default_crush_rule: "osd_pool_default_crush_rule"
-
 - name: insert new default crush rule into daemon to prevent restart
-  command: "{{ hostvars[item]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[item]['monitor_name'] }} config set {{ osd_pool_default_crush_rule }} {{ info_ceph_default_crush_rule_yaml.rule_id }}"
+  command: "{{ hostvars[item]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[item]['monitor_name'] }} config set osd_pool_default_crush_rule {{ info_ceph_default_crush_rule_yaml.rule_id }}"
   changed_when: false
   delegate_to: "{{ item }}"
   with_items: "{{ groups[mon_group_name] }}"
@@ -55,7 +50,7 @@
   ini_file:
     dest: "/etc/ceph/{{ cluster }}.conf"
     section: "global"
-    option: "{{ osd_pool_default_crush_rule }}"
+    option: "osd pool default crush rule"
     value: "{{ info_ceph_default_crush_rule_yaml.rule_id }}"
   delegate_to: "{{ item }}"
   with_items: "{{ groups[mon_group_name] }}"

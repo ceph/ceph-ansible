@@ -1,21 +1,23 @@
-OSD Scenarios
-=============
+OSD Scenario
+============
 
-There are a few *scenarios* that are supported and the differences are mainly
-based on the Ceph tooling required to provision OSDs, but can also affect how
-devices are being configured to create an OSD.
+As of stable-4.0, the following scenarios are not supported anymore since they are associated to ``ceph-disk``:
 
-Supported values for the required ``osd_scenario`` variable are:
+* `collocated`
+* `non-collocated`
 
-* :ref:`collocated <osd_scenario_collocated>`
-* :ref:`non-collocated <osd_scenario_non_collocated>`
-* :ref:`lvm <osd_scenario_lvm>`
-
-Since the Ceph mimic release, it is preferred to use the :ref:`lvm scenario
+Since the Ceph luminous release, it is preferred to use the :ref:`lvm scenario
 <osd_scenario_lvm>` that uses the ``ceph-volume`` provisioning tool. Any other
 scenario will cause deprecation warnings.
 
-All the scenarios mentionned above support both containerized and non-containerized cluster.
+``ceph-disk`` was deprecated during the ceph-ansible 3.2 cycle and has been removed entirely from Ceph itself in the Nautilus version.
+At present (starting from stable-4.0), there is only one scenario, which defaults to ``lvm``, see:
+
+* :ref:`lvm <osd_scenario_lvm>`
+
+So there is no need to configure ``osd_scenario`` anymore, it defaults to ``lvm``.
+
+The ``lvm`` scenario mentionned above support both containerized and non-containerized cluster.
 As a reminder, deploying a containerized cluster can be done by setting ``containerized_deployment``
 to ``True``.
 
@@ -26,13 +28,7 @@ lvm
 
 This OSD scenario uses ``ceph-volume`` to create OSDs, primarily using LVM, and
 is only available when the Ceph release is luminous or newer.
-
-**It is the preferred method of provisioning OSDs.**
-
-It is enabled with the following setting::
-
-
-    osd_scenario: lvm
+It is automatically enabled.
 
 Other (optional) supported settings:
 
@@ -68,7 +64,6 @@ Ceph usage, the configuration would be:
 
 .. code-block:: yaml
 
-   osd_scenario: lvm
    devices:
      - /dev/sda
      - /dev/sdb
@@ -81,7 +76,6 @@ devices, for example:
 
 .. code-block:: yaml
 
-   osd_scenario: lvm
    devices:
      - /dev/sda
      - /dev/sdb
@@ -98,7 +92,6 @@ This option can also be used with ``osd_auto_discovery``, meaning that you do no
 
 .. code-block:: yaml
 
-   osd_scenario: lvm
    osd_auto_discovery: true
 
 Other (optional) supported settings:
@@ -172,7 +165,6 @@ Supported ``lvm_volumes`` configuration settings:
 .. code-block:: yaml
 
    osd_objectstore: bluestore
-   osd_scenario: lvm
    lvm_volumes:
      - data: /dev/sda
      - data: /dev/sdb
@@ -185,7 +177,6 @@ Supported ``lvm_volumes`` configuration settings:
 .. code-block:: yaml
 
    osd_objectstore: bluestore
-   osd_scenario: lvm
    lvm_volumes:
      - data: data-lv1
        data_vg: data-vg1
@@ -200,7 +191,6 @@ Supported ``lvm_volumes`` configuration settings:
 .. code-block:: yaml
 
    osd_objectstore: bluestore
-   osd_scenario: lvm
    lvm_volumes:
      - data: data-lv1
        data_vg: data-vg1
@@ -223,7 +213,6 @@ Supported ``lvm_volumes`` configuration settings:
 .. code-block:: yaml
 
    osd_objectstore: filestore
-   osd_scenario: lvm
    lvm_volumes:
      - data: data-lv1
        data_vg: data-vg1
@@ -235,184 +224,3 @@ Supported ``lvm_volumes`` configuration settings:
        journal_vg: journal-vg2
 
 .. note:: Volume groups and logical volumes must exist.
-
-
-.. _osd_scenario_collocated:
-
-collocated
-----------
-
-.. warning:: This scenario is deprecated in the Ceph mimic release, and fully
-             removed in newer releases. It is recommended to used the
-             :ref:`lvm scenario <osd_scenario_lvm>` instead
-
-This OSD scenario uses ``ceph-disk`` to create OSDs with collocated journals
-from raw devices.
-
-Use ``osd_scenario: collocated`` to enable this scenario. This scenario also
-has the following required configuration options:
-
-- ``devices``
-
-This scenario has the following optional configuration options:
-
-- ``osd_objectstore``: defaults to ``filestore`` if not set. Available options are ``filestore`` or ``bluestore``.
-  You can only select ``bluestore`` if the Ceph release is luminous or greater.
-
-- ``dmcrypt``: defaults to ``false`` if not set.
-
-This scenario supports encrypting your OSDs by setting ``dmcrypt: True``.
-
-If ``osd_objectstore: filestore`` is enabled both 'ceph data' and 'ceph journal' partitions
-will be stored on the same device.
-
-If ``osd_objectstore: bluestore`` is enabled 'ceph data', 'ceph block', 'ceph block.db', 'ceph block.wal' will be stored
-on the same device. The device will get 2 partitions:
-
-- One for 'data', called 'ceph data'
-
-- One for 'ceph block', 'ceph block.db', 'ceph block.wal' called 'ceph block'
-
-Example of what you will get:
-
-.. code-block:: console
-
-   [root@ceph-osd0 ~]# blkid /dev/sda*
-   /dev/sda: PTTYPE="gpt"
-   /dev/sda1: UUID="9c43e346-dd6e-431f-92d8-cbed4ccb25f6" TYPE="xfs" PARTLABEL="ceph data" PARTUUID="749c71c9-ed8f-4930-82a7-a48a3bcdb1c7"
-   /dev/sda2: PARTLABEL="ceph block" PARTUUID="e6ca3e1d-4702-4569-abfa-e285de328e9d"
-
-An example of using the ``collocated`` OSD scenario with encryption would look like:
-
-.. code-block:: yaml
-
-   osd_scenario: collocated
-   dmcrypt: true
-   devices:
-     - /dev/sda
-     - /dev/sdb
-
-
-.. _osd_scenario_non_collocated:
-
-non-collocated
---------------
-
-.. warning:: This scenario is deprecated in the Ceph mimic release, and fully
-             removed in newer releases. It is recommended to used the
-             :ref:`lvm scenario <osd_scenario_lvm>` instead
-
-This OSD scenario uses ``ceph-disk`` to create OSDs from raw devices with journals that
-exist on a dedicated device.
-
-Use ``osd_scenario: non-collocated`` to enable this scenario. This scenario also
-has the following required configuration options:
-
-- ``devices``
-
-This scenario has the following optional configuration options:
-
-- ``dedicated_devices``: defaults to ``devices`` if not set
-
-- ``osd_objectstore``: defaults to ``filestore`` if not set. Available options are ``filestore`` or ``bluestore``.
-  You can only select ``bluestore`` with the Ceph release is luminous or greater.
-
-- ``dmcrypt``: defaults to ``false`` if not set.
-
-This scenario supports encrypting your OSDs by setting ``dmcrypt: True``.
-
-If ``osd_objectstore: filestore`` is enabled 'ceph data' and 'ceph journal' partitions
-will be stored on different devices:
-- 'ceph data' will be stored on the device listed in ``devices``
-- 'ceph journal' will be stored on the device listed in ``dedicated_devices``
-
-Let's take an example, imagine ``devices`` was declared like this:
-
-.. code-block:: yaml
-
-   devices:
-     - /dev/sda
-     - /dev/sdb
-     - /dev/sdc
-     - /dev/sdd
-
-And ``dedicated_devices`` was declared like this:
-
-.. code-block:: yaml
-
-   dedicated_devices:
-     - /dev/sdf
-     - /dev/sdf
-     - /dev/sdg
-     - /dev/sdg
-
-This will result in the following mapping:
-
-- ``/dev/sda`` will have ``/dev/sdf1`` as journal
-
-- ``/dev/sdb`` will have ``/dev/sdf2`` as a journal
-
-- ``/dev/sdc`` will have ``/dev/sdg1`` as a journal
-
-- ``/dev/sdd`` will have ``/dev/sdg2`` as a journal
-
-
-If ``osd_objectstore: bluestore`` is enabled, both 'ceph block.db' and 'ceph block.wal' partitions will be stored
-on a dedicated device.
-
-So the following will happen:
-
-- The devices listed in ``devices`` will get 2 partitions, one for 'block' and one for 'data'. 'data' is only 100MB
-  big and do not store any of your data, it's just a bunch of Ceph metadata. 'block' will store all your actual data.
-
-- The devices in ``dedicated_devices`` will get 1 partition for RocksDB DB, called 'block.db' and one for RocksDB WAL, called 'block.wal'
-
-By default ``dedicated_devices`` will represent block.db
-
-Example of what you will get:
-
-.. code-block:: console
-
-   [root@ceph-osd0 ~]# blkid /dev/sd*
-   /dev/sda: PTTYPE="gpt"
-   /dev/sda1: UUID="c6821801-2f21-4980-add0-b7fc8bd424d5" TYPE="xfs" PARTLABEL="ceph data" PARTUUID="f2cc6fa8-5b41-4428-8d3f-6187453464d0"
-   /dev/sda2: PARTLABEL="ceph block" PARTUUID="ea454807-983a-4cf2-899e-b2680643bc1c"
-   /dev/sdb: PTTYPE="gpt"
-   /dev/sdb1: PARTLABEL="ceph block.db" PARTUUID="af5b2d74-4c08-42cf-be57-7248c739e217"
-   /dev/sdb2: PARTLABEL="ceph block.wal" PARTUUID="af3f8327-9aa9-4c2b-a497-cf0fe96d126a"
-
-There is more device granularity for Bluestore ONLY if ``osd_objectstore: bluestore`` is enabled by setting the
-``bluestore_wal_devices`` config option.
-
-By default, if ``bluestore_wal_devices`` is empty, it will get the content of ``dedicated_devices``.
-If set, then you will have a dedicated partition on a specific device for block.wal.
-
-Example of what you will get:
-
-.. code-block:: console
-
-   [root@ceph-osd0 ~]# blkid /dev/sd*
-   /dev/sda: PTTYPE="gpt"
-   /dev/sda1: UUID="39241ae9-d119-4335-96b3-0898da8f45ce" TYPE="xfs" PARTLABEL="ceph data" PARTUUID="961e7313-bdb7-49e7-9ae7-077d65c4c669"
-   /dev/sda2: PARTLABEL="ceph block" PARTUUID="bff8e54e-b780-4ece-aa16-3b2f2b8eb699"
-   /dev/sdb: PTTYPE="gpt"
-   /dev/sdb1: PARTLABEL="ceph block.db" PARTUUID="0734f6b6-cc94-49e9-93de-ba7e1d5b79e3"
-   /dev/sdc: PTTYPE="gpt"
-   /dev/sdc1: PARTLABEL="ceph block.wal" PARTUUID="824b84ba-6777-4272-bbbd-bfe2a25cecf3"
-
-An example of using the ``non-collocated`` OSD scenario with encryption, bluestore and dedicated wal devices would look like:
-
-.. code-block:: yaml
-
-   osd_scenario: non-collocated
-   osd_objectstore: bluestore
-   dmcrypt: true
-   devices:
-     - /dev/sda
-     - /dev/sdb
-   dedicated_devices:
-     - /dev/sdc
-     - /dev/sdc
-   bluestore_wal_devices:
-     - /dev/sdd
-     - /dev/sdd

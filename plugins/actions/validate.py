@@ -13,7 +13,7 @@ except ImportError:
 try:
     import notario
 except ImportError:
-    msg = "The python-notario library is missing. Please install it on the node you are running ceph-ansible to continue."
+    msg = "The python-notario library is missing. Please install it on the node you are running ceph-ansible to continue."  # noqa E501
     display.error(msg)
     raise SystemExit(msg)
 
@@ -39,7 +39,7 @@ class ActionModule(ActionBase):
         host = host_vars['ansible_hostname']
         mode = self._task.args.get('mode', 'permissive')
 
-        self._supports_check_mode = False # XXX ?
+        self._supports_check_mode = False  # XXX ?
         self._supports_async = True
 
         result = {}
@@ -47,33 +47,47 @@ class ActionModule(ActionBase):
 
         try:
             notario_store["groups"] = host_vars["groups"]
-            notario_store["containerized_deployment"] = host_vars["containerized_deployment"]
+            notario_store["containerized_deployment"] = host_vars["containerized_deployment"]  # noqa E501
             notario.validate(host_vars, install_options, defined_keys=True)
 
             if host_vars["ceph_origin"] == "repository" and not host_vars["containerized_deployment"]:
-                notario.validate(host_vars, ceph_origin_repository, defined_keys=True)
+                notario.validate(
+                    host_vars, ceph_origin_repository, defined_keys=True)
 
                 if host_vars["ceph_repository"] == "community":
-                    notario.validate(host_vars, ceph_repository_community, defined_keys=True)
+                    notario.validate(
+                        host_vars, ceph_repository_community, defined_keys=True)  # noqa E501
 
                 if host_vars["ceph_repository"] == "rhcs":
-                    notario.validate(host_vars, ceph_repository_rhcs, defined_keys=True)
+                    notario.validate(
+                        host_vars, ceph_repository_rhcs, defined_keys=True)
 
                 if host_vars["ceph_repository"] == "dev":
-                    notario.validate(host_vars, ceph_repository_dev, defined_keys=True)
+                    notario.validate(
+                        host_vars, ceph_repository_dev, defined_keys=True)
 
-            # store these values because one must be defined and the validation method
+                if host_vars["ceph_repository"] == "custom":
+                    notario.validate(host_vars, ceph_repository_custom, defined_keys=True)
+
+            # store these values because one must be defined
+            # and the validation method
             # will need access to all three through the store
-            notario_store["monitor_address"] = host_vars.get("monitor_address", None)
-            notario_store["monitor_address_block"] = host_vars.get("monitor_address_block", None)
-            notario_store["monitor_interface"] = host_vars.get("monitor_interface", None)
+            notario_store["monitor_address"] = host_vars.get(
+                "monitor_address", None)
+            notario_store["monitor_address_block"] = host_vars.get(
+                "monitor_address_block", None)
+            notario_store["monitor_interface"] = host_vars.get(
+                "monitor_interface", None)
 
             if host_vars["mon_group_name"] in host_vars["group_names"]:
                 notario.validate(host_vars, monitor_options, defined_keys=True)
 
-            notario_store["radosgw_address"] = host_vars.get("radosgw_address", None)
-            notario_store["radosgw_address_block"] = host_vars.get("radosgw_address_block", None)
-            notario_store["radosgw_interface"] = host_vars.get("radosgw_interface", None)
+            notario_store["radosgw_address"] = host_vars.get(
+                "radosgw_address", None)
+            notario_store["radosgw_address_block"] = host_vars.get(
+                "radosgw_address_block", None)
+            notario_store["radosgw_interface"] = host_vars.get(
+                "radosgw_interface", None)
 
             if host_vars["rgw_group_name"] in host_vars["group_names"]:
                 notario.validate(host_vars, rados_options, defined_keys=True)
@@ -82,34 +96,25 @@ class ActionModule(ActionBase):
             if host_vars["osd_group_name"] in host_vars["group_names"]:
                 notario.validate(host_vars, osd_options, defined_keys=True)
                 notario_store['osd_objectstore'] = host_vars["osd_objectstore"]
-                if host_vars["osd_scenario"] == "collocated":
-                    if not host_vars.get("osd_auto_discovery", False):
-                        notario.validate(host_vars, collocated_osd_scenario, defined_keys=True)
 
-                if host_vars["osd_scenario"] == "non-collocated":
-                    notario.validate(host_vars, non_collocated_osd_scenario, defined_keys=True)
-
-                if host_vars["osd_scenario"] == "lvm":
-                    if not host_vars.get("osd_auto_discovery", False):
-                        if host_vars.get("devices"):
-                            notario.validate(host_vars, lvm_batch_scenario, defined_keys=True)
-                        elif notario_store['osd_objectstore'] == 'filestore':
-                            notario.validate(host_vars, lvm_filestore_scenario, defined_keys=True)
-                        elif notario_store['osd_objectstore'] == 'bluestore':
-                            notario.validate(host_vars, lvm_bluestore_scenario, defined_keys=True)
+                if host_vars.get("devices"):
+                    notario.validate(
+                        host_vars, lvm_batch_scenario, defined_keys=True)
+                elif notario_store['osd_objectstore'] == 'filestore':
+                    notario.validate(
+                        host_vars, lvm_filestore_scenario, defined_keys=True)  # noqa E501
+                elif notario_store['osd_objectstore'] == 'bluestore':
+                    notario.validate(
+                        host_vars, lvm_bluestore_scenario, defined_keys=True)  # noqa E501
 
         except Invalid as error:
-            display.vvv("Notario Failure: %s" % str(error))
-            msg = ""
-            if error.path:
-                msg = "[{}] Validation failed for variable: {}".format(host, error.path[0])
-                display.error(msg)
-                reason = "[{}] Reason: {}".format(host, error.reason)
-            else:
-                reason = "[{}] Reason: {}".format(host, str(error))
-            given = ""
+            display.vvvv("Notario Failure: %s" % str(error))
+            msg = "[{}] Validation failed for variable: {}".format(
+                host, error.path[0])
+            display.error(msg)
+            reason = "[{}] Reason: {}".format(host, error.reason)
             try:
-                if "schema is missing" not in error.message:
+                if "schema is missing" not in str(error):
                     for i in range(0, len(error.path)):
                         if i == 0:
                             given = "[{}] Given value for {}".format(
@@ -156,20 +161,24 @@ class ActionModule(ActionBase):
 
 
 def osd_objectstore_choices(value):
-    assert value in ['bluestore', 'filestore'], "osd_objectstore must be either 'bluestore' or 'filestore'"
+    assert value in [
+        'bluestore', 'filestore'], "osd_objectstore must be either 'bluestore' or 'filestore'"  # noqa E501
 
 
 def ceph_origin_choices(value):
     if not notario_store["containerized_deployment"]:
-        assert value in ['repository', 'distro', 'local'], "ceph_origin must be either 'repository', 'distro' or 'local'"
+        assert value in ['repository', 'distro',
+                         'local'], "ceph_origin must be either 'repository', 'distro' or 'local'"  # noqa E501
 
 
 def ceph_repository_choices(value):
-    assert value in ['community', 'rhcs', 'dev', 'custom'], "ceph_repository must be either 'community', 'rhcs', 'dev', or 'custom'"
+    msg = "ceph_repository must be either 'community', 'rhcs', 'dev', 'custom' or 'uca'"
+    assert value in ['community', 'rhcs', 'dev', 'custom', 'uca'], msg
 
 
 def ceph_repository_type_choices(value):
-    assert value in ['cdn', 'iso'], "ceph_repository_type must be either 'cdn' or 'iso'"
+    assert value in [
+        'cdn', 'iso'], "ceph_repository_type must be either 'cdn' or 'iso'"
 
 
 def validate_monitor_options(value):
@@ -178,32 +187,33 @@ def validate_monitor_options(value):
     be defined.
     """
     monitor_address_given = notario_store["monitor_address"] != "0.0.0.0"
-    monitor_address_block_given = notario_store["monitor_address_block"] != "subnet"
+    monitor_address_block_given = notario_store["monitor_address_block"] != "subnet"  # noqa E501
     monitor_interface_given = notario_store["monitor_interface"] != "interface"
 
-    msg = "Either monitor_address, monitor_address_block or monitor_interface must be provided"
+    msg = "Either monitor_address, monitor_address_block or monitor_interface must be provided"  # noqa E501
 
-    assert any([monitor_address_given, monitor_address_block_given, monitor_interface_given]), msg
+    assert any([monitor_address_given, monitor_address_block_given,
+                monitor_interface_given]), msg
 
 
 def validate_dmcrypt_bool_value(value):
-    assert value in ["true", True, "false", False], "dmcrypt can be set to true/True or false/False (default)"
+    assert value in ["true", True, "false",
+                     False], "dmcrypt can be set to true/True or false/False (default)"
 
 
 def validate_osd_auto_discovery_bool_value(value):
-    assert value in ["true", True, "false", False], "osd_auto_discovery can be set to true/True or false/False (default)"
-
-
-def validate_osd_scenarios(value):
-    assert value in ["collocated", "non-collocated", "lvm"], "osd_scenario must be set to 'collocated', 'non-collocated' or 'lvm'"
+    assert value in ["true", True, "false",
+                     False], "osd_auto_discovery can be set to true/True or false/False (default)"
 
 
 def validate_objectstore(value):
-    assert value in ["filestore", "bluestore"], "objectstore must be set to 'filestore' or 'bluestore'"
+    assert value in [
+        "filestore", "bluestore"], "objectstore must be set to 'filestore' or 'bluestore'"  # noqa E501
 
 
 def validate_ceph_stable_release(value):
-    assert value in CEPH_RELEASES, "ceph_stable_release must be set to one of the following: %s" % ", ".join(CEPH_RELEASES)
+    assert value in CEPH_RELEASES, "ceph_stable_release must be set to one of the following: %s" % ", ".join(  # noqa E501
+        CEPH_RELEASES)
 
 
 def validate_rados_options(value):
@@ -215,9 +225,10 @@ def validate_rados_options(value):
     radosgw_address_block_given = notario_store["radosgw_address_block"] != "subnet"
     radosgw_interface_given = notario_store["radosgw_interface"] != "interface"
 
-    msg = "Either radosgw_address, radosgw_address_block or radosgw_interface must be provided"
+    msg = "Either radosgw_address, radosgw_address_block or radosgw_interface must be provided"  # noqa E501
 
-    assert any([radosgw_address_given, radosgw_address_block_given, radosgw_interface_given]), msg
+    assert any([radosgw_address_given, radosgw_address_block_given,
+                radosgw_interface_given]), msg
 
 
 install_options = (
@@ -245,6 +256,14 @@ ceph_repository_dev = (
     ("ceph_dev_sha1", types.string),
 )
 
+ceph_repository_custom = ("ceph_custom_repo", types.string)
+
+ceph_repository_uca = (
+    ("ceph_stable_repo_uca", types.string),
+    ("ceph_stable_openstack_release_uca", types.string),
+    ("ceph_stable_release_uca", types.string),
+)
+
 monitor_options = (
     ("cluster_network", types.string),
     ("fsid", types.string),
@@ -262,16 +281,7 @@ rados_options = (
 
 osd_options = (
     (optional("dmcrypt"), validate_dmcrypt_bool_value),
-    (optional("osd_auto_discovery"), validate_osd_auto_discovery_bool_value),
-    ("osd_scenario", validate_osd_scenarios),
-)
-
-collocated_osd_scenario = ("devices", iterables.AllItems(types.string))
-
-non_collocated_osd_scenario = (
-    (optional("bluestore_wal_devices"), iterables.AllItems(types.string)),
-    (optional("dedicated_devices"), iterables.AllItems(types.string)),
-    ("devices", iterables.AllItems(types.string)),
+    (optional("osd_auto_discovery"), types.boolean),
 )
 
 lvm_batch_scenario = ("devices", iterables.AllItems(types.string))

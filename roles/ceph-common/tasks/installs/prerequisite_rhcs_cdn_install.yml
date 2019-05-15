@@ -1,50 +1,15 @@
 ---
-- name: check if the red hat storage monitor repo is already present
-  yum:
-    list: repos
-    update_cache: no
-  register: rhcs_mon_repo
-  when:
-    - (mon_group_name in group_names or mgr_group_name in group_names)
-  until: rhcs_mon_repo is succeeded
-
 - name: enable red hat storage monitor repository
-  command: subscription-manager repos --enable rhel-7-server-rhceph-{{ ceph_rhcs_version }}-mon-rpms
-  changed_when: false
-  when:
-    - (mon_group_name in group_names or mgr_group_name in group_names)
-    - "'rhel-7-server-rhceph-'+ ceph_rhcs_version | string +'-mon-rpms' not in rhcs_mon_repo.results"
-
-- name: check if the red hat storage osd repo is already present
-  yum:
-    list: repos
-    update_cache: no
-  register: rhcs_osd_repo
-  check_mode: no
-  when:
-    - osd_group_name in group_names
-  until: rhcs_osd_repo is succeeded
+  rhsm_repository:
+    name: "rhceph-{{ ceph_rhcs_version }}-mon-for-rhel-8-{{ ansible_architecture }}-rpms"
+  when: (mon_group_name in group_names or mgr_group_name in group_names)
 
 - name: enable red hat storage osd repository
-  command: subscription-manager repos --enable rhel-7-server-rhceph-{{ ceph_rhcs_version }}-osd-rpms
-  changed_when: false
-  when:
-    - osd_group_name in group_names
-    - "'rhel-7-server-rhceph-'+ ceph_rhcs_version | string +'-osd-rpms' not in rhcs_osd_repo.results"
-
-- name: check if the red hat storage tools repo is already present
-  yum:
-    list: repos
-    update_cache: no
-  register: rhcs_tools_repo
-  check_mode: no
-  when:
-    - (rgw_group_name in group_names or mds_group_name in group_names or nfs_group_name in group_names or iscsi_gw_group_name in group_names or client_group_name in group_names)
-  until: rhcs_tools_repo is succeeded
+  rhsm_repository:
+    name: "rhceph-{{ ceph_rhcs_version }}-osd-for-rhel-8-{{ ansible_architecture }}-rpms"
+  when: osd_group_name in group_names
 
 - name: enable red hat storage tools repository
-  command: subscription-manager repos --enable rhel-7-server-rhceph-{{ ceph_rhcs_version }}-tools-rpms
-  changed_when: false
-  when:
-    - (rgw_group_name in group_names or mds_group_name in group_names or nfs_group_name in group_names or iscsi_gw_group_name in group_names or client_group_name in group_names)
-    - "'rhel-7-server-rhceph-'+ ceph_rhcs_version | string +'-tools-rpms' not in rhcs_tools_repo.results"
+  rhsm_repository:
+    name: "rhceph-{{ ceph_rhcs_version }}-tools-for-rhel-8-{{ ansible_architecture }}-rpms"
+  when: (rgw_group_name in group_names or mds_group_name in group_names or nfs_group_name in group_names or iscsi_gw_group_name in group_names or client_group_name in group_names)

@@ -71,13 +71,15 @@ The following branches should be used depending on your requirements. The ``stab
 branches have been QE tested and sometimes recieve backport fixes throughout their lifecycle.
 The ``master`` branch should be considered experimental and used with caution.
 
-- ``stable-3.0`` Supports for Ceph versions ``jewel`` and ``luminous``. This branch supports Ansible version ``2.4``.
+- ``stable-3.0`` Supports Ceph versions ``jewel`` and ``luminous``. This branch requires Ansible version ``2.4``.
 
-- ``stable-3.1`` Supports for Ceph version ``luminous`` and ``mimic``. This branch supports Ansible version ``2.4``.
+- ``stable-3.1`` Supports Ceph versions ``luminous`` and ``mimic``. This branch requires Ansible version ``2.4``.
 
-- ``stable-3.2`` Supports for Ceph version ``luminous`` and ``mimic``. This branch supports Ansible version ``2.6``.
+- ``stable-3.2`` Supports Ceph versions ``luminous`` and ``mimic``. This branch requires Ansible version ``2.6``.
 
-- ``master`` Supports for Ceph@master version. This branch supports Ansible version ``2.7``.
+- ``stable-4.0`` Supports Ceph version ``nautilus``. This branch requires Ansible version ``2.7``.
+
+- ``master`` Supports Ceph@master version. This branch requires Ansible version ``2.7``.
 
 Configuration and Usage
 =======================
@@ -201,20 +203,19 @@ At the most basic level you must tell ``ceph-ansible`` what version of Ceph you 
 how you want your OSDs configured. To begin your configuration rename each file in ``group_vars/`` you wish to use so that it does not include the ``.sample``
 at the end of the filename, uncomment the options you wish to change and provide your own value.
 
-An example configuration that deploys the upstream ``jewel`` version of Ceph with OSDs that have collocated journals would look like this in ``group_vars/all.yml``:
+An example configuration that deploys the upstream ``octopus`` version of Ceph with lvm batch method would look like this in ``group_vars/all.yml``:
 
 .. code-block:: yaml
 
    ceph_origin: repository
    ceph_repository: community
-   ceph_stable_release: jewel
+   ceph_stable_release: octopus
    public_network: "192.168.3.0/24"
    cluster_network: "192.168.4.0/24"
    monitor_interface: eth1
    devices:
      - '/dev/sda'
      - '/dev/sdb'
-   osd_scenario: collocated
 
 The following config options are required to be changed on all installations but there could be other required options depending on your OSD scenario
 selection or other aspects of your cluster.
@@ -222,7 +223,6 @@ selection or other aspects of your cluster.
 - ``ceph_origin``
 - ``ceph_stable_release``
 - ``public_network``
-- ``osd_scenario``
 - ``monitor_interface`` or ``monitor_address``
 
 
@@ -237,11 +237,11 @@ new configuration options.
 
 The following sections in ``ceph.conf`` are supported:
 
-* ``[global]``,
+* ``[global]``
 * ``[mon]``
 * ``[osd]``
 * ``[mds]``
-* ``[rgw]``
+* ``[client.rgw.{instance_name}]``
 
 An example:
 
@@ -264,9 +264,8 @@ Full documentation for configuring each of the Ceph daemon types are in the foll
 OSD Configuration
 -----------------
 
-OSD configuration is set by selecting an OSD scenario and providing the configuration needed for
-that scenario. Each scenario is different in it's requirements. Selecting your OSD scenario is done
-by setting the ``osd_scenario`` configuration option.
+OSD configuration was used to be set by selecting an OSD scenario and providing the configuration needed for
+that scenario. As of nautilus in stable-4.0, the only scenarios available is ``lvm``.
 
 .. toctree::
    :maxdepth: 1

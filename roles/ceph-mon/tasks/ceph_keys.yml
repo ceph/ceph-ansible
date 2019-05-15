@@ -11,70 +11,36 @@
   register: ceph_health_raw
   run_once: true
   until: >
-    (ceph_health_raw.stdout | default('{}') | from_json)['state'] in ['leader', 'peon']
+    (ceph_health_raw.stdout != "") and (ceph_health_raw.stdout | default('{}') | from_json)['state'] in ['leader', 'peon']
   retries: "{{ handler_health_mon_check_retries }}"
   delay: "{{ handler_health_mon_check_delay }}"
   changed_when: false
 
-- name: fetch ceph initial keys
-  ceph_key:
-    state: fetch_initial_keys
-    cluster: "{{ cluster }}"
-    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    mode: "0400"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-  when:
-    - cephx
-
-- block:
-  - name: create ceph mgr keyring(s)
+- name: tasks for MONs when cephx is enabled
+  when: cephx
+  block:
+  - name: fetch ceph initial keys
     ceph_key:
-      name: "mgr.{{ hostvars[item]['ansible_hostname'] }}"
-      state: present
-      caps:
-        mon: allow profile mgr
-        osd: allow *
-        mds: allow *
+      state: fetch_initial_keys
       cluster: "{{ cluster }}"
-      secret: "{{ (mgr_secret != 'mgr_secret') | ternary(mgr_secret, omit) }}"
       owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
       group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
       mode: "0400"
     environment:
       CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-    with_items:
-      - "{{ groups.get(mon_group_name) if groups.get(mgr_group_name, []) | length == 0 else groups.get(mgr_group_name, []) }}"
-    run_once: True
-    delegate_to: "{{ groups[mon_group_name][0] }}"
+      CEPH_ROLLING_UPDATE: "{{ rolling_update }}"
 
-  - name: copy ceph mgr key(s) to the ansible server
+  - name: copy keys to the ansible server
     fetch:
-      src: "{{ ceph_conf_key_directory }}/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
-      dest: "{{ fetch_directory }}/{{ fsid }}/{{ ceph_conf_key_directory }}/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
+      src: "{{ item }}"
+      dest: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
       flat: yes
     with_items:
-      - "{{ groups.get(mon_group_name) if groups.get(mgr_group_name, []) | length == 0 else groups.get(mgr_group_name, []) }}"
-    delegate_to: "{{ groups[mon_group_name][0] }}"
-  when:
-    - cephx
-    - not rolling_update
-
-- name: copy keys to the ansible server
-  fetch:
-    src: "{{ item }}"
-    dest: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
-    flat: yes
-  with_items:
-    - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
-    - /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
-    - /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring
-    - /var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring
-    - /var/lib/ceph/bootstrap-rbd-mirror/{{ cluster }}.keyring
-    - /etc/ceph/{{ cluster }}.client.admin.keyring
-  when:
-    - cephx
-    - inventory_hostname == groups[mon_group_name] | last
+      - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
+      - /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
+      - /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring
+      - /var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring
+      - /var/lib/ceph/bootstrap-rbd-mirror/{{ cluster }}.keyring
+      - /etc/ceph/{{ cluster }}.client.admin.keyring
+    when: inventory_hostname == groups[mon_group_name] | last

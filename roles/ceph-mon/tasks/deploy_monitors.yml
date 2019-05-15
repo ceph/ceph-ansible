@@ -1,4 +1,14 @@
 ---
+- name: check if monitor initial keyring already exists
+  command: >
+    {{ docker_exec_cmd | default('') }} ceph --cluster ceph --name mon. -k
+    /var/lib/ceph/mon/{{ cluster }}-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}/keyring
+    auth get-key mon.
+  register: initial_mon_key
+  run_once: True
+  delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
+  when: ceph_current_status.fsid is defined
+
 - name: generate monitor initial keyring
   shell: >
     python -c "import os ; import struct ;
@@ -6,17 +16,22 @@
     header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ;
     print(base64.b64encode(header + key).decode())"
   register: monitor_keyring
-  when: cephx
-  run_once: true # must run on a single mon only
+  run_once: True
+  delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
+  when:
+    - initial_mon_key.skipped is defined
+    - ceph_current_status.fsid is undefined
 
-  # add code to read the key or/and try to find it on other nodes
+- name: get initial keyring when it already exists
+  set_fact:
+    monitor_keyring: "{{ initial_mon_key.stdout if monitor_keyring.skipped is defined else monitor_keyring.stdout if initial_mon_key.skipped is defined }}"
 
 - name: create monitor initial keyring
   ceph_key:
     name: mon.
     state: present
     dest: "/var/lib/ceph/tmp/"
-    secret: "{{ monitor_keyring.stdout }}"
+    secret: "{{ monitor_keyring }}"
     cluster: "{{ cluster }}"
     caps:
       mon: allow *
@@ -27,15 +42,13 @@
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-  when: cephx
 
 - name: copy the initial key in /etc/ceph (for containers)
   command: >
-    cp /var/lib/ceph/tmp/{{ cluster }}.mon..keyring /etc/ceph/{{ cluster }}.mon.keyring
+    cp /var/lib/ceph/tmp/{{ cluster }}.mon..keyring
+       /etc/ceph/{{ cluster }}.mon.keyring
   changed_when: false
-  when:
-    - cephx
-    - containerized_deployment
+  when: containerized_deployment
 
 - name: create (and fix ownership of) monitor directory
   file:
@@ -94,8 +107,7 @@
     --keyring /var/lib/ceph/tmp/{{ cluster }}.mon..keyring
   args:
     creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring
-  when:
-    - cephx
+  when: cephx
 
 - name: ceph monitor mkfs without keyring
   command: >
@@ -108,5 +120,4 @@
     --fsid {{ fsid }}
   args:
     creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/store.db
-  when:
-    - not cephx
+  when: not cephx

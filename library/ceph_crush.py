@@ -56,8 +56,7 @@ EXAMPLES = '''
     location: "{{ hostvars[item]['osd_crush_location'] }}"
     containerized: "{{ docker_exec_cmd }}"
   with_items: "{{ groups[osd_group_name] }}"
-  when:
-    - crush_rule_config
+  when: crush_rule_config
 '''
 
 RETURN = '''#  '''
@@ -145,7 +144,7 @@ def exec_commands(module, cmd_list):
     Creates Ceph commands
     '''
     for cmd in cmd_list:
-        rc, out, err = module.run_command(cmd, encoding=None)
+        rc, out, err = module.run_command(cmd)
     return rc, cmd, out, err
 
 
@@ -193,8 +192,8 @@ def run_module():
         end=str(endd),
         delta=str(delta),
         rc=rc,
-        stdout=out.rstrip(b"\r\n"),
-        stderr=err.rstrip(b"\r\n"),
+        stdout=out.rstrip("\r\n"),
+        stderr=err.rstrip("\r\n"),
         changed=True,
     )
 
