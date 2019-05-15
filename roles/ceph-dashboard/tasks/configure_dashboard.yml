@@ -5,16 +5,12 @@
   when: containerized_deployment
 
 - name: disable SSL for dashboard
-  shell: |
-    {{ container_exec_cmd }} ceph config set mgr mgr/dashboard/ssl false || \
-    {{ container_exec_cmd }} ceph config-key set mgr/dashboard/ssl false
+  command: "{{ container_exec_cmd }} ceph config set mgr mgr/dashboard/ssl false"
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  when: dashboard_protocol != "https"
+  when: dashboard_protocol == "http"
 
 - name: enable SSL for dashboard
-  shell: |
-    {{ container_exec_cmd }} ceph config set mgr mgr/dashboard/ssl true || \
-    {{ container_exec_cmd }} ceph config-key set mgr/dashboard/ssl true
+  command: "{{ container_exec_cmd }} ceph config set mgr mgr/dashboard/ssl true"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when: dashboard_protocol == "https"
 
