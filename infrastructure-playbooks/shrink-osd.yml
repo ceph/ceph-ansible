@@ -87,10 +87,9 @@
       with_items: "{{ find_osd_hosts.results }}"
 
     - name: mark osd(s) out of the cluster
-      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ item }}"
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ osd_to_kill.replace(',', ' ') }}"
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      with_items: "{{ osd_to_kill.split(',') }}"
 
     - name: stop osd(s) service
       service:
