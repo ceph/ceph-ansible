@@ -527,13 +527,15 @@
             name: ceph-grafana
       when: dashboard_enabled
 
-- hosts: '{{ (groups["mgrs"] | default(groups["mons"]))[0] }}'
+- hosts: localhost
   become: true
   tasks:
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-      when: dashboard_enabled
-    - import_role:
-        name: ceph-dashboard
+    - block:
+        - import_role:
+            name: ceph-defaults
+          tags: ['ceph_update_config']
+          delegate_to: "{{ groups[mgr_group_name][0] if groups[mgr_group_name] | length > 0 else groups[mon_group_name][0] }}"
+        - import_role:
+            name: ceph-dashboard
+          delegate_to: "{{ groups[mgr_group_name][0] if groups[mgr_group_name] | length > 0 else groups[mon_group_name][0] }}"
       when: dashboard_enabled
