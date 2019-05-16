@@ -1,60 +1,4 @@
 ---
-- name: make sure the alertmanager service is down
-  service:
-    name: alertmanager
-    state: stopped
-  failed_when: false
-
-# Make sure we re-create the container
-- name: remove old alertmanager container
-  command: "{{ container_binary }} rm -f alertmanager"
-  changed_when: false
-  failed_when: false
-
-- name: start alertmanager container
-  shell: |
-    {{ container_binary }} run --detach  --name alertmanager \
-      -v "{{ alertmanager_conf_dir }}:/etc/alertmanager:Z" \
-      -v "{{ alertmanager_data_dir }}:/alertmanager:Z" \
-      "--net=host" \
-      "--cpu-period={{ alertmanager_container_cpu_period }}" \
-      "--cpu-quota={{ alertmanager_container_cpu_period * alertmanager_container_cpu_cores }}" \
-      "--memory={{ alertmanager_container_memory }}GB" \
-      "--memory-swap={{ alertmanager_container_memory * 2 }}GB" \
-      "{{ alertmanager_container_image }}" \
-      "--config.file=/etc/alertmanager/alertmanager.yml" \
-      "--storage.path=/alertmanager"
-  notify: service handler
-
-- name: make sure the prometheus service is down
-  service:
-    name: prometheus
-    state: stopped
-  failed_when: false
-
-# Make sure we re-create the container
-- name: remove old prometheus container
-  command: "{{ container_binary }} rm -f prometheus"
-  changed_when: false
-  failed_when: false
-
-- name: start prometheus container
-  shell: |
-    {{ container_binary }} run --detach  --name prometheus \
-      -v "{{ prometheus_conf_dir }}:/etc/prometheus:Z" \
-      -v "{{ prometheus_data_dir }}:/prometheus:Z" \
-      "--net=host" \
-      "--user={{ prometheus_user_id }}" \
-      "--cpu-period={{ prometheus_container_cpu_period }}" \
-      "--cpu-quota={{ prometheus_container_cpu_period * prometheus_container_cpu_cores }}" \
-      "--memory={{ prometheus_container_memory }}GB" \
-      "--memory-swap={{ prometheus_container_memory * 2 }}GB" \
-      "{{ prometheus_container_image }}" \
-      "--config.file=/etc/prometheus/prometheus.yml" \
-      "--storage.tsdb.path=/prometheus" \
-      "--web.external-url=http://{{ inventory_hostname }}:9090/"
-  notify: service handler
-
 - name: ship systemd services
   template:
     src: "{{ item }}.j2"
@@ -66,3 +10,13 @@
     - 'alertmanager.service'
     - 'prometheus.service'
   notify: service handler
+
+- name: start prometheus services
+  systemd:
+    name: "{{ item }}"
+    daemon_reload: true
+    enabled: true
+    state: started
+  with_items:
+    - prometheus
+    - alertmanager
