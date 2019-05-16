@@ -16,31 +16,6 @@
     - /etc/grafana
     - /var/lib/grafana
 
-- name: make sure the grafana-server service is down
-  service:
-    name: grafana-server
-    state: stopped
-  failed_when: false
-
-# Make sure we re-create the container
-- name: remove old grafana-server container
-  command: "{{ container_binary }} rm -f grafana-server"
-  changed_when: false
-  failed_when: false
-
-- name: create grafana-server container
-  shell: |
-    {{ container_binary }} create --name grafana-server \
-      -v "/etc/grafana:/etc/grafana:Z" \
-      -v "/var/lib/grafana:/var/lib/grafana:Z" \
-      "--net=host" \
-      "--cpu-period={{ grafana_container_cpu_period }}" \
-      "--cpu-quota={{ grafana_container_cpu_period * grafana_container_cpu_cores }}" \
-      "--memory={{ grafana_container_memory }}GB" \
-      "--memory-swap={{ grafana_container_memory * 2 }}GB" \
-      -e "GF_INSTALL_PLUGINS={{ grafana_plugins|join(',') }}" \
-      "{{ grafana_container_image }}"
-
 - name: ship systemd service
   template:
     src: grafana-server.service.j2
@@ -48,4 +23,11 @@
     owner: root
     group: root
     mode: 0644
-  notify: enable service
+
+- name: start the grafana-server service
+  systemd:
+    name: grafana-server
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  failed_when: false
