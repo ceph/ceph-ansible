@@ -18,14 +18,14 @@
     src: "{{ role_path }}/templates/iscsi-gateway.cfg.j2"
     dest: /etc/ceph/iscsi-gateway.cfg
 
-- name: set_fact docker_exec_cmd
+- name: set_fact container_exec_cmd
   set_fact:
-    docker_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+    container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when: containerized_deployment
 
 - name: check if a rbd pool exists
-  command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool ls --format json"
+  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool ls --format json"
   changed_when: false
   register: rbd_pool_exists
   delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -34,12 +34,12 @@
   when: "'rbd' not in (rbd_pool_exists.stdout | from_json)"
   block:
     - name: create a rbd pool if it doesn't exist
-      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool create rbd {{ osd_pool_default_pg_num }}"
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool create rbd {{ osd_pool_default_pg_num }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: customize pool size
-      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set rbd size {{ rbd_pool_size | default(osd_pool_default_size) }}"
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set rbd size {{ rbd_pool_size | default(osd_pool_default_size) }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
       when: rbd_pool_size | default(osd_pool_default_size) != ceph_osd_pool_default_size
