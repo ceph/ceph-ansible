@@ -1,27 +1,4 @@
 ---
-- name: make sure the node_exporter service is down
-  service:
-    name: node_exporter
-    state: stopped
-  failed_when: false
-
-# Make sure we re-create the container
-- name: remove old node-exporter container
-  command: "{{ container_binary }} rm -f node-exporter"
-  changed_when: false
-  failed_when: false
-
-- name: start node-exporter container
-  shell: |
-    {{ container_binary }} run --detach  --name node-exporter \
-      -v /proc:/host/proc:ro -v /sys:/host/sys:ro \
-      --net=host \
-      {{ node_exporter_container_image }} \
-      '--path.procfs=/host/proc' \
-      '--path.sysfs=/host/sys' \
-      '--no-collector.timex'
-  notify: restart node-exporter service
-
 - name: ship systemd service
   template:
     src: node_exporter.service.j2
@@ -29,4 +6,11 @@
     owner: root
     group: root
     mode: 0644
-  notify: restart node-exporter service
+
+- name: start the node_exporter service
+  systemd:
+    name: node_exporter
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  failed_when: false
