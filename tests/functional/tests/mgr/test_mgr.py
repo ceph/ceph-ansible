@@ -4,12 +4,12 @@ import json
 
 class TestMGRs(object):
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_mgr_is_installed(self, node, host):
         assert host.package("ceph-mgr").is_installed
 
     @pytest.mark.dashboard
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_mgr_dashboard_is_installed(self, node, host):
         assert host.package("ceph-mgr-dashboard").is_installed
 
@@ -33,7 +33,7 @@ class TestMGRs(object):
         hostname = node["vars"]["inventory_hostname"]
         cluster = setup["cluster_name"]
         container_binary = setup["container_binary"]
-        if node['docker']:
+        if node['container']:
             container_exec_cmd = '{container_binary} exec ceph-mgr-{hostname}'.format(  # noqa E501
                 hostname=hostname, container_binary=container_binary)
         else:

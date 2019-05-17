@@ -33,7 +33,7 @@
         - not containerized_deployment | default(false) | bool
 
     - name: create an rbd image - container
-      command: "podman run --rm -v /etc/ceph:/etc/ceph --net=host --entrypoint=rbd {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} create --size=1024 test/rbd_test"
+      command: "podman run --rm -v /etc/ceph:/etc/ceph --net=host --entrypoint=rbd {{ ceph_container_registry }}/{{ ceph_container_image }}:{{ ceph_container_image_tag }} create --size=1024 test/rbd_test"
       delegate_to: "mon0"
       when: is_atomic | bool or containerized_deployment | default(false) | bool
 
@@ -52,7 +52,7 @@
       when: is_atomic | bool or containerized_deployment | default(false) | bool
       block:
         - name: disable features unsupported by the kernel
-          command: "podman run --rm -v /etc/ceph:/etc/ceph --net=host --entrypoint=rbd {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} feature disable test/rbd_test object-map fast-diff deep-flatten"
+          command: "podman run --rm -v /etc/ceph:/etc/ceph --net=host --entrypoint=rbd {{ ceph_container_registry }}/{{ ceph_container_image }}:{{ ceph_container_image_tag }} feature disable test/rbd_test object-map fast-diff deep-flatten"
 
         - name: map a device
-          command: "podman run --rm --privileged -v /etc/ceph:/etc/ceph -v /dev:/dev --net=host --entrypoint=rbd {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} map test/rbd_test"
+          command: "podman run --rm --privileged -v /etc/ceph:/etc/ceph -v /dev:/dev --net=host --entrypoint=rbd {{ ceph_container_registry }}/{{ ceph_container_image }}:{{ ceph_container_image_tag }} map test/rbd_test"

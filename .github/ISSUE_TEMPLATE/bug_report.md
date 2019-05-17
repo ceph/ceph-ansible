@@ -23,7 +23,7 @@ Share your group_vars files, inventory and **full** ceph-ansibe log
 **Environment**:
 * OS (e.g. from /etc/os-release):
 * Kernel (e.g. `uname -a`):
-* Docker version if applicable (e.g. `docker version`):
+* Container engine version if applicable (e.g. `docker version` or `podman version`):
 * Ansible version (e.g. `ansible-playbook --version`):
 * ceph-ansible version (e.g. `git head or tag or stable branch`):
 * Ceph version (e.g. `ceph -v`):

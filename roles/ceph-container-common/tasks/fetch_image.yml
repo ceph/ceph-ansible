@@ -176,17 +176,17 @@
     - nfs_group_name in group_names
     - ceph_nfs_container_inspect_before_pull.get('rc') == 0
 
-- name: "pulling {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image"
-  command: "{{ timeout_command }} {{ container_binary }} pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+- name: "pulling {{ ceph_container_registry }}/{{ ceph_container_image }}:{{ ceph_container_image_tag }} image"
+  command: "{{ timeout_command }} {{ container_binary }} pull {{ ceph_container_registry }}/{{ ceph_container_image }}:{{ ceph_container_image_tag }}"
   changed_when: false
-  register: docker_image
-  until: docker_image.rc == 0
-  retries: "{{ docker_pull_retry }}"
+  register: container_image
+  until: container_image.rc == 0
+  retries: "{{ container_pull_retry }}"
   delay: 10
-  when: (ceph_docker_dev_image is undefined or not ceph_docker_dev_image | bool)
+  when: (ceph_container_dev_image is undefined or not ceph_container_dev_image | bool)
 
-- name: "inspecting {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image after pulling"
-  command: "{{ container_binary }} inspect {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+- name: "inspecting {{ ceph_container_registry }}/{{ ceph_container_image }}:{{ ceph_container_image_tag }} image after pulling"
+  command: "{{ container_binary }} inspect {{ ceph_container_registry }}/{{ ceph_container_image }}:{{ ceph_container_image_tag }}"
   changed_when: false
   failed_when: false
   register: image_inspect_after_pull
@@ -268,25 +268,25 @@
 
 - name: export local ceph dev image
   command: >
-    {{ container_binary }} save -o "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
-    "{{ ceph_docker_username }}/{{ ceph_docker_imagename }}:{{ ceph_docker_image_tag }}"
+    {{ container_binary }} save -o "/tmp/{{ ceph_container_username }}-{{ ceph_container_imagename }}-{{ ceph_container_image_tag }}.tar"
+    "{{ ceph_container_username }}/{{ ceph_container_imagename }}:{{ ceph_container_image_tag }}"
   delegate_to: localhost
-  when: (ceph_docker_dev_image is defined and ceph_docker_dev_image)
+  when: (ceph_container_dev_image is defined and ceph_container_dev_image)
   run_once: true
 
 - name: copy ceph dev image file
   copy:
-    src: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
-    dest: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
-  when: (ceph_docker_dev_image is defined and ceph_docker_dev_image | bool)
+    src: "/tmp/{{ ceph_container_username }}-{{ ceph_container_imagename }}-{{ ceph_container_image_tag }}.tar"
+    dest: "/tmp/{{ ceph_container_username }}-{{ ceph_container_imagename }}-{{ ceph_container_image_tag }}.tar"
+  when: (ceph_container_dev_image is defined and ceph_container_dev_image | bool)
 
 - name: load ceph dev image
-  command: "{{ container_binary }} load -i /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
-  when: (ceph_docker_dev_image is defined and ceph_docker_dev_image | bool)
+  command: "{{ container_binary }} load -i /tmp/{{ ceph_container_username }}-{{ ceph_container_imagename }}-{{ ceph_container_image_tag }}.tar"
+  when: (ceph_container_dev_image is defined and ceph_container_dev_image | bool)
 
 - name: remove tmp ceph dev image file
   file:
-    name: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+    name: "/tmp/{{ ceph_container_username }}-{{ ceph_container_imagename }}-{{ ceph_container_image_tag }}.tar"
     state: absent
-  when: (ceph_docker_dev_image is defined and ceph_docker_dev_image | bool)
+  when: (ceph_container_dev_image is defined and ceph_container_dev_image | bool)
 

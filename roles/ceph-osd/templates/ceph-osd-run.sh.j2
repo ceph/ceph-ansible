@@ -5,7 +5,7 @@
 ########
 # MAIN #
 ########
-{% set cpu_limit = ansible_processor_vcpus|int if ceph_osd_docker_cpu_limit|int > ansible_processor_vcpus|int else ceph_osd_docker_cpu_limit|int %}
+{% set cpu_limit = ansible_processor_vcpus|int if ceph_osd_container_cpu_limit|int > ansible_processor_vcpus|int else ceph_osd_container_cpu_limit|int %}
 
 {% if ceph_osd_numactl_opts != "" %}
 numactl \
@@ -18,14 +18,14 @@ numactl \
   --pid=host \
   --ipc=host \
   {% if osd_objectstore == 'filestore' -%}
-  --memory={{ ceph_osd_docker_memory_limit }} \
+  --memory={{ ceph_osd_container_memory_limit }} \
   {% endif -%}
   --cpus={{ cpu_limit }} \
-  {% if ceph_osd_docker_cpuset_cpus is defined -%}
-  --cpuset-cpus='{{ ceph_osd_docker_cpuset_cpus }}' \
+  {% if ceph_osd_container_cpuset_cpus is defined -%}
+  --cpuset-cpus='{{ ceph_osd_container_cpuset_cpus }}' \
   {% endif -%}
-  {% if ceph_osd_docker_cpuset_mems is defined -%}
-  --cpuset-mems='{{ ceph_osd_docker_cpuset_mems }}' \
+  {% if ceph_osd_container_cpuset_mems is defined -%}
+  --cpuset-mems='{{ ceph_osd_container_cpuset_mems }}' \
   {% endif -%}
   -v /dev:/dev \
   -v /etc/localtime:/etc/localtime:ro \
@@ -44,8 +44,8 @@ numactl \
   {% endif -%}
   -v /run/lvm/:/run/lvm/ \
   -e CEPH_DAEMON=OSD_CEPH_VOLUME_ACTIVATE \
-  -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+  -e CONTAINER_IMAGE={{ ceph_container_registry }}/{{ ceph_container_image }}:{{ ceph_container_image_tag }} \
   -e OSD_ID="$1" \
   --name=ceph-osd-"$1" \
-  {{ ceph_osd_docker_extra_env }} \
-  {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  {{ ceph_osd_container_extra_env }} \
+  {{ ceph_container_registry }}/{{ ceph_container_image }}:{{ ceph_container_image_tag }}

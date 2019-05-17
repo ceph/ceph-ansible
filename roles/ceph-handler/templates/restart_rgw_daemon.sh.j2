@@ -31,7 +31,7 @@ check_socket() {
   while [ $count -ne 0 ]; do
     SOCKET=$(grep ${SOCKET_PREFIX[i]} /proc/net/unix | awk '{ print $8 }')
     if [ -n "${SOCKET}" ]; then
-      ${DOCKER_EXECS[i]} test -S ${SOCKET} && succ=$((succ+1)) && break
+      ${CONTAINER_EXECS[i]} test -S ${SOCKET} && succ=$((succ+1)) && break
     fi
     sleep $DELAY
     let count=count-1
@@ -45,9 +45,9 @@ check_socket() {
 
 check_for_curl_or_wget() {
   local i=$1
-  if ${DOCKER_EXECS[i]} command -v wget &>/dev/null; then
+  if ${CONTAINER_EXECS[i]} command -v wget &>/dev/null; then
     rgw_test_command="wget --no-check-certificate --tries 1 --quiet -O /dev/null"
-  elif ${DOCKER_EXECS[i]} command -v curl &>/dev/null; then
+  elif ${CONTAINER_EXECS[i]} command -v curl &>/dev/null; then
     rgw_test_command="curl -k --fail --silent --output /dev/null"
   else
     echo "It seems that neither curl nor wget are available on your system."

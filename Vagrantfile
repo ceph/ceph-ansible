@@ -27,7 +27,7 @@ BOX_URL         = ENV['CEPH_ANSIBLE_VAGRANT_BOX_URL'] || settings['vagrant_box_u
 SYNC_DIR        = settings['vagrant_sync_dir']
 MEMORY          = settings['memory']
 ETH             = settings['eth']
-DOCKER          = settings['docker']
+CONTAINER       = settings['container']
 USER            = settings['ssh_username']
 DEBUG           = settings['debug']
 
@@ -38,7 +38,7 @@ $last_ip_pub_digit   = 9
 $last_ip_cluster_digit = 9
 
 ansible_provision = proc do |ansible|
-  if DOCKER then
+  if CONTAINER then
     ansible.playbook = 'site-container.yml'
     if settings['skip_tags']
       ansible.skip_tags = settings['skip_tags']
@@ -70,11 +70,11 @@ ansible_provision = proc do |ansible|
   }
 
   # In a production deployment, these should be secret
-  if DOCKER then
+  if CONTAINER then
     ansible.extra_vars = ansible.extra_vars.merge({
       containerized_deployment: 'true',
       monitor_interface: ETH,
-      ceph_mon_docker_subnet: "#{PUBLIC_SUBNET}.0/24",
+      ceph_mon_container_subnet: "#{PUBLIC_SUBNET}.0/24",
       devices: settings['disks'],
       ceph_docker_on_openstack: BOX == 'openstack',
       radosgw_interface: ETH,

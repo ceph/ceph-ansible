@@ -44,7 +44,7 @@
 
         - name: set_fact container_run_cmd
           set_fact:
-            container_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment else '' }}ceph-volume {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else '' }}"
+            container_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment else '' }}ceph-volume {{ ceph_container_registry + '/' + ceph_container_image + ':' + ceph_container_image_tag if containerized_deployment else '' }}"
 
         - name: get ceph-volume lvm inventory data
           command: "{{ container_run_cmd }} --cluster {{ cluster }} inventory --format json"
@@ -214,7 +214,7 @@
                 destroy: false
               environment:
                 CEPH_VOLUME_DEBUG: 1
-                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+                CEPH_CONTAINER_IMAGE: "{{ ceph_container_registry + '/' + ceph_container_image + ':' + ceph_container_image_tag if containerized_deployment else None }}"
                 CEPH_CONTAINER_BINARY: "{{ container_binary }}"
               loop: "{{ osd_fsid_list }}"
               when: osd_fsid_list is defined
@@ -226,7 +226,7 @@
                 destroy: true
               environment:
                 CEPH_VOLUME_DEBUG: 1
-                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+                CEPH_CONTAINER_IMAGE: "{{ ceph_container_registry + '/' + ceph_container_image + ':' + ceph_container_image_tag if containerized_deployment else None }}"
                 CEPH_CONTAINER_BINARY: "{{ container_binary }}"
               loop: "{{ osd_fsid_list }}"
               when:

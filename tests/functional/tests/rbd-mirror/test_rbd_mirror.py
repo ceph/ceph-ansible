@@ -4,7 +4,7 @@ import json
 
 class TestRbdMirrors(object):
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_rbd_mirror_is_installed(self, node, host):
         assert host.package("rbd-mirror").is_installed
 
@@ -21,7 +21,7 @@ class TestRbdMirrors(object):
         cluster = setup["cluster_name"]
         container_binary = setup["container_binary"]
         daemons = []
-        if node['docker']:
+        if node['container']:
             container_exec_cmd = '{container_binary} exec ceph-rbd-mirror-{hostname}'.format(  # noqa E501
                 hostname=hostname, container_binary=container_binary)
         else:

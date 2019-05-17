@@ -4,7 +4,7 @@ import json
 
 class TestOSDs(object):
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_ceph_osd_package_is_installed(self, node, host):
         assert host.package("ceph-osd").is_installed
 
@@ -27,7 +27,7 @@ class TestOSDs(object):
             assert s.is_enabled
             assert s.is_running
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_osd_are_mounted(self, node, host, setup):
         # TODO: figure out way to paramaterize setup['osd_ids'] for this test
         for osd_id in setup["osd_ids"]:
@@ -37,7 +37,7 @@ class TestOSDs(object):
             )
             assert host.mount_point(osd_path).exists
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     @pytest.mark.parametrize('cmd', [
         'ceph-volume',
         'ceph-volume-systemd'
@@ -60,15 +60,15 @@ class TestOSDs(object):
                 nb_up += 1
         return nb_up
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_all_osds_are_up_and_in(self, node, host, setup):
         cmd = "sudo ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(  # noqa E501
             cluster=setup["cluster_name"])
         output = json.loads(host.check_output(cmd))
         assert setup["num_osds"] == self._get_nb_up_osds_from_ids(node, output)
 
-    @pytest.mark.docker
-    def test_all_docker_osds_are_up_and_in(self, node, host, setup):
+    @pytest.mark.container
+    def test_all_container_osds_are_up_and_in(self, node, host, setup):
         container_binary = setup["container_binary"]
         osd_id = host.check_output(container_binary + " ps -q --filter='name="
                                    "ceph-osd' | head -1")

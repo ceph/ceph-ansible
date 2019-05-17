@@ -4,7 +4,7 @@ import pytest
 class TestGrafanas(object):
 
     @pytest.mark.dashboard
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_grafana_dashboard_is_installed(self, node, host):
         assert host.package("ceph-grafana-dashboards").is_installed
 

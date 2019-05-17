@@ -4,7 +4,7 @@ import json
 
 class TestRGWs(object):
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_rgw_is_installed(self, node, host):
         result = host.package("radosgw").is_installed
         if not result:
@@ -25,7 +25,7 @@ class TestRGWs(object):
         hostname = node["vars"]["inventory_hostname"]
         cluster = setup["cluster_name"]
         container_binary = setup["container_binary"]
-        if node['docker']:
+        if node['container']:
             container_exec_cmd = '{container_binary} exec ceph-rgw-{hostname}-rgw0'.format(  # noqa E501
                 hostname=hostname, container_binary=container_binary)
         else:
@@ -45,7 +45,7 @@ class TestRGWs(object):
             )
             assert instance_name in daemons
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_rgw_http_endpoint(self, node, host, setup):
         # rgw frontends ip_addr is configured on public_interface
         ip_addr = host.interface(setup['public_interface']).addresses[0]

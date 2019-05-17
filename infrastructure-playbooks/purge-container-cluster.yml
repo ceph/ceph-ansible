@@ -28,10 +28,10 @@
          invoking the playbook"
     when: ireallymeanit != 'yes'
 
-  - name: set ceph_docker_registry value if not set
+  - name: set ceph_container_registry value if not set
     set_fact:
-      ceph_docker_registry: "docker.io"
-    when: ceph_docker_registry is not defined
+      ceph_container_registry: "docker.io"
+    when: ceph_container_registry is not defined
 
 - name: check there's no ceph kernel threads present
   hosts: "{{ client_group_name|default('clients') }}"
@@ -293,7 +293,7 @@
       action: "zap"
     environment:
       CEPH_VOLUME_DEBUG: 1
-      CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      CEPH_CONTAINER_IMAGE: "{{ ceph_container_registry }}/{{ ceph_container_image }}:{{ ceph_container_image_tag }}"
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
     with_items: "{{ lvm_volumes }}"
     when: lvm_volumes | default([]) | length > 0
@@ -304,7 +304,7 @@
       action: "zap"
     environment:
       CEPH_VOLUME_DEBUG: 1
-      CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      CEPH_CONTAINER_IMAGE: "{{ ceph_container_registry }}/{{ ceph_container_image }}:{{ ceph_container_image_tag }}"
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
     with_items: "{{ devices | default([]) }}"
     when: devices | default([]) | length > 0
@@ -325,7 +325,7 @@
 
   - name: find all osd_disk_prepare logs
     find:
-      paths: "{{ ceph_osd_docker_run_script_path | default('/usr/share') }}"
+      paths: "{{ ceph_osd_container_run_script_path | default('/usr/share') }}"
       pattern: "ceph-osd-prepare-*.log"
     register: osd_disk_prepare_logs
 
@@ -550,7 +550,7 @@
         tasks_from: container_binary
 
     - name: remove ceph container image
-      command: "{{ container_binary }} rmi {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      command: "{{ container_binary }} rmi {{ ceph_container_registry }}/{{ ceph_container_image }}:{{ ceph_container_image_tag }}"
       tags:
         - remove_img
 

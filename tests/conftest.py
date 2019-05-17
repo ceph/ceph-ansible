@@ -24,7 +24,7 @@ def setup(host):
     ansible_vars = host.ansible.get_variables()
     ansible_facts = host.ansible("setup")
 
-    docker = ansible_vars.get("docker")
+    container = ansible_vars.get("containerized_deployment", False)
     osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
     group_names = ansible_vars["group_names"]
     fsid = ansible_vars.get("fsid")
@@ -63,7 +63,7 @@ def setup(host):
 
     address = host.interface(public_interface).addresses[0]
 
-    if docker:
+    if container:
         container_binary = "podman"
 
     data = dict(
@@ -100,7 +100,7 @@ def node(host, request):
     ceph_stable_release = os.environ.get("CEPH_STABLE_RELEASE", "luminous")
     rolling_update = os.environ.get("ROLLING_UPDATE", "False")
     group_names = ansible_vars["group_names"]
-    docker = ansible_vars.get("docker")
+    container = ansible_vars.get("containerized_deployment", False)
     dashboard = ansible_vars.get("dashboard_enabled", True)
     radosgw_num_instances = ansible_vars.get("radosgw_num_instances", 1)
     ceph_release_num = {
@@ -127,11 +127,11 @@ def node(host, request):
             request.function, group_names)
         pytest.skip(reason)
 
-    if request.node.get_closest_marker("no_docker") and docker:
+    if request.node.get_closest_marker("no_container") and container:
         pytest.skip(
             "Not a valid test for containerized deployments or atomic hosts")
 
-    if request.node.get_closest_marker("docker") and not docker:
+    if request.node.get_closest_marker("container") and not container:
         pytest.skip(
             "Not a valid test for non-containerized deployments or atomic hosts")  # noqa E501
 
@@ -141,7 +141,7 @@ def node(host, request):
 
     data = dict(
         vars=ansible_vars,
-        docker=docker,
+        container=container,
         ceph_stable_release=ceph_stable_release,
         ceph_release_num=ceph_release_num,
         rolling_update=rolling_update,

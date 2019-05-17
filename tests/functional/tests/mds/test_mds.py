@@ -4,7 +4,7 @@ import json
 
 class TestMDSs(object):
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_mds_is_installed(self, node, host):
         assert host.package("ceph-mds").is_installed
 
@@ -19,7 +19,7 @@ class TestMDSs(object):
     def test_mds_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
         container_binary = setup['container_binary']
-        if node["docker"]:
+        if node["container"]:
             container_exec_cmd = '{container_binary} exec ceph-mds-{hostname}'.format(  # noqa E501
                 hostname=hostname, container_binary=container_binary)
         else:

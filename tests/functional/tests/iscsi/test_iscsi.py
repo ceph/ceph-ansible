@@ -3,7 +3,7 @@ import pytest
 
 class TestiSCSIs(object):
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     @pytest.mark.parametrize('pkg', [
         'ceph-iscsi',
         'targetcli',

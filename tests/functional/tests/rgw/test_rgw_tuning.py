@@ -4,14 +4,14 @@ import json
 
 class TestRGWs(object):
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_rgw_bucket_default_quota_is_set(self, node, host, setup):
         assert host.file(setup["conf_path"]).contains(
             "rgw override bucket index max shards")
         assert host.file(setup["conf_path"]).contains(
             "rgw bucket default quota max objects")
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_rgw_bucket_default_quota_is_applied(self, node, host, setup):
         radosgw_admin_cmd = "sudo radosgw-admin --cluster={cluster} -n client.rgw.{hostname}.rgw0 --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}.rgw0/keyring user info --uid=test".format(  # noqa E501
             hostname=node["vars"]["inventory_hostname"],
@@ -28,7 +28,7 @@ class TestRGWs(object):
         assert radosgw_admin_output_json["bucket_quota"]["enabled"] == True  # noqa E501
         assert radosgw_admin_output_json["bucket_quota"]["max_objects"] == 1638400  # noqa E501
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_rgw_tuning_pools_are_set(self, node, host, setup):
         pools = node["vars"]["rgw_create_pools"]
         if pools is None:
@@ -41,8 +41,8 @@ class TestRGWs(object):
             ))
             assert cmd.rc == 0
 
-    @pytest.mark.docker
-    def test_docker_rgw_tuning_pools_are_set(self, node, host, setup):
+    @pytest.mark.container
+    def test_container_rgw_tuning_pools_are_set(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
         cluster = setup['cluster_name']
         container_binary = setup["container_binary"]

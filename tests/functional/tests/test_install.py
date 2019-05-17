@@ -14,7 +14,7 @@ class TestInstall(object):
         assert f.exists
         assert f.is_file
 
-    @pytest.mark.no_docker
+    @pytest.mark.no_container
     def test_ceph_command_exists(self, host, node):
         assert host.exists("ceph")
 
