@@ -280,7 +280,7 @@ rados_options = (
 )
 
 osd_options = (
-    (optional("dmcrypt"), types.boolean),
+    (optional("dmcrypt"), validate_dmcrypt_bool_value),
     (optional("osd_auto_discovery"), types.boolean),
 )
 

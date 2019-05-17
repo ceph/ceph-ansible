@@ -1,9 +1,4 @@
 ---
-- name: set_fact docker_exec_cmd
-  set_fact:
-    docker_exec_cmd: "{{ container_binary }} exec ceph-rbd-mirror-{{ ansible_hostname }}"
-  when: containerized_deployment
-
 - name: include pre_requisite.yml
   include_tasks: pre_requisite.yml
   when: not containerized_deployment
@@ -12,16 +7,22 @@
   include_tasks: common.yml
   when: cephx
 
-- name: include start_rbd_mirror.yml
-  include_tasks: start_rbd_mirror.yml
+- name: tasks for non-containerized deployment
   when: not containerized_deployment
+  block:
+    - name: include start_rbd_mirror.yml
+      include_tasks: start_rbd_mirror.yml
 
-- name: include configure_mirroring.yml
-  include_tasks: configure_mirroring.yml
-  when:
-    - ceph_rbd_mirror_configure
-    - not containerized_deployment
+    - name: include configure_mirroring.yml
+      include_tasks: configure_mirroring.yml
+      when: ceph_rbd_mirror_configure
 
-- name: include docker/main.yml
-  include_tasks: docker/main.yml
+- name: tasks for containerized deployment
   when: containerized_deployment
+  block:
+    - name: set_fact container_exec_cmd
+      set_fact:
+        container_exec_cmd: "{{ container_binary }} exec ceph-rbd-mirror-{{ ansible_hostname }}"
+
+    - name: include docker/main.yml
+      include_tasks: docker/main.yml

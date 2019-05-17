@@ -1,7 +1,7 @@
 ---
 - name: waiting for the monitor(s) to form the quorum...
   command: >
-    {{ docker_exec_cmd }}
+    {{ container_exec_cmd }}
     ceph
     --cluster {{ cluster }}
     -n mon.
@@ -30,34 +30,6 @@
       CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       CEPH_ROLLING_UPDATE: "{{ rolling_update }}"
-
-  - name: create ceph mgr keyring(s)
-    ceph_key:
-      name: "mgr.{{ hostvars[item]['ansible_hostname'] }}"
-      state: present
-      caps:
-        mon: allow profile mgr
-        osd: allow *
-        mds: allow *
-      cluster: "{{ cluster }}"
-      secret: "{{ (mgr_secret != 'mgr_secret') | ternary(mgr_secret, omit) }}"
-      owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-      group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-      mode: "0400"
-    environment:
-      CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
-      CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-    with_items: "{{ groups.get(mon_group_name) if groups.get(mgr_group_name, []) | length == 0 else groups.get(mgr_group_name, []) }}"
-    run_once: True
-    delegate_to: "{{ groups[mon_group_name][0] }}"
-
-  - name: copy ceph mgr key(s) to the ansible server
-    fetch:
-      src: "{{ ceph_conf_key_directory }}/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
-      dest: "{{ fetch_directory }}/{{ fsid }}/{{ ceph_conf_key_directory }}/{{ cluster }}.mgr.{{ hostvars[item]['ansible_hostname'] }}.keyring"
-      flat: yes
-    with_items: "{{ groups.get(mon_group_name) if groups.get(mgr_group_name, []) | length == 0 else groups.get(mgr_group_name, []) }}"
-    delegate_to: "{{ groups[mon_group_name][0] }}"
 
   - name: copy keys to the ansible server
     fetch:
