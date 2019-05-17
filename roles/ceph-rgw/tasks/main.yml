@@ -26,7 +26,7 @@
   when: rgw_create_pools is defined
   block:
     - name: create rgw pools if rgw_create_pools is defined
-      command: "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num | default(osd_pool_default_pg_num) }}"
+      command: "{{ container_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num | default(osd_pool_default_pg_num) }}"
       changed_when: false
       with_dict: "{{ rgw_create_pools }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -35,7 +35,7 @@
       run_once: true
 
     - name: customize pool size
-      command: "{{ docker_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool set {{ item.key }} size {{ item.size | default(osd_pool_default_size) }}"
+      command: "{{ container_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool set {{ item.key }} size {{ item.size | default(osd_pool_default_size) }}"
       with_dict: "{{ rgw_create_pools }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
@@ -43,3 +43,12 @@
       register: result
       until: result is succeeded
       when: item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
+
+    - name: set the rgw_create_pools pools application to rgw
+      command: "{{ container_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool application enable {{ item.key }} rgw"
+      changed_when: false
+      with_dict: "{{ rgw_create_pools }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      register: result
+      until: result is succeeded
+      run_once: true

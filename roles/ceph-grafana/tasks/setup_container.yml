@@ -1,0 +1,33 @@
+---
+- name: create grafana user
+  user:
+    name: grafana
+    shell: '/bin/false'
+    createhome: false
+    system: true
+
+- name: create /etc/grafana and /var/lib/grafana
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ grafana_uid }}"
+    recurse: true
+  with_items:
+    - /etc/grafana
+    - /var/lib/grafana
+
+- name: ship systemd service
+  template:
+    src: grafana-server.service.j2
+    dest: "/etc/systemd/system/grafana-server.service"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: start the grafana-server service
+  systemd:
+    name: grafana-server
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  failed_when: false

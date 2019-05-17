@@ -69,6 +69,7 @@ dummy:
 #ceph_nfs_firewall_zone: public
 #ceph_rbdmirror_firewall_zone: public
 #ceph_iscsi_firewall_zone: public
+#ceph_dashboard_firewall_zone: public
 
 # Generate local ceph.conf in fetch directory
 #ceph_conf_local: false
@@ -166,23 +167,13 @@ dummy:
 #ceph_stable_redhat_distro: el7
 
 
-# REPOSITORY: RHCS VERSION RED HAT STORAGE (from 1.3)
+# REPOSITORY: RHCS VERSION RED HAT STORAGE (from 4.0)
 #
 # Enabled when ceph_repository == 'rhcs'
 #
-# This version is only supported on RHEL >= 7.1
-# As of RHEL 7.1, libceph.ko and rbd.ko are now included in Red Hat's kernel
-# packages natively. The RHEL 7.1 kernel packages are more stable and secure than
-# using these 3rd-party kmods with RHEL 7.0. Please update your systems to RHEL
-# 7.1 or later if you want to use the kernel RBD client.
+# This version is only supported on RHEL >= 8.0
 #
-# The CephFS kernel client is undergoing rapid development upstream, and we do
-# not recommend running the CephFS kernel module on RHEL 7's 3.10 kernel at this
-# time. Please use ELRepo's latest upstream 4.x kernels if you want to run CephFS
-# on RHEL 7.
-#
-#
-#ceph_rhcs_version: "{{ ceph_stable_rh_storage_version | default(2) }}"
+#ceph_rhcs_version: "{{ ceph_stable_rh_storage_version | default(4) }}"
 #valid_ceph_repository_type:
 #  - cdn
 #  - iso
@@ -566,7 +557,7 @@ dummy:
 ##########
 # DOCKER #
 ##########
-#docker_exec_cmd:
+#container_exec_cmd:
 #docker: false
 #ceph_docker_image: "ceph/daemon"
 #ceph_docker_image_tag: latest
@@ -695,6 +686,59 @@ dummy:
 #  - { name: client.cinder-backup, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_backup_pool.name }}"}, mode: "0600" }
 #  - { name: client.gnocchi, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_gnocchi_pool.name }}"}, mode: "0600", }
 #  - { name: client.openstack, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_glance_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_cinder_backup_pool.name }}"}, mode: "0600" }
+
+
+#############
+# DASHBOARD #
+#############
+#dashboard_enabled: False
+# Choose http or https
+# For https, you should set dashboard.crt/key and grafana.crt/key
+#dashboard_protocol: http
+#dashboard_port: 8234
+#dashboard_admin_user: admin
+#dashboard_admin_password: admin
+# We only need this for SSL (https) connections
+#dashboard_crt: ''
+#dashboard_key: ''
+#dashboard_rgw_api_user_id: ceph-dashboard
+#dashboard_rgw_api_host: ''
+#dashboard_rgw_api_port: ''
+#dashboard_rgw_api_scheme: ''
+#dashboard_rgw_api_admin_resource: ''
+#dashboard_rgw_api_no_ssl_verify: False
+#node_exporter_container_image: prom/node-exporter:latest
+#grafana_admin_user: admin
+#grafana_admin_password: admin
+# We only need this for SSL (https) connections
+#grafana_crt: ''
+#grafana_key: ''
+#grafana_container_image: "grafana/grafana:latest"
+#grafana_container_cpu_period: 100000
+#grafana_container_cpu_cores: 2
+# container_memory is in GB
+#grafana_container_memory: 4
+#grafana_uid: 472
+#grafana_datasource: Dashboard
+#grafana_dashboards_path: "/etc/grafana/dashboards/ceph-dashboard"
+#grafana_plugins:
+#  - vonage-status-panel
+#  - grafana-piechart-panel
+#prometheus_container_image: prom/prometheus:latest
+#prometheus_container_cpu_period: 100000
+#prometheus_container_cpu_cores: 2
+# container_memory is in GB
+#prometheus_container_memory: 4
+#prometheus_data_dir: /var/lib/prometheus
+#prometheus_conf_dir: /etc/prometheus
+#prometheus_user_id: '65534'  # This is the UID used by the prom/prometheus container image
+#alertmanager_container_image: prom/alertmanager:latest
+#alertmanager_container_cpu_period: 100000
+#alertmanager_container_cpu_cores: 2
+# container_memory is in GB
+#alertmanager_container_memory: 4
+#alertmanager_data_dir: /var/lib/alertmanager
+#alertmanager_conf_dir: /etc/alertmanager
 
 
 ###############

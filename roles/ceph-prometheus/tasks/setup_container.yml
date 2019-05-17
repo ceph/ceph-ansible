@@ -1,0 +1,22 @@
+---
+- name: ship systemd services
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - 'alertmanager.service'
+    - 'prometheus.service'
+  notify: service handler
+
+- name: start prometheus services
+  systemd:
+    name: "{{ item }}"
+    daemon_reload: true
+    enabled: true
+    state: started
+  with_items:
+    - prometheus
+    - alertmanager

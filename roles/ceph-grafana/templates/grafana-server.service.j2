@@ -1,0 +1,30 @@
+# This file is managed by ansible, don't make changes here - they will be
+# overwritten.
+[Unit]
+Description=grafana-server
+{% if container_binary == 'docker' %}
+After=docker.service
+{% endif %}
+
+[Service]
+EnvironmentFile=-/etc/environment
+ExecStartPre=-/usr/bin/{{ container_binary }} stop grafana-server
+ExecStartPre=-/usr/bin/{{ container_binary }} rm grafana-server
+ExecStart=/usr/bin/{{ container_binary }} run --rm --name=grafana-server \
+  -v /etc/grafana:/etc/grafana:Z \
+  -v /var/lib/grafana:/var/lib/grafana:Z \
+  --net=host \
+  --cpu-period={{ grafana_container_cpu_period }} \
+  --cpu-quota={{ grafana_container_cpu_period * grafana_container_cpu_cores }} \
+  --memory={{ grafana_container_memory }}GB \
+  --memory-swap={{ grafana_container_memory * 2 }}GB \
+  -e GF_INSTALL_PLUGINS={{ grafana_plugins|join(',') }} \
+  {{ grafana_container_image }}
+ExecStop=-/usr/bin/{{ container_binary }} stop grafana-server
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

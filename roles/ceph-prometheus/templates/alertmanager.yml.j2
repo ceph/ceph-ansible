@@ -1,0 +1,15 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'ceph-dashboard'
+receivers:
+- name: 'ceph-dashboard'
+  webhook_configs:
+{% for host in groups['mgrs'] | default(groups['mons']) %}
+  - url: '{{ dashboard_protocol }}://{{ host }}:{{ dashboard_port }}/api/prometheus_receiver'
+{% endfor %}

@@ -70,7 +70,7 @@
   block:
     - name: list existing pool(s)
       command: >
-        {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
         osd pool get {{ item.name }} size
       with_items: "{{ pools }}"
       register: created_pools
@@ -79,7 +79,7 @@
 
     - name: create ceph pool(s)
       command: >
-        {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
         osd pool create {{ item.0.name }}
         {{ item.0.pg_num | default(osd_pool_default_pg_num) }}
         {{ item.0.pgp_num | default(item.0.pg_num) | default(osd_pool_default_pg_num) }}
@@ -100,7 +100,7 @@
 
     - name: customize pool size
       command: >
-        {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
         osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }}
       with_items: "{{ pools | unique }}"
       delegate_to: "{{ delegated_node }}"
@@ -111,7 +111,7 @@
 
     - name: customize pool min_size
       command: >
-        {{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
         osd pool set {{ item.name }} min_size {{ item.min_size | default(osd_pool_default_min_size) }}
       with_items: "{{ pools | unique }}"
       delegate_to: "{{ delegated_node }}"
@@ -121,7 +121,7 @@
         - (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
 
     - name: assign application to pool(s)
-      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
       with_items: "{{ pools | unique }}"
       changed_when: false
       delegate_to: "{{ delegated_node }}"
