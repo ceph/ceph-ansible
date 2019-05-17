@@ -3,6 +3,7 @@
   package:
     name: ['docker', 'docker-engine', 'docker.io', 'containerd', 'runc']
     state: absent
+  when: container_package_name == 'docker-ce'
 
 - name: allow apt to use a repository over https (debian)
   package:
@@ -16,7 +17,16 @@
     url: 'https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg'
   register: result
   until: result is succeeded
+  when: container_package_name == 'docker-ce'
 
 - name: add docker repository
   apt_repository:
     repo: "deb https://download.docker.com/linux/{{ ansible_distribution | lower}} {{ ansible_distribution_release }} stable"
+  when: container_package_name == 'docker-ce'
+
+- name: add podman ppa repository
+  apt_repository:
+    repo: "ppa:projectatomic/ppa"
+  when:
+    - container_package_name == 'podman'
+    - ansible_distribution == 'Ubuntu'
