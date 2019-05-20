@@ -1,0 +1,18 @@
+---
+- name: remove ceph udev rules
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /usr/lib/udev/rules.d/95-ceph-osd.rules
+    - /usr/lib/udev/rules.d/60-ceph-by-parttypeuuid.rules
+
+- name: ensure tmpfiles.d is present
+  lineinfile:
+    path: /etc/tmpfiles.d/ceph-common.conf
+    line: "d /run/ceph 0770 root root -"
+    owner: root
+    group: root
+    mode: 0644
+    state: present
+    create: yes

@@ -5,9 +5,6 @@
     - "{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml"
     - "{{ ansible_os_family }}.yml"
 
-- name: include remove_ceph_udev_rules.yml
-  include_tasks: remove_ceph_udev_rules.yml
-
 - name: debian based systems tasks
   include_tasks: debian_prerequisites.yml
   when:
@@ -41,13 +38,3 @@
   tags:
     with_pkg
   when: container_service_name == 'docker'
-
-- name: ensure tmpfiles.d is present
-  lineinfile:
-    path: /etc/tmpfiles.d/ceph-common.conf
-    line: "d /run/ceph 0770 root root -"
-    owner: root
-    group: root
-    mode: 0644
-    state: present
-    create: yes
