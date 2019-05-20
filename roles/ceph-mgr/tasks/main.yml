@@ -1,7 +1,7 @@
 ---
-- name: set_fact docker_exec_cmd
+- name: set_fact container_exec_cmd
   set_fact:
-    docker_exec_cmd_mgr: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+    container_exec_cmd_mgr: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
   when: containerized_deployment
 
 - name: include common.yml
@@ -17,6 +17,6 @@
 - name: include mgr_modules.yml
   include_tasks: mgr_modules.yml
   when:
-    - ceph_mgr_modules | length > 0
+    - ceph_mgr_modules | length > 0 or dashboard_enabled
     - ((groups[mgr_group_name] | default([]) | length == 0 and inventory_hostname == groups[mon_group_name] | last) or
       (groups[mgr_group_name] | default([]) | length > 0 and inventory_hostname == groups[mgr_group_name] | last))

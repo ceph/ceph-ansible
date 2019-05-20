@@ -1,11 +1,11 @@
 ---
-- name: set_fact docker_exec_cmd_nfs
+- name: set_fact container_exec_cmd_nfs
   set_fact:
-    docker_exec_cmd_nfs: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+    container_exec_cmd_nfs: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
   when: containerized_deployment
 
 - name: check if rados index object exists
-  shell: "{{ docker_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
+  shell: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
   changed_when: false
   failed_when: false
   register: rados_index_exists
@@ -15,7 +15,7 @@
   run_once: true
 
 - name: create an empty rados index object
-  command: "{{ docker_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} /dev/null"
+  command: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} /dev/null"
   when:
     - ceph_nfs_rados_backend
     - rados_index_exists.rc != 0

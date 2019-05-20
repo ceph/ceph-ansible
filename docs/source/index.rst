@@ -77,9 +77,9 @@ The ``master`` branch should be considered experimental and used with caution.
 
 - ``stable-3.2`` Supports Ceph versions ``luminous`` and ``mimic``. This branch requires Ansible version ``2.6``.
 
-- ``stable-4.0`` Supports Ceph version ``nautilus``. This branch requires Ansible version ``2.7``.
+- ``stable-4.0`` Supports Ceph version ``nautilus``. This branch requires Ansible version ``2.8``.
 
-- ``master`` Supports Ceph@master version. This branch requires Ansible version ``2.7``.
+- ``master`` Supports Ceph@master version. This branch requires Ansible version ``2.8``.
 
 Configuration and Usage
 =======================

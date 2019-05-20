@@ -300,7 +300,6 @@
 
   - import_role:
       name: ceph-defaults
-      private: false
 
   - name: gather monitors facts
     setup:
@@ -310,7 +309,6 @@
 
   - import_role:
       name: ceph-facts
-      private: false
 
   - name: get all the running osds
     shell: |
@@ -331,6 +329,11 @@
       state: absent
     register: remove_osd_mountpoints
     ignore_errors: true
+
+  - name: default lvm_volumes if not defined
+    set_fact:
+      lvm_volumes: []
+    when: lvm_volumes is not defined
 
   - name: zap and destroy osds created by ceph-volume with lvm_volumes
     ceph_volume:
@@ -444,6 +447,128 @@
     tags: remove_img
     ignore_errors: true
 
+
+- name: purge node-exporter
+
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - agents
+    - grafana-server
+    - iscsigws
+    - iscsi-gws # for backward compatibility only!
+    - clients
+
+  gather_facts: false
+
+  become: true
+
+  tasks:
+    - name: set ceph_docker_registry value if not set
+      set_fact:
+        ceph_docker_registry: "docker.io"
+      when: ceph_docker_registry is not defined
+
+    - name: disable node_exporter service
+      service:
+        name: node_exporter
+        state: stopped
+        enabled: no
+      failed_when: false
+
+    - name: remove node-exporter container
+      docker_container:
+        name: node_exporter
+        state: absent
+      failed_when: false
+
+    - name: remove node_exporter service file
+      file:
+        name: /etc/systemd/system/node_exporter.service
+        state: absent
+
+    - name: remove node-exporter image
+      docker_image:
+        image: "{{ ceph_docker_registry }}/prom/node-exporter"
+        state: absent
+        force: yes
+      tags:
+        - remove_img
+      failed_when: false
+
+
+- name: purge ceph-grafana
+
+  hosts: grafana-server
+
+  gather_facts: false
+
+  become: true
+
+  vars:
+    grafana_services:
+      - grafana-server
+      - prometheus
+      - alertmanager
+
+  tasks:
+    - name: set ceph_docker_registry value if not set
+      set_fact:
+        ceph_docker_registry: "docker.io"
+      when: ceph_docker_registry is not defined
+
+    - name: stop services
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      with_items: "{{ grafana_services }}"
+      failed_when: false
+
+    - name: remove containers
+      docker_container:
+        name: "{{ item }}"
+        state: absent
+      with_items: "{{ grafana_services }}"
+      failed_when: false
+
+    - name: remove service files
+      file:
+        name: "/etc/systemd/system/{{ item }}.service"
+        state: absent
+      with_items: "{{ grafana_services }}"
+      failed_when: false
+
+    - name: remove images
+      docker_image:
+        name: "{{ item }}"
+        state: absent
+        force: yes
+      with_items:
+        - "{{ ceph_docker_registry }}/prom/prometheus"
+        - "{{ ceph_docker_registry }}/grafana/grafana"
+        - "{{ ceph_docker_registry }}/prom/alertmanager"
+      failed_when: false
+
+    - name: remove data
+      file:
+        name: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/grafana/grafana.ini
+        - /etc/grafana/provisioning
+        - /var/lib/grafana
+        - /etc/alertmanager
+        - /var/lib/alertmanager
+        - /var/lib/prometheus
+        - /etc/prometheus
+      failed_when: false
+
 - name: check container hosts
 
   hosts:
@@ -462,11 +587,9 @@
 
   - import_role:
       name: ceph-defaults
-      private: false
 
   - import_role:
       name: ceph-facts
-      private: false
 
   - name: show container list on all the nodes (should be empty)
     command: >
@@ -517,33 +640,13 @@
     when: not is_atomic
     ignore_errors: true
 
-  - name: debian based systems tasks
-    block:
-      - name: remove docker-py on debian
-        pip:
-          name: docker-py
-          state: absent
-
-      - name: remove six on debian
-        pip:
-          name: six
-          state: absent
-
-      - name: remove pip and docker on debian
-        apt:
-          name: ['python-pip', 'docker-engine']
-          state: absent
-          update_cache: yes
-          autoremove: yes
-    when: ansible_distribution == 'Debian'
-
-  - name: remove pip and docker on ubuntu
+  - name: remove docker on debian/ubuntu
     apt:
-      name: ['python-pip', 'docker', 'docker.io']
+      name: ['docker-ce', 'docker-engine', 'docker.io', 'python-docker', 'python3-docker']
       state: absent
       update_cache: yes
       autoremove: yes
-    when: ansible_distribution == 'Ubuntu'
+    when: ansible_os_family == 'Debian'
 
   - name: red hat based systems tasks
     block:
@@ -551,7 +654,7 @@
         block:
           - name: remove packages on redhat
             yum:
-              name: ['epel-release', 'python-pip', 'docker-engine', 'docker']
+              name: ['epel-release', 'docker', 'python-docker-py']
               state: absent
 
           - name: remove package dependencies on redhat
@@ -568,9 +671,9 @@
 
       - name: dnf related tasks on red hat
         block:
-          - name: remove pip and docker on redhat
+          - name: remove docker on redhat
             dnf:
-              name: ['python-pip', 'docker-engine', 'docker']
+              name: ['docker', 'python3-docker']
               state: absent
 
           - name: remove package dependencies on redhat
@@ -612,8 +715,14 @@
       - /etc/ceph
       - /var/log/ceph
 
-  - name: remove data
+  - name: remove ceph data
     shell: rm -rf /var/lib/ceph/*
+
+  # (todo): remove this when we are able to manage docker
+  # service on atomic host.
+  - name: remove docker data
+    shell: rm -rf /var/lib/docker/*
+    when: not is_atomic | bool
 
 - name: purge fetch directory
 

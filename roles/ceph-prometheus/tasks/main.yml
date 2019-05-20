@@ -1,0 +1,49 @@
+---
+- name: create prometheus directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prometheus_user_id }}"
+  with_items:
+   - "{{ prometheus_conf_dir }}"
+   - "{{ prometheus_data_dir }}"
+
+- name: write prometheus config file
+  template:
+    src: prometheus.yml.j2
+    dest: "{{ prometheus_conf_dir }}/"
+    owner: "{{ prometheus_user_id }}"
+  notify: service handler
+
+- name: make sure the alerting rules directory exists
+  file:
+    path: "/etc/prometheus/alerting/"
+    state: directory
+    recurse: yes
+
+- name: copy alerting rules
+  copy:
+    src: "ceph_dashboard.yml"
+    dest: "/etc/prometheus/alerting/ceph_dashboard.yml"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: create alertmanager directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "root"
+  with_items:
+   - "{{ alertmanager_conf_dir }}"
+   - "{{ alertmanager_data_dir }}"
+
+- name: write alertmanager config file
+  template:
+    src: alertmanager.yml.j2
+    dest: "{{ alertmanager_conf_dir }}/"
+    owner: "root"
+  notify: service handler
+
+- name: include setup_container.yml
+  include_tasks: setup_container.yml

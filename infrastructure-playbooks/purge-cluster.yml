@@ -42,11 +42,129 @@
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
+    - grafana-server
 
   become: true
 
   tasks:
     - debug: msg="gather facts on all Ceph hosts for following reference"
+
+
+- name: purge node-exporter
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ client_group_name|default('clients') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - agents
+    - grafana-server
+    - clients
+    - iscsigws
+    - iscsi-gws # for backward compatibility only!
+
+  become: true
+
+  tasks:
+    - name: set ceph_docker_registry value if not set
+      set_fact:
+        ceph_docker_registry: "docker.io"
+      when: ceph_docker_registry is not defined
+
+    - name: disable node_exporter service
+      service:
+        name: node_exporter
+        state: stopped
+        enabled: no
+      failed_when: false
+
+    - name: remove node-exporter container
+      docker_container:
+        name: node_exporter
+        state: absent
+      failed_when: false
+
+    - name: remove node_exporter service file
+      file:
+        name: /etc/systemd/system/node_exporter.service
+        state: absent
+
+    - name: remove node-exporter image
+      docker_image:
+        image: "{{ ceph_docker_registry }}/prom/node-exporter"
+        state: absent
+        force: yes
+      tags:
+        - remove_img
+      failed_when: false
+
+
+- name: purge ceph grafana-server
+  hosts: grafana-server
+  become: true
+  vars:
+    grafana_services:
+      - grafana-server
+      - prometheus
+      - alertmanager
+
+  tasks:
+    - name: set ceph_docker_registry value if not set
+      set_fact:
+        ceph_docker_registry: "docker.io"
+      when: ceph_docker_registry is not defined
+
+    - name: stop services
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      with_items: "{{ grafana_services }}"
+      failed_when: false
+
+    - name: remove containers
+      docker_container:
+        name: "{{ item }}"
+        state: absent
+      with_items: "{{ grafana_services }}"
+      failed_when: false
+
+    - name: remove service files
+      file:
+        name: "/etc/systemd/system/{{ item }}.service"
+        state: absent
+      with_items: "{{ grafana_services }}"
+      failed_when: false
+
+    - name: remove images
+      docker_image:
+        name: "{{ item }}"
+        state: absent
+        force: yes
+      with_items:
+        - "{{ ceph_docker_registry }}/prom/prometheus"
+        - "{{ ceph_docker_registry }}/grafana/grafana"
+        - "{{ ceph_docker_registry }}/prom/alertmanager"
+      failed_when: false
+
+    - name: remove data
+      file:
+        name: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/grafana/dashboards
+        - /etc/grafana/grafana.ini
+        - /etc/grafana/provisioning
+        - /var/lib/grafana
+        - /etc/alertmanager
+        - /var/lib/alertmanager
+        - /var/lib/prometheus
+        - /etc/prometheus
+      failed_when: false
+
 
 - name: purge ceph mds cluster
 
@@ -445,6 +563,7 @@
       - ceph-release
       - ceph-radosgw
       - calamari-server
+      - ceph-grafana-dashboards
 
     ceph_remaining_packages:
       - libcephfs1
@@ -466,6 +585,7 @@
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
+    - grafana-server
 
   gather_facts: false # Already gathered previously
 
