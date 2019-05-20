@@ -1,26 +1,28 @@
 ---
-- name: set_fact container_exec_cmd_nfs
-  set_fact:
-    container_exec_cmd_nfs: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-  when: containerized_deployment
+- block:
+  - name: set_fact container_exec_cmd_nfs
+    set_fact:
+      container_exec_cmd_nfs: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+    when: containerized_deployment
 
-- name: check if rados index object exists
-  shell: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
-  changed_when: false
-  failed_when: false
-  register: rados_index_exists
-  check_mode: no
-  when: ceph_nfs_rados_backend
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
+  - name: check if rados index object exists
+    shell: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
+    changed_when: false
+    failed_when: false
+    register: rados_index_exists
+    check_mode: no
+    when: ceph_nfs_rados_backend
+    delegate_to: "{{ groups[mon_group_name][0] }}"
+    run_once: true
 
-- name: create an empty rados index object
-  command: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} /dev/null"
-  when:
-    - ceph_nfs_rados_backend
-    - rados_index_exists.rc != 0
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
+  - name: create an empty rados index object
+    command: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} /dev/null"
+    when:
+      - ceph_nfs_rados_backend
+      - rados_index_exists.rc != 0
+    delegate_to: "{{ groups[mon_group_name][0] }}"
+    run_once: true
+  when: groups.get(mon_group_name, []) | length > 0
 
 - name: create /etc/ganesha
   file:
