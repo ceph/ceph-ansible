@@ -155,18 +155,19 @@
       - iscsi_gw_group_name in group_names
     tags: firewall
 
-  - block:
-      - name: open grafana port
-        firewalld:
-          port: "3000/tcp"
-          zone: "{{ ceph_dashboard_firewall_zone }}"
-          permanent: true
-          immediate: true
-          state: enabled
+  - name: open node_exporter port
+    firewalld:
+      port: "9100/tcp"
+      zone: "{{ ceph_dashboard_firewall_zone }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    when: dashboard_enabled | bool
 
-      - name: open node_exporter port
+  - block:
+      - name: open dashboard port
         firewalld:
-          port: "9100/tcp"
+          port: "{{ dashboard_port }}/tcp"
           zone: "{{ ceph_dashboard_firewall_zone }}"
           permanent: true
           immediate: true
@@ -179,6 +180,19 @@
           permanent: true
           immediate: true
           state: enabled
+    when:
+      - dashboard_enabled | bool
+      - mgr_group_name is defined
+      - mgr_group_name in group_names
+
+  - block:
+      - name: open grafana port
+        firewalld:
+          port: "3000/tcp"
+          zone: "{{ ceph_dashboard_firewall_zone }}"
+          permanent: true
+          immediate: true
+          state: enabled
 
       - name: open dashboard port
         firewalld:
@@ -187,7 +201,17 @@
           permanent: true
           immediate: true
           state: enabled
-    when: dashboard_enabled
+
+      - name: open alertmanager port
+        firewalld:
+          port: "9093/tcp"
+          zone: "{{ ceph_dashboard_firewall_zone }}"
+          permanent: true
+          immediate: true
+          state: enabled
+    when:
+      - dashboard_enabled | bool
+      - inventory_hostname in groups.get('grafana-server', [])
 
   - name: open haproxy ports
     firewalld:
