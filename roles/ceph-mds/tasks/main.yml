@@ -3,20 +3,20 @@
   include_tasks: create_mds_filesystems.yml
   when:
     - inventory_hostname == groups[mds_group_name] | first
-    - not rolling_update
+    - not rolling_update | bool
 
 - name: set_fact container_exec_cmd
   set_fact:
     container_exec_cmd: "{{ container_binary }} exec ceph-mds-{{ ansible_hostname }}"
-  when: containerized_deployment
+  when: containerized_deployment | bool
 
 - name: include common.yml
   include_tasks: common.yml
 
 - name: non_containerized.yml
   include_tasks: non_containerized.yml
-  when: not containerized_deployment
+  when: not containerized_deployment | bool
 
 - name: containerized.yml
   include_tasks: containerized.yml
-  when: containerized_deployment
+  when: containerized_deployment | bool

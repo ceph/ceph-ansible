@@ -461,7 +461,7 @@
             name: ceph-container-engine
         - import_role:
             name: ceph-node-exporter
-      when: dashboard_enabled
+      when: dashboard_enabled | bool
 
 
 - hosts: grafana-server
@@ -485,7 +485,7 @@
             name: ceph-prometheus
         - import_role:
             name: ceph-grafana
-      when: dashboard_enabled
+      when: dashboard_enabled | bool
 
 - hosts: '{{ (groups["grafana-server"] | default(groups["mgrs"]) | default(groups["mons"]))[0] | default(omit) }}'
   become: true
@@ -493,7 +493,7 @@
     - import_role:
         name: ceph-defaults
       tags: ['ceph_update_config']
-      when: dashboard_enabled
+      when: dashboard_enabled | bool
     - import_role:
         name: ceph-dashboard
-      when: dashboard_enabled
+      when: dashboard_enabled | bool
