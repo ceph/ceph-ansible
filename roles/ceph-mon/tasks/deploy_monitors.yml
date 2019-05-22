@@ -48,7 +48,7 @@
     cp /var/lib/ceph/tmp/{{ cluster }}.mon..keyring
        /etc/ceph/{{ cluster }}.mon.keyring
   changed_when: false
-  when: containerized_deployment
+  when: containerized_deployment | bool
 
 - name: create (and fix ownership of) monitor directory
   file:
@@ -75,7 +75,7 @@
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: create_custom_admin_secret
   when:
-    - cephx
+    - cephx | bool
     - admin_secret != 'admin_secret'
 
 - name: set_fact ceph-authtool container command
@@ -88,7 +88,7 @@
      /var/lib/ceph/tmp/{{ cluster }}.mon..keyring --import-keyring /etc/ceph/{{ cluster }}.client.admin.keyring
   when:
     - not create_custom_admin_secret.get('skipped')
-    - cephx
+    - cephx | bool
     - admin_secret != 'admin_secret'
 
 - name: set_fact ceph-mon container command
@@ -107,7 +107,7 @@
     --keyring /var/lib/ceph/tmp/{{ cluster }}.mon..keyring
   args:
     creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring
-  when: cephx
+  when: cephx | bool
 
 - name: ceph monitor mkfs without keyring
   command: >
@@ -120,4 +120,4 @@
     --fsid {{ fsid }}
   args:
     creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/store.db
-  when: not cephx
+  when: not cephx | bool

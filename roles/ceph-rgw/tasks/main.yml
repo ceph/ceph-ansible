@@ -4,23 +4,23 @@
 
 - name: include_tasks pre_requisite.yml
   include_tasks: pre_requisite.yml
-  when: not containerized_deployment
+  when: not containerized_deployment | bool
 
 - name: include_tasks openstack-keystone.yml
   include_tasks: openstack-keystone.yml
-  when: radosgw_keystone_ssl|bool
+  when: radosgw_keystone_ssl | bool
 
 - name: include_tasks start_radosgw.yml
   include_tasks: start_radosgw.yml
-  when: not containerized_deployment
+  when: not containerized_deployment | bool
 
 - name: include_tasks docker/main.yml
   include_tasks: docker/main.yml
-  when: containerized_deployment
+  when: containerized_deployment | bool
 
 - name: include_tasks multisite/main.yml
   include_tasks: multisite/main.yml
-  when: rgw_multisite
+  when: rgw_multisite | bool
 
 - name: rgw pool related tasks
   when: rgw_create_pools is defined
