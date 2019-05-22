@@ -7,8 +7,8 @@
   fail:
     msg: "fqdn configuration is not supported anymore. Use 'use_fqdn_yes_i_am_sure: true' if you really want to use it. See release notes for more details"
   when:
-    - mon_use_fqdn or mds_use_fqdn
-    - not use_fqdn_yes_i_am_sure
+    - mon_use_fqdn | bool or mds_use_fqdn | bool
+    - not use_fqdn_yes_i_am_sure | bool
 
 - name: debian based systems tasks
   when: ansible_os_family == 'Debian'
@@ -31,7 +31,7 @@
   fail:
     msg: "ntp_daemon_type must be one of chronyd, ntpd, or timesyncd"
   when:
-    - ntp_service_enabled
+    - ntp_service_enabled | bool
     - ntp_daemon_type not in ['chronyd', 'ntpd', 'timesyncd']
 
 # Since NTPd can not be installed on Atomic...
@@ -39,7 +39,7 @@
   fail:
     msg: installation can't happen on Atomic and ntpd needs to be installed
   when:
-    - is_atomic | default(False)
+    - is_atomic | default(False) | bool
     - ansible_os_family == 'RedHat'
     - ntp_daemon_type == 'ntpd'
 
@@ -58,7 +58,7 @@
   include_tasks: check_devices.yml
   when:
     - osd_group_name in group_names
-    - not osd_auto_discovery | default(False)
+    - not osd_auto_discovery | default(False) | bool
     - devices|default([])|length > 0
 
 - name: include check_eth_mon.yml
@@ -89,7 +89,7 @@
   include_tasks: check_rgw_multisite.yml
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
-    - rgw_multisite
+    - rgw_multisite | bool
 
 - name: include check_iscsi.yml
   include_tasks: check_iscsi.yml
