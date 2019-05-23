@@ -537,8 +537,7 @@
             name: ceph-node-exporter
       when: dashboard_enabled | bool
 
-
-- hosts: grafana-server
+- hosts: '{{ groups["grafana-server"][0] | default(groups["mgrs"][0]) | default(groups["mons"][0]) | default(omit) }}'
   become: true
   tasks:
     - block:
@@ -561,7 +560,7 @@
             name: ceph-grafana
       when: dashboard_enabled | bool
 
-- hosts: '{{ (groups["mgrs"] | default(groups["mons"]))[0] }}'
+- hosts: '{{ groups["grafana-server"][0] | default(groups["mgrs"][0]) | default(groups["mons"][0]) | default(omit) }}'
   become: true
   tasks:
     - import_role:

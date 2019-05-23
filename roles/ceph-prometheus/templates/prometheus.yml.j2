@@ -19,18 +19,26 @@ scrape_configs:
 {% endfor %}
   - job_name: 'node'
     static_configs:
-{% for host in (groups['all'] | difference(groups['grafana-server'])) %}
+{% if grafana_server_group_name in groups %}
+{% for host in (groups['all'] | difference(groups[grafana_server_group_name])) %}
       - targets: ['{{ host }}:9100']
         labels:
           instance: "{{ hostvars[host]['ansible_nodename'] }}"
 {% endfor %}
   - job_name: 'grafana'
     static_configs:
-{% for host in groups['grafana-server'] %}
+{% for host in groups[grafana_server_group_name] %}
       - targets: ['{{ host }}:9100']
         labels:
           instance: "{{ hostvars[host]['ansible_nodename'] }}"
 {% endfor %}
+{% else %}
+{% for host in groups['all'] %}
+      - targets: ['{{ host }}:9100']
+        labels:
+          instance: "{{ hostvars[host]['ansible_nodename'] }}"
+{% endfor %}
+{% endif %}
 {% if 'iscsigws' in groups %}
   - job_name: 'iscsi-gws'
     static_configs:
@@ -44,4 +52,4 @@ alerting:
   alertmanagers:
   - scheme: http
     static_configs:
-    - targets: ['{{ groups["grafana-server"][0] }}:9093']
+    - targets: ['{{ grafana_server_addr | default(_current_monitor_address) }}:9093']

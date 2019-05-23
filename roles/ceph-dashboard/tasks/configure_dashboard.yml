@@ -90,13 +90,23 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   until: ac_result.rc == 0
 
+- name: set grafana url to grafana instance
+  set_fact:
+    dashboard_url: "{{ groups[grafana_server_group_name][0] }}"
+  when: "{{  groups.grafana_server_group_name is defined and groups[grafana_server_group_name] | length > 0 }}"
+
+- name: set grafana url to mon
+  set_fact:
+    dashboard_url: "{{ groups[mon_group_name][0] }}"
+  when: "{{ groups.grafana_server_group_name is not defined or groups[grafana_server_group_name] | length == 0 }}"
+
 - name: set grafana url
-  command: "{{ container_exec_cmd }} ceph dashboard set-grafana-api-url {{ dashboard_protocol }}://{{ groups['grafana-server'][0] }}:3000/"
+  command: "{{ container_exec_cmd }} ceph dashboard set-grafana-api-url {{ dashboard_protocol }}://{{ dashboard_url }}:3000/"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
 
 - name: set alertmanager host
-  command: "{{ container_exec_cmd }} ceph dashboard set-alertmanager-api-host {{ dashboard_protocol }}://{{ groups['grafana-server'][0] }}:9093/"
+  command: "{{ container_exec_cmd }} ceph dashboard set-alertmanager-api-host {{ dashboard_protocol }}://{{ dashboard_url }}:9093/"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
 
