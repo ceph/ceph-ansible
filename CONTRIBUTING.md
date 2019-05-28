@@ -45,7 +45,6 @@ It means if you are pushing a patch modifying one of these files:
 - `./roles/ceph-mgr/defaults/main.yml`
 - `./roles/ceph-fetch-keys/defaults/main.yml`
 - `./roles/ceph-rbd-mirror/defaults/main.yml`
-- `./roles/ceph-agent/defaults/main.yml`
 - `./roles/ceph-defaults/defaults/main.yml`
 - `./roles/ceph-osd/defaults/main.yml`
 - `./roles/ceph-nfs/defaults/main.yml`
