@@ -72,25 +72,11 @@
         name: ceph-handler
     - import_role:
         name: ceph-container-engine
+      tags: with_pkg
     - import_role:
         name: ceph-container-common
-      tags: [with_pkg, fetch_container_image]
-      when:
-        - not (is_atomic | bool)
-        - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
-
-    # post-tasks for upcoming import -
-    - name: "pull {{ ceph_docker_image }} image"
-      command: "{{ container_binary }} pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      register: container_pull
-      until: container_pull.rc == 0
-      retries: 5
-      delay: 5
-      changed_when: false
-      when:
-        - is_atomic
-        - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
-        - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
+      tags: fetch_container_image
+      when: not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first)
 
 - hosts: mons
   any_errors_fatal: true
