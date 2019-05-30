@@ -11,6 +11,14 @@
     - not containerized_deployment | bool
     - not use_new_ceph_iscsi | bool
 
+- name: make sure gateway_iqn is configured
+  fail:
+    msg: "you must set a iqn for the iSCSI target"
+  when:
+    - "gateway_iqn | default('') | length == 0"
+    - not containerized_deployment | bool
+    - not use_new_ceph_iscsi | bool
+
 - name: fail if unsupported chap configuration
   fail:
     msg: "Mixing clients with CHAP enabled and disabled is not supported."
