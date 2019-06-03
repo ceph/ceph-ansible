@@ -1,0 +1,8 @@
+---
+- name: fail if ceph_nfs_rgw_access_key or ceph_nfs_rgw_secret_key are undefined (nfs standalone)
+  fail:
+    msg: "ceph_nfs_rgw_access_key and ceph_nfs_rgw_secret_key must be set if nfs_obj_gw is True"
+  when:
+    - nfs_obj_gw
+    - groups.get(mon_group_name, []) | length == 0
+    - (ceph_nfs_rgw_access_key is undefined or ceph_nfs_rgw_secret_key is undefined)

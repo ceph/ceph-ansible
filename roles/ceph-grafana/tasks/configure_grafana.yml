@@ -1,4 +1,14 @@
 ---
+- name: install ceph-grafana-dashboards package on RedHat or SUSE
+  package:
+    name: ceph-grafana-dashboards
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  register: result
+  until: result is succeeded
+  when:
+    - not containerized_deployment
+    - ansible_os_family in ['RedHat', 'Suse']
+
 - name: make sure grafana is down
   service:
     name: grafana-server
