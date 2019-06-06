@@ -733,10 +733,14 @@
     command: apt-get clean
     when: ansible_pkg_mgr == 'apt'
 
-  - name: purge rh_storage.repo file in /etc/yum.repos.d
+  - name: purge ceph repo file in /etc/yum.repos.d
     file:
-      path: /etc/yum.repos.d/rh_storage.repo
+      path: '/etc/yum.repos.d/{{ item }}.repo'
       state: absent
+    with_items:
+      - ceph-dev
+      - ceph_stable
+      - rh_storage
     when: ansible_os_family == 'RedHat'
 
   - name: check for anything running ceph
