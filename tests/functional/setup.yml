@@ -36,7 +36,7 @@
         state: present
       register: result
       until: result is succeeded
-      when: not is_atomic
+      when: not is_atomic | bool
 
     - name: centos based systems - configure repos
       block:
@@ -66,7 +66,7 @@
             state: absent
       when:
         - ansible_distribution == 'CentOS'
-        - not is_atomic
+        - not is_atomic | bool
 
     - name: resize logical volume for root partition to fill remaining free space
       lvol:
@@ -74,4 +74,4 @@
         vg: atomicos
         size: +100%FREE
         resizefs: yes
-      when: is_atomic
+      when: is_atomic | bool

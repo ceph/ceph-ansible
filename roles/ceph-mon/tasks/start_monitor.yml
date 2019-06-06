@@ -4,7 +4,7 @@
     state: directory
     path: "/etc/systemd/system/ceph-mon@.service.d/"
   when:
-    - not containerized_deployment
+    - not containerized_deployment | bool
     - ceph_mon_systemd_overrides is defined
     - ansible_service_mgr == 'systemd'
 
@@ -15,7 +15,7 @@
     config_overrides: "{{ ceph_mon_systemd_overrides | default({}) }}"
     config_type: "ini"
   when:
-    - not containerized_deployment
+    - not containerized_deployment | bool
     - ceph_mon_systemd_overrides is defined
     - ansible_service_mgr == 'systemd'
 
@@ -28,7 +28,7 @@
     group: "root"
     mode: "0644"
   notify: restart ceph mons
-  when: containerized_deployment
+  when: containerized_deployment | bool
 
 - name: start the monitor service
   systemd:

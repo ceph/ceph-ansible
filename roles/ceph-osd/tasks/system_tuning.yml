@@ -23,7 +23,7 @@
     group: "root"
     mode: "0755"
   register: "tmpfiles_d"
-  when: disable_transparent_hugepage
+  when: disable_transparent_hugepage | bool
 
 - name: disable transparent hugepage
   template:
@@ -34,7 +34,7 @@
     mode: "0644"
     force: "yes"
     validate: "systemd-tmpfiles --create %s"
-  when: disable_transparent_hugepage
+  when: disable_transparent_hugepage | bool
 
 - name: get default vm.min_free_kbytes
   command: sysctl -b vm.min_free_kbytes
@@ -58,4 +58,4 @@
   with_items:
     - { name: "fs.aio-max-nr", value: "1048576", enable: (osd_objectstore == 'bluestore') }
     - "{{ os_tuning_params }}"
-  when: item.enable | default(true)
+  when: item.enable | default(true) | bool
