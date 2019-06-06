@@ -5,8 +5,7 @@ class TestiSCSIs(object):
 
     @pytest.mark.no_docker
     @pytest.mark.parametrize('pkg', [
-        'ceph-iscsi-cli',
-        'ceph-iscsi-config',
+        'ceph-iscsi',
         'targetcli',
         'tcmu-runner'
     ])
