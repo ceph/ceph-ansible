@@ -1,27 +1,28 @@
 ---
 - name: devices validation
   block:
-    - name: validate devices is actually a device
+    - name: get devices information
       parted:
         device: "{{ item }}"
         unit: MiB
       register: devices_parted
+      failed_when: False
       with_items: "{{ devices }}"
 
     - name: fail if one of the devices is not a device
       fail:
         msg: "{{ item }} is not a block special file!"
-      when:
-        - item.failed
+      when: item.rc is defined
       with_items: "{{ devices_parted.results }}"
   when:
     - devices is defined
 
-- name: validate dedicated_device is/are actually device(s)
+- name: get dedicated_device information
   parted:
     device: "{{ item }}"
     unit: MiB
   register: dedicated_device_parted
+  failed_when: False
   with_items: "{{ dedicated_devices }}"
   when:
     - osd_scenario == 'non-collocated'
@@ -32,7 +33,7 @@
   with_items: "{{ dedicated_device_parted.results }}"
   when:
     - osd_scenario == 'non-collocated'
-    - item.failed
+    - item.rc is defined
 
 - name: fail if number of dedicated_devices is not equal to number of devices
   fail:
