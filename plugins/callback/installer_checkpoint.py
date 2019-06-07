@@ -31,6 +31,7 @@ class CallbackModule(CallbackBase):
             'installer_phase_ceph_rbdmirror',
             'installer_phase_ceph_client',
             'installer_phase_ceph_iscsi_gw',
+            'installer_phase_ceph_rgw_loadbalancer',
         ]
 
         # Define the attributes of the installer phases
@@ -74,6 +75,10 @@ class CallbackModule(CallbackBase):
             'installer_phase_ceph_iscsi_gw': {
                 'title': 'Install Ceph iSCSI Gateway',
                 'playbook': 'roles/ceph-iscsi-gw/tasks/main.yml'
+            },
+            'installer_phase_ceph_rgw_loadbalancer': {
+                'title': 'Install Ceph RGW LoadBalancer',
+                'playbook': 'roles/ceph-rgw-loadbalancer/tasks/main.yml'
             },
         }
 
