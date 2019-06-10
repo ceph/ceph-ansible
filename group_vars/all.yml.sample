@@ -54,6 +54,8 @@ dummy:
 #client_group_name: clients
 #iscsi_gw_group_name: iscsigws
 #mgr_group_name: mgrs
+#rgwloadbalancer_group_name: rgwloadbalancers
+#grafana_server_group_name: grafana-server
 
 # If configure_firewall is true, then ansible will try to configure the
 # appropriate firewalling rules so that Ceph daemons can communicate
@@ -70,6 +72,7 @@ dummy:
 #ceph_rbdmirror_firewall_zone: public
 #ceph_iscsi_firewall_zone: public
 #ceph_dashboard_firewall_zone: public
+#ceph_rgwloadbalancer_firewall_zone: public
 
 # Generate local ceph.conf in fetch directory
 #ceph_conf_local: false
@@ -474,7 +477,7 @@ dummy:
 # Set this to true to enable File access via NFS.  Requires an MDS role.
 #nfs_file_gw: false
 # Set this to true to enable Object access via NFS. Requires an RGW role.
-#nfs_obj_gw: true
+#nfs_obj_gw: "{{ False if groups.get(mon_group_name, []) | length == 0 else True }}"
 
 
 #############

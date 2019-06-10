@@ -1,4 +1,14 @@
 ---
+- name: install ceph-grafana-dashboards package on RedHat or SUSE
+  package:
+    name: ceph-grafana-dashboards
+    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+  register: result
+  until: result is succeeded
+  when:
+    - not containerized_deployment
+    - ansible_os_family in ['RedHat', 'Suse']
+
 - name: make sure grafana is down
   service:
     name: grafana-server
@@ -42,7 +52,7 @@
     dest: "/etc/grafana/ceph-dashboard.crt"
     mode: 0640
   when:
-    - grafana_crt
+    - grafana_crt | bool
     - dashboard_protocol == "https"
 
 - name: copy grafana SSL certificate key
@@ -51,7 +61,7 @@
     dest: "/etc/grafana/ceph-dashboard.key"
     mode: 0440
   when:
-    - grafana_key
+    - grafana_key | bool
     - dashboard_protocol == "https"
 
 - name: generate a Self Signed OpenSSL certificate for dashboard
@@ -60,7 +70,7 @@
     openssl req -new -nodes -x509 -subj '/O=IT/CN=ceph-grafana' -days 3650 -keyout /etc/grafana/ceph-dashboard.key -out /etc/grafana/ceph-dashboard.crt -extensions v3_ca
   when:
     - dashboard_protocol == "https"
-    - not grafana_key or not grafana_crt
+    - not grafana_key | bool or not grafana_crt | bool
 
 - name: set owner/group on /etc/grafana
   file:

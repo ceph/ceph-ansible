@@ -1,24 +1,23 @@
 ---
-- name: include pre_requisites/prerequisites.yml
-  include_tasks: pre_requisites/prerequisites.yml
-  when: not is_atomic
+- name: include prerequisites.yml
+  include_tasks: prerequisites.yml
 
 - name: get docker version
-  command: docker --version
-  changed_when: false
-  check_mode: no
-  register: ceph_docker_version
-  when: container_binary == 'docker'
+  block:
+    - name: get docker version
+      command: docker --version
+      changed_when: false
+      check_mode: no
+      register: ceph_docker_version
 
-- name: set_fact ceph_docker_version ceph_docker_version.stdout.split
-  set_fact:
-    ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
+    - name: set_fact ceph_docker_version ceph_docker_version.stdout.split
+      set_fact:
+        ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
   when: container_binary == 'docker'
 
 - name: include fetch_image.yml
   include_tasks: fetch_image.yml
   tags: fetch_container_image
-  when: containerized_deployment
 
 - name: get ceph version
   command: >
@@ -28,13 +27,10 @@
   changed_when: false
   check_mode: no
   register: ceph_version
-  when: containerized_deployment
 
 - name: set_fact ceph_version ceph_version.stdout.split
   set_fact:
     ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
-  when: containerized_deployment
 
 - name: include release.yml
   include_tasks: release.yml
-  when: containerized_deployment

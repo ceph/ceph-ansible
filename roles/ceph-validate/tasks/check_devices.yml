@@ -2,15 +2,16 @@
 - name: devices validation
   when: devices is defined
   block:
-    - name: validate devices is actually a device
+    - name: get devices information
       parted:
         device: "{{ item }}"
         unit: MiB
       register: devices_parted
+      failed_when: False
       with_items: "{{ devices }}"
 
     - name: fail if one of the devices is not a device
       fail:
         msg: "{{ item }} is not a block special file!"
-      when: item.failed
+      when: item.rc is defined
       with_items: "{{ devices_parted.results }}"

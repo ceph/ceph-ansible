@@ -1,0 +1,35 @@
+---
+- name: install haproxy and keepalived
+  package:
+    name: ['haproxy', 'keepalived']
+    state: present
+  register: result
+  until: result is succeeded
+
+- name: "generate haproxy configuration file: haproxy.cfg"
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    validate: "haproxy -f %s -c"
+  notify:
+    - restart haproxy
+
+- name: set_fact vip to vrrp_instance
+  set_fact:
+      vrrp_instances: "{{ vrrp_instances | default([]) | union([{ 'name': 'VI_' + index|string , 'vip': item, 'master': groups[rgwloadbalancer_group_name][index] }]) }}"
+  loop: "{{ virtual_ips | flatten(levels=1) }}"
+  loop_control:
+      index_var: index
+
+- name: "generate keepalived: configuration file: keepalived.conf"
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify:
+    - restart keepalived

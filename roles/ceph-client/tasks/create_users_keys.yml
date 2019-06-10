@@ -20,7 +20,7 @@
     name: "{{ item }}"
     groups: _filtered_clients
   with_items: "{{ groups[client_group_name] }}"
-  when: (hostvars[item]['ansible_architecture'] == 'x86_64') or (not containerized_deployment)
+  when: (hostvars[item]['ansible_architecture'] == 'x86_64') or (not containerized_deployment | bool)
 
 - name: set_fact delegated_node
   set_fact:
@@ -45,10 +45,12 @@
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-  with_items: "{{ keys }}"
+  with_items:
+    - "{{ keys }}"
+    - "{{ ceph_nfs_ceph_user | default([]) }}"
   delegate_to: "{{ delegated_node }}"
   when:
-    - cephx
+    - cephx | bool
     - keys | length > 0
     - inventory_hostname == groups.get('_filtered_clients') | first
 
@@ -59,13 +61,13 @@
   register: slurp_client_keys
   delegate_to: "{{ delegated_node }}"
   when:
-    - cephx
+    - cephx | bool
     - keys | length > 0
     - inventory_hostname == groups.get('_filtered_clients') | first
 
 - name: pool related tasks
   when:
-    - condition_copy_admin_key
+    - condition_copy_admin_key | bool
     - inventory_hostname == groups.get('_filtered_clients', []) | first
   block:
     - name: list existing pool(s)

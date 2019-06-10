@@ -29,18 +29,18 @@
 - name: set_fact monitor_name ansible_hostname
   set_fact:
     monitor_name: "{{ ansible_hostname }}"
-  when: not mon_use_fqdn
+  when: not mon_use_fqdn | bool
 
 - name: set_fact monitor_name ansible_fqdn
   set_fact:
     monitor_name: "{{ ansible_fqdn }}"
-  when: mon_use_fqdn
+  when: mon_use_fqdn | bool
 
 - name: set_fact container_exec_cmd
   set_fact:
     container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] if not rolling_update else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}"
   when:
-    - containerized_deployment
+    - containerized_deployment | bool
     - groups.get(mon_group_name, []) | length > 0
 
 # this task shouldn't run in a rolling_update situation
@@ -55,7 +55,7 @@
   run_once: true
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
-    - not rolling_update
+    - not rolling_update | bool
     - groups.get(mon_group_name, []) | length > 0
 
 # set this as a default when performing a rolling_update
@@ -73,24 +73,24 @@
   delegate_to: localhost
   changed_when: false
   become: false
-  when: cephx or generate_fsid
+  when: cephx | bool or generate_fsid | bool
 
 - name: get current fsid
   command: "{{ timeout_command }} {{ container_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }} config get fsid"
   register: rolling_update_fsid
   delegate_to: "{{ mon_host | default(groups[mon_group_name][0]) }}"
-  when: rolling_update
+  when: rolling_update | bool
 
 - name: set_fact fsid
   set_fact:
     fsid: "{{ (rolling_update_fsid.stdout | from_json).fsid }}"
-  when: rolling_update
+  when: rolling_update | bool
 
 - name: set_fact ceph_current_status (convert to json)
   set_fact:
     ceph_current_status: "{{ ceph_current_status.stdout | from_json }}"
   when:
-    - not rolling_update
+    - not rolling_update | bool
     - ceph_current_status.rc == 0
 
 - name: set_fact fsid from ceph_current_status
@@ -100,15 +100,14 @@
 
 - name: fsid realted tasks
   when:
-    - generate_fsid
+    - generate_fsid | bool
     - ceph_current_status.fsid is undefined
-    - not rolling_update
+    - not rolling_update | bool
   block:
   - name: generate cluster fsid
     shell: python -c 'import uuid; print(str(uuid.uuid4()))'
     register: cluster_uuid
-    delegate_to: localhost
-    become: false
+    delegate_to: "{{ groups[mon_group_name][0] }}"
     run_once: true
 
   - name: set_fact fsid
@@ -118,12 +117,12 @@
 - name: set_fact mds_name ansible_hostname
   set_fact:
     mds_name: "{{ ansible_hostname }}"
-  when: not mds_use_fqdn
+  when: not mds_use_fqdn | bool
 
 - name: set_fact mds_name ansible_fqdn
   set_fact:
     mds_name: "{{ ansible_fqdn }}"
-  when: mds_use_fqdn
+  when: mds_use_fqdn | bool
 
 - name: set_fact rbd_client_directory_owner ceph
   set_fact:
@@ -152,7 +151,7 @@
   when:
     - devices is defined
     - inventory_hostname in groups.get(osd_group_name, [])
-    - not osd_auto_discovery|default(False)
+    - not osd_auto_discovery | default(False) | bool
 
 - name: set_fact build devices from resolved symlinks
   set_fact:
@@ -161,7 +160,7 @@
   when:
     - devices is defined
     - inventory_hostname in groups.get(osd_group_name, [])
-    - not osd_auto_discovery|default(False)
+    - not osd_auto_discovery | default(False) | bool
 
 - name: set_fact build final devices list
   set_fact:
@@ -169,14 +168,14 @@
   when:
     - devices is defined
     - inventory_hostname in groups.get(osd_group_name, [])
-    - not osd_auto_discovery|default(False)
+    - not osd_auto_discovery | default(False) | bool
 
 - name: set_fact devices generate device list when osd_auto_discovery
   set_fact:
     devices: "{{ devices | default([]) + [ item.key | regex_replace('^', '/dev/') ] }}"
   with_dict: "{{ ansible_devices }}"
   when:
-    - osd_auto_discovery|default(False)
+    - osd_auto_discovery | default(False) | bool
     - ansible_devices is defined
     - item.value.removable == "0"
     - item.value.sectors != "0"
@@ -188,28 +187,28 @@
   set_fact:
     ceph_uid: 64045
   when:
-    - not containerized_deployment
+    - not containerized_deployment | bool
     - ansible_os_family == 'Debian'
 
 - name: set_fact ceph_uid for red hat or suse based system - non container
   set_fact:
     ceph_uid: 167
   when:
-    - not containerized_deployment
+    - not containerized_deployment | bool
     - ansible_os_family in ['RedHat', 'Suse']
 
 - name: set_fact ceph_uid for debian based system - container
   set_fact:
     ceph_uid: 64045
   when:
-    - containerized_deployment
+    - containerized_deployment | bool
     - ceph_docker_image_tag | string is search("ubuntu")
 
 - name: set_fact ceph_uid for red hat based system - container
   set_fact:
     ceph_uid: 167
   when:
-    - containerized_deployment
+    - containerized_deployment | bool
     - (ceph_docker_image_tag | string is search("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
       or (ansible_distribution == 'RedHat'))
 
@@ -217,7 +216,7 @@
   set_fact:
     ceph_uid: 167
   when:
-    - containerized_deployment
+    - containerized_deployment | bool
     - ceph_docker_image is search("rhceph")
 
 - name: set_fact rgw_hostname
@@ -290,3 +289,8 @@
     set_fact:
       ntp_service_name: ntpd
     when: ansible_os_family in ['RedHat', 'Suse']
+
+- name: set grafana_server_addr fact
+  set_fact:
+    grafana_server_addr: "{{ (hostvars[groups[grafana_server_group_name][0] | default(groups[mgr_group_name][0])])['ansible_all_ipv4_addresses'] | ipaddr(public_network) | first }}"
+  when:  groups.get(grafana_server_group_name, []) | length > 0 or groups.get(mgr_group_name, []) | length > 0

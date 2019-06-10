@@ -2,6 +2,18 @@ import pytest
 import os
 
 
+def str_to_bool(val):
+    try:
+        val = val.lower()
+    except AttributeError:
+        val = str(val).lower()
+    if val == 'true':
+        return True
+    elif val == 'false':
+        return False
+    else:
+        raise ValueError("Invalid input value: %s" % val)
+
 @pytest.fixture(scope="module")
 def setup(host):
     cluster_address = ""
@@ -59,7 +71,7 @@ def setup(host):
 
     if docker:
         container_binary = "docker"
-    if docker and host.exists("podman") and ansible_distribution in ["Fedora", "RedHat"]:  # noqa E501
+    if docker and str_to_bool(os.environ.get('IS_PODMAN', False)):  # noqa E501
         container_binary = "podman"
 
     data = dict(

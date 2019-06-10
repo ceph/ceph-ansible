@@ -3,7 +3,6 @@
 
 - hosts:
   - mons
-  - agents
   - osds
   - mdss
   - rgws
@@ -14,6 +13,7 @@
   - iscsigws
   - iscsi-gws # for backward compatibility only!
   - grafana-server
+  - rgwloadbalancers
 
   gather_facts: false
   any_errors_fatal: true
@@ -149,45 +149,6 @@
       set_stats:
         data:
           installer_phase_ceph_mgr:
-            status: "Complete"
-            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-
-- hosts: agents
-  gather_facts: false
-  become: True
-  any_errors_fatal: true
-  pre_tasks:
-    - name: set ceph agent install 'In Progress'
-      run_once: true
-      set_stats:
-        data:
-          installer_phase_ceph_agent:
-            status: "In Progress"
-            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-
-  tasks:
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-handler
-    - import_role:
-        name: ceph-common
-    - import_role:
-        name: ceph-config
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-agent
-
-  post_tasks:
-    - name: set ceph agent install 'Complete'
-      run_once: true
-      set_stats:
-        data:
-          installer_phase_ceph_agent:
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
@@ -466,6 +427,39 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
+- hosts:
+    - rgwloadbalancers
+  gather_facts: false
+  become: True
+  any_errors_fatal: true
+  pre_tasks:
+    - name: set ceph rgw loadbalancer install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_rgw_loadbalancer:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+  tasks:
+    - import_role:
+        name: ceph-defaults
+      tags: ['ceph_update_config']
+    - import_role:
+        name: ceph-facts
+      tags: ['ceph_update_config']
+    - import_role:
+        name: ceph-rgw-loadbalancer
+
+  post_tasks:
+    - name: set ceph rgw loadbalancer install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_rgw_loadbalancer:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
 - hosts: mons
   gather_facts: false
   become: True
@@ -498,13 +492,12 @@
         - import_role:
             name: ceph-handler
         - import_role:
-            name: ceph-container-common
+            name: ceph-container-engine
         - import_role:
             name: ceph-node-exporter
-      when: dashboard_enabled
+      when: dashboard_enabled | bool
 
-
-- hosts: grafana-server
+- hosts: '{{ groups["grafana-server"][0] | default(groups["mgrs"][0]) | default(groups["mons"][0]) | default(omit) }}'
   become: true
   tasks:
     - block:
@@ -525,15 +518,15 @@
             name: ceph-prometheus
         - import_role:
             name: ceph-grafana
-      when: dashboard_enabled
+      when: dashboard_enabled | bool
 
-- hosts: '{{ (groups["mgrs"] | default(groups["mons"]))[0] }}'
+- hosts: '{{ groups["grafana-server"][0] | default(groups["mgrs"][0]) | default(groups["mons"][0]) | default(omit) }}'
   become: true
   tasks:
     - import_role:
         name: ceph-defaults
       tags: ['ceph_update_config']
-      when: dashboard_enabled
+      when: dashboard_enabled | bool
     - import_role:
         name: ceph-dashboard
-      when: dashboard_enabled
+      when: dashboard_enabled | bool

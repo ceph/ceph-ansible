@@ -79,7 +79,7 @@
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   with_items: "{{ openstack_keys }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  when: cephx
+  when: cephx | bool
 
 - name: fetch openstack cephx key(s)
   fetch:
@@ -101,6 +101,6 @@
     - "{{ openstack_keys }}"
   delegate_to: "{{ item.0 }}"
   when:
-    - cephx
-    - openstack_config
+    - cephx | bool
+    - openstack_config | bool
     - item.0 != groups[mon_group_name]
