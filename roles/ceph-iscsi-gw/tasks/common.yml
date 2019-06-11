@@ -38,6 +38,11 @@
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
+    - name: assign application rbd to pool 'rbd'
+      command: "{{ container_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool application enable rbd rbd"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: True
+
     - name: customize pool size
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set rbd size {{ rbd_pool_size | default(osd_pool_default_size) }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
