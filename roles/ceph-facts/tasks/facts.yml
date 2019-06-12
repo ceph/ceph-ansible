@@ -290,6 +290,18 @@
       ntp_service_name: ntpd
     when: ansible_os_family in ['RedHat', 'Suse']
 
+- name: set chrony daemon name RedHat and Ubuntu based OSs
+  block:
+    - name: set chronyd daemon name for RedHat based OSs
+      set_fact:
+        chrony_daemon_name: chronyd
+      when: ansible_os_family in ["RedHat", "Suse"]
+
+    - name: set chronyd daemon name for Ubuntu based OSs
+      set_fact:
+        chrony_daemon_name: chrony
+      when: ansible_os_family == "Debian"
+
 - name: set grafana_server_addr fact
   set_fact:
     grafana_server_addr: "{{ (hostvars[groups[grafana_server_group_name][0] | default(groups[mgr_group_name][0])])['ansible_all_ipv4_addresses'] | ipaddr(public_network) | first }}"
