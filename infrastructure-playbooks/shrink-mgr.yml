@@ -1,0 +1,137 @@
+---
+# This playbook shrinks the Ceph manager from your cluster
+#
+# Use it like this:
+# ansible-playbook shrink-mgr.yml -e mgr_to_kill=ceph-mgr1
+#     Prompts for confirmation to shrink, defaults to no and
+#     doesn't shrink the cluster and yes shrinks the cluster.
+#
+# ansible-playbook -e ireallymeanit=yes|no shrink-mgr.yml
+#     Overrides the prompt using -e option. Can be used in
+#     automation scripts to avoid interactive prompt.
+
+
+- name: gather facts and check the init system
+  hosts:
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+  become: true
+  tasks:
+    - debug:
+        msg: gather facts on all Ceph hosts for following reference
+
+- name: confirm if user really meant to remove manager from the ceph cluster
+  hosts: localhost
+  become: true
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to shrink the cluster?
+      default: 'no'
+      private: no
+  pre_tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+
+    - name: set_fact container_exec_cmd
+      when: containerized_deployment | bool
+      set_fact:
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+
+    - name: exit playbook, if can not connect to the cluster
+      command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} health"
+      register: ceph_health
+      until: ceph_health.rc
+      failed_when: ceph_health.rc != 0
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      retries: 5
+      delay: 2
+
+    - name: get total number of mgrs in cluster
+      block:
+        - name: save mgr dump output
+          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{cluster}} mgr dump"
+          register: mgr_dump
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+
+        - name: get a list of names of standby mgrs
+          set_fact:
+            standby_mgrs: "{{ (mgr_dump.stdout | from_json)['standbys'] | map(attribute='name') | list }}"
+
+        - name: get active mgr
+          set_fact:
+            active_mgr: "{{ [mgr_dump.stdout | from_json] | map(attribute='active_name') | list }}"
+
+    - name: exit playbook, if there's no standby manager
+      fail:
+        msg: "You are about to shrink the only manager present in the cluster."
+      when: standby_mgrs | length | int < 1
+
+    - name: exit playbook, if no manager was given
+      fail:
+        msg: "mgr_to_kill must be declared
+              Exiting shrink-cluster playbook, no manager was removed.
+              On the command line when invoking the playbook, you can use
+              -e mgr_to_kill=ceph-mgr01 argument. You can only remove a single
+              manager each time the playbook runs."
+      when: mgr_to_kill is not defined
+
+    - name: exit playbook, if the manager is not part of the inventory
+      fail:
+        msg: "It seems that the host given is not part of your inventory,
+              please make sure it is."
+      when:
+        - mgr_to_kill not in active_mgr
+        - mgr_to_kill not in standby_mgrs
+
+    - name: exit playbook, if user did not mean to shrink cluster
+      fail:
+        msg: "Exiting shrink-mgr playbook, no manager was removed.
+           To shrink the cluster, either say 'yes' on the prompt or
+           or use `-e ireallymeanit=yes` on the command line when
+           invoking the playbook"
+      when: ireallymeanit != 'yes'
+
+    - name: set_fact mgr_to_kill_hostname
+      set_fact:
+        mgr_to_kill_hostname: "{{ hostvars[mgr_to_kill]['ansible_hostname'] }}"
+
+  tasks:
+    - name: stop manager services and verify it
+      block:
+        - name: stop manager service
+          service:
+            name: ceph-mgr@{{ mgr_to_kill_hostname }}
+            state: stopped
+            enabled: no
+          delegate_to: "{{ mgr_to_kill }}"
+          failed_when: false
+
+        - name: ensure that the mds is stopped
+          command: "systemctl is-active ceph_mds@{{ mgr_to_kill_hostname }}"
+          register: mgr_to_kill_status
+          failed_when: mgr_to_kill_status.rc == 0
+          delegate_to: "{{ mgr_to_kill }}"
+          retries: 5
+          delay: 2
+
+    - name: fail if the mgr is reported in ceph status
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | grep {{ mgr_to_kill }}"
+      register: mgr_in_ceph_status
+      failed_when: mgr_in_ceph_status.rc == 0
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      retries: 3
+      delay: 5
+
+    - name: purge manager store
+      file:
+        path: /var/lib/ceph/mgr/{{ cluster }}-{{ mgr_to_kill_hostname }}
+        state: absent
+      delegate_to: "{{ mgr_to_kill }}"
+
+  post_tasks:
+    - name: show ceph health
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
