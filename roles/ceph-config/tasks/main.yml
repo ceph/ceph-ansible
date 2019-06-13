@@ -130,6 +130,30 @@
       - ((inventory_hostname in groups.get(mon_group_name, [])) or
         (groups.get(nfs_group_name, []) | length > 0) and inventory_hostname == groups.get(nfs_group_name, [])[0])
 
+  - name: "ensure fetch directory exists"
+    run_once: true
+    become: false
+    file:
+      path: "{{ fetch_directory }}/{{ fsid }}/etc/ceph"
+      state: directory
+      mode: "0755"
+    delegate_to: localhost
+    when: ceph_conf_local | bool
+
+  - name: "generate {{ cluster }}.conf configuration file locally"
+    config_template:
+    become: false
+    run_once: true
+    delegate_to: localhost
+    args:
+      src: "ceph.conf.j2"
+      dest: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.conf"
+      config_overrides: "{{ ceph_conf_overrides }}"
+      config_type: ini
+    when:
+      - inventory_hostname in groups[mon_group_name]
+      - ceph_conf_local | bool
+
   - name: "generate {{ cluster }}.conf configuration file"
     action: config_template
     args:
