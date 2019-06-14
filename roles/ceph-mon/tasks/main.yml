@@ -2,29 +2,28 @@
 - name: set_fact container_exec_cmd
   set_fact:
     container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
-  when: containerized_deployment
+  when: containerized_deployment | bool
 
 - name: include deploy_monitors.yml
   include_tasks: deploy_monitors.yml
   when:
     # we test for both container and non-container
     - (mon_socket_stat is defined and mon_socket_stat.get('rc') != 0) or (ceph_mon_container_stat is defined and ceph_mon_container_stat.get('stdout_lines', [])|length == 0)
-    - not switch_to_containers | default(False)
+    - not switch_to_containers | default(False) | bool
 
 - name: include start_monitor.yml
   include_tasks: start_monitor.yml
 
 - name: include_tasks ceph_keys.yml
   include_tasks: ceph_keys.yml
-  when: not switch_to_containers | default(False)
+  when: not switch_to_containers | default(False) | bool
 
 - name: include secure_cluster.yml
   include_tasks: secure_cluster.yml
   when:
-    - secure_cluster
+    - secure_cluster | bool
     - inventory_hostname == groups[mon_group_name] | first
 
 - name: crush_rules.yml
   include_tasks: crush_rules.yml
-  when: crush_rule_config
-
+  when: crush_rule_config | bool

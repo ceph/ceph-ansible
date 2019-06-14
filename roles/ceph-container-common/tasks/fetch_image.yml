@@ -183,7 +183,7 @@
   until: docker_image.rc == 0
   retries: "{{ docker_pull_retry }}"
   delay: 10
-  when: (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
+  when: (ceph_docker_dev_image is undefined or not ceph_docker_dev_image | bool)
 
 - name: "inspecting {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image after pulling"
   command: "{{ container_binary }} inspect {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
@@ -278,15 +278,15 @@
   copy:
     src: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
     dest: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
-  when: (ceph_docker_dev_image is defined and ceph_docker_dev_image)
+  when: (ceph_docker_dev_image is defined and ceph_docker_dev_image | bool)
 
 - name: load ceph dev image
   command: "{{ container_binary }} load -i /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
-  when: (ceph_docker_dev_image is defined and ceph_docker_dev_image)
+  when: (ceph_docker_dev_image is defined and ceph_docker_dev_image | bool)
 
 - name: remove tmp ceph dev image file
   file:
     name: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
     state: absent
-  when: (ceph_docker_dev_image is defined and ceph_docker_dev_image)
+  when: (ceph_docker_dev_image is defined and ceph_docker_dev_image | bool)
 

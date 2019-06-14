@@ -9,7 +9,7 @@
   register: result
   until: result is succeeded
   when:
-    - not containerized_deployment
+    - not containerized_deployment | bool
     - ansible_os_family != 'ClearLinux'
 
 - name: install numactl when needed
@@ -18,7 +18,7 @@
   register: result
   until: result is succeeded
   when:
-    - containerized_deployment
+    - containerized_deployment | bool
     - ceph_osd_numactl_opts != ""
   tags: with_pkg
 
@@ -27,7 +27,7 @@
     name: lvm2
   register: result
   until: result is succeeded
-  when: not is_atomic
+  when: not is_atomic | bool
   tags: with_pkg
 
 - name: include_tasks common.yml
@@ -47,13 +47,13 @@
   include_tasks: scenarios/lvm.yml
   when:
     - lvm_volumes|length > 0
-    - not rolling_update|default(False)
+    - not rolling_update|default(False) | bool
 
 - name: include_tasks scenarios/lvm-batch.yml
   include_tasks: scenarios/lvm-batch.yml
   when:
     - devices|length > 0
-    - not rolling_update|default(False)
+    - not rolling_update|default(False) | bool
 
 - name: include_tasks start_osds.yml
   include_tasks: start_osds.yml
@@ -63,8 +63,8 @@
     openstack_keys_tmp: "{{ openstack_keys_tmp|default([]) + [ { 'key': item.key, 'name': item.name, 'caps': { 'mon': item.mon_cap, 'osd': item.osd_cap|default(''), 'mds': item.mds_cap|default(''), 'mgr': item.mgr_cap|default('') } , 'mode': item.mode } ] }}"
   with_items: "{{ openstack_keys }}"
   when:
-    - not add_osd|default(False)
-    - openstack_config
+    - not add_osd|default(False) | bool
+    - openstack_config | bool
     - item.get('mon_cap', None)
     # it's enough to assume we are running an old-fashionned syntax simply by checking the presence of mon_cap since every key needs this cap
 
@@ -72,13 +72,13 @@
   set_fact:
     openstack_keys: "{{ openstack_keys_tmp }}"
   when:
-    - not add_osd|default(False)
+    - not add_osd|default(False) | bool
     - openstack_keys_tmp is defined
 
 # Create the pools listed in openstack_pools
 - name: include openstack_config.yml
   include_tasks: openstack_config.yml
   when:
-    - not add_osd|default(False)
-    - openstack_config
+    - not add_osd|default(False) | bool
+    - openstack_config | bool
     - inventory_hostname == groups[osd_group_name] | last

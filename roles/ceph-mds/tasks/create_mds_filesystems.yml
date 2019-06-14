@@ -25,8 +25,8 @@
           command: >
             {{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
             osd pool create {{ item.name }}
-            {{ item.pg_num | default(item.pgs) | default(osd_pool_default_pg_num) }}
-            {{ item.pgp_num | default(item.pgs) | default(item.pg_num) | default(osd_pool_default_pg_num) }}
+            {{ item.pg_num | default(osd_pool_default_pg_num) }}
+            {{ item.pgp_num | default(item.pg_num) }}
             {{ 'replicated_rule' if not item.rule_name | default('replicated_rule') else item.rule_name | default('replicated_rule') }}
             {{ 1 if item.type|default(1) == 'replicated' else 3 if item.type|default(1) == 'erasure' else item.type|default(1) }}
             {%- if (item.type | default("1") == '3' or item.type | default("1") == 'erasure') and item.erasure_profile != '' %}
@@ -50,10 +50,10 @@
           when: (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
 
         - name: assign application to cephfs pools
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item }} cephfs"
+          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
           with_items:
-            - "{{ cephfs_data }}"
-            - "{{ cephfs_metadata }}"
+            - "{{ cephfs_data_pool }}"
+            - "{{ cephfs_metadata_pool }}"
           changed_when: false
 
 - name: check and create ceph filesystem
@@ -66,7 +66,7 @@
       failed_when: false
 
     - name: create ceph filesystem
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs new {{ cephfs }} {{ cephfs_metadata }} {{ cephfs_data }}"
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs new {{ cephfs }} {{ cephfs_metadata_pool.name }} {{ cephfs_data_pool.name }}"
       changed_when: false
       when: check_existing_cephfs.rc != 0
 

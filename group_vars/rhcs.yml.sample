@@ -55,6 +55,8 @@ fetch_directory: ~/ceph-ansible-keys
 #client_group_name: clients
 #iscsi_gw_group_name: iscsigws
 #mgr_group_name: mgrs
+#rgwloadbalancer_group_name: rgwloadbalancers
+#grafana_server_group_name: grafana-server
 
 # If configure_firewall is true, then ansible will try to configure the
 # appropriate firewalling rules so that Ceph daemons can communicate
@@ -71,6 +73,7 @@ fetch_directory: ~/ceph-ansible-keys
 #ceph_rbdmirror_firewall_zone: public
 #ceph_iscsi_firewall_zone: public
 #ceph_dashboard_firewall_zone: public
+#ceph_rgwloadbalancer_firewall_zone: public
 
 # Generate local ceph.conf in fetch directory
 #ceph_conf_local: false
@@ -98,7 +101,7 @@ fetch_directory: ~/ceph-ansible-keys
 
 # Set type of NTP client daemon to use, valid entries are chronyd, ntpd or timesyncd
 # Note that this selection is currently ignored on containerized deployments
-#ntp_daemon_type: timesyncd
+#ntp_daemon_type: chronyd
 
 
 # Set uid/gid to default '64045' for bootstrap directories.
@@ -339,24 +342,28 @@ ceph_rhcs_version: 4
 # CEPHFS #
 ##########
 #cephfs: cephfs # name of the ceph filesystem
-#cephfs_data: cephfs_data # name of the data pool for a given filesystem
-#cephfs_metadata: cephfs_metadata # name of the metadata pool for a given filesystem
-
 #cephfs_data_pool:
-#  name: "{{ cephfs_data }}"
-#  pgs: "{{ osd_pool_default_pg_num }}"
+#  name: "{{ cephfs_data if cephfs_data is defined else 'cephfs_data' }}"
+#  pg_num: "{{ osd_pool_default_pg_num }}"
+#  pgp_num: "{{ osd_pool_default_pg_num }}"
+#  rule_name: "replicated_rule"
+#  type: 1
+#  erasure_profile: ""
+#  expected_num_objects: ""
+#  application: "cephfs"
 #  size: "{{ osd_pool_default_size }}"
 #  min_size: "{{ osd_pool_default_min_size }}"
-#  rule_name: "replicated_rule"
-
 #cephfs_metadata_pool:
-#  name: "{{ cephfs_metadata }}"
-#  pgs: "{{ osd_pool_default_pg_num }}"
+#  name: "{{ cephfs_metadata if cephfs_metadata is defined else 'cephfs_metadata' }}"
+#  pg_num: "{{ osd_pool_default_pg_num }}"
+#  pgp_num: "{{ osd_pool_default_pg_num }}"
+#  rule_name: "replicated_rule"
+#  type: 1
+#  erasure_profile: ""
+#  expected_num_objects: ""
+#  application: "cephfs"
 #  size: "{{ osd_pool_default_size }}"
 #  min_size: "{{ osd_pool_default_min_size }}"
-#  rule_name: "replicated_rule"
-
-
 #cephfs_pools:
 #  - "{{ cephfs_data_pool }}"
 #  - "{{ cephfs_metadata_pool }}"
@@ -475,7 +482,7 @@ ceph_rhcs_version: 4
 # Set this to true to enable File access via NFS.  Requires an MDS role.
 #nfs_file_gw: false
 # Set this to true to enable Object access via NFS. Requires an RGW role.
-#nfs_obj_gw: true
+#nfs_obj_gw: "{{ False if groups.get(mon_group_name, []) | length == 0 else True }}"
 
 
 #############
@@ -725,6 +732,7 @@ ceph_docker_registry: "registry.access.redhat.com"
 #grafana_plugins:
 #  - vonage-status-panel
 #  - grafana-piechart-panel
+#grafana_allow_embedding: True
 #prometheus_container_image: prom/prometheus:latest
 #prometheus_container_cpu_period: 100000
 #prometheus_container_cpu_cores: 2

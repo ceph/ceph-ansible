@@ -1,14 +1,14 @@
 ---
 - name: include create_ceph_initial_dirs.yml
   include_tasks: create_ceph_initial_dirs.yml
-  when: containerized_deployment|bool
+  when: containerized_deployment | bool
 
 - name: config file operations related to OSDs
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     # the rolling_update.yml playbook sets num_osds to the number of currently
     # running osds
-    - not rolling_update
+    - not rolling_update | bool
   block:
   - name: count number of osds for lvm scenario
     set_fact:
@@ -62,7 +62,7 @@
 
 # ceph-common
 - name: config file operation for non-containerized scenarios
-  when: not containerized_deployment|bool
+  when: not containerized_deployment | bool
   block:
   - name: create ceph conf directory
     file:
@@ -98,7 +98,7 @@
       state: directory
       mode: "0755"
     delegate_to: localhost
-    when: ceph_conf_local
+    when: ceph_conf_local | bool
 
   - name: "generate {{ cluster }}.conf configuration file locally"
     config_template:
@@ -112,10 +112,10 @@
       config_type: ini
     when:
       - inventory_hostname in groups[mon_group_name]
-      - ceph_conf_local
+      - ceph_conf_local | bool
 
 - name: config file operations for containerized scenarios
-  when: containerized_deployment|bool
+  when: containerized_deployment | bool
   block:
   - name: create a local fetch directory if it does not exist
     file:
@@ -126,7 +126,7 @@
     become: false
     run_once: true
     when:
-      - (cephx or generate_fsid)
+      - (cephx or generate_fsid) | bool
       - ((inventory_hostname in groups.get(mon_group_name, [])) or
         (groups.get(nfs_group_name, []) | length > 0) and inventory_hostname == groups.get(nfs_group_name, [])[0])
 

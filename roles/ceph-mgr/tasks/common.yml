@@ -64,7 +64,7 @@
         owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
         group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
         mode: "{{ ceph_keyring_permissions }}"
-      when: cephx
+      when: cephx | bool
 
 - name: copy ceph keyring(s) if needed
   copy:
@@ -74,7 +74,7 @@
     group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     mode: "{{ ceph_keyring_permissions }}"
   when:
-    - cephx
+    - cephx | bool
     - groups.get(mgr_group_name, []) | length > 0
     - copy_admin_key | bool
 
@@ -84,4 +84,4 @@
     owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     mode: "{{ ceph_keyring_permissions }}"
-  when: cephx
+  when: cephx | bool

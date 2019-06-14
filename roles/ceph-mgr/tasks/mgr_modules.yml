@@ -1,4 +1,9 @@
 ---
+- name: append dashboard modules to ceph_mgr_modules
+  set_fact:
+    ceph_mgr_modules: "{{ (ceph_mgr_modules + [ 'dashboard', 'prometheus' ]) | unique }}"
+  when: dashboard_enabled | bool
+
 - name: wait for all mgr to be up
   shell: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} mgr dump -f json | python -c 'import sys, json; print(json.load(sys.stdin)[\"available\"])'"
   register: mgr_dump

@@ -4,7 +4,7 @@
   block:
     - name: stable repos specific tasks
       when:
-        - nfs_ganesha_stable
+        - nfs_ganesha_stable | bool
         - ceph_repository == 'community'
       block:
         - name: add nfs-ganesha stable repository
@@ -25,7 +25,7 @@
 
     - name: debian based systems - dev repos specific tasks
       when:
-        - nfs_ganesha_dev
+        - nfs_ganesha_dev | bool
         - ceph_repository == 'dev'
       block:
         - name: fetch nfs-ganesha development repository
@@ -62,14 +62,14 @@
             allow_unauthenticated: yes
           register: result
           until: result is succeeded
-          when: nfs_obj_gw
+          when: nfs_obj_gw | bool
         - name: install nfs rgw/cephfs gateway - debian
           apt:
             name: nfs-ganesha-ceph
             allow_unauthenticated: yes
           register: result
           until: result is succeeded
-          when: nfs_file_gw
+          when: nfs_file_gw | bool
 
     - name: debian based systems - rhcs installation
       when:
@@ -88,11 +88,11 @@
             state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
           register: result
           until: result is succeeded
-          when: nfs_file_gw
+          when: nfs_file_gw | bool
         - name: install red hat storage nfs obj gateway
           apt:
             name: nfs-ganesha-rgw
             state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
           register: result
           until: result is succeeded
-          when: nfs_obj_gw
+          when: nfs_obj_gw | bool

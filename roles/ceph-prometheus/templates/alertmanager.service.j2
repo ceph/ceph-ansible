@@ -4,9 +4,12 @@
 Description=alertmanager
 {% if container_binary == 'docker' %}
 After=docker.service
+{% else %}
+After=network.target
 {% endif %}
 
 [Service]
+WorkingDirectory={{ alertmanager_data_dir }}
 EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/{{ container_binary }} rm -f alertmanager
 ExecStart=/usr/bin/{{ container_binary }} run --name=alertmanager \
@@ -19,7 +22,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --name=alertmanager \
   --memory-swap={{ alertmanager_container_memory * 2 }}GB \
   {{ alertmanager_container_image }} \
   --config.file=/etc/alertmanager/alertmanager.yml \
-  --storage.path=/alertmanager"
+  --storage.path=/alertmanager
 ExecStop=/usr/bin/{{ container_binary }} stop alertmanager
 Restart=always
 RestartSec=10s

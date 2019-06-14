@@ -1,26 +1,28 @@
 ---
-- name: set_fact container_exec_cmd_nfs
-  set_fact:
-    container_exec_cmd_nfs: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-  when: containerized_deployment
+- block:
+  - name: set_fact container_exec_cmd_nfs
+    set_fact:
+      container_exec_cmd_nfs: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+    when: containerized_deployment | bool
 
-- name: check if rados index object exists
-  shell: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
-  changed_when: false
-  failed_when: false
-  register: rados_index_exists
-  check_mode: no
-  when: ceph_nfs_rados_backend
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
+  - name: check if rados index object exists
+    shell: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data_pool.name }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
+    changed_when: false
+    failed_when: false
+    register: rados_index_exists
+    check_mode: no
+    when: ceph_nfs_rados_backend | bool
+    delegate_to: "{{ groups[mon_group_name][0] }}"
+    run_once: true
 
-- name: create an empty rados index object
-  command: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} /dev/null"
-  when:
-    - ceph_nfs_rados_backend
-    - rados_index_exists.rc != 0
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
+  - name: create an empty rados index object
+    command: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data_pool.name }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} /dev/null"
+    when:
+      - ceph_nfs_rados_backend | bool
+      - rados_index_exists.rc != 0
+    delegate_to: "{{ groups[mon_group_name][0] }}"
+    run_once: true
+  when: groups.get(mon_group_name, []) | length > 0
 
 - name: create /etc/ganesha
   file:
@@ -31,14 +33,12 @@
     mode: "0755"
 
 - name: generate ganesha configuration file
-  action: config_template
-  args:
+  template:
     src: "ganesha.conf.j2"
     dest: /etc/ganesha/ganesha.conf
     owner: "root"
     group: "root"
     mode: "0644"
-    config_type: ini
   notify: restart ceph nfss
 
 - name: create exports directory
@@ -48,7 +48,7 @@
     owner: "root"
     group: "root"
     mode: "0755"
-  when: ceph_nfs_dynamic_exports
+  when: ceph_nfs_dynamic_exports | bool
 
 - name: create exports dir index file
   copy:
@@ -58,7 +58,7 @@
     owner: "root"
     group: "root"
     mode: "0644"
-  when: ceph_nfs_dynamic_exports
+  when: ceph_nfs_dynamic_exports | bool
 
 - name: generate systemd unit file
   become: true
@@ -68,7 +68,7 @@
     owner: "root"
     group: "root"
     mode: "0644"
-  when: containerized_deployment
+  when: containerized_deployment | bool
   notify: restart ceph nfss
 
 - name: systemd start nfs container
@@ -79,8 +79,8 @@
     masked: no
     daemon_reload: yes
   when:
-    - containerized_deployment
-    - ceph_nfs_enable_service
+    - containerized_deployment | bool
+    - ceph_nfs_enable_service | bool
 
 - name: start nfs gateway service
   systemd:
@@ -89,5 +89,5 @@
     enabled: yes
     masked: no
   when:
-    - not containerized_deployment
-    - ceph_nfs_enable_service
+    - not containerized_deployment | bool
+    - ceph_nfs_enable_service | bool

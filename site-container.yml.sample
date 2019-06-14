@@ -3,7 +3,6 @@
 
 - hosts:
   - mons
-  - agents
   - osds
   - mdss
   - rgws
@@ -71,24 +70,12 @@
     - import_role:
         name: ceph-handler
     - import_role:
+        name: ceph-container-engine
+      tags: with_pkg
+    - import_role:
         name: ceph-container-common
-      tags: [with_pkg, fetch_container_image]
-      when:
-        - not (is_atomic | bool)
-        - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
-
-    # post-tasks for upcoming import -
-    - name: "pull {{ ceph_docker_image }} image"
-      command: "{{ container_binary }} pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      register: container_pull
-      until: container_pull.rc == 0
-      retries: 5
-      delay: 5
-      changed_when: false
-      when:
-        - is_atomic
-        - (ceph_docker_dev_image is undefined or not ceph_docker_dev_image)
-        - (not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first))
+      tags: fetch_container_image
+      when: not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first)
 
 - hosts: mons
   any_errors_fatal: true
@@ -115,10 +102,12 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
+        name: ceph-container-engine
     - import_role:
         name: ceph-container-common
+    - import_role:
+        name: ceph-node-exporter
+      when: dashboard_enabled | bool
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -162,10 +151,12 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
+        name: ceph-container-engine
     - import_role:
         name: ceph-container-common
+    - import_role:
+        name: ceph-node-exporter
+      when: dashboard_enabled | bool
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -204,10 +195,12 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
+        name: ceph-container-engine
     - import_role:
         name: ceph-container-common
+    - import_role:
+        name: ceph-node-exporter
+      when: dashboard_enabled | bool
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -246,10 +239,12 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
+        name: ceph-container-engine
     - import_role:
         name: ceph-container-common
+    - import_role:
+        name: ceph-node-exporter
+      when: dashboard_enabled | bool
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -288,10 +283,12 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
+        name: ceph-container-engine
     - import_role:
         name: ceph-container-common
+    - import_role:
+        name: ceph-node-exporter
+      when: dashboard_enabled | bool
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -330,10 +327,12 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
+        name: ceph-container-engine
     - import_role:
         name: ceph-container-common
+    - import_role:
+        name: ceph-node-exporter
+      when: dashboard_enabled | bool
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -372,10 +371,12 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
+        name: ceph-container-engine
     - import_role:
         name: ceph-container-common
+    - import_role:
+        name: ceph-node-exporter
+      when: dashboard_enabled | bool
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -414,11 +415,14 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
+        name: ceph-container-engine
+      when: inventory_hostname == groups.get('clients', ['']) | first or dashboard_enabled
     - import_role:
         name: ceph-container-common
       when: inventory_hostname == groups.get('clients', ['']) | first
+    - import_role:
+        name: ceph-node-exporter
+      when: dashboard_enabled | bool
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -459,10 +463,12 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-node-exporter
-      when: dashboard_enabled
+        name: ceph-container-engine
     - import_role:
         name: ceph-container-common
+    - import_role:
+        name: ceph-node-exporter
+      when: dashboard_enabled | bool
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -511,7 +517,7 @@
       run_once: true
       when: not ceph_status.failed
 
-- hosts: grafana-server
+- hosts: '{{ groups["grafana-server"][0] | default(groups["mgrs"][0]) | default(groups["mons"][0]) | default(omit) }}'
   become: true
   tasks:
     - block:
@@ -524,9 +530,11 @@
       - import_role:
           name: ceph-handler
       - import_role:
-          name: ceph-node-exporter
+          name: ceph-container-engine
       - import_role:
           name: ceph-container-common
+      - import_role:
+          name: ceph-node-exporter
       - import_role:
           name: ceph-config
         tags: ['ceph_update_config']
@@ -534,9 +542,9 @@
           name: ceph-prometheus
       - import_role:
           name: ceph-grafana
-      when: dashboard_enabled
+      when: dashboard_enabled | bool
 
-- hosts: '{{ (groups["mgrs"] | default(groups["mons"]))[0] }}'
+- hosts: '{{ groups["grafana-server"][0] | default(groups["mgrs"][0]) | default(groups["mons"][0]) | default(omit) }}'
   become: true
   tasks:
     - block:
@@ -545,4 +553,4 @@
           tags: ['ceph_update_config']
         - import_role:
             name: ceph-dashboard
-      when: dashboard_enabled
+      when: dashboard_enabled | bool
