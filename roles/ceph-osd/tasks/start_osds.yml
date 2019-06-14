@@ -20,6 +20,7 @@
       mode: "0744"
       setype: "bin_t"
     notify: restart ceph osds
+    tags: docker2podman
 
 # this is for ceph-disk, the ceph-disk command is gone so we have to list /var/lib/ceph
 - name: get osd ids
@@ -48,6 +49,7 @@
     mode: "0644"
   notify: restart ceph osds
   when: containerized_deployment | bool
+  tags: docker2podman
 
 - name: systemd start osd
   systemd:
@@ -65,6 +67,7 @@
   when:
     - ceph_osd_systemd_overrides is defined
     - ansible_service_mgr == 'systemd'
+  tags: docker2podman
 
 - name: add ceph-osd systemd service overrides
   config_template:
@@ -75,3 +78,4 @@
   when:
     - ceph_osd_systemd_overrides is defined
     - ansible_service_mgr == 'systemd'
+  tags: docker2podman
