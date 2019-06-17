@@ -31,6 +31,9 @@ class CallbackModule(CallbackBase):
             'installer_phase_ceph_client',
             'installer_phase_ceph_iscsi_gw',
             'installer_phase_ceph_rgw_loadbalancer',
+            'installer_phase_ceph_dashboard',
+            'installer_phase_ceph_grafana',
+            'installer_phase_ceph_node_exporter',
         ]
 
         # Define the attributes of the installer phases
@@ -74,6 +77,18 @@ class CallbackModule(CallbackBase):
             'installer_phase_ceph_rgw_loadbalancer': {
                 'title': 'Install Ceph RGW LoadBalancer',
                 'playbook': 'roles/ceph-rgw-loadbalancer/tasks/main.yml'
+            },
+            'installer_phase_ceph_dashboard': {
+                'title': 'Install Ceph Dashboard',
+                'playbook': 'roles/ceph-dashboard/tasks/main.yml'
+            },
+            'installer_phase_ceph_grafana': {
+                'title': 'Install Ceph Grafana',
+                'playbook': 'roles/ceph-grafana/tasks/main.yml'
+            },
+            'installer_phase_ceph_node_exporter': {
+                'title': 'Install Ceph Node Exporter',
+                'playbook': 'roles/ceph-node-exporter/tasks/main.yml'
             },
         }
 
