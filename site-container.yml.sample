@@ -519,6 +519,15 @@
 
 - hosts: '{{ groups["grafana-server"][0] | default(groups["mgrs"][0]) | default(groups["mons"][0]) | default(omit) }}'
   become: true
+  pre_tasks:
+    - name: set ceph grafana install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_grafana:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
   tasks:
     - block:
         - import_role:
@@ -544,8 +553,26 @@
             name: ceph-grafana
       when: dashboard_enabled | bool
 
+  post_tasks:
+    - name: set ceph grafana install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_grafana:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
 - hosts: '{{ groups["mgrs"][0] | default(groups["mons"][0]) | default(omit) }}'
   become: true
+  pre_tasks:
+    - name: set ceph dashboard install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_dashboard:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
   tasks:
     - block:
         - import_role:
@@ -554,3 +581,12 @@
         - import_role:
             name: ceph-dashboard
       when: dashboard_enabled | bool
+
+  post_tasks:
+    - name: set ceph dashboard install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_dashboard:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
