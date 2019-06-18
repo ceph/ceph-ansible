@@ -187,27 +187,6 @@
       when: inventory_hostname in groups[mgr_group_name] | default([])
             or groups[mgr_group_name] | default([]) | length == 0
 
-    - name: set osd flags
-      command: ceph --cluster {{ cluster }} osd set {{ item }}
-      with_items:
-        - noout
-        - norebalance
-      delegate_to: "{{ mon_host }}"
-      when:
-        - inventory_hostname == groups[mon_group_name][0]
-        - not containerized_deployment | bool
-
-    - name: set containerized osd flags
-      command: >
-        {{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
-      with_items:
-        - noout
-        - norebalance
-      delegate_to: "{{ mon_host }}"
-      when:
-        - inventory_hostname == groups[mon_group_name][0]
-        - containerized_deployment | bool
-
     - import_role:
         name: ceph-handler
     - import_role:
@@ -362,6 +341,11 @@
   serial: 1
   become: True
   tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+
     - name: get osd numbers - non container
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
       register: osd_ids
@@ -379,6 +363,20 @@
         num_osds: "{{ osd_names.stdout_lines|default([])|length }}"
       when: containerized_deployment | bool
 
+    - name: set_fact container_exec_cmd_osd
+      set_fact:
+        container_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+      when: containerized_deployment | bool
+
+    - name: set osd flags
+      command: "{{ container_exec_cmd_update_osd | default('') }} ceph --cluster {{ cluster }} osd set {{ item }}"
+      with_items:
+        - noout
+        - norebalance
+        - norecover
+        - nobackfill
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
     - name: stop ceph osd
       systemd:
         name: ceph-osd@{{ item }}
@@ -393,10 +391,6 @@
         num_osds: "{{ osd_ids.stdout_lines|default([])|length }}"
       when: not containerized_deployment | bool
 
-    - import_role:
-        name: ceph-defaults
-    - import_role:
-        name: ceph-facts
     - import_role:
         name: ceph-handler
     - import_role:
@@ -451,29 +445,14 @@
         - ceph_release in ["nautilus", "octopus"]
         - not containerized_deployment | bool
 
-    - name: set_fact container_exec_cmd_osd
-      set_fact:
-        container_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-      when: containerized_deployment | bool
-
-    - name: get osd versions
-      command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
-      register: ceph_versions
+    - name: unset osd flags
+      command: "{{ container_exec_cmd_update_osd | default('') }} ceph osd unset {{ item }} --cluster {{ cluster }}"
+      with_items:
+        - noout
+        - norebalance
+        - norecover
+        - nobackfill
       delegate_to: "{{ groups[mon_group_name][0] }}"
-
-    - name: set_fact ceph_versions_osd
-      set_fact:
-        ceph_versions_osd: "{{ (ceph_versions.stdout|from_json).osd }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-
-    # length == 1 means there is a single osds versions entry
-    # thus all the osds are running the same version
-    - name: osd set sortbitwise
-      command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} osd set sortbitwise"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      when:
-        - (ceph_versions.get('stdout', '{}')|from_json).get('osd', {}) | length == 1
-        - ceph_versions_osd | string is search("ceph version 10")
 
     - name: get num_pgs - non container
       command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} -s --format json"
@@ -493,12 +472,9 @@
       when: (ceph_pgs.stdout | from_json).pgmap.num_pgs != 0
 
 
-- name: unset osd flags
-
+- name: complete osd upgrade
   hosts: "{{ mon_group_name|default('mons') }}"
-
   become: True
-
   tasks:
     - import_role:
         name: ceph-defaults
@@ -509,13 +485,6 @@
       set_fact:
         container_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when: containerized_deployment | bool
-
-    - name: unset osd flags
-      command: "{{ container_exec_cmd_update_osd|default('') }} ceph osd unset {{ item }} --cluster {{ cluster }}"
-      with_items:
-        - noout
-        - norebalance
-      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: get osd versions
       command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
