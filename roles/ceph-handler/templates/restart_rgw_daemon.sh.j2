@@ -5,6 +5,12 @@ DELAY="{{ handler_health_rgw_check_delay }}"
 HOST_NAME="{{ ansible_hostname }}"
 RGW_NUMS={{ radosgw_num_instances }}
 RGW_BASE_PORT={{ radosgw_frontend_port }}
+RGW_FRONTEND_SSL_CERT={{ radosgw_frontend_ssl_certificate }}
+if [ -n "$RGW_FRONTEND_SSL_CERT" ]; then
+    RGW_PROTOCOL=https
+else
+    RGW_PROTOCOL=http
+fi
 declare -a DOCKER_EXECS
 for ((i=0; i<${RGW_NUMS}; i++)); do
   DOCKER_EXECS[i]=""
@@ -57,13 +63,13 @@ check_rest() {
   check_for_curl_or_wget ${i}
   local succ=0
   while [ $RETRIES -ne 0 ]; do
-    test "$rgw_test_command http://$RGW_IP:$((RGW_BASE_PORT+i))" && succ=$((succ+1)) && break
+    test "$rgw_test_command $RGW_PROTOCOL://$RGW_IP:$((RGW_BASE_PORT+i))" && succ=$((succ+1)) && break
     sleep $DELAY
     let RETRIES=RETRIES-1
   done
   if [ $succ -ne 1 ]; then
     # If we reach this point, it means there is a problem with the connection to rgw
-    echo "Error connecting locally to Rados Gateway service: http://$rgw_listen"
+    echo "Error connecting locally to Rados Gateway service: $RGW_PROTOCOL://$rgw_listen"
     exit 1
   fi
 }
