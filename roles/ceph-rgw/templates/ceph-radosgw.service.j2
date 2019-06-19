@@ -31,6 +31,9 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   {% if ansible_distribution == 'RedHat' -%}
   -v /etc/pki/ca-trust/extracted:/etc/pki/ca-trust/extracted:z \
   {% endif -%}
+  {% if radosgw_frontend_ssl_certificate -%}
+  -v {{ radosgw_frontend_ssl_certificate }}:{{ radosgw_frontend_ssl_certificate }}:ro \
+  {% endif -%}
   -e CEPH_DAEMON=RGW \
   -e CLUSTER={{ cluster }} \
   -e RGW_NAME={{ ansible_hostname }}.${INST_NAME} \

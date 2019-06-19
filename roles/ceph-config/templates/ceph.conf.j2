@@ -121,7 +121,15 @@ osd memory target = {{ _osd_memory_target | default(osd_memory_target) }}
 host = {{ _rgw_hostname }}
 keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname + '.' + instance['instance_name'] }}/keyring
 log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] + '.' + instance['instance_name'] }}.log
-rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}={{ instance['radosgw_address'] }}:{{ instance['radosgw_frontend_port'] }} {{ radosgw_frontend_options }}
+{% set _rgw_binding_socket = instance['radosgw_address']|string + ':' + instance['radosgw_frontend_port']|string %}
+{%- macro frontend_line(frontend_type) -%}
+{%- if frontend_type == 'civetweb' -%}
+{{ radosgw_frontend_type }} port={{ _rgw_binding_socket }}{{ 's ssl_certificate='+radosgw_frontend_ssl_certificate if radosgw_frontend_ssl_certificate else '' }}
+{%- elif frontend_type == 'beast' -%}
+{{ radosgw_frontend_type }} {{ 'ssl_' if radosgw_frontend_ssl_certificate else '' }}endpoint={{ _rgw_binding_socket }}{{ ' ssl_certificate='+radosgw_frontend_ssl_certificate if radosgw_frontend_ssl_certificate else '' }}
+{%- endif -%}
+{%- endmacro -%}
+rgw frontends = {{ frontend_line(radosgw_frontend_type) }} {{ radosgw_frontend_options }}
 {% if 'num_threads' not in radosgw_frontend_options %}
 rgw thread pool size = {{ radosgw_thread_pool_size }}
 {% endif %}
