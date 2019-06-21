@@ -48,6 +48,72 @@
   tasks:
     - debug: msg="gather facts on all Ceph hosts for following reference"
 
+- name: check there's no ceph kernel threads present
+  hosts: "{{ client_group_name|default('clients') }}"
+  become: true
+  any_errors_fatal: true
+  roles:
+    - ceph-defaults
+
+  post_tasks:
+    - block:
+        - name: get nfs nodes ansible facts
+          setup:
+          delegate_to: "{{ item }}"
+          delegate_facts: True
+          with_items: "{{ groups[nfs_group_name] }}"
+          run_once: true
+
+        - name: get all nfs-ganesha mount points
+          command: grep "{{ hostvars[item]['ansible_all_ipv4_addresses'] | ipaddr(public_network) | first }}" /proc/mounts
+          register: nfs_ganesha_mount_points
+          failed_when: false
+          with_items: "{{ groups[nfs_group_name] }}"
+
+        - name: ensure nfs-ganesha mountpoint(s) are unmounted
+          mount:
+            path: "{{ item.split(' ')[1] }}"
+            state: unmounted
+          with_items:
+            - "{{ nfs_ganesha_mount_points.results | map(attribute='stdout_lines') | list }}"
+          when: item | length > 0
+      when: groups[nfs_group_name] | default([]) | length > 0
+
+    - name: ensure cephfs mountpoint(s) are unmounted
+      command: umount -a -t ceph
+
+    - name: ensure rbd devices are unmapped
+      command: rbdmap unmap-all
+
+    - name: unload ceph kernel modules
+      modprobe:
+        name: "{{ item }}"
+        state: absent
+      with_items:
+        - rbd
+        - ceph
+        - libceph
+
+- name: purge ceph nfs cluster
+
+  vars:
+    nfs_group_name: nfss
+
+  hosts: "{{ nfs_group_name|default('nfss') }}"
+
+  gather_facts: false # Already gathered previously
+
+  become: true
+
+  tasks:
+
+  - name: stop ceph nfss with systemd
+    service:
+      name: nfs-ganesha
+      state: stopped
+    failed_when: false
+    when: ansible_service_mgr == 'systemd'
+
 - name: purge ceph mds cluster
 
   vars:
@@ -134,28 +200,6 @@
       name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
       state: stopped
     failed_when: false
-
-
-- name: purge ceph nfs cluster
-
-  vars:
-    nfs_group_name: nfss
-
-  hosts:
-    - "{{ nfs_group_name|default('nfss') }}"
-
-  gather_facts: false # Already gathered previously
-
-  become: true
-
-  tasks:
-
-  - name: stop ceph nfss with systemd
-    service:
-      name: nfs-ganesha
-      state: stopped
-    failed_when: false
-    when: ansible_service_mgr == 'systemd'
 
 
 - name: purge ceph osd cluster
