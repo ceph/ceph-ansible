@@ -34,6 +34,99 @@
       ceph_docker_registry: "docker.io"
     when: ceph_docker_registry is not defined
 
+- name: check there's no ceph kernel threads present
+  hosts: "{{ client_group_name|default('clients') }}"
+  become: true
+  any_errors_fatal: true
+
+  roles:
+    - ceph-defaults
+
+  post_tasks:
+    - block:
+        - name: get nfs nodes ansible facts
+          setup:
+          delegate_to: "{{ item }}"
+          delegate_facts: True
+          with_items: "{{ groups[nfs_group_name] }}"
+          run_once: true
+
+        - name: get all nfs-ganesha mount points
+          command: grep "{{ hostvars[item]['ansible_all_ipv4_addresses'] | ipaddr(public_network) | first }}" /proc/mounts
+          register: nfs_ganesha_mount_points
+          failed_when: false
+          with_items: "{{ groups[nfs_group_name] }}"
+
+        - name: ensure nfs-ganesha mountpoint(s) are unmounted
+          mount:
+            path: "{{ item.split(' ')[1] }}"
+            state: unmounted
+          with_items:
+            - "{{ nfs_ganesha_mount_points.results | map(attribute='stdout_lines') | list }}"
+          when: item | length > 0
+      when: groups[nfs_group_name] | default([]) | length > 0
+
+    - name: ensure cephfs mountpoint are unmounted
+      command: umount -a -t ceph
+
+    - name: ensure rbd devices are unmapped
+      command: rbdmap unmap-all
+
+    - name: unload ceph kernel modules
+      modprobe:
+        name: "{{ item }}"
+        state: absent
+      with_items:
+        - rbd
+        - ceph
+        - libceph
+
+
+- name: purge ceph nfs cluster
+
+  hosts: "{{ nfs_group_name|default('nfss') }}"
+
+  become: true
+
+  tasks:
+
+  - name: disable ceph nfs service
+    service:
+      name: "ceph-nfs@{{ ansible_hostname }}"
+      state: stopped
+      enabled: no
+    ignore_errors: true
+
+  - name: remove ceph nfs container
+    docker_container:
+      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      name: "ceph-nfs-{{ ansible_hostname }}"
+      state: absent
+    ignore_errors: true
+
+  - name: remove ceph nfs service
+    file:
+      path: /etc/systemd/system/ceph-nfs@.service
+      state: absent
+
+  - name: remove ceph nfs directories for "{{ ansible_hostname }}"
+    file:
+      path: "{{ item }}"
+      state: absent
+    with_items:
+      - /etc/ganesha
+      - /var/lib/nfs/ganesha
+      - /var/run/ganesha
+
+  - name: remove ceph nfs image
+    docker_image:
+      state: absent
+      repository: "{{ ceph_docker_registry }}"
+      name: "{{ ceph_docker_image }}"
+      tag: "{{ ceph_docker_image_tag }}"
+      force: yes
+    tags: remove_img
+
 - name: purge ceph mds cluster
 
   hosts:
@@ -242,54 +335,6 @@
       state: absent
 
   - name: remove ceph rbd-mirror image
-    docker_image:
-      state: absent
-      repository: "{{ ceph_docker_registry }}"
-      name: "{{ ceph_docker_image }}"
-      tag: "{{ ceph_docker_image_tag }}"
-      force: yes
-    tags:
-      remove_img
-
-
-- name: purge ceph nfs cluster
-
-  hosts:
-    - "{{ nfs_group_name|default('nfss') }}"
-
-  become: true
-
-  tasks:
-
-  - name: disable ceph nfs service
-    service:
-      name: "ceph-nfs@{{ ansible_hostname }}"
-      state: stopped
-      enabled: no
-    ignore_errors: true
-
-  - name: remove ceph nfs container
-    docker_container:
-      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-nfs-{{ ansible_hostname }}"
-      state: absent
-    ignore_errors: true
-
-  - name: remove ceph nfs service
-    file:
-      path: /etc/systemd/system/ceph-nfs@.service
-      state: absent
-
-  - name: remove ceph nfs directories for "{{ ansible_hostname }}"
-    file:
-      path: "{{ item }}"
-      state: absent
-    with_items:
-      - /etc/ganesha
-      - /var/lib/nfs/ganesha
-      - /var/run/ganesha
-
-  - name: remove ceph nfs image
     docker_image:
       state: absent
       repository: "{{ ceph_docker_registry }}"
