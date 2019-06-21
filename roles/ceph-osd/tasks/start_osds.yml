@@ -11,7 +11,6 @@
     when: ceph_docker_on_openstack | bool
 
   - name: generate ceph osd docker run script
-    become: true
     template:
       src: "{{ role_path }}/templates/ceph-osd-run.sh.j2"
       dest: "{{ ceph_osd_docker_run_script_path }}/ceph-osd-run.sh"
@@ -30,7 +29,7 @@
 
 - name: set_fact docker_exec_start_osd
   set_fact:
-    docker_exec_start_osd: "{{ '{{ container_binary }} run --rm --net=host --privileged=true -v /var/run/udev/:/var/run/udev/:z -v /run/lvm/:/run/lvm/ -v /etc/ceph:/etc/ceph:z -v /dev:/dev --entrypoint=ceph-volume ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'ceph-volume' }}"
+    docker_exec_start_osd: "{{ '{{ container_binary }} run --rm --ulimit nofile=1024:1024 --net=host --privileged=true -v /var/run/udev/:/var/run/udev/:z -v /run/lvm/:/run/lvm/ -v /etc/ceph:/etc/ceph:z -v /dev:/dev --entrypoint=ceph-volume ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'ceph-volume' }}"
 
 - name: collect osd ids
   command: "{{ docker_exec_start_osd }} lvm list --format json"
@@ -39,7 +38,6 @@
   register: ceph_osd_ids
 
 - name: generate systemd unit file
-  become: true
   template:
     src: "{{ role_path }}/templates/ceph-osd.service.j2"
     dest: /etc/systemd/system/ceph-osd@.service

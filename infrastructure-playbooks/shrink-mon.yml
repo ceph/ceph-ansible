@@ -32,8 +32,7 @@
   vars:
     mon_group_name: mons
 
-  tasks:
-    # pre task for following import
+  pre_tasks:
     - name: exit playbook, if only one monitor is present in cluster
       fail:
         msg: "You are about to shrink the only monitor present in the cluster.
@@ -67,7 +66,7 @@
     - import_role:
         name: ceph-facts
 
-    # post_tasks for preceding import
+  tasks:
     - name: pick a monitor different than the one we want to remove
       set_fact:
         mon_host: "{{ item }}"
@@ -110,6 +109,7 @@
       failed_when: false
       delegate_to: "{{ mon_host }}"
 
+  post_tasks:
     # NOTE (leseb): sorry for the 'sleep' command
     # but it will take a couple of seconds for other monitors
     # to notice that one member has left.
