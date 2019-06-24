@@ -305,5 +305,7 @@
 
 - name: set grafana_server_addr fact
   set_fact:
-    grafana_server_addr: "{{ (hostvars[groups[grafana_server_group_name][0] | default(groups[mgr_group_name][0])])['ansible_all_ipv4_addresses'] | ipaddr(public_network) | first }}"
-  when:  groups.get(grafana_server_group_name, []) | length > 0 or groups.get(mgr_group_name, []) | length > 0
+    grafana_server_addr: "{{ (hostvars[groups[grafana_server_group_name][0] if groups.get(grafana_server_group_name, []) | length > 0 else groups[mgr_group_name][0]])['ansible_all_ipv4_addresses'] | ipaddr(public_network) | first }}"
+  when:
+    - (groups.get(grafana_server_group_name, []) | length > 0 or groups.get(mgr_group_name, []) | length > 0)
+    - dashboard_enabled | bool
