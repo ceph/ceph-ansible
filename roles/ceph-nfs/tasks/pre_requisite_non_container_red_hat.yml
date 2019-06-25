@@ -11,7 +11,7 @@
         gpgkey: "{{ ceph_stable_key }}"
         baseurl: "{{ ceph_mirror }}/nfs-ganesha/rpm-{{ nfs_ganesha_stable_branch }}/{{ ceph_release }}/$basearch"
       when:
-        - nfs_ganesha_stable
+        - nfs_ganesha_stable | bool
         - ceph_repository == 'community'
 
     - name: red hat based systems - dev repo related tasks
@@ -30,7 +30,7 @@
             group: root
             backup: yes
       when:
-        - nfs_ganesha_dev
+        - nfs_ganesha_dev | bool
         - ceph_repository == 'dev'
 
 - name: red hat based systems - install nfs packages
@@ -49,4 +49,4 @@
         state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
       register: result
       until: result is succeeded
-      when: nfs_obj_gw
+      when: nfs_obj_gw | bool
