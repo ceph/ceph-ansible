@@ -219,9 +219,9 @@ ceph_repository_dev = (
 )
 
 ceph_repository_uca = (
-    ("ceph_stable_repo_uca", types.string),
     ("ceph_stable_openstack_release_uca", types.string),
     ("ceph_stable_release_uca", types.string),
+    ("ceph_stable_repo_uca", types.string),
 )
 
 monitor_options = (
