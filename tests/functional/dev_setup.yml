@@ -9,28 +9,30 @@
     - block:
         - name: set_fact group_vars_path
           set_fact:
-            group_vars_path: "{{ change_dir + '/hosts' if 'ooo-collocation' in change_dir.split('/') else change_dir + '/group_vars/all' }}"
+            group_vars_path: "{{ change_dir + '/hosts' if 'ooo-collocation' in change_dir.split('/') else change_dir + '/group_vars' }}"
 
         - block:
             - name: change ceph_repository to 'dev'
               replace:
                 regexp: "ceph_repository:.*"
                 replace: "ceph_repository: dev"
-                dest: "{{ group_vars_path }}"
+                dest: "{{ group_vars_path }}/all"
 
-            - name: ensure nfs_ganesha_stable is set to False
-              replace:
-                regexp: "nfs_ganesha_stable=.*"
-                replace: "nfs_ganesha_stable=False"
-                dest: "{{ group_vars_path }}"
+            - block:
+                - name: ensure nfs_ganesha_stable is set to False
+                  replace:
+                    regexp: "nfs_ganesha_stable:.*"
+                    replace: "nfs_ganesha_stable: false"
+                    dest: "{{ group_vars_path }}/nfss"
 
-            - name: ensure nfs_ganesha_dev is set to True
-              replace:
-                regexp: "nfs_ganesha_dev:.*"
-                replace: "nfs_ganesha_dev=True"
-                dest: "{{ group_vars_path }}"
+                - name: ensure nfs_ganesha_dev is set to True
+                  replace:
+                    regexp: "nfs_ganesha_dev:.*"
+                    replace: "nfs_ganesha_dev: true"
+                    dest: "{{ group_vars_path }}/nfss"
+              when: "'all_daemons' in group_vars_path.split('/')"
           when: change_dir is defined
 
-        - name: print contents of {{ group_vars_path }}
-          command: "cat {{ group_vars_path }}"
+        - name: print contents of {{ group_vars_path }}/all
+          command: "cat {{ group_vars_path }}/all"
       when: dev_setup
