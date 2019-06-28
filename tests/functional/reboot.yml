@@ -1,9 +1,36 @@
 ---
 - hosts: all
-  gather_facts: true
+  gather_facts: false
   tasks:
     - name: reboot the machines
       reboot:
         reboot_timeout: 180
         test_command: uptime
       become: yes
+
+- hosts: mons[0]
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: generate exec prefix on containerized deployment
+      when: containerized_deployment | bool
+      block:
+        - name: set_fact container_binary
+          set_fact:
+            container_binary: "{{ 'podman' if (ansible_distribution == 'RedHat' and ansible_distribution_major_version == '8') else 'docker' }}"
+
+        - name: set_fact container_exec_cmd
+          set_fact:
+            container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
+
+    - name: wait for ceph cluster status
+      command: >
+        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} health
+      register: ceph_health
+      until: ceph_health.stdout == "HEALTH_OK"
+      changed_when: false
+      retries: 5
+      delay: 10
