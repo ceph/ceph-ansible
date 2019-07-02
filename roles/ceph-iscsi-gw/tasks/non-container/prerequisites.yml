@@ -11,23 +11,28 @@
         common_repos:
           - tcmu-runner
           - python-rtslib
+
     - name: set_fact base iscsi pkgs if new style ceph-iscsi
       set_fact:
         iscsi_base:
           - ceph-iscsi
       when: use_new_ceph_iscsi | bool
+
     - name: set_fact base iscsi pkgs if using older ceph-iscsi-config
       set_fact:
         iscsi_base:
           - ceph-iscsi-cli
           - ceph-iscsi-config
       when: not use_new_ceph_iscsi | bool
+
     - name: set_fact ceph_iscsi_repos
       set_fact:
         ceph_iscsi_repos: "{{ common_repos + iscsi_base }}"
+
     - name: set_fact ceph_iscsi_pkgs
       set_fact:
         ceph_iscsi_pkgs: "{{ common_pkgs + iscsi_base }}"
+
     - name: when ceph_iscsi_config_dev is true
       when:
         - ceph_origin == 'repository'
