@@ -491,6 +491,7 @@
           installer_phase_ceph_node_exporter:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+      when: dashboard_enabled | bool
 
   tasks:
     - block:
@@ -514,6 +515,7 @@
           installer_phase_ceph_node_exporter:
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+      when: dashboard_enabled | bool
 
 - hosts: '{{ groups["grafana-server"][0] | default(groups["mgrs"][0]) | default(groups["mons"][0]) | default(omit) }}'
   become: true
@@ -525,6 +527,7 @@
           installer_phase_ceph_grafana:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+      when: dashboard_enabled | bool
 
   tasks:
     - block:
@@ -555,6 +558,7 @@
           installer_phase_ceph_grafana:
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+      when: dashboard_enabled | bool
 
 - hosts: '{{ groups["mgrs"][0] | default(groups["mons"][0]) | default(omit) }}'
   become: true
@@ -566,6 +570,7 @@
           installer_phase_ceph_dashboard:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+      when: dashboard_enabled | bool
 
   tasks:
     - block:
@@ -584,3 +589,4 @@
           installer_phase_ceph_dashboard:
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+      when: dashboard_enabled | bool
