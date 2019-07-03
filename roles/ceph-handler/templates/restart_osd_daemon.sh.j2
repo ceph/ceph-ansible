@@ -29,7 +29,7 @@ check_pgs() {
 wait_for_socket_in_container() {
   osd_mount_point=$({{ container_binary }} exec "$1" df --output=target | grep '/var/lib/ceph/osd/')
   whoami=$({{ container_binary }} exec "$1" cat $osd_mount_point/whoami)
-  if ! {{ container_binary }} exec "$1" timeout 10 bash -c "while [ ! -e /var/run/ceph/ceph-osd.${whoami}.asok ]; do sleep 1 ; done"; then
+  if ! {{ container_binary }} exec "$1" timeout 10 bash -c "while [ ! -e /var/run/ceph/{{ cluster }}-osd.${whoami}.asok ]; do sleep 1 ; done"; then
     echo "Timed out while trying to look for a Ceph OSD socket."
     echo "Abort mission!"
     exit 1
