@@ -1,8 +1,24 @@
 ---
+- name: make sure gateway_ip_list is configured
+  fail:
+    msg: "you must set a list of IPs (comma separated) for gateway_ip_list"
+  when:
+    - gateway_ip_list == '0.0.0.0'
+    - not containerized_deployment | bool
+    - not use_new_ceph_iscsi | bool
+
+- name: make sure gateway_iqn is configured
+  fail:
+    msg: "you must set a iqn for the iSCSI target"
+  when:
+    - gateway_iqn | length == 0
+    - not containerized_deployment | bool
+    - not use_new_ceph_iscsi | bool
+
 - name: fail if unsupported chap configuration
   fail:
     msg: "Mixing clients with CHAP enabled and disabled is not supported."
-  with_items: "{{ client_connections | default({})  }}"
+  with_items: "{{ client_connections  }}"
   when:
     - item.status is defined
     - item.status == "present"
