@@ -24,3 +24,29 @@
   when:
     - cephx | bool
     - item.copy_key | bool
+
+- name: add devices to gpt_check_devices_list
+  set_fact:
+    gpt_check_devices_list: "{{ gpt_check_devices_list | default([]) + [item] }}"
+  with_items: "{{ devices | default([]) }}"
+
+- name: add lvm_volumes data devices in gpt_check_devices_list
+  set_fact:
+    gpt_check_devices_list: "{{ gpt_check_devices_list | default([]) + [item.data] }}"
+  with_items: "{{ lvm_volumes | default([]) }}"
+  when: item.data_vg is undefined
+
+- block:
+    - name: check if gpt header is present
+      command: blkid -t PTTYPE=\"gpt\" {{ item }}
+      with_items: "{{ gpt_check_devices_list }}"
+      register: gpt_status
+      failed_when: false
+
+    - name: remove gpt header if present
+      command: parted -s "{{ item.item }}" mklabel msdos
+      with_items: "{{ gpt_status.results }}"
+      when:
+        - item.rc is defined
+        - item.rc == 0
+  when: gpt_check_devices_list is defined
