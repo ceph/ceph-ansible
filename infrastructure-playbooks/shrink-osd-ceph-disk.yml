@@ -177,6 +177,15 @@
       when:
         - containerized_deployment
 
+    - name: remove prepare container
+      command: docker rm ceph-osd-prepare-"{{ hostvars[item.1]['ansible_hostname'] }}"-"{{ item.0.stdout }}"
+      delegate_to: "{{ item.1 }}"
+      with_together:
+        - "{{ resolved_parent_device.results }}"
+        - "{{ osd_hosts }}"
+      when:
+        - containerized_deployment
+
     - name: zap ceph osd partitions from dedicated devices
       shell: |
         for osd in {{ ' '.join(item.1.stdout_lines) }}
