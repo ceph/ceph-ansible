@@ -1,4 +1,8 @@
 ---
+- name: set_fact add_osd
+  set_fact:
+    add_osd: "{{ groups[osd_group_name] | length != ansible_play_hosts_all | length }}"
+
 - name: include_tasks system_tuning.yml
   include_tasks: system_tuning.yml
 
@@ -35,6 +39,7 @@
 - name: include_tasks common.yml
   include_tasks: common.yml
 
+<<<<<<< HEAD
 - name: include ceph_disk_cli_options_facts.yml
   include_tasks: ceph_disk_cli_options_facts.yml
 
@@ -63,6 +68,17 @@
   when:
     - not osd_auto_discovery
     - osd_scenario == 'non-collocated'
+=======
+- name: set noup flag
+  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set noup"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: True
+  changed_when: False
+  when: not rolling_update | default(False) | bool
+
+- name: include container_options_facts.yml
+  include_tasks: container_options_facts.yml
+>>>>>>> 3496a0efa... osd: support scaling up using --limit
 
 - name: include_tasks scenarios/lvm.yml
   include_tasks: scenarios/lvm.yml
@@ -112,21 +128,45 @@
     openstack_keys_tmp: "{{ openstack_keys_tmp|default([]) + [ { 'key': item.key, 'name': item.name, 'caps': { 'mon': item.mon_cap, 'osd': item.osd_cap|default(''), 'mds': item.mds_cap|default(''), 'mgr': item.mgr_cap|default('') } , 'mode': item.mode } ] }}"
   with_items: "{{ openstack_keys }}"
   when:
+<<<<<<< HEAD
     - not add_osd|default(False)
     - openstack_config
     - item.get('mon_cap', None) # it's enough to assume we are running an old-fashionned syntax simply by checking the presence of mon_cap since every key needs this cap
+=======
+    - not add_osd | bool
+    - openstack_config | bool
+    - item.get('mon_cap', None)
+    # it's enough to assume we are running an old-fashionned syntax simply by checking the presence of mon_cap since every key needs this cap
+>>>>>>> 3496a0efa... osd: support scaling up using --limit
 
 - name: set_fact keys - override keys_tmp with keys
   set_fact:
     openstack_keys: "{{ openstack_keys_tmp }}"
   when:
+<<<<<<< HEAD
     - not add_osd|default(False)
+=======
+    - not add_osd | bool
+>>>>>>> 3496a0efa... osd: support scaling up using --limit
     - openstack_keys_tmp is defined
+
+- name: unset noup flag
+  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset noup"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  changed_when: False
+  when:
+    - not rolling_update | default(False) | bool
+    - inventory_hostname == ansible_play_hosts_all | last
 
 # Create the pools listed in openstack_pools
 - name: include openstack_config.yml
   include_tasks: openstack_config.yml
   when:
+<<<<<<< HEAD
     - not add_osd|default(False)
     - openstack_config
+=======
+    - not add_osd | bool
+    - openstack_config | bool
+>>>>>>> 3496a0efa... osd: support scaling up using --limit
     - inventory_hostname == groups[osd_group_name] | last
