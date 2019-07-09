@@ -25,9 +25,7 @@
         group: root
         mode: 0750
       listen: "restart ceph mons"
-      when:
-        - mon_group_name in group_names
-        - not rolling_update | bool
+      when: mon_group_name in group_names
 
     - name: restart ceph mon daemon(s) - non container
       command: /usr/bin/env bash /tmp/restart_mon_daemon.sh
@@ -38,7 +36,6 @@
         - not containerized_deployment | bool
         - hostvars[item]['_mon_handler_called'] | default(False) | bool
         - mon_socket_stat.rc == 0
-        - not rolling_update | bool
       with_items: "{{ groups[mon_group_name] }}"
       delegate_to: "{{ item }}"
       run_once: True
@@ -53,7 +50,6 @@
         - ceph_mon_container_stat.get('rc') == 0
         - hostvars[item]['_mon_handler_called'] | default(False) | bool
         - ceph_mon_container_stat.get('stdout_lines', [])|length != 0
-        - not rolling_update | bool
       with_items: "{{ groups[mon_group_name] }}"
       delegate_to: "{{ item }}"
       run_once: True
@@ -82,9 +78,7 @@
         group: root
         mode: 0750
       listen: "restart ceph osds"
-      when:
-        - osd_group_name in group_names
-        - not rolling_update | bool
+      when: osd_group_name in group_names
 
     - name: restart ceph osds daemon(s) - non container
       command: /usr/bin/env bash /tmp/restart_osd_daemon.sh
@@ -92,7 +86,6 @@
       when:
         - osd_group_name in group_names
         - not containerized_deployment | bool
-        - not rolling_update | bool
         # We do not want to run these checks on initial deployment (`socket_osd_container.results[n].rc == 0`)
         # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
         - osd_socket_stat.rc == 0
@@ -111,7 +104,6 @@
         # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
         - osd_group_name in group_names
         - containerized_deployment | bool
-        - not rolling_update | bool
         - inventory_hostname == groups.get(osd_group_name) | last
         - ceph_osd_container_stat.get('rc') == 0
         - ceph_osd_container_stat.get('stdout_lines', [])|length != 0
@@ -338,7 +330,6 @@
         - not containerized_deployment | bool
         - hostvars[item]['_mgr_handler_called'] | default(False) | bool
         - mgr_socket_stat.rc == 0
-        - not rolling_update | bool
       with_items: "{{ groups[mgr_group_name] }}"
       delegate_to: "{{ item }}"
       run_once: True
@@ -353,7 +344,6 @@
         - ceph_mgr_container_stat.get('rc') == 0
         - hostvars[item]['_mgr_handler_called'] | default(False) | bool
         - ceph_mgr_container_stat.get('stdout_lines', [])|length != 0
-        - not rolling_update | bool
       with_items: "{{ groups[mgr_group_name] }}"
       delegate_to: "{{ item }}"
       run_once: True
