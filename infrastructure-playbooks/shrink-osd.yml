@@ -12,31 +12,28 @@
 #     automation scripts to avoid interactive prompt.
 
 - name: gather facts and check the init system
-
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
   become: True
   tasks:
+    - import_role:
+        name: ceph-defaults
+
     - debug: msg="gather facts on all Ceph hosts for following reference"
 
+
 - name: confirm whether user really meant to remove osd(s) from the cluster
-
   hosts: localhost
-
   become: true
-
   vars_prompt:
     - name: ireallymeanit
       prompt: Are you sure you want to shrink the cluster?
       default: 'no'
       private: no
-
   vars:
     mon_group_name: mons
     osd_group_name: osds
-
   pre_tasks:
     - name: exit playbook, if user did not mean to shrink cluster
       fail:

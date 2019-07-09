@@ -14,46 +14,45 @@
 - name: confirm whether user really meant to purge the cluster
   hosts: localhost
   gather_facts: false
-
   vars_prompt:
     - name: ireallymeanit
       prompt: Are you sure you want to purge the cluster?
       default: 'no'
       private: no
-
   tasks:
-  - name: exit playbook, if user did not mean to purge cluster
-    fail:
-      msg: >
-        "Exiting purge-cluster playbook, cluster was NOT purged.
-         To purge the cluster, either say 'yes' on the prompt or
-         or use `-e ireallymeanit=yes` on the command line when
-         invoking the playbook"
-    when: ireallymeanit != 'yes'
+    - name: exit playbook, if user did not mean to purge cluster
+      fail:
+        msg: >
+          "Exiting purge-cluster playbook, cluster was NOT purged.
+           To purge the cluster, either say 'yes' on the prompt or
+           or use `-e ireallymeanit=yes` on the command line when
+           invoking the playbook"
+      when: ireallymeanit != 'yes'
+
 
 - name: gather facts on all hosts
-
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ client_group_name|default('clients') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
-    - grafana-server
-
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ client_group_name | default('clients') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+    - "{{ grafana_server_group_name | default('grafana-servers') }}"
   become: true
-
   tasks:
+    - import_role:
+        name: ceph-defaults
+
     - debug: msg="gather facts on all Ceph hosts for following reference"
+
 
 - name: check there's no ceph kernel threads present
   hosts: "{{ client_group_name|default('clients') }}"
   become: true
   any_errors_fatal: true
-
   tasks:
     - import_role:
         name: ceph-defaults
@@ -96,44 +95,40 @@
         - ceph
         - libceph
 
+
 - name: purge ceph nfs cluster
-
-  vars:
-    nfs_group_name: nfss
-
-  hosts: "{{ nfs_group_name|default('nfss') }}"
-
+  hosts: "{{ nfs_group_name | default('nfss') }}"
   gather_facts: false # Already gathered previously
-
   become: true
-
   tasks:
+    - import_role:
+        name: ceph-defaults
 
-  - name: stop ceph nfss with systemd
-    service:
-      name: nfs-ganesha
-      state: stopped
-    failed_when: false
-    when: ansible_service_mgr == 'systemd'
+    - name: stop ceph nfss with systemd
+      service:
+        name: nfs-ganesha
+        state: stopped
+      failed_when: false
+      when: ansible_service_mgr == 'systemd'
+
 
 - name: purge node-exporter
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ client_group_name|default('clients') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
-    - grafana-server
-    - clients
-    - iscsigws
-    - iscsi-gws # for backward compatibility only!
-
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ client_group_name | default('clients') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+    - "{{ grafana_server_group_name | default('grafana-servers') }}"
+    - "{{ iscsi_gw_group_name | default('iscsigws') }}"
   become: true
-
   tasks:
+    - import_role:
+        name: ceph-defaults
+
     - name: set ceph_docker_registry value if not set
       set_fact:
         ceph_docker_registry: "docker.io"
@@ -168,15 +163,17 @@
 
 
 - name: purge ceph grafana-server
-  hosts: grafana-server
+  hosts: "{{ grafana_server_group_name | default('grafana-servers') }}"
   become: true
   vars:
     grafana_services:
       - grafana-server
       - prometheus
       - alertmanager
-
   tasks:
+    - import_role:
+        name: ceph-defaults
+
     - name: set ceph_docker_registry value if not set
       set_fact:
         ceph_docker_registry: "docker.io"
@@ -232,391 +229,355 @@
 
 
 - name: purge ceph mds cluster
-
-  vars:
-    mds_group_name: mdss
-
-  hosts: "{{ mds_group_name|default('mdss') }}"
-
+  hosts: "{{ mds_group_name | default('mdss') }}"
   gather_facts: false # Already gathered previously
-
   become: true
-
   tasks:
+    - import_role:
+        name: ceph-defaults
 
-  - name: stop ceph mdss with systemd
-    service:
-      name: ceph-mds@{{ ansible_hostname }}
-      state: stopped
-      enabled: no
-    failed_when: false
+    - name: stop ceph mdss with systemd
+      service:
+        name: ceph-mds@{{ ansible_hostname }}
+        state: stopped
+        enabled: no
+      failed_when: false
 
 
 - name: purge ceph mgr cluster
-
-  vars:
-    mgr_group_name: mgrs
-
-  hosts: "{{ mgr_group_name|default('mgrs') }}"
-
+  hosts: "{{ mgr_group_name | default('mgrs') }}"
   gather_facts: false # Already gathered previously
-
   become: true
-
   tasks:
+    - import_role:
+        name: ceph-defaults
 
-  - name: stop ceph mgrs with systemd
-    service:
-      name: ceph-mgr@{{ ansible_hostname}}
-      state: stopped
-      enabled: no
-    failed_when: false
-    when: ansible_service_mgr == 'systemd'
+    - name: stop ceph mgrs with systemd
+      service:
+        name: ceph-mgr@{{ ansible_hostname}}
+        state: stopped
+        enabled: no
+      failed_when: false
+      when: ansible_service_mgr == 'systemd'
+
 
 - name: purge rgwloadbalancer cluster
-
-  vars:
-    rgwloadbalancer_group_name: rgwloadbalancers
-
-  hosts:
-    - "{{ rgwloadbalancer_group_name|default('rgwloadbalancers') }}"
-
+  hosts: "{{ rgwloadbalancer_group_name | default('rgwloadbalancers') }}"
   gather_facts: false # Already gathered previously
-
   become: true
-
   tasks:
+    - import_role:
+        name: ceph-defaults
+  
+    - name: stop rgwloadbalancer services
+      service:
+        name: ['keepalived', 'haproxy']
+        state: stopped
+        enabled: no
+      failed_when: false
 
-  - name: stop rgwloadbalancer services
-    service:
-      name: ['keepalived', 'haproxy']
-      state: stopped
-      enabled: no
-    failed_when: false
 
 - name: purge ceph rgw cluster
-
-  vars:
-    rgw_group_name: rgws
-
-  hosts: "{{ rgw_group_name|default('rgws') }}"
-
+  hosts: "{{ rgw_group_name | default('rgws') }}"
   gather_facts: false # Already gathered previously
-
   become: true
-
   tasks:
+    - import_role:
+        name: ceph-defaults
 
-  - name: stop ceph rgws with systemd
-    service:
-      name: ceph-radosgw@rgw.*
-      state: stopped
-      enabled: no
-    failed_when: false
+    - name: stop ceph rgws with systemd
+      service:
+        name: ceph-radosgw@rgw.*
+        state: stopped
+        enabled: no
+      failed_when: false
 
 
 - name: purge ceph rbd-mirror cluster
-
-  vars:
-    rbdmirror_group_name: rbdmirrors
-
-  hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-
+  hosts: "{{ rbdmirror_group_name | default('rbdmirrors') }}"
   gather_facts: false # Already gathered previously
-
   become: true
-
   tasks:
+    - import_role:
+        name: ceph-defaults
 
-  - name: stop ceph rbd mirror with systemd
-    service:
-      name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
-      state: stopped
-    failed_when: false
+    - name: stop ceph rbd mirror with systemd
+      service:
+        name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
+        state: stopped
+      failed_when: false
 
 
 - name: purge ceph osd cluster
-
   vars:
-    osd_group_name: osds
     reboot_osd_node: False
-
-  hosts: "{{ osd_group_name|default('osds') }}"
-
+  hosts: "{{ osd_group_name | default('osds') }}"
   gather_facts: false # Already gathered previously
-
   become: true
-
   handlers:
-  - name: restart machine
-    shell: sleep 2 && shutdown -r now "Ansible updates triggered"
-    async: 1
-    poll: 0
-    ignore_errors: true
+    - name: restart machine
+      shell: sleep 2 && shutdown -r now "Ansible updates triggered"
+      async: 1
+      poll: 0
+      ignore_errors: true
+  
+    - name: wait for server to boot
+      become: false
+      local_action:
+        module: wait_for
+        port: 22
+        host: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+        state: started
+        delay: 10
+        timeout: 500
 
-  - name: wait for server to boot
-    become: false
-    local_action:
-      module: wait_for
-      port: 22
-      host: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
-      state: started
-      delay: 10
-      timeout: 500
-
-  - name: remove data
-    shell: rm -rf /var/lib/ceph/*
-
+    - name: remove data
+      shell: rm -rf /var/lib/ceph/*
   tasks:
+    - import_role:
+        name: ceph-defaults
 
-  - name: default lvm_volumes if not defined
-    set_fact:
-      lvm_volumes: []
-    when: lvm_volumes is not defined
+    - name: default lvm_volumes if not defined
+      set_fact:
+        lvm_volumes: []
+      when: lvm_volumes is not defined
 
-  - name: get osd numbers
-    shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
-    register: osd_ids
-    changed_when: false
+    - name: get osd numbers
+      shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
+      register: osd_ids
+      changed_when: false
 
-  - name: stop ceph-osd with systemd
-    service:
-      name: ceph-osd@{{item}}
-      state: stopped
-      enabled: no
-    with_items: "{{ osd_ids.stdout_lines }}"
-    when: ansible_service_mgr == 'systemd'
+    - name: stop ceph-osd with systemd
+      service:
+        name: ceph-osd@{{item}}
+        state: stopped
+        enabled: no
+      with_items: "{{ osd_ids.stdout_lines }}"
+      when: ansible_service_mgr == 'systemd'
 
-  - name: remove ceph udev rules
-    file:
-      path: "{{ item }}"
-      state: absent
-    with_items:
-      - /usr/lib/udev/rules.d/95-ceph-osd.rules
-      - /usr/lib/udev/rules.d/60-ceph-by-parttypeuuid.rules
+    - name: remove ceph udev rules
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /usr/lib/udev/rules.d/95-ceph-osd.rules
+        - /usr/lib/udev/rules.d/60-ceph-by-parttypeuuid.rules
 
-  # NOTE(leseb): hope someone will find a more elegant way one day...
-  - name: see if encrypted partitions are present
-    shell: |
-      blkid -t TYPE=crypto_LUKS -s PARTLABEL -s PARTUUID | grep "ceph.*." | grep -o PARTUUID.* | cut -d '"' -f 2
-    register: encrypted_ceph_partuuid
+    # NOTE(leseb): hope someone will find a more elegant way one day...
+    - name: see if encrypted partitions are present
+      shell: |
+        blkid -t TYPE=crypto_LUKS -s PARTLABEL -s PARTUUID | grep "ceph.*." | grep -o PARTUUID.* | cut -d '"' -f 2
+      register: encrypted_ceph_partuuid
 
-  - name: get osd data and lockbox mount points
-    shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
-    register: mounted_osd
-    changed_when: false
+    - name: get osd data and lockbox mount points
+      shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
+      register: mounted_osd
+      changed_when: false
 
-  - name: drop all cache
-    shell: "sync && sleep 1 && echo 3 > /proc/sys/vm/drop_caches"
+    - name: drop all cache
+      shell: "sync && sleep 1 && echo 3 > /proc/sys/vm/drop_caches"
 
-  - name: umount osd data partition
-    shell: umount {{ item }}
-    with_items: "{{ mounted_osd.stdout_lines }}"
+    - name: umount osd data partition
+      shell: umount {{ item }}
+      with_items: "{{ mounted_osd.stdout_lines }}"
 
-  - name: remove osd mountpoint tree
-    file:
-      path: /var/lib/ceph/osd/
-      state: absent
-    register: remove_osd_mountpoints
-    ignore_errors: true
+    - name: remove osd mountpoint tree
+      file:
+        path: /var/lib/ceph/osd/
+        state: absent
+      register: remove_osd_mountpoints
+      ignore_errors: true
 
-  - name: is reboot needed
-    local_action:
-      module: command
-        echo requesting reboot
-    become: false
-    notify:
-      - restart machine
-      - wait for server to boot
-      - remove data
-    when:
-      - reboot_osd_node | bool
-      - remove_osd_mountpoints.failed is defined
+    - name: is reboot needed
+      local_action:
+        module: command
+          echo requesting reboot
+      become: false
+      notify:
+        - restart machine
+        - wait for server to boot
+        - remove data
+      when:
+        - reboot_osd_node | bool
+        - remove_osd_mountpoints.failed is defined
 
-  - name: wipe table on dm-crypt devices
-    command: dmsetup wipe_table --force "{{ item }}"
-    with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
-    when: encrypted_ceph_partuuid.stdout_lines | length > 0
+    - name: wipe table on dm-crypt devices
+      command: dmsetup wipe_table --force "{{ item }}"
+      with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
+      when: encrypted_ceph_partuuid.stdout_lines | length > 0
 
-  - name: delete dm-crypt devices if any
-    command: dmsetup remove --retry --force {{ item }}
-    with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
-    when: encrypted_ceph_partuuid.stdout_lines | length > 0
+    - name: delete dm-crypt devices if any
+      command: dmsetup remove --retry --force {{ item }}
+      with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
+      when: encrypted_ceph_partuuid.stdout_lines | length > 0
 
-  - name: get payload_offset
-    shell: cryptsetup luksDump /dev/disk/by-partuuid/{{ item }} | awk '/Payload offset:/ { print $3 }'
-    register: payload_offset
-    with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
-    when: encrypted_ceph_partuuid.stdout_lines | length > 0
+    - name: get payload_offset
+      shell: cryptsetup luksDump /dev/disk/by-partuuid/{{ item }} | awk '/Payload offset:/ { print $3 }'
+      register: payload_offset
+      with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
+      when: encrypted_ceph_partuuid.stdout_lines | length > 0
 
-  - name: get physical sector size
-    command: blockdev --getpbsz /dev/disk/by-partuuid/{{ item }}
-    with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
-    when: encrypted_ceph_partuuid.stdout_lines | length > 0
-    register: phys_sector_size
+    - name: get physical sector size
+      command: blockdev --getpbsz /dev/disk/by-partuuid/{{ item }}
+      with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
+      when: encrypted_ceph_partuuid.stdout_lines | length > 0
+      register: phys_sector_size
 
-  - name: wipe dmcrypt device
-    command: dd if=/dev/zero of=/dev/disk/by-partuuid/{{ item.0 }} bs={{ item.1.stdout }} count={{ item.2.stdout }} oflag=direct
-    with_together:
-      - "{{ encrypted_ceph_partuuid.stdout_lines }}"
-      - "{{ payload_offset.results }}"
-      - "{{ phys_sector_size.results }}"
+    - name: wipe dmcrypt device
+      command: dd if=/dev/zero of=/dev/disk/by-partuuid/{{ item.0 }} bs={{ item.1.stdout }} count={{ item.2.stdout }} oflag=direct
+      with_together:
+        - "{{ encrypted_ceph_partuuid.stdout_lines }}"
+        - "{{ payload_offset.results }}"
+        - "{{ phys_sector_size.results }}"
 
-  - name: get ceph data partitions
-    shell: |
-      blkid -o device -t PARTLABEL="ceph data"
-    failed_when: false
-    register: ceph_data_partition_to_erase_path
+    - name: get ceph data partitions
+      shell: |
+        blkid -o device -t PARTLABEL="ceph data"
+      failed_when: false
+      register: ceph_data_partition_to_erase_path
 
-  - name: get ceph lockbox partitions
-    shell: |
-      blkid -o device -t PARTLABEL="ceph lockbox"
-    failed_when: false
-    register: ceph_lockbox_partition_to_erase_path
+    - name: get ceph lockbox partitions
+      shell: |
+        blkid -o device -t PARTLABEL="ceph lockbox"
+      failed_when: false
+      register: ceph_lockbox_partition_to_erase_path
 
-  - name: see if ceph-volume is installed
-    shell: "command -v ceph-volume"
-    failed_when: false
-    register: ceph_volume_present
+    - name: see if ceph-volume is installed
+      shell: "command -v ceph-volume"
+      failed_when: false
+      register: ceph_volume_present
 
-  - name: zap and destroy osds created by ceph-volume with lvm_volumes
-    ceph_volume:
-      data: "{{ item.data }}"
-      data_vg: "{{ item.data_vg|default(omit) }}"
-      journal: "{{ item.journal|default(omit) }}"
-      journal_vg: "{{ item.journal_vg|default(omit) }}"
-      db: "{{ item.db|default(omit) }}"
-      db_vg: "{{ item.db_vg|default(omit) }}"
-      wal: "{{ item.wal|default(omit) }}"
-      wal_vg: "{{ item.wal_vg|default(omit) }}"
-      action: "zap"
-    environment:
-      CEPH_VOLUME_DEBUG: 1
-    with_items: "{{ lvm_volumes }}"
-    when:
-      - lvm_volumes | default([]) | length > 0
-      - ceph_volume_present.rc == 0
+    - name: zap and destroy osds created by ceph-volume with lvm_volumes
+      ceph_volume:
+        data: "{{ item.data }}"
+        data_vg: "{{ item.data_vg|default(omit) }}"
+        journal: "{{ item.journal|default(omit) }}"
+        journal_vg: "{{ item.journal_vg|default(omit) }}"
+        db: "{{ item.db|default(omit) }}"
+        db_vg: "{{ item.db_vg|default(omit) }}"
+        wal: "{{ item.wal|default(omit) }}"
+        wal_vg: "{{ item.wal_vg|default(omit) }}"
+        action: "zap"
+      environment:
+        CEPH_VOLUME_DEBUG: 1
+      with_items: "{{ lvm_volumes }}"
+      when:
+        - lvm_volumes | default([]) | length > 0
+        - ceph_volume_present.rc == 0
 
-  - name: zap and destroy osds created by ceph-volume with devices
-    ceph_volume:
-      data: "{{ item }}"
-      action: "zap"
-    environment:
-      CEPH_VOLUME_DEBUG: 1
-    with_items: "{{ devices | default([]) }}"
-    when:
-      - devices | default([]) | length > 0
-      - ceph_volume_present.rc == 0
+    - name: zap and destroy osds created by ceph-volume with devices
+      ceph_volume:
+        data: "{{ item }}"
+        action: "zap"
+      environment:
+        CEPH_VOLUME_DEBUG: 1
+      with_items: "{{ devices | default([]) }}"
+      when:
+        - devices | default([]) | length > 0
+        - ceph_volume_present.rc == 0
 
-  - name: get ceph block partitions
-    shell: |
-      blkid -o device -t PARTLABEL="ceph block"
-    failed_when: false
-    register: ceph_block_partition_to_erase_path
+    - name: get ceph block partitions
+      shell: |
+        blkid -o device -t PARTLABEL="ceph block"
+      failed_when: false
+      register: ceph_block_partition_to_erase_path
 
-  - name: get ceph journal partitions
-    shell: |
-      blkid -o device -t PARTLABEL="ceph journal"
-    failed_when: false
-    register: ceph_journal_partition_to_erase_path
+    - name: get ceph journal partitions
+      shell: |
+        blkid -o device -t PARTLABEL="ceph journal"
+      failed_when: false
+      register: ceph_journal_partition_to_erase_path
 
-  - name: get ceph db partitions
-    shell: |
-      blkid -o device -t PARTLABEL="ceph block.db"
-    failed_when: false
-    register: ceph_db_partition_to_erase_path
+    - name: get ceph db partitions
+      shell: |
+        blkid -o device -t PARTLABEL="ceph block.db"
+      failed_when: false
+      register: ceph_db_partition_to_erase_path
 
-  - name: get ceph wal partitions
-    shell: |
-      blkid -o device -t PARTLABEL="ceph block.wal"
-    failed_when: false
-    register: ceph_wal_partition_to_erase_path
+    - name: get ceph wal partitions
+      shell: |
+        blkid -o device -t PARTLABEL="ceph block.wal"
+      failed_when: false
+      register: ceph_wal_partition_to_erase_path
 
-  - name: set_fact combined_devices_list
-    set_fact:
-      combined_devices_list: "{{ ceph_data_partition_to_erase_path.stdout_lines +
-                                 ceph_lockbox_partition_to_erase_path.stdout_lines +
-                                 ceph_block_partition_to_erase_path.stdout_lines +
-                                 ceph_journal_partition_to_erase_path.stdout_lines +
-                                 ceph_db_partition_to_erase_path.stdout_lines +
-                                 ceph_wal_partition_to_erase_path.stdout_lines }}"
+    - name: set_fact combined_devices_list
+      set_fact:
+        combined_devices_list: "{{ ceph_data_partition_to_erase_path.stdout_lines +
+                                   ceph_lockbox_partition_to_erase_path.stdout_lines +
+                                   ceph_block_partition_to_erase_path.stdout_lines +
+                                   ceph_journal_partition_to_erase_path.stdout_lines +
+                                   ceph_db_partition_to_erase_path.stdout_lines +
+                                   ceph_wal_partition_to_erase_path.stdout_lines }}"
 
-  - name: resolve parent device
-    command: lsblk --nodeps -no pkname "{{ item }}"
-    register: tmp_resolved_parent_device
-    with_items: "{{ combined_devices_list }}"
+    - name: resolve parent device
+      command: lsblk --nodeps -no pkname "{{ item }}"
+      register: tmp_resolved_parent_device
+      with_items: "{{ combined_devices_list }}"
 
-  - name: set_fact resolved_parent_device
-    set_fact:
-      resolved_parent_device: "{{ tmp_resolved_parent_device.results | map(attribute='stdout') | list | unique }}"
+    - name: set_fact resolved_parent_device
+      set_fact:
+        resolved_parent_device: "{{ tmp_resolved_parent_device.results | map(attribute='stdout') | list | unique }}"
 
-  - name: wipe partitions
-    shell: |
-      wipefs --all "{{ item }}"
-      dd if=/dev/zero of="{{ item }}" bs=1 count=4096
-    with_items: "{{ combined_devices_list }}"
+    - name: wipe partitions
+      shell: |
+        wipefs --all "{{ item }}"
+        dd if=/dev/zero of="{{ item }}" bs=1 count=4096
+      with_items: "{{ combined_devices_list }}"
 
-  - name: zap ceph journal/block db/block wal partitions
-    shell: |
-      # if the disk passed is a raw device AND the boot system disk
-      if parted -s /dev/"{{ item }}" print | grep -sq boot; then
-        echo "Looks like /dev/{{ item }} has a boot partition,"
-        echo "if you want to delete specific partitions point to the partition instead of the raw device"
-        echo "Do not use your system disk!"
-        exit 1
-      fi
-      sgdisk -Z --clear --mbrtogpt -g -- /dev/"{{ item }}"
-      dd if=/dev/zero of=/dev/"{{ item }}" bs=1M count=200
-      parted -s /dev/"{{ item }}" mklabel gpt
-      partprobe /dev/"{{ item }}"
-      udevadm settle --timeout=600
-    with_items: "{{ resolved_parent_device }}"
+    - name: zap ceph journal/block db/block wal partitions
+      shell: |
+        # if the disk passed is a raw device AND the boot system disk
+        if parted -s /dev/"{{ item }}" print | grep -sq boot; then
+          echo "Looks like /dev/{{ item }} has a boot partition,"
+          echo "if you want to delete specific partitions point to the partition instead of the raw device"
+          echo "Do not use your system disk!"
+          exit 1
+        fi
+        sgdisk -Z --clear --mbrtogpt -g -- /dev/"{{ item }}"
+        dd if=/dev/zero of=/dev/"{{ item }}" bs=1M count=200
+        parted -s /dev/"{{ item }}" mklabel gpt
+        partprobe /dev/"{{ item }}"
+        udevadm settle --timeout=600
+      with_items: "{{ resolved_parent_device }}"
+
 
 - name: purge ceph mon cluster
-
-  vars:
-    mon_group_name:       mons
-
-  hosts: "{{ mon_group_name|default('mons') }}"
-
+  hosts: "{{ mon_group_name | default('mons') }}"
   gather_facts: false # already gathered previously
-
   become: true
-
   tasks:
+    - import_role:
+        name: ceph-defaults
 
-  - name: stop ceph mons with systemd
-    service:
-      name: "ceph-{{ item }}@{{ ansible_hostname }}"
-      state: stopped
-      enabled: no
-    failed_when: false
-    with_items:
-      - mon
-      - mgr
+    - name: stop ceph mons with systemd
+      service:
+        name: "ceph-{{ item }}@{{ ansible_hostname }}"
+        state: stopped
+        enabled: no
+      failed_when: false
+      with_items:
+        - mon
+        - mgr
 
-
-  - name: remove monitor store and bootstrap keys
-    file:
-      path: "{{ item }}"
-      state: absent
-    with_items:
-      - /var/lib/ceph/mon
-      - /var/lib/ceph/bootstrap-mds
-      - /var/lib/ceph/bootstrap-osd
-      - /var/lib/ceph/bootstrap-rgw
-      - /var/lib/ceph/bootstrap-rbd
-      - /var/lib/ceph/bootstrap-mgr
-      - /var/lib/ceph/tmp
+    - name: remove monitor store and bootstrap keys
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /var/lib/ceph/mon
+        - /var/lib/ceph/bootstrap-mds
+        - /var/lib/ceph/bootstrap-osd
+        - /var/lib/ceph/bootstrap-rgw
+        - /var/lib/ceph/bootstrap-rbd
+        - /var/lib/ceph/bootstrap-mgr
+        - /var/lib/ceph/tmp
 
 
 - name: final cleanup - check any running ceph, purge ceph packages, purge config and remove data
-
   vars:
     # When set to true both groups of packages are purged.
     # This can cause problem with qemu-kvm
     purge_all_packages: true
-
     ceph_packages:
       - ceph
       - ceph-common
@@ -628,7 +589,6 @@
       - ceph-radosgw
       - calamari-server
       - ceph-grafana-dashboards
-
     ceph_remaining_packages:
       - libcephfs1
       - libcephfs2
@@ -639,190 +599,183 @@
       - python-cephfs
       - python-rados
       - python-rbd
-
     extra_packages:
       - keepalived
       - haproxy
 
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ client_group_name|default('clients') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
-    - grafana-server
-
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ client_group_name | default('clients') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+    - "{{ grafana_server_group_name | default('grafana-servers') }}"
   gather_facts: false # Already gathered previously
-
   become: true
-
   handlers:
-  - name: get osd data and lockbox mount points
-    shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
-    register: mounted_osd
-    changed_when: false
-    listen: "remove data"
+    - name: get osd data and lockbox mount points
+      shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
+      register: mounted_osd
+      changed_when: false
+      listen: "remove data"
 
-  - name: umount osd data partition
-    shell: umount {{ item }}
-    with_items: "{{ mounted_osd.stdout_lines }}"
-    listen: "remove data"
+    - name: umount osd data partition
+      shell: umount {{ item }}
+      with_items: "{{ mounted_osd.stdout_lines }}"
+      listen: "remove data"
 
-  - name: remove data
-    shell: rm -rf /var/lib/ceph/*
-    listen: "remove data"
-
+    - name: remove data
+      shell: rm -rf /var/lib/ceph/*
+      listen: "remove data"
   tasks:
+    - import_role:
+        name: ceph-defaults
 
-  - name: purge ceph packages with yum
-    yum:
-      name: "{{ ceph_packages }}"
-      state: absent
-    when: ansible_pkg_mgr == 'yum'
+    - name: purge ceph packages with yum
+      yum:
+        name: "{{ ceph_packages }}"
+        state: absent
+      when: ansible_pkg_mgr == 'yum'
 
-  - name: purge ceph packages with dnf
-    dnf:
-      name: "{{ ceph_packages }}"
-      state: absent
-    when: ansible_pkg_mgr == 'dnf'
+    - name: purge ceph packages with dnf
+      dnf:
+        name: "{{ ceph_packages }}"
+        state: absent
+      when: ansible_pkg_mgr == 'dnf'
 
-  - name: purge ceph packages with apt
-    apt:
-      name: "{{ ceph_packages }}"
-      state: absent
-      purge: true
-    when: ansible_pkg_mgr == 'apt'
+    - name: purge ceph packages with apt
+      apt:
+        name: "{{ ceph_packages }}"
+        state: absent
+        purge: true
+      when: ansible_pkg_mgr == 'apt'
 
-  - name: purge remaining ceph packages with yum
-    yum:
-      name: "{{ ceph_remaining_packages }}"
-      state: absent
-    when:
-      - ansible_pkg_mgr == 'yum'
-      - purge_all_packages | bool
+    - name: purge remaining ceph packages with yum
+      yum:
+        name: "{{ ceph_remaining_packages }}"
+        state: absent
+      when:
+        - ansible_pkg_mgr == 'yum'
+        - purge_all_packages | bool
 
-  - name: purge remaining ceph packages with dnf
-    dnf:
-      name: "{{ ceph_remaining_packages }}"
-      state: absent
-    when:
-      - ansible_pkg_mgr == 'dnf'
-      - purge_all_packages | bool
+    - name: purge remaining ceph packages with dnf
+      dnf:
+        name: "{{ ceph_remaining_packages }}"
+        state: absent
+      when:
+        - ansible_pkg_mgr == 'dnf'
+        - purge_all_packages | bool
 
-  - name: purge remaining ceph packages with apt
-    apt:
-      name: "{{ ceph_remaining_packages }}"
-      state: absent
-    when:
-      - ansible_pkg_mgr == 'apt'
-      - purge_all_packages | bool
+    - name: purge remaining ceph packages with apt
+      apt:
+        name: "{{ ceph_remaining_packages }}"
+        state: absent
+      when:
+        - ansible_pkg_mgr == 'apt'
+        - purge_all_packages | bool
 
-  - name: purge extra packages with yum
-    yum:
-      name: "{{ extra_packages }}"
-      state: absent
-    when:
-      - ansible_pkg_mgr == 'yum'
-      - purge_all_packages == true
+    - name: purge extra packages with yum
+      yum:
+        name: "{{ extra_packages }}"
+        state: absent
+      when:
+        - ansible_pkg_mgr == 'yum'
+        - purge_all_packages == true
 
-  - name: purge extra packages with dnf
-    dnf:
-      name: "{{ extra_packages }}"
-      state: absent
-    when:
-      - ansible_pkg_mgr == 'dnf'
-      - purge_all_packages == true
+    - name: purge extra packages with dnf
+      dnf:
+        name: "{{ extra_packages }}"
+        state: absent
+      when:
+        - ansible_pkg_mgr == 'dnf'
+        - purge_all_packages == true
 
-  - name: purge extra packages with apt
-    apt:
-      name: "{{ extra_packages }}"
-      state: absent
-    when:
-      - ansible_pkg_mgr == 'apt'
-      - purge_all_packages == true
+    - name: purge extra packages with apt
+      apt:
+        name: "{{ extra_packages }}"
+        state: absent
+      when:
+        - ansible_pkg_mgr == 'apt'
+        - purge_all_packages == true
 
-  - name: remove config
-    file:
-      path: "{{ item }}"
-      state: absent
-    with_items:
-      - /etc/ceph
-      - /etc/keepalived
-      - /etc/haproxy
+    - name: remove config
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/ceph
+        - /etc/keepalived
+        - /etc/haproxy
 
-  - name: remove logs
-    file:
-     path: /var/log/ceph
-     state: absent
+    - name: remove logs
+      file:
+       path: /var/log/ceph
+       state: absent
 
-  - name: request data removal
-    local_action:
-      module: command
-        echo requesting data removal
-    become: false
-    notify: remove data
+    - name: request data removal
+      local_action:
+        module: command
+          echo requesting data removal
+      become: false
+      notify: remove data
 
-  - name: purge dnf cache
-    command: dnf clean all
-    when: ansible_pkg_mgr == 'dnf'
+    - name: purge dnf cache
+      command: dnf clean all
+      when: ansible_pkg_mgr == 'dnf'
 
-  - name: purge rpm cache in /tmp
-    file:
-      path: /tmp/rh-storage-repo
-      state: absent
+    - name: purge rpm cache in /tmp
+      file:
+        path: /tmp/rh-storage-repo
+        state: absent
 
-  - name: clean apt
-    command: apt-get clean
-    when: ansible_pkg_mgr == 'apt'
+    - name: clean apt
+      command: apt-get clean
+      when: ansible_pkg_mgr == 'apt'
 
-  - name: purge ceph repo file in /etc/yum.repos.d
-    file:
-      path: '/etc/yum.repos.d/{{ item }}.repo'
-      state: absent
-    with_items:
-      - ceph-dev
-      - ceph_stable
-      - rh_storage
-    when: ansible_os_family == 'RedHat'
+    - name: purge ceph repo file in /etc/yum.repos.d
+      file:
+        path: '/etc/yum.repos.d/{{ item }}.repo'
+        state: absent
+      with_items:
+        - ceph-dev
+        - ceph_stable
+        - rh_storage
+      when: ansible_os_family == 'RedHat'
 
-  - name: check for anything running ceph
-    command: "ps -u ceph -U ceph"
-    register: check_for_running_ceph
-    failed_when: check_for_running_ceph.rc == 0
+    - name: check for anything running ceph
+      command: "ps -u ceph -U ceph"
+      register: check_for_running_ceph
+      failed_when: check_for_running_ceph.rc == 0
 
-  - name: find ceph systemd unit files to remove
-    find:
-      paths: "/etc/systemd/system"
-      pattern: "ceph*"
-      recurse: true
-      file_type: any
-    register: systemd_files
+    - name: find ceph systemd unit files to remove
+      find:
+        paths: "/etc/systemd/system"
+        pattern: "ceph*"
+        recurse: true
+        file_type: any
+      register: systemd_files
 
-  - name: remove ceph systemd unit files
-    file:
-      path: "{{ item.path }}"
-      state: absent
-    with_items: "{{ systemd_files.files }}"
-    when: ansible_service_mgr == 'systemd'
+    - name: remove ceph systemd unit files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      with_items: "{{ systemd_files.files }}"
+      when: ansible_service_mgr == 'systemd'
 
 
 - name: purge fetch directory
-
   hosts: localhost
-
   gather_facts: false
-
   tasks:
-
-  - name: set fetch_directory value if not set
-    set_fact:
-      fetch_directory: "fetch/"
-    when: fetch_directory is not defined
-
-  - name: purge fetch directory for localhost
-    file:
-      path: "{{ fetch_directory }}"
-      state: absent
+    - name: set fetch_directory value if not set
+      set_fact:
+        fetch_directory: "fetch/"
+      when: fetch_directory is not defined
+  
+    - name: purge fetch directory for localhost
+      file:
+        path: "{{ fetch_directory }}"
+        state: absent

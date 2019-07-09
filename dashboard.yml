@@ -38,7 +38,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: "{{ grafana_server_group_name }}"
+- hosts: "{{ grafana_server_group_name | default('grafana-servers') }}"
   gather_facts: false
   become: true
   pre_tasks:
@@ -73,7 +73,7 @@
 
 # using groups[] here otherwise it can't fallback to the mon if there's no mgr group.
 # adding an additional | default(omit) in case where no monitors are present (external ceph cluster)
-- hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) | default(omit) }}"
+- hosts: "{{ groups[mgr_group_name | default('mgrs')] | default(groups[mon_group_name | default('mons')]) | default(omit) }}"
   gather_facts: false
   become: true
   pre_tasks:
