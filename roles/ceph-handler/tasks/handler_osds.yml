@@ -3,6 +3,11 @@
   set_fact:
     _osd_handler_called: True
 
+- name: unset noup flag
+  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset noup"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  changed_when: False
+
 # This does not just restart OSDs but everything else too. Unfortunately
 # at this time the ansible role does not have an OSD id list to use
 # for restarting them specifically.
