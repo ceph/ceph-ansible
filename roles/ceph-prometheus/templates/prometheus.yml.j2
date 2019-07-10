@@ -8,7 +8,7 @@ rule_files:
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['localhost:{{ prometheus_port }}']
   - job_name: 'ceph'
     honor_labels: true
     static_configs:
@@ -21,20 +21,20 @@ scrape_configs:
     static_configs:
 {% if grafana_server_group_name in groups %}
 {% for host in (groups['all'] | difference(groups[grafana_server_group_name])) %}
-      - targets: ['{{ host }}:9100']
+      - targets: ['{{ host }}:{{ node_exporter_port }}']
         labels:
           instance: "{{ hostvars[host]['ansible_nodename'] }}"
 {% endfor %}
   - job_name: 'grafana'
     static_configs:
 {% for host in groups[grafana_server_group_name] %}
-      - targets: ['{{ host }}:9100']
+      - targets: ['{{ host }}:{{ node_exporter_port }}']
         labels:
           instance: "{{ hostvars[host]['ansible_nodename'] }}"
 {% endfor %}
 {% else %}
 {% for host in groups['all'] %}
-      - targets: ['{{ host }}:9100']
+      - targets: ['{{ host }}:{{ node_exporter_port }}']
         labels:
           instance: "{{ hostvars[host]['ansible_nodename'] }}"
 {% endfor %}
@@ -52,4 +52,4 @@ alerting:
   alertmanagers:
   - scheme: http
     static_configs:
-    - targets: ['{{ grafana_server_addr | default(_current_monitor_address) }}:9093']
+    - targets: ['{{ grafana_server_addr | default(_current_monitor_address) }}:{{ alertmanager_port }}']
