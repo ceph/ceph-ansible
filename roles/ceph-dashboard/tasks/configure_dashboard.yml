@@ -104,62 +104,65 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
 
-- name: create radosgw system user
-  shell: "timeout 20 {{ container_exec_cmd }} radosgw-admin user create --uid={{ dashboard_rgw_api_user_id }} --display-name='Ceph dashboard' --system"
-  register: rgw_user_output
-  until: rgw_user_output.rc == 0
-  retries: 3
-  delegate_to: "{{ groups[mon_group_name][0] }}"
+- name: dashboard object gateway management frontend
+  when: groups.get(rgw_group_name, []) | length > 0
+  block:
+    - name: create radosgw system user
+      shell: "timeout 20 {{ container_exec_cmd }} radosgw-admin user create --uid={{ dashboard_rgw_api_user_id }} --display-name='Ceph dashboard' --system"
+      register: rgw_user_output
+      until: rgw_user_output.rc == 0
+      retries: 3
+      delegate_to: "{{ groups[mon_group_name][0] }}"
 
-- name: get the rgw access and secret keys
-  set_fact:
-    rgw_access_key: "{{ (rgw_user_output.stdout | from_json)['keys'][0]['access_key'] }}"
-    rgw_secret_key: "{{ (rgw_user_output.stdout | from_json)['keys'][0]['secret_key'] }}"
+    - name: get the rgw access and secret keys
+      set_fact:
+        rgw_access_key: "{{ (rgw_user_output.stdout | from_json)['keys'][0]['access_key'] }}"
+        rgw_secret_key: "{{ (rgw_user_output.stdout | from_json)['keys'][0]['secret_key'] }}"
 
-- name: set the rgw user
-  command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-user-id {{ dashboard_rgw_api_user_id }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  changed_when: false
+    - name: set the rgw user
+      command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-user-id {{ dashboard_rgw_api_user_id }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
 
-- name: set the rgw access key
-  command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-access-key {{ rgw_access_key }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  changed_when: false
+    - name: set the rgw access key
+      command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-access-key {{ rgw_access_key }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
 
-- name: set the rgw secret key
-  command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-secret-key {{ rgw_secret_key }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  changed_when: false
+    - name: set the rgw secret key
+      command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-secret-key {{ rgw_secret_key }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
 
-- name: set the rgw host
-  command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-host {{ dashboard_rgw_api_host }}"
-  changed_when: false
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  when: dashboard_rgw_api_host != ''
+    - name: set the rgw host
+      command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-host {{ dashboard_rgw_api_host }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: dashboard_rgw_api_host != ''
 
-- name: set the rgw port
-  command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-port {{ dashboard_rgw_api_port }}"
-  changed_when: false
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  when: dashboard_rgw_api_port != ''
+    - name: set the rgw port
+      command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-port {{ dashboard_rgw_api_port }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: dashboard_rgw_api_port != ''
 
-- name: set the rgw scheme
-  command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-scheme {{ dashboard_rgw_api_scheme }}"
-  changed_when: false
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  when: dashboard_rgw_api_scheme != ''
+    - name: set the rgw scheme
+      command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-scheme {{ dashboard_rgw_api_scheme }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: dashboard_rgw_api_scheme != ''
 
-- name: set the rgw admin resource
-  command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-admin-resource {{ dashboard_rgw_api_admin_resource }}"
-  changed_when: false
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  when: dashboard_rgw_api_admin_resource != ''
+    - name: set the rgw admin resource
+      command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-admin-resource {{ dashboard_rgw_api_admin_resource }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: dashboard_rgw_api_admin_resource != ''
 
-- name: disable ssl verification for rgw
-  command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-ssl-verify False"
-  changed_when: false
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  when: dashboard_rgw_api_no_ssl_verify | bool
+    - name: disable ssl verification for rgw
+      command: "{{ container_exec_cmd }} ceph dashboard set-rgw-api-ssl-verify False"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: dashboard_rgw_api_no_ssl_verify | bool
 
 - name: disable mgr dashboard module (restart)
   command: "{{ container_exec_cmd }} ceph mgr module disable dashboard"
