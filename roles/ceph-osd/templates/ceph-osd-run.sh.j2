@@ -37,6 +37,7 @@ numactl \
   -v /etc/ceph:/etc/ceph:z \
   -v /var/run/ceph:/var/run/ceph:z \
   -v /var/run/udev/:/var/run/udev/ \
+  -v /var/log/ceph:/var/log/ceph:z \
   {% if ansible_distribution == 'Ubuntu' -%}
   --security-opt apparmor:unconfined \
   {% endif -%}
@@ -51,6 +52,7 @@ numactl \
   {% endif -%}
   -v /run/lvm/:/run/lvm/ \
   -e CEPH_DAEMON=OSD_CEPH_VOLUME_ACTIVATE \
+  -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
   -e OSD_ID="$1" \
   --name=ceph-osd-"$1" \
   {{ ceph_osd_docker_extra_env }} \

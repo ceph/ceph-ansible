@@ -1,0 +1,144 @@
+---
+# This playbook removes the Ceph MDS from your cluster.
+#
+# Use it like this:
+# ansible-playbook shrink-mds.yml -e mds_to_kill=ceph-mds01
+#     Prompts for confirmation to shrink, defaults to no and
+#     doesn't shrink the cluster. yes shrinks the cluster.
+#
+# ansible-playbook -e ireallymeanit=yes|no shrink-mds.yml
+#     Overrides the prompt using -e option. Can be used in
+#     automation scripts to avoid interactive prompt.
+- name: gather facts and check the init system
+  hosts:
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+  become: true
+  tasks:
+    - debug:
+        msg: gather facts on all Ceph hosts for following reference
+
+- name: perform checks, remove mds and print cluster health
+  hosts: localhost
+  become: true
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to shrink the cluster?
+      default: 'no'
+      private: no
+  pre_tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: exit playbook, if no mds was given
+      when: mds_to_kill is not defined
+      fail:
+        msg: >
+          mds_to_kill must be declared.
+          Exiting shrink-cluster playbook, no MDS was removed. On the command
+          line when invoking the playbook, you can use
+          "-e mds_to_kill=ceph-mds1" argument.  You can only remove a single
+          MDS each time the playbook runs."
+
+    - name: exit playbook, if the mds is not part of the inventory
+      when: mds_to_kill not in groups[mds_group_name]
+      fail:
+        msg: "It seems that the host given is not part of your inventory,
+              please make sure it is."
+
+    - name: exit playbook, if user did not mean to shrink cluster
+      when: ireallymeanit != 'yes'
+      fail:
+        msg: "Exiting shrink-mds playbook, no mds was removed.
+           To shrink the cluster, either say 'yes' on the prompt or
+           or use `-e ireallymeanit=yes` on the command line when
+           invoking the playbook"
+
+    - import_role:
+        name: ceph-facts
+
+    - name: set_fact container_exec_cmd for mon0
+      set_fact:
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+      when: containerized_deployment | bool
+
+    - name: exit playbook, if can not connect to the cluster
+      command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} health"
+      register: ceph_health
+      until: ceph_health is succeeded
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      retries: 5
+      delay: 2
+
+    - name: set_fact mds_to_kill_hostname
+      set_fact:
+        mds_to_kill_hostname: "{{ hostvars[mds_to_kill]['ansible_hostname'] }}"
+
+  tasks:
+    # get rid of this as soon as "systemctl stop ceph-msd@$HOSTNAME" also
+    # removes the MDS from the FS map.
+    - name: exit mds if it the deployment is containerized
+      when: containerized_deployment | bool
+      command: "{{ container_exec_cmd | default('') }} ceph tell mds.{{ mds_to_kill }} exit"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: stop mds service and verify it
+      block:
+        - name: stop mds service
+          service:
+            name: ceph-mds@{{ mds_to_kill_hostname }}
+            state: stopped
+            enabled: no
+          delegate_to: "{{ mds_to_kill }}"
+          failed_when: false
+
+        - name: ensure that the mds is stopped
+          command: "systemctl is-active ceph_mds@{{ mds_to_kill_hostname }}"
+          register: mds_to_kill_status
+          failed_when: mds_to_kill_status.rc == 0
+          delegate_to: "{{ mds_to_kill }}"
+          retries: 5
+          delay: 2
+
+    - name: fail if the mds is reported as active or standby
+      block:
+        - name: get ceph status
+          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
+          register: ceph_status
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+
+        - name: get active mds nodes list
+          set_fact:
+            active_mdss: "{{ active_mdss | default([]) + [item.name] }}"
+          with_items: "{{ (ceph_status.stdout | from_json)['fsmap']['by_rank'] }}"
+
+        - name: get ceph fs dump status
+          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs dump -f json"
+          register: ceph_fs_status
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+
+        - name: create a list of standby mdss
+          set_fact:
+            standby_mdss: (ceph_fs_status.stdout | from_json)['standbys'] | map(attribute='name') | list
+
+        - name: fail if mds just killed is being reported as active or standby
+          fail:
+            msg: "mds node {{ mds_to_kill }} still up and running."
+          when:
+            - (mds_to_kill in active_mdss | default([])) or
+              (mds_to_kill in standby_mdss | default([]))
+
+    - name: delete the filesystem too if deleted the last mds too
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs rm --yes-i-really-mean-it {{ cephfs }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: purge mds store
+      file:
+        path: /var/lib/ceph/mds/{{ cluster }}-{{ mds_to_kill_hostname }}
+        state: absent
+      delegate_to: "{{ mds_to_kill }}"
+
+  post_tasks:
+    - name: show ceph health
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
