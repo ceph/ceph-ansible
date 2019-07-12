@@ -2,21 +2,44 @@
 - name: red hat based systems tasks
   when: ansible_os_family == 'RedHat'
   block:
+    - name: set_fact common pkgs and repos
+      set_fact:
+        common_pkgs:
+          - tcmu-runner
+          - targetcli
+          - python-rtslib
+        common_repos:
+          - tcmu-runner
+          - python-rtslib
+
+    - name: set_fact base iscsi pkgs if new style ceph-iscsi
+      set_fact:
+        iscsi_base:
+          - ceph-iscsi
+      when: use_new_ceph_iscsi | bool
+
+    - name: set_fact base iscsi pkgs if using older ceph-iscsi-config
+      set_fact:
+        iscsi_base:
+          - ceph-iscsi-cli
+          - ceph-iscsi-config
+      when: not use_new_ceph_iscsi | bool
+
+    - name: set_fact ceph_iscsi_repos
+      set_fact:
+        ceph_iscsi_repos: "{{ common_repos + iscsi_base }}"
+
+    - name: set_fact ceph_iscsi_pkgs
+      set_fact:
+        ceph_iscsi_pkgs: "{{ common_pkgs + iscsi_base }}"
+
     - name: when ceph_iscsi_config_dev is true
       when:
         - ceph_origin == 'repository'
         - ceph_repository == 'dev'
         - ceph_iscsi_config_dev | bool
       block:
-        - name: set_fact ceph_iscsi_repos
-          set_fact:
-            ceph_iscsi_repos:
-              - ceph-iscsi-config
-              - tcmu-runner
-              - python-rtslib
-              - ceph-iscsi-cli
-
-        - name: fetch ceph-iscsi-config development repository
+        - name: fetch ceph-iscsi development repository
           uri:
             url: https://shaman.ceph.com/api/repos/{{ item }}/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo
             return_content: yes
@@ -40,12 +63,7 @@
         state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
       register: result
       until: result is succeeded
-      with_items:
-        - tcmu-runner
-        - ceph-iscsi-config
-        - targetcli
-        - python-rtslib
-        - ceph-iscsi-cli
+      with_items: "{{ ceph_iscsi_pkgs }}"
 
 - name: check the status of the target.service override
   stat:

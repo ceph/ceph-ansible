@@ -1,9 +1,4 @@
 ---
-- name: make sure gateway_ip_list is configured
-  fail:
-    msg: "you must set a list of IPs (comma separated) for gateway_ip_list"
-  when: gateway_ip_list == "0.0.0.0"
-
 - name: copy admin key
   copy:
     src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.client.admin.keyring"
@@ -14,9 +9,11 @@
   when: cephx | bool
 
 - name: deploy gateway settings, used by the ceph_iscsi_config modules
-  template:
+  config_template:
     src: "{{ role_path }}/templates/iscsi-gateway.cfg.j2"
     dest: /etc/ceph/iscsi-gateway.cfg
+    config_type: ini
+    config_overrides: '{{ iscsi_conf_overrides }}'
 
 - name: set_fact container_exec_cmd
   set_fact:
@@ -27,24 +24,24 @@
 - name: check if a rbd pool exists
   command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool ls --format json"
   changed_when: false
-  register: rbd_pool_exists
+  register: iscsi_pool_exists
   delegate_to: "{{ groups[mon_group_name][0] }}"
 
-- name: rbd pool related tasks
-  when: "'rbd' not in (rbd_pool_exists.stdout | from_json)"
+- name: iscsi pool related tasks
+  when: "iscsi_pool_name not in (iscsi_pool_exists.stdout | from_json)"
   block:
-    - name: create a rbd pool if it doesn't exist
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool create rbd {{ osd_pool_default_pg_num }}"
+    - name: create a iscsi pool if it doesn't exist
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool create {{ iscsi_pool_name }} {{ osd_pool_default_pg_num }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
-    - name: assign application rbd to pool 'rbd'
-      command: "{{ container_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool application enable rbd rbd"
+    - name: assign application rbd to iscsi pool
+      command: "{{ container_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool application enable {{ iscsi_pool_name }} rbd"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
 
     - name: customize pool size
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set rbd size {{ rbd_pool_size | default(osd_pool_default_size) }}"
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ iscsi_pool_name }} size {{ iscsi_pool_size | default(osd_pool_default_size) }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
-      when: rbd_pool_size | default(osd_pool_default_size) != ceph_osd_pool_default_size
+      when: iscsi_pool_size | default(osd_pool_default_size) != ceph_osd_pool_default_size

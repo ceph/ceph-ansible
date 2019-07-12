@@ -404,11 +404,13 @@ ceph_rhcs_version: 4
 #radosgw_civetweb_port: 8080
 #radosgw_civetweb_num_threads: 512
 #radosgw_civetweb_options: "num_threads={{ radosgw_civetweb_num_threads }}"
-# For additional civetweb configuration options available such as SSL, logging,
+# For additional civetweb configuration options available such as logging,
 # keepalive, and timeout settings, please see the civetweb docs at
 # https://github.com/civetweb/civetweb/blob/master/docs/UserManual.md
 
 #radosgw_frontend_port: "{{ radosgw_civetweb_port if radosgw_frontend_type == 'civetweb' else '8080' }}"
+# The server private key, public certificate and any other CA or intermediate certificates should be in one file, in PEM format.
+#radosgw_frontend_ssl_certificate: ""
 #radosgw_frontend_options: "{{ radosgw_civetweb_options if radosgw_frontend_type == 'civetweb' else '' }}"
 #radosgw_thread_pool_size: 512
 
@@ -702,7 +704,7 @@ ceph_docker_registry: "registry.access.redhat.com"
 # Choose http or https
 # For https, you should set dashboard.crt/key and grafana.crt/key
 #dashboard_protocol: http
-#dashboard_port: 8234
+#dashboard_port: 8443
 #dashboard_admin_user: admin
 #dashboard_admin_password: admin
 # We only need this for SSL (https) connections
@@ -747,6 +749,66 @@ ceph_docker_registry: "registry.access.redhat.com"
 #alertmanager_container_memory: 4
 #alertmanager_data_dir: /var/lib/alertmanager
 #alertmanager_conf_dir: /etc/alertmanager
+
+
+##################################
+# DEPRECIATED iSCSI TARGET SETUP #
+##################################
+
+# WARNING #
+
+# The following values are depreciated. To setup targets, gateways, LUNs, and
+# clients you should use gwcli or dashboard. If the following values are set,
+# the old ceph-iscsi-config/ceph-iscsi-cli packages will be used.
+
+# Specify the iqn for ALL gateways. This iqn is shared across the gateways, so an iscsi
+# client sees the gateway group as a single storage subsystem.
+#gateway_iqn: ""
+
+# gateway_ip_list provides a list of the IP Addrresses - one per gateway - that will be used
+# as an iscsi target portal ip. The list must be comma separated - and the order determines
+# the sequence of TPG's within the iscsi target across each gateway. Once set, additional
+# gateways can be added, but the order must *not* be changed.
+#gateway_ip_list: 0.0.0.0
+
+# rbd_devices defines the images that should be created and exported from the iscsi gateways.
+# If the rbd does not exist, it will be created for you. In addition you may increase the
+# size of rbd's by changing the size parameter and rerunning the playbook. A size value lower
+# than the current size of the rbd is ignored.
+#
+# the 'host' parameter defines which of the gateway nodes should handle the physical
+# allocation/expansion or removal of the rbd
+# to remove an image, simply use a state of 'absent'. This will first check the rbd is not allocated
+# to any client, and the remove it from LIO and then delete the rbd image
+#
+# NB. this variable definition can be commented out to bypass LUN management
+#
+# Example:
+#
+#rbd_devices:
+#  - { pool: 'rbd', image: 'ansible1', size: '30G', host: 'ceph-1', state: 'present' }
+#  - { pool: 'rbd', image: 'ansible2', size: '15G', host: 'ceph-1', state: 'present' }
+#  - { pool: 'rbd', image: 'ansible3', size: '30G', host: 'ceph-1', state: 'present' }
+#  - { pool: 'rbd', image: 'ansible4', size: '50G', host: 'ceph-1', state: 'present' }
+#rbd_devices: {}
+
+# client_connections defines the client ACL's to restrict client access to specific LUNs
+# The settings are as follows;
+# - image_list is a comma separated list of rbd images of the form <pool name>.<rbd_image_name>
+# - chap supplies the user and password the client will use for authentication of the
+#   form <user>/<password>
+# - status shows the intended state of this client definition - 'present' or 'absent'
+#
+# NB. this definition can be commented out to skip client (nodeACL) management
+#
+# Example:
+#
+#client_connections:
+#  - { client: 'iqn.1994-05.com.redhat:rh7-iscsi-client', image_list: 'rbd.ansible1,rbd.ansible2', chap: 'rh7-iscsi-client/redhat', status: 'present' }
+#  - { client: 'iqn.1991-05.com.microsoft:w2k12r2', image_list: 'rbd.ansible4', chap: 'w2k12r2/microsoft_w2k12', status: 'absent' }
+
+#client_connections: {}
+
 
 
 ###############
