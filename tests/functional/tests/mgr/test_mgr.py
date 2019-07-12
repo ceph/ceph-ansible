@@ -8,17 +8,25 @@ class TestMGRs(object):
     def test_mgr_is_installed(self, node, host):
         assert host.package("ceph-mgr").is_installed
 
-    def test_mgr_service_is_running(self, node, host):
-        service_name = "ceph-mgr@{hostname}".format(
-            hostname=node["vars"]["inventory_hostname"]
-        )
-        assert host.service(service_name).is_running
+    @pytest.mark.dashboard
+    @pytest.mark.no_docker
+    def test_mgr_dashboard_is_installed(self, node, host):
+        assert host.package("ceph-mgr-dashboard").is_installed
 
-    def test_mgr_service_is_enabled(self, node, host):
+    def test_mgr_service_is_enabled_and_running(self, node, host):
         service_name = "ceph-mgr@{hostname}".format(
             hostname=node["vars"]["inventory_hostname"]
         )
-        assert host.service(service_name).is_enabled
+        s = host.service(service_name)
+        assert s.is_enabled
+        assert s.is_running
+
+    @pytest.mark.dashboard
+    @pytest.mark.parametrize('port', [
+        '8443', '9283'
+    ])
+    def test_mgr_dashboard_is_listening(self, node, host, port):
+        assert host.socket('tcp://%s' % port).is_listening
 
     def test_mgr_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
