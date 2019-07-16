@@ -38,7 +38,7 @@
       setup:
       delegate_to: "{{ item }}"
       delegate_facts: True
-      with_items: "{{ groups['all'] }}"
+      with_items: "{{ groups[all_group_name] }}"
       run_once: true
       when: delegate_facts_host | bool
 
@@ -517,7 +517,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
       when: dashboard_enabled | bool
 
-- hosts: '{{ groups["grafana-server"][0] | default(groups["mgrs"][0]) | default(groups["mons"][0]) | default(omit) }}'
+- hosts: '{{ groups[grafana_server_group_name][0] | default(groups[mgr_group_name][0]) | default(groups[mon_group_name][0]) | default(omit) }}'
   become: true
   pre_tasks:
     - name: set ceph grafana install 'In Progress'
@@ -560,7 +560,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
       when: dashboard_enabled | bool
 
-- hosts: '{{ groups["mgrs"][0] | default(groups["mons"][0]) | default(omit) }}'
+- hosts: '{{ groups[mgr_group_name][0] | default(groups[mon_group_name][0]) | default(omit) }}'
   become: true
   pre_tasks:
     - name: set ceph dashboard install 'In Progress'

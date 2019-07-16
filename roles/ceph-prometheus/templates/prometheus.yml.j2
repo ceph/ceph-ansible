@@ -12,7 +12,7 @@ scrape_configs:
   - job_name: 'ceph'
     honor_labels: true
     static_configs:
-{% for host in groups['mgrs'] | default(groups['mons']) %}
+{% for host in groups[mgr_group_name] | default(groups[mon_group_name]) %}
       - targets: ['{{ host }}:9283']
         labels:
           instance: 'ceph_cluster'
@@ -20,7 +20,7 @@ scrape_configs:
   - job_name: 'node'
     static_configs:
 {% if grafana_server_group_name in groups %}
-{% for host in (groups['all'] | difference(groups[grafana_server_group_name])) %}
+{% for host in (groups[all_group_name] | difference(groups[grafana_server_group_name])) %}
       - targets: ['{{ host }}:9100']
         labels:
           instance: "{{ hostvars[host]['ansible_nodename'] }}"
@@ -33,7 +33,7 @@ scrape_configs:
           instance: "{{ hostvars[host]['ansible_nodename'] }}"
 {% endfor %}
 {% else %}
-{% for host in groups['all'] %}
+{% for host in groups[all_group_name] %}
       - targets: ['{{ host }}:9100']
         labels:
           instance: "{{ hostvars[host]['ansible_nodename'] }}"
@@ -42,7 +42,7 @@ scrape_configs:
 {% if 'iscsigws' in groups %}
   - job_name: 'iscsi-gws'
     static_configs:
-{% for host in groups['iscsigws'] %}
+{% for host in groups[iscsi_gw_group_name] %}
       - targets: ['{{ host }}:9287']
         labels:
           instance: "{{ hostvars[host]['ansible_nodename'] }}"
