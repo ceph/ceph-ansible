@@ -2,6 +2,21 @@
 - name: devices validation
   when: devices is defined
   block:
+    - name: read information about the devices
+      parted:
+        device: "{{ item }}"
+        unit: MiB
+      register: parted_results
+      with_items: "{{ devices }}"
+
+    - name: fail when gpt header found on osd devices
+      fail:
+        msg: "{{ item.disk.dev }} has gpt header, please remove it."
+      with_items: "{{ parted_results.results }}"
+      when:
+        - item.disk.table == 'gpt'
+        - item.partitions | length == 0
+
     - name: get devices information
       parted:
         device: "{{ item }}"
