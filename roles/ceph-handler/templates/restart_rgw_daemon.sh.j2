@@ -8,8 +8,10 @@ RGW_BASE_PORT={{ radosgw_frontend_port }}
 RGW_FRONTEND_SSL_CERT={{ radosgw_frontend_ssl_certificate }}
 if [ -n "$RGW_FRONTEND_SSL_CERT" ]; then
     RGW_PROTOCOL=https
+    RGW_IP={{ hostvars[inventory_hostname]['_radosgw_fqdn'] }}
 else
     RGW_PROTOCOL=http
+    RGW_IP={{ hostvars[inventory_hostname]['_radosgw_address'] }}
 fi
 declare -a DOCKER_EXECS
 for ((i=0; i<${RGW_NUMS}; i++)); do
@@ -20,7 +22,6 @@ for ((i=0; i<${RGW_NUMS}; i++)); do
 {% endif %}
 done
 declare -a SOCKETS
-RGW_IP={{ hostvars[inventory_hostname]['_radosgw_address'] }}
 SOCKET_PREFIX="/var/run/ceph/{{ cluster }}-client.rgw.${HOST_NAME}.rgw"
 
 check_socket() {
