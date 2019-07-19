@@ -403,6 +403,7 @@ def create_buckets(rgw, buckets, result):
     for bucket_info in buckets:
         bucket = bucket_info['bucket']
         user = bucket_info['user']
+        location = bucket_info['location']
 
         #  check if bucket exists
         try:
@@ -417,7 +418,7 @@ def create_buckets(rgw, buckets, result):
             result['error_messages'].append(bucket + ' BucketExists')
         else:
             # bucket doesn't exist, so we need to create it
-            bucket_info = create_bucket(rgw, bucket)
+            bucket_info = create_bucket(rgw, bucket, location)
             if bucket_info:
                 # bucket created ok, link to user
 
@@ -461,7 +462,7 @@ def create_buckets(rgw, buckets, result):
         result['failed_buckets'] = ", ".join(failed_buckets)
 
 
-def create_bucket(rgw, bucket):
+def create_bucket(rgw, bucket,location=''):
     conn = boto.connect_s3(aws_access_key_id=rgw.provider._access_key,
                            aws_secret_access_key=rgw.provider._secret_key,
                            host=rgw._connection[0],
@@ -471,7 +472,7 @@ def create_bucket(rgw, bucket):
                            )
 
     try:
-        conn.create_bucket(bucket_name=bucket)
+        conn.create_bucket(bucket_name=bucket,location=location)
         bucket_info = rgw.get_bucket(bucket_name=bucket)
     except boto.exception.S3ResponseError:
         return None
@@ -490,7 +491,8 @@ def main():
                   admin_secret_key=dict(type='str', required=True),
                   buckets=dict(type='list', required=False, elements='dict',
                                options=dict(bucket=dict(type='str', required=True),
-                                            user=dict(type='str', required=True))),
+                                            user=dict(type='str', required=True),
+                                            location=dict(type=str, required=False, default=''))),
                   users=dict(type='list', required=False, elements='dict',
                              options=dict(username=dict(type='str', required=True),
                                           fullname=dict(type='str', required=True),
