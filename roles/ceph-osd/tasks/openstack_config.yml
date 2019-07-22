@@ -20,7 +20,8 @@
       with_items: "{{ openstack_pools | unique }}"
       register: created_pools
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      failed_when: false
+      failed_when: created_pools.rc in [1, 125]
+      changed_when: false
 
     - name: create openstack pool(s)
       command: >
