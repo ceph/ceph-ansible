@@ -1,0 +1,156 @@
+- hosts:
+  - mons
+  - osds
+  - mdss
+  - rgws
+  - nfss
+  - rbdmirrors
+  - clients
+  - iscsigws
+  - mgrs
+  - grafana-server
+
+  gather_facts: false
+  become: True
+  any_errors_fatal: true
+
+  vars:
+    delegate_facts_host: True
+
+  pre_tasks:
+    - import_tasks: "{{ playbook_dir }}/../raw_install_python.yml"
+
+  tasks:
+    # pre-tasks for following import -
+    - name: gather facts
+      setup:
+      when: not delegate_facts_host | bool
+
+    - name: gather and delegate facts
+      setup:
+      delegate_to: "{{ item }}"
+      delegate_facts: True
+      with_items: "{{ groups['all'] }}"
+      run_once: true
+      when: delegate_facts_host | bool
+
+- hosts:
+    - "{{ mon_group_name }}"
+    - "{{ osd_group_name }}"
+    - "{{ mds_group_name }}"
+    - "{{ rgw_group_name }}"
+    - "{{ rgw_group_name }}"
+    - "{{ mgr_group_name }}"
+    - "{{ iscsi_gw_group_name }}"
+    - "{{ rbdmirror_group_name }}"
+  become: true
+  vars:
+    docker2podman: True
+    container_binary: podman
+    container_binding_name: podman
+    container_service_name: podman
+    container_package_name: podman
+  pre_tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+
+    - name: get docker version
+      command: docker --version
+      changed_when: false
+      check_mode: no
+      register: ceph_docker_version
+
+    - name: set_fact ceph_docker_version ceph_docker_version.stdout.split
+      set_fact:
+        ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
+
+
+  tasks:
+    - name: generate systemd unit file for mon container
+      template:
+        src: "{{ playbook_dir }}/../roles/ceph-mon/templates/ceph-mon.service.j2"
+        dest: /etc/systemd/system/ceph-mon@.service
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      when: inventory_hostname in groups.get(mon_group_name, [])
+
+
+    - name: generate systemd unit files for tcmu-runner, rbd-target-api and rbd-target-gw
+      template:
+        src: "{{ playbook_dir }}/../roles/ceph-iscsi-gw/templates/{{ item }}.service.j2"
+        dest: /etc/systemd/system/{{ item }}.service
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      with_items:
+        - tcmu-runner
+        - rbd-target-gw
+        - rbd-target-api
+      when: inventory_hostname in groups.get(iscsi_gw_group_name, [])
+
+    - name: generate systemd unit file
+      template:
+        src: "{{ playbook_dir }}/../roles/ceph-mds/templates/ceph-mds.service.j2"
+        dest: /etc/systemd/system/ceph-mds@.service
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      when: inventory_hostname in groups.get(mds_group_name, [])
+
+    - name: generate systemd unit file
+      template:
+        src: "{{ playbook_dir }}/../roles/ceph-mgr/templates/ceph-mgr.service.j2"
+        dest: /etc/systemd/system/ceph-mgr@.service
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      when: inventory_hostname in groups.get(mgr_group_name, [])
+
+    - name: generate systemd unit file
+      template:
+        src: "{{ playbook_dir }}/../roles/ceph-nfs/templates/ceph-nfs.service.j2"
+        dest: /etc/systemd/system/ceph-nfs@.service
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      when: inventory_hostname in groups.get(nfs_group_name, [])
+
+    - block:
+        - name: generate ceph osd docker run script
+          template:
+            src: "{{ playbook_dir }}/../roles/ceph-osd/templates/ceph-osd-run.sh.j2"
+            dest: "{{ ceph_osd_docker_run_script_path }}/ceph-osd-run.sh"
+            owner: "root"
+            group: "root"
+            mode: "0744"
+            setype: "bin_t"
+
+        - name: generate systemd unit file
+          template:
+            src: "{{ playbook_dir }}/../roles/ceph-osd/templates/ceph-osd.service.j2"
+            dest: /etc/systemd/system/ceph-osd@.service
+            owner: "root"
+            group: "root"
+            mode: "0644"
+      when: inventory_hostname in groups.get(osd_group_name, [])
+
+    - name: generate systemd unit file
+      template:
+        src: "{{ playbook_dir }}/../roles/ceph-rbd-mirror/templates/ceph-rbd-mirror.service.j2"
+        dest: /etc/systemd/system/ceph-rbd-mirror@.service
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      when: inventory_hostname in groups.get(rbdmirror_group_name, [])
+
+    - name: generate systemd unit file
+      template:
+        src: "{{ playbook_dir }}/../roles/ceph-rgw/templates/ceph-radosgw.service.j2"
+        dest: /etc/systemd/system/ceph-radosgw@.service
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      when: inventory_hostname in groups.get(rgw_group_name, [])
