@@ -3,15 +3,8 @@
   set_fact:
     container_exec_cmd: "{{ container_binary }} exec ceph-mds-{{ ansible_hostname }}"
 
-- name: generate systemd unit file
-  become: true
-  template:
-    src: "{{ role_path }}/templates/ceph-mds.service.j2"
-    dest: /etc/systemd/system/ceph-mds@.service
-    owner: "root"
-    group: "root"
-    mode: "0644"
-  notify: restart ceph mdss
+- name: include_tasks systemd.yml
+  include_tasks: systemd.yml
 
 - name: systemd start mds container
   systemd:
