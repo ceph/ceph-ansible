@@ -7,18 +7,8 @@
     - rbd-target-api
     - rbd-target-gw
 
-- name: generate systemd unit files for tcmu-runner, rbd-target-api and rbd-target-gw
-  template:
-    src: "{{ role_path }}/templates/{{ item }}.service.j2"
-    dest: /etc/systemd/system/{{ item }}.service
-    owner: "root"
-    group: "root"
-    mode: "0644"
-  with_items:
-    - tcmu-runner
-    - rbd-target-gw
-    - rbd-target-api
-  notify: restart ceph {{ item }}
+- name: include_tasks systemd.yml
+  include_tasks: systemd.yml
 
 - name: systemd start tcmu-runner, rbd-target-api and rbd-target-gw containers
   systemd:
