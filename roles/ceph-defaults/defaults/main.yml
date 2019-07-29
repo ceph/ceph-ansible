@@ -683,20 +683,21 @@ openstack_pools:
 # By default, keys will be auto-generated.
 #
 openstack_keys:
-  - { name: client.glance, caps: { mon: "profile rbd", osd: "profile rbd pool=volumes, profile rbd pool={{ openstack_glance_pool.name }}"}, mode: "0600" }
-  - { name: client.cinder, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_glance_pool.name }}"}, mode: "0600" }
-  - { name: client.cinder-backup, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_backup_pool.name }}"}, mode: "0600" }
-  - { name: client.gnocchi, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_gnocchi_pool.name }}"}, mode: "0600", }
-  - { name: client.openstack, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_glance_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_cinder_backup_pool.name }}"}, mode: "0600" }
+  - { name: client.glance, caps: { mon: "profile rbd", osd: "profile rbd pool=volumes, profile rbd pool={{ openstack_glance_pool.name }}, osd blacklist"}, mode: "0600" }
+  - { name: client.cinder, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_glance_pool.name }}, osd blacklist"}, mode: "0600" }
+  - { name: client.cinder-backup, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_backup_pool.name }}, osd blacklist"}, mode: "0600" }
+  - { name: client.gnocchi, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_gnocchi_pool.name }}, osd blacklist"}, mode: "0600", }
+  - { name: client.openstack, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_glance_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_cinder_backup_pool.name }}, osd blacklist"}, mode: "0600" }
 
 
 #############
 # DASHBOARD #
 #############
-dashboard_enabled: False
+dashboard_enabled: True
 # Choose http or https
 # For https, you should set dashboard.crt/key and grafana.crt/key
 dashboard_protocol: http
+dashboard_url: "{{ ansible_hostname }}"
 dashboard_port: 8443
 dashboard_admin_user: admin
 dashboard_admin_password: admin
@@ -710,6 +711,7 @@ dashboard_rgw_api_scheme: ''
 dashboard_rgw_api_admin_resource: ''
 dashboard_rgw_api_no_ssl_verify: False
 node_exporter_container_image: prom/node-exporter:latest
+node_exporter_port: 9100
 grafana_admin_user: admin
 grafana_admin_password: admin
 # We only need this for SSL (https) connections
@@ -727,6 +729,7 @@ grafana_plugins:
   - vonage-status-panel
   - grafana-piechart-panel
 grafana_allow_embedding: True
+grafana_port: 3000
 prometheus_container_image: prom/prometheus:latest
 prometheus_container_cpu_period: 100000
 prometheus_container_cpu_cores: 2
@@ -735,6 +738,7 @@ prometheus_container_memory: 4
 prometheus_data_dir: /var/lib/prometheus
 prometheus_conf_dir: /etc/prometheus
 prometheus_user_id: '65534'  # This is the UID used by the prom/prometheus container image
+prometheus_port: 9090
 alertmanager_container_image: prom/alertmanager:latest
 alertmanager_container_cpu_period: 100000
 alertmanager_container_cpu_cores: 2
@@ -742,6 +746,7 @@ alertmanager_container_cpu_cores: 2
 alertmanager_container_memory: 4
 alertmanager_data_dir: /var/lib/alertmanager
 alertmanager_conf_dir: /etc/alertmanager
+alertmanager_port: 9093
 
 
 ##################################

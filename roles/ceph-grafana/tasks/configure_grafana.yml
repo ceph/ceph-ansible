@@ -17,7 +17,7 @@
 
 - name: wait for grafana to be stopped
   wait_for:
-    port: 3000
+    port: '{{ grafana_port }}'
     state: stopped
 
 - name: make sure grafana configuration directories exist
@@ -28,6 +28,7 @@
   with_items:
     - "/etc/grafana/provisioning/datasources"
     - "/etc/grafana/provisioning/dashboards"
+    - "/etc/grafana/provisioning/notifiers"
 
 - name: write grafana.ini
   template:
@@ -46,6 +47,7 @@
     src: dashboards-ceph-dashboard.yml.j2
     dest: /etc/grafana/provisioning/dashboards/ceph-dashboard.yml
     mode: 0640
+  when: not containerized_deployment | bool
 
 - name: copy grafana SSL certificate file
   copy:
@@ -91,4 +93,4 @@
 
 - name: wait for grafana to start
   wait_for:
-    port: 3000
+    port: '{{ grafana_port }}'

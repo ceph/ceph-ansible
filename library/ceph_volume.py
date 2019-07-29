@@ -3,7 +3,6 @@ import datetime
 import copy
 import json
 import os
-import six
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
@@ -217,7 +216,7 @@ def build_ceph_volume_cmd(action, container_image, cluster=None):
     if cluster:
         cmd.extend(['--cluster', cluster])
 
-    cmd.extend(action if not isinstance(action, six.string_types) else [action])
+    cmd.extend(action)
 
     return cmd
 
@@ -416,7 +415,7 @@ def list_storage_inventory(module, container_image):
     List storage inventory.
     '''
 
-    action = 'inventory'
+    action = ['inventory']
     cmd = build_ceph_volume_cmd(action, container_image)
     cmd.append('--format=json')
 
