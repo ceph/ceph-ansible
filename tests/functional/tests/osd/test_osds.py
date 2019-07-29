@@ -7,25 +7,9 @@ class TestOSDs(object):
 
     def _get_osds_id(self, node, host):
         osds = []
-        if node['rolling_update'] and node['docker']:
-            cmd = host.run('sudo docker exec {osd_id} ceph-disk list --format json'.format(osd_id=self._get_docker_exec_cmd(host)))
-            ceph_disk_list = json.loads(cmd.stdout)
-            for device in ceph_disk_list:
-                if 'partitions' in device.keys():
-                    for partition in device['partitions']:
-                        if 'type' in partition.keys() and partition['type'] == 'data':
-                            osds.append(device['path'].split('/')[-1])
-        else:
-            cmd = host.run('sudo ls /var/lib/ceph/osd/ | sed "s/.*-//"')
-            if cmd.rc == 0:
-                osd_ids = cmd.stdout.rstrip("\n").split("\n")
-                osds = osd_ids
-                if node['docker'] and node['fsid'] == "6e008d48-1661-11e8-8546-008c3214218a":
-                    osds = []
-                    for device in node['devices']:
-                        real_dev = host.run("sudo readlink -f %s" % device)
-                        real_dev_split = real_dev.stdout.split("/")[-1]
-                        osds.append(real_dev_split)
+        cmd = host.run('sudo ls /var/lib/ceph/osd/ | sed "s/.*-//"')
+        if cmd.rc == 0:
+            osds = cmd.stdout.rstrip("\n").split("\n")
         return osds
 
     def _get_docker_exec_cmd(self, host):
