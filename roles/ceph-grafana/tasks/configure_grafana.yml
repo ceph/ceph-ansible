@@ -6,7 +6,7 @@
   register: result
   until: result is succeeded
   when:
-    - not containerized_deployment
+    - not containerized_deployment | bool
     - ansible_os_family in ['RedHat', 'Suse']
   tags: package-install
 
@@ -25,7 +25,10 @@
     path: "{{ item }}"
     state: directory
     recurse: yes
+    owner: "{{ grafana_uid }}"
+    group: "{{ grafana_uid }}"
   with_items:
+    - "/etc/grafana/dashboards/ceph-dashboard"
     - "/etc/grafana/provisioning/datasources"
     - "/etc/grafana/provisioning/dashboards"
     - "/etc/grafana/provisioning/notifiers"
@@ -34,18 +37,24 @@
   template:
     src: grafana.ini.j2
     dest: /etc/grafana/grafana.ini
+    owner: "{{ grafana_uid }}"
+    group: "{{ grafana_uid }}"
     mode: 0640
 
 - name: write datasources provisioning config file
   template:
     src: datasources-ceph-dashboard.yml.j2
     dest: /etc/grafana/provisioning/datasources/ceph-dashboard.yml
+    owner: "{{ grafana_uid }}"
+    group: "{{ grafana_uid }}"
     mode: 0640
 
 - name: Write dashboards provisioning config file
   template:
     src: dashboards-ceph-dashboard.yml.j2
     dest: /etc/grafana/provisioning/dashboards/ceph-dashboard.yml
+    owner: "{{ grafana_uid }}"
+    group: "{{ grafana_uid }}"
     mode: 0640
   when: not containerized_deployment | bool
 
@@ -53,6 +62,8 @@
   copy:
     src: "{{ grafana_crt }}"
     dest: "/etc/grafana/ceph-dashboard.crt"
+    owner: "{{ grafana_uid }}"
+    group: "{{ grafana_uid }}"
     mode: 0640
   when:
     - grafana_crt | bool
@@ -62,6 +73,8 @@
   copy:
     src: "{{ grafana_key }}"
     dest: "/etc/grafana/ceph-dashboard.key"
+    owner: "{{ grafana_uid }}"
+    group: "{{ grafana_uid }}"
     mode: 0440
   when:
     - grafana_key | bool
@@ -70,20 +83,11 @@
 - name: generate a Self Signed OpenSSL certificate for dashboard
   shell: |
     test -f /etc/grafana/ceph-dashboard.key -a -f /etc/grafana/ceph-dashboard.crt || \
-    openssl req -new -nodes -x509 -subj '/O=IT/CN=ceph-grafana' -days 3650 -keyout /etc/grafana/ceph-dashboard.key -out /etc/grafana/ceph-dashboard.crt -extensions v3_ca
+    (openssl req -new -nodes -x509 -subj '/O=IT/CN=ceph-grafana' -days 3650 -keyout /etc/grafana/ceph-dashboard.key -out /etc/grafana/ceph-dashboard.crt -extensions v3_ca && \
+    chown {{ grafana_uid }}:{{ grafana_uid }} /etc/grafana/ceph-dashboard.key /etc/grafana/ceph-dashboard.crt)
   when:
     - dashboard_protocol == "https"
     - not grafana_key | bool or not grafana_crt | bool
-
-- name: set owner/group on /etc/grafana
-  file:
-    path: /etc/grafana
-    state: directory
-    # This is the UID used by the grafana container
-    owner: "{{ grafana_uid }}"
-    # This group is used by the grafana rpm
-    group: "grafana"
-    recurse: true
 
 - name: enable and start grafana
   service:
