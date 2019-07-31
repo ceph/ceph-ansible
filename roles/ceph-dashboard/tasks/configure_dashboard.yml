@@ -62,6 +62,7 @@
 
 - name: "set the dashboard port ({{ dashboard_port }})"
   command: "{{ container_exec_cmd }} ceph config set mgr mgr/dashboard/server_port {{ dashboard_port }}"
+  changed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
 
@@ -69,6 +70,8 @@
   command: "{{ container_exec_cmd }} ceph config set mgr mgr/dashboard/ssl_server_port {{ dashboard_port }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
+  changed_when: false
+  failed_when: false # Do not fail if the option does not exist, it only exists post-14.2.0
 
 - name: disable mgr dashboard module (restart)
   command: "{{ container_exec_cmd }} ceph mgr module disable dashboard"
@@ -94,6 +97,7 @@
   register: ac_result
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
+  changed_when: false
   until: ac_result.rc == 0
 
 - name: set grafana url
