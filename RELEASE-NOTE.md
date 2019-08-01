@@ -33,6 +33,8 @@ Deprecation warnings and incoming removal
 * ceph-disk based deployments will not be supported anymore, which means osd scenarios 'collocated' and 'non-collocated' will continue to work for existing OSDs but new deployments will not be possible
 * the next stable release will collocated monitor and managers on the same node by default, this will speed up deployments in general. Also manager are intended to run along side the monitor. This means declaring a `[mgrs]` won't be needed anymore
 * the next stable release will not enable any manager module, they will need to be explicitly declared via `ceph_mgr_modules`
+* the group name 'iscsi-gws' will go away in the next stable release
+* the rgw systemd service names in the following list won't be managed anymore in the next stable release: `ceph-rgw@<hostname>.service`, `ceph-radosgw@<hostname>.service`, `ceph-radosgw@radosgw.<hostname>.service`, `ceph-radosgw@radosgw.gateway.service`
 
 About ceph-disk transition to ceph-volume for containers ONLY
 -------------------------------------------------------------
