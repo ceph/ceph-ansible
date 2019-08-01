@@ -79,7 +79,7 @@ The ``master`` branch should be considered experimental and used with caution.
 
 - ``stable-4.0`` Supports Ceph version ``nautilus``. This branch requires Ansible version ``2.8``.
 
-- ``master`` Supports Ceph@master version. This branch requires Ansible version ``2.8``.
+- ``master`` Supports the master branch of Ceph. This branch requires Ansible version ``2.8``.
 
 Configuration and Usage
 =======================
