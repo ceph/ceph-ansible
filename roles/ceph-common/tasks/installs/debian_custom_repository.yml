@@ -1,4 +1,11 @@
 ---
+- name: configure debian apt key custom repository
+  apt_key:
+    url: "{{ ceph_custom_key }}"
+    state: present
+  register: result
+  until: result is succeeded
+
 - name: configure debian custom repository
   apt_repository:
     repo: "deb {{ ceph_custom_repo }} {{ ansible_distribution_release }} main"
