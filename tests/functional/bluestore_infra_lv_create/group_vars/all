@@ -1,0 +1,45 @@
+---
+
+# This file configures logical volume creation for BlueStore Database on NVMe, a NVMe based bucket index, and HDD based OSDs.
+# This playbook configures one NVMe device at a time. If your OSD systems contain multiple NVMe devices, you will need to edit the key variables ("nvme_device", "hdd_devices") for each run.
+# It is meant to be used when osd_objectstore=filestore and it outputs the necessary input for group_vars/osds.yml.
+# The LVs for BlueStore databases are created first then the LVs for data. Each LVs for BlueStore db correspond to a LV for data.
+#
+## CHANGE THESE VARS ##
+#
+# The NVMe device and the HDD devices must be raw and not have any GPT, FS, or RAID signatures.
+# GPT, FS, & RAID signatures should be removed from a device prior to running the lv-create.yml playbook.
+#
+# Having leftover signatures can result in ansible errors that say "device $device_name excluded by a filter" after running the lv-create.yml playbook.
+# This can be done by running `wipefs -a $device_name`.
+
+# Path of nvme devices primed for LV creation for BlueStore database and journal.
+bluestore_ssd_devices:
+  - /dev/sdc
+# Path of hdd devices designated for LV creation.
+bluestore_hdd_devices:
+  - /dev/sdb
+
+# Per the lvol module documentation, "size" is the size of the logical volume, according to lvcreate(8) --size.
+# This is by default in megabytes or optionally with one of [bBsSkKmMgGtTpPeE] units; or according to lvcreate(8) --extents as a percentage of [VG|PVS|FREE]; Float values must begin with a digit.
+# For further reading and examples see: https://docs.ansible.com/ansible/2.6/modules/lvol_module.html
+
+# Suggested BlueStore db size is 30GB
+blocks_db_size: 256
+
+## TYPICAL USERS WILL NOT NEED TO CHANGE VARS FROM HERE DOWN ##
+
+# the path to where to save the logfile for bs-lv-create.log
+bluestore_logfile_path: ../bs-lv-create.log
+
+# all hdd's have to be the same size and the LVs on them are dedicated for OSD data
+hdd_lv_size: 100%FREE
+
+# Since this playbook can be run multiple times across different devices, {{ var.split('/')[-1] }} is used quite frequently in this play-book.
+
+bluestore_hdd_vg_prefix: "ceph-hdd-vg"
+bluestore_hdd_lv_prefix: "ceph-hdd-lv"
+
+
+# BlueStore DBs are created on NVMe devices
+
