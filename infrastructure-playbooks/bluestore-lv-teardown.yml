@@ -10,79 +10,79 @@
 
   tasks:
     - name: exit playbook, if user did not mean to tear down logical volumes
-    fail:
-      msg: >
-        "Exiting lv-teardown playbook, logical volumes were NOT torn down.
-         To tear down the logical volumes, either say 'yes' on the prompt or
-         or use `-e ireallymeanit=yes` on the command line when
-         invoking the playbook"
-    when: ireallymeanit != 'yes'
+      fail:
+        msg: >
+          "Exiting lv-teardown playbook, logical volumes were NOT torn down.
+           To tear down the logical volumes, either say 'yes' on the prompt or
+           or use `-e ireallymeanit=yes` on the command line when
+           invoking the playbook"
+      when: ireallymeanit != 'yes'
 
-  - name: include vars of bluestore_lv_vars.yaml
-    include_vars:
-      file: bluestore_lv_vars.yaml
-    failed_when: false
+    - name: include vars of bluestore_lv_vars.yaml
+      include_vars:
+        file: bluestore_lv_vars.yaml
+      failed_when: false
 
-  # need to check if lvm2 is installed
-  - name: install lvm2
-    package:
-      name: lvm2
-      state: present
-    register: result
-    until: result is succeeded
+    # need to check if lvm2 is installed
+    - name: install lvm2
+      package:
+        name: lvm2
+        state: present
+      register: result
+      until: result is succeeded
 
-# BEGIN TEARDOWN
-  - name: find any existing osd filesystems
-    shell: "grep /var/lib/ceph/osd /proc/mounts | awk '{print $2}'"
-    register: old_osd_filesystems
+  # BEGIN TEARDOWN
+    - name: find any existing osd filesystems
+      shell: "grep /var/lib/ceph/osd /proc/mounts | awk '{print $2}'"
+      register: old_osd_filesystems
 
-  - name: tear down any existing osd filesystems
-    command: "umount -v {{ item }}"
-    with_items: "{{ old_osd_filesystems.stdout_lines }}"
+    - name: tear down any existing osd filesystems
+      command: "umount -v {{ item }}"
+      with_items: "{{ old_osd_filesystems.stdout_lines }}"
 
-  - name: kill all lvm commands that may have been hung
-    command: "killall -q lvcreate pvcreate vgcreate lvconvert || echo -n"
-    failed_when: false
+    - name: kill all lvm commands that may have been hung
+      command: "killall -q lvcreate pvcreate vgcreate lvconvert || echo -n"
+      failed_when: false
 
 
-  # tear down vgs
-  - name: tear down existing lv
-    lvol:
-      lv: "ceph-hdd-lv-{{ item.split('/')[-1] }}"
-      vg: "ceph-hdd-{{ item.split('/')[-1] }}"
-      state: absent
-      force: yes      
-    with_items: "{{ bluestore_hdd_devices }}"
+    # tear down vgs
+    - name: tear down existing lv
+      lvol:
+        lv: "ceph-hdd-lv-{{ item.split('/')[-1] }}"
+        vg: "ceph-hdd-{{ item.split('/')[-1] }}"
+        state: absent
+        force: yes
+      with_items: "{{ bluestore_hdd_devices }}"
 
-  - name: remove vg for each hdd device
-    lvg:
-      vg: "ceph-hdd-vg-{{ item.split('/')[-1] }}"
-      state: absent
-      force: yes
-    with_items: "{{ bluestore_hdd_devices }}"
+    - name: remove vg for each hdd device
+      lvg:
+        vg: "ceph-hdd-vg-{{ item.split('/')[-1] }}"
+        state: absent
+        force: yes
+      with_items: "{{ bluestore_hdd_devices }}"
 
-  - name: tear down pv for each hdd device
-    command: "pvremove --force --yes {{ item }}"
-    with_items: "{{ bluestore_hdd_devices }}"
+    - name: tear down pv for each hdd device
+      command: "pvremove --force --yes {{ item }}"
+      with_items: "{{ bluestore_hdd_devices }}"
 
-  - name: get all vgs
-    command: "vgs -a -o name"
-    register: all_vgs
-    
-  - name: Tear down ceph vgs
-    lvg:
-      vg: "{{ item }}"
-      state: absent
-      force: yes
-    with_items: "{{ all_vgs.stdout.split('\n') | map('trim')| list }}"
-    when:
-      - "'ceph' in item"
-    
-  ## Physical Vols
-  - name: tear down pv for nvme device
-    command: "pvremove --force --yes {{ item }}"
-    with_items: "{{ bluestore_hdd_devices }}"
+    - name: get all vgs
+      command: "vgs -a -o name"
+      register: all_vgs
 
-  - name: tear down pv for each hdd device
-    command: "pvremove --force --yes {{ item }}"
-    with_items: "{{ bluestore_ssd_devices }}"
+    - name: Tear down ceph vgs
+      lvg:
+        vg: "{{ item }}"
+        state: absent
+        force: yes
+      with_items: "{{ all_vgs.stdout.split('\n') | map('trim')| list }}"
+      when:
+        - "'ceph' in item"
+
+    ## Physical Vols
+    - name: tear down pv for nvme device
+      command: "pvremove --force --yes {{ item }}"
+      with_items: "{{ bluestore_hdd_devices }}"
+
+    - name: tear down pv for each hdd device
+      command: "pvremove --force --yes {{ item }}"
+      with_items: "{{ bluestore_ssd_devices }}"

@@ -5,121 +5,121 @@
   tasks:
 
     - name: include vars of bluestore_lv_vars.yaml
-        include_vars:
-          file: bluestore_lv_vars.yaml
-        failed_when: false
+      include_vars:
+        file: bluestore_lv_vars.yaml
+      failed_when: false
 
-      # ensure bluestore_ssd_devices_device is set
-      - name: fail if bleustore_ssd_devices is not undefined
-        fail:
-          msg: "bluestore_ssd_devices has not been set by the user"
-        when: bluestore_ssd_devices is undefined or bluestore_ssd_devices == 'dummy'
+    # ensure bluestore_ssd_devices_device is set
+    - name: fail if bleustore_ssd_devices is not undefined
+      fail:
+        msg: "bluestore_ssd_devices has not been set by the user"
+      when: bluestore_ssd_devices is undefined or bluestore_ssd_devices == 'dummy'
 
-      # ensure bluestore_hdd_devices is set
+    # ensure bluestore_hdd_devices is set
 
-      - name: fail if bluestore_hdd_devices is not undefined
-        fail:
-          msg: "bluestore_hdd_devices has not been set by the user"
-        when: bluestore_hdd_devices is undefined or bluestore_hdd_devices == 'dummy'
-        
+    - name: fail if bluestore_hdd_devices is not undefined
+      fail:
+        msg: "bluestore_hdd_devices has not been set by the user"
+      when: bluestore_hdd_devices is undefined or bluestore_hdd_devices == 'dummy'
 
-      # get number of HDD and SSD devices from config
-        
-      - set_fact:
-          ssd_count: "{{ bluestore_ssd_devices | length }}"
-          hdd_count: "{{ bluestore_hdd_devices | length }}"
-          
-      # get number of new lv for each step
-      
-      - set_fact:
-          first_step_lv_num: "{{ hdd_count| int // ssd_count | int * ssd_count | int }}"
-          second_step_lv_num: "{{ hdd_count| int % ssd_count | int }}"
 
-      # need to check if lvm2 is installed
-      - name: install lvm2
-        package:
-          name: lvm2
-          state: present
-        register: result
-        until: result is succeeded
+    # get number of HDD and SSD devices from config
 
-      # create VG for each SSD device
+    - set_fact:
+        ssd_count: "{{ bluestore_ssd_devices | length }}"
+        hdd_count: "{{ bluestore_hdd_devices | length }}"
 
-      - name: add ssd device as lvm pv
-        lvg:
-          force: yes
-          pvs: "{{ item }}"
-          pesize: 4
-          state: present
-          vg: "ceph-block-dbs-{{ item.split('/')[-1] }}"
-        loop:
-          "{{ bluestore_ssd_devices }}"
-        
-      - name: generate uuids for lvs
-        shell: uuidgen
-        with_sequence: "count={{ first_step_lv_num| int }}"
-        register: uuid_lvm_list_1
-        
-      - name: generate uuids for lvs
-        shell: uuidgen
-        with_sequence: "count={{ second_step_lv_num| int }}"
-        register: uuid_lvm_list_2
-      
-      - name: create lvs for bock.db and wal journals on the SSD device (step 1)
-        lvol:
-          lv: "osd-block-db-{{ item.2.stdout }}"
-          vg: "ceph-block-dbs-{{ bluestore_ssd_devices[item.0|int % ssd_count|int ].split('/')[-1] }}"
-          size: "{{ blocks_db_size }}"
-        loop: "{{ range(0, first_step_lv_num| int, 1)|list| zip(bluestore_hdd_devices, uuid_lvm_list_1.results)| list }}"
-        register: created_lvs_1
-       
-      - name: create lvs for bock.db and wal journals on the SSD device (step 2)
-        lvol:
-          lv: "osd-block-db-{{ item.2.stdout }}"
-          vg: "ceph-block-dbs-{{ item.1.split('/')[-1] }}"
-          size: "{{ blocks_db_size }}"
-        loop: "{{ range(0, second_step_lv_num| int, 1)| list| zip(bluestore_ssd_devices, uuid_lvm_list_2.results)| list }}"
-        register: created_lvs_2
-        
-      # Make sure all hdd devices have a unique volume group
-      - name: create vgs for all hdd devices
-        lvg:
-          force: yes
-          pvs: "{{ item }}"
-          pesize: 4
-          state: present
-          vg: "{{ bluestore_hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
-        with_items: "{{ bluestore_hdd_devices }}"
+    # get number of new lv for each step
 
-      - name: create lvs for the data portion on hdd devices
-        lvol:
-          lv: "{{ bluestore_hdd_lv_prefix }}-{{ item.split('/')[-1] }}"
-          vg: "{{ bluestore_hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
-          size: "{{ hdd_lv_size }}"
-          pvs: "{{ item }}"
-        with_items: "{{ bluestore_hdd_devices }}"
+    - set_fact:
+        first_step_lv_num: "{{ hdd_count| int // ssd_count | int * ssd_count | int }}"
+        second_step_lv_num: "{{ hdd_count| int % ssd_count | int }}"
 
-      - debug:
-          msg: "{{ item }}"
-        loop: "{{ range(0, first_step_lv_num| int, 1)| list| zip(bluestore_ssd_devices, uuid_lvm_list_1.results)| list }}"
+    # need to check if lvm2 is installed
+    - name: install lvm2
+      package:
+        name: lvm2
+        state: present
+      register: result
+      until: result is succeeded
 
-      - set_fact:
-          bluestore_logfile: |
-            # Suggested cut and paste under "lvm_volumes:" in "group_vars/osds.yml"
-            # -----------------------------------------------------------------------------------------------------------
+    # create VG for each SSD device
 
-            
-            {% for lv_info in bluestore_hdd_devices| zip( created_lvs_1.results + created_lvs_2.results )| list  %}
-              - data: {{ bluestore_hdd_lv_prefix }}-{{ lv_info[0].split('/')[-1] }}
-                data_vg: {{ bluestore_hdd_vg_prefix }}-{{ lv_info[0].split('/')[-1] }}
-                db: {{ lv_info[1].invocation.module_args.lv}}
-                db_vg: {{ lv_info[1].invocation.module_args.vg }}
+    - name: add ssd device as lvm pv
+      lvg:
+        force: yes
+        pvs: "{{ item }}"
+        pesize: 4
+        state: present
+        vg: "ceph-block-dbs-{{ item.split('/')[-1] }}"
+      loop:
+        "{{ bluestore_ssd_devices }}"
 
-            {% endfor %}
- 
-      - name: "write output for osds.yml to {{ bluestore_logfile_path }}"
-        become: false
-        copy:
-          content: "{{ bluestore_logfile }}"
-          dest: "{{ bluestore_logfile_path }}"
-        delegate_to: localhost
+    - name: generate uuids for lvs
+      shell: uuidgen
+      with_sequence: "count={{ first_step_lv_num| int }}"
+      register: uuid_lvm_list_1
+
+    - name: generate uuids for lvs
+      shell: uuidgen
+      with_sequence: "count={{ second_step_lv_num| int }}"
+      register: uuid_lvm_list_2
+
+    - name: create lvs for bock.db and wal journals on the SSD device (step 1)
+      lvol:
+        lv: "osd-block-db-{{ item.2.stdout }}"
+        vg: "ceph-block-dbs-{{ bluestore_ssd_devices[item.0|int % ssd_count|int ].split('/')[-1] }}"
+        size: "{{ blocks_db_size }}"
+      loop: "{{ range(0, first_step_lv_num| int, 1)|list| zip(bluestore_hdd_devices, uuid_lvm_list_1.results)| list }}"
+      register: created_lvs_1
+
+    - name: create lvs for bock.db and wal journals on the SSD device (step 2)
+      lvol:
+        lv: "osd-block-db-{{ item.2.stdout }}"
+        vg: "ceph-block-dbs-{{ item.1.split('/')[-1] }}"
+        size: "{{ blocks_db_size }}"
+      loop: "{{ range(0, second_step_lv_num| int, 1)| list| zip(bluestore_ssd_devices, uuid_lvm_list_2.results)| list }}"
+      register: created_lvs_2
+
+    # Make sure all hdd devices have a unique volume group
+    - name: create vgs for all hdd devices
+      lvg:
+        force: yes
+        pvs: "{{ item }}"
+        pesize: 4
+        state: present
+        vg: "{{ bluestore_hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
+      with_items: "{{ bluestore_hdd_devices }}"
+
+    - name: create lvs for the data portion on hdd devices
+      lvol:
+        lv: "{{ bluestore_hdd_lv_prefix }}-{{ item.split('/')[-1] }}"
+        vg: "{{ bluestore_hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
+        size: "{{ hdd_lv_size }}"
+        pvs: "{{ item }}"
+      with_items: "{{ bluestore_hdd_devices }}"
+
+    - debug:
+        msg: "{{ item }}"
+      loop: "{{ range(0, first_step_lv_num| int, 1)| list| zip(bluestore_ssd_devices, uuid_lvm_list_1.results)| list }}"
+
+    - set_fact:
+        bluestore_logfile: |
+          # Suggested cut and paste under "lvm_volumes:" in "group_vars/osds.yml"
+          # -----------------------------------------------------------------------------------------------------------
+
+
+          {% for lv_info in bluestore_hdd_devices| zip( created_lvs_1.results + created_lvs_2.results )| list  %}
+            - data: {{ bluestore_hdd_lv_prefix }}-{{ lv_info[0].split('/')[-1] }}
+              data_vg: {{ bluestore_hdd_vg_prefix }}-{{ lv_info[0].split('/')[-1] }}
+              db: {{ lv_info[1].invocation.module_args.lv}}
+              db_vg: {{ lv_info[1].invocation.module_args.vg }}
+
+          {% endfor %}
+
+    - name: "write output for osds.yml to {{ bluestore_logfile_path }}"
+      become: false
+      copy:
+        content: "{{ bluestore_logfile }}"
+        dest: "{{ bluestore_logfile_path }}"
+      delegate_to: localhost
