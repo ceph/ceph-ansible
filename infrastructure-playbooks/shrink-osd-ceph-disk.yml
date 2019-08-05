@@ -106,9 +106,9 @@
     # NOTE(leseb): using '>' is the only way I could have the command working
     - name: find osd device based on the id
       shell: >
-        {{ 'docker run --privileged=true -v /dev:/dev --entrypoint' if containerized_deployment else '' }} /usr/sbin/ceph-disk
+        {{ 'docker run --privileged=true --ulimit nofile=1024:4096 -v /dev:/dev --entrypoint' if containerized_deployment else '' }} /usr/sbin/ceph-disk
         {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else '' }}
-        list | awk  -v pattern=osd.{{ item.0 }} '$0 ~ pattern {print $1}'
+        list | awk  -v pattern=osd.{{ item.0 }}, '$0 ~ pattern {print $1}'
       with_together:
         - "{{ osd_to_kill.split(',') }}"
         - "{{ osd_hosts }}"
@@ -117,9 +117,9 @@
 
     - name: find osd dedicated devices - container
       shell: >
-        docker run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
+        docker run --privileged=true --ulimit nofile=1024:4096 -v /dev:/dev --entrypoint /usr/sbin/ceph-disk
         {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-        list | grep osd.{{ item.0 }} | grep -Eo '/dev/([hsv]d[a-z]{1,2})[0-9]{1,2}|/dev/nvme[0-9]n[0-9]p[0-9]'
+        list | grep osd.{{ item.0 }}, | grep -Eo '/dev/([hsv]d[a-z]{1,2})[0-9]{1,2}|/dev/nvme[0-9]n[0-9]p[0-9]'
       with_together:
         - "{{ osd_to_kill.split(',') }}"
         - "{{ osd_hosts }}"
@@ -129,7 +129,7 @@
         - containerized_deployment
 
     - name: find osd dedicated devices - non container
-      shell: ceph-disk list | grep osd.{{ item.0 }} | grep -Eo '/dev/([hsv]d[a-z]{1,2})[0-9]{1,2}|/dev/nvme[0-9]n[0-9]p[0-9]'
+      shell: ceph-disk list | grep osd.{{ item.0 }}, | grep -Eo '/dev/([hsv]d[a-z]{1,2})[0-9]{1,2}|/dev/nvme[0-9]n[0-9]p[0-9]'
       with_together:
         - "{{ osd_to_kill.split(',') }}"
         - "{{ osd_hosts }}"
@@ -140,7 +140,7 @@
 
     # if nvme then osd_to_kill_disks is nvme0n1, we need nvme0
     # if ssd or hdd then osd_to_kill_disks is sda1, we need sda
-    - name: stop osd services (container)
+    - name: stop osd services with device (container)
       service:
         name: "ceph-osd@{{ item.0.stdout[:-2] | regex_replace('/dev/', '') if 'nvme' in item.0.stdout else item.0.stdout[:-1] | regex_replace('/dev/', '') }}"
         state: stopped
@@ -151,6 +151,17 @@
       delegate_to: "{{ item.1 }}"
       when:
         - containerized_deployment
+
+    - name: stop osd services with ID (container)
+      service:
+        name: "ceph-osd@{{ item.0 }}"
+        state: stopped
+        enabled: no
+      with_together:
+        - "{{ osd_to_kill.split(',') }}"
+        - "{{ osd_hosts }}"
+      delegate_to: "{{ item.1 }}"
+      when: containerized_deployment | bool
 
     - name: resolve parent device
       command: lsblk --nodeps -no pkname "{{ item.0.stdout }}"
@@ -277,6 +288,15 @@
       when:
         - not containerized_deployment
         - item.1 | length > 0
+
+    - name: remove ceph osd directory
+      file:
+        name: '/var/lib/ceph/osd/{{ cluster }}-{{ item.0 }}'
+        state: absent
+      with_together:
+        - "{{ osd_to_kill.split(',') }}"
+        - "{{ osd_hosts }}"
+      delegate_to: "{{ item.1 }}"
 
     - name: show ceph health
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} -s"
