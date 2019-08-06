@@ -19,7 +19,6 @@ for ((i=0; i<${RGW_NUMS}; i++)); do
   DOCKER_EXECS[i]="{{ container_binary }} exec ${CONTAINER_NAME}"
 {% endif %}
 done
-declare -a SOCKETS
 RGW_IP={{ hostvars[inventory_hostname]['_radosgw_address'] }}
 SOCKET_PREFIX="/var/run/ceph/{{ cluster }}-client.rgw.${HOST_NAME}.rgw"
 
@@ -29,13 +28,15 @@ check_socket() {
   local count=10
   # Wait and ensure the socket exists after restarting the daemon
   while [ $count -ne 0 ]; do
-    ${DOCKER_EXECS[i]} test -S ${SOCKET_PREFIX}${i}.*.*.asok && SOCKETS[i]=$(stat --printf=%n ${SOCKET_PREFIX}${i}.*.*.asok)
-    ${DOCKER_EXECS[i]} test -S ${SOCKETS[i]} && succ=$((succ+1)) && break
+    SOCKET=$(grep ${SOCKET_PREFIX}${i} /proc/net/unix | awk '{ print $8 }')
+    if [ -n "${SOCKET}" ]; then
+      ${DOCKER_EXECS[i]} test -S ${SOCKET} && succ=$((succ+1)) && break
+    fi
     sleep $DELAY
     let count=count-1
   done
   if [ $succ -ne 1 ]; then
-    echo "Socket file ${SOCKETS[i]} could not be found, which means Rados Gateway is not running. Showing ceph-rgw unit logs now:"
+    echo "Socket file ${SOCKET} could not be found, which means Rados Gateway is not running. Showing ceph-rgw unit logs now:"
     journalctl -u ceph-radosgw@rgw.${HOST_NAME}.rgw${i}
     exit 1
   fi
@@ -71,7 +72,6 @@ check_rest() {
 }
 
 for ((i=0; i<${RGW_NUMS}; i++)); do
-  SOCKETS[i]="EMPTY_SOCKET"
   # First, restart the daemon
   systemctl restart ceph-radosgw@rgw.${HOST_NAME}.rgw${i}
   # Check socket files
