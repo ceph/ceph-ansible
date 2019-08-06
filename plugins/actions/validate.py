@@ -257,8 +257,8 @@ ceph_repository_dev = (
 )
 
 ceph_repository_custom = (
-    ("ceph_custom_repo", types.string),
     ("ceph_custom_key", types.string),
+    ("ceph_custom_repo", types.string),
 )
 
 ceph_repository_uca = (
