@@ -40,7 +40,7 @@ class TestCephVolumeModule(object):
         fake_binary = "ceph-volume"
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '--ulimit', 'nofile=1024:1024',
+                                 '--ulimit', 'nofile=1024:4096',
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
@@ -57,7 +57,7 @@ class TestCephVolumeModule(object):
         fake_module.params = {'data': '/dev/sda'}
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '--ulimit', 'nofile=1024:1024',
+                                 '--ulimit', 'nofile=1024:4096',
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
@@ -126,7 +126,7 @@ class TestCephVolumeModule(object):
         fake_module.params = {'cluster': 'ceph', 'data': '/dev/sda'}
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '--ulimit', 'nofile=1024:1024',
+                                 '--ulimit', 'nofile=1024:4096',
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
@@ -154,7 +154,7 @@ class TestCephVolumeModule(object):
         fake_action = "create"
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '--ulimit', 'nofile=1024:1024',
+                                 '--ulimit', 'nofile=1024:4096',
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
@@ -203,7 +203,7 @@ class TestCephVolumeModule(object):
         fake_action = "prepare"
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '--ulimit', 'nofile=1024:1024',
+                                 '--ulimit', 'nofile=1024:4096',
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
@@ -253,7 +253,7 @@ class TestCephVolumeModule(object):
 
         fake_container_image = "docker.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '--ulimit', 'nofile=1024:1024',
+                                 '--ulimit', 'nofile=1024:4096',
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
                                  '-v', '/var/run/udev/:/var/run/udev/:z',
                                  '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
