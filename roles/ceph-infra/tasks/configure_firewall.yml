@@ -8,7 +8,6 @@
   check_mode: no
   changed_when: false
   tags: firewall
-  when: not containerized_deployment | bool
 
 - when: (firewalld_pkg_query.get('rc', 1) == 0
       or is_atomic | bool)
@@ -157,7 +156,7 @@
 
   - name: open node_exporter port
     firewalld:
-      port: "9100/tcp"
+      port: "{{ node_exporter_port }}/tcp"
       zone: "{{ ceph_dashboard_firewall_zone }}"
       permanent: true
       immediate: true
@@ -188,7 +187,7 @@
   - block:
       - name: open grafana port
         firewalld:
-          port: "3000/tcp"
+          port: "{{ grafana_port }}/tcp"
           zone: "{{ ceph_dashboard_firewall_zone }}"
           permanent: true
           immediate: true
@@ -196,7 +195,7 @@
 
       - name: open prometheus port
         firewalld:
-          port: "9090/tcp"
+          port: "{{ prometheus_port }}/tcp"
           zone: "{{ ceph_dashboard_firewall_zone }}"
           permanent: true
           immediate: true
@@ -204,7 +203,7 @@
 
       - name: open alertmanager port
         firewalld:
-          port: "9093/tcp"
+          port: "{{ alertmanager_port }}/tcp"
           zone: "{{ ceph_dashboard_firewall_zone }}"
           permanent: true
           immediate: true
