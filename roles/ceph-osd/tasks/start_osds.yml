@@ -104,7 +104,7 @@
   when:
     - containerized_deployment
 
-- name: device to ID migration
+- name: device to id migration
   when:
     - containerized_deployment | bool
     - osd_scenario != 'lvm'
@@ -123,14 +123,17 @@
         owner: root
         group: root
         mode: 0750
-      when: ceph_osd_device_name.stdout|int != 0
-
-    - name: run the systemd-device-to-id.sh script
-      command: /usr/bin/env bash /tmp/systemd-device-to-id.sh
-      when: ceph_osd_device_name.stdout|int != 0
       with_items: "{{ groups[osd_group_name] }}"
       delegate_to: "{{ item }}"
       run_once: true
+      when: ceph_osd_device_name.stdout | int != 0
+
+    - name: run the systemd-device-to-id.sh script
+      command: /usr/bin/env bash /tmp/systemd-device-to-id.sh
+      with_items: "{{ inventory_hostname if rolling_update else groups[osd_group_name] }}"
+      delegate_to: "{{ item }}"
+      run_once: true
+      when: ceph_osd_device_name.stdout | int != 0
 
 - name: systemd start osd
   systemd:
