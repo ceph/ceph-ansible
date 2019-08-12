@@ -108,6 +108,13 @@
   run_once: true
   changed_when: false
 
+- name: disable unused dashboard features
+  command: "{{ container_exec_cmd }} ceph dashboard feature disable {{ item }}"
+  with_items: "{{ dashboard_disabled_features }}"
+  changed_when: false
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when: dashboard_disabled_features | length > 0
+
 - name: dashboard object gateway management frontend
   when: groups.get(rgw_group_name, []) | length > 0
   block:
