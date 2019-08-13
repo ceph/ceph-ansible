@@ -340,17 +340,10 @@
   become: True
 
   pre_tasks:
-    - name: get osd numbers - non container
+    - name: get osd numbers
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
       register: osd_ids
       changed_when: false
-      when: not containerized_deployment
-
-    - name: get osd unit names - container
-      shell: systemctl list-units | grep -E "loaded * active" | grep -oE "ceph-osd@([a-z0-9]+).service"
-      register: osd_names
-      changed_when: false
-      when: containerized_deployment
 
     - name: stop ceph osd
       systemd:
@@ -371,30 +364,13 @@
     - ceph-osd
 
   post_tasks:
-    - name: get osd numbers
-      shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
-      register: osd_ids
-      changed_when: false
-      when: not containerized_deployment
-
-    - name: start ceph osd
+    - name: restart ceph osd
       systemd:
-        name: ceph-osd@{{ item }}
-        state: started
-        enabled: yes
-      with_items: "{{ osd_ids.stdout_lines }}"
-      when:
-        - not containerized_deployment
-
-    - name: restart containerized ceph osd
-      systemd:
-        name: "{{ item }}"
+        name: "ceph-osd@{{ item }}"
         state: restarted
         enabled: yes
         daemon_reload: yes
-      with_items: "{{ osd_names.stdout_lines }}"
-      when:
-        - containerized_deployment
+      with_items: "{{ osd_ids.stdout_lines }}"
 
     - name: set_fact docker_exec_cmd_osd
       set_fact:
