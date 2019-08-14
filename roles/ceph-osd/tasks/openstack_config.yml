@@ -1,15 +1,14 @@
 ---
 - name: wait for all osd to be up
-  shell: >
-    test "$({{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | {{ discovered_interpreter_python }} -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["num_osds"])')" -gt 0 &&
-    test "$({{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | {{ discovered_interpreter_python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["num_osds"])')" =
-    "$({{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | {{ discovered_interpreter_python }} -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["num_up_osds"])')"
+  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
   register: wait_for_all_osds_up
   retries: "{{ nb_retry_wait_osd_up }}"
   delay: "{{ delay_wait_osd_up }}"
   changed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  until: wait_for_all_osds_up.rc == 0
+  until:
+    - (wait_for_all_osds_up.stdout | from_json)["osdmap"]["num_osds"] | int > 0
+    - (wait_for_all_osds_up.stdout | from_json)["osdmap"]["num_osds"] == (wait_for_all_osds_up.stdout | from_json)["osdmap"]["num_up_osds"]
 
 - name: pool related tasks
   block:
