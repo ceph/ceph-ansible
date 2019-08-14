@@ -36,9 +36,5 @@ class TestMGRs(object):
         )
         output_raw = host.check_output(cmd)
         output_json = json.loads(output_raw)
-        daemons = output_json['mgrmap']['active_name']
-        standbys = [i['name'] for i in output_json['mgrmap']['standbys']]
-        result = hostname in daemons
-        if not result:
-            result = hostname in standbys
-        assert result
+
+        assert output_json['mgrmap']['available']
