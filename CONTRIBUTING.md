@@ -32,8 +32,33 @@ We use Jenkins to run several tests on each pull request.
 If you don't want to run a build for a particular pull request, because all you are changing is the
 README for example, add the text `[skip ci]` to the PR title.
 
+<<<<<<< HEAD
 Good to know
 ------------
+=======
+### Merging strategy
+
+Merging PR is controlled by [mergify](https://mergify.io/) by the following rules:
+
+- at least one approuval from a maintainer
+- a SUCCESS from the CI pipeline "ceph-ansible PR Pipeline"
+
+If you work is not ready for review/merge, please request the DNM label via a comment or the title of your PR.
+This will prevent the engine merging your pull request.
+
+### Backports (maintainers only)
+
+If you wish to see your work from 'master' being backported to a stable branch you can ping a maintainer
+so he will set the backport label on your PR. Once the PR from master is merged, a backport PR will be created by mergify,
+if there is a cherry-pick conflict you must resolv it by pulling the branch.
+
+**NEVER** push directly into a stable branch, **unless** the code from master has diverged so much that the files don't exist in the stable branch.
+If that happens, inform the maintainers of the reasons why you pushed directly into a stable branch, if the reason is invalid, maintainers will immediatly close your pull request.
+
+## Good to know
+
+### Sample files
+>>>>>>> c49b8d04c... doc: update backport section
 
 #### Sample files
 The sample files we provide in `group_vars/` are versionned,
