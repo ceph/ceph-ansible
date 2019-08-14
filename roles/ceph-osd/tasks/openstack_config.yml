@@ -1,9 +1,9 @@
 ---
 - name: wait for all osd to be up
   shell: >
-    test "$({{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" -gt 0 &&
-    test "$({{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_osds"])')" =
-    "$({{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["osdmap"]["num_up_osds"])')"
+    test "$({{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["num_osds"])')" -gt 0 &&
+    test "$({{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["num_osds"])')" =
+    "$({{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["osdmap"]["num_up_osds"])')"
   register: wait_for_all_osds_up
   retries: "{{ nb_retry_wait_osd_up }}"
   delay: "{{ delay_wait_osd_up }}"
