@@ -56,3 +56,14 @@
       until: result is succeeded
       when: stat_zypper.rc == 0
   when: not True in (systempython.results | selectattr('stat', 'defined') | map(attribute='stat.exists') | list | unique)
+
+- name: install python-xml for opensuse only if python2 is installed already
+  raw: zypper -n install python-xml
+  register: result
+  until: result is succeeded
+  with_items: "{{ systempython.results }}"
+  when:
+    - stat_zypper.rc is defined
+    - stat_zypper.rc == 0
+    - item.stat.exists | bool
+    - item.stat.path == '/usr/bin/python'
