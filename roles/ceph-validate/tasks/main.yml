@@ -27,6 +27,25 @@
         - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
         - ceph_repository not in ['rhcs', 'dev', 'obs']
 
+# SUSE/openSUSE Leap only supports the following:
+# - ceph_origin == 'distro'
+# - ceph_origin == 'repository' and ceph_repository == 'obs'
+- name: SUSE/openSUSE Leap based system tasks
+  when: ansible_os_family == 'Suse'
+  block:
+    - name: Check ceph_origin definition on SUSE/openSUSE Leap
+      fail:
+        msg: "Unsupported installation method origin:{{ ceph_origin }}"
+      when: ceph_origin not in ['distro', 'repository']
+
+    - name: Check ceph_repository definition on SUSE/openSUSE Leap
+      fail:
+        msg: "Unsupported installation method origin:{{ ceph_origin }} repo:{{ ceph_repository }}'
+                  only valid combination is ceph_origin == 'repository' and ceph_repository == 'obs'"
+      when:
+        - ceph_origin == 'repository'
+        - ceph_repository != 'obs'
+
 - name: validate ntp daemon type
   fail:
     msg: "ntp_daemon_type must be one of chronyd, ntpd, or timesyncd"
