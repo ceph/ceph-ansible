@@ -47,6 +47,7 @@ class ActionModule(ActionBase):
 
         try:
             notario_store["groups"] = host_vars["groups"]
+            notario_store["ansible_distribution"] = host_vars["ansible_distribution"]
             notario_store["containerized_deployment"] = host_vars["containerized_deployment"]  # noqa E501
             notario.validate(host_vars, install_options, defined_keys=True)
 
@@ -65,6 +66,10 @@ class ActionModule(ActionBase):
                 if host_vars["ceph_repository"] == "dev":
                     notario.validate(
                         host_vars, ceph_repository_dev, defined_keys=True)
+
+                if host_vars["ceph_repository"] == "obs":
+                    notario.validate(
+                        host_vars, ceph_repository_obs, defined_keys=True)
 
                 if host_vars["ceph_repository"] == "custom":
                     notario.validate(host_vars, ceph_repository_custom, defined_keys=True)
@@ -172,8 +177,8 @@ def ceph_origin_choices(value):
 
 
 def ceph_repository_choices(value):
-    msg = "ceph_repository must be either 'community', 'rhcs', 'dev', 'custom' or 'uca'"
-    assert value in ['community', 'rhcs', 'dev', 'custom', 'uca'], msg
+    msg = "ceph_repository must be either 'community', 'rhcs', 'dev', 'custom', 'uca' or 'obs'"
+    assert value in ['community', 'rhcs', 'dev', 'custom', 'uca', 'obs'], msg
 
 
 def ceph_repository_type_choices(value):
@@ -254,6 +259,11 @@ ceph_repository_rhcs = (
 ceph_repository_dev = (
     ("ceph_dev_branch", types.string),
     ("ceph_dev_sha1", types.string),
+)
+
+ceph_repository_obs = (
+    ("ansible_distribution", "openSUSE Leap"),
+    ("ceph_obs_repo", types.string),
 )
 
 ceph_repository_custom = ("ceph_custom_repo", types.string)
