@@ -19,7 +19,7 @@ $DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-mon.{{ ansible_hostname }}.asok
 
 check_quorum() {
 while [ $RETRIES -ne 0 ]; do
-  $DOCKER_EXEC ceph --cluster {{ cluster }} -s --format json | python -c 'import sys, json; exit(0) if "{{ monitor_name }}" in json.load(sys.stdin)["quorum_names"] else exit(1)' && exit 0
+  $DOCKER_EXEC ceph --cluster {{ cluster }} -s --format json | "{{ discovered_interpreter_python }}" -c 'import sys, json; exit(0) if "{{ monitor_name }}" in json.load(sys.stdin)["quorum_names"] else exit(1)' && exit 0
   sleep $DELAY
   let RETRIES=RETRIES-1
 done

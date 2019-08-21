@@ -110,17 +110,12 @@
       delegate_to: "{{ mon_host }}"
 
   post_tasks:
-    # NOTE (leseb): sorry for the 'sleep' command
-    # but it will take a couple of seconds for other monitors
-    # to notice that one member has left.
-    # 'sleep 5' is not that bad and should be sufficient
     - name: verify the monitor is out of the cluster
-      shell: |
-        {{ container_exec_cmd }} ceph --cluster {{ cluster }} -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["quorum_names"])'
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
       delegate_to: "{{ mon_host }}"
       failed_when: false
       register: result
-      until: mon_to_kill_hostname not in result.stdout
+      until: mon_to_kill_hostname not in (result.stdout | from_json)['quorum_names']
       retries: 2
       delay: 10
 

@@ -4,12 +4,12 @@ DELAY="{{ handler_health_osd_check_delay }}"
 CEPH_CLI="--name client.bootstrap-osd --keyring /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring --cluster {{ cluster }}"
 
 check_pgs() {
-  num_pgs=$($container_exec ceph $CEPH_CLI -s -f json|python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')
+  num_pgs=$($container_exec ceph $CEPH_CLI -s -f json | "{{ discovered_interpreter_python }}" -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')
   if [[ "$num_pgs" == "0" ]]; then
     return 0
   fi
   while [ $RETRIES -ne 0 ]; do
-    test "$($container_exec ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')" -eq "$($container_exec ceph $CEPH_CLI -s -f json | python -c 'import sys, json; print(sum ( [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if "active+clean" in i["state_name"]]))')"
+    test "$($container_exec ceph $CEPH_CLI -s -f json | "{{ discovered_interpreter_python }}" -c 'import sys, json; print(json.load(sys.stdin)["pgmap"]["num_pgs"])')" -eq "$($container_exec ceph $CEPH_CLI -s -f json | "{{ discovered_interpreter_python }}" -c 'import sys, json; print(sum ( [ i["count"] for i in json.load(sys.stdin)["pgmap"]["pgs_by_state"] if "active+clean" in i["state_name"]]))')"
     RET=$?
     test $RET -eq 0 && return 0
     sleep $DELAY
