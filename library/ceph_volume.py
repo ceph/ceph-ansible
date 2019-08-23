@@ -280,6 +280,7 @@ def batch(module, container_image):
     journal_size = module.params.get('journal_size', None)
     block_db_size = module.params.get('block_db_size', None)
     block_db_devices = module.params.get('block_db_devices', None)
+    wal_devices = module.params.get('wal_devices', None)
     dmcrypt = module.params.get('dmcrypt', None)
     osds_per_device = module.params.get('osds_per_device', 1)
 
@@ -320,6 +321,9 @@ def batch(module, container_image):
 
     if block_db_devices:
         cmd.extend(['--db-devices', ' '.join(block_db_devices)])
+
+    if wal_devices:
+        cmd.extend(['--wal-devices', ' '.join(wal_devices)])
 
     return cmd
 
@@ -508,6 +512,7 @@ def run_module():
         journal_size=dict(type='str', required=False, default='5120'),
         block_db_size=dict(type='str', required=False, default='-1'),
         block_db_devices=dict(type='list', required=False, default=[]),
+        wal_devices=dict(type='list', required=False, default=[]),
         report=dict(type='bool', required=False, default=False),
         containerized=dict(type='str', required=False, default=False),
         osd_fsid=dict(type='str', required=False),
