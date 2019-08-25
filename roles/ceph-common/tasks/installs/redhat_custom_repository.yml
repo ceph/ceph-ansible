@@ -1,4 +1,12 @@
 ---
+- name: configure red hat custom rpm key
+  rpm_key:
+    key: "{{ ceph_custom_key }}"
+    state: present
+  register: result
+  until: result is succeeded
+  when: ceph_custom_key is defined
+
 - name: configure red hat custom repository
   get_url:
     url: "{{ ceph_custom_repo }}"
