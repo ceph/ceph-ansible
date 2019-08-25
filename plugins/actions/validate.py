@@ -266,7 +266,10 @@ ceph_repository_obs = (
     ("ceph_obs_repo", types.string),
 )
 
-ceph_repository_custom = ("ceph_custom_repo", types.string)
+ceph_repository_custom = (
+    ("ceph_custom_key", types.string),
+    ("ceph_custom_repo", types.string),
+)
 
 ceph_repository_uca = (
     ("ceph_stable_openstack_release_uca", types.string),
