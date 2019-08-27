@@ -305,7 +305,7 @@
 
 - name: set grafana_server_addr fact - ipv4
   set_fact:
-    grafana_server_addr: "{{ hostvars[inventory_hostname]['ansible_all_ipv4_addresses'] | ipaddr(public_network) | first }}"
+    grafana_server_addr: "{{ hostvars[groups.get(grafana_server_group_name, []) | first]['ansible_all_ipv4_addresses'] | ipaddr(public_network) | first }}"
   when:
     - groups.get(grafana_server_group_name, []) | length > 0
     - ip_version == 'ipv4'
@@ -313,7 +313,7 @@
 
 - name: set grafana_server_addr fact - ipv6
   set_fact:
-    grafana_server_addr: "{{ hostvars[inventory_hostname]['ansible_all_ipv6_addresses'] | ipaddr(public_network) | last | ipwrap }}"
+    grafana_server_addr: "{{ hostvars[groups.get(grafana_server_group_name, []) | first]['ansible_all_ipv6_addresses'] | ipaddr(public_network) | last | ipwrap }}"
   when:
     - groups.get(grafana_server_group_name, []) | length > 0
     - ip_version == 'ipv6'
