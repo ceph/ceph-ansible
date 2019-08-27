@@ -80,14 +80,12 @@
     changed_when: false
     when:
       - devices | default([]) | length > 0
-      - not (lvm_batch_report.stdout | default('{}') | from_json).changed | default(false) | bool
 
-  - name: set_fact num_osds from the output of 'ceph-volume lvm list'
+  - name: set_fact num_osds (add existing osds)
     set_fact:
-      num_osds: "{{ lvm_list.stdout | default('{}') | from_json | length | int }}"
+      num_osds: "{{ lvm_list.stdout | default('{}') | from_json | length | int + num_osds | default(0) | int }}"
     when:
       - devices | default([]) | length > 0
-      - not (lvm_batch_report.stdout | default('{}') | from_json).changed | default(false) | bool
 
 - name: create ceph conf directory
   file:
