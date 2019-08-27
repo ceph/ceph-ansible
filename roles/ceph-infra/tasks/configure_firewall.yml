@@ -154,6 +154,18 @@
       - iscsi_gw_group_name in group_names
     tags: firewall
 
+  - name: open iscsi/prometheus port
+    firewalld:
+      port: "9287/tcp"
+      zone: "{{ ceph_iscsi_firewall_zone }}"
+      permanent: true
+      immediate: true
+      state: enabled
+    when:
+      - iscsi_gw_group_name is defined
+      - iscsi_gw_group_name in group_names
+    tags: firewall
+
   - name: open node_exporter port
     firewalld:
       port: "{{ node_exporter_port }}/tcp"
