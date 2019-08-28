@@ -1,24 +1,7 @@
 ---
-# SUSE only supports the following:
-# - ceph_origin == 'distro'
-# - ceph_origin == 'repository' and ceph_repository == 'obs'
-- name: Check for supported installation method on suse
-  fail:
-    msg: "Unsupported installation method origin:{{ ceph_origin }} repo:{{ ceph_repository }}'"
-  when: ceph_origin != 'distro' or (ceph_origin == 'repository' and ceph_repository != 'obs')
-
 - name: include configure_suse_repository_installation.yml
   include_tasks: configure_suse_repository_installation.yml
   when: ceph_origin == 'repository'
-
-- name: install dependencies
-  zypper:
-    name: "{{ item }}"
-    state: present
-    update_cache: yes
-  with_items: "{{ suse_package_dependencies }}"
-  register: result
-  until: result is succeeded
 
 - name: include install_suse_packages.yml
   include_tasks: install_suse_packages.yml

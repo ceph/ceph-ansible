@@ -10,7 +10,7 @@
   register: result
   until: result is succeeded
 
-- name: install redhat ceph-mds package
+- name: install ceph-mds package on redhat or SUSE/openSUSE
   package:
     name: "ceph-mds"
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
@@ -18,7 +18,7 @@
   until: result is succeeded
   when:
     - mds_group_name in group_names
-    - ansible_os_family == 'RedHat'
+    - ansible_os_family in ['Suse', 'RedHat']
 
 - name: create mds keyring
   command: ceph --cluster {{ cluster }} --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring auth get-or-create mds.{{ mds_name }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/{{ cluster }}-{{ mds_name }}/keyring

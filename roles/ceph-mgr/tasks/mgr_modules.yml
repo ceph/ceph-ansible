@@ -5,14 +5,15 @@
   when: dashboard_enabled | bool
 
 - name: wait for all mgr to be up
-  shell: "{{ container_exec_cmd_mgr | default('') }} ceph --cluster {{ cluster }} mgr dump -f json | python -c 'import sys, json; print(json.load(sys.stdin)[\"available\"])'"
+  command: "{{ container_exec_cmd_mgr | default('') }} ceph --cluster {{ cluster }} mgr dump -f json"
   register: mgr_dump
   retries: 30
   delay: 5
   delegate_to: "{{ groups[mon_group_name][0] }}"
+  changed_when: false
   until:
     - mgr_dump.rc == 0
-    - mgr_dump.stdout | bool
+    - (mgr_dump.stdout | from_json).available | bool
 
 - name: get enabled modules from ceph-mgr
   command: "{{ container_exec_cmd_mgr | default('') }} ceph --cluster {{ cluster }} --format json mgr module ls"
