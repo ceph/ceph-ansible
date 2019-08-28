@@ -33,13 +33,13 @@
 
       - name: activate containerized osd(s)
         shell: |
-          DOCKER_ENV=$(docker run --rm --net=host --ulimit nofile=1024:1024 \
+          DOCKER_ENV=$(docker run --rm --net=host --ulimit nofile=1024:4096 \
           --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z \
           -e CLUSTER={{ cluster }} -e OSD_DEVICE={{ item }} \
           {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
           disk_list)
           docker run --rm --net=host \
-          --ulimit nofile=1024:1024 \
+          --ulimit nofile=1024:4096 \
           --ipc=host --pid=host --privileged=true \
           -v /etc/ceph:/etc/ceph:z \
           -v /var/lib/ceph/:/var/lib/ceph/:z \
@@ -80,7 +80,7 @@
 
 - name: set_fact docker_exec_start_osd
   set_fact:
-    docker_exec_start_osd: "{{ 'docker run --rm --ulimit nofile=1024:1024 --privileged=true -v /run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket -v /var/run/udev/:/var/run/udev/:z -v /etc/ceph:/etc/ceph:z -v /dev:/dev --entrypoint=ceph-volume ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'ceph-volume' }}"
+    docker_exec_start_osd: "{{ 'docker run --rm --ulimit nofile=1024:4096 --privileged=true -v /run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket -v /var/run/udev/:/var/run/udev/:z -v /etc/ceph:/etc/ceph:z -v /dev:/dev --entrypoint=ceph-volume ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'ceph-volume' }}"
   when: osd_scenario == 'lvm'
 
 - name: collect osd ids
