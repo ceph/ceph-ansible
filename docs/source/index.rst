@@ -296,7 +296,7 @@ Demos
 Vagrant Demo
 ------------
 
-Deployment from scratch on bare metal machines: https://youtu.be/E8-96NamLDo
+Deployment from scratch on Vagrant Sandbox: https://youtu.be/E8-96NamLDo
 
 Bare metal demo
 ---------------
