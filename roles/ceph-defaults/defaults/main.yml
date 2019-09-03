@@ -20,6 +20,7 @@ ceph_release_num:
   luminous: 12
   mimic: 13
   nautilus: 14
+  octopus: 15
   dev: 99
 
 # Directory to fetch cluster fsid, keys etc...
@@ -201,7 +202,7 @@ ceph_stable_release_uca: "{{ ansible_distribution_release }}-updates/{{ ceph_sta
 # usually has newer Ceph releases than the normal distro repository.
 #
 #
-#ceph_obs_repo: "https://download.opensuse.org/repositories/filesystems:/ceph:/luminous/openSUSE_Leap_{{ ansible_distribution_version }}/"
+ceph_obs_repo: "https://download.opensuse.org/repositories/filesystems:/ceph:/{{ ceph_stable_release }}/openSUSE_Leap_{{ ansible_distribution_version }}/"
 
 # REPOSITORY: DEV
 #
@@ -227,6 +228,7 @@ ceph_iscsi_config_dev: true # special repo for deploying iSCSI gateways
 # a URL to the .repo file to be installed on the targets.  For deb,
 # ceph_custom_repo should be the URL to the repo base.
 #
+ceph_custom_key: https://server.domain.com/ceph-custom-repo-key.asc
 ceph_custom_repo: https://server.domain.com/ceph-custom-repo
 
 
@@ -682,11 +684,11 @@ openstack_pools:
 # By default, keys will be auto-generated.
 #
 openstack_keys:
-  - { name: client.glance, caps: { mon: "profile rbd", osd: "profile rbd pool=volumes, profile rbd pool={{ openstack_glance_pool.name }}, osd blacklist"}, mode: "0600" }
-  - { name: client.cinder, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_glance_pool.name }}, osd blacklist"}, mode: "0600" }
-  - { name: client.cinder-backup, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_backup_pool.name }}, osd blacklist"}, mode: "0600" }
-  - { name: client.gnocchi, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_gnocchi_pool.name }}, osd blacklist"}, mode: "0600", }
-  - { name: client.openstack, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_glance_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_cinder_backup_pool.name }}, osd blacklist"}, mode: "0600" }
+  - { name: client.glance, caps: { mon: "profile rbd", osd: "profile rbd pool=volumes, profile rbd pool={{ openstack_glance_pool.name }}"}, mode: "0600" }
+  - { name: client.cinder, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_glance_pool.name }}"}, mode: "0600" }
+  - { name: client.cinder-backup, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_cinder_backup_pool.name }}"}, mode: "0600" }
+  - { name: client.gnocchi, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_gnocchi_pool.name }}"}, mode: "0600", }
+  - { name: client.openstack, caps: { mon: "profile rbd", osd: "profile rbd pool={{ openstack_glance_pool.name }}, profile rbd pool={{ openstack_nova_pool.name }}, profile rbd pool={{ openstack_cinder_pool.name }}, profile rbd pool={{ openstack_cinder_backup_pool.name }}"}, mode: "0600" }
 
 
 #############

@@ -44,11 +44,11 @@ check_socket() {
 check_for_curl_or_wget() {
   local i=$1
   if ${DOCKER_EXECS[i]} command -v wget &>/dev/null; then
-    rgw_test_command="wget --tries 1 --quiet -O /dev/null"
+    rgw_test_command="wget --no-check-certificate --tries 1 --quiet -O /dev/null"
   elif ${DOCKER_EXECS[i]} command -v curl &>/dev/null; then
-    rgw_test_command="curl --fail --silent --output /dev/null"
+    rgw_test_command="curl -k --fail --silent --output /dev/null"
   else
-    echo "It seems that neither curl or wget are available on your system."
+    echo "It seems that neither curl nor wget are available on your system."
     echo "Cannot test rgw connection."
     exit 0
   fi

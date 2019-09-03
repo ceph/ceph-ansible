@@ -10,8 +10,8 @@
   when: ceph_current_status.fsid is defined
 
 - name: generate monitor initial keyring
-  shell: >
-    python -c "import os ; import struct ;
+  command: >
+    {{ discovered_interpreter_python }} -c "import os ; import struct ;
     import time; import base64 ; key = os.urandom(16) ;
     header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ;
     print(base64.b64encode(header + key).decode())"
@@ -56,7 +56,7 @@
     state: directory
     owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    mode: "u=rwX,g=rX,o=rX"
+    mode: "{{ ceph_directories_mode | default('0755') }}"
     recurse: true
 
 - name: create custom admin keyring
