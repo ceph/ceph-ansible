@@ -2,17 +2,17 @@
 # Defines deployment design and assigns role to server groups
 
 - hosts:
-  - mons
-  - osds
-  - mdss
-  - rgws
-  - nfss
-  - rbdmirrors
-  - clients
-  - iscsigws
+  - "{{ mon_group_name|default('mons') }}"
+  - "{{ osd_group_name|default('osds') }}"
+  - "{{ mds_group_name|default('mdss') }}"
+  - "{{ rgw_group_name|default('rgws') }}"
+  - "{{ nfs_group_name|default('nfss') }}"
+  - "{{ rbd_mirror_group_name|default('rbdmirrors') }}"
+  - "{{ client_group_name|default('clients') }}"
+  - "{{ mgr_group_name|default('mgrs') }}"
+  - "{{ iscsi_gw_group_name|default('iscsigws') }}"
   - iscsi-gws # for backward compatibility only!
-  - mgrs
-  - grafana-server
+  - "{{ grafana_server_group_name|default('grafana-server') }}"
 
   gather_facts: false
   become: True
@@ -75,9 +75,9 @@
     - import_role:
         name: ceph-container-common
       tags: fetch_container_image
-      when: not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first)
+      when: not (inventory_hostname in groups.get(client_group_name, [])) or (inventory_hostname == groups.get(client_group_name, [''])|first)
 
-- hosts: mons
+- hosts: "{{ mon_group_name|default('mons') }}"
   any_errors_fatal: true
   tasks:
     - name: set ceph monitor install 'In Progress'
@@ -88,7 +88,7 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: mons
+- hosts: "{{ mon_group_name|default('mons') }}"
   become: True
   gather_facts: false
   any_errors_fatal: true
@@ -114,7 +114,7 @@
         name: ceph-mgr
       when: groups.get(mgr_group_name, []) | length == 0
 
-- hosts: mons
+- hosts: "{{ mon_group_name|default('mons') }}"
   any_errors_fatal: true
   tasks:
     - name: set ceph monitor install 'Complete'
@@ -125,7 +125,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: mgrs
+- hosts: "{{ mgr_group_name|default('mgrs') }}"
   become: True
   gather_facts: false
   any_errors_fatal: true
@@ -166,7 +166,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: osds
+- hosts: "{{ osd_group_name|default('osds') }}"
   become: True
   gather_facts: false
   any_errors_fatal: true
@@ -207,7 +207,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: mdss
+- hosts: "{{ mds_group_name|default('mdss') }}"
   become: True
   gather_facts: false
   any_errors_fatal: true
@@ -248,7 +248,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: rgws
+- hosts: "{{ rgw_group_name|default('rgws') }}"
   become: True
   gather_facts: false
   any_errors_fatal: true
@@ -289,7 +289,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: nfss
+- hosts: "{{ nfs_group_name|default('nfss') }}"
   become: True
   gather_facts: false
   any_errors_fatal: true
@@ -330,7 +330,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: rbdmirrors
+- hosts: "{{ rbd_mirror_group_name|default('rbdmirrors') }}"
   become: True
   gather_facts: false
   any_errors_fatal: true
@@ -371,7 +371,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: clients
+- hosts: "{{ client_group_name|default('clients') }}"
   become: True
   gather_facts: false
   any_errors_fatal: true
@@ -395,10 +395,10 @@
         name: ceph-handler
     - import_role:
         name: ceph-container-engine
-      when: inventory_hostname == groups.get('clients', ['']) | first
+      when: inventory_hostname == groups.get(client_group_name, ['']) | first
     - import_role:
         name: ceph-container-common
-      when: inventory_hostname == groups.get('clients', ['']) | first
+      when: inventory_hostname == groups.get(client_group_name, ['']) | first
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -415,7 +415,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts:
-    - iscsigws
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - iscsi-gws # for backward compatibility only!
   gather_facts: false
   any_errors_fatal: true
@@ -458,7 +458,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: mons
+- hosts: "{{ mon_group_name|default('mons') }}"
   gather_facts: false
   become: True
   any_errors_fatal: true

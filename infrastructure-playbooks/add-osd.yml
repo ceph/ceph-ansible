@@ -16,8 +16,8 @@
 # and let uncommented the new OSDs.
 #
 - hosts:
-  - mons
-  - osds
+  - "{{ mon_group_name|default('mons') }}"
+  - "{{ osd_group_name|default('osds') }}"
 
   gather_facts: False
   become: true
@@ -50,7 +50,7 @@
     - import_role:
         name: ceph-validate
 
-- hosts: osds
+- hosts: "{{ osd_group_name|default('osds') }}"
   gather_facts: False
   become: True
 
@@ -83,7 +83,7 @@
 
     - name: set noup flag
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set noup"
-      delegate_to: "{{ groups['mons'][0] }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
       changed_when: False
 
@@ -114,6 +114,6 @@
   post_tasks:
     - name: unset noup flag
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset noup"
-      delegate_to: "{{ groups['mons'][0] }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
       changed_when: False

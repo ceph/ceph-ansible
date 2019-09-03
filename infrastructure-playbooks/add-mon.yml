@@ -6,7 +6,7 @@
 # Ensure that all monitors are present in the mons
 # group in your inventory so that the ceph configuration file
 # is created correctly for the new OSD(s).
-- hosts: mons
+- hosts: "{{ mon_group_name|default('mons') }}"
   gather_facts: false
   vars:
     delegate_facts_host: true
@@ -29,7 +29,7 @@
     - import_role:
         name: ceph-validate
 
-- hosts: mons
+- hosts: "{{ mon_group_name|default('mons') }}"
   gather_facts: false
   become: true
   tasks:
@@ -53,7 +53,7 @@
         name: ceph-mon
 
 # update config files on OSD nodes
-- hosts: osds
+- hosts: "{{ osd_group_name|default('osds') }}"
   gather_facts: true
   become: true
   tasks:

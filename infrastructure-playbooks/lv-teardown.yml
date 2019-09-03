@@ -1,6 +1,6 @@
 - name: tear down existing osd filesystems then logical volumes, volume groups, and physical volumes
   become: true
-  hosts: osds
+  hosts: "{{ osd_group_name|default('osds') }}"
 
   vars_prompt:
     - name: ireallymeanit
@@ -53,7 +53,7 @@
       force: yes
     with_items: "{{ nvme_device_lvs }}"
 
-  - name: tear down any existing hdd data lvs 
+  - name: tear down any existing hdd data lvs
     lvol:
       lv: "{{ hdd_lv_prefix }}-{{ item.split('/')[-1] }}"
       vg: "{{ hdd_vg_prefix }}-{{ item.split('/')[-1] }}"

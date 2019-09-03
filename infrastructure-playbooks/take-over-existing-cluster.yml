@@ -11,7 +11,7 @@
 # 4. Run the playbook called: `take-over-existing-cluster.yml` like this `ansible-playbook take-over-existing-cluster.yml`.
 # 5. Eventually run Ceph Ansible to validate everything by doing: `ansible-playbook site.yml`.
 
-- hosts: mons
+- hosts: "{{ mon_group_name|default('mons') }}"
   become: True
   tasks:
     - import_role:
@@ -20,15 +20,17 @@
         name: ceph-fetch-keys
 
 - hosts:
-  - mons
-  - osds
-  - mdss
-  - rgws
-  - nfss
-  - rbdmirrors
-  - clients
-  - mgrs
-  - iscsi-gw
+  - "{{ mon_group_name|default('mons') }}"
+  - "{{ osd_group_name|default('osds') }}"
+  - "{{ mds_group_name|default('mdss') }}"
+  - "{{ rgw_group_name|default('rgws') }}"
+  - "{{ nfs_group_name|default('nfss') }}"
+  - "{{ rbd_mirror_group_name|default('rbdmirrors') }}"
+  - "{{ client_group_name|default('clients') }}"
+  - "{{ mgr_group_name|default('mgrs') }}"
+  - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  - iscsi-gws # for backward compatibility only!
+
   become: true
   tasks:
     - import_role:

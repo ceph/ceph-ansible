@@ -2,18 +2,18 @@
 # Defines deployment design and assigns role to server groups
 
 - hosts:
-  - mons
-  - osds
-  - mdss
-  - rgws
-  - nfss
-  - rbdmirrors
-  - clients
-  - mgrs
-  - iscsigws
+  - "{{ mon_group_name|default('mons') }}"
+  - "{{ osd_group_name|default('osds') }}"
+  - "{{ mds_group_name|default('mdss') }}"
+  - "{{ rgw_group_name|default('rgws') }}"
+  - "{{ nfs_group_name|default('nfss') }}"
+  - "{{ rbd_mirror_group_name|default('rbdmirrors') }}"
+  - "{{ client_group_name|default('clients') }}"
+  - "{{ mgr_group_name|default('mgrs') }}"
+  - "{{ iscsi_gw_group_name|default('iscsigws') }}"
   - iscsi-gws # for backward compatibility only!
-  - grafana-server
-  - rgwloadbalancers
+  - "{{ grafana_server_group_name|default('grafana-server') }}"
+  - "{{ rgwloadbalancer_group_name|default('rgwloadbalancers') }}"
 
   gather_facts: false
   any_errors_fatal: true
@@ -71,7 +71,7 @@
     - import_role:
         name: ceph-infra
 
-- hosts: mons
+- hosts: "{{ mon_group_name|default('mons') }}"
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -113,7 +113,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: mgrs
+- hosts: "{{ mgr_group_name|default('mgrs') }}"
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -152,7 +152,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: osds
+- hosts: "{{ osd_group_name|default('osds') }}"
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -191,7 +191,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: mdss
+- hosts: "{{ mds_group_name|default('mdss') }}"
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -230,7 +230,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: rgws
+- hosts: "{{ rgw_group_name|default('rgws') }}"
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -269,7 +269,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: nfss
+- hosts: "{{ nfs_group_name|default('nfss') }}"
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -308,7 +308,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: rbdmirrors
+- hosts: "{{ rbd_mirror_group_name|default('rbdmirrors') }}"
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -347,7 +347,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: clients
+- hosts: "{{ client_group_name|default('clients') }}"
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -387,7 +387,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts:
-    - iscsigws
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - iscsi-gws # for backward compatibility only!
   gather_facts: false
   become: True
@@ -428,7 +428,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts:
-    - rgwloadbalancers
+    - "{{ rgwloadbalancer_group_name|default('rgwloadbalancers') }}"
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -460,7 +460,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: mons
+- hosts: "{{ mon_group_name|default('mons') }}"
   gather_facts: false
   become: True
   any_errors_fatal: true
