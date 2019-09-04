@@ -8,14 +8,8 @@
   when: cephx | bool
 
 - name: tasks for non-containerized deployment
+  include_tasks: start_rbd_mirror.yml
   when: not containerized_deployment | bool
-  block:
-    - name: include start_rbd_mirror.yml
-      include_tasks: start_rbd_mirror.yml
-
-    - name: include configure_mirroring.yml
-      include_tasks: configure_mirroring.yml
-      when: ceph_rbd_mirror_configure | bool
 
 - name: tasks for containerized deployment
   when: containerized_deployment | bool
@@ -26,3 +20,7 @@
 
     - name: include container/main.yml
       include_tasks: container/main.yml
+
+- name: include configure_mirroring.yml
+  include_tasks: configure_mirroring.yml
+  when: ceph_rbd_mirror_configure | bool
