@@ -18,13 +18,11 @@
   when:
     - not containerized_deployment
 
-- name: include configure_mirroring.yml
-  include_tasks: configure_mirroring.yml
-  when:
-    - ceph_rbd_mirror_configure
-    - not containerized_deployment
-
 - name: include docker/main.yml
   include_tasks: docker/main.yml
   when:
     - containerized_deployment
+
+- name: include configure_mirroring.yml
+  include_tasks: configure_mirroring.yml
+  when: ceph_rbd_mirror_configure | bool
