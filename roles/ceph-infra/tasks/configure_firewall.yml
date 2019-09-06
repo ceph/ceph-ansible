@@ -18,15 +18,16 @@
 
   - name: open monitor and manager ports
     firewalld:
-      service: "{{ item.service }}"
-      zone: "{{ item.zone }}"
-      source: "{{ public_network }}"
+      service: "{{ item[1].service }}"
+      zone: "{{ item[1].zone }}"
+      source: "{{ item[0] }}"
       permanent: true
       immediate: true
       state: enabled
-    with_items:
-      - { 'service': 'ceph-mon', 'zone': "{{ ceph_mon_firewall_zone }}" }
-      - { 'service': 'ceph', 'zone': "{{ ceph_mgr_firewall_zone }}" }
+    with_nested:
+      - "{{ public_network.split(',') }}"
+      - - { 'service': 'ceph-mon', 'zone': "{{ ceph_mon_firewall_zone }}" }
+        - { 'service': 'ceph', 'zone': "{{ ceph_mgr_firewall_zone }}" }
     when:
       - mon_group_name is defined
       - mon_group_name in group_names
@@ -37,10 +38,11 @@
     firewalld:
       service: ceph
       zone: "{{ ceph_mgr_firewall_zone }}"
-      source: "{{ public_network }}"
+      source: "{{ item }}"
       permanent: true
       immediate: true
       state: enabled
+    with_items: "{{ public_network.split(',') }}"
     when:
       - mgr_group_name is defined
       - mgr_group_name in group_names
@@ -55,9 +57,7 @@
       permanent: true
       immediate: true
       state: enabled
-    with_items:
-      - "{{ public_network }}"
-      - "{{ cluster_network }}"
+    with_items: "{{ public_network.split(',') | union(cluster_network.split(',')) }}"
     when:
       - osd_group_name is defined
       - osd_group_name in group_names
@@ -68,10 +68,11 @@
     firewalld:
       port: "{{ radosgw_frontend_port }}/tcp"
       zone: "{{ ceph_rgw_firewall_zone }}"
-      source: "{{ public_network }}"
+      source: "{{ item }}"
       permanent: true
       immediate: true
       state: enabled
+    with_items: "{{ public_network.split(',') }}"
     when:
       - rgw_group_name is defined
       - rgw_group_name in group_names
@@ -82,10 +83,11 @@
     firewalld:
       service: ceph
       zone: "{{ ceph_mds_firewall_zone }}"
-      source: "{{ public_network }}"
+      source: "{{ item }}"
       permanent: true
       immediate: true
       state: enabled
+    with_items: "{{ public_network.split(',') }}"
     when:
       - mds_group_name is defined
       - mds_group_name in group_names
@@ -96,10 +98,11 @@
     firewalld:
       service: nfs
       zone: "{{ ceph_nfs_firewall_zone }}"
-      source: "{{ public_network }}"
+      source: "{{ item }}"
       permanent: true
       immediate: true
       state: enabled
+    with_items: "{{ public_network.split(',') }}"
     when:
       - nfs_group_name is defined
       - nfs_group_name in group_names
@@ -110,10 +113,11 @@
     firewalld:
       port: "111/tcp"
       zone: "{{ ceph_nfs_firewall_zone }}"
-      source: "{{ public_network }}"
+      source: "{{ item }}"
       permanent: true
       immediate: true
       state: enabled
+    with_items: "{{ public_network.split(',') }}"
     when:
       - nfs_group_name is defined
       - nfs_group_name in group_names
@@ -124,10 +128,11 @@
     firewalld:
       service: ceph
       zone: "{{ ceph_rbdmirror_firewall_zone }}"
-      source: "{{ public_network }}"
+      source: "{{ item }}"
       permanent: true
       immediate: true
       state: enabled
+    with_items: "{{ public_network.split(',') }}"
     when:
       - rbdmirror_group_name is defined
       - rbdmirror_group_name in group_names
@@ -138,10 +143,11 @@
     firewalld:
       port: "3260/tcp"
       zone: "{{ ceph_iscsi_firewall_zone }}"
-      source: "{{ public_network }}"
+      source: "{{ item }}"
       permanent: true
       immediate: true
       state: enabled
+    with_items: "{{ public_network.split(',') }}"
     when:
       - iscsi_gw_group_name is defined
       - iscsi_gw_group_name in group_names
@@ -152,10 +158,11 @@
     firewalld:
       port: "{{ api_port | default(5000) }}/tcp"
       zone: "{{ ceph_iscsi_firewall_zone }}"
-      source: "{{ public_network }}"
+      source: "{{ item }}"
       permanent: true
       immediate: true
       state: enabled
+    with_items: "{{ public_network.split(',') }}"
     when:
       - iscsi_gw_group_name is defined
       - iscsi_gw_group_name in group_names
