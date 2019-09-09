@@ -79,6 +79,10 @@ system_secret_key: MGecsMrWtKZgngOHZdrd6d3JxGO5CPWgT2lcnpSt
 rgw_pull_proto: http
 rgw_pull_port: 8080
 rgw_pullhost: cluster0-rgw0
+rgw_primary_endpoints:
+  - http://cluster0-rgw0:8080
+  - http://cluster0-rgw1:8080
+  - http://cluster1-rgw0:8080
 ```
 
 **Note:** `rgw_zonemaster` should have the value of `false` and `rgw_zonesecondary` should be `true`
@@ -87,7 +91,9 @@ rgw_pullhost: cluster0-rgw0
 
 **Note:** `rgw_zone_user`, `system_access_key`, and `system_secret_key` should match what you used in the Primary Cluster
 
-**Note:** `ansible_fqdn` domain name assigned to `rgw_multisite_endpoint_addr` must be resolvable from the Primary Ceph cluster's mon and rgw node(s)
+**Note:** `ansible_fqdn` domain name assigned to `rgw_multisite_endpoint_addr` must be resolvable from the Primary Ceph clusters mon and rgw node(s)
+
+**Note:** rgw_primary_endpoints is a dictionary of rgw endpoints (in the same endpoint format as rgw_multisite_endpoints) from other ceph clusters sites that your rgw is going to be joining. It is highly recommended that you define this variable to check for connectivity issues before running multisite specific tasks.
 
 **Note:** if there is more than 1 RGW in the Secondary Cluster, `rgw_multisite_endpoints` needs to be set with the RGWs in the Secondary Cluster just like it was set in the Primary Cluster
 

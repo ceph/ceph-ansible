@@ -1,4 +1,9 @@
 ---
+- name: check connectivity to other cluster's rgw endpoints
+  command: "curl -L {{ item }}"
+  with_items: "{{ rgw_primary_endpoints }}" 
+  when: rgw_primary_endpoints is defined
+
 - name: fetch the realm
   command: "{{ container_exec_cmd }} radosgw-admin realm pull --url={{ rgw_pull_proto }}://{{ rgw_pullhost }}:{{ rgw_pull_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
