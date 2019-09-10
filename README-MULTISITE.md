@@ -55,11 +55,30 @@ system_secret_key: MGecsMrWtKZgngOHZdrd6d3JxGO5CPWgT2lcnpSt
 for example: `rgw_multisite_endpoints: http://foo.example.com:8080,http://bar.example.com:8080,http://baz.example.com:8080`
 
 
-3. Run the ceph-ansible playbook on your 1st cluster
+3. **(Optional)** Edit the rgws.yml in group_vars for rgw related pool creation
+
+```
+rgw_create_pools:
+  "{{ rgw_zone }}.rgw.buckets.data":
+    pg_num: 64
+    size: ""
+    pool_type: ec
+    ec_profile: myecprofile
+    ec_k: 5
+    ec_m: 3
+  "{{ rgw_zone }}.rgw.buckets.index":
+    pg_num: 8
+    size: ""
+    pool_type: replicated
+```
+
+**Note:** A pgcalc tool should be used to determine the optimal sizes for the rgw.buckets.data, rgw.buckets.index pools as well as any other pools declared in this dictionary.
+
+4. Run the ceph-ansible playbook on your 1st cluster
 
 ## Configuring the Secondary Zone in a Separate Cluster
 
-4. Edit the all.yml in group_vars
+5. Edit the all.yml in group_vars
 
 ```
 copy_admin_key: true
@@ -87,11 +106,31 @@ rgw_pullhost: cluster0-rgw0
 
 **Note:** `rgw_zone_user`, `system_access_key`, and `system_secret_key` should match what you used in the Primary Cluster
 
-**Note:** `ansible_fqdn` domain name assigned to `rgw_multisite_endpoint_addr` must be resolvable from the Primary Ceph cluster's mon and rgw node(s)
+**Note:** `ansible_fqdn` domain name assigned to `rgw_multisite_endpoint_addr` must be resolvable from the Primary Ceph clusters mon and rgw node(s)
 
 **Note:** if there is more than 1 RGW in the Secondary Cluster, `rgw_multisite_endpoints` needs to be set with the RGWs in the Secondary Cluster just like it was set in the Primary Cluster
 
-5. Run the ceph-ansible playbook on your 2nd cluster
+6. **(Optional)** Edit the rgws.yml in group_vars for rgw related pool creation
+
+```
+rgw_create_pools:
+  "{{ rgw_zone }}.rgw.buckets.data":
+    pg_num: 64
+    size: ""
+    pool_type: ec
+    ec_profile: myecprofile
+    ec_k: 5
+    ec_m: 3
+  "{{ rgw_zone }}.rgw.buckets.index":
+    pg_num: 8
+    size: ""
+    pool_type: replicated
+```
+**Note:** The pg_num values should match the values for the rgw pools created on the primary cluster. Mismatching pg_num values on different sites can result in very poor performance.
+
+**Note:** An online pgcalc tool (ex: https://ceph.io/pgcalc) should be used to determine the optimal sizes for the rgw.buckets.data, rgw.buckets.index pools as well as any other pools declared in this dictionary.
+
+7. Run the ceph-ansible playbook on your 2nd cluster
 
 ## Conclusion
 

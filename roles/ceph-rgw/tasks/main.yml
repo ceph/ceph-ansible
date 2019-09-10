@@ -6,6 +6,10 @@
   include_tasks: pre_requisite.yml
   when: not containerized_deployment | bool
 
+- name: rgw pool creation tasks
+  include_tasks: rgw_create_pools.yml
+  when: rgw_create_pools is defined
+
 - name: include_tasks openstack-keystone.yml
   include_tasks: openstack-keystone.yml
   when: radosgw_keystone_ssl | bool
@@ -21,34 +25,3 @@
 - name: include_tasks multisite/main.yml
   include_tasks: multisite/main.yml
   when: rgw_multisite | bool
-
-- name: rgw pool related tasks
-  when: rgw_create_pools is defined
-  block:
-    - name: create rgw pools if rgw_create_pools is defined
-      command: "{{ container_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num | default(osd_pool_default_pg_num) }}"
-      changed_when: false
-      with_dict: "{{ rgw_create_pools }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      register: result
-      until: result is succeeded
-      run_once: true
-
-    - name: customize pool size
-      command: "{{ container_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool set {{ item.key }} size {{ item.size | default(osd_pool_default_size) }}"
-      with_dict: "{{ rgw_create_pools }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      changed_when: false
-      run_once: true
-      register: result
-      until: result is succeeded
-      when: item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
-
-    - name: set the rgw_create_pools pools application to rgw
-      command: "{{ container_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool application enable {{ item.key }} rgw"
-      changed_when: false
-      with_dict: "{{ rgw_create_pools }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      register: result
-      until: result is succeeded
-      run_once: true
