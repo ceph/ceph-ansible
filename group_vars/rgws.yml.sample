@@ -32,21 +32,48 @@ dummy:
 # limit will require admin intervention.
 #rgw_bucket_default_quota_max_objects: 1638400 # i.e., 100K * 16
 
-# This dictionary will create pools with the given number of pgs.
-# This is important because they would be created with the default
-# of 8.
-# New pools and their corresponding pg_nums can be created
-# by adding to the rgw_create_pools dictionary (see foo).
+# Declaring rgw_create_pools will create pools with the given number of pgs,
+# size, and type. The following are some important notes on this automatic
+# pool creation:
+#   - The pools and associated pg_num's below are merely examples of pools that
+#     could be automatically created when rgws are deployed.
+#   - The default pg_num is 8 (from osd_pool_default_pg_num) for pool created
+#     if rgw_create_pools isn't declared and configured.
+#   - A pgcalc tool should be used to determine the optimal sizes for
+#     the rgw.buckets.data, rgw.buckets.index pools as well as any other
+#     pools declared in this dictionary.
+#     https://ceph.io/pgcalc is the upstream pgcalc tool
+#     https://access.redhat.com/labsinfo/cephpgc is a pgcalc tool offered by
+#     Red Hat if you are using RHCS.
+#   - The default value of {{ rgw_zone }} is 'default'.
+#   - The type must be set as either 'replicated' or 'ec' for
+#     each pool.
+#   - If a pool's type is 'ec', k and m values must be set via
+#     the ec_k, and ec_m variables.
+
 #rgw_create_pools:
-#  defaults.rgw.buckets.data:
+#  "{{ rgw_zone }}.rgw.buckets.data":
+#    pg_num: 64
+#    type: ec
+#    ec_profile: myecprofile
+#    ec_k: 5
+#    ec_m: 3
+#  "{{ rgw_zone }}.rgw.buckets.index":
 #    pg_num: 16
-#    size: ""
-#  defaults.rgw.buckets.index:
-#    pg_num: 32
-#    size: ""
-#  foo:
-#    pg_num: 4
-#    size: ""
+#    size: 3
+#    type: replicated
+#  "{{ rgw_zone }}.rgw.meta":
+#    pg_num: 8
+#    size: 3
+#    type: replicated
+#  "{{ rgw_zone }}.rgw.log":
+#    pg_num: 8
+#    size: 3
+#    type: replicated
+#  "{{ rgw_zone }}.rgw.control":
+#    pg_num: 8
+#    size: 3
+#    type: replicated
 
 
 ##########
