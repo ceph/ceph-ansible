@@ -184,7 +184,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       grf.vm.hostname = "#{LABEL_PREFIX}grafana#{i}"
       if ASSIGN_STATIC_IP
         grf.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.3#{i}"
+          ip: "#{PUBLIC_SUBNET}.2#{i}"
       end
       # Virtualbox
       grf.vm.provider :virtualbox do |vb|
