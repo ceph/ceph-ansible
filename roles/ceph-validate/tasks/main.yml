@@ -117,3 +117,10 @@
         msg: "you must add at least one node in the [grafana-server] hosts group"
       when: groups[grafana_server_group_name] | length < 1
   when: dashboard_enabled | bool
+
+- name: validate container registry credentials
+  fail:
+    msg: 'ceph_docker_registry_username and/or ceph_docker_registry_password variables need to be set'
+  when:
+    - ceph_docker_registry_auth | bool
+    - ceph_docker_registry_username is not defined or ceph_docker_registry_password is not defined
