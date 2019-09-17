@@ -57,6 +57,18 @@
   tasks:
     - debug: msg="gather facts on all Ceph hosts for following reference"
 
+    - set_fact:
+        ceph_hosts_all:
+          "{{ groups[mon_group_name|default('mons')]
+            + groups[osd_group_name|default('osds')]
+            + groups[mds_group_name|default('mdss')]
+            + groups[rgw_group_name|default('rgws')]
+            + groups[mgr_group_name|default('mgrs')]
+            + groups[rbd_mirror_group_name|default('rbdmirrors')]
+            + groups[nfs_group_name|default('nfss')]
+            + groups[client_group_name|default('clients')]
+            + groups[iscsi_gw_group_name|default('iscsigws')] }}"
+
     - name: gather facts
       setup:
       when: not delegate_facts_host | bool
@@ -65,7 +77,7 @@
       setup:
       delegate_to: "{{ item }}"
       delegate_facts: True
-      with_items: "{{ groups['all'] }}"
+      with_items: "{{ ceph_hosts_all }}"
       run_once: true
       when: delegate_facts_host | bool
 
@@ -811,7 +823,16 @@
         name: ceph-client
 
 - name: complete upgrade
-  hosts: all
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ rbd_mirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ client_group_name|default('clients') }}"
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
   become: True
   tasks:
     - import_role:

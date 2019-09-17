@@ -34,11 +34,25 @@
       setup:
       when: not delegate_facts_host | bool
 
+    - set_fact:
+        ceph_hosts_all:
+          "{{ groups[mon_group_name|default('mons')]
+            + groups[osd_group_name|default('osds')]
+            + groups[mds_group_name|default('mdss')]
+            + groups[rgw_group_name|default('rgws')]
+            + groups[mgr_group_name|default('mgrs')]
+            + groups[rbd_mirror_group_name|default('rbdmirrors')]
+            + groups[nfs_group_name|default('nfss')]
+            + groups[client_group_name|default('clients')]
+            + groups[iscsi_gw_group_name|default('iscsigws')]
+            + groups[grafana_server_group_name|default('grafana-server')]
+            + groups[rgwloadbalancer_group_name|default('rgwloadbalancers')] }}"
+
     - name: gather and delegate facts
       setup:
       delegate_to: "{{ item }}"
       delegate_facts: True
-      with_items: "{{ groups['all'] }}"
+      with_items: "{{ ceph_hosts_all }}"
       run_once: true
       when: delegate_facts_host | bool
 
