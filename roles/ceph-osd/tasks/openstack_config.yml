@@ -67,40 +67,38 @@
       when: item.application is defined
 
 - name: create openstack cephx key(s)
-  ceph_key:
-    state: present
-    name: "{{ item.name }}"
-    caps: "{{ item.caps }}"
-    secret: "{{ item.key | default('') }}"
-    cluster: "{{ cluster }}"
-    mode: "{{ item.mode|default(omit) }}"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-  with_items: "{{ openstack_keys }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  when: cephx | bool
+  block:
+    - name: generate keys
+      ceph_key:
+        state: present
+        name: "{{ item.name }}"
+        caps: "{{ item.caps }}"
+        secret: "{{ item.key | default('') }}"
+        cluster: "{{ cluster }}"
+        mode: "{{ item.mode|default(omit) }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      with_items: "{{ openstack_keys }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
 
-- name: fetch openstack cephx key(s)
-  fetch:
-    src: "/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
-    dest: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.{{ item.name }}.keyring"
-    flat: yes
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  with_items: "{{ openstack_keys }}"
+    - name: get keys from monitors
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
+      register: _osp_keys
+      with_items: "{{ openstack_keys }}"
+      delegate_to: "{{ groups.get(mon_group_name)[0] }}"
 
-- name: copy to other mons the openstack cephx key(s)
-  copy:
-    src: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
-    dest: "/etc/ceph/{{ cluster }}.{{ item.1.name }}.keyring"
-    owner: "{{ ceph_uid }}"
-    group: "{{ ceph_uid }}"
-    mode: "{{ item.1.mode|default(omit) }}"
-  with_nested:
-    - "{{ groups[mon_group_name] }}"
-    - "{{ openstack_keys }}"
-  delegate_to: "{{ item.0 }}"
+    - name: copy ceph key(s) if needed
+      copy:
+        dest: "/etc/ceph/{{ cluster }}.{{ item.0.item.name }}.keyring"
+        content: "{{ item.0.stdout + '\n' }}"
+        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        mode: "{{ item.0.item.mode }}"
+      with_nested:
+        - "{{ _osp_keys.results }}"
+        - "{{ groups[mon_group_name] }}"
+      delegate_to: "{{ item.1 }}"
   when:
     - cephx | bool
     - openstack_config | bool
-    - item.0 != groups[mon_group_name]
