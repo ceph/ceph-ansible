@@ -1,4 +1,11 @@
 ---
+- name: create a temporary directory
+  tempfile:
+    state: directory
+  register: iscsi_ssl_tmp_dir
+  delegate_to: localhost
+  run_once: true
+
 - name: set_fact crt_files
   set_fact:
     crt_files:
@@ -7,54 +14,75 @@
       - "iscsi-gateway.pem"
       - "iscsi-gateway-pub.key"
 
-- name: stat for crt file(s)
-  stat:
-    path: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
-  delegate_to: localhost
+- name: check for existing crt file(s) in monitor key/value store
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config get iscsi/ssl/{{ item }}"
   with_items: "{{ crt_files }}"
   changed_when: false
   failed_when: false
-  check_mode: no
+  run_once: true
+  delegate_to: "{{ groups.get(mon_group_name)[0] }}"
   register: crt_files_exist
 
-- name: create ssl crt/key files
-  command: >
-    openssl req -newkey rsa:2048 -nodes -keyout {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.key
-     -x509 -days 365 -out {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.crt
-     -subj "/C=US/ST=./L=./O=RedHat/OU=Linux/CN={{ ansible_hostname }}"
-  delegate_to: localhost
-  become: False
-  run_once: True
-  with_items: "{{ crt_files_exist.results }}"
-  when: not item.stat.exists
+- name: set_fact crt_files_missing
+  set_fact:
+    crt_files_missing: "{{ crt_files_exist.results | selectattr('rc', 'equalto', 0) | map(attribute='rc') | list | length != crt_files | length }}"
 
-- name: create pem
-  shell: >
-    cat {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.crt
-    {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.key > {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.pem
-  delegate_to: localhost
-  become: False
-  run_once: True
-  register: pem
-  with_items: "{{ crt_files_exist.results }}"
-  when: not item.stat.exists
+- name: generate ssl crt/key files
+  block:
+    - name: create ssl crt/key files
+      command: >
+        openssl req -newkey rsa:2048 -nodes -keyout {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway.key
+         -x509 -days 365 -out {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway.crt
+         -subj "/C=US/ST=./L=./O=RedHat/OU=Linux/CN={{ ansible_hostname }}"
+      delegate_to: localhost
+      run_once: True
+      with_items: "{{ crt_files_exist.results }}"
 
-- name: create public key from pem
-  shell: >
-    openssl x509 -inform pem -in {{ fetch_directory }}/{{ fsid }}/iscsi-gateway.pem
-    -pubkey -noout > {{ fetch_directory }}/{{ fsid }}/iscsi-gateway-pub.key
-  delegate_to: localhost
-  become: False
-  run_once: True
-  when: pem.changed
-  tags: skip_ansible_lint
+    - name: create pem
+      shell: >
+        cat {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway.crt
+        {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway.key > {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway.pem
+      delegate_to: localhost
+      run_once: True
+      register: pem
+      with_items: "{{ crt_files_exist.results }}"
+
+    - name: create public key from pem
+      shell: >
+        openssl x509 -inform pem -in {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway.pem
+        -pubkey -noout > {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway-pub.key
+      delegate_to: localhost
+      run_once: True
+      when: pem.changed
+      tags: skip_ansible_lint
+
+    - name: slurp ssl crt/key files
+      slurp:
+        src: "{{ iscsi_ssl_tmp_dir.path }}/{{ item }}"
+      register: iscsi_ssl_files_content
+      with_items: "{{ crt_files }}"
+      run_once: true
+      delegate_to: localhost
+
+    - name: store ssl crt/key files
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config-key put iscsi/ssl/{{ item.item }} {{ item.content }}"
+      run_once: true
+      delegate_to: "{{ groups.get(mon_group_name)[0] }}"
+      with_items: "{{ iscsi_ssl_files_content.results }}"
+  when: crt_files_missing
 
 - name: copy crt file(s) to gateway nodes
   copy:
-    src: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
-    dest: "/etc/ceph/{{ item }}"
+    content: "{{ item.stdout | b64decode }}"
+    dest: "/etc/ceph/{{ item.item }}"
     owner: root
     group: root
     mode: 0400
   changed_when: false
-  with_items: "{{ crt_files }}"
+  with_items: "{{ crt_files_exist.results if not crt_files_missing else iscsi_ssl_files_content.results }}"
+  when: not crt_files_missing
+
+- name: clean temporary directory
+  file:
+    path: "{{ iscsi_ssl_tmp_dir.path }}"
+    state: absent
