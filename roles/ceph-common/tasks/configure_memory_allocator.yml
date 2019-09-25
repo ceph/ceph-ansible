@@ -9,7 +9,7 @@
   when:
     - ansible_os_family == 'Debian'
     - etc_default_ceph.stat.exists
-  notify: restart ceph osds
+  notify: "restart ceph {{ osd_group_name }}"
 
 - name: configure TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES for redhat
   lineinfile:
@@ -19,4 +19,4 @@
     regexp: "^TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES="
     line: "TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }}"
   when: ansible_os_family == 'RedHat'
-  notify: restart ceph osds
+  notify: "restart ceph {{ osd_group_name }}"
