@@ -1,7 +1,14 @@
 ---
+- name: configure debian custom apt key
+  apt_key:
+    url: "{{ ceph_custom_key }}"
+    state: present
+  register: result
+  until: result is succeeded
+  when: ceph_custom_key is defined
+
 - name: configure debian custom repository
   apt_repository:
     repo: "deb {{ ceph_custom_repo }} {{ ansible_distribution_release }} main"
     state: present
-    update_cache: no
-  notify: update apt cache if a repo was added
+    update_cache: yes

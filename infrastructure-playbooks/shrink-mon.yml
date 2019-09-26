@@ -124,13 +124,13 @@
           msg: "The monitor has been successfully removed from the cluster.
           Please remove the monitor entry from the rest of your ceph configuration files, cluster wide."
       run_once: true
-      when: mon_to_kill_hostname not in result.stdout
+      when: mon_to_kill_hostname not in (result.stdout | from_json)['quorum_names']
 
     - name: fail if monitor is still part of the cluster
       fail:
           msg: "Monitor appears to still be part of the cluster, please check what happened."
       run_once: true
-      when: mon_to_kill_hostname in result.stdout
+      when: mon_to_kill_hostname in (result.stdout | from_json)['quorum_names']
 
     - name: show ceph health
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} -s"
