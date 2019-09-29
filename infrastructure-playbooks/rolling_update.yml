@@ -264,6 +264,19 @@
       delay: "{{ health_mon_check_delay }}"
       when: containerized_deployment | bool
 
+
+- name: reset mon_host
+  hosts: "{{ mon_group_name|default('mons') }}"
+  become: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: reset mon_host fact
+      set_fact:
+        mon_host: "{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+
+
 - name: upgrade ceph mgr nodes when implicitly collocated on monitors
   vars:
     health_mon_check_retries: 5
