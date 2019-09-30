@@ -1,21 +1,29 @@
 ---
-- name: devices validation
+- name: check no gpt header is present when osd scenario is lvm/lvm-batch
+  when: osd_scenario == 'lvm'
   block:
     - name: read information about the devices
       parted:
-        device: "{{ item }}"
+        device: "{{ item.data if item.data_vg is undefined and lvm_volumes is defined else item if devices is defined else omit }}"
         unit: MiB
       register: parted_results
-      with_items: "{{ devices }}"
+      with_items: "{{ lvm_volumes | default(devices) }}"
+      when:
+        - inventory_hostname in groups.get(osd_group_name, [])
+        - (item.data is defined and item.data_vg is undefined) or devices is defined
 
     - name: fail when gpt header found on osd devices
       fail:
         msg: "{{ item.disk.dev }} has gpt header, please remove it."
       with_items: "{{ parted_results.results }}"
       when:
+        - item.skipped is undefined
         - item.disk.table == 'gpt'
         - item.partitions | length == 0
 
+- name: check devices are block devices
+  when: devices is defined
+  block:
     - name: get devices information
       parted:
         device: "{{ item }}"
@@ -29,8 +37,6 @@
         msg: "{{ item.item }} is not a block special file!"
       when: item.rc is defined
       with_items: "{{ devices_parted.results }}"
-  when:
-    - devices is defined
 
 - name: get dedicated_device information
   parted:
