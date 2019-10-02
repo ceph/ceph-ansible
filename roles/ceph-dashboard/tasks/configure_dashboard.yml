@@ -10,55 +10,49 @@
   run_once: true
   when: dashboard_protocol == "http"
 
-- name: enable SSL for dashboard
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/ssl true"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
+- name: with SSL for dashboard
   when: dashboard_protocol == "https"
+  block:
+    - name: enable SSL for dashboard
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/ssl true"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
 
-- name: copy dashboard SSL certificate file
-  copy:
-    src: "{{ dashboard_crt }}"
-    dest: "/etc/ceph/ceph-dashboard.crt"
-    owner: root
-    group: root
-    mode: 0440
-  when:
-    - dashboard_crt | bool
-    - dashboard_protocol == "https"
+    - name: copy dashboard SSL certificate file
+      copy:
+        src: "{{ dashboard_crt }}"
+        dest: "/etc/ceph/ceph-dashboard.crt"
+        owner: root
+        group: root
+        mode: 0440
+      when: dashboard_crt | length > 0
 
-- name: copy dashboard SSL certificate key
-  copy:
-    src: "{{ dashboard_key }}"
-    dest: "/etc/ceph/ceph-dashboard.key"
-    owner: root
-    group: root
-    mode: 0440
-  when:
-    - dashboard_key | bool
-    - dashboard_protocol == "https"
+    - name: copy dashboard SSL certificate key
+      copy:
+        src: "{{ dashboard_key }}"
+        dest: "/etc/ceph/ceph-dashboard.key"
+        owner: root
+        group: root
+        mode: 0440
+      when: dashboard_key | length > 0
 
-- name: generate a Self Signed OpenSSL certificate for dashboard
-  shell: |
-    test -f /etc/ceph/ceph-dashboard.key -a -f /etc/ceph/ceph-dashboard.crt || \
-    openssl req -new -nodes -x509 -subj '/O=IT/CN=ceph-dashboard' -days 3650 -keyout /etc/ceph/ceph-dashboard.key -out /etc/ceph/ceph-dashboard.crt -extensions v3_ca
-  when:
-    - dashboard_protocol == "https"
-    - not dashboard_key | bool or not dashboard_crt | bool
+    - name: generate a Self Signed OpenSSL certificate for dashboard
+      shell: |
+        test -f /etc/ceph/ceph-dashboard.key -a -f /etc/ceph/ceph-dashboard.crt || \
+        openssl req -new -nodes -x509 -subj '/O=IT/CN=ceph-dashboard' -days 3650 -keyout /etc/ceph/ceph-dashboard.key -out /etc/ceph/ceph-dashboard.crt -extensions v3_ca
+      when: dashboard_key | length == 0 or dashboard_crt | length == 0
 
-- name: import dashboard certificate file
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config-key set mgr/dashboard/crt -i /etc/ceph/ceph-dashboard.crt"
-  changed_when: false
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
-  when: dashboard_protocol == "https"
+    - name: import dashboard certificate file
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config-key set mgr/dashboard/crt -i /etc/ceph/ceph-dashboard.crt"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
 
-- name: import dashboard certificate key
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config-key set mgr/dashboard/key -i /etc/ceph/ceph-dashboard.key"
-  changed_when: false
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
-  when: dashboard_protocol == "https"
+    - name: import dashboard certificate key
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config-key set mgr/dashboard/key -i /etc/ceph/ceph-dashboard.key"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
 
 - name: "set the dashboard port ({{ dashboard_port }})"
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/server_port {{ dashboard_port }}"
