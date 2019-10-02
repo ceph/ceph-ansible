@@ -28,13 +28,15 @@
     # pre-tasks for following import -
     - name: gather facts
       setup:
-      when: not delegate_facts_host | bool
+      when:
+        - not delegate_facts_host | bool
+        - not inventory_hostname in groups.get('clients', [])
 
     - name: gather and delegate facts
       setup:
       delegate_to: "{{ item }}"
       delegate_facts: True
-      with_items: "{{ groups['all'] }}"
+      with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
       run_once: true
       when: delegate_facts_host | bool
 
