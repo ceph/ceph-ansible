@@ -13,9 +13,10 @@
   pre_tasks:
     - name: gather facts
       setup:
-      when: not delegate_facts_host | bool
+      when: not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
     - import_role:
         name: ceph-defaults
+
     - name: gather and delegate facts
       setup:
       delegate_to: "{{ item }}"
