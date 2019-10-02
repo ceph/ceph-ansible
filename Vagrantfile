@@ -5,7 +5,14 @@ require 'yaml'
 require 'time'
 VAGRANTFILE_API_VERSION = '2'
 
-config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
+if File.file?('vagrant_variables.yml') then
+  vagrant_variable_filename='vagrant_variables.yml'
+else
+  vagrant_variable_filename='vagrant_variables.yml.sample'
+end
+
+config_file=File.expand_path(File.join(File.dirname(__FILE__), vagrant_variable_filename))
+
 settings=YAML.load_file(config_file)
 
 LABEL_PREFIX    = settings['label_prefix'] ? settings['label_prefix'] + "-" : ""
@@ -35,6 +42,8 @@ ASSIGN_STATIC_IP = !(BOX == 'openstack' or BOX == 'linode')
 DISABLE_SYNCED_FOLDER = settings.fetch('vagrant_disable_synced_folder', false)
 DISK_UUID = Time.now.utc.to_i
 
+$last_ip_pub_digit   = 9
+$last_ip_cluster_digit = 9
 
 ansible_provision = proc do |ansible|
   if DOCKER then
@@ -186,12 +195,47 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
   end
 
+  (0..NMONS - 1).each do |i|
+    config.vm.define "#{LABEL_PREFIX}mon#{i}" do |mon|
+      mon.vm.hostname = "#{LABEL_PREFIX}mon#{i}"
+      if ASSIGN_STATIC_IP
+        mon.vm.network :private_network,
+          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
+      end
+      # Virtualbox
+      mon.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
+      end
+
+      # VMware
+      mon.vm.provider :vmware_fusion do |v|
+        v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      # Libvirt
+      mon.vm.provider :libvirt do |lv|
+        lv.memory = MEMORY
+        lv.random_hostname = true
+      end
+
+      # Parallels
+      mon.vm.provider "parallels" do |prl|
+        prl.name = "ceph-mon#{i}"
+        prl.memory = "#{MEMORY}"
+      end
+
+      mon.vm.provider :linode do |provider|
+        provider.label = mon.vm.hostname
+      end
+    end
+  end
+
   (0..MGRS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}mgr#{i}" do |mgr|
       mgr.vm.hostname = "#{LABEL_PREFIX}mgr#{i}"
       if ASSIGN_STATIC_IP
         mgr.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.3#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
       # Virtualbox
       mgr.vm.provider :virtualbox do |vb|
@@ -227,7 +271,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       client.vm.hostname = "#{LABEL_PREFIX}client#{i}"
       if ASSIGN_STATIC_IP
         client.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.4#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
       # Virtualbox
       client.vm.provider :virtualbox do |vb|
@@ -262,7 +306,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       rgw.vm.hostname = "#{LABEL_PREFIX}rgw#{i}"
       if ASSIGN_STATIC_IP
         rgw.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.5#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
 
       # Virtualbox
@@ -298,7 +342,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       nfs.vm.hostname = "#{LABEL_PREFIX}nfs#{i}"
       if ASSIGN_STATIC_IP
         nfs.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.6#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
 
       # Virtualbox
@@ -334,7 +378,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mds.vm.hostname = "#{LABEL_PREFIX}mds#{i}"
       if ASSIGN_STATIC_IP
         mds.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.7#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
       # Virtualbox
       mds.vm.provider :virtualbox do |vb|
@@ -368,7 +412,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       rbd_mirror.vm.hostname = "#{LABEL_PREFIX}rbd-mirror#{i}"
       if ASSIGN_STATIC_IP
         rbd_mirror.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.8#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
       # Virtualbox
       rbd_mirror.vm.provider :virtualbox do |vb|
@@ -402,7 +446,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       iscsi_gw.vm.hostname = "#{LABEL_PREFIX}iscsi-gw#{i}"
       if ASSIGN_STATIC_IP
         iscsi_gw.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.9#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
       # Virtualbox
       iscsi_gw.vm.provider :virtualbox do |vb|
@@ -431,49 +475,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
   end
 
-  (0..NMONS - 1).each do |i|
-    config.vm.define "#{LABEL_PREFIX}mon#{i}" do |mon|
-      mon.vm.hostname = "#{LABEL_PREFIX}mon#{i}"
-      if ASSIGN_STATIC_IP
-        mon.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.1#{i}"
-      end
-      # Virtualbox
-      mon.vm.provider :virtualbox do |vb|
-        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
-      end
-
-      # VMware
-      mon.vm.provider :vmware_fusion do |v|
-        v.vmx['memsize'] = "#{MEMORY}"
-      end
-
-      # Libvirt
-      mon.vm.provider :libvirt do |lv|
-        lv.memory = MEMORY
-        lv.random_hostname = true
-      end
-
-      # Parallels
-      mon.vm.provider "parallels" do |prl|
-        prl.name = "ceph-mon#{i}"
-        prl.memory = "#{MEMORY}"
-      end
-
-      mon.vm.provider :linode do |provider|
-        provider.label = mon.vm.hostname
-      end
-    end
-  end
-
   (0..NOSDS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}osd#{i}" do |osd|
       osd.vm.hostname = "#{LABEL_PREFIX}osd#{i}"
       if ASSIGN_STATIC_IP
         osd.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.10#{i}"
+          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
         osd.vm.network :private_network,
-          ip: "#{CLUSTER_SUBNET}.20#{i}"
+          ip: "#{CLUSTER_SUBNET}.#{$last_ip_cluster_digit+=1}"
       end
       # Virtualbox
       osd.vm.provider :virtualbox do |vb|
