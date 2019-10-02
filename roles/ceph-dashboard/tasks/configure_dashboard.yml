@@ -153,25 +153,22 @@
       changed_when: false
 
     - name: set the rgw host
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-host {{ dashboard_rgw_api_host }}"
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-host {{ hostvars[groups[rgw_group_name][0]]['rgw_instances'][0]['radosgw_address'] }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
-      when: dashboard_rgw_api_host != ''
 
     - name: set the rgw port
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-port {{ dashboard_rgw_api_port }}"
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-port {{ hostvars[groups[rgw_group_name][0]]['rgw_instances'][0]['radosgw_frontend_port'] }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
-      when: dashboard_rgw_api_port != ''
 
     - name: set the rgw scheme
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-scheme {{ dashboard_rgw_api_scheme }}"
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-scheme {{ 'https' if radosgw_frontend_ssl_certificate else 'http' }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
-      when: dashboard_rgw_api_scheme != ''
 
     - name: set the rgw admin resource
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-admin-resource {{ dashboard_rgw_api_admin_resource }}"
@@ -185,7 +182,9 @@
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
-      when: dashboard_rgw_api_no_ssl_verify | bool
+      when:
+        - dashboard_rgw_api_no_ssl_verify | bool
+        - radosgw_frontend_ssl_certificate | length > 0
 
 - name: disable mgr dashboard module (restart)
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mgr module disable dashboard"
