@@ -92,7 +92,7 @@
     - ceph_current_status.fsid is defined
     - handler_health_osd_check
     - hostvars[item]['_osd_handler_called'] | default(False)
-  with_items: "{{ groups[osd_group_name] }}"
+  with_items: "{{ groups[osd_group_name] | intersect(ansible_play_batch) }}"
   delegate_to: "{{ item }}"
   run_once: True
 
@@ -109,7 +109,7 @@
     - ceph_osd_container_stat.get('stdout_lines', [])|length != 0
     - handler_health_osd_check
     - hostvars[item]['_osd_handler_called'] | default(False)
-  with_items: "{{ groups[osd_group_name] }}"
+  with_items: "{{ groups[osd_group_name] | intersect(ansible_play_batch) }}"
   delegate_to: "{{ item }}"
   run_once: True
 
