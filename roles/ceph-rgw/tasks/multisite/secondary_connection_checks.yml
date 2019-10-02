@@ -1,0 +1,30 @@
+- name: get zonegroups list from period_get
+  set_fact:
+    zonegroups: "{{ (period_get.stdout | from_json)['period_map']['zonegroups'] }}"
+
+- name: get zones from zonegroups list
+  set_fact:
+    zonegroups_endpoints: "{{ zonegroups_endpoints | default([]) }} + {{ item.endpoints }}"
+  with_items: "{{ zonegroups }}"
+
+- name: get zones from zonegroups list
+  set_fact:
+    zones: "{{ zones | default([]) }} + {{ item.zones }}"
+  with_items: "{{ zonegroups }}"
+  when: item.name == rgw_zonegroup
+
+- name: get endpoints from zones list
+  set_fact:
+    zone_endpoints: "{{ zone_endpoints | default([]) }} + {{ item.endpoints }}"
+  with_items: "{{ zones }}"
+  when: item.name != rgw_zone
+
+- name: ensure connection to zonegroups endpoints
+  uri:
+    url: "{{ item }}"
+  with_items: "{{ zonegroups_endpoints }}"
+
+- name: ensure connection to zones endpoints
+  uri:
+    url: "{{ item }}"
+  with_items: "{{ zone_endpoints }}"

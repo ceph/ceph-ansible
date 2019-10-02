@@ -1,4 +1,8 @@
 ---
+- name: ensure connection to primary cluster
+  uri:
+    url: "{{ rgw_pull_proto }}://{{ rgw_pullhost }}:{{ rgw_pull_port }}"
+
 - name: fetch the realm
   command: "{{ container_exec_cmd }} radosgw-admin realm pull --url={{ rgw_pull_proto }}://{{ rgw_pullhost }}:{{ rgw_pull_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -6,10 +10,15 @@
   when: "'No such file or directory' in realmcheck.stderr"
 
 - name: fetch the period
-  command: "{{ container_exec_cmd }} radosgw-admin period pull --url={{ rgw_pull_proto }}://{{ rgw_pullhost }}:{{ rgw_pull_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }}"
+  command: "{{ container_exec_cmd }} radosgw-admin period get --url={{ rgw_pull_proto }}://{{ rgw_pullhost }}:{{ rgw_pull_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
+  register: period_get
   when: "'No such file or directory' in realmcheck.stderr"
+
+- name: include_tasks secondary_connection_checks.yml
+  include_tasks: secondary_connection_checks.yml
+  when: period_get is defined
 
 - name: set default realm
   command: "{{ container_exec_cmd }} radosgw-admin realm default --rgw-realm={{ rgw_realm }}"
