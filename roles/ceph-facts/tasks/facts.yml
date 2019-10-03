@@ -84,7 +84,7 @@
   when: cephx | bool or generate_fsid | bool
 
 - name: get current fsid
-  command: "{{ timeout_command }} {{ container_exec_cmd }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }} config get fsid"
+  command: "{{ timeout_command }} {{ container_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}.asok config get fsid"
   register: rolling_update_fsid
   delegate_to: "{{ mon_host | default(groups[mon_group_name][0]) }}"
   until: rolling_update_fsid is succeeded
@@ -313,19 +313,39 @@
 
 - name: set grafana_server_addr fact - ipv4
   set_fact:
-    grafana_server_addr: "{{ hostvars[inventory_hostname]['ansible_all_ipv4_addresses'] | ipaddr(public_network) | first }}"
+    grafana_server_addr: "{{ hostvars[inventory_hostname]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}"
   when:
     - groups.get(grafana_server_group_name, []) | length > 0
     - ip_version == 'ipv4'
     - dashboard_enabled | bool
+    - inventory_hostname in groups[grafana_server_group_name]
 
 - name: set grafana_server_addr fact - ipv6
   set_fact:
-    grafana_server_addr: "{{ hostvars[inventory_hostname]['ansible_all_ipv6_addresses'] | ipaddr(public_network) | last | ipwrap }}"
+    grafana_server_addr: "{{ hostvars[inventory_hostname]['ansible_all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap }}"
   when:
     - groups.get(grafana_server_group_name, []) | length > 0
     - ip_version == 'ipv6'
     - dashboard_enabled | bool
+    - inventory_hostname in groups[grafana_server_group_name]
+
+- name: set grafana_server_addr fact - ipv4 - (external instance)
+  set_fact:
+    grafana_server_addr: "{{ hostvars[groups.get(grafana_server_group_name, []) | first]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}"
+  when:
+    - groups.get(grafana_server_group_name, []) | length > 0
+    - ip_version == 'ipv4'
+    - dashboard_enabled | bool
+    - inventory_hostname not in groups[grafana_server_group_name]
+
+- name: set grafana_server_addr fact - ipv6 - (external instance)
+  set_fact:
+    grafana_server_addr: "{{ hostvars[groups.get(grafana_server_group_name, []) | first]['ansible_all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap }}"
+  when:
+    - groups.get(grafana_server_group_name, []) | length > 0
+    - ip_version == 'ipv6'
+    - dashboard_enabled | bool
+    - inventory_hostname not in groups[grafana_server_group_name]
 
 - name: set_fact use_new_ceph_iscsi package or old ceph-iscsi-config/cli
   set_fact:

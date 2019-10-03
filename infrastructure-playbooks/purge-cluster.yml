@@ -67,7 +67,7 @@
           run_once: true
 
         - name: get all nfs-ganesha mount points
-          command: grep "{{ hostvars[item]['ansible_all_ipv4_addresses'] | ipaddr(public_network) | first }}" /proc/mounts
+          command: grep "{{ hostvars[item]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}" /proc/mounts
           register: nfs_ganesha_mount_points
           failed_when: false
           with_items: "{{ groups[nfs_group_name] }}"
