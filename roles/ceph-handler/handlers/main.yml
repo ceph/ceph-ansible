@@ -27,29 +27,14 @@
       listen: "restart ceph mons"
       when: mon_group_name in group_names
 
-    - name: restart ceph mon daemon(s) - non container
+    - name: restart ceph mon daemon(s)
       command: /usr/bin/env bash /tmp/restart_mon_daemon.sh
       listen: "restart ceph mons"
       when:
         # We do not want to run these checks on initial deployment (`socket.rc == 0`)
         - mon_group_name in group_names
-        - not containerized_deployment | bool
+        - handler_mon_status | bool
         - hostvars[item]['_mon_handler_called'] | default(False) | bool
-        - mon_socket_stat.rc == 0
-      with_items: "{{ groups[mon_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: restart ceph mon daemon(s) - container
-      command: /usr/bin/env bash /tmp/restart_mon_daemon.sh
-      listen: "restart ceph mons"
-      when:
-        # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-        - mon_group_name in group_names
-        - containerized_deployment | bool
-        - ceph_mon_container_stat.get('rc') == 0
-        - hostvars[item]['_mon_handler_called'] | default(False) | bool
-        - ceph_mon_container_stat.get('stdout_lines', [])|length != 0
       with_items: "{{ groups[mon_group_name] }}"
       delegate_to: "{{ item }}"
       run_once: True
@@ -80,34 +65,14 @@
       listen: "restart ceph osds"
       when: osd_group_name in group_names
 
-    - name: restart ceph osds daemon(s) - non container
+    - name: restart ceph osds daemon(s)
       command: /usr/bin/env bash /tmp/restart_osd_daemon.sh
       listen: "restart ceph osds"
       when:
         - osd_group_name in group_names
-        - not containerized_deployment | bool
-        # We do not want to run these checks on initial deployment (`socket_osd_container.results[n].rc == 0`)
-        # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
-        - osd_socket_stat.rc == 0
-        - ceph_current_status.fsid is defined
+        - handler_osd_status | bool
         - handler_health_osd_check | bool
         - hostvars[item]['_osd_handler_called'] | default(False) | bool
-      with_items: "{{ groups[osd_group_name] | intersect(ansible_play_batch) }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: restart ceph osds daemon(s) - container
-      command: /usr/bin/env bash /tmp/restart_osd_daemon.sh
-      listen: "restart ceph osds"
-      when:
-        # We do not want to run these checks on initial deployment (`socket_osd_container_stat.results[n].rc == 0`)
-        # except when a crush location is specified. ceph-disk will start the osds before the osd crush location is specified
-        - osd_group_name in group_names
-        - containerized_deployment | bool
-        - ceph_osd_container_stat.get('rc') == 0
-        - ceph_osd_container_stat.get('stdout_lines', [])|length != 0
-        - handler_health_osd_check | bool
-        - hostvars[item]['_osd_handler_called'] | default(False)
       with_items: "{{ groups[osd_group_name] | intersect(ansible_play_batch) }}"
       delegate_to: "{{ item }}"
       run_once: True
@@ -132,29 +97,13 @@
       listen: "restart ceph mdss"
       when: mds_group_name in group_names
 
-    - name: restart ceph mds daemon(s) - non container
+    - name: restart ceph mds daemon(s)
       command: /usr/bin/env bash /tmp/restart_mds_daemon.sh
       listen: "restart ceph mdss"
       when:
-        # We do not want to run these checks on initial deployment (`socket.rc == 0`)
         - mds_group_name in group_names
-        - not containerized_deployment | bool
+        - handler_mds_status | bool
         - hostvars[item]['_mds_handler_called'] | default(False) | bool
-        - mds_socket_stat.rc == 0
-      with_items: "{{ groups[mds_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: restart ceph mds daemon(s) - container
-      command: /usr/bin/env bash /tmp/restart_mds_daemon.sh
-      listen: "restart ceph mdss"
-      when:
-        # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-        - mds_group_name in group_names
-        - containerized_deployment | bool
-        - ceph_mds_container_stat.get('rc') == 0
-        - hostvars[item]['_mds_handler_called'] | default(False) | bool
-        - ceph_mds_container_stat.get('stdout_lines', [])|length != 0
       with_items: "{{ groups[mds_group_name] }}"
       delegate_to: "{{ item }}"
       run_once: True
@@ -179,29 +128,13 @@
       listen: "restart ceph rgws"
       when: rgw_group_name in group_names
 
-    - name: restart ceph rgw daemon(s) - non container
+    - name: restart ceph rgw daemon(s)
       command: /usr/bin/env bash /tmp/restart_rgw_daemon.sh
       listen: "restart ceph rgws"
       when:
-        # We do not want to run these checks on initial deployment (`socket.rc == 0`)
         - rgw_group_name in group_names
-        - not containerized_deployment | bool
+        - handler_rgw_status | bool
         - hostvars[item]['_rgw_handler_called'] | default(False) | bool
-        - rgw_socket_stat.rc == 0
-      with_items: "{{ groups[rgw_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: restart ceph rgw daemon(s) - container
-      command: /usr/bin/env bash /tmp/restart_rgw_daemon.sh
-      listen: "restart ceph rgws"
-      when:
-        # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-        - rgw_group_name in group_names
-        - containerized_deployment | bool
-        - ceph_rgw_container_stat.get('rc') == 0
-        - hostvars[item]['_rgw_handler_called'] | default(False) | bool
-        - ceph_rgw_container_stat.get('stdout_lines', [])|length != 0
       with_items: "{{ groups[rgw_group_name] }}"
       delegate_to: "{{ item }}"
       run_once: True
@@ -226,29 +159,13 @@
       listen: "restart ceph nfss"
       when: nfs_group_name in group_names
 
-    - name: restart ceph nfs daemon(s) - non container
+    - name: restart ceph nfs daemon(s)
       command: /usr/bin/env bash /tmp/restart_nfs_daemon.sh
       listen: "restart ceph nfss"
       when:
-        # We do not want to run these checks on initial deployment (`socket.rc == 0`)
         - nfs_group_name in group_names
-        - not containerized_deployment | bool
+        - handler_nfs_status | bool
         - hostvars[item]['_nfs_handler_called'] | default(False) | bool
-        - nfs_socket_stat.rc == 0
-      with_items: "{{ groups[nfs_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: restart ceph nfs daemon(s) - container
-      command: /usr/bin/env bash /tmp/restart_nfs_daemon.sh
-      listen: "restart ceph nfss"
-      when:
-        # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-        - nfs_group_name in group_names
-        - containerized_deployment | bool
-        - ceph_nfs_container_stat.get('rc') == 0
-        - hostvars[item]['_nfs_handler_called'] | default(False) | bool
-        - ceph_nfs_container_stat.get('stdout_lines', [])|length != 0
       with_items: "{{ groups[nfs_group_name] }}"
       delegate_to: "{{ item }}"
       run_once: True
@@ -273,29 +190,13 @@
       listen: "restart ceph rbdmirrors"
       when: rbdmirror_group_name in group_names
 
-    - name: restart ceph rbd mirror daemon(s) - non container
+    - name: restart ceph rbd mirror daemon(s)
       command: /usr/bin/env bash /tmp/restart_rbd_mirror_daemon.sh
       listen: "restart ceph rbdmirrors"
       when:
-        # We do not want to run these checks on initial deployment (`socket.rc == 0`)
         - rbdmirror_group_name in group_names
-        - not containerized_deployment | bool
+        - handler_rbd_mirror_status | bool
         - hostvars[item]['_rbdmirror_handler_called'] | default(False) | bool
-        - rbd_mirror_socket_stat.rc == 0
-      with_items: "{{ groups[rbdmirror_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: restart ceph rbd mirror daemon(s) - container
-      command: /usr/bin/env bash /tmp/restart_rbd_mirror_daemon.sh
-      listen: "restart ceph rbdmirrors"
-      when:
-        # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-        - rbdmirror_group_name in group_names
-        - containerized_deployment | bool
-        - ceph_rbd_mirror_container_stat.get('rc') == 0
-        - hostvars[item]['_rbdmirror_handler_called'] | default(False) | bool
-        - ceph_rbd_mirror_container_stat.get('stdout_lines', [])|length != 0
       with_items: "{{ groups[rbdmirror_group_name] }}"
       delegate_to: "{{ item }}"
       run_once: True
@@ -320,29 +221,13 @@
       listen: "restart ceph mgrs"
       when: mgr_group_name in group_names
 
-    - name: restart ceph mgr daemon(s) - non container
+    - name: restart ceph mgr daemon(s)
       command: /usr/bin/env bash /tmp/restart_mgr_daemon.sh
       listen: "restart ceph mgrs"
       when:
-        # We do not want to run these checks on initial deployment (`socket.rc == 0`)
         - mgr_group_name in group_names
-        - not containerized_deployment | bool
+        - handler_mgr_status | bool
         - hostvars[item]['_mgr_handler_called'] | default(False) | bool
-        - mgr_socket_stat.rc == 0
-      with_items: "{{ groups[mgr_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: restart ceph mgr daemon(s) - container
-      command: /usr/bin/env bash /tmp/restart_mgr_daemon.sh
-      listen: "restart ceph mgrs"
-      when:
-        # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-        - mgr_group_name in group_names
-        - containerized_deployment | bool
-        - ceph_mgr_container_stat.get('rc') == 0
-        - hostvars[item]['_mgr_handler_called'] | default(False) | bool
-        - ceph_mgr_container_stat.get('stdout_lines', [])|length != 0
       with_items: "{{ groups[mgr_group_name] }}"
       delegate_to: "{{ item }}"
       run_once: True
