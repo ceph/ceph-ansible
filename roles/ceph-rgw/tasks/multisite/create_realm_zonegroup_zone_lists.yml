@@ -1,0 +1,93 @@
+- name: create list realms
+  set_fact:
+    realms: "{{ realms | default([]) + [{ 'realm': hostvars[item]['rgw_realm'] }] }}"
+  with_items: "{{ groups.get(rgw_group_name, []) }}"
+  run_once: true
+  when:
+    - hostvars[item]['rgw_zonemaster'] | bool
+    - "'No such file or directory' in hostvars[item]['realmcheck'].stderr"
+
+- name: make all items in realms unique
+  set_fact:
+    realms: "{{ realms | unique }}"
+  run_once: true
+  when:
+    - realms is defined
+
+- name: create list secondary_realms
+  set_fact:
+    secondary_realms: "{{ secondary_realms | default([]) + [{ 'realm': hostvars[item]['rgw_realm'], 'is_master': hostvars[item]['rgw_zonemaster'], 'endpoint': hostvars[item]['rgw_pull_proto'] + '://' + hostvars[item]['rgw_pullhost'] + ':' + hostvars[item]['rgw_pull_port']|string, 'access_key': hostvars[item]['system_access_key'], 'secret_key': hostvars[item]['system_secret_key'] }] }}"
+  with_items: "{{ groups.get(rgw_group_name, []) }}"
+  run_once: true
+  when:
+    - not hostvars[item]['rgw_zonemaster'] | bool
+
+- name: make all items in secondary_realms unique
+  set_fact:
+    realms: "{{ secondary_realms | unique }}"
+  run_once: true
+  when:
+    - secondary_realms is defined
+
+- name: create list zonegroups
+  set_fact:
+    zonegroups: "{{ zonegroups | default([]) + [{ 'realm': hostvars[item]['rgw_realm'], 'zonegroup': hostvars[item]['rgw_zonegroup'], 'is_master': hostvars[item]['rgw_zonegroupmaster'] }] }}"
+  with_items: "{{ groups.get(rgw_group_name, []) }}"
+  run_once: true
+  when:
+    - hostvars[item]['rgw_zonemaster'] | bool
+    - "'No such file or directory' in hostvars[item]['zonegroupcheck'].stderr"
+
+- name: make all items in zonegroups unique
+  set_fact:
+    zonegroups: "{{ zonegroups | unique }}"
+  run_once: true
+  when:
+    - zonegroups is defined
+
+- name: create list zones
+  set_fact:
+    zones: "{{ zones | default([]) + [{ 'realm': hostvars[item]['rgw_realm'], 'zonegroup': hostvars[item]['rgw_zonegroup'], 'zone': hostvars[item]['rgw_zone'], 'is_master': hostvars[item]['rgw_zonemaster'], 'access_key': hostvars[item]['system_access_key'], 'secret_key': hostvars[item]['system_secret_key'] }] }}"
+  with_items: "{{ groups.get(rgw_group_name, []) }}"
+  run_once: true
+  when: "'No such file or directory' in hostvars[item]['zonecheck'].stderr"
+
+- name: make all items in zones unique
+  set_fact:
+    zones: "{{ zones | unique }}"
+  run_once: true
+  when:
+    - zones is defined
+
+- name: create a list of dicts with each rgw endpoint and it's zone
+  set_fact:
+    zone_endpoint_pairs: "{{ zone_endpoint_pairs | default([]) + [{ 'endpoint': hostvars[item]['rgw_multisite_proto'] + '://' + hostvars[item]['_radosgw_address'] + ':' + radosgw_frontend_port|string, 'rgw_zone': hostvars[item]['rgw_zone'] }] }}"
+  with_items: "{{ groups.get(rgw_group_name, []) }}"
+  run_once: true
+
+- name: create string of all the endpoints in the same rgw_zone
+  set_fact:
+    zone_endpoints_string: "{{ zone_endpoints_string | default('') + item.endpoint + ',' }}"
+  with_items: "{{ zone_endpoint_pairs }}"
+  when: item.rgw_zone == rgw_zone
+
+- name: remove ',' after last endpoint in a endpoints string
+  set_fact:
+    zone_endpoints_string: "{{ zone_endpoints_string[:-1] }}"
+  when:
+    - endpoints_string is defined
+    - endpoints_string[-1] == ','
+
+- name: create a list of zones and all their endpoints
+  set_fact:
+    zone_endpoints_list: "{{ zone_endpoints_list | default([]) + [{ 'endpoints': hostvars[item]['zone_endpoints_string'], 'zone': hostvars[item]['rgw_zone'], 'zonegroup': hostvars[item]['rgw_zonegroup'], 'realm': hostvars[item]['rgw_realm'], 'is_master': hostvars[item]['rgw_zonemaster'] }] }}"
+  with_items: "{{ groups.get(rgw_group_name, []) }}"
+  run_once: true
+  when: hostvars[item]['zone_endpoints_string'] is defined
+
+- name: make all items in zone_endpoints_list unique
+  set_fact:
+    zone_endpoints_list: "{{ zone_endpoints_list | unique }}"
+  run_once: true
+  when:
+    - zone_endpoints_list is defined
