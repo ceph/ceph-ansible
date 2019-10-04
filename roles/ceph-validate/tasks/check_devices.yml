@@ -1,4 +1,16 @@
 ---
+- name: get device name using readlink -f
+  command: "readlink -f {{ item.data if item.data_vg is undefined and lvm_volumes is defined else item }}"
+  with_items: "{{ lvm_volumes | default(devices) }}"
+  changed_when: false
+  register: readlink_devices
+
+- name: fail if one device is already used
+  fail:
+    msg: "device {{ item.stdout }} is already used!"
+  with_items: "{{ readlink_devices.results }}"
+  when: ansible_devices[item.stdout.split('/')[-1]].partitions | length != 0
+
 - name: check no gpt header is present when osd scenario is lvm/lvm-batch
   block:
     - name: read information about the devices
