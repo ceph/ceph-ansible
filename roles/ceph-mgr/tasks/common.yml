@@ -72,7 +72,7 @@
         group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
         mode: "{{ ceph_keyring_permissions }}"
       with_items: "{{ _mgr_keys.results }}"
-      delegate_to: "{{ item.item.hostname }}"
+      delegate_to: "{{ item.item.hostname | regex_replace('^ip-([0-9]+)-([0-9]+)-([0-9]+)-([0-9]+)$', '\\1.\\2.\\3.\\4' ) }}"
       run_once: true
       when:
         - cephx | bool
