@@ -1,0 +1,34 @@
+- name: create a list of dicts with each rgw endpoint and it's zone
+  set_fact:
+    zone_endpoint_pairs: "{{ zone_endpoint_list | default([]) + [{ 'endpoint': hostvars[item]['rgw_multisite_proto'] + '://' + hostvars[item]['radosgw_address'] + ':' + hostvars[item]['radosgw_civetweb_port']|string, 'rgw_zone': hostvars[item]['rgw_zone'] }] }}"
+  with_items: "{{ groups.get('rgws', []) }}"
+  run_once: true
+
+- name: create string of all the endpoints in the same rgw_zone
+  set_fact:
+    zone_endpoints_string: "{{ zone_endpoints_string | default('') + item.endpoint + ',' }}"
+  with_items: "{{ zone_endpoint_pairs }}"
+  when: item.rgw_zone == rgw_zone
+
+- name: remove ',' after last endpoint in a endpoints string
+  set_fact:
+    zone_endpoints_string: "{{ zone_endpoints_string[:-1] }}"
+  when: endpoints_string[-1] == ','
+
+- name: create a list of zones and all their endpoints
+  set_fact:
+    zone_endpoints_list: "{{ zone_endpoints_list | default([]) + [{ 'endpoints': hostvars[item]['zone_endpoints_string'], 'rgw_zone': hostvars[item]['rgw_zone'] }] }}"
+  with_items: "{{ groups.get('rgws', []) }}"
+  run_once: true
+
+- name: make all items in zone_endpoints_list unique
+  set_fact:
+    zone_endpoints_list: "{{ zone_endpoints_list | unique }}"
+  run_once: true
+
+- name: add endpoints to their zone(s)
+  command: "{{ container_exec_cmd }} radosgw-admin zone modify --rgw-zone={{ item.rgw_zone }} --endpoints {{ item.endpoints }}"
+  with_items: "{{ zone_endpoints_list }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  notify: update period
