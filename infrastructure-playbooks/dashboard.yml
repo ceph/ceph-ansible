@@ -1,5 +1,17 @@
 ---
-- hosts: all
+- hosts:
+  - "{{ mon_group_name|default('mons') }}"
+  - "{{ osd_group_name|default('osds') }}"
+  - "{{ mds_group_name|default('mdss') }}"
+  - "{{ rgw_group_name|default('rgws') }}"
+  - "{{ nfs_group_name|default('nfss') }}"
+  - "{{ rbd_mirror_group_name|default('rbdmirrors') }}"
+  - "{{ client_group_name|default('clients') }}"
+  - "{{ mgr_group_name|default('mgrs') }}"
+  - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  - iscsi-gws # for backward compatibility only!
+  - "{{ grafana_server_group_name|default('grafana-server') }}"
+  - "{{ rgwloadbalancer_group_name|default('rgwloadbalancers') }}"
   become: true
   pre_tasks:
     - name: set ceph node exporter install 'In Progress'
@@ -67,7 +79,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}"
+- hosts: "{{ mgr_group_name | default(groups[mon_group_name]) }}"
   become: true
   pre_tasks:
     - name: set ceph dashboard install 'In Progress'
