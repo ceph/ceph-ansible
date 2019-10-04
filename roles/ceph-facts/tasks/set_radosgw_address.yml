@@ -42,7 +42,18 @@
       _radosgw_address: "{{ hostvars[inventory_hostname][_interface][ip_version][0]['address'] }}"
     when: ip_version == 'ipv6'
 
-- name: set_fact rgw_instances
+- name: set_fact rgw_instances without rgw multisite
   set_fact:
-    rgw_instances: "{{ rgw_instances|default([]) | union([{'instance_name': 'rgw' + item|string, 'radosgw_address': _radosgw_address, 'radosgw_frontend_port': radosgw_frontend_port|int + item|int}]) }}"
+    rgw_instances: "{{ rgw_instances|default([]) | union([{'instance_name': 'rgw' + item|string, 'radosgw_address': _radosgw_address, 'radosgw_frontend_port': radosgw_frontend_port|int + item|int }]) }}"
   with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
+    - not rgw_multisite | bool
+
+- name: set_fact rgw_instances with rgw multisite
+  set_fact:
+    rgw_instances: "{{ rgw_instances|default([]) | union([{'instance_name': 'rgw' + item|string, 'radosgw_address': _radosgw_address, 'radosgw_frontend_port': radosgw_frontend_port|int, 'rgw_realm': rgw_realm|string, 'rgw_zonegroup': rgw_zonegroup|string, 'rgw_zone': rgw_zone|string}]) }}"
+  with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
+    - rgw_multisite | bool
