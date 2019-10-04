@@ -1,32 +1,99 @@
 ---
-- name: create the realm
-  command: "{{ container_exec_cmd }} radosgw-admin realm create --rgw-realm={{ rgw_realm }} --default"
+- name: create default realm
+  command: "{{ container_exec_cmd }} radosgw-admin realm create --cluster={{ cluster }} --rgw-realm={{ item.realm }} --default"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when: "'No such file or directory' in realmcheck.stderr"
+  with_items: "{{ realms }}"
+  when:
+    - realms is defined
+    - realms | length == 1
 
-- name: create the zonegroup
-  command: "{{ container_exec_cmd }} radosgw-admin zonegroup create --rgw-zonegroup={{ rgw_zonegroup }} --endpoints={{ rgw_multisite_proto }}://{{ rgw_multisite_endpoint_addr }}:{{ radosgw_frontend_port }} --master --default"
+- name: create the realm(s)
+  command: "{{ container_exec_cmd }} radosgw-admin realm create --cluster={{ cluster }} --rgw-realm={{ item.realm }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when: "'No such file or directory' in zonegroupcheck.stderr"
+  with_items: "{{ realms }}"
+  when:
+    - realms is defined
+    - realms | length > 1
 
-- name: create the zone
-  command: "{{ container_exec_cmd }} radosgw-admin zone create --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --endpoints={{ rgw_multisite_proto }}://{{ rgw_multisite_endpoint_addr }}:{{ radosgw_frontend_port }} --access-key={{ system_access_key }} --secret={{ system_secret_key }} --default --master"
+- name: create default master zonegroup(s)
+  command: "{{ container_exec_cmd }} radosgw-admin zonegroup create --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --default --master"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when: "'No such file or directory' in zonecheck.stderr"
+  with_items: "{{ zonegroups }}"
+  when:
+    - zonegroups is defined
+    - zonegroups | length == 1
+    - item.is_master | bool
 
-- name: create the zone user
-  command: "{{ container_exec_cmd }} radosgw-admin user create --uid={{ rgw_zone_user }} --display-name=\"Zone User\" --access-key={{ system_access_key }} --secret={{ system_secret_key }} --system"
+- name: create default zonegroup(s)
+  command: "{{ container_exec_cmd }} radosgw-admin zonegroup create --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --default"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when: "'could not fetch user info: no user info saved' in usercheck.stderr"
-  notify: update period
+  with_items: "{{ zonegroups }}"
+  when:
+    - zonegroups is defined
+    - zonegroups | length == 1
+    - not item.is_master | bool
 
-- name: add other endpoints to the zone
-  command: "{{ container_exec_cmd }} radosgw-admin zone modify --rgw-zone={{ rgw_zone }} --endpoints {{ rgw_multisite_endpoints_list }}"
+- name: create master zonegroup(s)
+  command: "{{ container_exec_cmd }} radosgw-admin zonegroup create --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --master"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  when: rgw_multisite_endpoints_list is defined
-  notify: update period
+  with_items: "{{ zonegroups }}"
+  when:
+    - zonegroups is defined
+    - zonegroups | length > 1
+    - item.is_master | bool
+
+- name: create non-master non-default zonegroup(s)
+  command: "{{ container_exec_cmd }} radosgw-admin zonegroup create --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  with_items: "{{ zonegroups }}"
+  when:
+    - zonegroups is defined
+    - zonegroups | length > 1
+    - not item.is_master | bool
+
+- name: create the default master zone
+  command: "{{ container_exec_cmd }} radosgw-admin zone create --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --access-key={{ item.access_key }} --secret={{ item.secret_key }} --master --default"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  with_items: "{{ zones }}"
+  when:
+    - zones is defined
+    - zones | length == 1
+    - item.is_master | bool
+
+- name: create the master zone(s)
+  command: "{{ container_exec_cmd }} radosgw-admin zone create --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --access-key={{ item.access_key }} --secret={{ item.secret_key }} --master"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  with_items: "{{ zones }}"
+  when:
+    - zones is defined
+    - zones | length > 1
+    - item.is_master | bool
+
+- name: add endpoints to their zone(s)
+  command: "{{ container_exec_cmd }} radosgw-admin zone modify --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --endpoints {{ item.endpoints }}"
+  with_items: "{{ zone_endpoints_list }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  when:
+    - zone_endpoints_list is defined
+    - item.is_master | bool
+
+- name: update period for zone creation
+  command: "{{ container_exec_cmd }} radosgw-admin --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} period update --commit"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  with_items: "{{ zone_endpoints_list }}"
+  when:
+    - zone_endpoints_list is defined
+    - item.is_master | bool
+
+- name: include_tasks create_zone_user.yml
+  include_tasks: create_zone_user.yml

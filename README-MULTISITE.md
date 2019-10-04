@@ -1,21 +1,28 @@
 RGW Multisite
 =============
 
-Directions for configuring the RGW Multisite support in ceph-ansible
+This document contains directions for configuring the RGW Multisite support in ceph-ansible when the desired multisite configuration involves only one realm, one zone group and one zone in a cluster.
+
+For information on configuring RGW Multisite with multiple realms, zone groups, or zones in a cluster, refer to [README-MULTISITE-MULTIREALM.md](README-MULTISITE-MULTIREALM.md).
+
+In Ceph Multisite, a realm, master zone group, and a master zone is created on a Primary Ceph Cluster.
+
+The realm on the primary cluster is pulled onto a secondary cluster where a new zone is created and joins the realm.
+
+Once the realm is pulled on the secondary cluster and the new zone is created, data will now sync between the primary and secondary clusters.
 
 ## Requirements
 
+Multisite replication can be configured either over multiple Ceph clusters or in a single Ceph cluster using Ceph version **Jewel or newer**.
+
 * At least 2 Ceph clusters
-* 1 RGW per cluster
+* at least 1 RGW per cluster
+* 1 RGW per host
 * Jewel or newer
 
-More details:
+## Configuring the Master Zone in the Primary Ceph Cluster
 
-* Can configure a Master and Secondary realm/zonegroup/zone on 2 separate clusters.
-
-## Configuring the Master Zone in the Primary Cluster
-
-This will setup the realm, zonegroup and master zone and make them the defaults.  It will also reconfigure the specified RGW for use with the zone.
+This will setup the realm, master zonegroup and master zone and make them the defaults on the Primary Cluster.
 
 ``
 1. Generate System Access and System Secret Keys
@@ -24,38 +31,39 @@ This will setup the realm, zonegroup and master zone and make them the defaults.
 echo system_access_key: $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1) > multi-site-keys.txt
 echo system_secret_key: $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 40 | head -n 1) >> multi-site-keys.txt
 ```
-2. Edit the all.yml in group_vars
+2. Edit `group_vars/all.yml` for the Primary Cluster
 
 ```
-copy_admin_key: true
+## Rados Gateway options
+#
+radosgw_num_instances: 1
+
+#############
+# MULTISITE #
+#############
+
 # Enable Multisite support
 rgw_multisite: true
 rgw_zone: jupiter
 rgw_zonemaster: true
+rgw_zonegroupmaster: true
 rgw_zonesecondary: false
 rgw_multisite_proto: "http"
-rgw_multisite_endpoint_addr: "{{ ansible_fqdn }}"
-rgw_multisite_endpoints_list: "{{ rgw_multisite_proto }}://{{ ansible_fqdn }}:{{ radosgw_frontend_port }}"
 rgw_zonegroup: solarsystem
 rgw_zone_user: zone.user
+rgw_zone_user_display_name: "Zone User"
 rgw_realm: milkyway
 system_access_key: 6kWkikvapSnHyE22P7nO
 system_secret_key: MGecsMrWtKZgngOHZdrd6d3JxGO5CPWgT2lcnpSt
 ```
 
+**Note**: `radosgw_num_instances` must be set to 1. The playbooks do not support deploying RGW Multisite on hosts with more than 1 RGW.
+
+**Note:** `rgw_zone` cannot be set to "default"
+
 **Note:** `rgw_zonemaster` should have the value of `true` and `rgw_zonesecondary` should be `false`
 
 **Note:** replace the `system_access_key` and `system_secret_key` values with the ones you generated
-
-**Note:** `ansible_fqdn` domain name assigned to `rgw_multisite_endpoint_addr` must be resolvable from the secondary Ceph clusters mon and rgw node(s)
-
-**Note:** if there is more than 1 RGW in the cluster, `rgw_multisite_endpoints` needs to be set.<br/>
-`rgw_multisite_endpoints` is a comma seperated list, with no spaces, of the RGW endpoints in the format:<br/>
-`{{ rgw_multisite_proto }}://{{ ansible_fqdn }}:{{ radosgw_frontend_port }}`<br/>
-for example: `rgw_multisite_endpoints: http://foo.example.com:8080,http://bar.example.com:8080,http://baz.example.com:8080`
-
-
-3. Run the ceph-ansible playbook on your 1st cluster
 
 3. **(Optional)** Edit the rgws.yml in group_vars for rgw related pool creation
 
@@ -78,22 +86,30 @@ rgw_create_pools:
 
 4. Run the ceph-ansible playbook on your 1st cluster
 
-## Configuring the Secondary Zone in a Separate Cluster
+## Pulling the Realm and Configuring a New Zone on a Secondary Ceph Cluster
 
-5. Edit the all.yml in group_vars
+This configuration will pull the realm from the primary cluster onto the secondary cluster and create a new zone on the cluster as well.
+
+5. Edit `group_vars/all.yml` for the Secondary Cluster
 
 ```
-copy_admin_key: true
-# Enable Multisite support
+## Rados Gateway options
+#
+radosgw_num_instances: 1
+
+#############
+# MULTISITE #
+#############
+
 rgw_multisite: true
 rgw_zone: mars
 rgw_zonemaster: false
 rgw_zonesecondary: true
+rgw_zonegroupmaster: false
 rgw_multisite_proto: "http"
-rgw_multisite_endpoint_addr: "{{ ansible_fqdn }}"
-rgw_multisite_endpoints_list: "{{ rgw_multisite_proto }}://{{ ansible_fqdn }}:{{ radosgw_frontend_port }}"
 rgw_zonegroup: solarsystem
 rgw_zone_user: zone.user
+rgw_zone_user_display_name: "Zone User"
 rgw_realm: milkyway
 system_access_key: 6kWkikvapSnHyE22P7nO
 system_secret_key: MGecsMrWtKZgngOHZdrd6d3JxGO5CPWgT2lcnpSt
@@ -102,17 +118,13 @@ rgw_pull_port: 8080
 rgw_pullhost: cluster0-rgw0
 ```
 
+**Note:** `rgw_zone` cannot be set to "default"
+
 **Note:** `rgw_zonemaster` should have the value of `false` and `rgw_zonesecondary` should be `true`
 
-**Note:** `rgw_pullhost` should be the `rgw_multisite_endpoint_addr` of the RGW that is configured in the Primary Cluster
+**Note:** The endpoint made from `rgw_pull_proto` + `rgw_pull_host` + `rgw_pull_port` for each realm should be resolvable by the Primary Ceph clusters mons and rgws
 
 **Note:** `rgw_zone_user`, `system_access_key`, and `system_secret_key` should match what you used in the Primary Cluster
-
-**Note:** `ansible_fqdn` domain name assigned to `rgw_multisite_endpoint_addr` must be resolvable from the Primary Ceph clusters mon and rgw node(s)
-
-**Note:** if there is more than 1 RGW in the Secondary Cluster, `rgw_multisite_endpoints` needs to be set with the RGWs in the Secondary Cluster just like it was set in the Primary Cluster
-
-5. Run the ceph-ansible playbook on your 2nd cluster
 
 6. **(Optional)** Edit the rgws.yml in group_vars for rgw related pool creation
 
