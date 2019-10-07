@@ -234,7 +234,7 @@
 
 - name: stop nfs server service
   systemd:
-    name: "{%- if ansible_os_family == 'RedHat' 'nfs-server' %}{%- endif %}{%- if ansible_os_family == 'Suse' 'nfsserver' %}{%- endif %}{%- if ansible_os_family == 'Debian' 'nfs-kernel-server' %}{%- endif %}"
+    name: "{{ 'nfs-server' if ansible_os_family == 'RedHat' else 'nfsserver' if ansible_os_family == 'Suse' else 'nfs-kernel-server' if ansible_os_family == 'Debian' }}"
     state: stopped
     enabled: no
-  ignore_errors: true
+  failed_when: false
