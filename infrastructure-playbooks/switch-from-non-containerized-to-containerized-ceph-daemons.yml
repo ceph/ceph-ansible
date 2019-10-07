@@ -267,13 +267,13 @@
 
     - name: get osd directories
       command: >
-        ls -1 /var/lib/ceph/osd
+        find /var/lib/ceph/osd {% if dmcrypt | bool %}/var/lib/ceph/osd-lockbox{% endif %} -maxdepth 1 -mindepth 1 -type d
       register: osd_dirs
       changed_when: false
 
     - name: unmount all the osd directories
       command: >
-        umount /var/lib/ceph/osd/{{ item }}
+        umount {{ item }}
       changed_when: false
       failed_when: false
       with_items:
