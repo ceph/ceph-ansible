@@ -75,20 +75,11 @@
         - ceph-mon@.service
         - ceph-mon.target
 
-    - name: set_fact ceph_uid for ubuntu
-      set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is search("ubuntu")
+    - import_role:
+        name: ceph-defaults
 
-    - name: set_fact ceph_uid for red hat
-      set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
-
-    - name: set_fact ceph_uid for rhel
-      set_fact:
-         ceph_uid: 167
-      when: ceph_docker_image is search("rhceph")
+    - import_role:
+        name: ceph-facts
 
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
@@ -117,12 +108,6 @@
       failed_when: false
 
   tasks:
-    - import_role:
-        name: ceph-defaults
-
-    - import_role:
-        name: ceph-facts
-
     - import_role:
         name: ceph-handler
 
@@ -173,13 +158,11 @@
         - ceph-mgr@.service
         - ceph-mgr.target
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
+    - import_role:
+        name: ceph-defaults
 
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
+    - import_role:
+        name: ceph-facts
 
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
@@ -189,12 +172,6 @@
       changed_when: false
 
   tasks:
-    - import_role:
-        name: ceph-defaults
-
-    - import_role:
-        name: ceph-facts
-
     - import_role:
         name: ceph-handler
 
@@ -249,19 +226,8 @@
         - /usr/lib/systemd/system/ceph-osd@.service
         - /usr/lib/systemd/system/ceph-volume@.service
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
-
-    - name: set_fact ceph_uid for red hat
-      set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
-
-    - name: set_fact ceph_uid for rhel
-      set_fact:
-         ceph_uid: 167
-      when: ceph_docker_image is search("rhceph")
+    - import_role:
+        name: ceph-facts
 
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
@@ -304,12 +270,6 @@
       when: osd_running.rc != 0
 
   tasks:
-    - import_role:
-        name: ceph-defaults
-
-    - import_role:
-        name: ceph-facts
-
     - import_role:
         name: ceph-handler
 
@@ -369,13 +329,11 @@
         - ceph-mds@.service
         - ceph-mds.target
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
+    - import_role:
+        name: ceph-defaults
 
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
+    - import_role:
+        name: ceph-facts
 
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
@@ -385,12 +343,6 @@
       changed_when: false
 
   tasks:
-    - import_role:
-        name: ceph-defaults
-
-    - import_role:
-        name: ceph-facts
-
     - import_role:
         name: ceph-handler
 
@@ -415,13 +367,11 @@
   serial: 1
   become: true
   pre_tasks:
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
+    - import_role:
+        name: ceph-defaults
 
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
+    - import_role:
+        name: ceph-facts
 
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
@@ -431,12 +381,6 @@
       changed_when: false
 
   tasks:
-    - import_role:
-        name: ceph-defaults
-
-    - import_role:
-        name: ceph-facts
-
     - name: stop non-containerized ceph rgw(s)
       service:
         name: "ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}"
@@ -487,13 +431,11 @@
         - ceph-rbd-mirror@.service
         - ceph-rbd-mirror.target
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
+    - import_role:
+        name: ceph-defaults
 
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
+    - import_role:
+        name: ceph-facts
 
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
@@ -503,12 +445,6 @@
       changed_when: false
 
   tasks:
-    - import_role:
-        name: ceph-defaults
-
-    - import_role:
-        name: ceph-facts
-
     - import_role:
         name: ceph-handler
 
@@ -544,13 +480,11 @@
         enabled: no
       failed_when: false
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
+    - import_role:
+        name: ceph-defaults
 
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
+    - import_role:
+        name: ceph-facts
 
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
@@ -560,12 +494,6 @@
       changed_when: false
 
   tasks:
-    - import_role:
-        name: ceph-defaults
-
-    - import_role:
-        name: ceph-facts
-
     - import_role:
         name: ceph-handler
 
