@@ -57,15 +57,18 @@
   tasks:
     - debug: msg="gather facts on all Ceph hosts for following reference"
 
+    - import_role:
+        name: ceph-defaults
+
     - name: gather facts
       setup:
-      when: not delegate_facts_host | bool
+      when: not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
 
     - name: gather and delegate facts
       setup:
       delegate_to: "{{ item }}"
       delegate_facts: True
-      with_items: "{{ groups['all'] }}"
+      with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
       run_once: true
       when: delegate_facts_host | bool
 
