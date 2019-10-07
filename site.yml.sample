@@ -32,23 +32,16 @@
 
     - name: gather facts
       setup:
-      when: not delegate_facts_host | bool
+      when:
+        - not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
 
     - name: gather and delegate facts
       setup:
       delegate_to: "{{ item }}"
       delegate_facts: True
-      with_items: "{{ groups['all'] }}"
+      with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
       run_once: true
       when: delegate_facts_host | bool
-
-    - name: install required packages for fedora > 23
-      raw: sudo dnf -y install python2-dnf libselinux-python ntp
-      register: result
-      when:
-        - ansible_distribution == 'Fedora'
-        - ansible_distribution_major_version|int >= 23
-      until: result is succeeded
 
     - name: check if it is atomic host
       stat:
