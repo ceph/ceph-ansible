@@ -9,326 +9,52 @@
       register: result
       until: result is succeeded
 
-    # We only want to restart on hosts that have called the handler.
-    # This var is set when he handler is called, and unset after the
-    # restart to ensure only the correct hosts are restarted.
-    - name: set _mon_handler_called before restart
-      set_fact:
-         _mon_handler_called: True
-      listen: "restart ceph mons"
-
-    - name: copy mon restart script
-      template:
-        src: restart_mon_daemon.sh.j2
-        dest: /tmp/restart_mon_daemon.sh
-        owner: root
-        group: root
-        mode: 0750
-      listen: "restart ceph mons"
+    - name: mons handler
+      include_tasks: handler_mons.yml
       when: mon_group_name in group_names
-
-    - name: restart ceph mon daemon(s)
-      command: /usr/bin/env bash /tmp/restart_mon_daemon.sh
-      listen: "restart ceph mons"
-      when:
-        # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-        - mon_group_name in group_names
-        - handler_mon_status | bool
-        - hostvars[item]['_mon_handler_called'] | default(False) | bool
-      with_items: "{{ groups[mon_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: set _mon_handler_called after restart
-      set_fact:
-         _mon_handler_called: False
       listen: "restart ceph mons"
 
-    - name: set _osd_handler_called before restart
-      set_fact:
-         _osd_handler_called: True
-      listen: "restart ceph osds"
-
-    # This does not just restart OSDs but everything else too. Unfortunately
-    # at this time the ansible role does not have an OSD id list to use
-    # for restarting them specifically.
-    # This does not need to run during a rolling update as the playbook will
-    # restart all OSDs using the tasks "start ceph osd" or
-    # "restart containerized ceph osd"
-    - name: copy osd restart script
-      template:
-        src: restart_osd_daemon.sh.j2
-        dest: /tmp/restart_osd_daemon.sh
-        owner: root
-        group: root
-        mode: 0750
-      listen: "restart ceph osds"
+    - name: osds handler
+      include_tasks: handler_osds.yml
       when: osd_group_name in group_names
-
-    - name: restart ceph osds daemon(s)
-      command: /usr/bin/env bash /tmp/restart_osd_daemon.sh
-      listen: "restart ceph osds"
-      when:
-        - osd_group_name in group_names
-        - handler_osd_status | bool
-        - handler_health_osd_check | bool
-        - hostvars[item]['_osd_handler_called'] | default(False) | bool
-      with_items: "{{ groups[osd_group_name] | intersect(ansible_play_batch) }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: set _osd_handler_called after restart
-      set_fact:
-         _osd_handler_called: False
       listen: "restart ceph osds"
 
-    - name: set _mds_handler_called before restart
-      set_fact:
-         _mds_handler_called: True
-      listen: "restart ceph mdss"
-
-    - name: copy mds restart script
-      template:
-        src: restart_mds_daemon.sh.j2
-        dest: /tmp/restart_mds_daemon.sh
-        owner: root
-        group: root
-        mode: 0750
-      listen: "restart ceph mdss"
+    - name: mdss handler
+      include_tasks: handler_mdss.yml
       when: mds_group_name in group_names
-
-    - name: restart ceph mds daemon(s)
-      command: /usr/bin/env bash /tmp/restart_mds_daemon.sh
-      listen: "restart ceph mdss"
-      when:
-        - mds_group_name in group_names
-        - handler_mds_status | bool
-        - hostvars[item]['_mds_handler_called'] | default(False) | bool
-      with_items: "{{ groups[mds_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: set _mds_handler_called after restart
-      set_fact:
-         _mds_handler_called: False
       listen: "restart ceph mdss"
 
-    - name: set _rgw_handler_called before restart
-      set_fact:
-         _rgw_handler_called: True
-      listen: "restart ceph rgws"
-
-    - name: copy rgw restart script
-      template:
-        src: restart_rgw_daemon.sh.j2
-        dest: /tmp/restart_rgw_daemon.sh
-        owner: root
-        group: root
-        mode: 0750
-      listen: "restart ceph rgws"
+    - name: rgws handler
+      include_tasks: handler_rgws.yml
       when: rgw_group_name in group_names
-
-    - name: restart ceph rgw daemon(s)
-      command: /usr/bin/env bash /tmp/restart_rgw_daemon.sh
-      listen: "restart ceph rgws"
-      when:
-        - rgw_group_name in group_names
-        - handler_rgw_status | bool
-        - hostvars[item]['_rgw_handler_called'] | default(False) | bool
-      with_items: "{{ groups[rgw_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: set _rgw_handler_called after restart
-      set_fact:
-         _rgw_handler_called: False
       listen: "restart ceph rgws"
 
-    - name: set _nfs_handler_called before restart
-      set_fact:
-         _nfs_handler_called: True
-      listen: "restart ceph nfss"
-
-    - name: copy nfs restart script
-      template:
-        src: restart_nfs_daemon.sh.j2
-        dest: /tmp/restart_nfs_daemon.sh
-        owner: root
-        group: root
-        mode: 0750
-      listen: "restart ceph nfss"
+    - name: nfss handler
+      include_tasks: handler_nfss.yml
       when: nfs_group_name in group_names
-
-    - name: restart ceph nfs daemon(s)
-      command: /usr/bin/env bash /tmp/restart_nfs_daemon.sh
-      listen: "restart ceph nfss"
-      when:
-        - nfs_group_name in group_names
-        - handler_nfs_status | bool
-        - hostvars[item]['_nfs_handler_called'] | default(False) | bool
-      with_items: "{{ groups[nfs_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: set _nfs_handler_called after restart
-      set_fact:
-         _nfs_handler_called: False
       listen: "restart ceph nfss"
 
-    - name: set _rbdmirror_handler_called before restart
-      set_fact:
-         _rbdmirror_handler_called: True
-      listen: "restart ceph rbdmirrors"
-
-    - name: copy rbd mirror restart script
-      template:
-        src: restart_rbd_mirror_daemon.sh.j2
-        dest: /tmp/restart_rbd_mirror_daemon.sh
-        owner: root
-        group: root
-        mode: 0750
-      listen: "restart ceph rbdmirrors"
+    - name: rbdmirrors handler
+      include_tasks: handler_rbdmirrors.yml
       when: rbdmirror_group_name in group_names
-
-    - name: restart ceph rbd mirror daemon(s)
-      command: /usr/bin/env bash /tmp/restart_rbd_mirror_daemon.sh
-      listen: "restart ceph rbdmirrors"
-      when:
-        - rbdmirror_group_name in group_names
-        - handler_rbd_mirror_status | bool
-        - hostvars[item]['_rbdmirror_handler_called'] | default(False) | bool
-      with_items: "{{ groups[rbdmirror_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: set _rbdmirror_handler_called after restart
-      set_fact:
-         _rbdmirror_handler_called: False
       listen: "restart ceph rbdmirrors"
 
-    - name: set _mgr_handler_called before restart
-      set_fact:
-         _mgr_handler_called: True
-      listen: "restart ceph mgrs"
-
-    - name: copy mgr restart script
-      template:
-        src: restart_mgr_daemon.sh.j2
-        dest: /tmp/restart_mgr_daemon.sh
-        owner: root
-        group: root
-        mode: 0750
-      listen: "restart ceph mgrs"
+    - name: mgrs handler
+      include_tasks: handler_mgrs.yml
       when: mgr_group_name in group_names
-
-    - name: restart ceph mgr daemon(s)
-      command: /usr/bin/env bash /tmp/restart_mgr_daemon.sh
-      listen: "restart ceph mgrs"
-      when:
-        - mgr_group_name in group_names
-        - handler_mgr_status | bool
-        - hostvars[item]['_mgr_handler_called'] | default(False) | bool
-      with_items: "{{ groups[mgr_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: set _mgr_handler_called after restart
-      set_fact:
-         _mgr_handler_called: False
       listen: "restart ceph mgrs"
 
-    - name: set _tcmu_runner_handler_called before restart
-      set_fact:
-         _tcmu_runner_handler_called: True
-      listen: "restart ceph tcmu-runner"
-
-    - name: copy tcmu-runner restart script
-      template:
-        src: restart_tcmu_runner.sh.j2
-        dest: /tmp/restart_tcmu_runner.sh
-        owner: root
-        group: root
-        mode: 0750
-      listen: "restart ceph tcmu-runner"
+    - name: tcmu-runner handler
+      include_tasks: handler_tcmu_runner.yml
       when: iscsi_gw_group_name in group_names
-
-    - name: restart tcmu-runner
-      command: /usr/bin/env bash /tmp/restart_tcmu_runner.sh
-      listen: "restart ceph tcmu-runner"
-      when:
-        - iscsi_gw_group_name in group_names
-        - ceph_tcmu_runner_stat.get('rc') == 0
-        - hostvars[item]['_tcmu_runner_handler_called'] | default(False) | bool
-        - ceph_tcmu_runner_stat.get('stdout_lines', [])|length != 0
-      with_items: "{{ groups[iscsi_gw_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: set _tcmu_runner_handler_called after restart
-      set_fact:
-         _tcmu_runner_handler_called: False
       listen: "restart ceph tcmu-runner"
 
-    - name: set _rbd_target_gw_handler_called before restart
-      set_fact:
-         _rbd_target_gw_handler_called: True
-      listen: "restart ceph rbd-target-gw"
-
-    - name: copy rbd-target-gw restart script
-      template:
-        src: restart_rbd_target_gw.sh.j2
-        dest: /tmp/restart_rbd_target_gw.sh
-        owner: root
-        group: root
-        mode: 0750
-      listen: "restart ceph rbd-target-gw"
+    - name: rbd-target-gw handler
+      include_tasks: handler_rbd_target_gw.yml
       when: iscsi_gw_group_name in group_names
-
-    - name: restart rbd-target-gw
-      command: /usr/bin/env bash /tmp/restart_rbd_target_gw.sh
-      listen: "restart ceph rbd-target-gw"
-      when:
-        - iscsi_gw_group_name in group_names
-        - ceph_rbd_target_gw_stat.get('rc') == 0
-        - hostvars[item]['_rbd_target_gw_handler_called'] | default(False) | bool
-        - ceph_rbd_target_gw_stat.get('stdout_lines', [])|length != 0
-      with_items: "{{ groups[iscsi_gw_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: set _rbd_target_gw_handler_called after restart
-      set_fact:
-         _rbd_target_gw_handler_called: False
       listen: "restart ceph rbd-target-gw"
 
-    - name: set _rbd_target_api_handler_called before restart
-      set_fact:
-         _rbd_target_api_handler_called: True
-      listen: "restart ceph rbd-target-api"
-
-    - name: copy rbd-target-api restart script
-      template:
-        src: restart_rbd_target_api.sh.j2
-        dest: /tmp/restart_rbd_target_api.sh
-        owner: root
-        group: root
-        mode: 0750
-      listen: "restart ceph rbd-target-api"
+    - name: rbd-target-api handler
+      include_tasks: handler_rbd_target_api.yml
       when: iscsi_gw_group_name in group_names
-
-    - name: restart rbd-target-api
-      command: /usr/bin/env bash /tmp/restart_rbd_target_api.sh
-      listen: "restart ceph rbd-target-api"
-      when:
-        - iscsi_gw_group_name in group_names
-        - ceph_rbd_target_api_stat.get('rc') == 0
-        - hostvars[item]['_rbd_target_api_handler_called'] | default(False) | bool
-        - ceph_rbd_target_api_stat.get('stdout_lines', [])|length != 0
-      with_items: "{{ groups[iscsi_gw_group_name] }}"
-      delegate_to: "{{ item }}"
-      run_once: True
-
-    - name: set _rbd_target_api_handler_called after restart
-      set_fact:
-         _rbd_target_api_handler_called: False
       listen: "restart ceph rbd-target-api"
