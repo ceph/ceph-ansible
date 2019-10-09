@@ -1,5 +1,6 @@
 ---
 - hosts: all
+  gather_facts: false
   become: true
   pre_tasks:
     - name: set ceph node exporter install 'In Progress'
@@ -32,6 +33,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: "{{ grafana_server_group_name }}"
+  gather_facts: false
   become: true
   pre_tasks:
     - name: set ceph grafana install 'In Progress'
@@ -68,6 +70,7 @@
 # using groups[] here otherwise it can't fallback to the mon if there's no mgr group.
 # adding an additional | default(omit) in case where no monitors are present (external ceph cluster)
 - hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) | default(omit) }}"
+  gather_facts: false
   become: true
   pre_tasks:
     - name: set ceph dashboard install 'In Progress'
