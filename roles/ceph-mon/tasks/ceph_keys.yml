@@ -11,7 +11,7 @@
   register: ceph_health_raw
   run_once: true
   until: >
-    (ceph_health_raw.stdout != "") and (ceph_health_raw.stdout | default('{}') | from_json)['state'] in ['leader', 'peon']
+    (ceph_health_raw.stdout | length > 0) and (ceph_health_raw.stdout | default('{}') | from_json)['state'] in ['leader', 'peon']
   retries: "{{ handler_health_mon_check_retries }}"
   delay: "{{ handler_health_mon_check_delay }}"
   changed_when: false
