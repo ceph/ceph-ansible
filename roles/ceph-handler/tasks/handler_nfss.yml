@@ -1,0 +1,25 @@
+---
+- name: set _nfs_handler_called before restart
+  set_fact:
+    _nfs_handler_called: True
+
+- name: copy nfs restart script
+  template:
+    src: restart_nfs_daemon.sh.j2
+    dest: /tmp/restart_nfs_daemon.sh
+    owner: root
+    group: root
+    mode: 0750
+
+- name: restart ceph nfs daemon(s)
+  command: /usr/bin/env bash /tmp/restart_nfs_daemon.sh
+  when:
+    - handler_nfs_status | bool
+    - hostvars[item]['_nfs_handler_called'] | default(False) | bool
+  with_items: "{{ groups[nfs_group_name] }}"
+  delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _nfs_handler_called after restart
+  set_fact:
+    _nfs_handler_called: False
