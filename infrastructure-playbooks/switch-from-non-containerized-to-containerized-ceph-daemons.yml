@@ -75,26 +75,17 @@
         - ceph-mon@.service
         - ceph-mon.target
 
-    - name: set_fact ceph_uid for ubuntu
-      set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is search("ubuntu")
+    - import_role:
+        name: ceph-defaults
 
-    - name: set_fact ceph_uid for red hat
-      set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
+    - import_role:
+        name: ceph-facts
 
-    - name: set_fact ceph_uid for rhel
-      set_fact:
-         ceph_uid: 167
-      when: ceph_docker_image is search("rhceph")
-
-    # NOTE: changed from file module to raw chown command for performance reasons
+    # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
     # as in this case we know we want all owned by ceph user
     - name: set proper ownership on ceph directories
-      command: "chown -R {{ ceph_uid }} /var/lib/ceph /etc/ceph"
+      command: "find /var/lib/ceph /etc/ceph -not -( -user {{ ceph_uid }} -or -group {{ ceph_uid }} -) -execdir chown {{ ceph_uid }}:{{ ceph_uid }} {} +"
       changed_when: false
 
     - name: check for existing old leveldb file extension (ldb)
@@ -117,12 +108,6 @@
       failed_when: false
 
   tasks:
-    - import_role:
-        name: ceph-defaults
-
-    - import_role:
-        name: ceph-facts
-
     - import_role:
         name: ceph-handler
 
@@ -173,28 +158,20 @@
         - ceph-mgr@.service
         - ceph-mgr.target
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
-
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
-
-    # NOTE: changed from file module to raw chown command for performance reasons
-    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
-    # as in this case we know we want all owned by ceph user
-    - name: set proper ownership on ceph directories
-      command: "chown -R {{ ceph_uid }} /var/lib/ceph /etc/ceph"
-      changed_when: false
-
-  tasks:
     - import_role:
         name: ceph-defaults
 
     - import_role:
         name: ceph-facts
 
+    # NOTE: changed from file module to raw find command for performance reasons
+    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
+    # as in this case we know we want all owned by ceph user
+    - name: set proper ownership on ceph directories
+      command: "find /var/lib/ceph /etc/ceph -not -( -user {{ ceph_uid }} -or -group {{ ceph_uid }} -) -execdir chown {{ ceph_uid }}:{{ ceph_uid }} {} +"
+      changed_when: false
+
+  tasks:
     - import_role:
         name: ceph-handler
 
@@ -249,25 +226,14 @@
         - /usr/lib/systemd/system/ceph-osd@.service
         - /usr/lib/systemd/system/ceph-volume@.service
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
+    - import_role:
+        name: ceph-facts
 
-    - name: set_fact ceph_uid for red hat
-      set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
-
-    - name: set_fact ceph_uid for rhel
-      set_fact:
-         ceph_uid: 167
-      when: ceph_docker_image is search("rhceph")
-
-    # NOTE: changed from file module to raw chown command for performance reasons
+    # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
     # as in this case we know we want all owned by ceph user
     - name: set proper ownership on ceph directories
-      command: "chown --verbose -R {{ ceph_uid }} /var/lib/ceph /etc/ceph"
+      command: "find /var/lib/ceph /etc/ceph -not -( -user {{ ceph_uid }} -or -group {{ ceph_uid }} -) -execdir chown {{ ceph_uid }}:{{ ceph_uid }} {} +"
       changed_when: false
 
     - name: check for existing old leveldb file extension (ldb)
@@ -291,25 +257,19 @@
 
     - name: get osd directories
       command: >
-        ls -1 /var/lib/ceph/osd
+        find /var/lib/ceph/osd {% if dmcrypt | bool %}/var/lib/ceph/osd-lockbox{% endif %} -maxdepth 1 -mindepth 1 -type d
       register: osd_dirs
       changed_when: false
 
     - name: unmount all the osd directories
       command: >
-        umount /var/lib/ceph/osd/{{ item }}
+        umount {{ item }}
       changed_when: false
       failed_when: false
       with_items: "{{ osd_dirs.stdout_lines }}"
       when: osd_running.rc != 0
 
   tasks:
-    - import_role:
-        name: ceph-defaults
-
-    - import_role:
-        name: ceph-facts
-
     - import_role:
         name: ceph-handler
 
@@ -369,28 +329,20 @@
         - ceph-mds@.service
         - ceph-mds.target
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
-
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
-
-    # NOTE: changed from file module to raw chown command for performance reasons
-    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
-    # as in this case we know we want all owned by ceph user
-    - name: set proper ownership on ceph directories
-      command: "chown -R {{ ceph_uid }} /var/lib/ceph /etc/ceph"
-      changed_when: false
-
-  tasks:
     - import_role:
         name: ceph-defaults
 
     - import_role:
         name: ceph-facts
 
+    # NOTE: changed from file module to raw find command for performance reasons
+    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
+    # as in this case we know we want all owned by ceph user
+    - name: set proper ownership on ceph directories
+      command: "find /var/lib/ceph /etc/ceph -not -( -user {{ ceph_uid }} -or -group {{ ceph_uid }} -) -execdir chown {{ ceph_uid }}:{{ ceph_uid }} {} +"
+      changed_when: false
+
+  tasks:
     - import_role:
         name: ceph-handler
 
@@ -415,28 +367,20 @@
   serial: 1
   become: true
   pre_tasks:
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
-
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
-
-    # NOTE: changed from file module to raw chown command for performance reasons
-    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
-    # as in this case we know we want all owned by ceph user
-    - name: set proper ownership on ceph directories
-      command: "chown -R {{ ceph_uid }} /var/lib/ceph /etc/ceph"
-      changed_when: false
-
-  tasks:
     - import_role:
         name: ceph-defaults
 
     - import_role:
         name: ceph-facts
 
+    # NOTE: changed from file module to raw find command for performance reasons
+    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
+    # as in this case we know we want all owned by ceph user
+    - name: set proper ownership on ceph directories
+      command: "find /var/lib/ceph /etc/ceph -not -( -user {{ ceph_uid }} -or -group {{ ceph_uid }} -) -execdir chown {{ ceph_uid }}:{{ ceph_uid }} {} +"
+      changed_when: false
+
+  tasks:
     - name: stop non-containerized ceph rgw(s)
       service:
         name: "ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}"
@@ -487,28 +431,20 @@
         - ceph-rbd-mirror@.service
         - ceph-rbd-mirror.target
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
-
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
-
-    # NOTE: changed from file module to raw chown command for performance reasons
-    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
-    # as in this case we know we want all owned by ceph user
-    - name: set proper ownership on ceph directories
-      command: "chown -R {{ ceph_uid }} /var/lib/ceph /etc/ceph"
-      changed_when: false
-
-  tasks:
     - import_role:
         name: ceph-defaults
 
     - import_role:
         name: ceph-facts
 
+    # NOTE: changed from file module to raw find command for performance reasons
+    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
+    # as in this case we know we want all owned by ceph user
+    - name: set proper ownership on ceph directories
+      command: "find /var/lib/ceph /etc/ceph -not -( -user {{ ceph_uid }} -or -group {{ ceph_uid }} -) -execdir chown {{ ceph_uid }}:{{ ceph_uid }} {} +"
+      changed_when: false
+
+  tasks:
     - import_role:
         name: ceph-handler
 
@@ -544,28 +480,20 @@
         enabled: no
       failed_when: false
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
-
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
-
-    # NOTE: changed from file module to raw chown command for performance reasons
-    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
-    # as in this case we know we want all owned by ceph user
-    - name: set proper ownership on ceph directories
-      command: "chown -R {{ ceph_uid }} /var/lib/ceph /etc/ceph"
-      changed_when: false
-
-  tasks:
     - import_role:
         name: ceph-defaults
 
     - import_role:
         name: ceph-facts
 
+    # NOTE: changed from file module to raw find command for performance reasons
+    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
+    # as in this case we know we want all owned by ceph user
+    - name: set proper ownership on ceph directories
+      command: "find /var/lib/ceph /etc/ceph -not -( -user {{ ceph_uid }} -or -group {{ ceph_uid }} -) -execdir chown {{ ceph_uid }}:{{ ceph_uid }} {} +"
+      changed_when: false
+
+  tasks:
     - import_role:
         name: ceph-handler
 
