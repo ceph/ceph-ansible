@@ -460,52 +460,171 @@
         - (ceph_versions.get('stdout', '{}')|from_json).get('osd', {}) | length == 1
         - ceph_versions_osd | string is search("ceph version 12")
 
-- name: upgrade ceph mdss cluster
 
-  vars:
-    upgrade_ceph_packages: True
-
-  hosts:
-    - "{{ mds_group_name|default('mdss') }}"
-
-  serial: 1
-  become: True
-
-  pre_tasks:
-    - name: stop ceph mds
-      systemd:
-        name: ceph-mds@{{ ansible_hostname }}
-        state: stopped
-        enabled: yes
-      when:
-        - not containerized_deployment
-
+- name: upgrade ceph mdss cluster, deactivate all rank > 0
+  hosts: "{{ groups[mon_group_name|default('mons')][0] }}"
+  become: true
   roles:
     - ceph-defaults
     - ceph-facts
-    - ceph-handler
-    - { role: ceph-common, when: not containerized_deployment }
-    - { role: ceph-docker-common, when: containerized_deployment }
-    - ceph-config
-    - ceph-mds
 
   post_tasks:
-    - name: start ceph mds
+    - name: get mds cluster status
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} fs get {{ cephfs }} -f json"
+      changed_when: false
+      register: _cephfs_status
+
+    - name: get all mds names
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} mds dump -f json"
+      changed_when: false
+      register: _all_mds_name
+
+    - name: set_fact all_mds_name
+      set_fact:
+        all_mds_name: "{{ all_mds_name | default([]) + [(_all_mds_name.stdout | from_json)['info'][item.key]['name'] ] }}"
+      with_dict: "{{ ((_all_mds_name.stdout | from_json).info) }}"
+
+    - name: set max_mds 1 on ceph fs
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds 1"
+      changed_when: false
+      register: _max_mds_result
+
+    - name: deactivate all non-zero ranks
+      shell: |
+        #!/bin/bash
+        {{ docker_exec_cmd }} ceph --cluster {{ cluster }} mds deactivate {{ cephfs }}:{{ item }}
+        {{ docker_exec_cmd }} ceph --cluster {{ cluster }} fs get {{ cephfs }} -f json
+      register: deactivate_status
+      retries: 10
+      delay: 1
+      failed_when: false
+      until: item not in (deactivate_status.stdout | from_json).mdsmap.in
+      with_items: "{{ (_cephfs_status.stdout | from_json).mdsmap.in | difference([0]) | sort(reverse=True) }}"
+
+    - name: get name of remaining active mds
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} mds dump -f json"
+      changed_when: false
+      register: _mds_active_name
+
+    - name: set_fact mds_active_name
+      set_fact:
+        mds_active_name: "{{ (_mds_active_name.stdout | from_json)['info'][item.key]['name'] }}"
+      with_dict: "{{ (_mds_active_name.stdout | from_json).info }}"
+
+    - name: create active_mdss group
+      add_host:
+        name: "{{ mds_active_name }}"
+        groups: active_mdss
+        ansible_host: "{{ hostvars[mds_active_name]['ansible_host'] | default(omit) }}"
+        ansible_port: "{{ hostvars[mds_active_name]['ansible_port'] | default(omit) }}"
+
+    - name: create standby_mdss group
+      add_host:
+        name: "{{ item }}"
+        groups: standby_mdss
+        ansible_host: "{{ hostvars[item]['ansible_host'] | default(omit) }}"
+        ansible_port: "{{ hostvars[item]['ansible_port'] | default(omit) }}"
+      with_items: "{{ groups[mds_group_name] | difference(mds_active_name) }}"
+
+    - name: stop standby ceph mds
+      systemd:
+        name: "ceph-mds@{{ hostvars[item]['ansible_hostname'] }}"
+        state: stopped
+        enabled: no
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups['standby_mdss'] | default([]) }}"
+      when: groups['standby_mdss'] | default([]) | length > 0
+
+    # dedicated task for masking systemd unit
+    # somehow, having a single task doesn't work in containerized context
+    - name: mask stop standby ceph mds
+      systemd:
+        name: "ceph-mds@{{ hostvars[item]['ansible_hostname'] }}"
+        masked: yes
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups['standby_mdss'] | default([]) }}"
+      when: groups['standby_mdss'] | default([]) | length > 0
+
+    - name: wait until all standbys mds are stopped
+      command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs dump -f json"
+      changed_when: false
+      register: wait_standbys_down
+      retries: 300
+      delay: 5
+      until: (wait_standbys_down.stdout | from_json).standbys | length == 0
+
+
+- name: upgrade active mds
+  vars:
+    upgrade_ceph_packages: True
+  hosts: active_mdss
+  become: true
+  pre_tasks:
+    - name: prevent restart from the packaging
       systemd:
         name: ceph-mds@{{ ansible_hostname }}
-        state: started
-        enabled: yes
-      when:
-        - not containerized_deployment
+        enabled: no
+        masked: yes
+      when: not containerized_deployment | bool
 
+  roles:
+    - role: ceph-defaults
+    - role: ceph-facts
+    - role: ceph-handler
+    - role: ceph-common
+      when: not containerized_deployment | bool
+    - role: ceph-docker-common
+      when: containerized_deployment | bool
+    - role: ceph-config
+    - role: ceph-mds
+
+  post_tasks:
+    - name: restart ceph mds
+      systemd:
+        name: ceph-mds@{{ ansible_hostname }}
+        state: restarted
+        enabled: yes
+        masked: no
+        daemon_reload: yes
+
+
+- name: upgrade standbys ceph mdss cluster
+  vars:
+    upgrade_ceph_packages: True
+  hosts: standby_mdss | default([])
+  become: True
+  pre_tasks:
+    - name: prevent restarts from the packaging
+      systemd:
+        name: ceph-mds@{{ ansible_hostname }}
+        enabled: no
+        masked: yes
+      when: not containerized_deployment | bool
+
+  roles:
+    - role: ceph-defaults
+    - role: ceph-facts
+    - role: ceph-handler
+    - role: ceph-common
+      when: not containerized_deployment | bool
+    - role: ceph-docker-common
+      when: containerized_deployment | bool
+    - role: ceph-config
+    - role: ceph-mds
+
+  post_tasks:
     - name: restart ceph mds
       systemd:
         name: ceph-mds@{{ ansible_hostname }}
         state: restarted
         enabled: yes
         daemon_reload: yes
-      when:
-        - containerized_deployment
+
+    - name: set max_mds
+      command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds {{ mds_max_mds }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: inventory_hostname == groups['standby_mdss'] | last
 
 
 - name: upgrade ceph rgws cluster
