@@ -1,7 +1,89 @@
 ---
-- name: validate provided configuration
-  validate:
-    mode: strict
+- name: validate ceph_origin
+  fail:
+    msg: "ceph_origin must be either 'repository', 'distro' or 'local'"
+  when:
+    - not containerized_deployment | bool
+    - ceph_origin not in ['repository', 'distro', 'local']
+
+- name: validate ceph_repository
+  fail:
+    msg: "ceph_repository must be either 'community', 'rhcs', 'dev', 'custom' or 'uca'"
+  when:
+    - ceph_origin == 'repository'
+    - ceph_repository not in ['community', 'rhcs', 'dev', 'custom', 'uca']
+
+- name: validate ceph_repository_community
+  fail:
+    msg: "ceph_stable_release must be either 'nautilus' or 'octopus'"
+  when:
+    - ceph_origin == 'repository'
+    - ceph_repository == 'community'
+    - ceph_stable_release not in ['nautilus', 'octopus']
+
+- name: validate ceph_repository_type
+  fail:
+    msg: "ceph_repository_type must be either 'cdn' or 'iso'"
+  when:
+    - ceph_origin == 'repository'
+    - ceph_repository == 'rhcs'
+    - ceph_repository_type not in ['cdn', 'iso']
+
+- name: validate osd_objectstore
+  fail:
+    msg: "osd_objectstore must be either 'bluestore' or 'filestore'"
+  when: osd_objectstore not in ['bluestore', 'filestore']
+
+- name: validate monitor network configuration
+  fail:
+    msg: "Either monitor_address, monitor_address_block or monitor_interface must be provided"
+  when:
+    - mon_group_name in group_names
+    - monitor_address == '0.0.0.0'
+    - monitor_address_block == 'subnet'
+    - monitor_interface == 'interface'
+
+- name: validate radosgw network configuration
+  fail:
+    msg: "Either radosgw_address, radosgw_address_block or radosgw_interface must be provided"
+  when:
+    - rgw_group_name in group_names
+    - radosgw_address == '0.0.0.0'
+    - radosgw_address_block == 'subnet'
+    - radosgw_interface == 'interface'
+
+- name: validate osd nodes
+  when: osd_group_name in group_names
+  block:
+    - name: validate lvm osd scenario
+      fail:
+        msg: 'devices or lvm_volumes must be defined for lvm osd scenario'
+      when:
+        - not osd_auto_discovery | default(false) | bool
+        - devices is undefined
+        - lvm_volumes is undefined
+
+    - name: validate filestore lvm osd scenario
+      fail:
+        msg: 'data and journal keys must be defined in lvm_volumes'
+      when:
+        - osd_objectstore == 'filestore'
+        - not osd_auto_discovery | default(false) | bool
+        - lvm_volumes is defined
+        - lvm_volumes | length > 0
+        - item.data is undefined or item.journal is undefined
+      with_items: '{{ lvm_volumes }}'
+
+    - name: validate bluestore lvm osd scenario
+      fail:
+        msg: 'data key must be defined in lvm_volumes'
+      when:
+        - osd_objectstore == 'bluestore'
+        - not osd_auto_discovery | default(false) | bool
+        - lvm_volumes is defined
+        - lvm_volumes | length > 0
+        - item.data is undefined
+      with_items: '{{ lvm_volumes }}'
 
 - name: warning deprecation for fqdn configuration
   fail:
