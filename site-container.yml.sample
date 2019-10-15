@@ -39,26 +39,6 @@
       run_once: true
       when: delegate_facts_host | bool
 
-    - name: check if it is atomic host
-      stat:
-        path: /run/ostree-booted
-      register: stat_ostree
-      tags: always
-
-    - name: set_fact is_atomic
-      set_fact:
-        is_atomic: '{{ stat_ostree.stat.exists }}'
-      tags: always
-
-    - name: check if podman binary is present
-      stat:
-        path: /usr/bin/podman
-      register: podman_binary
-
-    - name: set_fact container_binary
-      set_fact:
-        container_binary: "{{ 'podman' if (podman_binary.stat.exists and ansible_distribution == 'Fedora') or (ansible_os_family == 'RedHat' and ansible_distribution_major_version == '8') else 'docker' }}"
-
     - import_role:
         name: ceph-defaults
       tags: [with_pkg, fetch_container_image]
