@@ -1,0 +1,29 @@
+---
+# We only want to restart on hosts that have called the handler.
+# This var is set when he handler is called, and unset after the
+# restart to ensure only the correct hosts are restarted.
+- name: set _mon_handler_called before restart
+  set_fact:
+    _mon_handler_called: True
+
+- name: copy mon restart script
+  template:
+    src: restart_mon_daemon.sh.j2
+    dest: /tmp/restart_mon_daemon.sh
+    owner: root
+    group: root
+    mode: 0750
+
+- name: restart ceph mon daemon(s)
+  command: /usr/bin/env bash /tmp/restart_mon_daemon.sh
+  when:
+    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+    - handler_mon_status | bool
+    - hostvars[item]['_mon_handler_called'] | default(False) | bool
+  with_items: "{{ groups[mon_group_name] }}"
+  delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _mon_handler_called after restart
+  set_fact:
+    _mon_handler_called: False

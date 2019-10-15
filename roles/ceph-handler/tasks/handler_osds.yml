@@ -1,0 +1,32 @@
+---
+- name: set _osd_handler_called before restart
+  set_fact:
+    _osd_handler_called: True
+
+# This does not just restart OSDs but everything else too. Unfortunately
+# at this time the ansible role does not have an OSD id list to use
+# for restarting them specifically.
+# This does not need to run during a rolling update as the playbook will
+# restart all OSDs using the tasks "start ceph osd" or
+# "restart containerized ceph osd"
+- name: copy osd restart script
+  template:
+    src: restart_osd_daemon.sh.j2
+    dest: /tmp/restart_osd_daemon.sh
+    owner: root
+    group: root
+    mode: 0750
+
+- name: restart ceph osds daemon(s)
+  command: /usr/bin/env bash /tmp/restart_osd_daemon.sh
+  when:
+    - handler_osd_status | bool
+    - handler_health_osd_check | bool
+    - hostvars[item]['_osd_handler_called'] | default(False) | bool
+  with_items: "{{ groups[osd_group_name] | intersect(ansible_play_batch) }}"
+  delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _osd_handler_called after restart
+  set_fact:
+    _osd_handler_called: False
