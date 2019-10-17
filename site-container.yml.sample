@@ -410,6 +410,11 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
+- import_playbook: dashboard.yml
+  when:
+    - dashboard_enabled | bool
+    - groups.get(grafana_server_group_name, []) | length > 0
+
 - hosts: mons
   gather_facts: false
   become: True
@@ -441,8 +446,3 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       when: not ceph_status.failed
-
-- import_playbook: dashboard.yml
-  when:
-    - dashboard_enabled | bool
-    - groups.get(grafana_server_group_name, []) | length > 0
