@@ -22,6 +22,12 @@
     - cephx | bool
     - item.item.copy_key | bool
 
+- name: add mgr ip address to trusted list with dashboard
+  set_fact:
+    trusted_ip_list: '{{ trusted_ip_list }},{{ hostvars[item]["ansible_all_ipv4_addresses"] | ips_in_ranges(public_network.split(",")) | first }}'
+  with_items: '{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}'
+  when: dashboard_enabled | bool
+
 - name: deploy gateway settings, used by the ceph_iscsi_config modules
   config_template:
     src: "{{ role_path }}/templates/iscsi-gateway.cfg.j2"
