@@ -4,12 +4,11 @@
   changed_when: false
 
 - name: list mirroring peer
-  shell: "{{ container_exec_cmd | default('') }} rbd --cluster {{ cluster }} --keyring /etc/ceph/{{ cluster }}.client.rbd-mirror.{{ ansible_hostname }}.keyring --name client.rbd-mirror.{{ ansible_hostname }} mirror pool info {{ ceph_rbd_mirror_pool }} | grep -q {{ ceph_rbd_mirror_remote_user }}"
+  command: "{{ container_exec_cmd | default('') }} rbd --cluster {{ cluster }} --keyring /etc/ceph/{{ cluster }}.client.rbd-mirror.{{ ansible_hostname }}.keyring --name client.rbd-mirror.{{ ansible_hostname }} mirror pool info {{ ceph_rbd_mirror_pool }}"
   changed_when: false
-  failed_when: false
   register: mirror_peer
 
 - name: add a mirroring peer
   command: "{{ container_exec_cmd | default('') }} rbd --cluster {{ cluster }} --keyring /etc/ceph/{{ cluster }}.client.rbd-mirror.{{ ansible_hostname }}.keyring --name client.rbd-mirror.{{ ansible_hostname }} mirror pool peer add {{ ceph_rbd_mirror_pool }} {{ ceph_rbd_mirror_remote_user }}@{{ ceph_rbd_mirror_remote_cluster }}"
   changed_when: false
-  when: mirror_peer.rc == 1
+  when: ceph_rbd_mirror_remote_user in mirror_peer.stdout
