@@ -15,10 +15,8 @@
         ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
   when: container_binary == 'docker'
 
-- name: container registry authentication
-  command: '{{ container_binary }} login -u {{ ceph_docker_registry_username }} -p {{ ceph_docker_registry_password }} {{ ceph_docker_registry }}'
-  changed_when: false
-  no_log: true
+- name: include registry.yml
+  include_tasks: registry.yml
   when: ceph_docker_registry_auth | bool
 
 - name: include fetch_image.yml
