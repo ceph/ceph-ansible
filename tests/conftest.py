@@ -60,12 +60,6 @@ def setup(host):
         if cmd.rc == 0:
             osd_ids = cmd.stdout.rstrip("\n").split("\n")
             osds = osd_ids
-            if docker and fsid == "6e008d48-1661-11e8-8546-008c3214218a":
-                osds = []
-                for device in ansible_vars.get("devices", []):
-                    real_dev = host.run("sudo readlink -f %s" % device)
-                    real_dev_split = real_dev.stdout.split("/")[-1]
-                    osds.append(real_dev_split)
 
     address = host.interface(public_interface).addresses[0]
 
