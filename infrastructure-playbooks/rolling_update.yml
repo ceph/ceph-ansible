@@ -577,7 +577,7 @@
 
     - name: create standby_mdss group
       add_host:
-        name: "{{ standby_mdss }}"
+        name: "{{ item }}"
         groups: standby_mdss
         ansible_host: "{{ hostvars[item]['ansible_host'] | default(omit) }}"
         ansible_port: "{{ hostvars[item]['ansible_port'] | default(omit) }}"
@@ -585,9 +585,18 @@
 
     - name: stop standby ceph mds
       systemd:
-        name: ceph-mds@{{ hostvars[item]['ansible_hostname'] }}
+        name: "ceph-mds@{{ hostvars[item]['ansible_hostname'] }}"
         state: stopped
         enabled: no
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups['standby_mdss'] }}"
+      when: groups['standby_mdss'] | default([]) | length > 0
+
+    # dedicated task for masking systemd unit
+    # somehow, having a single task doesn't work in containerized context
+    - name: mask systemd units for standby ceph mds
+      systemd:
+        name: "ceph-mds@{{ hostvars[item]['ansible_hostname'] }}"
         masked: yes
       delegate_to: "{{ item }}"
       with_items: "{{ groups['standby_mdss'] }}"
