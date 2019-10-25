@@ -1,4 +1,6 @@
-from . import ceph_volume
+import sys
+sys.path.append('./library')
+import ceph_volume
 import mock
 import os
 
