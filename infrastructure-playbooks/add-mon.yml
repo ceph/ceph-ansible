@@ -29,6 +29,19 @@
         name: ceph-facts
     - import_role:
         name: ceph-validate
+    - import_role:
+        name: ceph-infra
+    - import_role:
+        name: ceph-handler
+    - import_role:
+        name: ceph-common
+      when: not containerized_deployment | bool
+    - import_role:
+        name: ceph-container-engine
+      when: containerized_deployment | bool
+    - import_role:
+        name: ceph-container-common
+      when: containerized_deployment | bool
 
 - hosts: mons
   gather_facts: false
@@ -41,15 +54,7 @@
     - import_role:
         name: ceph-handler
     - import_role:
-        name: ceph-common
-      when: not containerized_deployment | bool
-    - import_role:
-        name: ceph-container-common
-      when: containerized_deployment | bool
-    - import_role:
         name: ceph-config
-    - import_role:
-        name: ceph-infra
     - import_role:
         name: ceph-mon
 
