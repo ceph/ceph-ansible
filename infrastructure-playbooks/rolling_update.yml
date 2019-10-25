@@ -571,8 +571,14 @@
 
             - name: set_fact mds_active_name
               set_fact:
-                mds_active_name: "{{ [(_mds_active_name.stdout | from_json)['filesystems'][0]['mdsmap']['info'][item.key]['name']] }}"
+                mds_active_name: "{{ (_mds_active_name.stdout | from_json)['filesystems'][0]['mdsmap']['info'][item.key]['name'] }}"
               with_dict: "{{ (_mds_active_name.stdout | from_json).filesystems[0]['mdsmap']['info'] }}"
+
+            - name: set_fact mds_active_host
+              set_fact:
+                mds_active_host: "{{ [hostvars[item]['inventory_hostname']] }}"
+              with_items: "{{ groups[mds_group_name] }}"
+              when: hostvars[item]['ansible_hostname'] == mds_active_name
 
             - name: create standby_mdss group
               add_host:
@@ -580,7 +586,7 @@
                 groups: standby_mdss
                 ansible_host: "{{ hostvars[item]['ansible_host'] | default(omit) }}"
                 ansible_port: "{{ hostvars[item]['ansible_port'] | default(omit) }}"
-              with_items: "{{ groups[mds_group_name] | difference(mds_active_name) }}"
+              with_items: "{{ groups[mds_group_name] | difference(mds_active_host) }}"
 
             - name: stop standby ceph mds
               systemd:
@@ -611,10 +617,10 @@
 
         - name: create active_mdss group
           add_host:
-            name: "{{ mds_active_name[0] if mds_active_name is defined else groups.get(mds_group_name)[0] }}"
+            name: "{{ mds_active_host[0] if mds_active_host is defined else groups.get(mds_group_name)[0] }}"
             groups: active_mdss
-            ansible_host: "{{ hostvars[mds_active_name[0] if mds_active_name is defined else groups.get(mds_group_name)[0]]['ansible_host'] | default(omit) }}"
-            ansible_port: "{{ hostvars[mds_active_name[0] if mds_active_name is defined else groups.get(mds_group_name)[0]]['ansible_port'] | default(omit) }}"
+            ansible_host: "{{ hostvars[mds_active_host[0] if mds_active_host is defined else groups.get(mds_group_name)[0]]['ansible_host'] | default(omit) }}"
+            ansible_port: "{{ hostvars[mds_active_host[0] if mds_active_host is defined else groups.get(mds_group_name)[0]]['ansible_port'] | default(omit) }}"
 
 
 - name: upgrade active mds
