@@ -38,7 +38,7 @@
     - not item.get('skipped', false)
 
 - name: insert new default crush rule into daemon to prevent restart
-  command: "{{ hostvars[item]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[item]['monitor_name'] }} config set osd_pool_default_crush_rule {{ info_ceph_default_crush_rule_yaml.rule_id }}"
+  command: "{{ hostvars[item]['container_exec_cmd'] | default('') }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ hostvars[item]['monitor_name'] }}.asok config set osd_pool_default_crush_rule {{ info_ceph_default_crush_rule_yaml.rule_id }}"
   changed_when: false
   delegate_to: "{{ item }}"
   with_items: "{{ groups[mon_group_name] }}"
