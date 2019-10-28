@@ -5,7 +5,8 @@
   tasks:
 
     - name: check if it is Atomic host
-      stat: path=/run/ostree-booted
+      stat:
+        path: /run/ostree-booted
       register: stat_ostree
       check_mode: no
 
@@ -28,7 +29,18 @@
       when: not (ansible_os_family == 'RedHat' and
                  ansible_distribution_major_version == '8')
 
+    - name: test sepia mirror
+      command: 'ping -c 1 -t 10 -W 1 apt-mirror.front.sepia.ceph.com'
+      failed_when: false
+      changed_when: false
+      register: sepia_mirror
+
     - name: centos based systems - configure repos
+      when:
+        - sepia_mirror.rc == 0
+        - ansible_distribution == 'CentOS'
+        - ansible_distribution_major_version == '7'
+        - not is_atomic | bool
       block:
         - name: disable fastest mirror detection
           ini_file:
@@ -79,10 +91,6 @@
             section: epel
             option: metalink
             state: absent
-      when:
-        - ansible_distribution == 'CentOS'
-        - ansible_distribution_major_version == '7'
-        - not is_atomic | bool
 
       # we need to install this so the Socket testinfra module
       # can use netcat for testing
