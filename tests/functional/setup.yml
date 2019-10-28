@@ -28,6 +28,62 @@
       when: not (ansible_os_family == 'RedHat' and
                  ansible_distribution_major_version == '8')
 
+    - name: centos based systems - configure repos
+      block:
+        - name: disable fastest mirror detection
+          ini_file:
+            path: /etc/yum/pluginconf.d/fastestmirror.conf
+            section: main
+            option: enabled
+            value: 0
+
+        - name: enable local centos repositories
+          ini_file:
+            path: /etc/yum.repos.d/CentOS-Base.repo
+            section: '{{ item }}'
+            option: baseurl
+            value: 'http://apt-mirror.front.sepia.ceph.com/centos/$releasever/{{ "os" if item == "base" else item }}/$basearch/'
+          with_items:
+            - base
+            - updates
+            - extras
+
+        - name: disable remote centos repositories
+          ini_file:
+            path: /etc/yum.repos.d/CentOS-Base.repo
+            section: '{{ item }}'
+            option: mirrorlist
+            state: absent
+          with_items:
+            - base
+            - updates
+            - extras
+
+        - name: install epel
+          package:
+            name: epel-release
+            state: present
+          register: result
+          until: result is succeeded
+
+        - name: enable local epel repository
+          ini_file:
+            path: /etc/yum.repos.d/epel.repo
+            section: epel
+            option: baseurl
+            value: http://apt-mirror.front.sepia.ceph.com/epel7/
+
+        - name: disable remote epel repository
+          ini_file:
+            path: /etc/yum.repos.d/epel.repo
+            section: epel
+            option: metalink
+            state: absent
+      when:
+        - ansible_distribution == 'CentOS'
+        - ansible_distribution_major_version == '7'
+        - not is_atomic | bool
+
       # we need to install this so the Socket testinfra module
       # can use netcat for testing
     - name: install net-tools
@@ -37,36 +93,6 @@
       register: result
       until: result is succeeded
       when: not is_atomic | bool
-
-    - name: centos based systems - configure repos
-      block:
-        - name: disable fastest mirror detection
-          ini_file:
-            path: /etc/yum/pluginconf.d/fastestmirror.conf
-            section: main
-            option: enabled
-            value: 0
-        - name: install epel
-          package:
-            name: epel-release
-            state: present
-          register: result
-          until: result is succeeded
-        - name: enable local epel repository
-          ini_file:
-            path: /etc/yum.repos.d/epel.repo
-            section: epel
-            option: baseurl
-            value: http://apt-mirror.front.sepia.ceph.com/epel7/
-        - name: disable remote epel repository
-          ini_file:
-            path: /etc/yum.repos.d/epel.repo
-            section: epel
-            option: metalink
-            state: absent
-      when:
-        - ansible_distribution == 'CentOS'
-        - not is_atomic | bool
 
     - name: resize logical volume for root partition to fill remaining free space
       lvol:
