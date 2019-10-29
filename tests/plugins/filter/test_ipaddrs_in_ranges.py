@@ -1,4 +1,6 @@
-from . import ipaddrs_in_ranges
+import sys
+sys.path.append('./plugins/filter')
+import ipaddrs_in_ranges
 
 filter_plugin = ipaddrs_in_ranges.FilterModule()
 

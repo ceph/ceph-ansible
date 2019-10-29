@@ -169,7 +169,7 @@
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
-      when: dashboard_rgw_api_admin_resource != ''
+      when: dashboard_rgw_api_admin_resource | length > 0
 
     - name: disable ssl verification for rgw
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-ssl-verify False"
@@ -179,6 +179,32 @@
       when:
         - dashboard_rgw_api_no_ssl_verify | bool
         - radosgw_frontend_ssl_certificate | length > 0
+
+- name: dashboard iscsi management
+  when: groups.get(iscsi_gw_group_name, []) | length > 0
+  block:
+    - name: disable iscsi api ssl verification
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-iscsi-api-ssl-verification false"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      when:
+        - api_secure | default(false) | bool
+        - generate_crt | default(false) | bool
+
+    - name: add iscsi gateways
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard iscsi-gateway-add {{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_default_ipv4']['address'] }}:{{ hostvars[item]['api_port'] | default(5000) }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items: "{{ groups[iscsi_gw_group_name] }}"
+      run_once: true
+
+- name: inject grafana dashboard layouts
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard grafana dashboards update"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  changed_when: false
+  when: containerized_deployment | bool
 
 - name: disable mgr dashboard module (restart)
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mgr module disable dashboard"
@@ -191,10 +217,3 @@
   changed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-
-- name: inject grafana dashboard layouts
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard grafana dashboards update"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
-  changed_when: false
-  when: containerized_deployment | bool

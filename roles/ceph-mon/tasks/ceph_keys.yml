@@ -4,14 +4,13 @@
     {{ container_exec_cmd }}
     ceph
     --cluster {{ cluster }}
-    -n mon.
-    -k /var/lib/ceph/mon/{{ cluster }}-{{ ansible_hostname }}/keyring
+    daemon mon.{{ ansible_hostname }}
     mon_status
     --format json
   register: ceph_health_raw
   run_once: true
   until: >
-    (ceph_health_raw.stdout != "") and (ceph_health_raw.stdout | default('{}') | from_json)['state'] in ['leader', 'peon']
+    (ceph_health_raw.stdout | length > 0) and (ceph_health_raw.stdout | default('{}') | from_json)['state'] in ['leader', 'peon']
   retries: "{{ handler_health_mon_check_retries }}"
   delay: "{{ handler_health_mon_check_delay }}"
   changed_when: false

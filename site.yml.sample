@@ -43,17 +43,6 @@
       run_once: true
       when: delegate_facts_host | bool
 
-    - name: check if it is atomic host
-      stat:
-        path: /run/ostree-booted
-      register: stat_ostree
-      tags: always
-
-    - name: set_fact is_atomic
-      set_fact:
-        is_atomic: '{{ stat_ostree.stat.exists }}'
-      tags: always
-
   tasks:
     - import_role:
         name: ceph-defaults
@@ -63,6 +52,8 @@
         name: ceph-validate
     - import_role:
         name: ceph-infra
+    - import_role:
+        name: ceph-common
 
 - hosts: mons
   gather_facts: false
@@ -87,8 +78,6 @@
     - import_role:
         name: ceph-handler
       tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-common
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -131,8 +120,6 @@
         name: ceph-handler
       tags: ['ceph_update_config']
     - import_role:
-        name: ceph-common
-    - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
     - import_role:
@@ -170,8 +157,6 @@
     - import_role:
         name: ceph-handler
       tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-common
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -211,8 +196,6 @@
         name: ceph-handler
       tags: ['ceph_update_config']
     - import_role:
-        name: ceph-common
-    - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
     - import_role:
@@ -250,8 +233,6 @@
     - import_role:
         name: ceph-handler
       tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-common
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -291,8 +272,6 @@
         name: ceph-handler
       tags: ['ceph_update_config']
     - import_role:
-        name: ceph-common
-    - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
     - import_role:
@@ -331,8 +310,6 @@
         name: ceph-handler
       tags: ['ceph_update_config']
     - import_role:
-        name: ceph-common
-    - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
     - import_role:
@@ -370,8 +347,6 @@
     - import_role:
         name: ceph-handler
       tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-common
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -412,8 +387,6 @@
     - import_role:
         name: ceph-handler
       tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-common
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -462,6 +435,11 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
+- import_playbook: dashboard.yml
+  when:
+    - dashboard_enabled | bool
+    - groups.get(grafana_server_group_name, []) | length > 0
+
 - hosts: mons
   gather_facts: false
   become: True
@@ -482,8 +460,3 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       when: not ceph_status.failed
-
-- import_playbook: infrastructure-playbooks/dashboard.yml
-  when:
-    - dashboard_enabled | bool
-    - groups.get(grafana_server_group_name, []) | length > 0

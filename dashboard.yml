@@ -1,5 +1,6 @@
 ---
 - hosts: all
+  gather_facts: false
   become: true
   pre_tasks:
     - name: set ceph node exporter install 'In Progress'
@@ -20,6 +21,12 @@
     - import_role:
         name: ceph-container-engine
     - import_role:
+        name: ceph-container-common
+        tasks_from: registry
+      when:
+        - not containerized_deployment | bool
+        - ceph_docker_registry_auth | bool
+    - import_role:
         name: ceph-node-exporter
 
   post_tasks:
@@ -32,6 +39,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: "{{ grafana_server_group_name }}"
+  gather_facts: false
   become: true
   pre_tasks:
     - name: set ceph grafana install 'In Progress'
@@ -50,8 +58,6 @@
         name: ceph-facts
       tags: ['ceph_update_config']
     - import_role:
-        name: ceph-container-engine
-    - import_role:
         name: ceph-prometheus
     - import_role:
         name: ceph-grafana
@@ -65,7 +71,10 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}"
+# using groups[] here otherwise it can't fallback to the mon if there's no mgr group.
+# adding an additional | default(omit) in case where no monitors are present (external ceph cluster)
+- hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) | default(omit) }}"
+  gather_facts: false
   become: true
   pre_tasks:
     - name: set ceph dashboard install 'In Progress'

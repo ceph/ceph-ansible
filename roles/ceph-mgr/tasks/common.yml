@@ -51,15 +51,15 @@
 
     - name: set_fact _mgr_keys
       set_fact:
-        _mgr_keys: "{{ _mgr_keys | default([{ 'name': 'client.admin', 'path': '/etc/ceph/' + cluster + '.client.admin.keyring', 'copy_key': copy_admin_key, 'hostname': hostvars[item]['ansible_hostname'] }]) + [{ 'name': 'mgr.' + hostvars[item]['ansible_hostname'], 'path': '/var/lib/ceph/mgr/' + cluster + '-' + hostvars[item]['ansible_hostname'] + '/keyring', 'copy_key': true, 'hostname': hostvars[item]['ansible_hostname'] }] }}"
-      with_items: "{{ groups.get(mgr_group_name, []) }}"
+        _mgr_keys:
+          - { 'name': 'client.admin', 'path': "/etc/ceph/{{ cluster }}.client.admin.keyring", 'copy_key': copy_admin_key }
+          - { 'name': "mgr.{{ ansible_hostname }}", 'path': "/var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring", 'copy_key': true }
 
     - name: get keys from monitors
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
       register: _mgr_keys
       with_items: "{{ _mgr_keys }}"
       delegate_to: "{{ groups.get(mon_group_name)[0] }}"
-      run_once: true
       when:
         - cephx | bool
         - item.copy_key | bool
@@ -72,8 +72,6 @@
         group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
         mode: "{{ ceph_keyring_permissions }}"
       with_items: "{{ _mgr_keys.results }}"
-      delegate_to: "{{ item.item.hostname }}"
-      run_once: true
       when:
         - cephx | bool
         - item.item.copy_key | bool

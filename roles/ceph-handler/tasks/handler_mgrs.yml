@@ -1,0 +1,25 @@
+---
+- name: set _mgr_handler_called before restart
+  set_fact:
+    _mgr_handler_called: True
+
+- name: copy mgr restart script
+  template:
+    src: restart_mgr_daemon.sh.j2
+    dest: /tmp/restart_mgr_daemon.sh
+    owner: root
+    group: root
+    mode: 0750
+
+- name: restart ceph mgr daemon(s)
+  command: /usr/bin/env bash /tmp/restart_mgr_daemon.sh
+  when:
+    - handler_mgr_status | bool
+    - hostvars[item]['_mgr_handler_called'] | default(False) | bool
+  with_items: "{{ groups[mgr_group_name] }}"
+  delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _mgr_handler_called after restart
+  set_fact:
+    _mgr_handler_called: False

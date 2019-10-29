@@ -76,6 +76,22 @@
       run_once: True
       when: delegate_facts_host | bool
 
+    - import_role:
+        name: ceph-facts
+    - import_role:
+        name: ceph-handler
+    - import_role:
+        name: ceph-infra
+    - import_role:
+        name: ceph-container-engine
+      when: containerized_deployment | bool
+    - import_role:
+        name: ceph-container-common
+      when: containerized_deployment | bool
+    - import_role:
+        name: ceph-common
+      when: not containerized_deployment | bool
+
     # this task is needed so we can skip the openstack_config.yml include in roles/ceph-osd
     - name: set_fact add_osd
       set_fact:
@@ -90,24 +106,10 @@
   tasks:
     - import_role:
         name: ceph-facts
-
     - import_role:
         name: ceph-handler
-
-    - import_role:
-        name: ceph-infra
-
-    - import_role:
-        name: ceph-container-common
-      when: containerized_deployment | bool
-
-    - import_role:
-        name: ceph-common
-      when: not containerized_deployment | bool
-
     - import_role:
         name: ceph-config
-
     - import_role:
         name: ceph-osd
 
