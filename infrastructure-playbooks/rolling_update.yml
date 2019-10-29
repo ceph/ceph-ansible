@@ -486,7 +486,7 @@
         - name: set_fact all_mds_name
           set_fact:
             all_mds_name: "{{ all_mds_name | default([]) + [(_all_mds_name.stdout | from_json)['info'][item.key]['name'] ] }}"
-          with_dict: "{{ ((_all_mds_name.stdout | from_json).info) }}"
+          with_dict: "{{ ((_all_mds_name.stdout | default('{}') | from_json).info | default({})) }}"
 
         - name: set max_mds 1 on ceph fs
           command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds 1"
@@ -503,7 +503,7 @@
           delay: 1
           failed_when: false
           until: item not in (deactivate_status.stdout | from_json).mdsmap.in
-          with_items: "{{ (_cephfs_status.stdout | from_json).mdsmap.in | difference([0]) | sort(reverse=True) }}"
+          with_items: "{{ (_cephfs_status.stdout | default('{}') | from_json).mdsmap.in | default([]) | difference([0]) | sort(reverse=True) }}"
 
         - name: get name of remaining active mds
           command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} mds dump -f json"
@@ -513,7 +513,7 @@
         - name: set_fact mds_active_name
           set_fact:
             mds_active_name: "{{ (_mds_active_name.stdout | from_json)['info'][item.key]['name'] }}"
-          with_dict: "{{ (_mds_active_name.stdout | from_json).info }}"
+          with_dict: "{{ (_mds_active_name.stdout | default('{}') | from_json).info | default({}) }}"
 
         - name: set_fact mds_active_host
           set_fact:
@@ -562,6 +562,7 @@
         groups: active_mdss
         ansible_host: "{{ hostvars[mds_active_host if mds_active_host is defined else groups.get(mds_group_name)[0]]['ansible_host'] | default(omit) }}"
         ansible_port: "{{ hostvars[mds_active_host if mds_active_host is defined else groups.get(mds_group_name)[0]]['ansible_port'] | default(omit) }}"
+      when: groups.get(mds_group_name, []) | length > 0
 
 
 - name: upgrade active mds
