@@ -23,6 +23,16 @@
     - nfs_obj_gw | bool
     - rgwuser_exists.get('rc', 1) != 0
 
+
+- name: modify rgw nfs user to use specific keys when those are defined
+  command: "{{ container_exec_cmd_nfs | default('') }} radosgw-admin --cluster {{ cluster }} user modify --uid={{ ceph_nfs_rgw_user }} --access-key={{ ceph_nfs_rgw_access_key }} --secret-key={{ ceph_nfs_rgw_secret_key }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - nfs_obj_gw | bool
+    - ceph_nfs_rgw_access_key is defined
+    - ceph_nfs_rgw_secret_key is defined
+
+
 - name: set_fact ceph_nfs_rgw_access_key
   set_fact:
     ceph_nfs_rgw_access_key: "{{ (rgwuser.stdout | from_json)['keys'][0]['access_key'] if rgwuser_exists.get('rc', 1) != 0 else (rgwuser_exists.stdout | from_json)['keys'][0]['access_key'] }}"
