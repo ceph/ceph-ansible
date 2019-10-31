@@ -2,29 +2,29 @@
 - name: configure crush hierarchy
   ceph_crush:
     cluster: "{{ cluster }}"
-    location: "{{ hostvars[item]['osd_crush_location'] }}"
-    containerized: "{{ container_exec_cmd }}"
-  with_items: "{{ groups[osd_group_name] }}"
+    location: "{{ osd_crush_location }}"
+    containerized: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }}"
   register: config_crush_hierarchy
+  delegate_to: '{{ groups[mon_group_name][0] }}'
   when:
-    - inventory_hostname == groups.get(mon_group_name) | last
-    - create_crush_tree | bool
-    - hostvars[item]['osd_crush_location'] is defined
+    - hostvars[groups[mon_group_name][0]]['create_crush_tree'] | default(false) | bool
+    - osd_crush_location is defined
 
 - name: create configured crush rules
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd crush rule create-simple {{ item.name }} {{ item.root }} {{ item.type }}"
-  with_items: "{{ crush_rules | unique }}"
+  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd crush rule create-simple {{ item.name }} {{ item.root }} {{ item.type }}"
   changed_when: false
-  when: inventory_hostname == groups.get(mon_group_name) | last
+  with_items: "{{ hostvars[groups[mon_group_name][0]]['crush_rules'] | unique }}"
+  delegate_to: '{{ groups[mon_group_name][0] }}'
+  run_once: true
 
 - name: get id for new default crush rule
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd -f json crush rule dump {{ item.name }}"
+  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd -f json crush rule dump {{ item.name }}"
   register: info_ceph_default_crush_rule
   changed_when: false
-  with_items: "{{ crush_rules }}"
-  when:
-    - inventory_hostname == groups.get(mon_group_name) | last
-    - item.default
+  with_items: "{{ hostvars[groups[mon_group_name][0]]['crush_rules'] | unique }}"
+  delegate_to: '{{ groups[mon_group_name][0] }}'
+  run_once: true
+  when: item.default | bool
 
 # If multiple rules are set as default (should not be) then the last one is taken as actual default.
 # the with_items statement overrides each iteration with the new one.
@@ -33,15 +33,15 @@
   set_fact:
     info_ceph_default_crush_rule_yaml: "{{ item.stdout | from_json() }}"
   with_items: "{{ info_ceph_default_crush_rule.results }}"
-  when:
-    - inventory_hostname == groups.get(mon_group_name) | last
-    - not item.get('skipped', false)
+  run_once: true
+  when: not item.get('skipped', false)
 
 - name: insert new default crush rule into daemon to prevent restart
   command: "{{ hostvars[item]['container_exec_cmd'] | default('') }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ hostvars[item]['monitor_name'] }}.asok config set osd_pool_default_crush_rule {{ info_ceph_default_crush_rule_yaml.rule_id }}"
   changed_when: false
   delegate_to: "{{ item }}"
   with_items: "{{ groups[mon_group_name] }}"
+  run_once: true
   when:
     - not config_crush_hierarchy.get('skipped', false)
     - info_ceph_default_crush_rule_yaml | default('') | length > 0
@@ -54,6 +54,7 @@
     value: "{{ info_ceph_default_crush_rule_yaml.rule_id }}"
   delegate_to: "{{ item }}"
   with_items: "{{ groups[mon_group_name] }}"
+  run_once: true
   when:
     - not config_crush_hierarchy.get('skipped', false)
     - info_ceph_default_crush_rule_yaml | default('') | length > 0
