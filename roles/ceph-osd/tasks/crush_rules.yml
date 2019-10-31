@@ -11,7 +11,7 @@
     - osd_crush_location is defined
 
 - name: create configured crush rules
-  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd crush rule create-simple {{ item.name }} {{ item.root }} {{ item.type }}"
+  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd crush rule {{ 'create-replicated' if item.class is defined else 'create-simple' }} {{ item.name }} {{ item.root }} {{ item.type }} {{ item.class | default('') }}"
   changed_when: false
   with_items: "{{ hostvars[groups[mon_group_name][0]]['crush_rules'] | unique }}"
   delegate_to: '{{ groups[mon_group_name][0] }}'
