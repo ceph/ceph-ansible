@@ -89,6 +89,10 @@
 - name: include_tasks start_osds.yml
   include_tasks: start_osds.yml
 
+- name: include crush_rules.yml
+  include_tasks: crush_rules.yml
+  when: hostvars[groups[mon_group_name][0]]['crush_rule_config'] | default(false) | bool
+
 - name: set_fact openstack_keys_tmp - preserve backward compatibility after the introduction of the ceph_keys module
   set_fact:
     openstack_keys_tmp: "{{ openstack_keys_tmp|default([]) + [ { 'key': item.key, 'name': item.name, 'caps': { 'mon': item.mon_cap, 'osd': item.osd_cap|default(''), 'mds': item.mds_cap|default(''), 'mgr': item.mgr_cap|default('') } , 'mode': item.mode } ] }}"

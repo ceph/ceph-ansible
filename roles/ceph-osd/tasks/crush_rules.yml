@@ -1,0 +1,72 @@
+---
+- name: configure crush hierarchy
+  ceph_crush:
+    cluster: "{{ cluster }}"
+    location: "{{ osd_crush_location }}"
+    containerized: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }}"
+  register: config_crush_hierarchy
+  delegate_to: '{{ groups[mon_group_name][0] }}'
+  when:
+    - hostvars[groups[mon_group_name][0]]['create_crush_tree'] | default(false) | bool
+    - osd_crush_location is defined
+
+- name: create configured crush rules
+  command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd crush rule create-simple {{ item.name }} {{ item.root }} {{ item.type }}"
+  changed_when: false
+  with_items: "{{ hostvars[groups[mon_group_name][0]]['crush_rules'] | unique }}"
+  delegate_to: '{{ groups[mon_group_name][0] }}'
+  run_once: true
+
+- name: get id for new default crush rule
+  command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd -f json crush rule dump {{ item.name }}"
+  register: info_ceph_default_crush_rule
+  changed_when: false
+  with_items: "{{ hostvars[groups[mon_group_name][0]]['crush_rules'] | unique }}"
+  delegate_to: '{{ groups[mon_group_name][0] }}'
+  run_once: true
+  when: item.default | bool
+
+# If multiple rules are set as default (should not be) then the last one is taken as actual default.
+# the with_items statement overrides each iteration with the new one.
+# NOTE(leseb): we should actually fail if multiple rules are set as default
+- name: set_fact info_ceph_default_crush_rule_yaml
+  set_fact:
+    info_ceph_default_crush_rule_yaml: "{{ item.stdout | from_json() }}"
+  with_items: "{{ info_ceph_default_crush_rule.results }}"
+  run_once: true
+  when: not item.get('skipped', false)
+
+- name: insert new default crush rule into daemon to prevent restart (non container)
+  command: "ceph --cluster {{ cluster }} daemon mon.{{ hostvars[item]['monitor_name'] }} config set osd_pool_default_crush_rule {{ info_ceph_default_crush_rule_yaml.rule_id }}"
+  changed_when: false
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups[mon_group_name] }}"
+  run_once: true
+  when:
+    - not config_crush_hierarchy.get('skipped', false)
+    - info_ceph_default_crush_rule_yaml | default('') | length > 0
+    - not containerized_deployment | bool
+
+- name: insert new default crush rule into daemon to prevent restart (container)
+  command: "docker exec ceph-mon-{{ hostvars[item]['ansible_hostname'] }} ceph --cluster {{ cluster }} daemon mon.{{ hostvars[item]['monitor_name'] }} config set osd_pool_default_crush_rule {{ info_ceph_default_crush_rule_yaml.rule_id }}"
+  changed_when: false
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups[mon_group_name] }}"
+  run_once: true
+  when:
+    - not config_crush_hierarchy.get('skipped', false)
+    - info_ceph_default_crush_rule_yaml | default('') | length > 0
+    - containerized_deployment | bool
+
+- name: "add new default crush rule to {{ cluster }}.conf"
+  ini_file:
+    dest: "/etc/ceph/{{ cluster }}.conf"
+    section: "global"
+    option: "osd pool default crush rule"
+    value: "{{ info_ceph_default_crush_rule_yaml.rule_id }}"
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups[mon_group_name] }}"
+  run_once: true
+  when:
+    - not config_crush_hierarchy.get('skipped', false)
+    - info_ceph_default_crush_rule_yaml | default('') | length > 0
