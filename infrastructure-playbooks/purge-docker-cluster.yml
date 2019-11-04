@@ -69,8 +69,15 @@
     - name: ensure cephfs mountpoint are unmounted
       command: umount -a -t ceph
 
-    - name: ensure rbd devices are unmapped
-      command: rbdmap unmap-all
+    - name: find mapped rbd ids
+      find:
+        paths: /sys/bus/rbd/devices
+        file_type: any
+      register: rbd_mapped_ids
+
+    - name: use sysfs to unmap rbd devices
+      shell: "echo {{ item.path | basename }} > /sys/bus/rbd/remove_single_major"
+      with_items: "{{ rbd_mapped_ids.files }}"
 
     - name: unload ceph kernel modules
       modprobe:
