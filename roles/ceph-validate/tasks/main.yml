@@ -189,6 +189,12 @@
   include_tasks: check_nfs.yml
   when: inventory_hostname in groups.get(nfs_group_name, [])
 
+- name: include check_rbdmirror.yml
+  include_tasks: check_rbdmirror.yml
+  when:
+    - rbdmirror_group_name in group_names
+    - ceph_rbd_mirror_configure | default(false) | bool
+
 - block:
     - name: fail if [grafana-server] group doesn't exist
       fail:
