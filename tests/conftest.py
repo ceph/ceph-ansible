@@ -101,7 +101,6 @@ def node(host, request):
     rolling_update = os.environ.get("ROLLING_UPDATE", "False")
     group_names = ansible_vars["group_names"]
     docker = ansible_vars.get("docker")
-    radosgw_num_instances = ansible_vars.get("radosgw_num_instances", 1)
     ceph_release_num = {
         'jewel': 10,
         'kraken': 11,
@@ -140,7 +139,6 @@ def node(host, request):
         ceph_stable_release=ceph_stable_release,
         ceph_release_num=ceph_release_num,
         rolling_update=rolling_update,
-        radosgw_num_instances=radosgw_num_instances,
     )
     return data
 
