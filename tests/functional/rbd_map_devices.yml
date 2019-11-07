@@ -1,0 +1,54 @@
+---
+- hosts: client0
+  gather_facts: false
+  become: yes
+  tasks:
+    - name: check if it is atomic host
+      stat:
+        path: /run/ostree-booted
+      register: stat_ostree
+      tags: always
+
+# all our containerized job are based on atomic os, so we can rely on is_atomic to detect
+# whether we are running a containerized job
+    - name: set_fact is_atomic
+      set_fact:
+        is_atomic: '{{ stat_ostree.stat.exists }}'
+      tags: always
+
+    - name: load rbd module
+      modprobe:
+        name: rbd
+        state: present
+      delegate_to: "{{ item }}"
+      with_items:
+        - mon0
+        - client0
+
+    - name: create an rbd image - non container
+      command: "rbd create --size=1024 test/rbd_test"
+      delegate_to: "mon0"
+      when: not is_atomic
+
+    - name: create an rbd image - container
+      command: "docker run --rm -v /etc/ceph:/etc/ceph --net=host --entrypoint=rbd {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} create --size=1024 test/rbd_test"
+      delegate_to: "mon0"
+      when: is_atomic
+
+    - name: non container
+      when: not is_atomic
+      block:
+        - name: disable features unsupported by the kernel
+          command: rbd feature disable test/rbd_test object-map fast-diff deep-flatten
+
+        - name: map a device
+          command: rbd map test/rbd_test
+
+    - name: container
+      when: is_atomic
+      block:
+        - name: disable features unsupported by the kernel
+          command: "docker run --rm -v /etc/ceph:/etc/ceph --net=host --entrypoint=rbd {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} feature disable test/rbd_test object-map fast-diff deep-flatten"
+
+        - name: map a device
+          command: "docker run --rm --privileged -v /etc/ceph:/etc/ceph -v /dev:/dev --net=host --entrypoint=rbd {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} map test/rbd_test"
