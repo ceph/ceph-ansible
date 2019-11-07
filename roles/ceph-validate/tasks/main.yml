@@ -1,33 +1,34 @@
 ---
-- name: validate ceph_origin
-  fail:
-    msg: "ceph_origin must be either 'repository', 'distro' or 'local'"
-  when:
-    - not containerized_deployment | bool
-    - ceph_origin not in ['repository', 'distro', 'local']
+- name: validate repository variables in non-containerized scenario
+  when: not containerized_deployment | bool
+  block:
+    - name: validate ceph_origin
+      fail:
+        msg: "ceph_origin must be either 'repository', 'distro' or 'local'"
+      when: ceph_origin not in ['repository', 'distro', 'local']
 
-- name: validate ceph_repository
-  fail:
-    msg: "ceph_repository must be either 'community', 'rhcs', 'dev', 'custom' or 'uca'"
-  when:
-    - ceph_origin == 'repository'
-    - ceph_repository not in ['community', 'rhcs', 'dev', 'custom', 'uca']
+    - name: validate ceph_repository
+      fail:
+        msg: "ceph_repository must be either 'community', 'rhcs', 'dev', 'custom' or 'uca'"
+      when:
+        - ceph_origin == 'repository'
+        - ceph_repository not in ['community', 'rhcs', 'dev', 'custom', 'uca']
 
-- name: validate ceph_repository_community
-  fail:
-    msg: "ceph_stable_release must be either 'luminous' or 'mimic'"
-  when:
-    - ceph_origin == 'repository'
-    - ceph_repository == 'community'
-    - ceph_stable_release not in ['luminous', 'mimic']
+    - name: validate ceph_repository_community
+      fail:
+        msg: "ceph_stable_release must be either 'luminous' or 'mimic'"
+      when:
+        - ceph_origin == 'repository'
+        - ceph_repository == 'community'
+        - ceph_stable_release not in ['luminous', 'mimic']
 
-- name: validate ceph_repository_type
-  fail:
-    msg: "ceph_repository_type must be either 'cdn' or 'iso'"
-  when:
-    - ceph_origin == 'repository'
-    - ceph_repository == 'rhcs'
-    - ceph_repository_type not in ['cdn', 'iso']
+    - name: validate ceph_repository_type
+      fail:
+        msg: "ceph_repository_type must be either 'cdn' or 'iso'"
+      when:
+        - ceph_origin == 'repository'
+        - ceph_repository == 'rhcs'
+        - ceph_repository_type not in ['cdn', 'iso']
 
 - name: validate osd_objectstore
   fail:
