@@ -277,7 +277,7 @@
 
     - name: reset mon_host fact
       set_fact:
-        mon_host: "{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        mon_host: "{{ groups[mon_group_name][0] }}"
 
 
 - name: upgrade ceph mgr nodes when implicitly collocated on monitors
@@ -541,74 +541,86 @@
   hosts: "{{ groups[mon_group_name|default('mons')][0] }}"
   become: true
   tasks:
-    - import_role:
-        name: ceph-defaults
-    - import_role:
-        name: ceph-facts
+    - name: deactivate all mds rank > 0
+      when: groups.get(mds_group_name, []) | length > 0
+      block:
+        - import_role:
+            name: ceph-defaults
+        - import_role:
+            name: ceph-facts
 
-    - name: set max_mds 1 on ceph fs
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds 1"
-      changed_when: false
+        - name: deactivate all mds rank > 0 if any
+          when: groups.get(mds_group_name, []) | length > 1
+          block:
+            - name: set max_mds 1 on ceph fs
+              command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds 1"
+              changed_when: false
 
-    - name: wait until only rank 0 is up
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs get {{ cephfs }} -f json"
-      changed_when: false
-      register: wait_rank_zero
-      retries: 720
-      delay: 5
-      until: (wait_rank_zero.stdout | from_json).mdsmap.in | length == 1 and (wait_rank_zero.stdout | from_json).mdsmap.in[0]  == 0
+            - name: wait until only rank 0 is up
+              command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs get {{ cephfs }} -f json"
+              changed_when: false
+              register: wait_rank_zero
+              retries: 720
+              delay: 5
+              until: (wait_rank_zero.stdout | from_json).mdsmap.in | length == 1 and (wait_rank_zero.stdout | from_json).mdsmap.in[0]  == 0
 
-    - name: get name of remaining active mds
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs dump -f json"
-      changed_when: false
-      register: _mds_active_name
+            - name: get name of remaining active mds
+              command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs dump -f json"
+              changed_when: false
+              register: _mds_active_name
 
-    - name: set_fact mds_active_name
-      set_fact:
-        mds_active_name: "{{ [(_mds_active_name.stdout | from_json)['filesystems'][0]['mdsmap']['info'][item.key]['name']] }}"
-      with_dict: "{{ (_mds_active_name.stdout | from_json).filesystems[0]['mdsmap']['info'] }}"
+            - name: set_fact mds_active_name
+              set_fact:
+                mds_active_name: "{{ (_mds_active_name.stdout | from_json)['filesystems'][0]['mdsmap']['info'][item.key]['name'] }}"
+              with_dict: "{{ (_mds_active_name.stdout | default('{}') | from_json).filesystems[0]['mdsmap']['info'] | default({}) }}"
 
-    - name: create active_mdss group
-      add_host:
-        name: "{{ mds_active_name[0] }}"
-        groups: active_mdss
-        ansible_host: "{{ hostvars[mds_active_name]['ansible_host'] | default(omit) }}"
-        ansible_port: "{{ hostvars[mds_active_name]['ansible_port'] | default(omit) }}"
+            - name: set_fact mds_active_host
+              set_fact:
+                mds_active_host: "{{ [hostvars[item]['inventory_hostname']] }}"
+              with_items: "{{ groups[mds_group_name] }}"
+              when: hostvars[item]['ansible_hostname'] == mds_active_name
 
-    - name: create standby_mdss group
-      add_host:
-        name: "{{ item }}"
-        groups: standby_mdss
-        ansible_host: "{{ hostvars[item]['ansible_host'] | default(omit) }}"
-        ansible_port: "{{ hostvars[item]['ansible_port'] | default(omit) }}"
-      with_items: "{{ groups[mds_group_name] | difference(mds_active_name) }}"
+            - name: create standby_mdss group
+              add_host:
+                name: "{{ item }}"
+                groups: standby_mdss
+                ansible_host: "{{ hostvars[item]['ansible_host'] | default(omit) }}"
+                ansible_port: "{{ hostvars[item]['ansible_port'] | default(omit) }}"
+              with_items: "{{ groups[mds_group_name] | difference(mds_active_host) }}"
 
-    - name: stop standby ceph mds
-      systemd:
-        name: "ceph-mds@{{ hostvars[item]['ansible_hostname'] }}"
-        state: stopped
-        enabled: no
-      delegate_to: "{{ item }}"
-      with_items: "{{ groups['standby_mdss'] }}"
-      when: groups['standby_mdss'] | default([]) | length > 0
+            - name: stop standby ceph mds
+              systemd:
+                name: "ceph-mds@{{ hostvars[item]['ansible_hostname'] }}"
+                state: stopped
+                enabled: no
+              delegate_to: "{{ item }}"
+              with_items: "{{ groups['standby_mdss'] }}"
+              when: groups['standby_mdss'] | default([]) | length > 0
 
-    # dedicated task for masking systemd unit
-    # somehow, having a single task doesn't work in containerized context
-    - name: mask systemd units for standby ceph mds
-      systemd:
-        name: "ceph-mds@{{ hostvars[item]['ansible_hostname'] }}"
-        masked: yes
-      delegate_to: "{{ item }}"
-      with_items: "{{ groups['standby_mdss'] }}"
-      when: groups['standby_mdss'] | default([]) | length > 0
+            # dedicated task for masking systemd unit
+            # somehow, having a single task doesn't work in containerized context
+            - name: mask systemd units for standby ceph mds
+              systemd:
+                name: "ceph-mds@{{ hostvars[item]['ansible_hostname'] }}"
+                masked: yes
+              delegate_to: "{{ item }}"
+              with_items: "{{ groups['standby_mdss'] }}"
+              when: groups['standby_mdss'] | default([]) | length > 0
 
-    - name: wait until all standbys mds are stopped
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs dump -f json"
-      changed_when: false
-      register: wait_standbys_down
-      retries: 300
-      delay: 5
-      until: (wait_standbys_down.stdout | from_json).standbys | length == 0
+            - name: wait until all standbys mds are stopped
+              command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs dump -f json"
+              changed_when: false
+              register: wait_standbys_down
+              retries: 300
+              delay: 5
+              until: (wait_standbys_down.stdout | from_json).standbys | length == 0
+
+        - name: create active_mdss group
+          add_host:
+            name: "{{ mds_active_host[0] if mds_active_host is defined else groups.get(mds_group_name)[0] }}"
+            groups: active_mdss
+            ansible_host: "{{ hostvars[mds_active_host[0] if mds_active_host is defined else groups.get(mds_group_name)[0]]['ansible_host'] | default(omit) }}"
+            ansible_port: "{{ hostvars[mds_active_host[0] if mds_active_host is defined else groups.get(mds_group_name)[0]]['ansible_port'] | default(omit) }}"
 
 
 - name: upgrade active mds
@@ -655,7 +667,7 @@
 - name: upgrade standbys ceph mdss cluster
   vars:
     upgrade_ceph_packages: True
-  hosts: standby_mdss | default([])
+  hosts: standby_mdss
   become: True
 
   tasks:

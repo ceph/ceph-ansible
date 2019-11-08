@@ -24,47 +24,40 @@
           - ceph-iscsi-config
       when: not use_new_ceph_iscsi | bool
 
-    - name: set_fact ceph_iscsi_repos
-      set_fact:
-        ceph_iscsi_repos: "{{ common_repos + iscsi_base }}"
-
-    - name: set_fact ceph_iscsi_pkgs
-      set_fact:
-        ceph_iscsi_pkgs: "{{ common_pkgs + iscsi_base }}"
-
     - name: when ceph_iscsi_config_dev is true
       when:
         - ceph_origin == 'repository'
-        - ceph_repository == 'dev'
+        - ceph_repository in ['dev', 'community']
         - ceph_iscsi_config_dev | bool
       block:
-        - name: fetch ceph-iscsi development repository
-          uri:
-            url: https://shaman.ceph.com/api/repos/{{ item }}/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo
-            return_content: yes
-          register: ceph_iscsi_config_dev_yum_repo
-          with_items: "{{ ceph_iscsi_repos }}"
+        - name: ceph-iscsi dependency repositories
+          get_url:
+            url: 'https://shaman.ceph.com/api/repos/{{ item }}/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo'
+            dest: '/etc/yum.repos.d/{{ item }}-dev.repo'
+            force: true
+          with_items: "{{ common_repos }}"
 
-        - name: configure ceph-iscsi-config development repository
-          copy:
-            content: "{{ item.0.content }}"
-            dest: "/etc/yum.repos.d/{{ item.1 }}-dev.repo"
-            owner: root
-            group: root
-            backup: yes
-          with_together:
-            - "{{ ceph_iscsi_config_dev_yum_repo.results }}"
-            - "{{ ceph_iscsi_repos }}"
+        - name: ceph-iscsi development repository
+          get_url:
+            url: 'https://shaman.ceph.com/api/repos/{{ item }}/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo'
+            dest: '/etc/yum.repos.d/{{ item }}-dev.repo'
+            force: true
+          with_items: '{{ iscsi_base }}'
+          when: ceph_repository == 'dev'
+
+        - name: ceph-iscsi stable repository
+          get_url:
+            url: 'https://download.ceph.com/ceph-iscsi/{{ "3" if use_new_ceph_iscsi | bool else "2" }}/rpm/el{{ ansible_distribution_major_version }}/ceph-iscsi.repo'
+            dest: /etc/yum.repos.d/ceph-iscsi.repo
+            force: true
+          when: ceph_repository == 'community'
 
     - name: install ceph iscsi package
       package:
-        name: "{{ item }}"
+        name: "{{ common_pkgs + iscsi_base }}"
         state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
       register: result
       until: result is succeeded
-      with_items:
-        - "{{ ceph_iscsi_pkgs }}"
-        - python-requests
 
 - name: check the status of the target.service override
   stat:

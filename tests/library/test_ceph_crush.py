@@ -1,4 +1,6 @@
-from . import ceph_crush
+import sys
+sys.path.append('./library')
+import ceph_crush
 import pytest
 
 
