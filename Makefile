@@ -19,7 +19,7 @@ NAME = ceph-ansible
 #  "ceph-ansible-2.2.0-1.el8"
 
 DIST ?= "el8"
-MOCK_CONFIG ?= "epel-7-x86_64"
+MOCK_CONFIG ?= "epel-8-x86_64"
 TAG := $(shell git describe --tags --abbrev=0 --match 'v*')
 VERSION := $(shell echo $(TAG) | sed 's/^v//')
 COMMIT := $(shell git rev-parse HEAD)
@@ -30,6 +30,11 @@ RELEASE := $(shell git describe --tags --match 'v*' \
              | sed 's/-/./')
 ifeq ($(VERSION),$(RELEASE))
   RELEASE = 1
+endif
+ifneq (,$(findstring alpha,$(VERSION)))
+    ALPHA := $(shell echo $(VERSION) | sed 's/.*alpha/alpha/')
+    RELEASE := 0.$(ALPHA).$(RELEASE)
+    VERSION := $(subst $(ALPHA),,$(VERSION))
 endif
 ifneq (,$(findstring beta,$(VERSION)))
     BETA := $(shell echo $(VERSION) | sed 's/.*beta/beta/')
