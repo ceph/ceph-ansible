@@ -62,6 +62,14 @@
 - name: include_tasks start_osds.yml
   include_tasks: start_osds.yml
 
+- name: unset noup flag
+  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset noup"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  changed_when: False
+  when:
+    - not rolling_update | default(False) | bool
+    - inventory_hostname == ansible_play_hosts_all | last
+
 - name: wait for all osd to be up
   command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
   register: wait_for_all_osds_up
@@ -69,10 +77,11 @@
   delay: "{{ delay_wait_osd_up }}"
   changed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
   until:
     - (wait_for_all_osds_up.stdout | from_json)["osdmap"]["osdmap"]["num_osds"] | int > 0
     - (wait_for_all_osds_up.stdout | from_json)["osdmap"]["osdmap"]["num_osds"] == (wait_for_all_osds_up.stdout | from_json)["osdmap"]["osdmap"]["num_up_osds"]
+  when:
+    - inventory_hostname == ansible_play_hosts_all | last
 
 - name: include crush_rules.yml
   include_tasks: crush_rules.yml
@@ -95,18 +104,11 @@
     - not add_osd | bool
     - openstack_keys_tmp is defined
 
-- name: unset noup flag
-  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset noup"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  changed_when: False
-  when:
-    - not rolling_update | default(False) | bool
-    - inventory_hostname == ansible_play_hosts_all | last
-
 # Create the pools listed in openstack_pools
 - name: include openstack_config.yml
   include_tasks: openstack_config.yml
   when:
     - not add_osd | bool
+    - not rolling_update | default(False) | bool
     - openstack_config | bool
     - inventory_hostname == groups[osd_group_name] | last
