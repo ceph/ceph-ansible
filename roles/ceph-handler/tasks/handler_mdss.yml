@@ -1,0 +1,25 @@
+---
+- name: set _mds_handler_called before restart
+  set_fact:
+    _mds_handler_called: True
+
+- name: copy mds restart script
+  template:
+    src: restart_mds_daemon.sh.j2
+    dest: /tmp/restart_mds_daemon.sh
+    owner: root
+    group: root
+    mode: 0750
+
+- name: restart ceph mds daemon(s)
+  command: /usr/bin/env bash /tmp/restart_mds_daemon.sh
+  when:
+    - handler_mds_status | bool
+    - hostvars[item]['_mds_handler_called'] | default(False) | bool
+  with_items: "{{ groups[mds_group_name] }}"
+  delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _mds_handler_called after restart
+  set_fact:
+    _mds_handler_called: False

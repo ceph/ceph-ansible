@@ -1,6 +1,8 @@
 import json
 import os
-from . import ceph_key
+import sys
+sys.path.append('./library')
+import ceph_key
 import mock
 
 

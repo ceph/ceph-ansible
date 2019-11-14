@@ -32,34 +32,16 @@
 
     - name: gather facts
       setup:
-      when: not delegate_facts_host | bool
+      when:
+        - not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
 
     - name: gather and delegate facts
       setup:
       delegate_to: "{{ item }}"
       delegate_facts: True
-      with_items: "{{ groups['all'] }}"
+      with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
       run_once: true
       when: delegate_facts_host | bool
-
-    - name: install required packages for fedora > 23
-      raw: sudo dnf -y install python2-dnf libselinux-python ntp
-      register: result
-      when:
-        - ansible_distribution == 'Fedora'
-        - ansible_distribution_major_version|int >= 23
-      until: result is succeeded
-
-    - name: check if it is atomic host
-      stat:
-        path: /run/ostree-booted
-      register: stat_ostree
-      tags: always
-
-    - name: set_fact is_atomic
-      set_fact:
-        is_atomic: '{{ stat_ostree.stat.exists }}'
-      tags: always
 
   tasks:
     - import_role:
@@ -70,6 +52,8 @@
         name: ceph-validate
     - import_role:
         name: ceph-infra
+    - import_role:
+        name: ceph-common
 
 - hosts: mons
   gather_facts: false
@@ -93,8 +77,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -135,8 +118,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -174,8 +156,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -213,8 +194,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -252,8 +232,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -291,8 +270,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -330,8 +308,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -369,8 +346,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -410,8 +386,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -460,6 +435,11 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
+- import_playbook: dashboard.yml
+  when:
+    - dashboard_enabled | bool
+    - groups.get(grafana_server_group_name, []) | length > 0
+
 - hosts: mons
   gather_facts: false
   become: True
@@ -480,9 +460,3 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       when: not ceph_status.failed
-
-- import_playbook: infrastructure-playbooks/dashboard.yml
-  when:
-    - dashboard_enabled | bool
-    - groups.get(grafana_server_group_name, []) | length > 0
-    - ansible_os_family in ['RedHat', 'Suse']

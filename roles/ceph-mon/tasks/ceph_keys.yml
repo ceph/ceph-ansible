@@ -4,43 +4,27 @@
     {{ container_exec_cmd }}
     ceph
     --cluster {{ cluster }}
-    -n mon.
-    -k /var/lib/ceph/mon/{{ cluster }}-{{ ansible_hostname }}/keyring
+    daemon mon.{{ ansible_hostname }}
     mon_status
     --format json
   register: ceph_health_raw
   run_once: true
   until: >
-    (ceph_health_raw.stdout != "") and (ceph_health_raw.stdout | default('{}') | from_json)['state'] in ['leader', 'peon']
+    (ceph_health_raw.stdout | length > 0) and (ceph_health_raw.stdout | default('{}') | from_json)['state'] in ['leader', 'peon']
   retries: "{{ handler_health_mon_check_retries }}"
   delay: "{{ handler_health_mon_check_delay }}"
   changed_when: false
 
-- name: tasks for MONs when cephx is enabled
-  when: cephx | bool
-  block:
-  - name: fetch ceph initial keys
-    ceph_key:
-      state: fetch_initial_keys
-      cluster: "{{ cluster }}"
-      owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-      group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-      mode: "0400"
-    environment:
-      CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
-      CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      CEPH_ROLLING_UPDATE: "{{ rolling_update }}"
-
-  - name: copy keys to the ansible server
-    fetch:
-      src: "{{ item }}"
-      dest: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
-      flat: yes
-    with_items:
-      - /var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring
-      - /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
-      - /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring
-      - /var/lib/ceph/bootstrap-rbd/{{ cluster }}.keyring
-      - /var/lib/ceph/bootstrap-rbd-mirror/{{ cluster }}.keyring
-      - /etc/ceph/{{ cluster }}.client.admin.keyring
-    when: inventory_hostname == groups[mon_group_name] | last
+- name: fetch ceph initial keys
+  ceph_key:
+    state: fetch_initial_keys
+    cluster: "{{ cluster }}"
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: "0400"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+    CEPH_ROLLING_UPDATE: "{{ rolling_update }}"
+  when:
+    - cephx | bool

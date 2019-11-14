@@ -17,6 +17,7 @@
 
 - name: wait for grafana to be stopped
   wait_for:
+    host: '{{ grafana_server_addr }}'
     port: '{{ grafana_port }}'
     state: stopped
 
@@ -32,6 +33,15 @@
     - "/etc/grafana/provisioning/datasources"
     - "/etc/grafana/provisioning/dashboards"
     - "/etc/grafana/provisioning/notifiers"
+
+- name: download ceph grafana dashboards
+  get_url:
+    url: "https://raw.githubusercontent.com/ceph/ceph/{{ grafana_dashboard_version }}/monitoring/grafana/dashboards/{{ item }}"
+    dest: "/etc/grafana/dashboards/ceph-dashboard/{{ item }}"
+  with_items: "{{ grafana_dashboard_files }}"
+  when:
+    - not containerized_deployment | bool
+    - not ansible_os_family in ['RedHat', 'Suse']
 
 - name: write grafana.ini
   template:
@@ -97,4 +107,5 @@
 
 - name: wait for grafana to start
   wait_for:
+    host: '{{ grafana_server_addr }}'
     port: '{{ grafana_port }}'

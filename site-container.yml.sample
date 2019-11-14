@@ -28,35 +28,16 @@
     # pre-tasks for following import -
     - name: gather facts
       setup:
-      when: not delegate_facts_host | bool
+      when:
+        - not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
 
     - name: gather and delegate facts
       setup:
       delegate_to: "{{ item }}"
       delegate_facts: True
-      with_items: "{{ groups['all'] }}"
+      with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
       run_once: true
       when: delegate_facts_host | bool
-
-    - name: check if it is atomic host
-      stat:
-        path: /run/ostree-booted
-      register: stat_ostree
-      tags: always
-
-    - name: set_fact is_atomic
-      set_fact:
-        is_atomic: '{{ stat_ostree.stat.exists }}'
-      tags: always
-
-    - name: check if podman binary is present
-      stat:
-        path: /usr/bin/podman
-      register: podman_binary
-
-    - name: set_fact container_binary
-      set_fact:
-        container_binary: "{{ 'podman' if (podman_binary.stat.exists and ansible_distribution == 'Fedora') or (ansible_os_family == 'RedHat' and ansible_distribution_major_version == '8') else 'docker' }}"
 
     - import_role:
         name: ceph-defaults
@@ -101,10 +82,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-container-engine
-    - import_role:
-        name: ceph-container-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -147,10 +125,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-container-engine
-    - import_role:
-        name: ceph-container-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -188,10 +163,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-container-engine
-    - import_role:
-        name: ceph-container-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -229,10 +201,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-container-engine
-    - import_role:
-        name: ceph-container-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -270,10 +239,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-container-engine
-    - import_role:
-        name: ceph-container-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -311,10 +277,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-container-engine
-    - import_role:
-        name: ceph-container-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -352,10 +315,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-container-engine
-    - import_role:
-        name: ceph-container-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -393,12 +353,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-container-engine
-      when: inventory_hostname == groups.get('clients', ['']) | first
-    - import_role:
-        name: ceph-container-common
-      when: inventory_hostname == groups.get('clients', ['']) | first
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -438,10 +393,7 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-handler
-    - import_role:
-        name: ceph-container-engine
-    - import_role:
-        name: ceph-container-common
+      tags: ['ceph_update_config']
     - import_role:
         name: ceph-config
       tags: ['ceph_update_config']
@@ -457,6 +409,11 @@
           installer_phase_ceph_iscsi_gw:
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- import_playbook: dashboard.yml
+  when:
+    - dashboard_enabled | bool
+    - groups.get(grafana_server_group_name, []) | length > 0
 
 - hosts: mons
   gather_facts: false
@@ -489,8 +446,3 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       when: not ceph_status.failed
-
-- import_playbook: infrastructure-playbooks/dashboard.yml
-  when:
-    - dashboard_enabled | bool
-    - groups.get(grafana_server_group_name, []) | length > 0

@@ -1,7 +1,89 @@
 ---
-- name: validate provided configuration
-  validate:
-    mode: strict
+- name: validate ceph_origin
+  fail:
+    msg: "ceph_origin must be either 'repository', 'distro' or 'local'"
+  when:
+    - not containerized_deployment | bool
+    - ceph_origin not in ['repository', 'distro', 'local']
+
+- name: validate ceph_repository
+  fail:
+    msg: "ceph_repository must be either 'community', 'rhcs', 'dev', 'custom' or 'uca'"
+  when:
+    - ceph_origin == 'repository'
+    - ceph_repository not in ['community', 'rhcs', 'dev', 'custom', 'uca']
+
+- name: validate ceph_repository_community
+  fail:
+    msg: "ceph_stable_release must be either 'nautilus' or 'octopus'"
+  when:
+    - ceph_origin == 'repository'
+    - ceph_repository == 'community'
+    - ceph_stable_release not in ['nautilus', 'octopus']
+
+- name: validate ceph_repository_type
+  fail:
+    msg: "ceph_repository_type must be either 'cdn' or 'iso'"
+  when:
+    - ceph_origin == 'repository'
+    - ceph_repository == 'rhcs'
+    - ceph_repository_type not in ['cdn', 'iso']
+
+- name: validate osd_objectstore
+  fail:
+    msg: "osd_objectstore must be either 'bluestore' or 'filestore'"
+  when: osd_objectstore not in ['bluestore', 'filestore']
+
+- name: validate monitor network configuration
+  fail:
+    msg: "Either monitor_address, monitor_address_block or monitor_interface must be provided"
+  when:
+    - mon_group_name in group_names
+    - monitor_address == '0.0.0.0'
+    - monitor_address_block == 'subnet'
+    - monitor_interface == 'interface'
+
+- name: validate radosgw network configuration
+  fail:
+    msg: "Either radosgw_address, radosgw_address_block or radosgw_interface must be provided"
+  when:
+    - rgw_group_name in group_names
+    - radosgw_address == '0.0.0.0'
+    - radosgw_address_block == 'subnet'
+    - radosgw_interface == 'interface'
+
+- name: validate osd nodes
+  when: osd_group_name in group_names
+  block:
+    - name: validate lvm osd scenario
+      fail:
+        msg: 'devices or lvm_volumes must be defined for lvm osd scenario'
+      when:
+        - not osd_auto_discovery | default(false) | bool
+        - devices is undefined
+        - lvm_volumes is undefined
+
+    - name: validate filestore lvm osd scenario
+      fail:
+        msg: 'data and journal keys must be defined in lvm_volumes'
+      when:
+        - osd_objectstore == 'filestore'
+        - not osd_auto_discovery | default(false) | bool
+        - lvm_volumes is defined
+        - lvm_volumes | length > 0
+        - item.data is undefined or item.journal is undefined
+      with_items: '{{ lvm_volumes }}'
+
+    - name: validate bluestore lvm osd scenario
+      fail:
+        msg: 'data key must be defined in lvm_volumes'
+      when:
+        - osd_objectstore == 'bluestore'
+        - not osd_auto_discovery | default(false) | bool
+        - lvm_volumes is defined
+        - lvm_volumes | length > 0
+        - item.data is undefined
+      with_items: '{{ lvm_volumes }}'
 
 - name: warning deprecation for fqdn configuration
   fail:
@@ -26,6 +108,25 @@
         - ceph_repository_type == 'cdn'
         - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
         - ceph_repository not in ['rhcs', 'dev', 'obs']
+
+# SUSE/openSUSE Leap only supports the following:
+# - ceph_origin == 'distro'
+# - ceph_origin == 'repository' and ceph_repository == 'obs'
+- name: SUSE/openSUSE Leap based system tasks
+  when: ansible_os_family == 'Suse'
+  block:
+    - name: Check ceph_origin definition on SUSE/openSUSE Leap
+      fail:
+        msg: "Unsupported installation method origin:{{ ceph_origin }}"
+      when: ceph_origin not in ['distro', 'repository']
+
+    - name: Check ceph_repository definition on SUSE/openSUSE Leap
+      fail:
+        msg: "Unsupported installation method origin:{{ ceph_origin }} repo:{{ ceph_repository }}'
+                  only valid combination is ceph_origin == 'repository' and ceph_repository == 'obs'"
+      when:
+        - ceph_origin == 'repository'
+        - ceph_repository != 'obs'
 
 - name: validate ntp daemon type
   fail:
@@ -106,6 +207,12 @@
   include_tasks: check_nfs.yml
   when: inventory_hostname in groups.get(nfs_group_name, [])
 
+- name: include check_rbdmirror.yml
+  include_tasks: check_rbdmirror.yml
+  when:
+    - rbdmirror_group_name in group_names
+    - ceph_rbd_mirror_configure | default(false) | bool
+
 - block:
     - name: fail if [grafana-server] group doesn't exist
       fail:
@@ -117,3 +224,11 @@
         msg: "you must add at least one node in the [grafana-server] hosts group"
       when: groups[grafana_server_group_name] | length < 1
   when: dashboard_enabled | bool
+
+- name: validate container registry credentials
+  fail:
+    msg: 'ceph_docker_registry_username and/or ceph_docker_registry_password variables need to be set'
+  when:
+    - ceph_docker_registry_auth | bool
+    - (ceph_docker_registry_username is not defined or ceph_docker_registry_password is not defined) or
+      (ceph_docker_registry_username | length == 0 or ceph_docker_registry_password | length == 0)

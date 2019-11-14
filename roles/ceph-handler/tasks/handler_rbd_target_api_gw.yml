@@ -1,0 +1,52 @@
+---
+- name: set _rbd_target_api_handler_called before restart
+  set_fact:
+    _rbd_target_api_handler_called: True
+
+- name: copy rbd-target-api restart script
+  template:
+    src: restart_rbd_target_api.sh.j2
+    dest: /tmp/restart_rbd_target_api.sh
+    owner: root
+    group: root
+    mode: 0750
+
+- name: restart rbd-target-api
+  command: /usr/bin/env bash /tmp/restart_rbd_target_api.sh
+  when:
+    - ceph_rbd_target_api_stat.get('rc') == 0
+    - hostvars[item]['_rbd_target_api_handler_called'] | default(False) | bool
+    - ceph_rbd_target_api_stat.get('stdout_lines', [])|length != 0
+  with_items: "{{ groups[iscsi_gw_group_name] }}"
+  delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _rbd_target_api_handler_called after restart
+  set_fact:
+    _rbd_target_api_handler_called: False
+
+- name: set _rbd_target_gw_handler_called before restart
+  set_fact:
+    _rbd_target_gw_handler_called: True
+
+- name: copy rbd-target-gw restart script
+  template:
+    src: restart_rbd_target_gw.sh.j2
+    dest: /tmp/restart_rbd_target_gw.sh
+    owner: root
+    group: root
+    mode: 0750
+
+- name: restart rbd-target-gw
+  command: /usr/bin/env bash /tmp/restart_rbd_target_gw.sh
+  when:
+    - ceph_rbd_target_gw_stat.get('rc') == 0
+    - hostvars[item]['_rbd_target_gw_handler_called'] | default(False) | bool
+    - ceph_rbd_target_gw_stat.get('stdout_lines', [])|length != 0
+  with_items: "{{ groups[iscsi_gw_group_name] }}"
+  delegate_to: "{{ item }}"
+  run_once: True
+
+- name: set _rbd_target_gw_handler_called after restart
+  set_fact:
+    _rbd_target_gw_handler_called: False

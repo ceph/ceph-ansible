@@ -51,7 +51,7 @@
           run_once: true
 
         - name: get all nfs-ganesha mount points
-          command: grep "{{ hostvars[item]['ansible_all_ipv4_addresses'] | ipaddr(public_network) | first }}" /proc/mounts
+          command: grep "{{ hostvars[item]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}" /proc/mounts
           register: nfs_ganesha_mount_points
           failed_when: false
           with_items: "{{ groups[nfs_group_name] }}"
@@ -68,8 +68,15 @@
     - name: ensure cephfs mountpoint are unmounted
       command: umount -a -t ceph
 
-    - name: ensure rbd devices are unmapped
-      command: rbdmap unmap-all
+    - name: find mapped rbd ids
+      find:
+        paths: /sys/bus/rbd/devices
+        file_type: any
+      register: rbd_mapped_ids
+
+    - name: use sysfs to unmap rbd devices
+      shell: "echo {{ item.path | basename }} > /sys/bus/rbd/remove_single_major"
+      with_items: "{{ rbd_mapped_ids.files }}"
 
     - name: unload ceph kernel modules
       modprobe:

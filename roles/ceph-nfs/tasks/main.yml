@@ -1,8 +1,11 @@
 ---
-- name: set_fact container_exec_cmd
-  set_fact:
-    container_exec_cmd: "{{ container_binary }} exec ceph-nfs-{{ ansible_hostname }}"
-  when: containerized_deployment | bool
+# global/common requirement
+- name: stop nfs server service
+  systemd:
+    name: "{{ 'nfs-server' if ansible_os_family == 'RedHat' else 'nfsserver' if ansible_os_family == 'Suse' else 'nfs-kernel-server' if ansible_os_family == 'Debian' }}"
+    state: stopped
+    enabled: no
+  failed_when: false
 
 - name: include pre_requisite_non_container.yml
   include_tasks: pre_requisite_non_container.yml

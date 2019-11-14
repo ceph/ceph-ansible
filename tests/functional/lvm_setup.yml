@@ -26,18 +26,20 @@
       register: result
       until: result is succeeded
       when: not is_atomic | bool
-    - name: create physical volume
-      command: pvcreate /dev/sdb
-      failed_when: false
     - name: create volume group
-      command: vgcreate test_group /dev/sdb
-      failed_when: false
+      lvg:
+        vg: test_group
+        pvs: /dev/sdb
     - name: create logical volume 1
-      command: lvcreate --yes -l 50%FREE -n data-lv1 test_group
-      failed_when: false
+      lvol:
+        vg: test_group
+        lv: data-lv1
+        size: 50%FREE
     - name: create logical volume 2
-      command: lvcreate --yes -l 50%FREE -n data-lv2 test_group
-      failed_when: false
+      lvol:
+        vg: test_group
+        lv: data-lv2
+        size: 100%FREE
     - name: partition /dev/sdc for journals
       parted:
         device: /dev/sdc
@@ -61,5 +63,7 @@
         vg: journals
         pvs: /dev/sdc2
     - name: create journal1 lv
-      command: lvcreate --yes -l 100%FREE -n journal1 journals
-      failed_when: false
+      lvol:
+        vg: journals
+        lv: journal1
+        size: 100%FREE

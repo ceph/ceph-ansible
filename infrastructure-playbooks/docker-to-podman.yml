@@ -1,0 +1,109 @@
+- hosts:
+  - mons
+  - osds
+  - mdss
+  - rgws
+  - nfss
+  - rbdmirrors
+  - clients
+  - iscsigws
+  - mgrs
+  - grafana-server
+
+  gather_facts: false
+  become: True
+  any_errors_fatal: true
+
+  vars:
+    delegate_facts_host: True
+
+  pre_tasks:
+    - import_tasks: "{{ playbook_dir }}/../raw_install_python.yml"
+
+  tasks:
+    # pre-tasks for following import -
+    - name: gather facts
+      setup:
+      when: not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
+
+    - name: gather and delegate facts
+      setup:
+      delegate_to: "{{ item }}"
+      delegate_facts: True
+      with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
+      run_once: true
+      when: delegate_facts_host | bool
+
+- hosts:
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+    - "{{ iscsi_gw_group_name | default('iscsigws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+  become: true
+  vars:
+    docker2podman: True
+    container_binary: podman
+    container_binding_name: podman
+    container_service_name: podman
+    container_package_name: podman
+  pre_tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+
+    - name: get docker version
+      command: docker --version
+      changed_when: false
+      check_mode: no
+      register: ceph_docker_version
+
+    - name: set_fact ceph_docker_version ceph_docker_version.stdout.split
+      set_fact:
+        ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
+
+
+  tasks:
+    - import_role:
+        name: ceph-mon
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(mon_group_name, [])
+
+    - import_role:
+        name: ceph-iscsi-gw
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(iscsi_gw_group_name, [])
+
+    - import_role:
+        name: ceph-mds
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(mds_group_name, [])
+
+    - import_role:
+        name: ceph-mgr
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(mgr_group_name, [])
+
+    - import_role:
+        name: ceph-nfs
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(nfs_group_name, [])
+
+    - import_role:
+        name: ceph-osd
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(osd_group_name, [])
+
+    - import_role:
+        name: ceph-rbd-mirror
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(rbdmirror_group_name, [])
+
+    - import_role:
+        name: ceph-rgw
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(rgw_group_name, [])
