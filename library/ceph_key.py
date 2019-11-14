@@ -541,6 +541,8 @@ def run_module():
         add_file_common_args=True,
     )
 
+    file_args = module.load_file_common_arguments(module.params)
+
     # Gather module parameters in variables
     state = module.params['state']
     name = module.params.get('name')
@@ -596,6 +598,8 @@ def run_module():
             keyring_filename = cluster + "." + name + ".keyring"
             file_path = os.path.join(dest, keyring_filename)
 
+        file_args['path'] = file_path
+
         # We allow 'present' to override any existing key
         # ONLY if a secret is provided
         # if not we skip the creation
@@ -607,13 +611,11 @@ def run_module():
                 result["stdout"] = "skipped, since {0} already exists, we only fetched the key at {1}. If you want to update a key use 'state: update'".format(  # noqa E501
                     name, file_path)
                 result['rc'] = rc
+                module.set_fs_attributes_if_different(file_args, False)
                 module.exit_json(**result)
 
         rc, cmd, out, err = exec_commands(module, create_key(
             module, result, cluster, name, secret, caps, import_key, file_path, container_image))  # noqa E501
-
-        file_args = module.load_file_common_arguments(module.params)
-        file_args['path'] = file_path
         module.set_fs_attributes_if_different(file_args, False)
     elif state == "update":
         if not caps:
