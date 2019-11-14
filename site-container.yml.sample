@@ -28,8 +28,8 @@
     # pre-tasks for following import -
     - name: gather facts
       setup:
-      when:
-        - not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
+      when: not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
+      tags: always
 
     - name: gather and delegate facts
       setup:
@@ -38,6 +38,7 @@
       with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
       run_once: true
       when: delegate_facts_host | bool
+      tags: always
 
     - import_role:
         name: ceph-defaults
@@ -59,6 +60,7 @@
       when: not (inventory_hostname in groups.get('clients', [])) or (inventory_hostname == groups.get('clients', [''])|first)
 
 - hosts: mons
+  gather_facts: false
   any_errors_fatal: true
   tasks:
     - name: set ceph monitor install 'In Progress'
@@ -93,6 +95,7 @@
       when: groups.get(mgr_group_name, []) | length == 0
 
 - hosts: mons
+  gather_facts: false
   any_errors_fatal: true
   tasks:
     - name: set ceph monitor install 'Complete'
