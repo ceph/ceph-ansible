@@ -11,197 +11,282 @@
 
 - when: (firewalld_pkg_query.get('rc', 1) == 0
       or is_atomic | bool)
+  tags: firewall
   block:
-  - name: start firewalld
-    service:
-      name: firewalld
-      state: started
-      enabled: yes
+    - name: start firewalld
+      service:
+        name: firewalld
+        state: started
+        enabled: yes
 
-  - name: open monitor and manager ports
-    firewalld:
-      service: "{{ item[1].service }}"
-      zone: "{{ item[1].zone }}"
-      source: "{{ item[0] }}"
-      permanent: true
-      immediate: true
-      state: enabled
-    with_nested:
-      - "{{ public_network.split(',') }}"
-      - - { 'service': 'ceph-mon', 'zone': "{{ ceph_mon_firewall_zone }}" }
+    - name: open ceph networks on monitor
+      firewalld:
+        zone: "{{ ceph_mon_firewall_zone }}"
+        source: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items: "{{ public_network.split(',') }}"
+      when:
+        - mon_group_name is defined
+        - mon_group_name in group_names
+
+    - name: open ceph networks on manager when collocated
+      firewalld:
+        zone: "{{ ceph_mgr_firewall_zone }}"
+        source: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items: "{{ public_network.split(',') }}"
+      when:
+        - mon_group_name is defined
+        - mon_group_name in group_names
+        - mgr_group_name | length == 0
+
+    - name: open monitor and manager ports
+      firewalld:
+        service: "{{ item.service }}"
+        zone: "{{ item.zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items:
+        - { 'service': 'ceph-mon', 'zone': "{{ ceph_mon_firewall_zone }}" }
         - { 'service': 'ceph', 'zone': "{{ ceph_mgr_firewall_zone }}" }
-    when:
-      - mon_group_name is defined
-      - mon_group_name in group_names
-    tags: firewall
+      when:
+        - mon_group_name is defined
+        - mon_group_name in group_names
 
-  - name: open manager ports
-    firewalld:
-      service: ceph
-      zone: "{{ ceph_mgr_firewall_zone }}"
-      source: "{{ item }}"
-      permanent: true
-      immediate: true
-      state: enabled
-    with_items: "{{ public_network.split(',') }}"
-    when:
-      - mgr_group_name is defined
-      - mgr_group_name in group_names
-    tags: firewall
+    - name: open ceph networks on manager when dedicated
+      firewalld:
+        zone: "{{ ceph_mgr_firewall_zone }}"
+        source: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items: "{{ public_network.split(',') }}"
+      when:
+        - mgr_group_name is defined
+        - mgr_group_name in group_names
+        - mgr_group_name | length > 0
 
-  - name: open osd ports
-    firewalld:
-      service: ceph
-      zone: "{{ ceph_osd_firewall_zone }}"
-      source: "{{ item }}"
-      permanent: true
-      immediate: true
-      state: enabled
-    with_items: "{{ public_network.split(',') | union(cluster_network.split(',')) }}"
-    when:
-      - osd_group_name is defined
-      - osd_group_name in group_names
-    tags: firewall
+    - name: open manager ports
+      firewalld:
+        service: ceph
+        zone: "{{ ceph_mgr_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      when:
+        - mgr_group_name is defined
+        - mgr_group_name in group_names
 
-  - name: open rgw ports
-    firewalld:
-      port: "{{ radosgw_frontend_port }}/tcp"
-      zone: "{{ ceph_rgw_firewall_zone }}"
-      source: "{{ item }}"
-      permanent: true
-      immediate: true
-      state: enabled
-    with_items: "{{ public_network.split(',') }}"
-    when:
-      - rgw_group_name is defined
-      - rgw_group_name in group_names
-    tags: firewall
+    - name: open ceph networks on osd
+      firewalld:
+        zone: "{{ ceph_osd_firewall_zone }}"
+        source: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items: "{{ public_network.split(',') | union(cluster_network.split(',')) }}"
+      when:
+        - osd_group_name is defined
+        - osd_group_name in group_names
 
-  - name: open mds ports
-    firewalld:
-      service: ceph
-      zone: "{{ ceph_mds_firewall_zone }}"
-      source: "{{ item }}"
-      permanent: true
-      immediate: true
-      state: enabled
-    with_items: "{{ public_network.split(',') }}"
-    when:
-      - mds_group_name is defined
-      - mds_group_name in group_names
-    tags: firewall
+    - name: open osd ports
+      firewalld:
+        service: ceph
+        zone: "{{ ceph_osd_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      when:
+        - osd_group_name is defined
+        - osd_group_name in group_names
 
-  - name: open nfs ports
-    firewalld:
-      service: nfs
-      zone: "{{ ceph_nfs_firewall_zone }}"
-      source: "{{ item }}"
-      permanent: true
-      immediate: true
-      state: enabled
-    with_items: "{{ public_network.split(',') }}"
-    when:
-      - nfs_group_name is defined
-      - nfs_group_name in group_names
-    tags: firewall
+    - name: open ceph networks on rgw
+      firewalld:
+        zone: "{{ ceph_rgw_firewall_zone }}"
+        source: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items: "{{ public_network.split(',') }}"
+      when:
+        - rgw_group_name is defined
+        - rgw_group_name in group_names
 
-  - name: open nfs ports (portmapper)
-    firewalld:
-      port: "111/tcp"
-      zone: "{{ ceph_nfs_firewall_zone }}"
-      source: "{{ item }}"
-      permanent: true
-      immediate: true
-      state: enabled
-    with_items: "{{ public_network.split(',') }}"
-    when:
-      - nfs_group_name is defined
-      - nfs_group_name in group_names
-    tags: firewall
+    - name: open rgw ports
+      firewalld:
+        port: "{{ radosgw_frontend_port }}/tcp"
+        zone: "{{ ceph_rgw_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      when:
+        - rgw_group_name is defined
+        - rgw_group_name in group_names
 
-  - name: open rbdmirror ports
-    firewalld:
-      service: ceph
-      zone: "{{ ceph_rbdmirror_firewall_zone }}"
-      source: "{{ item }}"
-      permanent: true
-      immediate: true
-      state: enabled
-    with_items: "{{ public_network.split(',') }}"
-    when:
-      - rbdmirror_group_name is defined
-      - rbdmirror_group_name in group_names
-    tags: firewall
+    - name: open ceph networks on mds
+      firewalld:
+        zone: "{{ ceph_mds_firewall_zone }}"
+        source: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items: "{{ public_network.split(',') }}"
+      when:
+        - mds_group_name is defined
+        - mds_group_name in group_names
 
-  - name: open iscsi target ports
-    firewalld:
-      port: "3260/tcp"
-      zone: "{{ ceph_iscsi_firewall_zone }}"
-      source: "{{ item }}"
-      permanent: true
-      immediate: true
-      state: enabled
-    with_items: "{{ public_network.split(',') }}"
-    when:
-      - iscsi_gw_group_name is defined
-      - iscsi_gw_group_name in group_names
-    tags: firewall
+    - name: open mds ports
+      firewalld:
+        service: ceph
+        zone: "{{ ceph_mds_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items: "{{ public_network.split(',') }}"
+      when:
+        - mds_group_name is defined
+        - mds_group_name in group_names
 
-  - name: open iscsi api ports
-    firewalld:
-      port: "{{ api_port | default(5000) }}/tcp"
-      zone: "{{ ceph_iscsi_firewall_zone }}"
-      source: "{{ item }}"
-      permanent: true
-      immediate: true
-      state: enabled
-    with_items: "{{ public_network.split(',') }}"
-    when:
-      - iscsi_gw_group_name is defined
-      - iscsi_gw_group_name in group_names
-    tags: firewall
+    - name: open ceph networks on nfs
+      firewalld:
+        zone: "{{ ceph_nfs_firewall_zone }}"
+        source: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items: "{{ public_network.split(',') }}"
+      when:
+        - nfs_group_name is defined
+        - nfs_group_name in group_names
 
-  - name: open iscsi/prometheus port
-    firewalld:
-      port: "9287/tcp"
-      zone: "{{ ceph_iscsi_firewall_zone }}"
-      permanent: true
-      immediate: true
-      state: enabled
-    when:
-      - iscsi_gw_group_name is defined
-      - iscsi_gw_group_name in group_names
-    tags: firewall
+    - name: open nfs ports
+      firewalld:
+        service: nfs
+        zone: "{{ ceph_nfs_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      when:
+        - nfs_group_name is defined
+        - nfs_group_name in group_names
 
-  - name: open dashboard ports
-    include_tasks: dashboard_firewall.yml
-    when: dashboard_enabled | bool
+    - name: open nfs ports (portmapper)
+      firewalld:
+        port: "111/tcp"
+        zone: "{{ ceph_nfs_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      when:
+        - nfs_group_name is defined
+        - nfs_group_name in group_names
 
-  - name: open haproxy ports
-    firewalld:
-      port: "{{ haproxy_frontend_port | default(80) }}/tcp"
-      zone: "{{ ceph_rgwloadbalancer_firewall_zone }}"
-      source: "{{ item }}"
-      permanent: true
-      immediate: true
-      state: enabled
-    with_items: "{{ public_network.split(',') }}"
-    when:
-      - rgwloadbalancer_group_name is defined
-      - rgwloadbalancer_group_name in group_names
-    tags:
-      - firewall
+    - name: open ceph networks on rbdmirror
+      firewalld:
+        zone: "{{ ceph_rbdmirror_firewall_zone }}"
+        source: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items: "{{ public_network.split(',') }}"
+      when:
+        - rbdmirror_group_name is defined
+        - rbdmirror_group_name in group_names
 
-  - name: add rich rule for keepalived vrrp
-    firewalld:
-      rich_rule: 'rule protocol value="vrrp" accept'
-      permanent: true
-      immediate: true
-      state: enabled
-    when:
-      - rgwloadbalancer_group_name is defined
-      - rgwloadbalancer_group_name in group_names
-    tags:
-      - firewall
+    - name: open rbdmirror ports
+      firewalld:
+        service: ceph
+        zone: "{{ ceph_rbdmirror_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      when:
+        - rbdmirror_group_name is defined
+        - rbdmirror_group_name in group_names
 
-- meta: flush_handlers
+    - name: open ceph networks on iscsi
+      firewalld:
+        zone: "{{ ceph_iscsi_firewall_zone }}"
+        source: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items: "{{ public_network.split(',') }}"
+      when:
+        - iscsi_gw_group_name is defined
+        - iscsi_gw_group_name in group_names
+
+    - name: open iscsi target ports
+      firewalld:
+        port: "3260/tcp"
+        zone: "{{ ceph_iscsi_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      when:
+        - iscsi_gw_group_name is defined
+        - iscsi_gw_group_name in group_names
+
+    - name: open iscsi api ports
+      firewalld:
+        port: "{{ api_port | default(5000) }}/tcp"
+        zone: "{{ ceph_iscsi_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      when:
+        - iscsi_gw_group_name is defined
+        - iscsi_gw_group_name in group_names
+
+    - name: open iscsi/prometheus port
+      firewalld:
+        port: "9287/tcp"
+        zone: "{{ ceph_iscsi_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      when:
+        - iscsi_gw_group_name is defined
+        - iscsi_gw_group_name in group_names
+
+    - name: open dashboard ports
+      include_tasks: dashboard_firewall.yml
+      when: dashboard_enabled | bool
+
+    - name: open ceph networks on haproxy
+      firewalld:
+        zone: "{{ ceph_rgwloadbalancer_firewall_zone }}"
+        source: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items: "{{ public_network.split(',') }}"
+      when:
+        - rgwloadbalancer_group_name is defined
+        - rgwloadbalancer_group_name in group_names
+
+    - name: open haproxy ports
+      firewalld:
+        port: "{{ haproxy_frontend_port | default(80) }}/tcp"
+        zone: "{{ ceph_rgwloadbalancer_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      when:
+        - rgwloadbalancer_group_name is defined
+        - rgwloadbalancer_group_name in group_names
+
+    - name: add rich rule for keepalived vrrp
+      firewalld:
+        rich_rule: 'rule protocol value="vrrp" accept'
+        permanent: true
+        immediate: true
+        state: enabled
+      when:
+        - rgwloadbalancer_group_name is defined
+        - rgwloadbalancer_group_name in group_names
