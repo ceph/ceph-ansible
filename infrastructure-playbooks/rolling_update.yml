@@ -369,6 +369,21 @@
         name: ceph-mgr
 
 
+- name: set osd flags
+  hosts: "{{ mon_group_name | default('mons') }}[0]"
+  become: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+
+    - name: set osd flags
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set {{ item }}"
+      with_items:
+        - noout
+        - nodeep-scrub
+
 - name: upgrade ceph osds cluster
   vars:
     health_osd_check_retries: 40
@@ -394,6 +409,11 @@
     - name: set num_osds for container
       set_fact:
         num_osds: "{{ osd_names.stdout_lines|default([])|length }}"
+      when: containerized_deployment | bool
+
+    - name: set_fact container_exec_cmd_osd
+      set_fact:
+        container_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when: containerized_deployment | bool
 
     - name: stop ceph osd
@@ -468,30 +488,6 @@
         - ceph_release in ["nautilus", "octopus"]
         - not containerized_deployment | bool
 
-    - name: set_fact container_exec_cmd_osd
-      set_fact:
-        container_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-      when: containerized_deployment | bool
-
-    - name: get osd versions
-      command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
-      register: ceph_versions
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-
-    - name: set_fact ceph_versions_osd
-      set_fact:
-        ceph_versions_osd: "{{ (ceph_versions.stdout|from_json).osd }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-
-    # length == 1 means there is a single osds versions entry
-    # thus all the osds are running the same version
-    - name: osd set sortbitwise
-      command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} osd set sortbitwise"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      when:
-        - (ceph_versions.get('stdout', '{}')|from_json).get('osd', {}) | length == 1
-        - ceph_versions_osd | string is search("ceph version 10")
-
     - name: get num_pgs - non container
       command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} -s --format json"
       register: ceph_pgs
@@ -528,11 +524,10 @@
       when: containerized_deployment | bool
 
     - name: unset osd flags
-      command: "{{ container_exec_cmd_update_osd|default('') }} ceph osd unset {{ item }} --cluster {{ cluster }}"
+      command: "{{ container_exec_cmd_update_osd | default('') }} ceph osd unset {{ item }} --cluster {{ cluster }}"
       with_items:
         - noout
-        - norebalance
-      delegate_to: "{{ groups[mon_group_name][0] }}"
+        - nodeep-scrub
 
     - name: get osd versions
       command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
