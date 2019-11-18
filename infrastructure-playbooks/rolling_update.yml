@@ -331,6 +331,21 @@
         name: ceph-mgr
 
 
+- name: set osd flags
+  hosts: "{{ mon_group_name | default('mons') }}[0]"
+  become: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+
+    - name: set osd flags
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set {{ item }}"
+      with_items:
+        - noout
+        - nodeep-scrub
+
 - name: upgrade ceph osds cluster
   vars:
     health_osd_check_retries: 40
@@ -367,15 +382,6 @@
       set_fact:
         container_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when: containerized_deployment | bool
-
-    - name: set osd flags
-      command: "{{ container_exec_cmd_update_osd | default('') }} ceph --cluster {{ cluster }} osd set {{ item }}"
-      with_items:
-        - noout
-        - norebalance
-        - norecover
-        - nobackfill
-      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: stop ceph osd
       systemd:
@@ -445,15 +451,6 @@
         - ceph_release in ["nautilus", "octopus"]
         - not containerized_deployment | bool
 
-    - name: unset osd flags
-      command: "{{ container_exec_cmd_update_osd | default('') }} ceph osd unset {{ item }} --cluster {{ cluster }}"
-      with_items:
-        - noout
-        - norebalance
-        - norecover
-        - nobackfill
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-
     - name: get num_pgs - non container
       command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} -s --format json"
       register: ceph_pgs
@@ -485,6 +482,12 @@
       set_fact:
         container_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when: containerized_deployment | bool
+
+    - name: unset osd flags
+      command: "{{ container_exec_cmd_update_osd | default('') }} ceph osd unset {{ item }} --cluster {{ cluster }}"
+      with_items:
+        - noout
+        - nodeep-scrub
 
     - name: get osd versions
       command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
