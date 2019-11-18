@@ -64,8 +64,6 @@ def setup(host):
     address = host.interface(public_interface).addresses[0]
 
     if docker:
-        container_binary = "docker"
-    if docker and str_to_bool(os.environ.get('IS_PODMAN', False)):  # noqa E501
         container_binary = "podman"
 
     data = dict(
