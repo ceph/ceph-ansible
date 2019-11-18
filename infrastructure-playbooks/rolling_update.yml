@@ -461,6 +461,19 @@
         - ceph_versions_osd | string is search("ceph version 12")
 
 
+- name: run crush rules on osd nodes
+  hosts: "{{ osd_group_name|default('osds') }}"
+  become: True
+  tasks:
+  roles:
+    - ceph-defaults
+    - ceph-facts
+  post_tasks:
+    - import_role:
+        name: ceph-osd
+        tasks_from: crush_rules
+
+
 - name: upgrade ceph mdss cluster, deactivate all rank > 0
   hosts: "{{ groups[mon_group_name|default('mons')][0] }}"
   become: true
