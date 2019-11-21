@@ -26,16 +26,3 @@
         - item.item.copy_key | bool
   when: groups.get(mon_group_name, []) | length > 0
 
-- name: dbus related tasks
-  block:
-    - name: create dbus service file
-      copy:
-        src: "org.ganesha.nfsd.conf"
-        dest: /etc/dbus-1/system.d/org.ganesha.nfsd.conf
-        owner: "root"
-        group: "root"
-        mode: "0644"
-
-    - name: reload dbus configuration
-      command: "killall -SIGHUP dbus-daemon"
-  when: ceph_nfs_dynamic_exports | bool
