@@ -41,19 +41,3 @@
     - "{{ statconfig.results }}"
   when:
     - item.1.stat.exists == true
-
-- name: create dbus service file
-  become: true
-  copy:
-    src: "org.ganesha.nfsd.conf"
-    dest: /etc/dbus-1/system.d/org.ganesha.nfsd.conf
-    owner: "root"
-    group: "root"
-    mode: "0644"
-  when:
-    - ceph_nfs_dynamic_exports
-
-- name: reload dbus configuration
-  command: "killall -SIGHUP dbus-daemon"
-  when:
-    - ceph_nfs_dynamic_exports
