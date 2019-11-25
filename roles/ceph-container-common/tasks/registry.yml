@@ -1,4 +1,16 @@
 ---
+- name: set_fact registry credentials
+  set_fact:
+    ceph_docker_registry_username: "{{ (ceph_docker_registry_token | b64decode).split(':') | first }}"
+    ceph_docker_registry_password: "{{ (ceph_docker_registry_token | b64decode).split(':') | last }}"
+  no_log: true
+  when:
+    - ceph_docker_registry_auth | bool
+    - ceph_docker_registry_username is not defined
+    - ceph_docker_registry_password is not defined
+    - ceph_docker_registry_token is defined
+    - ceph_docker_registry_token | length > 0
+
 - name: container registry authentication
   command: '{{ container_binary }} login -u {{ ceph_docker_registry_username }} -p {{ ceph_docker_registry_password }} {{ ceph_docker_registry }}'
   changed_when: false
