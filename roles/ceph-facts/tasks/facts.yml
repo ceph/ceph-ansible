@@ -8,18 +8,12 @@
   set_fact:
     is_atomic: "{{ stat_ostree.stat.exists }}"
 
-- name: check if podman binary is present
-  stat:
-    path: /usr/bin/podman
-  register: podman_binary
+- name: import_tasks container_binary.yml
+  import_tasks: container_binary.yml
 
 - name: set_fact is_podman
   set_fact:
     is_podman: "{{ podman_binary.stat.exists }}"
-
-- name: set_fact container_binary
-  set_fact:
-    container_binary: "{{ 'podman' if (podman_binary.stat.exists and ansible_distribution == 'Fedora') or (ansible_os_family == 'RedHat' and ansible_distribution_major_version == '8') else 'docker' }}"
 
 # In case ansible_python_interpreter is set by the user,
 # ansible will not discover python and discovered_interpreter_python
