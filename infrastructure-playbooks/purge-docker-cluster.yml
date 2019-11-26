@@ -378,10 +378,11 @@
   become: true
 
   tasks:
-    - name: set ceph_docker_registry value if not set
-      set_fact:
-        ceph_docker_registry: "docker.io"
-      when: ceph_docker_registry is not defined
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary
 
     - name: disable node_exporter service
       service:
@@ -415,10 +416,11 @@
       - alertmanager
 
   tasks:
-    - name: set ceph_docker_registry value if not set
-      set_fact:
-        ceph_docker_registry: "docker.io"
-      when: ceph_docker_registry is not defined
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary
 
     - name: stop services
       service:
@@ -517,8 +519,6 @@
   tasks:
     - import_role:
         name: ceph-defaults
-    - import_role:
-        name: ceph-facts
 
     - name: check if it is Atomic host
       stat: path=/run/ostree-booted
@@ -527,6 +527,10 @@
     - name: set fact for using Atomic host
       set_fact:
         is_atomic: "{{ stat_ostree.stat.exists }}"
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary
 
     - name: remove ceph container image
       command: "{{ container_binary }} rmi {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
