@@ -1,0 +1,9 @@
+---
+- name: check if podman binary is present
+  stat:
+    path: /usr/bin/podman
+  register: podman_binary
+
+- name: set_fact container_binary
+  set_fact:
+    container_binary: "{{ 'podman' if (podman_binary.stat.exists and ansible_distribution == 'Fedora') or (ansible_os_family == 'RedHat' and ansible_distribution_major_version == '8') else 'docker' }}"
