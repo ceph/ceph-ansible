@@ -263,15 +263,7 @@
 
   tasks:
 
-# For backward compatibility
-  - name: disable ceph rgw service (old unit name, for backward compatibility)
-    service:
-      name: "ceph-rgw@{{ ansible_hostname }}"
-      state: stopped
-      enabled: no
-    ignore_errors: true
-
-  - name: disable ceph rgw service (new unit name)
+  - name: disable ceph rgw service
     service:
       name: "ceph-radosgw@*"
       state: stopped
@@ -287,12 +279,8 @@
 
   - name: remove ceph rgw service
     file:
-      path: "{{ item }}"
+      path: /etc/systemd/system/ceph-radosgw@.service
       state: absent
-    with_items:
-# For backward compatibility
-      - /etc/systemd/system/ceph-rgw@.service
-      - /etc/systemd/system/ceph-radosgw@.service
 
   - name: remove ceph rgw image
     docker_image:
@@ -514,7 +502,6 @@
     - "{{ mgr_group_name|default('mgrs') }}"
     - grafana-server
     - iscsigws
-    - iscsi-gws # for backward compatibility only!
     - clients
 
   gather_facts: false
