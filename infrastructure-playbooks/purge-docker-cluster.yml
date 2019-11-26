@@ -103,13 +103,6 @@
       enabled: no
     ignore_errors: true
 
-  - name: remove ceph nfs container
-    docker_container:
-      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-nfs-{{ ansible_hostname }}"
-      state: absent
-    ignore_errors: true
-
   - name: remove ceph nfs service
     file:
       path: /etc/systemd/system/ceph-nfs@.service
@@ -124,14 +117,6 @@
       - /var/lib/nfs/ganesha
       - /var/run/ganesha
 
-  - name: remove ceph nfs image
-    docker_image:
-      state: absent
-      repository: "{{ ceph_docker_registry }}"
-      name: "{{ ceph_docker_image }}"
-      tag: "{{ ceph_docker_image_tag }}"
-      force: yes
-    tags: remove_img
 
 - name: purge ceph mds cluster
 
@@ -148,27 +133,11 @@
       enabled: no
     ignore_errors: true
 
-  - name: remove ceph mds container
-    docker_container:
-      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-mds-{{ ansible_hostname }}"
-      state: absent
-    ignore_errors: true
-
   - name: remove ceph mds service
     file:
       path: /etc/systemd/system/ceph-mds@.service
       state: absent
 
-  - name: remove ceph mds image
-    docker_image:
-      state: absent
-      repository: "{{ ceph_docker_registry }}"
-      name: "{{ ceph_docker_image }}"
-      tag: "{{ ceph_docker_image_tag }}"
-      force: yes
-    tags: remove_img
-    ignore_errors: true
 
 - name: purge ceph iscsigws cluster
 
@@ -189,17 +158,6 @@
       - rbd-target-gw
       - tcmu-runner
 
-  - name: remove ceph iscsigw containers
-    docker_container:
-      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ item }}"
-      state: absent
-    ignore_errors: true
-    with_items:
-      - rbd-target-api
-      - rbd-target-gw
-      - tcmu-runner
-
   - name: remove ceph iscsigw systemd unit files
     file:
       path: /etc/systemd/system/{{ item }}.service
@@ -210,15 +168,6 @@
       - rbd-target-gw
       - tcmu-runner
 
-  - name: remove ceph iscsigw image
-    docker_image:
-      state: absent
-      repository: "{{ ceph_docker_registry }}"
-      name: "{{ ceph_docker_image }}"
-      tag: "{{ ceph_docker_image_tag }}"
-      force: yes
-    tags: remove_img
-    ignore_errors: true
 
 - name: purge ceph mgr cluster
 
@@ -233,27 +182,11 @@
       enabled: no
     ignore_errors: true
 
-  - name: remove ceph mgr container
-    docker_container:
-      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-mgr-{{ ansible_hostname }}"
-      state: absent
-    ignore_errors: true
-
   - name: remove ceph mgr service
     file:
       path: /etc/systemd/system/ceph-mgr@.service
       state: absent
 
-  - name: remove ceph mgr image
-    docker_image:
-      state: absent
-      repository: "{{ ceph_docker_registry }}"
-      name: "{{ ceph_docker_image }}"
-      tag: "{{ ceph_docker_image_tag }}"
-      force: yes
-    tags: remove_img
-    ignore_errors: true
 
 - name: purge ceph rgw cluster
 
@@ -278,13 +211,6 @@
       enabled: no
     ignore_errors: true
 
-  - name: remove ceph rgw container
-    docker_container:
-      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-rgw-{{ ansible_hostname }}-*"
-      state: absent
-    ignore_errors: true
-
   - name: remove ceph rgw service
     file:
       path: "{{ item }}"
@@ -293,17 +219,6 @@
 # For backward compatibility
       - /etc/systemd/system/ceph-rgw@.service
       - /etc/systemd/system/ceph-radosgw@.service
-
-  - name: remove ceph rgw image
-    docker_image:
-      state: absent
-      repository: "{{ ceph_docker_registry }}"
-      name: "{{ ceph_docker_image }}"
-      tag: "{{ ceph_docker_image_tag }}"
-      force: yes
-    tags:
-      remove_img
-    ignore_errors: true
 
 
 - name: purge ceph rbd-mirror cluster
@@ -321,26 +236,10 @@
       enabled: no
     ignore_errors: true
 
-  - name: remove ceph rbd-mirror container
-    docker_container:
-      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "ceph-rbd-mirror-{{ ansible_hostname }}"
-      state: absent
-    ignore_errors: true
-
   - name: remove ceph rbd-mirror service
     file:
       path: /etc/systemd/system/ceph-rbd-mirror@.service
       state: absent
-
-  - name: remove ceph rbd-mirror image
-    docker_image:
-      state: absent
-      repository: "{{ ceph_docker_registry }}"
-      name: "{{ ceph_docker_image }}"
-      tag: "{{ ceph_docker_image_tag }}"
-      force: yes
-    tags: remove_img
 
 
 - name: purge ceph osd cluster
@@ -418,16 +317,6 @@
     with_items: "{{ devices | default([]) }}"
     when: devices | default([]) | length > 0
 
-  - name: remove ceph osd image
-    docker_image:
-      state: absent
-      repository: "{{ ceph_docker_registry }}"
-      name: "{{ ceph_docker_image }}"
-      tag: "{{ ceph_docker_image_tag }}"
-      force: yes
-    tags: remove_img
-    ignore_errors: true
-
   - name: include vars from group_vars/osds.yml
     include_vars:
       file: "{{ item }}"
@@ -468,16 +357,6 @@
       - "ceph-mgr@{{ ansible_hostname }}"
       - "ceph-mon@{{ ansible_hostname }}"
 
-  - name: remove ceph mon and mgr container
-    docker_container:
-      image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      name: "{{ item }}"
-      state: absent
-    ignore_errors: true
-    with_items:
-      - "ceph-mon-{{ ansible_hostname }}"
-      - "ceph-mgr-{{ ansible_hostname }}"
-
   - name: remove ceph mon and mgr service
     file:
       path: "/etc/systemd/system/ceph-{{ item }}@.service"
@@ -485,16 +364,6 @@
     with_items:
       - mon
       - mgr
-
-  - name: remove ceph mon and mgr image
-    docker_image:
-      state: absent
-      repository: "{{ ceph_docker_registry }}"
-      name: "{{ ceph_docker_image }}"
-      tag: "{{ ceph_docker_image_tag }}"
-      force: yes
-    tags: remove_img
-    ignore_errors: true
 
 
 - name: purge node-exporter
@@ -529,26 +398,15 @@
         enabled: no
       failed_when: false
 
-    - name: remove node-exporter container
-      docker_container:
-        name: node_exporter
-        state: absent
-      failed_when: false
-
     - name: remove node_exporter service file
       file:
         name: /etc/systemd/system/node_exporter.service
         state: absent
 
     - name: remove node-exporter image
-      docker_image:
-        image: "{{ ceph_docker_registry }}/prom/node-exporter"
-        state: absent
-        force: yes
+      command: "{{ container_binary }} rmi {{ node_exporter_container_image }}"
       tags:
         - remove_img
-      failed_when: false
-
 
 - name: purge ceph-grafana
 
@@ -578,13 +436,6 @@
       with_items: "{{ grafana_services }}"
       failed_when: false
 
-    - name: remove containers
-      docker_container:
-        name: "{{ item }}"
-        state: absent
-      with_items: "{{ grafana_services }}"
-      failed_when: false
-
     - name: remove service files
       file:
         name: "/etc/systemd/system/{{ item }}.service"
@@ -592,16 +443,15 @@
       with_items: "{{ grafana_services }}"
       failed_when: false
 
-    - name: remove images
-      docker_image:
-        name: "{{ item }}"
-        state: absent
-        force: yes
+    - name: remove ceph dashboard container images
+      command: "{{ container_binary }} rmi {{ item }}"
       with_items:
-        - "{{ ceph_docker_registry }}/prom/prometheus"
-        - "{{ ceph_docker_registry }}/grafana/grafana"
-        - "{{ ceph_docker_registry }}/prom/alertmanager"
+        - "{{ prometheus_container_image }}"
+        - "{{ grafana_container_image }}"
+        - "{{ alertmanager_container_image }}"
       failed_when: false
+      tags:
+        - remove_img
 
     - name: remove data
       file:
@@ -656,7 +506,8 @@
       msg: "It looks like container are still present."
     when: containers_list.stdout_lines|length > 0
 
-- name: remove installed packages
+
+- name: final cleanup
 
   hosts:
     - "{{ mon_group_name|default('mons') }}"
@@ -672,72 +523,82 @@
   tags: with_pkg
 
   tasks:
-  - name: check if it is Atomic host
-    stat: path=/run/ostree-booted
-    register: stat_ostree
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
 
-  - name: set fact for using Atomic host
-    set_fact:
-      is_atomic: "{{ stat_ostree.stat.exists }}"
+    - name: check if it is Atomic host
+      stat: path=/run/ostree-booted
+      register: stat_ostree
 
-  - name: stop docker service
-    service:
-      name: docker
-      state: stopped
-      enabled: no
-    when: not is_atomic
-    ignore_errors: true
+    - name: set fact for using Atomic host
+      set_fact:
+        is_atomic: "{{ stat_ostree.stat.exists }}"
 
-  - name: remove docker on debian/ubuntu
-    apt:
-      name: ['docker-ce', 'docker-engine', 'docker.io', 'python-docker', 'python3-docker']
-      state: absent
-      update_cache: yes
-      autoremove: yes
-    when: ansible_os_family == 'Debian'
+    - name: remove ceph container image
+      command: "{{ container_binary }} rmi {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      tags:
+        - remove_img
 
-  - name: red hat based systems tasks
-    block:
-      - name: yum related tasks on red hat
-        block:
-          - name: remove packages on redhat
-            yum:
-              name: ['epel-release', 'docker', 'python-docker-py']
-              state: absent
+    - name: stop docker service
+      service:
+        name: docker
+        state: stopped
+        enabled: no
+      when: not is_atomic
+      ignore_errors: true
 
-          - name: remove package dependencies on redhat
-            command: yum -y autoremove
-            args:
-              warn: no
+    - name: remove docker on debian/ubuntu
+      apt:
+        name: ['docker-ce', 'docker-engine', 'docker.io', 'python-docker', 'python3-docker']
+        state: absent
+        update_cache: yes
+        autoremove: yes
+      when: ansible_os_family == 'Debian'
 
-          - name: remove package dependencies on redhat again
-            command: yum -y autoremove
-            args:
-              warn: no
-        when:
-          ansible_pkg_mgr == "yum"
+    - name: red hat based systems tasks
+      block:
+        - name: yum related tasks on red hat
+          block:
+            - name: remove packages on redhat
+              yum:
+                name: ['epel-release', 'docker', 'python-docker-py']
+                state: absent
 
-      - name: dnf related tasks on red hat
-        block:
-          - name: remove docker on redhat
-            dnf:
-              name: ['docker', 'python3-docker']
-              state: absent
+            - name: remove package dependencies on redhat
+              command: yum -y autoremove
+              args:
+                warn: no
 
-          - name: remove package dependencies on redhat
-            command: dnf -y autoremove
-            args:
-              warn: no
+            - name: remove package dependencies on redhat again
+              command: yum -y autoremove
+              args:
+                warn: no
+          when:
+            ansible_pkg_mgr == "yum"
 
-          - name: remove package dependencies on redhat again
-            command: dnf -y autoremove
-            args:
-              warn: no
-        when:
-          ansible_pkg_mgr == "dnf"
-    when:
-      ansible_os_family == 'RedHat' and
-      not is_atomic
+        - name: dnf related tasks on red hat
+          block:
+            - name: remove docker on redhat
+              dnf:
+                name: ['docker', 'python3-docker']
+                state: absent
+
+            - name: remove package dependencies on redhat
+              command: dnf -y autoremove
+              args:
+                warn: no
+
+            - name: remove package dependencies on redhat again
+              command: dnf -y autoremove
+              args:
+                warn: no
+          when:
+            ansible_pkg_mgr == "dnf"
+      when:
+        ansible_os_family == 'RedHat' and
+        not is_atomic
 
 - name: purge ceph directories
 
