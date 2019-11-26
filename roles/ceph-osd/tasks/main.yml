@@ -51,6 +51,17 @@
 - name: include_tasks start_osds.yml
   include_tasks: start_osds.yml
 
+- name: wait for all osd to be up
+  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
+  register: wait_for_all_osds_up
+  retries: "{{ nb_retry_wait_osd_up }}"
+  delay: "{{ delay_wait_osd_up }}"
+  changed_when: false
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  until:
+    - (wait_for_all_osds_up.stdout | from_json)["osdmap"]["osdmap"]["num_osds"] | int > 0
+    - (wait_for_all_osds_up.stdout | from_json)["osdmap"]["osdmap"]["num_osds"] == (wait_for_all_osds_up.stdout | from_json)["osdmap"]["osdmap"]["num_up_osds"]
+
 - name: include crush_rules.yml
   include_tasks: crush_rules.yml
   when: hostvars[groups[mon_group_name][0]]['crush_rule_config'] | default(false) | bool
