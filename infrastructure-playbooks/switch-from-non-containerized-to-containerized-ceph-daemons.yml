@@ -250,7 +250,7 @@
 
     - name: check if containerized osds are already running
       command: >
-        {{ container_binary }} ps --filter='name=ceph-osd'
+        {{ container_binary }} ps -q --filter='name=ceph-osd'
       changed_when: false
       failed_when: false
       register: osd_running
@@ -260,6 +260,7 @@
         find /var/lib/ceph/osd {% if dmcrypt | bool %}/var/lib/ceph/osd-lockbox{% endif %} -maxdepth 1 -mindepth 1 -type d
       register: osd_dirs
       changed_when: false
+      failed_when: false
 
     - name: unmount all the osd directories
       command: >
@@ -267,7 +268,7 @@
       changed_when: false
       failed_when: false
       with_items: "{{ osd_dirs.stdout_lines }}"
-      when: osd_running.rc != 0
+      when: osd_running.rc != 0 or osd_running.stdout_lines | length == 0
 
   tasks:
     - import_role:
