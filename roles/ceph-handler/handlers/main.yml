@@ -11,6 +11,23 @@
       register: result
       until: result is succeeded
 
+    - name: make tempdir for scripts
+      tempfile:
+        state: directory
+        prefix: ceph_ansible
+      listen:
+        - "restart ceph mons"
+        - "restart ceph osds"
+        - "restart ceph mdss"
+        - "restart ceph rgws"
+        - "restart ceph nfss"
+        - "restart ceph rbdmirrors"
+        - "restart ceph mgrs"
+        - "restart ceph tcmu-runner"
+        - "restart ceph rbd-target-api-gw"
+      register: tmpdirpath
+      when: tmpdirpath is not defined or tmpdirpath.path is not defined or tmpdirpath.state=="absent"
+
     - name: mons handler
       include_tasks: handler_mons.yml
       when: mon_group_name in group_names
@@ -55,3 +72,20 @@
       include_tasks: handler_rbd_target_api_gw.yml
       when: iscsi_gw_group_name in group_names
       listen: "restart ceph rbd-target-api-gw"
+
+    - name: remove tempdir for scripts
+      file:
+        path: "{{ tmpdirpath.path }}"
+        state: absent
+      listen:
+        - "restart ceph mons"
+        - "restart ceph osds"
+        - "restart ceph mdss"
+        - "restart ceph rgws"
+        - "restart ceph nfss"
+        - "restart ceph rbdmirrors"
+        - "restart ceph mgrs"
+        - "restart ceph tcmu-runner"
+        - "restart ceph rbd-target-api-gw"
+      register: tmpdirpath
+      when: tmpdirpath is defined

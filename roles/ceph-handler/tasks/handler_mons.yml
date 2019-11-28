@@ -9,13 +9,13 @@
 - name: copy mon restart script
   template:
     src: restart_mon_daemon.sh.j2
-    dest: /tmp/restart_mon_daemon.sh
+    dest: "{{ tmpdirpath.path }}/restart_mon_daemon.sh"
     owner: root
     group: root
     mode: 0750
 
 - name: restart ceph mon daemon(s)
-  command: /usr/bin/env bash /tmp/restart_mon_daemon.sh
+  command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_mon_daemon.sh
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
     - hostvars[item]['handler_mon_status'] | default(False) | bool

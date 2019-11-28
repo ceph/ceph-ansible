@@ -18,13 +18,13 @@
 - name: copy osd restart script
   template:
     src: restart_osd_daemon.sh.j2
-    dest: /tmp/restart_osd_daemon.sh
+    dest: "{{ tmpdirpath.path }}/restart_osd_daemon.sh"
     owner: root
     group: root
     mode: 0750
 
 - name: restart ceph osds daemon(s)
-  command: /usr/bin/env bash /tmp/restart_osd_daemon.sh
+  command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_osd_daemon.sh
   when:
     - hostvars[item]['handler_osd_status'] | default(False) | bool
     - handler_health_osd_check | bool

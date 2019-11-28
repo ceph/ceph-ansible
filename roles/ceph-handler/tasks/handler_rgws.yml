@@ -6,13 +6,13 @@
 - name: copy rgw restart script
   template:
     src: restart_rgw_daemon.sh.j2
-    dest: /tmp/restart_rgw_daemon.sh
+    dest: "{{ tmpdirpath.path }}/restart_rgw_daemon.sh"
     owner: root
     group: root
     mode: 0750
 
 - name: restart ceph rgw daemon(s)
-  command: /usr/bin/env bash /tmp/restart_rgw_daemon.sh
+  command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_rgw_daemon.sh
   when:
     - hostvars[item]['handler_rgw_status'] | default(False) | bool
     - hostvars[item]['_rgw_handler_called'] | default(False) | bool

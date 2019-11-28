@@ -6,13 +6,13 @@
 - name: copy nfs restart script
   template:
     src: restart_nfs_daemon.sh.j2
-    dest: /tmp/restart_nfs_daemon.sh
+    dest: "{{ tmpdirpath.path }}/restart_nfs_daemon.sh"
     owner: root
     group: root
     mode: 0750
 
 - name: restart ceph nfs daemon(s)
-  command: /usr/bin/env bash /tmp/restart_nfs_daemon.sh
+  command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_nfs_daemon.sh
   when:
     - hostvars[item]['handler_nfs_status'] | default(False) | bool
     - hostvars[item]['_nfs_handler_called'] | default(False) | bool
