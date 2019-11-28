@@ -6,13 +6,13 @@
 - name: copy tcmu-runner restart script
   template:
     src: restart_tcmu_runner.sh.j2
-    dest: /tmp/restart_tcmu_runner.sh
+    dest: "{{ tmpdirpath.path }}/restart_tcmu_runner.sh"
     owner: root
     group: root
     mode: 0750
 
 - name: restart tcmu-runner
-  command: /usr/bin/env bash /tmp/restart_tcmu_runner.sh
+  command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_tcmu_runner.sh
   when:
     - ceph_tcmu_runner_stat.get('rc') == 0
     - hostvars[item]['_tcmu_runner_handler_called'] | default(False) | bool
