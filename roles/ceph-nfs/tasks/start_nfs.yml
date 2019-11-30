@@ -6,7 +6,7 @@
     when: containerized_deployment | bool
 
   - name: check if rados index object exists
-    shell: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data_pool.name }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
+    shell: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data_pool.name }} --cluster {{ cluster }} ls|grep conf-{{ ansible_hostname }}"
     changed_when: false
     failed_when: false
     register: rados_index_exists
@@ -16,7 +16,7 @@
     run_once: true
 
   - name: create an empty rados index object
-    command: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data_pool.name }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} /dev/null"
+    command: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data_pool.name }} --cluster {{ cluster }} put conf-{{ ansible_hostname }} /dev/null"
     when:
       - ceph_nfs_rados_backend | bool
       - rados_index_exists.rc != 0
