@@ -41,3 +41,13 @@
   when:
     - cephx | bool
     - item.item.copy_key | bool
+
+- name: copy SSL certificate & key data to certificate path
+  copy:
+    content: "{{ radosgw_frontend_ssl_certificate_data }}"
+    dest: "{{ radosgw_frontend_ssl_certificate }}"
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    mode: 0440
+  when: radosgw_frontend_ssl_certificate | length > 0 and radosgw_frontend_ssl_certificate_data | length > 0
+  notify: restart ceph rgws
