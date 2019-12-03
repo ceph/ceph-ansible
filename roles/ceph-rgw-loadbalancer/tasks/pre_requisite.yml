@@ -24,6 +24,13 @@
   loop_control:
       index_var: index
 
+- name: set_fact vip to vrrp_instance_extended
+  set_fact:
+      vrrp_instances_extended: "{{ vrrp_instances | default([]) | union([{ 'name': 'VI_' + index|string , 'vip': item.address, 'master': groups[rgwloadbalancer_group_name][index], 'netmask': item.netmask, 'interface': item.interface, 'virtual_route_gateway': item.virtual_route_gateway, 'virtual_route_source': item.virtual_route_source }]) }}"
+  loop: "{{ virtual_ips_extended | flatten(levels=1) }}"
+  loop_control:
+      index_var: index
+
 - name: "generate keepalived: configuration file: keepalived.conf"
   template:
     src: keepalived.conf.j2

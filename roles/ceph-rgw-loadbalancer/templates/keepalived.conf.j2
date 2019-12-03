@@ -13,7 +13,29 @@ vrrp_script check_haproxy {
     fall 2
 }
 
-{% for instance in vrrp_instances %}
+{% if virtual_ips_extended %}
+  {% for instance in vrrp_instances_extended %}
+vrrp_instance {{ instance['name'] }} {
+    state {{ 'MASTER' if ansible_hostname == instance['master'] else 'BACKUP' }}
+    priority {{ '100' if ansible_hostname == instance['master'] else '90' }}
+    interface {{ instance['interface'] }}
+    virtual_router_id {{ 50 + loop.index }}
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1234
+    }
+    virtual_ipaddress {
+        {{ instance['vip'] }}/{{ instance['netmask'] }} dev {{ instance['interface'] }}
+    }
+    {% if instance['virtual_route_source'] and instance['virtual_route_gateway'] %}
+    virtual_routes {
+      {% for source in instance['virtual_route_source'] %}
+        {{ source }} via {{ instance['virtual_route_gateway'] }} dev {{ instance['interface'] }}{{ '\n'}}
+      {%- endfor %}    }
+    {% endif %}
+  {% endfor %}
+{% else %}{% for instance in vrrp_instances %}
 vrrp_instance {{ instance['name'] }} {
     state {{ 'MASTER' if ansible_hostname == instance['master'] else 'BACKUP' }}
     priority {{ '100' if ansible_hostname == instance['master'] else '90' }}
@@ -27,9 +49,9 @@ vrrp_instance {{ instance['name'] }} {
     virtual_ipaddress {
         {{ instance['vip'] }}/{{ virtual_ip_netmask }} dev {{ virtual_ip_interface }}
     }
+{% endfor %}
+{% endif %}
     track_script {
         check_haproxy
     }
 }
-
-{% endfor %}
