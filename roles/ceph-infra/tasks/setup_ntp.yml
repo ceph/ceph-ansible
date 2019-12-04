@@ -1,4 +1,16 @@
 ---
+- name: set ntp service and chrony daemon name for Debian family
+  set_fact:
+    chrony_daemon_name: chrony
+    ntp_service_name: ntp
+  when: ansible_os_family == 'Debian'
+
+- name: set ntp service and chrony daemon name for RedHat and Suse family
+  set_fact:
+    chrony_daemon_name: chronyd
+    ntp_service_name: ntpd
+  when: ansible_os_family in ['RedHat', 'Suse']
+
 # Installation of NTP daemons needs to be a separate task since installations
 # can't happen on Atomic
 - name: install the ntp daemon
