@@ -133,10 +133,11 @@
   become: true
 
   tasks:
-    - name: set ceph_docker_registry value if not set
-      set_fact:
-        ceph_docker_registry: "docker.io"
-      when: ceph_docker_registry is not defined
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary
 
     - name: disable node_exporter service
       service:
@@ -145,25 +146,15 @@
         enabled: no
       failed_when: false
 
-    - name: remove node-exporter container
-      docker_container:
-        name: node_exporter
-        state: absent
-      failed_when: false
-
     - name: remove node_exporter service file
       file:
         name: /etc/systemd/system/node_exporter.service
         state: absent
 
     - name: remove node-exporter image
-      docker_image:
-        image: "{{ ceph_docker_registry }}/prom/node-exporter"
-        state: absent
-        force: yes
+      command: "{{ container_binary }} rmi {{ node_exporter_container_image }}"
       tags:
         - remove_img
-      failed_when: false
 
 
 - name: purge ceph grafana-server
@@ -176,23 +167,17 @@
       - alertmanager
 
   tasks:
-    - name: set ceph_docker_registry value if not set
-      set_fact:
-        ceph_docker_registry: "docker.io"
-      when: ceph_docker_registry is not defined
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary
 
     - name: stop services
       service:
         name: "{{ item }}"
         state: stopped
         enabled: no
-      with_items: "{{ grafana_services }}"
-      failed_when: false
-
-    - name: remove containers
-      docker_container:
-        name: "{{ item }}"
-        state: absent
       with_items: "{{ grafana_services }}"
       failed_when: false
 
@@ -203,16 +188,15 @@
       with_items: "{{ grafana_services }}"
       failed_when: false
 
-    - name: remove images
-      docker_image:
-        name: "{{ item }}"
-        state: absent
-        force: yes
+    - name: remove ceph dashboard container images
+      command: "{{ container_binary }} rmi {{ item }}"
       with_items:
-        - "{{ ceph_docker_registry }}/prom/prometheus"
-        - "{{ ceph_docker_registry }}/grafana/grafana"
-        - "{{ ceph_docker_registry }}/prom/alertmanager"
+        - "{{ prometheus_container_image }}"
+        - "{{ grafana_container_image }}"
+        - "{{ alertmanager_container_image }}"
       failed_when: false
+      tags:
+        - remove_img
 
     - name: remove data
       file:
