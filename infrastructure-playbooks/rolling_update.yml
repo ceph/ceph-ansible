@@ -49,6 +49,7 @@
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
     - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+    - "{{ grafana_server_group_name|default('grafana-server') }}"
 
   become: True
   gather_facts: False
@@ -71,6 +72,15 @@
       with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
       run_once: true
       when: delegate_facts_host | bool
+
+    - import_role:
+        name: ceph-facts
+
+    - import_role:
+        name: ceph-infra
+
+    - import_role:
+        name: ceph-validate
 
     - set_fact: rolling_update=true
 
@@ -896,7 +906,6 @@
         - rbd-target-api
         - rbd-target-gw
         - tcmu-runner
-      when: not containerized_deployment | bool
 
     - import_role:
         name: ceph-defaults
@@ -993,6 +1002,10 @@
       vars:
         msgr2_migration: True
 
+- import_playbook: ../dashboard.yml
+  when:
+    - dashboard_enabled | bool
+    - groups.get(grafana_server_group_name, []) | length > 0
 
 - name: show ceph status
   hosts: "{{ mon_group_name|default('mons') }}"
