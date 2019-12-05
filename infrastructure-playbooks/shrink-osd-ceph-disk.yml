@@ -171,6 +171,14 @@
         - "{{ osd_to_kill_disks.results }}"
         - "{{ osd_hosts }}"
 
+    - name: set_fact _osd_hosts
+      set_fact:
+        _osd_hosts: "{{ _osd_hosts | default([]) + [hostvars[item.0]['inventory_hostname']] }}"
+      with_nested:
+        - "{{ groups.get(osd_group_name) }}"
+        - "{{ osd_hosts }}"
+      when: hostvars[item.0]['ansible_hostname'] == item.1
+
     - name: zap ceph osd disks
       shell: |
         docker run --rm \
@@ -184,7 +192,7 @@
       delegate_to: "{{ item.1 }}"
       with_together:
         - "{{ resolved_parent_device.results }}"
-        - "{{ osd_hosts }}"
+        - "{{ _osd_hosts }}"
       when:
         - containerized_deployment
 
@@ -193,7 +201,7 @@
       delegate_to: "{{ item.1 }}"
       with_together:
         - "{{ resolved_parent_device.results }}"
-        - "{{ osd_hosts }}"
+        - "{{ _osd_hosts }}"
       when:
         - containerized_deployment
 
@@ -216,7 +224,7 @@
           fi
         done
       with_together:
-        - "{{ osd_hosts }}"
+        - "{{ _osd_hosts }}"
         - "{{ osd_to_kill_disks_dedicated.results }}"
       delegate_to: "{{ item.0 }}"
       when:
@@ -228,7 +236,7 @@
       run_once: true
       with_together:
         - "{{ osd_to_kill.split(',') }}"
-        - "{{ osd_hosts }}"
+        - "{{ _osd_hosts }}"
       delegate_to: "{{ item.1 }}"
       when:
         - not containerized_deployment
@@ -238,7 +246,7 @@
       run_once: true
       with_together:
         - "{{ osd_to_kill.split(',') }}"
-        - "{{ osd_hosts }}"
+        - "{{ _osd_hosts }}"
       delegate_to: "{{ item.1 }}"
       when:
         - not containerized_deployment
@@ -248,7 +256,7 @@
       delegate_to: "{{ item.1 }}"
       with_together:
         - "{{ resolved_parent_device.results }}"
-        - "{{ osd_hosts }}"
+        - "{{ _osd_hosts }}"
 
     - name: remove osd(s) from crush_map when ceph-disk destroy fail
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush remove osd.{{ item }}"
@@ -282,7 +290,7 @@
             fi
           done
       with_together:
-        - "{{ osd_hosts }}"
+        - "{{ _osd_hosts }}"
         - "{{ osd_to_kill_disks_dedicated_non_container.results }}"
       delegate_to: "{{ item.0 }}"
       when:
@@ -295,7 +303,7 @@
         state: absent
       with_together:
         - "{{ osd_to_kill.split(',') }}"
-        - "{{ osd_hosts }}"
+        - "{{ _osd_hosts }}"
       delegate_to: "{{ item.1 }}"
 
     - name: show ceph health
