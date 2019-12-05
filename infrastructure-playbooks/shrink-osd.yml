@@ -84,6 +84,14 @@
         osd_hosts: "{{ osd_hosts | default([]) + [ [ (item.stdout | from_json).crush_location.host, (item.stdout | from_json).osd_fsid ] ] }}"
       with_items: "{{ find_osd_hosts.results }}"
 
+    - name: set_fact _osd_hosts
+      set_fact:
+        _osd_hosts: "{{ _osd_hosts | default([]) + [ [ item.1.0, item.1.1 ] ] }}"
+      with_together:
+        - "{{ groups.get(osd_group_name) }}"
+        - "{{ osd_hosts }}"
+      when: hostvars[item.0]['ansible_hostname'] == item.1.0
+
     - name: mark osd(s) out of the cluster
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ item }}"
       run_once: true
