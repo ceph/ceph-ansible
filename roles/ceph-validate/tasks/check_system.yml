@@ -1,4 +1,16 @@
 ---
+- name: fail on unsupported ansible version (1.X)
+  fail:
+    msg: "Ansible version must be >= 2.8.x, please update!"
+  when: ansible_version.major|int < 2
+
+- name: fail on unsupported ansible version
+  fail:
+    msg: "Ansible version must be 2.8!"
+  when:
+    - ansible_version.major|int == 2
+    - ansible_version.minor|int != 8
+
 - name: fail on unsupported system
   fail:
     msg: "System not supported {{ ansible_system }}"
@@ -53,39 +65,7 @@
     - ansible_distribution == 'openSUSE Leap'
     - ansible_distribution_major_version != '15'
 
-- name: fail on unsupported ansible version (1.X)
-  fail:
-    msg: "Ansible version must be >= 2.8.x, please update!"
-  when: ansible_version.major|int < 2
-
-- name: fail on unsupported ansible version
-  fail:
-    msg: "Ansible version must be 2.8!"
-  when:
-    - ansible_version.major|int == 2
-    - ansible_version.minor|int != 8
-
 - name: fail if systemd is not present
   fail:
     msg: "Systemd must be present"
   when: ansible_service_mgr != 'systemd'
-
-- name: check if iscsi gateways is target on supported distros and versions
-  block:
-    - name: fail on unsupported distribution for iscsi gateways
-      fail:
-        msg: "iSCSI gateways can only be deployed on Red Hat Enterprise Linux, CentOS or Fedora"
-      when: ansible_distribution not in ['RedHat', 'CentOS', 'Fedora']
-
-    - name: fail on unsupported distribution version for iscsi gateways
-      command: 'grep -q {{ item }}=m {% if is_atomic|bool %}/usr/lib/ostree-boot{% else %}/boot{% endif %}/config-{{ ansible_kernel }}'
-      register: iscsi_kernel
-      changed_when: false
-      failed_when: iscsi_kernel.rc != 0
-      loop:
-        - CONFIG_TARGET_CORE
-        - CONFIG_TCM_USER2
-        - CONFIG_ISCSI_TARGET
-      when: ansible_distribution in ['RedHat', 'CentOS']
-  when: iscsi_gw_group_name in group_names
-
