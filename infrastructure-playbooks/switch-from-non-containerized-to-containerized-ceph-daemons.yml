@@ -39,12 +39,21 @@
 
   become: true
 
-  tasks:
+  vars:
+    delegate_facts_host: True
+
+  roles:
+    - ceph-defaults
+
+  post_tasks:
     - name: gather and delegate facts
       setup:
       delegate_to: "{{ item }}"
       delegate_facts: True
-      with_items: "{{ groups['all'] }}"
+      with_items: "{{ groups['all'] | difference(groups.get(client_group_name, [])) }}"
+      run_once: true
+      when: delegate_facts_host | bool
+      tags: always
 
 - name: switching from non-containerized to containerized ceph mon
 
