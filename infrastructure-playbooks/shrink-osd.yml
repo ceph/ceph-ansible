@@ -84,6 +84,14 @@
         osd_hosts: "{{ osd_hosts | default([]) + [ [ (item.stdout | from_json).crush_location.host, (item.stdout | from_json).osd_fsid ] ] }}"
       with_items: "{{ find_osd_hosts.results }}"
 
+    - name: set_fact _osd_hosts
+      set_fact:
+        _osd_hosts: "{{ _osd_hosts | default([]) + [ [ item.0, item.2 ] ] }}"
+      with_nested:
+        - "{{ groups.get(osd_group_name) }}"
+        - "{{ osd_hosts }}"
+      when: hostvars[item.0]['ansible_hostname'] == item.1
+
     - name: mark osd(s) out of the cluster
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ item }}"
       run_once: true
@@ -95,7 +103,7 @@
         name: ceph-osd@{{ item.0 }}
         state: stopped
         enabled: no
-      loop: "{{ osd_to_kill.split(',')|zip(osd_hosts)|list }}"
+      loop: "{{ osd_to_kill.split(',')|zip(_osd_hosts)|list }}"
       delegate_to: "{{ item.1.0 }}"
 
     - name: zap osd devices
@@ -106,7 +114,7 @@
         CEPH_VOLUME_DEBUG: 1
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
       delegate_to: "{{ item.0 }}"
-      loop: "{{ osd_hosts }}"
+      loop: "{{ _osd_hosts }}"
 
     - name: purge osd(s) from the cluster
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it"
