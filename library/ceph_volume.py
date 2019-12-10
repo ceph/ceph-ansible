@@ -461,11 +461,13 @@ def zap_devices(module, container_image):
     wal = module.params.get('wal', None)
     wal_vg = module.params.get('wal_vg', None)
     osd_fsid = module.params.get('osd_fsid', None)
+    destroy = module.params.get('destroy', True)
 
     # build the CLI
     action = ['lvm', 'zap']
     cmd = build_ceph_volume_cmd(action, container_image)
-    cmd.append('--destroy')
+    if destroy:
+        cmd.append('--destroy')
 
     if osd_fsid:
         cmd.extend(['--osd-fsid', osd_fsid])
@@ -516,6 +518,7 @@ def run_module():
         report=dict(type='bool', required=False, default=False),
         containerized=dict(type='str', required=False, default=False),
         osd_fsid=dict(type='str', required=False),
+        destroy=dict(type='bool', required=False, default=True),
     )
 
     module = AnsibleModule(
