@@ -146,6 +146,12 @@
             enabled: no
           with_items: "{{ (ceph_volume_lvm_list.stdout | from_json).keys() | list }}"
 
+        - name: mark down osds
+          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd down {{ item }}"
+          with_items: "{{ (ceph_volume_lvm_list.stdout | from_json).keys() | list }}"
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          run_once: true
+
         - name: ensure all dmcrypt for data and journal are closed
           command: cryptsetup close "{{ item['lv_uuid'] }}"
           with_items: "{{ _lvm_list }}"
