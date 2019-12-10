@@ -175,6 +175,16 @@
             CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
             CEPH_CONTAINER_BINARY: "{{ container_binary }}"
           loop: "{{ osd_fsid_list }}"
+
+        - name: ensure all dm are closed
+          command: dmsetup remove "{{ item['lv_path'] }}"
+          with_items: "{{ _lvm_list }}"
+          changed_when: false
+          failed_when: false
+          when:
+            - item['lv_path'] is defined
+              # Do not close mappers for non 'lvm batch' devices
+            - devices | default([]) | length > 0
       when: _lvm_list is defined
 
     - name: set_fact osd_ids
