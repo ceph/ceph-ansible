@@ -42,6 +42,7 @@
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - grafana-server
 
   become: true
@@ -128,7 +129,7 @@
     - "{{ mgr_group_name|default('mgrs') }}"
     - grafana-server
     - clients
-    - iscsigws
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
 
   become: true
 
@@ -234,6 +235,23 @@
       enabled: no
     failed_when: false
 
+- name: purge ceph iscsigws cluster
+  vars:
+    iscsi_gw_group_name: iscsigws
+  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  gather_facts: false
+  become: true
+  tasks:
+    - name: disable ceph iscsigw services
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      ignore_errors: true
+      with_items:
+        - rbd-target-gw
+        - rbd-target-api
+        - tcmu-runner
 
 - name: purge ceph mgr cluster
 
@@ -605,6 +623,7 @@
       - ceph-common
       - ceph-fs-common
       - ceph-fuse
+      - ceph-iscsi
       - ceph-mds
       - ceph-mgr
       - ceph-release
@@ -622,6 +641,8 @@
       - python-cephfs
       - python-rados
       - python-rbd
+      - python-rtslib
+      - tcmu-runner
 
     extra_packages:
       - keepalived
@@ -636,6 +657,7 @@
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - grafana-server
 
   gather_facts: false # Already gathered previously
