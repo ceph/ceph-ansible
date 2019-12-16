@@ -224,6 +224,33 @@
         - /usr/lib/systemd/system/ceph-volume@.service
         - /etc/systemd/system/ceph.target.wants
 
+    - name: dmcrypt extra operations
+      when:
+        - osd_scenario != 'lvm'
+        - dmcrypt | bool
+      block:
+        - name: remove zero(s) partuuid symlink
+          file:
+            path: /dev/disk/by-partuuid/00000000-0000-0000-0000-000000000000
+            state: absent
+
+        - name: get lockbox partitions
+          command: blkid -t PARTLABEL="ceph lockbox" -o device
+          changed_when: false
+          failed_when: false
+          register: lockbox_partitions
+
+        - name: get lockbox devices without partuuid
+          command: "blkid -t PARTUUID=00000000-0000-0000-0000-000000000000 -o device {{ item }}"
+          changed_when: false
+          failed_when: false
+          register: lockbox_devices
+          with_items: '{{ lockbox_partitions.stdout_lines }}'
+
+        - name: set guid on lockbox partition
+          shell: 'sgdisk --partition-guid=5:$(uuidgen) {{ item.stdout[:-2] if item.stdout is match("^/dev/(cciss|nvme|loop).*") else item.stdout[:-1] }}'
+          with_items: '{{ lockbox_devices.results }}'
+
     - set_fact:
         ceph_uid: 64045
       when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
