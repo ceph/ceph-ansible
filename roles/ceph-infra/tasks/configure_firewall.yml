@@ -173,64 +173,9 @@
       - iscsi_gw_group_name in group_names
     tags: firewall
 
-  - name: open node_exporter port
-    firewalld:
-      port: "{{ node_exporter_port }}/tcp"
-      zone: "{{ ceph_dashboard_firewall_zone }}"
-      permanent: true
-      immediate: true
-      state: enabled
+  - name: open dashboard ports
+    include_tasks: dashboard_firewall.yml
     when: dashboard_enabled | bool
-
-  - block:
-      - name: open dashboard port
-        firewalld:
-          port: "{{ dashboard_port }}/tcp"
-          zone: "{{ ceph_dashboard_firewall_zone }}"
-          permanent: true
-          immediate: true
-          state: enabled
-
-      - name: open mgr/prometheus port
-        firewalld:
-          port: "9283/tcp"
-          zone: "{{ ceph_dashboard_firewall_zone }}"
-          permanent: true
-          immediate: true
-          state: enabled
-    when:
-      - dashboard_enabled | bool
-      - mgr_group_name is defined
-      - (groups.get(mgr_group_name,[]) | length > 0 and mgr_group_name in group_names) or
-        (groups.get(mgr_group_name,[]) | length == 0 and mon_group_name in group_names)
-
-  - block:
-      - name: open grafana port
-        firewalld:
-          port: "{{ grafana_port }}/tcp"
-          zone: "{{ ceph_dashboard_firewall_zone }}"
-          permanent: true
-          immediate: true
-          state: enabled
-
-      - name: open prometheus port
-        firewalld:
-          port: "{{ prometheus_port }}/tcp"
-          zone: "{{ ceph_dashboard_firewall_zone }}"
-          permanent: true
-          immediate: true
-          state: enabled
-
-      - name: open alertmanager port
-        firewalld:
-          port: "{{ alertmanager_port }}/tcp"
-          zone: "{{ ceph_dashboard_firewall_zone }}"
-          permanent: true
-          immediate: true
-          state: enabled
-    when:
-      - dashboard_enabled | bool
-      - inventory_hostname in groups.get('grafana-server', [])
 
   - name: open haproxy ports
     firewalld:
