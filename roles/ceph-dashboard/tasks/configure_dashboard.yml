@@ -94,12 +94,6 @@
   changed_when: false
   until: ac_result.rc == 0
 
-- name: set grafana url
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-url {{ dashboard_protocol }}://{{ grafana_server_addr }}:{{ grafana_port }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
-  changed_when: false
-
 - name: set grafana api user
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-username {{ grafana_admin_user }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -108,18 +102,6 @@
 
 - name: set grafana api password
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-password {{ grafana_admin_password }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
-  changed_when: false
-
-- name: set alertmanager host
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-alertmanager-api-host {{ dashboard_protocol }}://{{ grafana_server_addr }}:{{ alertmanager_port }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
-  changed_when: false
-
-- name: set prometheus host
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-prometheus-api-host {{ dashboard_protocol }}://{{ grafana_server_addr }}:{{ prometheus_port }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false
@@ -220,12 +202,28 @@
       run_once: true
       when: ip_version == 'ipv6'
 
-- name: inject grafana dashboard layouts
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard grafana dashboards update"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
+- name: set dashboard endpoints and inject layouts
   run_once: true
-  changed_when: false
-  when: containerized_deployment | bool
+  block:
+  - name: set grafana url
+    command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-url {{ dashboard_protocol }}://{{ grafana_server_addr }}:{{ grafana_port }}"
+    delegate_to: "{{ groups[mon_group_name][0] }}"
+    changed_when: false
+
+  - name: set alertmanager host
+    command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-alertmanager-api-host {{ dashboard_protocol }}://{{ grafana_server_addr }}:{{ alertmanager_port }}"
+    delegate_to: "{{ groups[mon_group_name][0] }}"
+    changed_when: false
+
+  - name: set prometheus host
+    command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-prometheus-api-host {{ dashboard_protocol }}://{{ grafana_server_addr }}:{{ prometheus_port }}"
+    delegate_to: "{{ groups[mon_group_name][0] }}"
+    changed_when: false
+
+  - name: inject grafana dashboard layouts
+    command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard grafana dashboards update"
+    delegate_to: "{{ groups[mon_group_name][0] }}"
+    changed_when: false
 
 - name: disable mgr dashboard module (restart)
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mgr module disable dashboard"
