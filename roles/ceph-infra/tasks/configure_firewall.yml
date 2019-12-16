@@ -201,7 +201,8 @@
     when:
       - dashboard_enabled | bool
       - mgr_group_name is defined
-      - mgr_group_name in group_names
+      - (groups.get(mgr_group_name,[]) | length > 0 and mgr_group_name in group_names) or
+        (groups.get(mgr_group_name,[]) | length == 0 and mon_group_name in group_names)
 
   - block:
       - name: open grafana port
