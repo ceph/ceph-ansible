@@ -18,7 +18,7 @@
   command: /usr/bin/env bash /tmp/restart_mon_daemon.sh
   when:
     # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-    - handler_mon_status | bool
+    - hostvars[item]['handler_mon_status'] | default(False) | bool
     - hostvars[item]['_mon_handler_called'] | default(False) | bool
   with_items: "{{ groups[mon_group_name] }}"
   delegate_to: "{{ item }}"
