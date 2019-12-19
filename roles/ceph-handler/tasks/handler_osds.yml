@@ -20,7 +20,7 @@
 - name: restart ceph osds daemon(s)
   command: /usr/bin/env bash /tmp/restart_osd_daemon.sh
   when:
-    - handler_osd_status | bool
+    - hostvars[item]['handler_osd_status'] | default(False) | bool
     - handler_health_osd_check | bool
     - hostvars[item]['_osd_handler_called'] | default(False) | bool
   with_items: "{{ groups[osd_group_name] | intersect(ansible_play_batch) }}"
