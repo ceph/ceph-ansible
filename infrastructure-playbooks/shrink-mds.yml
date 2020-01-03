@@ -144,9 +144,10 @@
             - (mds_to_kill in active_mdss | default([])) or
               (mds_to_kill in standby_mdss | default([]))
 
-    - name: delete the filesystem too if deleted the last mds too
+    - name: delete the filesystem when killing last mds
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs rm --yes-i-really-mean-it {{ cephfs }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: (ceph_status.stdout | from_json)['fsmap']['up'] | int == 1
 
     - name: purge mds store
       file:
