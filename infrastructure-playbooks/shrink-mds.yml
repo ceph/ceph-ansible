@@ -82,6 +82,22 @@
       command: "{{ container_exec_cmd | default('') }} ceph tell mds.{{ mds_to_kill }} exit"
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
+    - name: get ceph status
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
+      register: ceph_status
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: set_fact current_max_mds
+      set_fact:
+        current_max_mds: "{{ (ceph_status.stdout | from_json)['fsmap']['max'] }}"
+
+    - name: fail if removing that mds node wouldn't satisfy max_mds anymore
+      fail:
+        msg: "Can't remove more mds as it won't satisfy current max_mds setting"
+      when:
+        - ((((ceph_status.stdout | from_json)['fsmap']['up'] | int) + ((ceph_status.stdout | from_json)['fsmap']['up:standby'] | int)) - 1) < current_max_mds | int
+        - (ceph_status.stdout | from_json)['fsmap']['up'] | int > 1
+
     - name: stop mds service and verify it
       block:
         - name: stop mds service
@@ -102,7 +118,7 @@
 
     - name: fail if the mds is reported as active or standby
       block:
-        - name: get ceph status
+        - name: get new ceph status
           command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
           register: ceph_status
           delegate_to: "{{ groups[mon_group_name][0] }}"
