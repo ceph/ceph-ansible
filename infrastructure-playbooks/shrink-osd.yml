@@ -23,7 +23,7 @@
 
 - name: confirm whether user really meant to remove osd(s) from the cluster
 
-  hosts: localhost
+  hosts: "{{ groups[mon_group_name][0] }}"
 
   become: true
 
@@ -71,14 +71,12 @@
       command: "{{ container_exec_cmd }} timeout 5 ceph --cluster {{ cluster }} health"
       register: ceph_health
       until: ceph_health.stdout.find("HEALTH") > -1
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: 5
       delay: 2
 
     - name: find the host(s) where the osd(s) is/are running on
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd find {{ item }}"
       with_items: "{{ osd_to_kill.split(',') }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       register: find_osd_hosts
 
     - name: set_fact osd_hosts
@@ -97,7 +95,6 @@
     - name: mark osd(s) out of the cluster
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ osd_to_kill.replace(',', ' ') }}"
       run_once: true
-      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: stop osd(s) service
       service:
@@ -121,13 +118,10 @@
     - name: purge osd(s) from the cluster
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it"
       run_once: true
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ osd_to_kill.split(',') }}"
 
     - name: show ceph health
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} -s"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: show ceph osd tree
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd tree"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
