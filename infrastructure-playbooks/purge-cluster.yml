@@ -136,26 +136,30 @@
   tasks:
     - import_role:
         name: ceph-defaults
-    - import_role:
-        name: ceph-facts
-        tasks_from: container_binary
 
-    - name: disable node_exporter service
-      service:
-        name: node_exporter
-        state: stopped
-        enabled: no
-      failed_when: false
+    - block:
+        - import_role:
+            name: ceph-facts
+            tasks_from: container_binary
 
-    - name: remove node_exporter service file
-      file:
-        name: /etc/systemd/system/node_exporter.service
-        state: absent
+        - name: disable node_exporter service
+          service:
+            name: node_exporter
+            state: stopped
+            enabled: no
+          failed_when: false
 
-    - name: remove node-exporter image
-      command: "{{ container_binary }} rmi {{ node_exporter_container_image }}"
-      tags:
-        - remove_img
+        - name: remove node_exporter service file
+          file:
+            name: /etc/systemd/system/node_exporter.service
+            state: absent
+
+        - name: remove node-exporter image
+          command: "{{ container_binary }} rmi {{ node_exporter_container_image }}"
+          failed_when: false
+          tags:
+            - remove_img
+      when: dashboard_enabled | bool
 
 
 - name: purge ceph grafana-server
@@ -170,49 +174,52 @@
   tasks:
     - import_role:
         name: ceph-defaults
-    - import_role:
-        name: ceph-facts
-        tasks_from: container_binary
 
-    - name: stop services
-      service:
-        name: "{{ item }}"
-        state: stopped
-        enabled: no
-      with_items: "{{ grafana_services }}"
-      failed_when: false
+    - block:
+        - import_role:
+            name: ceph-facts
+            tasks_from: container_binary
 
-    - name: remove service files
-      file:
-        name: "/etc/systemd/system/{{ item }}.service"
-        state: absent
-      with_items: "{{ grafana_services }}"
-      failed_when: false
+        - name: stop services
+          service:
+            name: "{{ item }}"
+            state: stopped
+            enabled: no
+          with_items: "{{ grafana_services }}"
+          failed_when: false
 
-    - name: remove ceph dashboard container images
-      command: "{{ container_binary }} rmi {{ item }}"
-      with_items:
-        - "{{ prometheus_container_image }}"
-        - "{{ grafana_container_image }}"
-        - "{{ alertmanager_container_image }}"
-      failed_when: false
-      tags:
-        - remove_img
+        - name: remove service files
+          file:
+            name: "/etc/systemd/system/{{ item }}.service"
+            state: absent
+          with_items: "{{ grafana_services }}"
+          failed_when: false
 
-    - name: remove data
-      file:
-        name: "{{ item }}"
-        state: absent
-      with_items:
-        - /etc/grafana/dashboards
-        - /etc/grafana/grafana.ini
-        - /etc/grafana/provisioning
-        - /var/lib/grafana
-        - /etc/alertmanager
-        - /var/lib/alertmanager
-        - /var/lib/prometheus
-        - /etc/prometheus
-      failed_when: false
+        - name: remove ceph dashboard container images
+          command: "{{ container_binary }} rmi {{ item }}"
+          with_items:
+            - "{{ prometheus_container_image }}"
+            - "{{ grafana_container_image }}"
+            - "{{ alertmanager_container_image }}"
+          failed_when: false
+          tags:
+            - remove_img
+
+        - name: remove data
+          file:
+            name: "{{ item }}"
+            state: absent
+          with_items:
+            - /etc/grafana/dashboards
+            - /etc/grafana/grafana.ini
+            - /etc/grafana/provisioning
+            - /var/lib/grafana
+            - /etc/alertmanager
+            - /var/lib/alertmanager
+            - /var/lib/prometheus
+            - /etc/prometheus
+          failed_when: false
+      when: dashboard_enabled | bool
 
 
 - name: purge ceph mds cluster
