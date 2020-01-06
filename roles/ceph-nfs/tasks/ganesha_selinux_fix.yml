@@ -17,17 +17,16 @@
       until: result is succeeded
       when: ansible_distribution_major_version == '7'
 
+    - name: install nfs-ganesha-selinux and python3-policycoreutils on RHEL 8
+      package:
+        name: ['nfs-ganesha-selinux', 'python3-policycoreutils']
+        state: present
+      register: result
+      until: result is succeeded
+      when: ansible_distribution_major_version == '8'
+
     - name: add ganesha_t to permissive domain
       selinux_permissive:
         name: ganesha_t
         permissive: true
       failed_when: false
-      when: ansible_distribution_major_version == '7'
-
-    - name: install nfs-ganesha-selinux on RHEL 8
-      package:
-        name: nfs-ganesha-selinux
-        state: present
-      register: result
-      until: result is succeeded
-      when: ansible_distribution_major_version == '8'
