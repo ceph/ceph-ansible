@@ -499,23 +499,6 @@
         - noout
         - nodeep-scrub
 
-    - name: get osd versions
-      command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} versions"
-      register: ceph_versions
-
-    - name: set_fact ceph_versions_osd
-      set_fact:
-        ceph_versions_osd: "{{ (ceph_versions.stdout|from_json).osd }}"
-
-    # length == 1 means there is a single osds versions entry
-    # thus all the osds are running the same version
-    - name: complete osds upgrade
-      command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} osd require-osd-release luminous"
-      when:
-        - (ceph_versions.get('stdout', '{}')|from_json).get('osd', {}) | length == 1
-        - ceph_versions_osd | string is search("ceph version 12")
-
-
 - name: upgrade ceph mdss cluster, deactivate all rank > 0
   hosts: "{{ groups[mon_group_name|default('mons')][0] }}"
   become: true
@@ -926,14 +909,14 @@
     - import_role:
         name: ceph-facts
 
-    - name: container | disallow pre-nautilus OSDs and enable all new nautilus-only functionality
-      command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph osd require-osd-release nautilus"
+    - name: container | disallow pre-octopus OSDs and enable all new octopus-only functionality
+      command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph osd require-osd-release octopus"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
       when: containerized_deployment | bool
 
-    - name: non container | disallow pre-nautilus OSDs and enable all new nautilus-only functionality
-      command: "ceph --cluster {{ cluster }} osd require-osd-release nautilus"
+    - name: non container | disallow pre-octopus OSDs and enable all new octopus-only functionality
+      command: "ceph --cluster {{ cluster }} osd require-osd-release octopus"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
       when: not containerized_deployment | bool
