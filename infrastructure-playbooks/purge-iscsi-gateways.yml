@@ -64,3 +64,26 @@
         - tcmu-runner
         - rbd-target-api
         - rbd-target-gw
+
+- name: remove the gateways from the ceph dashboard
+  hosts: mons
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: iscsi gateways with ceph dashboard
+      when: dashboard_enabled | bool
+      run_once: true
+      block:
+        - import_role:
+            name: ceph-facts
+
+        - name: get iscsi gateway list
+          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} dashboard iscsi-gateway-list -f json"
+          changed_when: false
+          register: gateways
+
+        - name: remove iscsi gateways
+          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} dashboard iscsi-gateway-rm {{ item }}"
+          with_items: '{{ (gateways.stdout | from_json)["gateways"] }}'
