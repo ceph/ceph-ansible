@@ -319,10 +319,10 @@ def batch(module, container_image):
 
     cmd.extend(batch_devices)
 
-    if block_db_devices:
+    if block_db_devices and objectstore == 'bluestore':
         cmd.extend(['--db-devices', ' '.join(block_db_devices)])
 
-    if wal_devices:
+    if wal_devices and objectstore == 'bluestore':
         cmd.extend(['--wal-devices', ' '.join(wal_devices)])
 
     return cmd
@@ -377,15 +377,15 @@ def prepare_or_create_osd(module, action, container_image):
     cmd.append('--data')
     cmd.append(data)
 
-    if journal:
+    if journal and objectstore == 'filestore':
         journal = get_journal(journal, journal_vg)
         cmd.extend(['--journal', journal])
 
-    if db:
+    if db and objectstore == 'bluestore':
         db = get_db(db, db_vg)
         cmd.extend(['--block.db', db])
 
-    if wal:
+    if wal and objectstore == 'bluestore':
         wal = get_wal(wal, wal_vg)
         cmd.extend(['--block.wal', wal])
 
