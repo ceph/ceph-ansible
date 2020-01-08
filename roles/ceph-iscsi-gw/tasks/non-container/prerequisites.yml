@@ -3,13 +3,14 @@
   set_fact:
     ceph_iscsi_repos:
       - ceph-iscsi-config
+      - ceph-iscsi-cli
+    common_iscsi_repos:
       - tcmu-runner
       - python-rtslib
-      - ceph-iscsi-cli
   when:
     - ansible_os_family == 'RedHat'
     - ceph_origin == 'repository'
-    - ceph_repository == 'dev'
+    - ceph_repository in ['dev', 'community']
     - ceph_iscsi_config_dev
 
 - name: fetch ceph-iscsi-config red hat development repository
@@ -17,7 +18,7 @@
     url: https://shaman.ceph.com/api/repos/{{ item }}/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo
     return_content: yes
   register: ceph_iscsi_config_dev_yum_repo
-  with_items: "{{ ceph_iscsi_repos }}"
+  with_items: "{{ ceph_iscsi_repos + common_iscsi_repos }}"
   when:
     - ansible_os_family == 'RedHat'
     - ceph_origin == 'repository'
@@ -39,6 +40,27 @@
     - ceph_origin == 'repository'
     - ceph_repository == 'dev'
     - ceph_iscsi_config_dev
+
+- name: ceph-iscsi dependency repositories
+  get_url:
+    url: 'https://shaman.ceph.com/api/repos/{{ item }}/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo'
+    dest: '/etc/yum.repos.d/{{ item }}-dev.repo'
+    force: true
+  with_items: "{{ common_iscsi_repos }}"
+  when:
+    - ansible_os_family == 'RedHat'
+    - ceph_origin == 'repository'
+    - ceph_repository == 'community'
+
+- name: ceph-iscsi stable repository
+  get_url:
+    url: 'https://download.ceph.com/ceph-iscsi/2/rpm/el{{ ansible_distribution_major_version }}/ceph-iscsi.repo'
+    dest: /etc/yum.repos.d/ceph-iscsi.repo
+    force: true
+  when:
+    - ansible_os_family == 'RedHat'
+    - ceph_origin == 'repository'
+    - ceph_repository == 'community'
 
 - name: install redhat ceph iscsi package
   package:
