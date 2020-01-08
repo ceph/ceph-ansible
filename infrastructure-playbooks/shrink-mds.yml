@@ -17,6 +17,10 @@
   tasks:
     - debug:
         msg: gather facts on all Ceph hosts for following reference
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
 
 - name: perform checks, remove mds and print cluster health
   hosts: localhost
@@ -54,12 +58,9 @@
            or use `-e ireallymeanit=yes` on the command line when
            invoking the playbook"
 
-    - import_role:
-        name: ceph-facts
-
     - name: set_fact container_exec_cmd for mon0
       set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        container_exec_cmd: "{{ hostvars[groups[mon_group_name][0]]['container_binary'] }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when: containerized_deployment | bool
 
     - name: exit playbook, if can not connect to the cluster
