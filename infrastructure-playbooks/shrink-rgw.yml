@@ -11,59 +11,25 @@
 #     automation scripts to avoid interactive prompt.
 
 
-- name: gather facts and check the init system
-  hosts:
-    - "{{ mon_group_name | default('mons') }}"
-    - "{{ rgw_group_name | default('rgws') }}"
-  become: true
-  tasks:
-    - debug:
-        msg: gather facts on MONS and RGWs
-
 - name: confirm whether user really meant to remove rgw from the ceph cluster
   hosts: localhost
-  become: true
+  become: false
+  gather_facts: false
   vars_prompt:
     - name: ireallymeanit
       prompt: Are you sure you want to shrink the cluster?
       default: 'no'
       private: no
-  pre_tasks:
-    - import_role:
-        name: ceph-defaults
-
-    - import_role:
-        name: ceph-facts
-
+  tasks:
     - name: exit playbook, if no rgw was given
-      when: rgw_to_kill is not defined
+      when: rgw_to_kill is not defined or rgw_to_kill | length == 0
       fail:
         msg: >
           rgw_to_kill must be declared.
           Exiting shrink-cluster playbook, no RGW was removed. On the command
           line when invoking the playbook, you can use
-          "-e rgw_to_kill=ceph-rgw0 argument".  You can only remove a single
+          "-e rgw_to_kill=ceph.rgw0 argument".  You can only remove a single
           RGW each time the playbook runs.
-
-    - name: get rgw hostname
-      set_fact:
-        rgw_to_kill_hostname: "{{ rgw_to_kill.split('.')[0] }}"
-
-    - name: get rgw instance
-      set_fact:
-        rgw_to_kill_instance: "{{ rgw_to_kill.split('.')[1] }}"
-
-    - name: exit if supplied hostname didnt match actual hostname
-      fail:
-        msg: supplied hostname didn't match with actual hostname
-      when: hostvars[rgw_to_kill_hostname]['ansible_hostname'] != rgw_to_kill_hostname
-
-    - name: exit playbook, if the rgw is not part of the inventory
-      when: rgw_to_kill_hostname not in groups[rgw_group_name]
-      fail:
-        msg: >
-          It seems that the host given is not part of your inventory, please
-          make sure it is.
 
     - name: exit playbook, if user did not mean to shrink cluster
       when: ireallymeanit != 'yes'
@@ -73,42 +39,76 @@
           cluster, either say 'yes' on the prompt or use
           '-e ireallymeanit=yes' on the command line when  invoking the playbook
 
+- name: gather facts and mons and rgws
+  hosts:
+    - "{{ mon_group_name | default('mons') }}[0]"
+    - "{{ rgw_group_name | default('rgws') }}"
+  become: true
+  gather_facts: false
+  tasks:
+    - setup:
+
+- hosts: mons[0]
+  become: true
+  gather_facts: false
+  pre_tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary
+
     - name: set_fact container_exec_cmd for mon0
-      when: containerized_deployment | bool
       set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
+      when: containerized_deployment | bool
 
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} health"
       register: ceph_health
       until: ceph_health is succeeded
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: 5
       delay: 2
 
-  tasks:
-    - name: stop rgw service and verify it
-      block:
-        - name: stop rgw service
-          service:
-            name: ceph-radosgw@rgw.{{ rgw_to_kill }}
-            state: stopped
-            enabled: no
-          delegate_to: "{{ rgw_to_kill_hostname }}"
-          failed_when: false
+    - name: get rgw instances
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
+      register: rgw_instances
 
-        - name: ensure that the rgw is stopped
-          command: "systemctl is-active ceph_rgw@rgw.{{ rgw_to_kill }}"
-          register: rgw_to_kill_status
-          failed_when: rgw_to_kill_status.rc == 0
-          delegate_to: "{{ rgw_to_kill_hostname }}"
-          retries: 5
-          delay: 2
+
+    - name: exit playbook, if the rgw_to_kill doesn't exist
+      when: rgw_to_kill not in (rgw_instances.stdout | from_json).servicemap.services.rgw.daemons.keys() | list
+      fail:
+        msg: >
+          It seems that the rgw instance given is not part of the ceph cluster. Please
+          make sure it is.
+          The rgw instance format is $(hostname}.rgw$(instance number).
+  tasks:
+    - name: get rgw host running the rgw instance to kill
+      set_fact:
+        rgw_host: '{{ item }}'
+      with_items: '{{ groups[rgw_group_name] }}'
+      when: hostvars[item]['ansible_hostname'] == rgw_to_kill.split('.')[0]
+
+    - name: stop rgw service
+      service:
+        name: ceph-radosgw@rgw.{{ rgw_to_kill }}
+        state: stopped
+        enabled: no
+      delegate_to: "{{ rgw_host }}"
+      failed_when: false
+
+    - name: ensure that the rgw is stopped
+      command: "systemctl is-active ceph-radosgw@rgw.{{ rgw_to_kill }}"
+      register: rgw_to_kill_status
+      failed_when: rgw_to_kill_status.rc == 0
+      delegate_to: "{{ rgw_host }}"
+      retries: 5
+      delay: 2
 
     - name: exit if rgw_to_kill is reported in ceph status
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
       register: ceph_status
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       failed_when:
         - (ceph_status.stdout | from_json).servicemap.services.rgw is defined
         - rgw_to_kill in (ceph_status.stdout | from_json).servicemap.services.rgw.daemons.keys() | list
@@ -120,11 +120,9 @@
 
     - name: purge directories related to rgw
       file:
-        path: /var/lib/ceph/radosgw/{{ cluster }}-{{ rgw_to_kill_hostname }}
+        path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_to_kill }}
         state: absent
-      delegate_to: "{{ rgw_to_kill_hostname }}"
-
+      delegate_to: "{{ rgw_host }}"
   post_tasks:
     - name: show ceph health
       command: "{{ container_exec_cmd | default('')}} ceph --cluster {{ cluster }} -s"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
