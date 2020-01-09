@@ -1,23 +1,23 @@
 ---
 - name: check if monitor initial keyring already exists
   command: >
-    {{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} --name mon. -k
-    /var/lib/ceph/mon/{{ cluster }}-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}/keyring
+    {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} --name mon. -k
+    /var/lib/ceph/mon/{{ cluster }}-{{ hostvars[groups[mon_group_name][0] if running_mon is undefined else running_mon]['ansible_hostname'] }}/keyring
     auth get-key mon.
   register: initial_mon_key
   run_once: True
-  delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
+  delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"
   when: ceph_current_status.fsid is defined
 
 - name: generate monitor initial keyring
   command: >
-    {{ discovered_interpreter_python }} -c "import os ; import struct ;
+    {{ hostvars[groups[mon_group_name][0] if running_mon is undefined else running_mon]['discovered_interpreter_python'] }} -c "import os ; import struct ;
     import time; import base64 ; key = os.urandom(16) ;
     header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ;
     print(base64.b64encode(header + key).decode())"
   register: monitor_keyring
   run_once: True
-  delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
+  delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"
   when:
     - initial_mon_key.skipped is defined
     - ceph_current_status.fsid is undefined
