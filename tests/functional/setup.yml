@@ -22,11 +22,9 @@
       mount:
         path: '{{ rootmount.mount }}'
         src: '{{ rootmount.device }}'
-        opts: noatime,nodiratime,nobarrier
+        opts: 'noatime,nodiratime{% if ansible_os_family == "RedHat" and ansible_distribution_major_version | int < 8 %},nobarrier{% endif %}'
         fstype: '{{ rootmount.fstype }}'
         state: mounted
-      when: not (ansible_os_family == 'RedHat' and
-                 ansible_distribution_major_version == '8')
 
       # we need to install this so the Socket testinfra module
       # can use netcat for testing
