@@ -2,19 +2,6 @@
 - name: include prerequisites.yml
   include_tasks: prerequisites.yml
 
-- name: get docker version
-  block:
-    - name: get docker version
-      command: docker --version
-      changed_when: false
-      check_mode: no
-      register: ceph_docker_version
-
-    - name: set_fact ceph_docker_version ceph_docker_version.stdout.split
-      set_fact:
-        ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
-  when: container_binary == 'docker'
-
 - name: include registry.yml
   include_tasks: registry.yml
   when: ceph_docker_registry_auth | bool
