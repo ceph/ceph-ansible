@@ -73,6 +73,16 @@
 
 
   tasks:
+    - name: install podman
+      package:
+        name: podman
+        state: present
+      register: result
+      until: result is succeeded
+      tags:
+        - with_pkg
+      when: not is_atomic | bool
+
     - import_role:
         name: ceph-mon
         tasks_from: systemd.yml
