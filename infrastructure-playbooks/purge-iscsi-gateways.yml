@@ -78,6 +78,12 @@
       block:
         - import_role:
             name: ceph-facts
+            tasks_from: container_binary
+
+        - name: set_fact container_exec_cmd
+          set_fact:
+            container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
+          when: containerized_deployment | bool
 
         - name: get iscsi gateway list
           command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} dashboard iscsi-gateway-list -f json"
