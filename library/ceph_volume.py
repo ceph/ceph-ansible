@@ -207,7 +207,6 @@ def container_exec(binary, container_image):
     container_binary = os.getenv('CEPH_CONTAINER_BINARY')
     command_exec = [container_binary, 'run',
                     '--rm', '--privileged', '--net=host', '--ipc=host',
-                    '--ulimit', 'nofile=1024:4096',
                     '-v', '/run/lock/lvm:/run/lock/lvm:z',
                     '-v', '/var/run/udev/:/var/run/udev/:z',
                     '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',
