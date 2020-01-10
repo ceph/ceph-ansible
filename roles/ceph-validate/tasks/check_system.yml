@@ -26,6 +26,13 @@
     msg: "Distribution not supported {{ ansible_os_family }}"
   when: ansible_os_family not in ['Debian', 'RedHat', 'ClearLinux', 'Suse']
 
+- name: fail on unsupported CentOS release
+  fail:
+    msg: "CentOS release not supported {{ ansible_distribution_major_version }}"
+  when:
+    - ansible_distribution == 'CentOS'
+    - ansible_distribution_major_version | int != 8
+
 - name: red hat based systems tasks
   when:
     - ceph_repository == 'rhcs'
