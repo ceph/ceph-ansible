@@ -361,42 +361,6 @@
         chrony_daemon_name: chrony
       when: ansible_os_family == "Debian"
 
-- name: set grafana_server_addr fact - ipv4
-  set_fact:
-    grafana_server_addr: "{{ hostvars[inventory_hostname]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}"
-  when:
-    - groups.get(grafana_server_group_name, []) | length > 0
-    - ip_version == 'ipv4'
-    - dashboard_enabled | bool
-    - inventory_hostname in groups[grafana_server_group_name]
-
-- name: set grafana_server_addr fact - ipv6
-  set_fact:
-    grafana_server_addr: "{{ hostvars[inventory_hostname]['ansible_all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap }}"
-  when:
-    - groups.get(grafana_server_group_name, []) | length > 0
-    - ip_version == 'ipv6'
-    - dashboard_enabled | bool
-    - inventory_hostname in groups[grafana_server_group_name]
-
-- name: set grafana_server_addr fact - ipv4 - (external instance)
-  set_fact:
-    grafana_server_addr: "{{ hostvars[groups.get(grafana_server_group_name, []) | first]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}"
-  when:
-    - groups.get(grafana_server_group_name, []) | length > 0
-    - ip_version == 'ipv4'
-    - dashboard_enabled | bool
-    - inventory_hostname not in groups[grafana_server_group_name]
-
-- name: set grafana_server_addr fact - ipv6 - (external instance)
-  set_fact:
-    grafana_server_addr: "{{ hostvars[groups.get(grafana_server_group_name, []) | first]['ansible_all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap }}"
-  when:
-    - groups.get(grafana_server_group_name, []) | length > 0
-    - ip_version == 'ipv6'
-    - dashboard_enabled | bool
-    - inventory_hostname not in groups[grafana_server_group_name]
-
 - name: set_fact use_new_ceph_iscsi package or old ceph-iscsi-config/cli
   set_fact:
     use_new_ceph_iscsi: "{{ (gateway_ip_list  == '0.0.0.0' and gateway_iqn | length == 0 and client_connections | length == 0 and rbd_devices | length == 0) | bool | ternary(true, false) }}"
