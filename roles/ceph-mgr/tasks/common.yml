@@ -59,7 +59,7 @@
       command: "{{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
       register: _mgr_keys
       with_items: "{{ _mgr_keys }}"
-      delegate_to: "{{ running_mon }}"
+      delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"
       when:
         - cephx | bool
         - item.copy_key | bool
