@@ -1,0 +1,27 @@
+---
+- name: get balancer status
+  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} balancer status"
+  check_mode: false
+  changed_when: false
+  register: _ceph_balancer_status
+  failed_when: _ceph_balancer_status.rc not in (0, 22)
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+
+- name: set _ceph_balancer_status fact
+  set_fact:
+    _ceph_balancer_status: "{{ _ceph_balancer_status.stdout | default('{}', true) | from_json }}"
+
+- name: configure balancer
+  block:
+  - name: set balancer state
+    command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} balancer {{ (ceph_mgr_balancer_mode != 'none') | ternary('on', 'off') }}"
+    changed_when: (ceph_mgr_balancer_mode != 'none') | bool != _ceph_balancer_status.active | bool
+  - name: set balancer mode
+    command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} balancer mode {{ ceph_mgr_balancer_mode }}"
+    changed_when: ceph_mgr_balancer_mode != _ceph_balancer_status.mode
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  when:
+    - _ceph_balancer_status.active is defined
+    - ceph_mgr_balancer_mode is defined
