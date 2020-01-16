@@ -175,24 +175,6 @@
   set_fact:
     mds_name: "{{ ansible_hostname }}"
 
-- name: set_fact rbd_client_directory_owner ceph
-  set_fact:
-    rbd_client_directory_owner: ceph
-  when: rbd_client_directory_owner is not defined
-      or not rbd_client_directory_owner
-
-- name: set_fact rbd_client_directory_group rbd_client_directory_group
-  set_fact:
-    rbd_client_directory_group: ceph
-  when: rbd_client_directory_group is not defined
-      or not rbd_client_directory_group
-
-- name: set_fact rbd_client_directory_mode 0770
-  set_fact:
-    rbd_client_directory_mode: "0770"
-  when: rbd_client_directory_mode is not defined
-      or not rbd_client_directory_mode
-
 - name: resolve device link(s)
   command: readlink -f {{ item }}
   changed_when: false
@@ -240,31 +222,6 @@
   when:
     - not containerized_deployment | bool
     - ansible_os_family == 'Debian'
-
-- name: set_fact ceph_uid for red hat or suse based system - non container
-  set_fact:
-    ceph_uid: 167
-  when:
-    - not containerized_deployment | bool
-    - ansible_os_family in ['RedHat', 'Suse']
-
-- name: set_fact ceph_uid for debian based system - container
-  set_fact:
-    ceph_uid: 64045
-  when:
-    - containerized_deployment | bool
-    - ceph_docker_image_tag | string is search("ubuntu")
-
-- name: set_fact ceph_uid for red hat based system - container
-  set_fact:
-    ceph_uid: 167
-  when:
-    - containerized_deployment | bool
-    - (ceph_docker_image_tag | string is search("latest")
-      or ceph_docker_image_tag | string is search("centos")
-      or ceph_docker_image_tag | string is search("fedora")
-      or ceph_docker_image_tag | string is search("rhceph")
-      or (ansible_distribution == 'RedHat'))
 
 - name: set_fact rgw_hostname
   set_fact:
