@@ -73,6 +73,12 @@ admin socket = {{ rbd_client_admin_socket_path }}/$cluster-$type.$id.$pid.$cctid
 log file = {{ rbd_client_log_file }} # must be writable by QEMU and allowed by SELinux or AppArmor
 {% endif %}
 
+{% if openstack_config | bool and inventory_hostname in groups.get(client_group_name, []) and openstack_keys | selectattr('name', 'equalto', 'client.manila') | list | length > 0 %}
+[client.manila]
+client mount gid = 0
+client mount uid = 0
+{% endif %}
+
 {% if inventory_hostname in groups.get(osd_group_name, []) %}
 {% if osd_objectstore == 'filestore' %}
 [osd]
