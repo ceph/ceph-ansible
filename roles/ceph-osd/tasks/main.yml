@@ -3,6 +3,15 @@
   set_fact:
     add_osd: "{{ groups[osd_group_name] | length != ansible_play_hosts_all | length }}"
 
+- name: set_fact container_exec_cmd
+  set_fact:
+    container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[item]['ansible_hostname'] }}"
+  with_items: "{{ groups.get(mon_group_name, []) }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  run_once: true
+  when: containerized_deployment | bool
+
 - name: include_tasks system_tuning.yml
   include_tasks: system_tuning.yml
 

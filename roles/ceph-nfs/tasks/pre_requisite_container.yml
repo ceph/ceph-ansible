@@ -1,6 +1,14 @@
 ---
 - name: keyring related tasks
   block:
+    - name: set_fact container_exec_cmd
+      set_fact:
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[item]['ansible_hostname'] }}"
+      with_items: "{{ groups.get(mon_group_name, []) }}"
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      run_once: true
+
     - name: get keys from monitors
       command: "{{ hostvars[groups.get(mon_group_name)[0]]['container_exec_cmd'] }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
       register: _rgw_keys
