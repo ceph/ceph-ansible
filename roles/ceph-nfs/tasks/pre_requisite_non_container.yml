@@ -29,8 +29,8 @@
   file:
     path: "{{ item.name }}"
     state: directory
-    owner: "ceph"
-    group: "ceph"
+    owner: "{{ item.owner | default('ceph') }}"
+    group: "{{ item.group | default('ceph') }}"
     mode: "{{ ceph_directories_mode }}"
   with_items:
     - { name: "/var/lib/ceph/bootstrap-rgw", create: "{{ nfs_obj_gw }}" }
@@ -38,6 +38,7 @@
     - { name: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}", create: "{{ nfs_obj_gw }}" }
     - { name: "{{ rbd_client_admin_socket_path }}", create: "{{ nfs_obj_gw }}" }
     - { name: "/var/log/ceph", create: true }
+    - { name: "/var/log/ganesha", create: true, owner: root, group: root }
     - { name: "/var/run/ceph", create: true }
   when: item.create | bool
 
@@ -85,10 +86,3 @@
             owner: "ceph"
             group: "ceph"
             mode: "0600"
-
-- name: change ownership on /var/log/ganesha
-  file:
-    path: /var/log/ganesha
-    owner: "root"
-    group: "root"
-    mode: "0755"
