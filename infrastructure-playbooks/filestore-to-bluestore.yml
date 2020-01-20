@@ -179,15 +179,15 @@
 
         - name: set_fact osd_fsid_list
           set_fact:
-            osd_fsid_list: "{{ osd_fsid_list | default([]) + [item.tags['ceph.osd_fsid']] }}"
+            osd_fsid_list: "{{ osd_fsid_list | default([]) + [{'osd_fsid': item.tags['ceph.osd_fsid'], 'destroy': (item.lv_name.startswith('osd-data-') and item.vg_name.startswith('ceph-')) | ternary(true, false)}] }}"
           with_items: "{{ _lvm_list }}"
           when: item.type == 'data'
 
         - name: zap ceph-volume prepared OSDs
           ceph_volume:
             action: "zap"
-            osd_fsid: "{{ item }}"
-            destroy: False
+            osd_fsid: "{{ item.osd_fsid }}"
+            destroy: "{{ item.destroy }}"
           environment:
             CEPH_VOLUME_DEBUG: 1
             CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
@@ -203,6 +203,14 @@
             - item['lv_path'] is defined
               # Do not close mappers for non 'lvm batch' devices
             - devices | default([]) | length > 0
+
+        - name: ensure all pv are removed
+          command: "pvremove --yes {{ item.devices[0] }}"
+          with_items: "{{ _lvm_list }}"
+          when:
+            - item.type == 'data'
+            - item.lv_name.startswith('osd-data-') | bool
+            - item.vg_name.startswith('ceph-') | bool
       when: _lvm_list is defined
 
     - name: set_fact osd_ids
@@ -238,6 +246,10 @@
     - import_role:
         name: ceph-container-common
       when: containerized_deployment | bool
+    - import_role:
+        name: ceph-config
+      vars:
+        osd_objectstore: bluestore
     - import_role:
         name: ceph-osd
       vars:
