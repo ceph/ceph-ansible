@@ -100,7 +100,9 @@
           with_together:
             - "{{ simple_scan.results }}"
             - "{{ partlabel.results }}"
-          when: item.1.stdout == 'ceph data'
+          when:
+            - item.1.stdout == 'ceph data'
+            - (item.0.stdout | from_json).encrypted | default(False) | bool
 
         - name: ensure dmcrypt for data device is closed
           command: cryptsetup close "{{ (item.0.stdout | from_json).data.uuid }}"
@@ -111,7 +113,7 @@
           changed_when: false
           when:
             - item.1.stdout == 'ceph data'
-            - (item.0.stdout | from_json).encrypted | default(False)
+            - (item.0.stdout | from_json).encrypted | default(False) | bool
 
         - name: ensure dmcrypt for journal device is closed
           command: cryptsetup close "{{ (item.0.stdout | from_json).journal.uuid }}"
@@ -122,7 +124,7 @@
           changed_when: false
           when:
             - item.1.stdout == 'ceph data'
-            - (item.0.stdout | from_json).encrypted | default(False)
+            - (item.0.stdout | from_json).encrypted | default(False) | bool
 
         - name: zap data devices
           command: "{{ container_run_cmd }} --cluster {{ cluster }} lvm zap --destroy {{ (item.0.stdout | from_json).data.path }}"
@@ -235,12 +237,17 @@
 
     - name: remove gpt header
       command: parted -s "{{ item }}" mklabel msdos
-      with_items: "{{ devices + dedicated_devices | default([]) }}"
+      with_items: "{{ (devices + dedicated_devices + ceph_disk_osds_devices | default([])) | unique }}"
+
+    - name: refresh ansible devices fact
+      setup:
+        filter: ansible_devices
+      when: osd_auto_discovery | bool
 
     - import_role:
-        name: ceph-facts
-    - import_role:
         name: ceph-defaults
+    - import_role:
+        name: ceph-facts
     - import_role:
         name: ceph-handler
     - import_role:
