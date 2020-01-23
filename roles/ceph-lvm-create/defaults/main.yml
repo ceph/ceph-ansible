@@ -1,0 +1,33 @@
+---
+logfile: |
+  Suggested cut and paste under "lvm_volumes:" in "group_vars/osds.yml"
+  -----------------------------------------------------------------------------------------------------------
+  {% for lv in nvme_device_lvs %}
+    - data: {{ lv.lv_name }}
+      data_vg: {{ nvme_vg_name }}
+  {% if osd_objectstore == "filestore" %}
+      journal: {{ lv.journal_name }}
+      journal_vg: {{ nvme_vg_name }}
+  {% endif %}
+  {% endfor %}
+  {% for hdd in hdd_devices %}
+    - data: {{ hdd_lv_prefix }}-{{ hdd.split('/')[-1] }}
+      data_vg: {{ hdd_vg_prefix }}-{{ hdd.split('/')[-1] }}
+  {% if osd_objectstore == "filestore" %}
+      journal: {{ hdd_journal_prefix }}-{{ hdd.split('/')[-1] }}
+      journal_vg: {{ nvme_vg_name }}
+  {% else %}
+      db: {{ hdd_db_prefix }}-{{ hdd.split('/')[-1] }}
+      db_vg: {{ nvme_vg_name }}
+  {% if journal_size > 0 %}
+      wal: {{ hdd_journal_prefix }}-{{ hdd.split('/')[-1] }}
+      wal_vg: {{ nvme_vg_name }}
+  {% endif %}
+  {% endif %}
+  {% endfor %}
+
+# Since this playbook can be run multiple times across different devices, {{ var.split('/')[-1] }} is used quite frequently in this play-book.
+# This is used to strip the device name away from its path (ex: sdc from /dev/sdc) to differenciate the names of vgs, journals, or lvs if the prefixes are not changed across multiple runs.
+nvme_device_basename: "{{ nvme_device.split('/')[-1] }}"
+# Only one volume group is created in the playbook for all the LVs on NVMe. This volume group takes up the entire device specified in "nvme_device".
+nvme_vg_name: "ceph-nvme-vg-{{ nvme_device_basename }}"
