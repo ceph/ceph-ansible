@@ -44,57 +44,13 @@
     command: "killall -q lvcreate pvcreate vgcreate lvconvert || echo -n"
     failed_when: false
 
-  ## Logcal Vols
-  - name: tear down existing lv for bucket index
-    lvol:
-      lv: "{{ item.lv_name }}"
-      vg: "{{ nvme_vg_name }}"
-      state: absent
-      force: yes
-    with_items: "{{ nvme_device_lvs }}"
-
-  - name: tear down any existing hdd data lvs 
-    lvol:
-      lv: "{{ hdd_lv_prefix }}-{{ item.split('/')[-1] }}"
-      vg: "{{ hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
-      state: absent
-      force: yes
-    with_items: "{{ hdd_devices }}"
-
-  - name: tear down any existing lv of journal for bucket index
-    lvol:
-      lv: "{{ item.journal_name }}"
-      vg: "{{ nvme_vg_name }}"
-      state: absent
-      force: yes
-    with_items: "{{ nvme_device_lvs }}"
-
-  - name: tear down any existing lvs of hdd journals
-    lvol:
-      lv: "{{ hdd_journal_prefix }}-{{ item.split('/')[-1] }}"
-      vg: "{{ nvme_vg_name }}"
-      state: absent
-      force: yes
-    with_items: "{{ hdd_devices }}"
-
-  ## Volume Groups
-  - name: remove vg on nvme device
-    lvg:
-      vg: "{{ nvme_vg_name }}"
-      state: absent
-      force: yes
-
-  - name: remove vg for each hdd device
-    lvg:
-      vg: "{{ hdd_vg_prefix }}-{{ item.split('/')[-1] }}"
-      state: absent
-      force: yes
-    with_items: "{{ hdd_devices }}"
-
-  ## Physical Vols
-  - name: tear down pv for nvme device
-    command: "pvremove --force --yes {{ nvme_device }}"
-
-  - name: tear down pv for each hdd device
-    command: "pvremove --force --yes {{ item }}"
-    with_items: "{{ hdd_devices }}"
+  - include_role:
+      name: ceph-lvm-teardown
+    vars:
+      nvme_device: "{{ outer.nvme_device | default('dummy')}}"
+      hdd_devices: "{{ outer.hdd_devices }}"
+      nvme_device_lvs: "{{ outer.nvme_device_lvs }}"
+    with_items:
+     - "{{ lvm_devices }}"
+    loop_control:
+      loop_var: outer
