@@ -16,20 +16,20 @@
     - dashboard_enabled | bool
     - inventory_hostname in groups[grafana_server_group_name]
 
-- name: set grafana_server_addr fact - ipv4 - (external instance)
+- name: set grafana_server_addrs fact - ipv4
   set_fact:
-    grafana_server_addr: "{{ hostvars[groups.get(grafana_server_group_name, []) | first]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}"
+    grafana_server_addrs: "{{ (grafana_server_addrs | default([]) + [hostvars[item]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first]) | unique }}"
+  with_items: "{{ groups.get(grafana_server_group_name, []) }}"
   when:
     - groups.get(grafana_server_group_name, []) | length > 0
     - ip_version == 'ipv4'
     - dashboard_enabled | bool
-    - inventory_hostname not in groups[grafana_server_group_name]
 
-- name: set grafana_server_addr fact - ipv6 - (external instance)
+- name: set grafana_server_addrs fact - ipv6
   set_fact:
-    grafana_server_addr: "{{ hostvars[groups.get(grafana_server_group_name, []) | first]['ansible_all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap }}"
+    grafana_server_addrs: "{{ (grafana_server_addrs | default([]) + [hostvars[item]['ansible_all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap]) | unique }}"
+  with_items: "{{ groups.get(grafana_server_group_name, []) }}"
   when:
     - groups.get(grafana_server_group_name, []) | length > 0
     - ip_version == 'ipv6'
     - dashboard_enabled | bool
-    - inventory_hostname not in groups[grafana_server_group_name]

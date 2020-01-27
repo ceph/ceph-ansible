@@ -94,12 +94,6 @@
   changed_when: false
   until: ac_result.rc == 0
 
-- name: set grafana url
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-url {{ dashboard_protocol }}://{{ grafana_server_addr }}:{{ grafana_port }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
-  changed_when: false
-
 - name: set grafana api user
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-username {{ grafana_admin_user }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -113,16 +107,21 @@
   changed_when: false
 
 - name: set alertmanager host
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-alertmanager-api-host {{ dashboard_protocol }}://{{ grafana_server_addr }}:{{ alertmanager_port }}"
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-alertmanager-api-host {{ dashboard_protocol }}://{{ grafana_server_addrs | first }}:{{ alertmanager_port }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false
 
 - name: set prometheus host
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-prometheus-api-host {{ dashboard_protocol }}://{{ grafana_server_addr }}:{{ prometheus_port }}"
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-prometheus-api-host {{ dashboard_protocol }}://{{ grafana_server_addrs | first }}:{{ prometheus_port }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false
+
+- include_tasks: configure_grafana_layouts.yml
+  with_items: '{{ grafana_server_addrs }}'
+  vars:
+    grafana_server_addr: '{{ item }}'
 
 - name: dashboard object gateway management frontend
   when: groups.get(rgw_group_name, []) | length > 0
@@ -219,13 +218,6 @@
       with_items: "{{ groups[iscsi_gw_group_name] }}"
       run_once: true
       when: ip_version == 'ipv6'
-
-- name: inject grafana dashboard layouts
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard grafana dashboards update"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
-  changed_when: false
-  when: containerized_deployment | bool
 
 - name: disable mgr dashboard module (restart)
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mgr module disable dashboard"
