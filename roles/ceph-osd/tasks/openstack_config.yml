@@ -3,7 +3,7 @@
   block:
     - name: list existing pool(s)
       command: >
-        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        {{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
         osd pool get {{ item.name }} size
       with_items: "{{ openstack_pools | unique }}"
       register: created_pools
@@ -13,7 +13,7 @@
 
     - name: create openstack pool(s)
       command: >
-        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        {{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
         osd pool create {{ item.0.name }}
         {{ item.0.pg_num | default(osd_pool_default_pg_num) }}
         {{ item.0.pgp_num | default(item.0.pg_num) | default(osd_pool_default_pg_num) }}
@@ -32,7 +32,7 @@
 
     - name: customize pool size
       command: >
-        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        {{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
         osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }}
       with_items: "{{ openstack_pools | unique }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -41,7 +41,7 @@
 
     - name: customize pool min_size
       command: >
-        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        {{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
         osd pool set {{ item.name }} min_size {{ item.min_size | default(osd_pool_default_min_size) }}
       with_items: "{{ openstack_pools | unique }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -49,7 +49,7 @@
       when: (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
 
     - name: assign application to pool(s)
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
+      command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
       with_items: "{{ openstack_pools | unique }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -72,7 +72,7 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: get keys from monitors
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
+      command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
       register: _osp_keys
       with_items: "{{ openstack_keys }}"
       run_once: true
