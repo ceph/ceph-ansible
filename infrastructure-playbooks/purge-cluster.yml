@@ -145,16 +145,19 @@
         state: stopped
         enabled: no
       failed_when: false
+      when: dashboard_enabled
 
     - name: remove node_exporter service file
       file:
         name: /etc/systemd/system/node_exporter.service
         state: absent
+      when: dashboard_enabled
 
     - name: remove node-exporter image
       command: "{{ container_binary }} rmi {{ node_exporter_container_image }}"
       tags:
         - remove_img
+      when: dashboard_enabled
 
 
 - name: purge ceph grafana-server
