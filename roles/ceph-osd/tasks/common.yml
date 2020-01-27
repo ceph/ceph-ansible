@@ -12,7 +12,7 @@
     - /var/lib/ceph/osd/
 
 - name: get keys from monitors
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
+  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
   register: _osd_keys
   with_items:
     - { name: "client.bootstrap-osd", path: "/var/lib/ceph/bootstrap-osd/{{ cluster }}.keyring", copy_key: true }
