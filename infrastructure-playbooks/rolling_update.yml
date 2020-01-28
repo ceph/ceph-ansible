@@ -194,23 +194,6 @@
         - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
         - "{{ groups[mon_group_name] }}" # so the key goes on all the nodes
 
-    - name: set osd flags
-      command: ceph --cluster {{ cluster }} osd set {{ item }}
-      with_items:
-        - noout
-        - norebalance
-      delegate_to: "{{ mon_host }}"
-      when: not containerized_deployment
-
-    - name: set containerized osd flags
-      command: |
-        docker exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
-      with_items:
-        - noout
-        - norebalance
-      delegate_to: "{{ mon_host }}"
-      when: containerized_deployment
-
 
 - name: upgrade ceph mgr node
 
