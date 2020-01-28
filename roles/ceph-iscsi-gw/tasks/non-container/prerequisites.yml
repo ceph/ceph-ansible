@@ -72,13 +72,13 @@
     - target.stat.exists
     - not target.stat.islnk
 
-- name: start tcmu-runner, rbd-target-api and rbd-target-gw
+# Only start tcmu-runner, so configure_iscsi.yml can create disks.
+# We must start rbd-target-gw/api after configure_iscsi.yml to avoid
+# races where they are both trying to setup the same object during
+# a rolling update.
+- name: start tcmu-runner
   service:
-    name: "{{ item }}"
+    name: tcmu-runner
     state: started
     enabled: yes
     masked: no
-  with_items:
-    - tcmu-runner
-    - rbd-target-gw
-    - rbd-target-api
