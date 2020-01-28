@@ -217,6 +217,13 @@
       fail:
         msg: "you must add at least one node in the [grafana-server] hosts group"
       when: groups[grafana_server_group_name] | length < 1
+
+    - name: fail when dashboard_admin_password and/or grafana_admin_password are not set
+      fail:
+        msg: "you must set dashboard_admin_password and grafana_admin_password."
+      when:
+        - dashboard_admin_password is undefined
+          or grafana_admin_password is undefined
   when: dashboard_enabled | bool
 
 - name: validate container registry credentials
