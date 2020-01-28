@@ -204,27 +204,6 @@
       when: inventory_hostname in groups[mgr_group_name] | default([])
             or groups[mgr_group_name] | default([]) | length == 0
 
-    - name: set osd flags
-      command: ceph --cluster {{ cluster }} osd set {{ item }}
-      with_items:
-        - noout
-        - norebalance
-      delegate_to: "{{ mon_host }}"
-      when:
-        - inventory_hostname == groups[mon_group_name][0]
-        - not containerized_deployment | bool
-
-    - name: set containerized osd flags
-      command: >
-        {{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd set {{ item }}
-      with_items:
-        - noout
-        - norebalance
-      delegate_to: "{{ mon_host }}"
-      when:
-        - inventory_hostname == groups[mon_group_name][0]
-        - containerized_deployment | bool
-
     - import_role:
         name: ceph-handler
     - import_role:
