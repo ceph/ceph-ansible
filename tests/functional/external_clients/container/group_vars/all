@@ -1,0 +1,38 @@
+---
+# this is only here to let the CI tests know
+# that this scenario is using docker
+docker: True
+
+containerized_deployment: True
+monitor_interface: "{{ 'eth1' if ansible_distribution == 'CentOS' else 'ens6' }}"
+radosgw_interface: "{{ 'eth1' if ansible_distribution == 'CentOS' else 'ens6' }}"
+ceph_mon_docker_subnet: "{{ public_network }}"
+ceph_docker_on_openstack: False
+public_network: "192.168.31.0/24"
+cluster_network: "192.168.32.0/24"
+rgw_override_bucket_index_max_shards: 16
+rgw_bucket_default_quota_max_objects: 1638400
+openstack_config: True
+ceph_conf_overrides:
+  global:
+    osd_pool_default_pg_num: 8
+    osd_pool_default_size: 1
+handler_health_mon_check_delay: 10
+handler_health_osd_check_delay: 10
+rgw_create_pools:
+  foo:
+    pg_num: 16
+  bar:
+    pg_num: 16
+ceph_osd_docker_run_script_path: /var/tmp
+osd_objectstore: "bluestore"
+osd_scenario: lvm
+lvm_volumes:
+  - data: data-lv1
+    data_vg: test_group
+  - data: data-lv2
+    data_vg: test_group
+    db: journal1
+    db_vg: journals
+fsid: 40358a87-ab6e-4bdc-83db-1d909147861c
+generate_fsid: false
