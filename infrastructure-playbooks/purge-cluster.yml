@@ -296,13 +296,20 @@
   become: true
 
   tasks:
+    - import_role:
+        name: ceph-defaults
 
-  - name: stop ceph rgws with systemd
-    service:
-      name: ceph-radosgw@rgw.*
-      state: stopped
-      enabled: no
-    failed_when: false
+    - import_role:
+        name: ceph-facts
+        tasks_from: set_radosgw_address
+
+    - name: stop ceph rgws with systemd
+      service:
+        name: "ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}"
+        state: stopped
+        enabled: no
+      failed_when: false
+      with_items: "{{ rgw_instances }}"
 
 
 - name: purge ceph rbd-mirror cluster
