@@ -193,18 +193,25 @@
   become: true
 
   tasks:
+    - import_role:
+        name: ceph-defaults
 
-  - name: disable ceph rgw service
-    service:
-      name: "ceph-radosgw@*"
-      state: stopped
-      enabled: no
-    ignore_errors: true
+    - import_role:
+        name: ceph-facts
+        tasks_from: set_radosgw_address
 
-  - name: remove ceph rgw service
-    file:
-      path: /etc/systemd/system/ceph-radosgw@.service
-      state: absent
+    - name: disable ceph rgw service
+      service:
+        name: "ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}"
+        state: stopped
+        enabled: no
+      failed_when: false
+      with_items: "{{ rgw_instances }}"
+
+    - name: remove ceph rgw service
+      file:
+        path: /etc/systemd/system/ceph-radosgw@.service
+        state: absent
 
 
 - name: purge ceph rbd-mirror cluster
