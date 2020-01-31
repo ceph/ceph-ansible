@@ -273,12 +273,6 @@
   import_tasks: set_radosgw_address.yml
   when: inventory_hostname in groups.get(rgw_group_name, [])
 
-- name: set_fact rgw_instances
-  set_fact:
-    rgw_instances: "{{ rgw_instances|default([]) | union([{'instance_name': 'rgw' + item|string, 'radosgw_address': _radosgw_address, 'radosgw_frontend_port': radosgw_frontend_port|int + item|int}]) }}"
-  with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
-  when: inventory_hostname in groups.get(rgw_group_name, [])
-
 - name: set_fact use_new_ceph_iscsi package or old ceph-iscsi-config/cli
   set_fact:
     use_new_ceph_iscsi: "{{ (gateway_ip_list  == '0.0.0.0' and gateway_iqn | length == 0 and client_connections | length == 0 and rbd_devices | length == 0) | bool | ternary(true, false) }}"
