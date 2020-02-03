@@ -193,7 +193,7 @@
 
             - name: set_fact osd_fsid_list
               set_fact:
-                osd_fsid_list: "{{ osd_fsid_list | default([]) + [{'osd_fsid': item.tags['ceph.osd_fsid'], 'destroy': (item.lv_name.startswith('osd-data-') and item.vg_name.startswith('ceph-')) | ternary(true, false)}] }}"
+                osd_fsid_list: "{{ osd_fsid_list | default([]) + [{'osd_fsid': item.tags['ceph.osd_fsid'], 'destroy': (item.lv_name.startswith('osd-data-') and item.vg_name.startswith('ceph-')) | ternary(true, false), 'device': item.devices[0]}] }}"
               with_items: "{{ _lvm_list }}"
               when: item.type == 'data'
 
@@ -201,13 +201,27 @@
               ceph_volume:
                 action: "zap"
                 osd_fsid: "{{ item.osd_fsid }}"
-                destroy: "{{ item.destroy }}"
+                destroy: false
               environment:
                 CEPH_VOLUME_DEBUG: 1
                 CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
                 CEPH_CONTAINER_BINARY: "{{ container_binary }}"
               loop: "{{ osd_fsid_list }}"
               when: osd_fsid_list is defined
+
+            - name: zap destroy ceph-volume prepared devices
+              ceph_volume:
+                action: "zap"
+                data: "{{ item.device }}"
+                destroy: true
+              environment:
+                CEPH_VOLUME_DEBUG: 1
+                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+                CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+              loop: "{{ osd_fsid_list }}"
+              when:
+                - osd_fsid_list is defined
+                - item.destroy | bool
 
             - name: ensure all dm are closed
               command: dmsetup remove "{{ item['lv_path'] }}"
@@ -257,6 +271,23 @@
           setup:
             filter: ansible_devices
           when: osd_auto_discovery | bool
+
+        - name: update lvm_volumes configuration for bluestore
+          when: lvm_volumes is defined
+          block:
+            - name: reuse filestore journal partition for bluestore db
+              set_fact:
+                config_part: "{{ config_part | default([]) + [item | combine({'db': item.journal})] }}"
+              with_items: "{{ lvm_volumes | selectattr('journal_vg', 'undefined') | list }}"
+
+            - name: reuse filestore journal vg/lv for bluestore db
+              set_fact:
+                config_vglv: "{{ config_vglv | default([]) + [item | combine({'db': item.journal, 'db_vg': item.journal_vg})] }}"
+              with_items: "{{ lvm_volumes | selectattr('journal_vg', 'defined') | list }}"
+
+            - name: override lvm_volumes with bluestore configuration
+              set_fact:
+                lvm_volumes: "{{ config_part | default([]) + config_vglv | default([]) }}"
 
         - name: force osd_objectstore to bluestore
           set_fact:
