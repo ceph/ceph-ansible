@@ -263,6 +263,26 @@
       delay: "{{ health_mon_check_delay }}"
       when: containerized_deployment | bool
 
+    - name: unset osd flags
+      command: ceph --cluster {{ cluster }} osd unset {{ item }}
+      with_items:
+        - noout
+        - norebalance
+      delegate_to: "{{ mon_host }}"
+      when:
+        - inventory_hostname == groups[mon_group_name] | last
+        - not containerized_deployment | bool
+    - name: unset containerized osd flags
+      command: >
+        {{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd unset {{ item }}
+      with_items:
+        - noout
+        - norebalance
+      delegate_to: "{{ mon_host }}"
+      when:
+        - inventory_hostname == groups[mon_group_name] | last
+        - containerized_deployment | bool
+
 
 - name: reset mon_host
   hosts: "{{ mon_group_name|default('mons') }}"
