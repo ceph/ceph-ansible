@@ -50,3 +50,13 @@
       register: result
       until: result is succeeded
       when: nfs_obj_gw | bool
+
+    - name: install nfs-ganesha-rados-urls
+      package:
+        name: nfs-ganesha-rados-urls
+        state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+      register: result
+      until: result is succeeded
+      when:
+        - nfs_obj_gw | bool
+        - ceph_repository == 'rhcs'
