@@ -21,9 +21,8 @@
   add_host:
     name: "{{ item }}"
     groups: _filtered_clients
-  with_items: "{{ groups[client_group_name] }}"
-  when:
-    - (hostvars[item]['ansible_architecture'] == 'x86_64') or (not containerized_deployment)
+  with_items: "{{ groups[client_group_name] | intersect(ansible_play_batch) }}"
+  when: (hostvars[item]['ansible_architecture'] == 'x86_64') or (not containerized_deployment | bool)
 
 - name: run a dummy container (sleep 300) from where we can create pool(s)/key(s)
   command: >
