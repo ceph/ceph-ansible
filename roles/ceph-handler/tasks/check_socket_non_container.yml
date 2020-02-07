@@ -1,6 +1,6 @@
 ---
 - name: check for a ceph mon socket
-  shell: stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mon*.asok
+  shell: "stat --format=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mon*.asok"
   changed_when: false
   failed_when: false
   check_mode: no
@@ -27,8 +27,7 @@
     - mon_socket.rc == 1
 
 - name: check for a ceph osd socket
-  shell: |
-    stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-osd*.asok
+  shell: "stat --format=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-osd*.asok"
   changed_when: false
   failed_when: false
   check_mode: no
@@ -36,7 +35,7 @@
   when: inventory_hostname in groups.get(osd_group_name, [])
 
 - name: check if the ceph osd socket is in-use
-  command: grep -q {{ osd_socket_stat.stdout }} /proc/net/unix
+  command: grep -q {{ item }} /proc/net/unix
   changed_when: false
   failed_when: false
   check_mode: no
@@ -44,19 +43,22 @@
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     - osd_socket_stat.rc == 0
+  loop: "{{ osd_socket_stat.stdout_lines }}"
 
 - name: remove ceph osd socket if exists and not used by a process
   file:
-    name: "{{ osd_socket_stat.stdout }}"
+    name: "{{ item }}"
     state: absent
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     - osd_socket_stat.rc == 0
-    - osd_socket.rc == 1
+    - osd_socket.results[index].rc == 1
+  loop: "{{ osd_socket_stat.stdout_lines }}"
+  loop_control:
+    index_var: index
 
 - name: check for a ceph mds socket
-  shell: |
-    stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mds*.asok
+  shell: "stat --format=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mds*.asok"
   changed_when: false
   failed_when: false
   check_mode: no
@@ -83,8 +85,7 @@
     - mds_socket.rc == 1
 
 - name: check for a ceph rgw socket
-  shell: |
-    stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-client.rgw*.asok
+  shell: "stat --format=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-client.rgw*.asok"
   changed_when: false
   failed_when: false
   check_mode: no
@@ -111,8 +112,7 @@
     - rgw_socket.rc == 1
 
 - name: check for a ceph mgr socket
-  shell: |
-    stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mgr*.asok
+  shell: "stat --format=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mgr*.asok"
   changed_when: false
   failed_when: false
   check_mode: no
@@ -139,8 +139,7 @@
     - mgr_socket.rc == 1
 
 - name: check for a ceph rbd mirror socket
-  shell: |
-    stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-client.rbd-mirror*.asok
+  shell: "stat --format=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-client.rbd-mirror*.asok"
   changed_when: false
   failed_when: false
   check_mode: no
@@ -167,7 +166,7 @@
     - rbd_mirror_socket.rc == 1
 
 - name: check for a ceph nfs ganesha socket
-  command: stat --printf=%n /var/run/ganesha.pid
+  shell: "stat --format=%n /var/run/ganesha.pid"
   changed_when: false
   failed_when: false
   check_mode: no
