@@ -457,7 +457,6 @@
 - name: run crush rules on osd nodes
   hosts: "{{ osd_group_name|default('osds') }}"
   become: True
-  tasks:
   roles:
     - ceph-defaults
     - ceph-facts
@@ -465,6 +464,7 @@
     - import_role:
         name: ceph-osd
         tasks_from: crush_rules
+      when: hostvars[groups[mon_group_name][0]]['crush_rule_config'] | default(false) | bool
 
 
 - name: upgrade ceph mdss cluster, deactivate all rank > 0
