@@ -29,7 +29,7 @@
     - name: create volume group
       lvg:
         vg: test_group
-        pvs: /dev/sdb
+        pvs: "{{ pv_devices[0] | default('/dev/sdb') }}"
     - name: create logical volume 1
       lvol:
         vg: test_group
@@ -40,9 +40,9 @@
         vg: test_group
         lv: data-lv2
         size: 100%FREE
-    - name: partition /dev/sdc for journals
+    - name: partition  "{{ pv_devices[1] | default('/dev/sdc') }}"for journals
       parted:
-        device: /dev/sdc
+        device: "{{ pv_devices[1] | default('/dev/sdc') }}"
         number: 1
         part_start: 0%
         part_end: 50%
@@ -50,9 +50,9 @@
         label: gpt
         state: present
       tags: partitions
-    - name: partition /dev/sdc for journals
+    - name: partition  "{{ pv_devices[1] | default('/dev/sdc') }}"for journals
       parted:
-        device: /dev/sdc
+        device: "{{ pv_devices[1] | default('/dev/sdc') }}"
         number: 2
         part_start: 50%
         part_end: 100%
@@ -60,10 +60,10 @@
         state: present
         label: gpt
       tags: partitions
-    - name: create journals vg from /dev/sdc2
+    - name: create journals vg from  "{{ pv_devices[1] | default('/dev/sdc') }}2"
       lvg:
         vg: journals
-        pvs: /dev/sdc2
+        pvs: "{{ pv_devices[1] | default('/dev/sdc') }}2"
     - name: create journal1 lv
       lvol:
         vg: journals
