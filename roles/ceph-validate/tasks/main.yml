@@ -158,6 +158,13 @@
     - osd_objectstore == 'filestore'
     - osd_group_name in group_names
 
+- name: fail if no mgr host is present in the inventory
+  fail:
+    msg: "Please add a mgr host to your inventory."
+  when:
+    - groups.get(mon_group_name, []) | length > 0
+    - groups.get(mgr_group_name, []) | length == 0
+
 - name: include check_system.yml
   include_tasks: check_system.yml
 
