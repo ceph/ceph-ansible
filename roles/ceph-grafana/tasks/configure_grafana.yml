@@ -76,7 +76,7 @@
     group: "{{ grafana_uid }}"
     mode: 0640
   when:
-    - grafana_crt | bool
+    - grafana_crt | length > 0
     - dashboard_protocol == "https"
 
 - name: copy grafana SSL certificate key
@@ -87,7 +87,7 @@
     group: "{{ grafana_uid }}"
     mode: 0440
   when:
-    - grafana_key | bool
+    - grafana_key | length > 0
     - dashboard_protocol == "https"
 
 - name: generate a Self Signed OpenSSL certificate for dashboard
@@ -97,7 +97,7 @@
     chown {{ grafana_uid }}:{{ grafana_uid }} /etc/grafana/ceph-dashboard.key /etc/grafana/ceph-dashboard.crt)
   when:
     - dashboard_protocol == "https"
-    - not grafana_key | bool or not grafana_crt | bool
+    - grafana_key | length == 0 or grafana_crt | length == 0
 
 - name: enable and start grafana
   service:
