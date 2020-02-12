@@ -123,6 +123,18 @@
   vars:
     grafana_server_addr: '{{ item }}'
 
+- name: config grafana api url vip
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-url {{ dashboard_protocol }}://{{ dashboard_frontend_vip }}:{{ grafana_port }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  changed_when: false
+  when: dashboard_frontend_vip is defined and dashboard_frontend_vip |length > 0
+
+- include_tasks: configure_dashboard_backends.yml
+  with_items: '{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}'
+  vars:
+    dashboard_backend: '{{ item }}'
+
 - name: dashboard object gateway management frontend
   when: groups.get(rgw_group_name, []) | length > 0
   block:
