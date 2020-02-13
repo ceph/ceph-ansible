@@ -52,6 +52,17 @@
         permanent: true
         immediate: true
         state: enabled
+
+    - name: open alertmanager cluster port
+      firewalld:
+        port: "{{ alertmanager_cluster_port }}/{{ item }}"
+        zone: "{{ ceph_dashboard_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items:
+        - "tcp"
+        - "udp"
   when:
     - grafana_server_group_name is defined
     - grafana_server_group_name in group_names
