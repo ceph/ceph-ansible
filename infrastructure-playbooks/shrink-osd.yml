@@ -68,6 +68,10 @@
         container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
       when: containerized_deployment | bool
 
+    - name: set_fact container_run_cmd
+      set_fact:
+        container_run_cmd: "{{ container_binary + ' run --rm --privileged=true --ulimit nofile=1024:4096 --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment else '' }}ceph-volume {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else '' }}"
+
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd }} timeout 5 ceph --cluster {{ cluster }} health"
       register: ceph_health
@@ -82,16 +86,50 @@
 
     - name: set_fact osd_hosts
       set_fact:
-        osd_hosts: "{{ osd_hosts | default([]) + [ [ (item.stdout | from_json).crush_location.host, (item.stdout | from_json).osd_fsid ] ] }}"
+        osd_hosts: "{{ osd_hosts | default([]) + [ [ (item.stdout | from_json).crush_location.host, (item.stdout | from_json).osd_fsid, item.item ] ] }}"
       with_items: "{{ find_osd_hosts.results }}"
 
     - name: set_fact _osd_hosts
       set_fact:
-        _osd_hosts: "{{ _osd_hosts | default([]) + [ [ item.0, item.2 ] ] }}"
+        _osd_hosts: "{{ _osd_hosts | default([]) + [ [ item.0, item.2, item.3 ] ] }}"
       with_nested:
         - "{{ groups.get(osd_group_name) }}"
         - "{{ osd_hosts }}"
       when: hostvars[item.0]['ansible_hostname'] == item.1
+
+    - name: get ceph-volume lvm list data
+      command: "{{ container_run_cmd }} lvm list --format json"
+      register: _lvm_list_data
+      delegate_to: "{{ item.0 }}"
+      loop: "{{ _osd_hosts }}"
+
+    - name: set_fact _lvm_list
+      set_fact:
+        _lvm_list: "{{ _lvm_list | default({}) | combine(item.stdout | from_json) }}"
+      with_items: "{{ _lvm_list_data.results }}"
+
+    - name: find /etc/ceph/osd files
+      find:
+        paths: /etc/ceph/osd
+        pattern: "{{ item.2 }}-*"
+      register: ceph_osd_data
+      delegate_to: "{{ item.0 }}"
+      loop: "{{ _osd_hosts }}"
+      when: item.2 not in _lvm_list.keys()
+
+    - name: slurp ceph osd files content
+      slurp:
+        src: "{{ item['files'][0]['path'] }}"
+      delegate_to: "{{ item.item.0 }}"
+      register: ceph_osd_files_content
+      loop: "{{ ceph_osd_data.results }}"
+      when: item.skipped is undefined
+
+    - name: set_fact ceph_osd_files_json
+      set_fact:
+        ceph_osd_data_json: "{{ ceph_osd_data_json | default({}) | combine({ item.item.item.2: item.content | b64decode | from_json}) }}"
+      with_items: "{{ ceph_osd_files_content.results }}"
+      when: item.skipped is undefined
 
     - name: mark osd(s) out of the cluster
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ osd_to_kill.replace(',', ' ') }}"
@@ -99,11 +137,74 @@
 
     - name: stop osd(s) service
       service:
-        name: ceph-osd@{{ item.0 }}
+        name: ceph-osd@{{ item.2 }}
         state: stopped
         enabled: no
-      loop: "{{ osd_to_kill.split(',')|zip(_osd_hosts)|list }}"
-      delegate_to: "{{ item.1.0 }}"
+      loop: "{{ _osd_hosts }}"
+      delegate_to: "{{ item.0 }}"
+
+    - name: umount osd lockbox
+      mount:
+        path: "/var/lib/ceph/osd-lockbox/{{ ceph_osd_data_json[item.2]['data']['uuid'] }}"
+        state: unmounted
+      loop: "{{ _osd_hosts }}"
+      delegate_to: "{{ item.0 }}"
+      when:
+        - not containerized_deployment | bool
+        - item.2 not in _lvm_list.keys()
+        - ceph_osd_data_json[item.2]['encrypted'] | default(False) | bool
+        - ceph_osd_data_json[item.2]['data']['uuid'] is defined
+
+    - name: umount osd data
+      mount:
+        path: "/var/lib/ceph/osd/{{ cluster }}-{{ item.2 }}"
+        state: unmounted
+      loop: "{{ _osd_hosts }}"
+      delegate_to: "{{ item.0 }}"
+      when:
+        - not containerized_deployment | bool
+        - item.2 not in _lvm_list.keys()
+
+    - name: get parent device for data partition
+      command: lsblk --noheadings --output PKNAME --nodeps "{{ ceph_osd_data_json[item.2]['data']['path'] }}"
+      register: parent_device_data_part
+      loop: "{{ _osd_hosts }}"
+      delegate_to: "{{ item.0 }}"
+      when:
+        - item.2 not in _lvm_list.keys()
+        - ceph_osd_data_json[item.2]['data']['path'] is defined
+
+    - name: add pkname information in ceph_osd_data_json
+      set_fact:
+        ceph_osd_data_json: "{{ ceph_osd_data_json | default({}) | combine({item.item[2]: {'pkname_data': '/dev/' + item.stdout}}, recursive=True) }}"
+      loop: "{{ parent_device_data_part.results }}"
+      when: item.skipped is undefined
+
+    - name: close dmcrypt close on devices if needed
+      command: "cryptsetup close {{ ceph_osd_data_json[item.2][item.3]['uuid'] }}"
+      with_nested:
+        - "{{ _osd_hosts }}"
+        - [ 'block_dmcrypt', 'block.db_dmcrypt', 'block.wal_dmcrypt', 'data', 'journal_dmcrypt' ]
+      delegate_to: "{{ item.0 }}"
+      failed_when: false
+      register: result
+      until: result is succeeded
+      when:
+        - item.2 not in _lvm_list.keys()
+        - ceph_osd_data_json[item.2]['encrypted'] | bool
+        - ceph_osd_data_json[item.2][item.3] is defined
+
+    - name: use ceph-volume lvm zap to destroy all partitions
+      command: "{{ container_run_cmd }} lvm zap --destroy {{ ceph_osd_data_json[item.2]['pkname_data'] if item.3 == 'data' else ceph_osd_data_json[item.2][item.3]['path'] }}"
+      with_nested:
+        - "{{ _osd_hosts }}"
+        - [ 'block', 'block.db', 'block.wal', 'journal', 'data' ]
+      delegate_to: "{{ item.0 }}"
+      failed_when: false
+      register: result
+      when:
+        - item.2 not in _lvm_list.keys()
+        - ceph_osd_data_json[item.2][item.3] is defined
 
     - name: zap osd devices
       ceph_volume:
@@ -115,6 +216,12 @@
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       delegate_to: "{{ item.0 }}"
       loop: "{{ _osd_hosts }}"
+      when: item.2 in _lvm_list.keys()
+
+    - name: ensure osds are marked down
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd down {{ osd_to_kill.replace(',', ' ') }}"
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: purge osd(s) from the cluster
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it"
