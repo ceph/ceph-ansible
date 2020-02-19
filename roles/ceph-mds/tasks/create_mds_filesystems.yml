@@ -96,3 +96,8 @@
   when:
     - mds_max_mds > 1
     - not rolling_update
+
+- name: set allow_standby_replay
+  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs set {{ cephfs }} allow_standby_replay {{ mds_allow_standby_replay }}"
+  changed_when: false
+  delegate_to: "{{ groups[mon_group_name][0] }}"
