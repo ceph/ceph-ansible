@@ -24,7 +24,7 @@
         tasks_from: container_binary
 
 - name: perform checks, remove mds and print cluster health
-  hosts: localhost
+  hosts: "{{ groups[mon_group_name][0] }}"
   become: true
   vars_prompt:
     - name: ireallymeanit
@@ -61,14 +61,13 @@
 
     - name: set_fact container_exec_cmd for mon0
       set_fact:
-        container_exec_cmd: "{{ hostvars[groups[mon_group_name][0]]['container_binary'] }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
       when: containerized_deployment | bool
 
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} health"
       register: ceph_health
       until: ceph_health is succeeded
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: 5
       delay: 2
 
@@ -82,12 +81,10 @@
     - name: exit mds if it the deployment is containerized
       when: containerized_deployment | bool
       command: "{{ container_exec_cmd | default('') }} ceph tell mds.{{ mds_to_kill }} exit"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: get ceph status
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
       register: ceph_status
-      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: set_fact current_max_mds
       set_fact:
@@ -123,7 +120,6 @@
         - name: get new ceph status
           command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
           register: ceph_status
-          delegate_to: "{{ groups[mon_group_name][0] }}"
 
         - name: get active mds nodes list
           set_fact:
@@ -133,7 +129,6 @@
         - name: get ceph fs dump status
           command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs dump -f json"
           register: ceph_fs_status
-          delegate_to: "{{ groups[mon_group_name][0] }}"
 
         - name: create a list of standby mdss
           set_fact:
@@ -148,7 +143,6 @@
 
     - name: delete the filesystem when killing last mds
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs rm --yes-i-really-mean-it {{ cephfs }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       when:
         - (ceph_status.stdout | from_json)['fsmap']['up'] | int == 0
         - (ceph_status.stdout | from_json)['fsmap']['up:standby'] | int == 0
@@ -162,4 +156,3 @@
   post_tasks:
     - name: show ceph health
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
