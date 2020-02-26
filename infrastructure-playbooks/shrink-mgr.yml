@@ -51,21 +51,18 @@
     - name: get total number of mgrs in cluster
       block:
         - name: save mgr dump output
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{cluster}} mgr dump"
+          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{cluster}} mgr dump -f json"
           register: mgr_dump
 
-        - name: get a list of names of standby mgrs
-          set_fact:
-            standby_mgrs: "{{ (mgr_dump.stdout | from_json)['standbys'] | map(attribute='name') | list }}"
-
-        - name: get active mgr
+        - name: get active and standbys mgr list
           set_fact:
             active_mgr: "{{ [mgr_dump.stdout | from_json] | map(attribute='active_name') | list }}"
+            standbys_mgr: "{{ (mgr_dump.stdout | from_json)['standbys'] | map(attribute='name') | list }}"
 
     - name: exit playbook, if there's no standby manager
       fail:
         msg: "You are about to shrink the only manager present in the cluster."
-      when: standby_mgrs | length | int < 1
+      when: standbys_mgr | length | int < 1
 
     - name: exit playbook, if no manager was given
       fail:
@@ -82,7 +79,7 @@
               please make sure it is."
       when:
         - mgr_to_kill not in active_mgr
-        - mgr_to_kill not in standby_mgrs
+        - mgr_to_kill not in standbys_mgr
 
     - name: exit playbook, if user did not mean to shrink cluster
       fail:
@@ -107,20 +104,21 @@
           delegate_to: "{{ mgr_to_kill }}"
           failed_when: false
 
-        - name: ensure that the mds is stopped
-          command: "systemctl is-active ceph_mds@{{ mgr_to_kill_hostname }}"
+        - name: ensure that the mgr is stopped
+          command: "systemctl is-active ceph-mgr@{{ mgr_to_kill_hostname }}"
           register: mgr_to_kill_status
           failed_when: mgr_to_kill_status.rc == 0
           delegate_to: "{{ mgr_to_kill }}"
           retries: 5
           delay: 2
 
-    - name: fail if the mgr is reported in ceph status
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | grep {{ mgr_to_kill }}"
-      register: mgr_in_ceph_status
-      failed_when: mgr_in_ceph_status.rc == 0
-      retries: 3
-      delay: 5
+    - name: fail if the mgr is reported in ceph mgr dump
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} mgr dump -f json"
+      register: mgr_dump
+      failed_when: mgr_to_kill_hostname in (([mgr_dump.stdout | from_json] | map(attribute='active_name') | list) + (mgr_dump.stdout | from_json)['standbys'] | map(attribute='name') | list)
+      until: mgr_to_kill_hostname not in (([mgr_dump.stdout | from_json] | map(attribute='active_name') | list) + (mgr_dump.stdout | from_json)['standbys'] | map(attribute='name') | list)
+      retries: 12
+      delay: 10
 
     - name: purge manager store
       file:
