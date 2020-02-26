@@ -22,7 +22,7 @@
 
 - name: confirm whether user really meant to remove rbd mirror from the ceph
         cluster
-  hosts: localhost
+  hosts: "{{ groups[mon_group_name][0] }}"
   become: true
   vars_prompt:
     - name: ireallymeanit
@@ -35,6 +35,7 @@
 
     - import_role:
         name: ceph-facts
+        tasks_from: container_binary
 
     - name: exit playbook, if no rbdmirror was given
       fail:
@@ -63,13 +64,12 @@
     - name: set_fact container_exec_cmd for mon0
       when: containerized_deployment | bool
       set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
 
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} -s -f json"
       register: ceph_health
       until: ceph_health is succeeded
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: 5
       delay: 2
 
@@ -108,7 +108,6 @@
     - name: get servicemap details
       command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} -s -f json"
       register: ceph_health
-      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: set_fact rbdmirror_gids
       set_fact:
@@ -120,7 +119,6 @@
 
     - name: show ceph health
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: check presence of "{{ rbdmirror_to_kill_hostname }}"
       fail:

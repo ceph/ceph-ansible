@@ -21,7 +21,7 @@
         msg: gather facts on all Ceph hosts for following reference
 
 - name: confirm if user really meant to remove manager from the ceph cluster
-  hosts: localhost
+  hosts: "{{ groups[mon_group_name][0] }}"
   become: true
   vars_prompt:
     - name: ireallymeanit
@@ -34,17 +34,17 @@
 
     - import_role:
         name: ceph-facts
+        tasks_from: container_binary
 
     - name: set_fact container_exec_cmd
       when: containerized_deployment | bool
       set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
 
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} health"
       register: ceph_health
       until: ceph_health is succeeded
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: 5
       delay: 2
 
@@ -53,7 +53,6 @@
         - name: save mgr dump output
           command: "{{ container_exec_cmd | default('') }} ceph --cluster {{cluster}} mgr dump"
           register: mgr_dump
-          delegate_to: "{{ groups[mon_group_name][0] }}"
 
         - name: get a list of names of standby mgrs
           set_fact:
@@ -120,7 +119,6 @@
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json | grep {{ mgr_to_kill }}"
       register: mgr_in_ceph_status
       failed_when: mgr_in_ceph_status.rc == 0
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: 3
       delay: 5
 
@@ -133,4 +131,3 @@
   post_tasks:
     - name: show ceph health
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
