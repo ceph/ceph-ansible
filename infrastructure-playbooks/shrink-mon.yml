@@ -22,7 +22,7 @@
     - debug: msg="gather facts on all Ceph hosts for following reference"
 
 - name: confirm whether user really meant to remove monitor from the ceph cluster
-  hosts: localhost
+  hosts: "{{ groups[mon_group_name][0] }}"
   become: true
   vars_prompt:
     - name: ireallymeanit
@@ -65,6 +65,7 @@
 
     - import_role:
         name: ceph-facts
+        tasks_from: container_binary
 
   tasks:
     - name: pick a monitor different than the one we want to remove
