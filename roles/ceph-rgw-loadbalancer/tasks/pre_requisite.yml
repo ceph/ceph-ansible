@@ -1,10 +1,68 @@
 ---
+- name: assert that keepalived_version is defined
+  assert:
+    that:
+      - keepalived_version == 'distro' or keepalived_version is version('0.0.0', '>', strict=True)
+    fail_msg: keepalived_version must either be 'distro' or valid version number
+
 - name: install haproxy and keepalived
   package:
     name: ['haproxy', 'keepalived']
     state: present
   register: result
   until: result is succeeded
+
+- name: install non-distro version of keepalived
+  block:
+
+    - name: install required packages for keepalived on debian
+      apt:
+        name: ['curl', 'gcc', 'libssl-dev', 'libnl-3-dev', 'libnl-genl-3-dev', 'libsnmp-dev']
+        state: present
+      when: ansible_os_family == 'Debian'
+
+    - name: install required packages for keepalived on redhat
+      yum:
+        name: ['curl', 'gcc', 'openssl-devel', 'libnl3-devel', 'net-snmp-devel']
+        state: present
+      when: ansible_os_family == 'RedHat'
+
+    - name: check if specified keepalived version already exists
+      command: "ls /usr/sbin/keepalived-{{ keepalived_version }}"
+      failed_when: false
+      changed_when: false
+      register: check_keepalived_version
+
+    - name: unarchive keepalived
+      unarchive:
+        src: "{{ keepalived_url }}"
+        dest: /tmp/
+        remote_src: true
+        owner: root
+        group: root
+      when: check_keepalived_version.rc != 0
+
+    - name: build keepalived
+      command: "./configure --prefix=/usr/sbin/keepalived-{{ keepalived_version }}"
+      args:
+        chdir: "/tmp/keepalived-{{ keepalived_version }}/"
+      when: check_keepalived_version.rc != 0
+
+    - name: install keepalived
+      make:
+        chdir: "/tmp/keepalived-{{ keepalived_version }}/"
+        target: install
+      when: check_keepalived_version.rc != 0
+
+    - name: update binary to updated keepalived version
+      file:
+        path: /usr/sbin/keepalived
+        src: "/usr/sbin/keepalived-{{ keepalived_version }}/sbin/keepalived"
+        state: link
+        force: true
+      notify: restart keepalived
+
+  when: keepalived_version != 'distro'
 
 - name: "generate haproxy configuration file: haproxy.cfg"
   template:
