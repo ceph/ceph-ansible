@@ -277,6 +277,7 @@ def batch(module, container_image):
     objectstore = module.params['objectstore']
     batch_devices = module.params.get('batch_devices', None)
     crush_device_class = module.params.get('crush_device_class', None)
+    journal_devices = module.params.get('journal_devices', None)
     journal_size = module.params.get('journal_size', None)
     block_db_size = module.params.get('block_db_size', None)
     block_db_devices = module.params.get('block_db_devices', None)
@@ -318,6 +319,9 @@ def batch(module, container_image):
         cmd.extend(['--block-db-size', block_db_size])
 
     cmd.extend(batch_devices)
+
+    if journal_devices and objectstore == 'filestore':
+        cmd.extend(['--journal-devices', ' '.join(journal_devices)])
 
     if block_db_devices and objectstore == 'bluestore':
         cmd.extend(['--db-devices', ' '.join(block_db_devices)])
@@ -512,6 +516,7 @@ def run_module():
         batch_devices=dict(type='list', required=False, default=[]),
         osds_per_device=dict(type='int', required=False, default=1),
         journal_size=dict(type='str', required=False, default='5120'),
+        journal_devices=dict(type='str', required=False, default=False),
         block_db_size=dict(type='str', required=False, default='-1'),
         block_db_devices=dict(type='list', required=False, default=[]),
         wal_devices=dict(type='list', required=False, default=[]),
