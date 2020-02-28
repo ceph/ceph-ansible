@@ -344,3 +344,29 @@ class TestCephVolumeModule(object):
         result = ceph_volume.batch(
             fake_module, fake_container_image)
         assert result == expected_command_list
+
+    def test_batch_filestore_with_dedicated_journal(self):
+        fake_module = MagicMock()
+        fake_module.params = {'objectstore': 'filestore',
+                              'journal_size': '100',
+                              'cluster': 'ceph',
+                              'batch_devices': ["/dev/sda", "/dev/sdb"],
+                              'journal_devices': ["/dev/sdc"]}
+
+        fake_container_image = None
+        expected_command_list = ['ceph-volume',
+                                 '--cluster',
+                                 'ceph',
+                                 'lvm',
+                                 'batch',
+                                 '--filestore',
+                                 '--yes',
+                                 '--journal-size',
+                                 '100',
+                                 '/dev/sda',
+                                 '/dev/sdb',
+                                 '--journal-devices',
+                                 '/dev/sdc']
+        result = ceph_volume.batch(
+            fake_module, fake_container_image)
+        assert result == expected_command_list
