@@ -1,0 +1,11 @@
+---
+- name: fail if target_size_ratio is not set when pg_autoscale_mode is True
+  fail:
+    msg: "You must set a target_size_ratio value on following pool: {{ item.name }}."
+  with_items:
+    - "{{ openstack_pools | default([]) }}"
+    - "{{ cephfs_pools | default([]) }}"
+    - "{{ pools | default([]) }}"
+  when:
+    - item.pg_autoscale_mode | default(False) | bool
+    - item.target_size_ratio is undefined

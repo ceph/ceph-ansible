@@ -327,6 +327,22 @@ mon_host_v2:
 ##########
 # CEPHFS #
 ##########
+# When pg_autoscale_mode is set to True, you must add the target_size_ratio key with a correct value
+# `pg_num` and `pgp_num` keys will be ignored, even if specified.
+# eg:
+#  cephfs_data_pool:
+#    name: "{{ cephfs_data if cephfs_data is defined else 'cephfs_data' }}"
+#    pg_num: "{{ osd_pool_default_pg_num }}"
+#    pgp_num: "{{ osd_pool_default_pg_num }}"
+#    rule_name: "replicated_rule"
+#    type: 1
+#    erasure_profile: ""
+#    expected_num_objects: ""
+#    application: "cephfs"
+#    size: "{{ osd_pool_default_size }}"
+#    min_size: "{{ osd_pool_default_min_size }}"
+#    pg_autoscale_mode: False
+#    target_size_ratio: 0.2
 cephfs: cephfs # name of the ceph filesystem
 cephfs_data_pool:
   name: "{{ cephfs_data if cephfs_data is defined else 'cephfs_data' }}"
@@ -339,6 +355,7 @@ cephfs_data_pool:
   application: "cephfs"
   size: "{{ osd_pool_default_size }}"
   min_size: "{{ osd_pool_default_min_size }}"
+  pg_autoscale_mode: False
 cephfs_metadata_pool:
   name: "{{ cephfs_metadata if cephfs_metadata is defined else 'cephfs_metadata' }}"
   pg_num: "{{ osd_pool_default_pg_num }}"
@@ -350,6 +367,7 @@ cephfs_metadata_pool:
   application: "cephfs"
   size: "{{ osd_pool_default_size }}"
   min_size: "{{ osd_pool_default_min_size }}"
+  pg_autoscale_mode: False
 cephfs_pools:
   - "{{ cephfs_data_pool }}"
   - "{{ cephfs_metadata_pool }}"
@@ -593,6 +611,22 @@ docker_pull_timeout: "300s"
 # OPENSTACK #
 #############
 openstack_config: false
+# When pg_autoscale_mode is set to True, you must add the target_size_ratio key with a correct value
+# `pg_num` and `pgp_num` keys will be ignored, even if specified.
+# eg:
+#  openstack_glance_pool:
+#    name: "images"
+#    pg_num: "{{ osd_pool_default_pg_num }}"
+#    pgp_num: "{{ osd_pool_default_pg_num }}"
+#    rule_name: "replicated_rule"
+#    type: 1
+#    erasure_profile: ""
+#    expected_num_objects: ""
+#    application: "rbd"
+#    size: "{{ osd_pool_default_size }}"
+#    min_size: "{{ osd_pool_default_min_size }}"
+#    pg_autoscale_mode: False
+#    target_size_ratio: 0.2
 openstack_glance_pool:
   name: "images"
   pg_num: "{{ osd_pool_default_pg_num }}"
@@ -604,6 +638,7 @@ openstack_glance_pool:
   application: "rbd"
   size: "{{ osd_pool_default_size }}"
   min_size: "{{ osd_pool_default_min_size }}"
+  pg_autoscale_mode: False
 openstack_cinder_pool:
   name: "volumes"
   pg_num: "{{ osd_pool_default_pg_num }}"
@@ -615,6 +650,7 @@ openstack_cinder_pool:
   application: "rbd"
   size: "{{ osd_pool_default_size }}"
   min_size: "{{ osd_pool_default_min_size }}"
+  pg_autoscale_mode: False
 openstack_nova_pool:
   name: "vms"
   pg_num: "{{ osd_pool_default_pg_num }}"
@@ -626,6 +662,7 @@ openstack_nova_pool:
   application: "rbd"
   size: "{{ osd_pool_default_size }}"
   min_size: "{{ osd_pool_default_min_size }}"
+  pg_autoscale_mode: False
 openstack_cinder_backup_pool:
   name: "backups"
   pg_num: "{{ osd_pool_default_pg_num }}"
@@ -637,6 +674,7 @@ openstack_cinder_backup_pool:
   application: "rbd"
   size: "{{ osd_pool_default_size }}"
   min_size: "{{ osd_pool_default_min_size }}"
+  pg_autoscale_mode: False
 openstack_gnocchi_pool:
   name: "metrics"
   pg_num: "{{ osd_pool_default_pg_num }}"
@@ -648,6 +686,7 @@ openstack_gnocchi_pool:
   application: "rbd"
   size: "{{ osd_pool_default_size }}"
   min_size: "{{ osd_pool_default_min_size }}"
+  pg_autoscale_mode: False
 openstack_cephfs_data_pool:
   name: "manila_data"
   pg_num: "{{ osd_pool_default_pg_num }}"
@@ -659,6 +698,7 @@ openstack_cephfs_data_pool:
   application: "cephfs"
   size: "{{ osd_pool_default_size }}"
   min_size: "{{ osd_pool_default_min_size }}"
+  pg_autoscale_mode: False
 openstack_cephfs_metadata_pool:
   name: "manila_metadata"
   pg_num: "{{ osd_pool_default_pg_num }}"
@@ -670,7 +710,7 @@ openstack_cephfs_metadata_pool:
   application: "cephfs"
   size: "{{ osd_pool_default_size }}"
   min_size: "{{ osd_pool_default_min_size }}"
-
+  pg_autoscale_mode: False
 openstack_pools:
   - "{{ openstack_glance_pool }}"
   - "{{ openstack_cinder_pool }}"

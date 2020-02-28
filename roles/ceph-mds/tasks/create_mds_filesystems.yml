@@ -25,20 +25,30 @@
           command: >
             {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
             osd pool create {{ item.name }}
-            {{ item.pg_num | default(osd_pool_default_pg_num) }}
-            {{ item.pgp_num | default(item.pg_num) | default(osd_pool_default_pg_num) }}
+            {{ item.pg_num | default(osd_pool_default_pg_num) if not item.pg_autoscale_mode | default(False) | bool else 16 }}
+            {{ item.pgp_num | default(item.pg_num) | default(osd_pool_default_pg_num) if not item.pg_autoscale_mode | default(False) | bool else '' }}
             {%- if item.type | default(1) | int == 1 or item.type | default('replicated') == 'replicated' %}
             replicated
             {{ item.rule_name | default(osd_pool_default_crush_rule) }}
+            {{ item.expected_num_objects | default(0) }}
             {%- else %}
             erasure
             {{ item.erasure_profile }}
-            {{ item.rule_name | default('erasure-code') }}
             {%- endif %}
-            {{ item.expected_num_objects | default(0) }}
           changed_when: false
           with_items:
             - "{{ cephfs_pools }}"
+
+        - name: set the target ratio on pool(s)
+          command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} target_size_ratio {{ item.target_size_ratio }}"
+          with_items: "{{ cephfs_pools | unique }}"
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          when: item.pg_autoscale_mode | default(False) | bool
+
+        - name: set pg_autoscale_mode value on pool(s)
+          command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode {{ item.pg_autoscale_mode | default(False) | ternary('on', 'warn') }}"
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          with_items: "{{ cephfs_pools | unique }}"
 
         - name: customize pool size
           command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }}"
