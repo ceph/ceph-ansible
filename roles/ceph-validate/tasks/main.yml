@@ -239,3 +239,34 @@
     - ceph_docker_registry_auth | bool
     - (ceph_docker_registry_username is not defined or ceph_docker_registry_password is not defined) or
       (ceph_docker_registry_username | length == 0 or ceph_docker_registry_password | length == 0)
+
+- name: validate openstack_keys key format
+  fail:
+    msg: '{{ item.name }} key format invalid'
+  with_items: '{{ openstack_keys }}'
+  when:
+    - osd_group_name in group_names
+    - openstack_keys is defined
+    - openstack_keys | length > 0
+    - item.key is defined
+    - item.key is not match("^[a-zA-Z0-9+/]{38}==$")
+
+- name: validate clients keys key format
+  fail:
+    msg: '{{ item.name }} key format invalid'
+  with_items: '{{ keys }}'
+  when:
+    - client_group_name in group_names
+    - keys is defined
+    - keys | length > 0
+    - item.key is defined
+    - item.key is not match("^[a-zA-Z0-9+/]{38}==$")
+
+- name: validate ceph_nfs_ceph_user key format
+  fail:
+    msg: '{{ ceph_nfs_ceph_user.name }} key format invalid'
+  when:
+    - client_group_name in group_names
+    - ceph_nfs_ceph_user is defined
+    - ceph_nfs_ceph_user.key is defined
+    - ceph_nfs_ceph_user.key is not match("^[a-zA-Z0-9+/]{38}==$")
