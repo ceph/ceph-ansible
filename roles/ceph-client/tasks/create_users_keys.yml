@@ -83,17 +83,16 @@
       command: >
         {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
         osd pool create {{ item.0.name }}
-        {{ item.0.pg_num | default(osd_pool_default_pg_num) }}
-        {{ item.0.pgp_num | default(item.0.pg_num) | default(osd_pool_default_pg_num) }}
+        {{ item.0.pg_num | default(osd_pool_default_pg_num) if not item.0.pg_autoscale_mode | default(False) | bool else 16 }}
+        {{ item.0.pgp_num | default(item.0.pg_num) | default(osd_pool_default_pg_num) if not item.0.pg_autoscale_mode | default(False) | bool else '' }}
         {%- if item.0.type | default(1) | int == 1 or item.0.type | default('replicated') == 'replicated' %}
         replicated
         {{ item.0.rule_name | default(osd_pool_default_crush_rule) }}
+        {{ item.0.expected_num_objects | default(0) }}
         {%- else %}
         erasure
         {{ item.0.erasure_profile }}
-        {{ item.0.rule_name | default('erasure-code') }}
         {%- endif %}
-        {{ item.0.expected_num_objects | default(0) }}
       with_together:
         - "{{ pools }}"
         - "{{ created_pools.results }}"
@@ -102,6 +101,17 @@
       when:
         - pools | length > 0
         - item.1.rc != 0
+
+    - name: set the target ratio on pool(s)
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} target_size_ratio {{ item.target_size_ratio }}"
+      with_items: "{{ pools | unique }}"
+      delegate_to: "{{ delegated_node }}"
+      when: item.pg_autoscale_mode | default(False) | bool
+
+    - name: set pg_autoscale_mode value on pool(s)
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode {{ item.pg_autoscale_mode | default(False) | ternary('on', 'warn') }}"
+      delegate_to: "{{ delegated_node }}"
+      with_items: "{{ pools | unique }}"
 
     - name: customize pool size
       command: >
