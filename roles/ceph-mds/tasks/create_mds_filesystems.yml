@@ -27,12 +27,15 @@
             osd pool create {{ item.name }}
             {{ item.pg_num | default(osd_pool_default_pg_num) }}
             {{ item.pgp_num | default(item.pg_num) | default(osd_pool_default_pg_num) }}
-            {{ 'replicated_rule' if not item.rule_name | default('replicated_rule') else item.rule_name | default('replicated_rule') }}
-            {{ 1 if item.type|default(1) == 'replicated' else 3 if item.type|default(1) == 'erasure' else item.type|default(1) }}
-            {%- if (item.type | default("1") == '3' or item.type | default("1") == 'erasure') and item.erasure_profile | length > 0 %}
+            {%- if item.type | default(1) | int == 1 or item.type | default('replicated') == 'replicated' %}
+            replicated
+            {{ item.rule_name | default(osd_pool_default_crush_rule) }}
+            {%- else %}
+            erasure
             {{ item.erasure_profile }}
+            {{ item.rule_name | default('erasure-code') }}
             {%- endif %}
-            {{ item.expected_num_objects | default('') }}
+            {{ item.expected_num_objects | default(0) }}
           changed_when: false
           with_items:
             - "{{ cephfs_pools }}"
