@@ -551,6 +551,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         end
         lv.memory = MEMORY
         lv.random_hostname = true
+        lv.random :model => 'random'
       end
 
       # Parallels
