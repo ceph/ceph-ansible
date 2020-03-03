@@ -50,7 +50,10 @@
       with_items: "{{ openstack_pools | unique }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
-      when: item.size | default(osd_pool_default_size)
+      when:
+        - item.size | default(osd_pool_default_size)
+        - item.type | default(1) | int != 3
+        - item.type | default('replicated') != 'erasure'
 
     - name: customize pool min_size
       command: >
@@ -59,7 +62,10 @@
       with_items: "{{ openstack_pools | unique }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
-      when: (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
+      when:
+        - (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
+        - item.type | default(1) | int != 3
+        - item.type | default('replicated') != 'erasure'
 
     - name: assign application to pool(s)
       command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
