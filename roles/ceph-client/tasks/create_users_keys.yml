@@ -122,6 +122,8 @@
       changed_when: false
       when:
         - pools | length > 0
+        - item.type | default(1) | int != 3
+        - item.type | default('replicated') != 'erasure'
         - item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
 
     - name: customize pool min_size
@@ -134,6 +136,8 @@
       when:
         - pools | length > 0
         - (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
+        - item.type | default(1) | int != 3
+        - item.type | default('replicated') != 'erasure'
 
     - name: assign application to pool(s)
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
