@@ -516,7 +516,7 @@ def run_module():
         batch_devices=dict(type='list', required=False, default=[]),
         osds_per_device=dict(type='int', required=False, default=1),
         journal_size=dict(type='str', required=False, default='5120'),
-        journal_devices=dict(type='str', required=False, default=False),
+        journal_devices=dict(type='list', required=False, default=[]),
         block_db_size=dict(type='str', required=False, default='-1'),
         block_db_devices=dict(type='list', required=False, default=[]),
         wal_devices=dict(type='list', required=False, default=[]),
