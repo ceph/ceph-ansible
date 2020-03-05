@@ -178,6 +178,16 @@
                 enabled: no
               with_items: "{{ (ceph_volume_lvm_list.stdout | from_json).keys() | list }}"
 
+            - name: stop and disable ceph-volume services
+              service:
+                name: "ceph-volume@lvm-{{ item.tags['ceph.osd_id'] }}-{{ item.tags['ceph.osd_fsid'] }}"
+                state: stopped
+                enabled: no
+              with_items: "{{ _lvm_list }}"
+              when:
+                - not containerized_deployment | bool
+                - item.type == 'data'
+
             - name: mark down osds
               command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd down {{ item }}"
               with_items: "{{ (ceph_volume_lvm_list.stdout | from_json).keys() | list }}"
