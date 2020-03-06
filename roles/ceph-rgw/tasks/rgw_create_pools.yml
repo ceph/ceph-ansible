@@ -39,12 +39,20 @@
 - name: create replicated pools for rgw
   command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num | default(osd_pool_default_pg_num) }} replicated"
   changed_when: false
+  register: result
+  retries: 60
+  delay: 3
+  until: result is succeeded
   with_dict: "{{ rgw_create_pools }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when: item.value.type is not defined or item.value.type == 'replicated'
 
 - name: customize replicated pool size
   command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool set {{ item.key }} size {{ item.value.size | default(osd_pool_default_size) }}"
+  register: result
+  retries: 60
+  delay: 3
+  until: result is succeeded
   with_dict: "{{ rgw_create_pools }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
@@ -54,6 +62,10 @@
 
 - name: set the rgw_create_pools pools application to rgw
   command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool application enable {{ item.key }} rgw"
+  register: result
+  retries: 60
+  delay: 3
+  until: result is succeeded
   changed_when: false
   with_dict: "{{ rgw_create_pools }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
