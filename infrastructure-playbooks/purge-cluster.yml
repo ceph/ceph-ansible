@@ -21,15 +21,21 @@
       default: 'no'
       private: no
 
+    - name: ireallyreallymeanit
+      prompt: Are you really sure you want to purge the cluster?
+      default: 'no'
+      private: no
+
   tasks:
   - name: exit playbook, if user did not mean to purge cluster
     fail:
       msg: >
         "Exiting purge-cluster playbook, cluster was NOT purged.
-         To purge the cluster, either say 'yes' on the prompt or
-         or use `-e ireallymeanit=yes` on the command line when
-         invoking the playbook"
-    when: ireallymeanit != 'yes'
+         To purge the cluster, either say 'yes' and 'ireallyreallymeanit'
+         on the prompt or use `-e ireallymeanit=yes` and
+         `-e ireallyreallymeanit=ireallyreallymeanit` on the
+         command line when invoking the playbook"
+      when: ireallymeanit != 'yes' or ireallyreallymeanit != 'ireallyreallymeanit'
 
 - name: gather facts on all hosts
 
