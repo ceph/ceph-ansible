@@ -28,19 +28,19 @@
     - radosgw_address == 'x.x.x.x'
     - radosgw_interface != 'interface'
   block:
-  - name: set_fact _interface
-    set_fact:
-      _interface: "{{ 'ansible_' + (radosgw_interface | replace('-', '_')) }}"
+    - name: set_fact _interface
+      set_fact:
+        _interface: "{{ 'ansible_' + (radosgw_interface | replace('-', '_')) }}"
 
-  - name: set_fact _radosgw_address to radosgw_interface - ipv4
-    set_fact:
-      _radosgw_address: "{{ hostvars[inventory_hostname][_interface][ip_version]['address'] }}"
-    when: ip_version == 'ipv4'
+    - name: set_fact _radosgw_address to radosgw_interface - ipv4
+      set_fact:
+        _radosgw_address: "{{ hostvars[inventory_hostname][_interface][ip_version]['address'] }}"
+      when: ip_version == 'ipv4'
 
-  - name: set_fact _radosgw_address to radosgw_interface - ipv6
-    set_fact:
-      _radosgw_address: "{{ hostvars[inventory_hostname][_interface][ip_version][0]['address'] }}"
-    when: ip_version == 'ipv6'
+    - name: set_fact _radosgw_address to radosgw_interface - ipv6
+      set_fact:
+        _radosgw_address: "{{ hostvars[inventory_hostname][_interface][ip_version][0]['address'] }}"
+      when: ip_version == 'ipv6'
 
 - name: set_fact rgw_instances without rgw multisite
   set_fact:
@@ -52,8 +52,19 @@
 
 - name: set_fact rgw_instances with rgw multisite
   set_fact:
-    rgw_instances: "{{ rgw_instances|default([]) | union([{'instance_name': 'rgw' + item|string, 'radosgw_address': _radosgw_address, 'radosgw_frontend_port': radosgw_frontend_port|int, 'rgw_realm': rgw_realm|string, 'rgw_zonegroup': rgw_zonegroup|string, 'rgw_zone': rgw_zone|string}]) }}"
+    rgw_instances: "{{ rgw_instances|default([]) | union([{'instance_name': 'rgw' + item | string, 'radosgw_address': _radosgw_address, 'radosgw_frontend_port': radosgw_frontend_port | int, 'rgw_realm': rgw_realm | string, 'rgw_zonegroup': rgw_zonegroup | string, 'rgw_zone': rgw_zone | string, 'system_access_key': system_access_key, 'system_secret_key': 'system_secret_key', 'rgw_zone_user': rgw_zone_user, 'rgw_zone_user_display_name': rgw_zone_user_display_name, 'endpoint': (rgw_pull_proto + '://' + rgw_pullhost + ':' + rgw_pull_port | string) if not rgw_zonemaster | bool and rgw_zonesecondary | bool else omit }]) }}"
   with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
+    - rgw_instances is undefined
+    - rgw_multisite | bool
+
+- name: set_fact rgw_instances_all
+  set_fact:
+    rgw_instances_all: '{{ rgw_instances_all | default([]) | union([item.1 | combine({"host": item.0})]) }}'
+  with_nested:
+    - "{{ groups.get(rgw_group_name, []) }}"
+    - "{{ rgw_instances }}"
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
     - rgw_multisite | bool
