@@ -1,31 +1,28 @@
+---
+- name: create list zone_users
+  set_fact:
+    zone_users: "{{ zone_users | default([]) | union([{ 'realm': item.rgw_realm, 'zonegroup': item.rgw_zonegroup, 'zone': item.rgw_zone, 'system_access_key': item.system_access_key, 'system_secret_key': item.system_secret_key, 'user': item.rgw_zone_user, 'display_name': item.rgw_zone_user_display_name }]) }}"
+  loop: "{{ rgw_instances_all }}"
+  run_once: true
+  when:
+    - hostvars[item.host]['rgw_zonemaster'] | bool
+    - hostvars[item.host]['rgw_zonegroupmaster'] | bool
+
 - name: check if the realm system user already exists
-  command: "{{ container_exec_cmd }} radosgw-admin user info --cluster={{ cluster }} --rgw-realm={{ rgw_realm }} --rgw-zonegroup={{ rgw_zonegroup }} --rgw-zone={{ rgw_zone }} --uid={{ rgw_zone_user }}"
+  command: "{{ container_exec_cmd }} radosgw-admin user info --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --uid={{ item.user }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   register: usercheck
   failed_when: False
   changed_when: False
   check_mode: no
-
-- name: create list zone_users
-  set_fact:
-    zone_users: "{{ zone_users | default([]) + [{ 'realm': hostvars[item]['rgw_realm'], 'zonegroup': hostvars[item]['rgw_zonegroup'], 'zone': hostvars[item]['rgw_zone'], 'access_key': hostvars[item]['system_access_key'], 'secret_key': hostvars[item]['system_secret_key'], 'user': hostvars[item]['rgw_zone_user'], 'display_name': hostvars[item]['rgw_zone_user_display_name'] }] }}"
-  with_items: "{{ groups.get(rgw_group_name, []) }}"
-  run_once: true
-  when:
-    - hostvars[item]['rgw_zonemaster'] | bool
-    - hostvars[item]['rgw_zonegroupmaster'] | bool
-    - "'could not fetch user info: no user info saved' in hostvars[item]['usercheck'].stderr"
-
-- name: make all items in zone_users unique
-  set_fact:
-    zone_users: "{{ zone_users | unique }}"
-  run_once: true
-  when:
-    - zone_users is defined
+  run_once: True
+  loop: "{{ zone_users }}"
 
 - name: create the zone user(s)
-  command: "{{ container_exec_cmd }} radosgw-admin user create --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --uid={{ item.user }} --display-name='{{ item.display_name }}' --access-key={{ item.access_key }} --secret={{ item.secret_key }} --system"
+  command: "{{ container_exec_cmd }} radosgw-admin user create --cluster={{ cluster }} --rgw-realm={{ item.item.realm }} --rgw-zonegroup={{ item.item.zonegroup }} --rgw-zone={{ item.item.zone }} --uid={{ item.item.user }} --display-name='{{ item.item.display_name }}' --access-key={{ item.item.system_access_key }} --secret={{ item.item.system_secret_key }} --system"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  with_items: "{{ zone_users }}"
-  when: zone_users is defined
+  loop: "{{ usercheck.results }}"
+  when:
+    - zone_users is defined
+    - "'could not fetch user info: no user info saved' in item.stderr"
