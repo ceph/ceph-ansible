@@ -46,7 +46,7 @@
     - name: customize pool size
       command: >
         {{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }}
-        osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }}
+        osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }} {{ '--yes-i-really-mean-it' if item.size | default(osd_pool_default_size) | int == 1 else '' }}
       with_items: "{{ openstack_pools | unique }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false

@@ -51,7 +51,7 @@
           with_items: "{{ cephfs_pools | unique }}"
 
         - name: customize pool size
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }}"
+          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }} {{ '--yes-i-really-mean-it' if item.size | default(osd_pool_default_size) | int == 1 else '' }}"
           with_items: "{{ cephfs_pools | unique }}"
           changed_when: false
           when:
