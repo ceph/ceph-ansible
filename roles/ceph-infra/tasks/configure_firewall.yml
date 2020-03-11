@@ -129,11 +129,12 @@
 
     - name: open rgw ports
       firewalld:
-        port: "{{ radosgw_frontend_port }}/tcp"
+        port: "{{ item.radosgw_frontend_port }}/tcp"
         zone: "{{ ceph_rgw_firewall_zone }}"
         permanent: true
         immediate: true
         state: enabled
+      loop: "{{ rgw_instances }}"
       when:
         - rgw_group_name is defined
         - rgw_group_name in group_names
