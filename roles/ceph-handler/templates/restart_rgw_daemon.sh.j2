@@ -3,24 +3,25 @@
 RETRIES="{{ handler_health_rgw_check_retries }}"
 DELAY="{{ handler_health_rgw_check_delay }}"
 HOST_NAME="{{ ansible_hostname }}"
-RGW_NUMS={{ radosgw_num_instances }}
-RGW_BASE_PORT={{ radosgw_frontend_port }}
+RGW_NUMS={{ rgw_instances | length | int }}
 RGW_FRONTEND_SSL_CERT={{ radosgw_frontend_ssl_certificate }}
 if [ -n "$RGW_FRONTEND_SSL_CERT" ]; then
     RGW_PROTOCOL=https
 else
     RGW_PROTOCOL=http
 fi
+INSTANCES_NAME=({% for i in rgw_instances %}{{ i.instance_name }} {% endfor %})
+RGW_IPS=({% for i in rgw_instances %}{{ i.radosgw_address }} {% endfor %})
+RGW_PORTS=({% for i in rgw_instances %}{{ i.radosgw_frontend_port }} {% endfor %})
 declare -a DOCKER_EXECS
+declare -a SOCKET_PREFIX
 for ((i=0; i<${RGW_NUMS}; i++)); do
+  SOCKET_PREFIX[i]="/var/run/ceph/{{ cluster }}-client.rgw.${HOST_NAME}.${INSTANCES_NAME[i]}"
   DOCKER_EXECS[i]=""
 {% if containerized_deployment | bool %}
-  CONTAINER_NAME="ceph-rgw-${HOST_NAME}-rgw${i}"
-  DOCKER_EXECS[i]="{{ container_binary }} exec ${CONTAINER_NAME}"
+  DOCKER_EXECS[i]="{{ container_binary }} exec ceph-rgw-${HOST_NAME}-${INSTANCES_NAME[i]}"
 {% endif %}
 done
-RGW_IP={{ hostvars[inventory_hostname]['_radosgw_address'] }}
-SOCKET_PREFIX="/var/run/ceph/{{ cluster }}-client.rgw.${HOST_NAME}.rgw"
 
 check_socket() {
   local i=$1
@@ -28,7 +29,7 @@ check_socket() {
   local count=10
   # Wait and ensure the socket exists after restarting the daemon
   while [ $count -ne 0 ]; do
-    SOCKET=$(grep ${SOCKET_PREFIX}${i} /proc/net/unix | awk '{ print $8 }')
+    SOCKET=$(grep ${SOCKET_PREFIX[i]} /proc/net/unix | awk '{ print $8 }')
     if [ -n "${SOCKET}" ]; then
       ${DOCKER_EXECS[i]} test -S ${SOCKET} && succ=$((succ+1)) && break
     fi
@@ -37,7 +38,7 @@ check_socket() {
   done
   if [ $succ -ne 1 ]; then
     echo "Socket file ${SOCKET} could not be found, which means Rados Gateway is not running. Showing ceph-rgw unit logs now:"
-    journalctl -u ceph-radosgw@rgw.${HOST_NAME}.rgw${i}
+    journalctl -u ceph-radosgw@rgw.${HOST_NAME}.${INSTANCES_NAME[i]}
     exit 1
   fi
 }
@@ -60,20 +61,20 @@ check_rest() {
   check_for_curl_or_wget ${i}
   local succ=0
   while [ $RETRIES -ne 0 ]; do
-    ${DOCKER_EXECS[i]} $rgw_test_command $RGW_PROTOCOL://$RGW_IP:$((RGW_BASE_PORT+i)) && succ=$((succ+1)) && break
+    ${DOCKER_EXECS[i]} $rgw_test_command $RGW_PROTOCOL://${RGW_IPS[i]}:${RGW_PORTS[i]} && succ=$((succ+1)) && break
     sleep $DELAY
     let RETRIES=RETRIES-1
   done
   if [ $succ -ne 1 ]; then
     # If we reach this point, it means there is a problem with the connection to rgw
-    echo "Error connecting locally to Rados Gateway service: $RGW_PROTOCOL://$RGW_IP:$((RGW_BASE_PORT+i))"
+    echo "Error connecting locally to Rados Gateway service: $RGW_PROTOCOL://${RGW_IPS[i]}:${RGW_PORTS[i]}"
     exit 1
   fi
 }
 
 for ((i=0; i<${RGW_NUMS}; i++)); do
   # First, restart the daemon
-  systemctl restart ceph-radosgw@rgw.${HOST_NAME}.rgw${i}
+  systemctl restart ceph-radosgw@rgw.${HOST_NAME}.${INSTANCES_NAME[i]}
   # Check socket files
   check_socket ${i}
   # Check rest
