@@ -312,48 +312,6 @@ class TestCephKeyModule(object):
                                      fake_secret, fake_caps, fake_import_key, fake_file_destination, fake_container_image)  # noqa E501
         assert result == expected_command_list
 
-    def test_update_key_non_container(self):
-        fake_cluster = "fake"
-        fake_name = "client.fake"
-        fake_caps = {
-            'mon': 'allow *',
-            'osd': 'allow rwx',
-        }
-        expected_command_list = [
-            ['ceph', '-n', 'client.admin', '-k', '/etc/ceph/fake.client.admin.keyring',  '--cluster', fake_cluster, 'auth', 'caps',  # noqa E501
-                fake_name, 'mon', 'allow *', 'osd', 'allow rwx'],
-        ]
-        result = ceph_key.update_key(fake_cluster, fake_name, fake_caps)
-        assert result == expected_command_list
-
-    def test_update_key_container(self):
-        fake_cluster = "fake"
-        fake_name = "client.fake"
-        fake_caps = {
-            'mon': 'allow *',
-            'osd': 'allow rwx',
-        }
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
-        expected_command_list = [['docker',   # noqa E128
-                                 'run',
-                                 '--rm',
-                                 '--net=host',
-                                 '-v', '/etc/ceph:/etc/ceph:z',
-                                 '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                                 '--entrypoint=ceph',
-                                 'docker.io/ceph/daemon:latest-luminous',
-                                 '-n', 'client.admin',
-                                 '-k', '/etc/ceph/fake.client.admin.keyring',
-                                 '--cluster', fake_cluster,
-                                 'auth',
-                                 'caps', fake_name,
-                                 'mon', 'allow *', 'osd', 'allow rwx']
-        ]
-        result = ceph_key.update_key(
-            fake_cluster, fake_name, fake_caps, fake_container_image)
-        assert result == expected_command_list
-
     def test_delete_key_non_container(self):
         fake_cluster = "fake"
         fake_name = "client.fake"
