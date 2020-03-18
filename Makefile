@@ -80,9 +80,9 @@ srpm: dist spec
 	  --define "dist .el8"
 
 rpm: dist srpm
-	mock -r epel-7-x86_64 rebuild $(NVR).src.rpm \
-	  --resultdir=. \
-	  --define "dist .el8"
+	mock -r epel-8-x86_64 rebuild $(NVR).src.rpm \
+          --resultdir=. \
+          --define "dist .el8"
 
 tag:
 	$(eval BRANCH := $(shell git rev-parse --abbrev-ref HEAD))
