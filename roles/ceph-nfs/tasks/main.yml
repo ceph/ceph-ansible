@@ -26,17 +26,31 @@
     - not containerized_deployment | bool
     - ansible_os_family == 'RedHat'
 
-- name: copy rgw keyring when deploying internal ganesha with external ceph cluster
-  copy:
-    src: "/etc/ceph/{{ cluster }}.{{ ceph_nfs_ceph_user }}.keyring"
-    dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring"
-    mode: '0600'
-    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    remote_src: true
+- name: nfs with external ceph cluster task related
   when:
     - groups.get(mon_group_name, []) | length == 0
     - ceph_nfs_ceph_user is defined
+  block:
+    - name: create keyring directory
+      file:
+        path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}"
+        state: directory
+        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        mode: "0755"
+      when:
+
+    - name: get client cephx keys
+      copy:
+        dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring"
+        content: "{{ item.content | b64decode }}"
+        mode: "{{ item.item.get('mode', '0600') }}"
+        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+      with_items: "{{ hostvars[groups['_filtered_clients'][0]]['slurp_client_keys']['results'] | default([]) }}"
+      when:
+        - not item.get('skipped', False)
+        - item.item.name == 'client.' + ceph_nfs_ceph_user
 
 - name: include start_nfs.yml
   import_tasks: start_nfs.yml
