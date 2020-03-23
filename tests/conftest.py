@@ -109,6 +109,7 @@ def node(host, request):
         'mimic': 13,
         'nautilus': 14,
         'octopus': 15,
+        'pacific': 16,
         'dev': 99
     }
 
