@@ -25,8 +25,9 @@ class TestMGRs(object):
     @pytest.mark.parametrize('port', [
         '8443', '9283'
     ])
-    def test_mgr_dashboard_is_listening(self, node, host, port):
-        assert host.socket('tcp://%s' % port).is_listening
+    def test_mgr_dashboard_is_listening(self, node, host, setup, port):
+        s = host.socket('tcp://%s:%s' % (setup["address"], port))
+        assert s.is_listening
 
     def test_mgr_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
