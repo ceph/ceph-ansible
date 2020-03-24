@@ -59,12 +59,18 @@
     - rgw_instances is undefined
     - rgw_multisite | bool
 
+- name: set_fact rgw_instances_host
+  set_fact:
+    rgw_instances_host: '{{ rgw_instances_host | default([]) | union([item | combine({"host": inventory_hostname})]) }}'
+  with_items: '{{ rgw_instances }}'
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
+    - rgw_multisite | bool
+
 - name: set_fact rgw_instances_all
   set_fact:
-    rgw_instances_all: '{{ rgw_instances_all | default([]) | union([item.1 | combine({"host": item.0})]) }}'
-  with_nested:
-    - "{{ groups.get(rgw_group_name, []) }}"
-    - "{{ rgw_instances }}"
+    rgw_instances_all: '{{ rgw_instances_all | default([]) | union(hostvars[item]["rgw_instances_host"]) }}'
+  with_items: "{{ groups.get(rgw_group_name, []) }}"
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
     - rgw_multisite | bool
