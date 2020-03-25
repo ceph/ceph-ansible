@@ -7,7 +7,7 @@
 
 - name: create list secondary_realms
   set_fact:
-    secondary_realms: "{{ secondary_realms | default([]) | union([{ 'realm': item.rgw_realm, 'endpoint': item.endpoint, 'system_access_key': item.system_access_key, 'system_secret_key': item.system_secret_key, 'is_master': hostvars[item.host]['rgw_zonemaster'] }]) }}"
+    secondary_realms: "{{ secondary_realms | default([]) | union([{ 'realm': item.rgw_realm, 'pull_endpoint': item.pull_endpoint, 'system_access_key': item.system_access_key, 'system_secret_key': item.system_secret_key, 'is_master': hostvars[item.host]['rgw_zonemaster'] }]) }}"
   loop: "{{ rgw_instances_all }}"
   run_once: true
   when: not hostvars[item.host]['rgw_zonemaster'] | bool
@@ -28,7 +28,7 @@
 
 - name: create a list of dicts with each rgw endpoint and it's zone
   set_fact:
-    zone_endpoint_pairs: "{{ zone_endpoint_pairs | default([]) | union([{ 'endpoint': hostvars[item.host]['rgw_multisite_proto'] + '://' + item.radosgw_address + ':' + item.radosgw_frontend_port | string, 'rgw_zone': item.rgw_zone, 'rgw_realm': item.rgw_realm, 'rgw_zonegroup': item.rgw_zonegroup, 'rgw_zonemaster': hostvars[item.host]['rgw_zonemaster']}]) }}"
+    zone_endpoint_pairs: "{{ zone_endpoint_pairs | default([]) | union([{ 'endpoint': hostvars[item.host]['rgw_multisite_proto'] + '://' + item.rgw_multisite_host + ':' + item.radosgw_frontend_port | string, 'rgw_zone': item.rgw_zone, 'rgw_realm': item.rgw_realm, 'rgw_zonegroup': item.rgw_zonegroup, 'rgw_zonemaster': hostvars[item.host]['rgw_zonemaster']}]) }}"
   loop: "{{ rgw_instances_all }}"
   run_once: true
 
