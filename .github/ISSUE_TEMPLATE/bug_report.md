@@ -18,7 +18,7 @@ What you expected to happen:
 How to reproduce it (minimal and precise):
 <!-- Please let us know any circumstances for reproduction of your bug. -->
 
-Share your group_vars files, inventory
+Share your group_vars files, inventory and **full** ceph-ansibe log
 
 **Environment**:
 * OS (e.g. from /etc/os-release):
