@@ -114,6 +114,18 @@ options:
             - Only applicable if action is 'batch'.
         required: false
         default: -1
+    block_db_devices:
+        description:
+            - A list of devices for bluestore block db to pass to the 'ceph-volume lvm batch' subcommand.
+            - Only applicable if action is 'batch'.
+            - Only applicable if objectstore is 'bluestore'.
+        required: false
+    wal_devices:
+        description:
+            - A list of devices for bluestore block wal to pass to the 'ceph-volume lvm batch' subcommand.
+            - Only applicable if action is 'batch'.
+            - Only applicable if objectstore is 'bluestore'.
+        required: false
     report:
         description:
             - If provided the --report flag will be passed to 'ceph-volume lvm batch'.
@@ -320,10 +332,12 @@ def batch(module, container_image):
     cmd.extend(batch_devices)
 
     if block_db_devices and objectstore == 'bluestore':
-        cmd.extend(['--db-devices', ' '.join(block_db_devices)])
+        cmd.append('--db-devices')
+        cmd.extend(block_db_devices)
 
     if wal_devices and objectstore == 'bluestore':
-        cmd.extend(['--wal-devices', ' '.join(wal_devices)])
+        cmd.append('--wal-devices')
+        cmd.extend(wal_devices)
 
     return cmd
 
