@@ -41,6 +41,7 @@ Removed features
 ----------------
 
 * Remove openSUSE Leap 42 support.
+* Remove Debian support from RHCS deployment.
 * Remove ceph-common-coreos and ceph-agent roles.
 * Remove KV store support.
 * Remove infrastructure-playbooks/rgw-standalone.yml
@@ -54,6 +55,7 @@ Deprecation warnings and incoming removal
 -----------------------------------------
 * Drop add-osd.yml playbook, it will be replaced by main playbook with --limit option.
 * Ceph Ansible doesn’t configure ISCSI gateways anymore. This should be done manually or via the Ceph Dashboard UI.
+* site-docker.yml.sample, purge-docker-cluster.yml symlinks will be removed.
 
 Major changes from stable-3.2
 -----------------------------
