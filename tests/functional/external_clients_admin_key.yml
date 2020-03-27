@@ -1,0 +1,27 @@
+---
+- hosts: clients
+  gather_facts: false
+  become: yes
+  tasks:
+
+    - name: get keys from monitors
+      command: "{{ 'podman exec ceph-mon-mon0' if containerized_deployment | bool else '' }} ceph --cluster ceph auth get client.admin"
+      register: _key
+      delegate_to: "{{ groups.get('mons')[0] }}"
+      run_once: true
+
+    - name: create /etc/ceph
+      file:
+        path: /etc/ceph
+        state: directory
+        owner: 167
+        group: 167
+        mode: "0755"
+
+    - name: copy ceph key(s) if needed
+      copy:
+        dest: "/etc/ceph/ceph.client.admin.keyring"
+        content: "{{ _key.stdout + '\n' }}"
+        owner: 167
+        group: 167
+        mode: "0600"
