@@ -26,9 +26,9 @@
   set_fact:
     delegated_node: "{{ groups[mon_group_name][0] if groups.get(mon_group_name, []) | length > 0 else inventory_hostname }}"
 
-- name: set_fact condition_copy_admin_key
+- name: set_fact admin_key_presence
   set_fact:
-    condition_copy_admin_key: "{{ True if groups.get(mon_group_name, []) | length > 0 else copy_admin_key }}"
+    admin_key_presence: "{{ True if groups.get(mon_group_name, []) | length > 0 else copy_admin_key }}"
 
 - name: create cephx key(s)
   ceph_key:
@@ -38,7 +38,7 @@
     secret: "{{ item.key | default('') }}"
     cluster: "{{ cluster }}"
     dest: "{{ ceph_conf_key_directory }}"
-    import_key: "{{ condition_copy_admin_key }}"
+    import_key: "{{ admin_key_presence }}"
     mode: "{{ item.mode|default(omit) }}"
     owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
@@ -66,12 +66,16 @@
 
 - name: pool related tasks
   when:
-    - condition_copy_admin_key | bool
+    - admin_key_presence | bool
     - inventory_hostname == groups.get('_filtered_clients', []) | first
   block:
+    - import_role:
+        name: ceph-facts
+        tasks_from: get_def_crush_rule_name.yml
+
     - name: list existing pool(s)
       command: >
-        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        {{ ceph_admin_command }} --cluster {{ cluster }}
         osd pool get {{ item.name }} size
       with_items: "{{ pools }}"
       register: created_pools
@@ -80,13 +84,13 @@
 
     - name: create ceph pool(s)
       command: >
-        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        {{ ceph_admin_command | default('') }} --cluster {{ cluster }}
         osd pool create {{ item.0.name }}
         {{ item.0.pg_num | default(osd_pool_default_pg_num) if not item.0.pg_autoscale_mode | default(False) | bool else 16 }}
         {{ item.0.pgp_num | default(item.0.pg_num) | default(osd_pool_default_pg_num) if not item.0.pg_autoscale_mode | default(False) | bool else '' }}
         {%- if item.0.type | default(1) | int == 1 or item.0.type | default('replicated') == 'replicated' %}
         replicated
-        {{ item.0.rule_name | default(osd_pool_default_crush_rule) }}
+        {{ item.0.rule_name | default(ceph_osd_pool_default_crush_rule_name) }}
         {{ item.0.expected_num_objects | default(0) }}
         {%- else %}
         erasure
@@ -102,19 +106,19 @@
         - item.1.rc != 0
 
     - name: set the target ratio on pool(s)
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} target_size_ratio {{ item.target_size_ratio }}"
+      command: "{{ ceph_admin_command | default('') }} --cluster {{ cluster }} osd pool set {{ item.name }} target_size_ratio {{ item.target_size_ratio }}"
       with_items: "{{ pools | unique }}"
       delegate_to: "{{ delegated_node }}"
       when: item.pg_autoscale_mode | default(False) | bool
 
     - name: set pg_autoscale_mode value on pool(s)
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode {{ item.pg_autoscale_mode | default(False) | ternary('on', 'warn') }}"
+      command: "{{ ceph_admin_command | default('') }} --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode {{ item.pg_autoscale_mode | default(False) | ternary('on', 'warn') }}"
       delegate_to: "{{ delegated_node }}"
       with_items: "{{ pools | unique }}"
 
     - name: customize pool size
       command: >
-        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        {{ ceph_admin_command | default('') }} --cluster {{ cluster }}
         osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }} {{ '--yes-i-really-mean-it' if item.size | default(osd_pool_default_size) | int == 1 else '' }}
       with_items: "{{ pools | unique }}"
       delegate_to: "{{ delegated_node }}"
@@ -127,7 +131,7 @@
 
     - name: customize pool min_size
       command: >
-        {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+        {{ ceph_admin_command | default('') }} --cluster {{ cluster }}
         osd pool set {{ item.name }} min_size {{ item.min_size | default(osd_pool_default_min_size) }}
       with_items: "{{ pools | unique }}"
       delegate_to: "{{ delegated_node }}"
@@ -139,7 +143,7 @@
         - item.type | default('replicated') != 'erasure'
 
     - name: assign application to pool(s)
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
+      command: "{{ ceph_admin_command | default('') }} --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
       with_items: "{{ pools | unique }}"
       changed_when: false
       delegate_to: "{{ delegated_node }}"

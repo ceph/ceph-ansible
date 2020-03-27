@@ -1,0 +1,14 @@
+---
+- name: get current default crush rule details
+  command: "{{ hostvars[delegated_node | default(groups[mon_group_name][0])]['ceph_admin_command'] }} --cluster {{ cluster }} osd -f json crush rule dump"
+  register: default_crush_rule_details
+  changed_when: false
+  delegate_to: "{{ delegated_node | default(groups[mon_group_name][0]) }}"
+  run_once: true
+
+- name: get current default crush rule name
+  set_fact:
+    ceph_osd_pool_default_crush_rule_name: "{{ item.rule_name }}"
+  with_items: "{{ default_crush_rule_details.stdout | default('{}') | from_json }}"
+  run_once: True
+  when: item.rule_id | int == osd_pool_default_crush_rule | int

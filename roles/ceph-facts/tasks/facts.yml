@@ -262,8 +262,7 @@
 
 - name: set_fact osd_pool_default_crush_rule
   set_fact:
-    osd_pool_default_crush_rule: "{% if crush_rule_variable.rc == 0 %}{{ crush_rule_variable.stdout.split(' = ')[1] }}{% else %}{{ ceph_osd_pool_default_crush_rule }}{% endif %}"
-  when: ceph_conf.stat.exists
+    osd_pool_default_crush_rule: "{{ crush_rule_variable.stdout.split(' = ')[1] if crush_rule_variable.get('rc', 1) | int == 0 else ceph_osd_pool_default_crush_rule }}"
 
 - name: import_tasks set_monitor_address.yml
   import_tasks: set_monitor_address.yml
@@ -277,3 +276,7 @@
   set_fact:
     use_new_ceph_iscsi: "{{ (gateway_ip_list  == '0.0.0.0' and gateway_iqn | length == 0 and client_connections | length == 0 and rbd_devices | length == 0) | bool | ternary(true, false) }}"
   when: iscsi_gw_group_name in group_names
+
+- name: set_fact ceph_admin_command
+  set_fact:
+    ceph_admin_command: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /var/log/ceph/:/var/log/ceph/:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'ceph' }} -n client.admin -k /etc/ceph/{{ cluster }}.client.admin.keyring"
