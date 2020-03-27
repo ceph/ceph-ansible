@@ -21,6 +21,10 @@
     - name: deploy filesystem pools
       when: fs_pools_created is not defined
       block:
+        - import_role:
+            name: ceph-facts
+            tasks_from: get_def_crush_rule_name.yml
+
         - name: create filesystem pools
           command: >
             {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
@@ -29,7 +33,7 @@
             {{ item.pgp_num | default(item.pg_num) | default(osd_pool_default_pg_num) if not item.pg_autoscale_mode | default(False) | bool else '' }}
             {%- if item.type | default(1) | int == 1 or item.type | default('replicated') == 'replicated' %}
             replicated
-            {{ item.rule_name | default(osd_pool_default_crush_rule) }}
+            {{ item.rule_name | default(ceph_osd_pool_default_crush_rule_name) }}
             {{ item.expected_num_objects | default(0) }}
             {%- else %}
             erasure
