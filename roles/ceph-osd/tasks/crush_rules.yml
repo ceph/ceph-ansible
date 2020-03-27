@@ -29,9 +29,10 @@
 # If multiple rules are set as default (should not be) then the last one is taken as actual default.
 # the with_items statement overrides each iteration with the new one.
 # NOTE(leseb): we should actually fail if multiple rules are set as default
-- name: set_fact info_ceph_default_crush_rule_yaml
+- name: set_fact info_ceph_default_crush_rule_yaml, ceph_osd_pool_default_crush_rule_name
   set_fact:
     info_ceph_default_crush_rule_yaml: "{{ item.stdout | from_json() }}"
+    ceph_osd_pool_default_crush_rule_name: "{{ (item.stdout | from_json).rule_name }}"
   with_items: "{{ info_ceph_default_crush_rule.results }}"
   run_once: true
   when: not item.get('skipped', false)
