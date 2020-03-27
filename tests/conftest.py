@@ -39,7 +39,7 @@ def setup(host):
         cluster_interface = "ens7"
 
     subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
-    num_mons = len(ansible_vars["groups"]["mons"])
+    num_mons = len(ansible_vars["groups"].get('mons', []))
     if osd_auto_discovery:
         num_osds = 3
     else:
