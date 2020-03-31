@@ -3,6 +3,7 @@ sys.path.append('./library')
 import ceph_volume
 import mock
 import os
+import pytest
 
 
 # Python 3
@@ -161,10 +162,11 @@ class TestCephVolumeModule(object):
         result = ceph_volume.list_storage_inventory(fake_module, fake_container_image)
         assert result == expected_command_list
 
-    def test_create_osd_container(self):
+    @pytest.mark.parametrize('objectstore', ['bluestore','filestore'])
+    def test_create_osd_container(self, objectstore):
         fake_module = MagicMock()
         fake_module.params = {'data': '/dev/sda',
-                              'objectstore': 'filestore',
+                              'objectstore': objectstore,
                               'cluster': 'ceph', }
 
         fake_action = "create"
@@ -174,17 +176,18 @@ class TestCephVolumeModule(object):
                                                  'ceph',
                                                  'lvm',
                                                  'create',
-                                                 '--filestore',
+                                                 '--%s' % objectstore,
                                                  '--data',
                                                  '/dev/sda']
         result = ceph_volume.prepare_or_create_osd(
             fake_module, fake_action, fake_container_image)
         assert result == expected_command_list
 
-    def test_create_osd(self):
+    @pytest.mark.parametrize('objectstore', ['bluestore','filestore'])
+    def test_create_osd(self, objectstore):
         fake_module = MagicMock()
         fake_module.params = {'data': '/dev/sda',
-                              'objectstore': 'filestore',
+                              'objectstore': objectstore,
                               'cluster': 'ceph', }
 
         fake_container_image = None
@@ -194,17 +197,18 @@ class TestCephVolumeModule(object):
                                  'ceph',
                                  'lvm',
                                  'create',
-                                 '--filestore',
+                                 '--%s' % objectstore,
                                  '--data',
                                  '/dev/sda']
         result = ceph_volume.prepare_or_create_osd(
             fake_module, fake_action, fake_container_image)
         assert result == expected_command_list
 
-    def test_prepare_osd_container(self):
+    @pytest.mark.parametrize('objectstore', ['bluestore','filestore'])
+    def test_prepare_osd_container(self, objectstore):
         fake_module = MagicMock()
         fake_module.params = {'data': '/dev/sda',
-                              'objectstore': 'filestore',
+                              'objectstore': objectstore,
                               'cluster': 'ceph', }
 
         fake_action = "prepare"
@@ -214,17 +218,18 @@ class TestCephVolumeModule(object):
                                                  'ceph',
                                                  'lvm',
                                                  'prepare',
-                                                 '--filestore',
+                                                 '--%s' % objectstore,
                                                  '--data',
                                                  '/dev/sda']
         result = ceph_volume.prepare_or_create_osd(
             fake_module, fake_action, fake_container_image)
         assert result == expected_command_list
 
-    def test_prepare_osd(self):
+    @pytest.mark.parametrize('objectstore', ['bluestore','filestore'])
+    def test_prepare_osd(self, objectstore):
         fake_module = MagicMock()
         fake_module.params = {'data': '/dev/sda',
-                              'objectstore': 'filestore',
+                              'objectstore': objectstore,
                               'cluster': 'ceph', }
 
         fake_container_image = None
@@ -234,18 +239,20 @@ class TestCephVolumeModule(object):
                                  'ceph',
                                  'lvm',
                                  'prepare',
-                                 '--filestore',
+                                 '--%s' % objectstore,
                                  '--data',
                                  '/dev/sda']
         result = ceph_volume.prepare_or_create_osd(
             fake_module, fake_action, fake_container_image)
         assert result == expected_command_list
 
-    def test_batch_osd_container(self):
+    @pytest.mark.parametrize('objectstore', ['bluestore','filestore'])
+    def test_batch_osd_container(self, objectstore):
         fake_module = MagicMock()
         fake_module.params = {'data': '/dev/sda',
-                              'objectstore': 'filestore',
-                              'journal_size': '100',
+                              'objectstore': objectstore,
+                              'block_db_size': '4096',
+                              'journal_size': '4096',
                               'cluster': 'ceph',
                               'batch_devices': ["/dev/sda", "/dev/sdb"]}
 
@@ -255,22 +262,24 @@ class TestCephVolumeModule(object):
                                                  'ceph',
                                                  'lvm',
                                                  'batch',
-                                                 '--filestore',
+                                                 '--%s' % objectstore,
                                                  '--yes',
                                                  '--prepare',
-                                                 '--journal-size',
-                                                 '100',
+                                                 '--journal-size' if objectstore == 'filestore' else '--block-db-size',  # noqa E501
+                                                 '4096',
                                                  '/dev/sda',
                                                  '/dev/sdb']
         result = ceph_volume.batch(
             fake_module, fake_container_image)
         assert result == expected_command_list
 
-    def test_batch_osd(self):
+    @pytest.mark.parametrize('objectstore', ['bluestore','filestore'])
+    def test_batch_osd(self, objectstore):
         fake_module = MagicMock()
         fake_module.params = {'data': '/dev/sda',
-                              'objectstore': 'filestore',
-                              'journal_size': '100',
+                              'objectstore': objectstore,
+                              'block_db_size': '4096',
+                              'journal_size': '4096',
                               'cluster': 'ceph',
                               'batch_devices': ["/dev/sda", "/dev/sdb"]}
 
@@ -280,10 +289,10 @@ class TestCephVolumeModule(object):
                                  'ceph',
                                  'lvm',
                                  'batch',
-                                 '--filestore',
+                                 '--%s' % objectstore,
                                  '--yes',
-                                 '--journal-size',
-                                 '100',
+                                 '--journal-size' if objectstore == 'filestore' else '--block-db-size',  # noqa E501
+                                 '4096',
                                  '/dev/sda',
                                  '/dev/sdb']
         result = ceph_volume.batch(
@@ -363,29 +372,6 @@ class TestCephVolumeModule(object):
                                  '--wal-devices',
                                  '/dev/sdc',
                                  '/dev/sdd']
-        result = ceph_volume.batch(
-            fake_module, fake_container_image)
-        assert result == expected_command_list
-
-    def test_batch_bluestore_with_custom_db_size(self):
-        fake_module = MagicMock()
-        fake_module.params = {'objectstore': 'bluestore',
-                              'cluster': 'ceph',
-                              'block_db_size': '4096',
-                              'batch_devices': ["/dev/sda", "/dev/sdb"]}
-
-        fake_container_image = None
-        expected_command_list = ['ceph-volume',
-                                 '--cluster',
-                                 'ceph',
-                                 'lvm',
-                                 'batch',
-                                 '--bluestore',
-                                 '--yes',
-                                 '--block-db-size',
-                                 '4096',
-                                 '/dev/sda',
-                                 '/dev/sdb']
         result = ceph_volume.batch(
             fake_module, fake_container_image)
         assert result == expected_command_list
