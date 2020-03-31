@@ -16,6 +16,17 @@ except ImportError:
         print('You need the mock library installed on python2.x to run tests')
 
 
+container_cmd = ['docker', 'run', '--rm', '--privileged',
+                 '--net=host', '--ipc=host',
+                 '-v', '/run/lock/lvm:/run/lock/lvm:z',
+                 '-v', '/var/run/udev/:/var/run/udev/:z',
+                 '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',
+                 '-v', '/run/lvm/:/run/lvm/',
+                 '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
+                 '--entrypoint=ceph-volume']
+
+
 @mock.patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'docker'})
 class TestCephVolumeModule(object):
 
@@ -53,36 +64,20 @@ class TestCephVolumeModule(object):
 
     def test_container_exec(self):
         fake_binary = "ceph-volume"
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
-        expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '-v', '/run/lock/lvm:/run/lock/lvm:z',
-                                 '-v', '/var/run/udev/:/var/run/udev/:z',
-                                 '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
-                                 '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                                 '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous']
+        fake_container_image = "docker.io/ceph/daemon:latest"
+        expected_command_list = container_cmd + [fake_container_image]
         result = ceph_volume.container_exec(fake_binary, fake_container_image)
         assert result == expected_command_list
 
     def test_zap_osd_container(self):
         fake_module = MagicMock()
         fake_module.params = {'data': '/dev/sda'}
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
-        expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '-v', '/run/lock/lvm:/run/lock/lvm:z',
-                                 '-v', '/var/run/udev/:/var/run/udev/:z',
-                                 '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
-                                 '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                                 '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous',
-                                 'lvm',
-                                 'zap',
-                                 '--destroy',
-                                 '/dev/sda']
+        fake_container_image = "docker.io/ceph/daemon:latest"
+        expected_command_list = container_cmd + [fake_container_image,
+                                                 'lvm',
+                                                 'zap',
+                                                 '--destroy',
+                                                 '/dev/sda']
         result = ceph_volume.zap_devices(fake_module, fake_container_image)
         assert result == expected_command_list
 
@@ -129,31 +124,21 @@ class TestCephVolumeModule(object):
                                  'lvm',
                                  'list',
                                  '/dev/sda',
-                                 '--format=json',
-                                 ]
+                                 '--format=json']
         result = ceph_volume.list_osd(fake_module, fake_container_image)
         assert result == expected_command_list
 
     def test_list_osd_container(self):
         fake_module = MagicMock()
         fake_module.params = {'cluster': 'ceph', 'data': '/dev/sda'}
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
-        expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '-v', '/run/lock/lvm:/run/lock/lvm:z',
-                                 '-v', '/var/run/udev/:/var/run/udev/:z',
-                                 '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
-                                 '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                                 '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous',
-                                 '--cluster',
-                                 'ceph',
-                                 'lvm',
-                                 'list',
-                                 '/dev/sda',
-                                 '--format=json',
-                                 ]
+        fake_container_image = "docker.io/ceph/daemon:latest"
+        expected_command_list = container_cmd + [fake_container_image,
+                                                 '--cluster',
+                                                 'ceph',
+                                                 'lvm',
+                                                 'list',
+                                                 '/dev/sda',
+                                                 '--format=json']
         result = ceph_volume.list_osd(fake_module, fake_container_image)
         assert result == expected_command_list
 
@@ -169,19 +154,10 @@ class TestCephVolumeModule(object):
 
     def test_list_storage_inventory_container(self):
         fake_module = MagicMock()
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
-        expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '-v', '/run/lock/lvm:/run/lock/lvm:z',
-                                 '-v', '/var/run/udev/:/var/run/udev/:z',
-                                 '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
-                                 '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                                 '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous',
-                                 'inventory',
-                                 '--format=json',
-                                 ]
+        fake_container_image = "docker.io/ceph/daemon:latest"
+        expected_command_list = container_cmd + [fake_container_image,
+                                                 'inventory',
+                                                 '--format=json']
         result = ceph_volume.list_storage_inventory(fake_module, fake_container_image)
         assert result == expected_command_list
 
@@ -192,23 +168,15 @@ class TestCephVolumeModule(object):
                               'cluster': 'ceph', }
 
         fake_action = "create"
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
-        expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '-v', '/run/lock/lvm:/run/lock/lvm:z',
-                                 '-v', '/var/run/udev/:/var/run/udev/:z',
-                                 '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
-                                 '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                                 '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous',
-                                 '--cluster',
-                                 'ceph',
-                                 'lvm',
-                                 'create',
-                                 '--filestore',
-                                 '--data',
-                                 '/dev/sda']
+        fake_container_image = "docker.io/ceph/daemon:latest"
+        expected_command_list = container_cmd + [fake_container_image,
+                                                 '--cluster',
+                                                 'ceph',
+                                                 'lvm',
+                                                 'create',
+                                                 '--filestore',
+                                                 '--data',
+                                                 '/dev/sda']
         result = ceph_volume.prepare_or_create_osd(
             fake_module, fake_action, fake_container_image)
         assert result == expected_command_list
@@ -240,23 +208,15 @@ class TestCephVolumeModule(object):
                               'cluster': 'ceph', }
 
         fake_action = "prepare"
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
-        expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '-v', '/run/lock/lvm:/run/lock/lvm:z',
-                                 '-v', '/var/run/udev/:/var/run/udev/:z',
-                                 '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
-                                 '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                                 '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous',
-                                 '--cluster',
-                                 'ceph',
-                                 'lvm',
-                                 'prepare',
-                                 '--filestore',
-                                 '--data',
-                                 '/dev/sda']
+        fake_container_image = "docker.io/ceph/daemon:latest"
+        expected_command_list = container_cmd + [fake_container_image,
+                                                 '--cluster',
+                                                 'ceph',
+                                                 'lvm',
+                                                 'prepare',
+                                                 '--filestore',
+                                                 '--data',
+                                                 '/dev/sda']
         result = ceph_volume.prepare_or_create_osd(
             fake_module, fake_action, fake_container_image)
         assert result == expected_command_list
@@ -289,27 +249,19 @@ class TestCephVolumeModule(object):
                               'cluster': 'ceph',
                               'batch_devices': ["/dev/sda", "/dev/sdb"]}
 
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
-        expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
-                                 '-v', '/run/lock/lvm:/run/lock/lvm:z',
-                                 '-v', '/var/run/udev/:/var/run/udev/:z',
-                                 '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',  # noqa E501
-                                 '-v', '/run/lvm/:/run/lvm/',  # noqa E501
-                                 '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                                 '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous',
-                                 '--cluster',
-                                 'ceph',
-                                 'lvm',
-                                 'batch',
-                                 '--filestore',
-                                 '--yes',
-                                 '--prepare',
-                                 '--journal-size',
-                                 '100',
-                                 '/dev/sda',
-                                 '/dev/sdb']
+        fake_container_image = "docker.io/ceph/daemon:latest"
+        expected_command_list = container_cmd + [fake_container_image,
+                                                 '--cluster',
+                                                 'ceph',
+                                                 'lvm',
+                                                 'batch',
+                                                 '--filestore',
+                                                 '--yes',
+                                                 '--prepare',
+                                                 '--journal-size',
+                                                 '100',
+                                                 '/dev/sda',
+                                                 '/dev/sdb']
         result = ceph_volume.batch(
             fake_module, fake_container_image)
         assert result == expected_command_list
