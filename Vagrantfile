@@ -39,7 +39,7 @@ $last_ip_cluster_digit = 9
 
 ansible_provision = proc do |ansible|
   if DOCKER then
-    ansible.playbook = 'site-docker.yml'
+    ansible.playbook = 'site-container.yml'
     if settings['skip_tags']
       ansible.skip_tags = settings['skip_tags']
     end
