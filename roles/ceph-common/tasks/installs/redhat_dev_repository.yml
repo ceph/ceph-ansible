@@ -1,26 +1,29 @@
 ---
-- name: install dnf-plugins-core
-  package:
-    name: dnf-plugins-core
-  register: result
-  until: result is succeeded
-  tags: with_pkg
+- name: specific el 8 dependencies
+  when: ansible_distribution_major_version | int == 8
+  block:
+    - name: install dnf-plugins-core
+      package:
+        name: dnf-plugins-core
+      register: result
+      until: result is succeeded
+      tags: with_pkg
 
-- name: enable ceph-el8 copr
-  command: dnf copr enable -y ktdreyer/ceph-el8
-  args:
-    creates: /etc/yum.repos.d/_copr:copr.fedorainfracloud.org:ktdreyer:ceph-el8.repo
-    warn: false
-  register: result
-  until: result is succeeded
+    - name: enable ceph-el8 copr
+      command: dnf copr enable -y ktdreyer/ceph-el8
+      args:
+        creates: /etc/yum.repos.d/_copr:copr.fedorainfracloud.org:ktdreyer:ceph-el8.repo
+        warn: false
+      register: result
+      until: result is succeeded
 
-- name: enable ceph lab extras repository
-  yum_repository:
-    name: lab-extras
-    baseurl: http://apt-mirror.front.sepia.ceph.com/lab-extras/8/
-    description: Sepia Lab Extras repository
-    enabled: true
-    gpgcheck: false
+    - name: enable ceph lab extras repository
+      yum_repository:
+        name: lab-extras
+        baseurl: http://apt-mirror.front.sepia.ceph.com/lab-extras/8/
+        description: Sepia Lab Extras repository
+        enabled: true
+        gpgcheck: false
 
 - name: fetch ceph red hat development repository
   uri:
