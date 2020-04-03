@@ -1,4 +1,11 @@
 ---
+- name: set_fact ceph_mgr_packages for sso
+  set_fact:
+    ceph_mgr_packages: "{{ ceph_mgr_packages | union(['python3-saml' if ansible_distribution_major_version | int == 8 else 'python-saml']) }}"
+  when:
+    - dashboard_enabled | bool
+    - ansible_distribution == 'RedHat'
+
 - name: install ceph-mgr packages on RedHat or SUSE
   package:
     name: '{{ ceph_mgr_packages }}'
