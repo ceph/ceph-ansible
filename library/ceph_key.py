@@ -548,21 +548,46 @@ def run_module():
     key_exist = 1
     _secret = secret
     _caps = caps
-    if (state in ["present", "update"] and import_key) or state == "info":
-        user = "client.admin"
-        keyring_filename = cluster + '.' + user + '.keyring'
-        user_key = os.path.join("/etc/ceph/", keyring_filename)
-        output_format = "json"
-        _info_key = []
-        rc, cmd, out, err = exec_commands(
-            module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
-        key_exist = rc
-        if key_exist == 0:
-            _info_key = json.loads(out)
-            _secret = _info_key[0]['key']
-            _caps = _info_key[0]['caps']
-            if import_key and secret == _secret and caps == _caps:
-                result["stdout"] = "{0} already exists and doesn't need to be updated.".format(name) # noqa E501
+    if (state in ["present", "update", "info"]):
+        # if dest is not a directory, the user wants to change the file's name
+        # (e,g: /etc/ceph/ceph.mgr.ceph-mon2.keyring)
+        if not os.path.isdir(dest):
+            file_path = dest
+        else:
+            if 'bootstrap' in dest:
+                # Build a different path for bootstrap keys as there are stored as
+                # /var/lib/ceph/bootstrap-rbd/ceph.keyring
+                keyring_filename = cluster + '.keyring'
+            else:
+                keyring_filename = cluster + "." + name + ".keyring"
+            file_path = os.path.join(dest, keyring_filename)
+
+        file_args['path'] = file_path
+
+        if import_key or state == "info":
+            user = "client.admin"
+            user_key = os.path.join(
+                "/etc/ceph/" + cluster + ".client.admin.keyring")
+            output_format = "json"
+            _info_key = []
+            rc, cmd, out, err = exec_commands(
+                module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
+            key_exist = rc
+            if key_exist == 0:
+                _info_key = json.loads(out)
+                if not secret:
+                    secret = _info_key[0]['key']
+                _secret = _info_key[0]['key']
+                if not caps:
+                    caps = _info_key[0]['caps']
+                _caps = _info_key[0]['caps']
+                if secret == _secret and caps == _caps:
+                    result["stdout"] = "{0} already exists and doesn't need to be updated.".format(name) # noqa E501
+                    result["rc"] = 0
+                    module.exit_json(**result)
+        else:
+            if os.path.isfile(file_path) and not secret or not caps:
+                result["stdout"] = "{0} already exists in {1} you must provide secret *and* caps when import_key is {2}".format(name, dest, import_key) # noqa E501
                 result["rc"] = 0
                 module.exit_json(**result)
 
@@ -572,21 +597,6 @@ def run_module():
             fatal("Capabilities must be provided when state is 'present'", module)  # noqa E501
         if import_key and key_exist != 0 and secret is None and caps is None:
             fatal("Keyring doesn't exist, you must provide 'secret' and 'caps'", module)  # noqa E501
-
-        # if dest is not a directory, the user wants to change the file's name
-        # (e,g: /etc/ceph/ceph.mgr.ceph-mon2.keyring)
-        if not os.path.isdir(dest):
-            file_path = dest
-        elif 'bootstrap' in dest:
-            # Build a different path for bootstrap keys as there are stored as
-            # /var/lib/ceph/bootstrap-rbd/ceph.keyring
-            keyring_filename = cluster + '.keyring'
-            file_path = os.path.join(dest, keyring_filename)
-        else:
-            keyring_filename = cluster + "." + name + ".keyring"
-            file_path = os.path.join(dest, keyring_filename)
-
-        file_args['path'] = file_path
 
         # There's no need to run create_key() if neither secret nor caps have changed
         if (key_exist == 0 and (secret != _secret or caps != _caps)) or key_exist != 0:
