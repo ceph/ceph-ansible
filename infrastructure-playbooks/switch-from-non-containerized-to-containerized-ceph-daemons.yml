@@ -192,6 +192,23 @@
         name: ceph-mgr
 
 
+- name: set osd flags
+  hosts: "{{ mon_group_name | default('mons') }}[0]"
+  become: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: set osd flags
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set {{ item }}"
+      with_items:
+        - noout
+        - nodeep-scrub
+
+
 - name: switching from non-containerized to containerized ceph osd
 
   vars:
@@ -308,6 +325,22 @@
       delay: "{{ health_osd_check_delay }}"
       when: (ceph_pgs.stdout | from_json).pgmap.num_pgs != 0
 
+
+- name: unset osd flags
+  hosts: "{{ mon_group_name | default('mons') }}[0]"
+  become: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: set osd flags
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset {{ item }}"
+      with_items:
+        - noout
+        - nodeep-scrub
 
 - name: switching from non-containerized to containerized ceph mds
 
