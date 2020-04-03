@@ -582,8 +582,17 @@ def run_module():
                     caps = _info_key[0]['caps']
                 _caps = _info_key[0]['caps']
                 if secret == _secret and caps == _caps:
+                    if not os.path.isfile(file_path):
+                        rc, cmd, out, err = exec_commands(module, get_key(cluster, name, file_path, container_image))  # noqa E501
+                        result["rc"] = rc
+                        if rc != 0:
+                            result["stdout"] = "Couldn't fetch the key {0} at {1}.".format(name, file_path) # noqa E501
+                            module.exit_json(**result)
+                        result["stdout"] = "fetched the key {0} at {1}.".format(name, file_path) # noqa E501
+
                     result["stdout"] = "{0} already exists and doesn't need to be updated.".format(name) # noqa E501
                     result["rc"] = 0
+                    module.set_fs_attributes_if_different(file_args, False)
                     module.exit_json(**result)
         else:
             if os.path.isfile(file_path) and not secret or not caps:
@@ -607,17 +616,6 @@ def run_module():
                 result["stderr"] = err
                 module.exit_json(**result)
             changed = True
-        # fetch the key on the system
-        if key_exist != 1 and not import_key:
-            rc, cmd, out, err = exec_commands(module, get_key(cluster, name, file_path, container_image))  # noqa E501
-            result["rc"] = rc
-            if rc != 0:
-                result["stdout"] = "Couldn't fetch the key {0} at {1}.".format( # noqa E501
-                    name, file_path)
-                module.exit_json(**result)
-
-            result["stdout"] = "fetched the key {0} at {1}.".format(  # noqa E501
-                name, file_path)
 
         module.set_fs_attributes_if_different(file_args, False)
 
