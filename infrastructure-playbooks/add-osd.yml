@@ -15,36 +15,6 @@
 # you want to play the playbook on. So you need to comment already deployed OSD
 # and let uncommented the new OSDs.
 #
-- hosts:
-  - mons
-  - osds
-
-  gather_facts: False
-  become: true
-
-  vars:
-    delegate_facts_host: True
-
-  pre_tasks:
-    - name: gather facts
-      setup:
-      when:
-        - not delegate_facts_host | bool
-
-    - name: gather and delegate facts
-      setup:
-      delegate_to: "{{ item }}"
-      delegate_facts: True
-      with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
-      run_once: True
-      when:
-        - delegate_facts_host | bool
-
-  roles:
-    - ceph-defaults
-    - ceph-facts
-    - ceph-validate
-
 - hosts: osds
   gather_facts: False
   become: True
@@ -75,11 +45,12 @@
 
   roles:
     - role: ceph-defaults
+    - role: ceph-facts
+    - role: ceph-validate
     - role: ceph-handler
     - role: ceph-infra
     - role: ceph-docker-common
       when: containerized_deployment | bool
-    - role: ceph-facts
     - role: ceph-common
       when: not containerized_deployment | bool
     - role: ceph-config
