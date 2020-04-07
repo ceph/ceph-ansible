@@ -5,6 +5,11 @@
   when:
     - ansible_os_family == 'Debian'
 
+- name: unset noup flag
+  command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset noup"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  changed_when: False
+
 # We only want to restart on hosts that have called the handler.
 # This var is set when he handler is called, and unset after the
 # restart to ensure only the correct hosts are restarted.

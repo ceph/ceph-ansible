@@ -35,6 +35,13 @@
 - name: include_tasks common.yml
   include_tasks: common.yml
 
+- name: set noup flag
+  command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set noup"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: True
+  changed_when: False
+  when: not rolling_update | default(False) | bool
+
 - name: include ceph_disk_cli_options_facts.yml
   include_tasks: ceph_disk_cli_options_facts.yml
 
@@ -89,6 +96,14 @@
 - name: include_tasks start_osds.yml
   include_tasks: start_osds.yml
 
+- name: unset noup flag
+  command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset noup"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  changed_when: False
+  when:
+    - not rolling_update | default(False) | bool
+    - inventory_hostname == ansible_play_hosts_all | last
+
 - name: wait for all osd to be up
   command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json"
   register: wait_for_all_osds_up
@@ -100,6 +115,8 @@
   until:
     - (wait_for_all_osds_up.stdout | from_json)["osdmap"]["osdmap"]["num_osds"] | int > 0
     - (wait_for_all_osds_up.stdout | from_json)["osdmap"]["osdmap"]["num_osds"] == (wait_for_all_osds_up.stdout | from_json)["osdmap"]["osdmap"]["num_up_osds"]
+  when:
+    - inventory_hostname == ansible_play_hosts_all | last
 
 - name: include crush_rules.yml
   include_tasks: crush_rules.yml
