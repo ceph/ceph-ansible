@@ -649,10 +649,17 @@ def run_module():
         try:
             report_result = json.loads(out)
         except ValueError:
-            strategy_change = "strategy changed" in out
-            if strategy_change:
-                out = json.dumps(
-                    {"changed": False, "stdout": out.rstrip("\r\n")})
+            strategy_changed_in_out = "strategy changed" in out
+            strategy_changed_in_err = "strategy changed" in err
+            strategy_changed = strategy_changed_in_out or \
+                               strategy_changed_in_err
+            if strategy_changed:
+                if strategy_changed_in_out:
+                    out = json.dumps({"changed": False,
+                                      "stdout": out.rstrip("\r\n")})
+                elif strategy_changed_in_err:
+                    out = json.dumps({"changed": False,
+                                      "stderr": err.rstrip("\r\n")})
                 rc = 0
                 changed = False
             else:
@@ -664,7 +671,7 @@ def run_module():
                 rc=rc,
                 changed=changed,
             )
-            if strategy_change:
+            if strategy_changed:
                 module.exit_json(**result)
             module.fail_json(msg='non-zero return code', **result)
 
