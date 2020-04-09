@@ -9,7 +9,7 @@
             cephfs_pool_names: "{{ cephfs_pools | map(attribute='name') | list }}"
 
         - name: get and store list of filesystem pools
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool ls"
+          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool ls"
           changed_when: false
           register: osd_pool_ls
 
@@ -27,7 +27,7 @@
 
         - name: create filesystem pools
           command: >
-            {{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }}
+            {{ ceph_run_cmd }} --cluster {{ cluster }}
             osd pool create {{ item.name }}
             {{ item.pg_num | default(osd_pool_default_pg_num) if not item.pg_autoscale_mode | default(False) | bool else 16 }}
             {{ item.pgp_num | default(item.pg_num) | default(osd_pool_default_pg_num) if not item.pg_autoscale_mode | default(False) | bool else '' }}
@@ -44,18 +44,16 @@
             - "{{ cephfs_pools }}"
 
         - name: set the target ratio on pool(s)
-          command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} target_size_ratio {{ item.target_size_ratio }}"
+          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} target_size_ratio {{ item.target_size_ratio }}"
           with_items: "{{ cephfs_pools | unique }}"
-          delegate_to: "{{ groups[mon_group_name][0] }}"
           when: item.pg_autoscale_mode | default(False) | bool
 
         - name: set pg_autoscale_mode value on pool(s)
-          command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode {{ item.pg_autoscale_mode | default(False) | ternary('on', 'warn') }}"
-          delegate_to: "{{ groups[mon_group_name][0] }}"
+          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode {{ item.pg_autoscale_mode | default(False) | ternary('on', 'warn') }}"
           with_items: "{{ cephfs_pools | unique }}"
 
         - name: customize pool size
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }} {{ '--yes-i-really-mean-it' if item.size | default(osd_pool_default_size) | int == 1 else '' }}"
+          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }} {{ '--yes-i-really-mean-it' if item.size | default(osd_pool_default_size) | int == 1 else '' }}"
           with_items: "{{ cephfs_pools | unique }}"
           changed_when: false
           when:
@@ -64,7 +62,7 @@
             - item.type | default('replicated') != 'erasure'
 
         - name: customize pool min_size
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} min_size {{ item.min_size | default(osd_pool_default_min_size) }}"
+          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} min_size {{ item.min_size | default(osd_pool_default_min_size) }}"
           with_items: "{{ cephfs_pools | unique }}"
           changed_when: false
           when:
@@ -73,7 +71,7 @@
             - item.type | default('replicated') != 'erasure'
 
         - name: assign application to cephfs pools
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
+          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
           with_items:
             - "{{ cephfs_data_pool }}"
             - "{{ cephfs_metadata_pool }}"
@@ -83,18 +81,18 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   block:
     - name: check if ceph filesystem already exists
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs get {{ cephfs }}"
+      command: "{{ ceph_run_cmd }} --cluster {{ cluster }} fs get {{ cephfs }}"
       register: check_existing_cephfs
       changed_when: false
       failed_when: false
 
     - name: create ceph filesystem
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs new {{ cephfs }} {{ cephfs_metadata_pool.name }} {{ cephfs_data_pool.name }}"
+      command: "{{ ceph_run_cmd }} --cluster {{ cluster }} fs new {{ cephfs }} {{ cephfs_metadata_pool.name }} {{ cephfs_data_pool.name }}"
       changed_when: false
       when: check_existing_cephfs.rc != 0
 
 - name: set max_mds
-  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds {{ mds_max_mds }}"
+  command: "{{ ceph_run_cmd }} --cluster {{ cluster }} fs set {{ cephfs }} max_mds {{ mds_max_mds }}"
   changed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
