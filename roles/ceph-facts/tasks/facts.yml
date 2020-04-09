@@ -26,7 +26,12 @@
 
 - name: set_fact monitor_name ansible_hostname
   set_fact:
-    monitor_name: "{{ ansible_hostname }}"
+    monitor_name: "{{ hostvars[item]['ansible_hostname'] }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  with_items: "{{ groups.get(mon_group_name, []) }}"
+  run_once: true
+  when: groups.get(mon_group_name, []) | length > 0
 
 - name: find a running monitor
   when: groups.get(mon_group_name, []) | length > 0
