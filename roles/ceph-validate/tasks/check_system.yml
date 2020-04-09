@@ -19,11 +19,11 @@
 
 - name: fail on unsupported distribution for red hat ceph storage
   fail:
-    msg: "Distribution not supported {{ ansible_distribution_version }} by Red Hat Ceph Storage, only RHEL >= 7.3"
+    msg: "Distribution not supported {{ ansible_distribution_version }} by Red Hat Ceph Storage, only RHEL 7 (>= 7.6)"
   when:
-    - ansible_distribution == 'Red Hat Enterprise Linux'
+    - ansible_distribution == 'RedHat'
     - ceph_repository == 'rhcs'
-    - ansible_distribution_version is version_compare('7.3', '<')
+    - ansible_distribution_version is version_compare('7.6', '<')
 
 - name: determine if node is registered with subscription-manager
   command: subscription-manager identity
@@ -32,7 +32,7 @@
   failed_when: false
   check_mode: no
   when:
-    - ansible_distribution == 'Red Hat Enterprise Linux'
+    - ansible_distribution == 'RedHat'
     - ceph_repository == 'rhcs'
     - ceph_repository_type == 'cdn'
 
@@ -40,7 +40,7 @@
   fail:
     msg: "You must register your machine with subscription-manager"
   when:
-    - ansible_distribution == 'Red Hat Enterprise Linux'
+    - ansible_distribution == 'RedHat'
     - ceph_repository == 'rhcs'
     - ceph_repository_type == 'cdn'
     - subscription.rc != '0'
