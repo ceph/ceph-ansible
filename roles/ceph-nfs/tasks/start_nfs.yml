@@ -2,27 +2,23 @@
 - block:
   - name: set_fact container_exec_cmd_nfs
     set_fact:
-      container_exec_cmd_nfs: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-    when: containerized_deployment | bool
+      exec_cmd_nfs: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /var/log/ceph/:/var/log/ceph/:z --entrypoint=rados ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'rados' }} -n client.{{ ceph_nfs_ceph_user if groups.get(mon_group_name, []) | length == 0 else '.rgw.' + ansible_hostname }} -k /var/lib/ceph/radosgw/{{ cluster + '-rgw.' +  ceph_nfs_ceph_user if groups.get(mon_group_name, []) | length == 0 else ansible_hostname }}"
 
   - name: check if rados index object exists
-    shell: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data_pool.name }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
+    shell: "{{ exec_cmd_nfs | default('') }} -p {{ cephfs_data_pool.name }} --cluster {{ cluster }} ls|grep {{ ceph_nfs_rados_export_index }}"
     changed_when: false
     failed_when: false
     register: rados_index_exists
     check_mode: no
     when: ceph_nfs_rados_backend | bool
-    delegate_to: "{{ groups[mon_group_name][0] }}"
     run_once: true
 
   - name: create an empty rados index object
-    command: "{{ container_exec_cmd_nfs | default('') }} rados -p {{ cephfs_data_pool.name }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} /dev/null"
+    command: "{{ exec_cmd_nfs | default('') }} -p {{ cephfs_data_pool.name }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} /dev/null"
     when:
       - ceph_nfs_rados_backend | bool
       - rados_index_exists.rc != 0
-    delegate_to: "{{ groups[mon_group_name][0] }}"
     run_once: true
-  when: groups.get(mon_group_name, []) | length > 0
 
 - name: create /etc/ganesha
   file:
