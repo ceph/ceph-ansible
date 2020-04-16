@@ -46,8 +46,9 @@
     - "{{ mgr_group_name | default('mgrs') }}"
     - "{{ iscsi_gw_group_name | default('iscsigws') }}"
     - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+  gather_facts: false
   become: true
-  pre_tasks:
+  tasks:
     - import_role:
         name: ceph-defaults
     - import_role:
@@ -55,15 +56,10 @@
     - import_role:
         name: ceph-handler
 
-
-  tasks:
-    - name: set_fact container_binary, container_binding_name, container_service_name, container_package_name
+    - name: set_fact docker2podman and container_binary
       set_fact:
         docker2podman: True
         container_binary: podman
-        container_binding_name: podman
-        container_service_name: podman
-        container_package_name: podman
 
     - name: install podman
       package:
@@ -71,9 +67,24 @@
         state: present
       register: result
       until: result is succeeded
-      tags:
-        - with_pkg
+      tags: with_pkg
       when: not is_atomic | bool
+
+    - name: "pulling {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image from docker daemon"
+      command: "{{ timeout_command }} {{ container_binary }} pull docker-daemon:{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      changed_when: false
+      register: pull_image
+      until: pull_image.rc == 0
+      retries: "{{ docker_pull_retry }}"
+      delay: 10
+      when: inventory_hostname in groups.get(mon_group_name, []) or
+            inventory_hostname in groups.get(osd_group_name, []) or
+            inventory_hostname in groups.get(mds_group_name, []) or
+            inventory_hostname in groups.get(rgw_group_name, []) or
+            inventory_hostname in groups.get(mgr_group_name, []) or
+            inventory_hostname in groups.get(rbdmirror_group_name, []) or
+            inventory_hostname in groups.get(iscsi_gw_group_name, []) or
+            inventory_hostname in groups.get(nfs_group_name, [])
 
     - import_role:
         name: ceph-mon
@@ -120,6 +131,6 @@
         tasks_from: systemd.yml
       when: inventory_hostname in groups.get(rgw_group_name, [])
 
-    - name: reload ceph monitor systemd unit
+    - name: reload systemd daemon
       systemd:
         daemon_reload: yes
