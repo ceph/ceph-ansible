@@ -46,6 +46,7 @@
     - "{{ mgr_group_name | default('mgrs') }}"
     - "{{ iscsi_gw_group_name | default('iscsigws') }}"
     - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ grafana_server_group_name|default('grafana-server') }}"
   gather_facts: false
   become: true
   tasks:
@@ -85,6 +86,30 @@
             inventory_hostname in groups.get(rbdmirror_group_name, []) or
             inventory_hostname in groups.get(iscsi_gw_group_name, []) or
             inventory_hostname in groups.get(nfs_group_name, [])
+
+    - name: "pulling alertmanager/grafana/prometheus images from docker daemon"
+      command: "{{ timeout_command }} {{ container_binary }} pull docker-daemon:{{ item }}"
+      changed_when: false
+      register: pull_image
+      until: pull_image.rc == 0
+      retries: "{{ docker_pull_retry }}"
+      delay: 10
+      loop:
+        - "{{ alertmanager_container_image }}"
+        - "{{ grafana_container_image }}"
+        - "{{ prometheus_container_image }}"
+      when:
+        - dashboard_enabled | bool
+        - inventory_hostname in groups.get(grafana_server_group_name, [])
+
+    - name: "pulling {{ node_exporter_container_image }} image from docker daemon"
+      command: "{{ timeout_command }} {{ container_binary }} pull docker-daemon:{{ node_exporter_container_image }}"
+      changed_when: false
+      register: pull_image
+      until: pull_image.rc == 0
+      retries: "{{ docker_pull_retry }}"
+      delay: 10
+      when: dashboard_enabled | bool
 
     - import_role:
         name: ceph-mon
@@ -130,6 +155,28 @@
         name: ceph-rgw
         tasks_from: systemd.yml
       when: inventory_hostname in groups.get(rgw_group_name, [])
+
+    - name: dashboard configuration
+      when: dashboard_enabled | bool
+      block:
+        - import_role:
+            name: ceph-node-exporter
+            tasks_from: systemd.yml
+
+        - import_role:
+            name: ceph-facts
+            tasks_from: grafana.yml
+          when: inventory_hostname in groups.get(grafana_server_group_name, [])
+
+        - import_role:
+            name: ceph-grafana
+            tasks_from: systemd.yml
+          when: inventory_hostname in groups.get(grafana_server_group_name, [])
+
+        - import_role:
+            name: ceph-prometheus
+            tasks_from: systemd.yml
+          when: inventory_hostname in groups.get(grafana_server_group_name, [])
 
     - name: reload systemd daemon
       systemd:
