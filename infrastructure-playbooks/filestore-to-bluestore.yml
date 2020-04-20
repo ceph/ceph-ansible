@@ -161,13 +161,13 @@
         - name: set_fact _lvm_list
           set_fact:
             _lvm_list: "{{ _lvm_list | default([]) + item.value }}"
-          with_dict: "{{ (ceph_volume_lvm_list.stdout | from_json) }}"
+          with_dict: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json) }}"
 
         - name: ceph-volume prepared OSDs related tasks
           block:
             - name: mark out osds
               command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ item }}"
-              with_items: "{{ (ceph_volume_lvm_list.stdout | from_json).keys() | list }}"
+              with_items: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json).keys() | list }}"
               delegate_to: "{{ groups[mon_group_name][0] }}"
               run_once: true
 
@@ -176,7 +176,7 @@
                 name: "ceph-osd@{{ item }}"
                 state: stopped
                 enabled: no
-              with_items: "{{ (ceph_volume_lvm_list.stdout | from_json).keys() | list }}"
+              with_items: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json).keys() | list }}"
 
             - name: stop and disable ceph-volume services
               service:
@@ -190,7 +190,7 @@
 
             - name: mark down osds
               command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd down {{ item }}"
-              with_items: "{{ (ceph_volume_lvm_list.stdout | from_json).keys() | list }}"
+              with_items: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json).keys() | list }}"
               delegate_to: "{{ groups[mon_group_name][0] }}"
               run_once: true
 
@@ -257,7 +257,7 @@
           set_fact:
             osd_ids: "{{ osd_ids | default([]) + [item] }}"
           with_items:
-            - "{{ ((osd_tree.stdout | from_json).nodes | selectattr('name', 'match', inventory_hostname) | map(attribute='children') | list) }}"
+            - "{{ ((osd_tree.stdout | default('{}') | from_json).nodes | selectattr('name', 'match', inventory_hostname) | map(attribute='children') | list) }}"
 
 
         - name: purge osd(s) from the cluster
