@@ -271,6 +271,17 @@ by setting the ``osd_scenario`` configuration option.
 
    osds/scenarios
 
+Day-2 Operations
+----------------
+
+ceph-ansible provides a set of playbook in ``infrastructure-playbooks`` directory in order to perform some basic day-2 operations.
+
+.. toctree::
+   :maxdepth: 1
+
+   day-2/osds
+   day-2/purge
+
 Contribution
 ============
 
