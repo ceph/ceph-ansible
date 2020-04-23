@@ -95,8 +95,6 @@ A realm allows the RGWs inside of it to be independent and isolated from RGWs ou
 
 Realms can contain 1 or more clusters. There can also be more than 1 realm in a cluster.
 
-For more defail information on multisite please visit: https://docs.ceph.com/docs/master/radosgw/multisite/
-
 ## RGW Zonegroups
 
 Similar to zones a zonegroup can be either **master zonegroup** or a **secondary zonegroup**.
@@ -113,8 +111,12 @@ A zone is a collection of RGW daemons. A zone can be either **master zone** or a
 `rgw_zonesecondary` specifies that the zone will be a secondary zone in a zonegroup.
 Both `rgw_zonemaster` and `rgw_zonesecondary` need to be defined. They cannot have the same value.
 
+A secondary zone pulls a realm in order to sync data to it.
+
 Finally, The variable `rgw_zone` is set to "default" to enable compression for clusters configured without rgw multi-site.
 If multisite is configured `rgw_zone` should not be set to "default".
+
+For more defail information on multisite please visit: https://docs.ceph.com/docs/master/radosgw/multisite/
 
 # Deployment Scenario #1: Single Realm & Zonegroup with Multiple Ceph Clusters
 
@@ -425,7 +427,9 @@ rgw_pullhost: cluster0-rgw-001-hostname
 
 ## Conclusion
 
-There will be 2 realms in this configuration, `france` and `usa`, with RGWs and RGW zones in both clusters. Data is realm france will be replicated over both clusters and remain isolated from rgws in realm usa and vice versa.
+There will be 2 realms in this configuration, `france` and `usa`, with RGWs and RGW zones in both clusters. Cluster0 will has the master zones and Cluster1 has the secondary zones. 
+
+Data is realm france will be replicated over both clusters and remain isolated from rgws in realm usa and vice versa.
 
 # Deployment Scenario #4: Multiple Realms over Multiple Ceph Clusters with Multiple Instances
 
@@ -448,6 +452,8 @@ rgw_instances:
     system_access_key: yu17wkvAx3B8Wyn08XoF
     system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
 ```
+
+## Setting rgw_instances for a host in the master zone
 
 Here is an example of a host_vars for a host (ex: rgw-000 in the examples) containing 2 rgw_instances:
 
@@ -482,5 +488,49 @@ rgw_instances:
 This example starts up 2 rgws on host rgw-000. `rgw0` is configured to be in realm usa and `rgw1` is configured to be in realm france. 
 
 The variables `rgw_zonemaster`, `rgw_zonesecondary`, `rgw_zonegroupmaster`, `rgw_multisite_proto` cannot be set in an item of rgw_instances. All of these variables must be set in group_vars/ or host_vars/.
+
+## Setting rgw_instances for a host in a secondary zone
+
+To start up multiple rgws on a host that are in a secondary zone, `endpoint` must be added to rgw_instances.
+
+The value of `endpoint` should be the endpoint of an RGW in the master zone of the realm that is resolvable from the host.`rgw_pull_{proto, host, port}` are not necessary since `endpoint` is a combination of all three. 
+
+Here is an example of a host_vars for a host containing 2 rgw_instances in a secondary zone:
+
+```
+rgw_zonemaster: false
+rgw_zonesecondary: true
+rgw_zonegroupmaster: true
+rgw_multisite_proto: "http"
+rgw_instances:
+  - instance_name: 'rgw2'
+    rgw_realm: 'usa'
+    rgw_zonegroup: 'alaska'
+    rgw_zone: 'fairbanks'
+    radosgw_address: "{{ _radosgw_address }}"
+    radosgw_frontend_port: 8080
+    rgw_zone_user: edward.lewis
+    rgw_zone_user_display_name: "Edward Lewis"
+    system_access_key: yu17wkvAx3B8Wyn08XoF
+    system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
+    endpoint: https://rgw-000-hostname:8080
+  - instance_name: 'rgw3'
+    rgw_realm: 'france'
+    rgw_zonegroup: 'idf'
+    rgw_zone: 'versailles'
+    radosgw_address: "{{ _radosgw_address }}"
+    radosgw_frontend_port: 8081
+    rgw_zone_user: jacques.chirac
+    rgw_zone_user_display_name: "Jacques Chirac"
+    system_access_key: P9Eb6S8XNyo4dtZZUUMy
+    system_secret_key: qqHCUtfdNnpHq3PZRHW5un9l0bEBM812Uhow0XfB
+    endpoint: https://rgw-000-hostname:8081
+```
+
+This example starts up 2 rgws on host that will pull the realm from the rgws on rgw-000 above. `rgw2` is pulling from the rgw endpoint in realm usa in the master zone example above (instance name rgw0). `rgw3` is pulling from the rgw endpoint in realm france in the master zone example above (instance name rgw1). 
+
+Just like the example on the master zone, the variables `rgw_zonemaster`, `rgw_zonesecondary`, `rgw_zonegroupmaster`, `rgw_multisite_proto` cannot be set in an item of rgw_instances. All of these variables must be set in group_vars/ or host_vars/.
+
+## Conclusion
 
 `rgw_instances` can be used in host_vars for multisite deployments like scenarios 2 and 3
