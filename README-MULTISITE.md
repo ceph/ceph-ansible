@@ -25,21 +25,21 @@ Each type of daemon (osd, mon, rgw, mgr, etc.) is given a **group** with its res
 Here is an example of an inventory file (in .ini format) for a ceph cluster with 1 ceph-mgr, 4 rgws, 3 osds, and 2 mons:
 ```
 [mgrs]
-	mgr-000 ansible_ssh_host=192.168.224.48 ansible_ssh_port=22
+	mgr-001 ansible_ssh_host=192.168.224.48 ansible_ssh_port=22
 [rgws]
-	rgws-000 ansible_ssh_host=192.168.216.145 ansible_ssh_port=22 radosgw_address=192.168.216.145
-	rgws-001 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192.168.215.178
+	rgw-001 ansible_ssh_host=192.168.216.145 ansible_ssh_port=22 radosgw_address=192.168.216.145
+	rgw-002 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192.168.215.178
 [osds]
-	osd-002 ansible_ssh_host=192.168.176.118 ansible_ssh_port=22
-	osd-001 ansible_ssh_host=192.168.226.21 ansible_ssh_port=22
-	osd-000 ansible_ssh_host=192.168.230.196 ansible_ssh_port=22
+	osd-001 ansible_ssh_host=192.168.230.196 ansible_ssh_port=22
+	osd-002 ansible_ssh_host=192.168.226.21 ansible_ssh_port=22
+	osd-003 ansible_ssh_host=192.168.176.118 ansible_ssh_port=22
 [mons]
-	mon-000 ansible_ssh_host=192.168.210.155 ansible_ssh_port=22 monitor_address=192.168.210.155
-	mon-001 ansible_ssh_host=192.168.179.111 ansible_ssh_port=22 monitor_address=192.168.179.111
+	mon-001 ansible_ssh_host=192.168.210.155 ansible_ssh_port=22 monitor_address=192.168.210.155
+	mon-002 ansible_ssh_host=192.168.179.111 ansible_ssh_port=22 monitor_address=192.168.179.111
 ```
 
 Notice there are 4 groups defined here: mgrs, rgws, osds, mons. 
-There is one host (mgr-000) in mgrs, 2 hosts (rgws-000, rgws-001) in rgws, 3 hosts (osd-000, osd-001, osd-002) in osds, and 2 hosts (mon-000, mon-001) in mons.
+There is one host (mgr-001) in mgrs, 2 hosts (rgw-001, rgw-002) in rgws, 3 hosts (osd-001, osd-002, osd-003) in osds, and 2 hosts (mon-001, mon-002) in mons.
 
 ## group_vars
 
@@ -53,10 +53,10 @@ If you want to set any of the variables defined in `group_vars` for a specific h
 One option is to edit the line in the inventory file for the host you want to configure. In the above inventory each mon and rgw has a host specific variable for its address.
 
 The preferred option is to create a directory called `host_vars` at the root of the ceph-ansible tree.
-In `host_vars/` there can be files with the same name as the host (ex: osd-000, mgr-000, rgw-001) that set variables for each host.
+In `host_vars/` there can be files with the same name as the host (ex: osd-001, mgr-001, rgw-001) that set variables for each host.
 The values for the variables set in `host_vars` have a higher precedence than the values in `group_var`.
 
-Consider this the file `host_vars/rgw-000`:
+Consider this the file `host_vars/rgw-001`:
 
 ```
 rgw_realm: usa
@@ -69,7 +69,7 @@ system_access_key: alaskaaccesskey
 system_secret_key: alaskasecretkey
 ```
 
-Even if `rgw_realm` is set to `france` in `group_vars/all.yml`, `rgw_realm` will evaluate to `usa` for tasks run on `rgw-000`.
+Even if `rgw_realm` is set to `france` in `group_vars/all.yml`, `rgw_realm` will evaluate to `usa` for tasks run on `rgw-001`.
 This is because Ansible gives higher precedence to the values set in `host_vars` over `group_vars`.
 
 For more information on working with inventory in Ansible please visit: https://docs.ansible.com/ansible/latest/user_guide/intro_inventory.html.
@@ -152,7 +152,7 @@ rgw_zonesecondary: false
 
 rgw_zonegroupmaster: true
 
-rgw_multisite_proto: "http"
+rgw_multisite_proto: http
 rgw_zone_user: edward.lewis
 rgw_zone_user_display_name: "Edward Lewis"
 
@@ -185,7 +185,7 @@ rgw_zonesecondary: true
 
 rgw_zonegroupmaster: true
 
-rgw_multisite_proto: "http"
+rgw_multisite_proto: http
 rgw_zone_user: edward.lewis
 rgw_zone_user_display_name: "Edward Lewis"
 
@@ -194,7 +194,7 @@ system_secret_key: MGecsMrWtKZgngOHZdrd6d3JxGO5CPWgT2lcnpSt
 
 rgw_pull_proto: http
 rgw_pull_port: 8080
-rgw_pullhost: cluster0-rgw-000
+rgw_pullhost: rgw-001-hostname
 ```
 
 **Note:** `rgw_zonemaster` should have the value of `false` and `rgw_zonesecondary` should be `true`
@@ -239,16 +239,16 @@ As previously learned, all values set here will be set on all rgw hosts. `rgw_mu
 
 3. Create & edit files in `host_vars/` to create realms, zonegroups, and master zones.
 
-Here is an example of the file `host_vars/rgws-000` for the `rgws-000` entry in the `[rgws]` section of for the example ansible inventory.
+Here is an example of the file `host_vars/rgw-001` for the `rgw-001` entry in the `[rgws]` section of for the example ansible inventory.
 
 ```
 rgw_zonemaster: true
 rgw_zonesecondary: false
 rgw_zonegroupmaster: true
-rgw_multisite_proto: "http"
-rgw_realm: 'france'
-rgw_zonegroup: 'idf'
-rgw_zone: 'paris'
+rgw_multisite_proto: http
+rgw_realm: france
+rgw_zonegroup: idf
+rgw_zone: paris
 radosgw_address: "{{ _radosgw_address }}"
 radosgw_frontend_port: 8080
 rgw_zone_user: jacques.chirac
@@ -257,16 +257,16 @@ system_access_key: P9Eb6S8XNyo4dtZZUUMy
 system_secret_key: qqHCUtfdNnpHq3PZRHW5un9l0bEBM812Uhow0XfB
 ```
 
-Here is an example of the file `host_vars/rgws-001` for the `rgws-001` entry in the `[rgws]` section of for the example ansible inventory.
+Here is an example of the file `host_vars/rgw-002` for the `rgw-002` entry in the `[rgws]` section of for the example ansible inventory.
 
 ```
 rgw_zonemaster: true
 rgw_zonesecondary: false
 rgw_zonegroupmaster: true
-rgw_multisite_proto: "http"
-rgw_realm: 'usa'
-rgw_zonegroup: 'alaska'
-rgw_zone: 'juneau'
+rgw_multisite_proto: http
+rgw_realm: usa
+rgw_zonegroup: alaska
+rgw_zone: juneau
 radosgw_address: "{{ _radosgw_address }}"
 radosgw_frontend_port: 8080
 rgw_zone_user: edward.lewis
@@ -275,7 +275,7 @@ system_access_key: yu17wkvAx3B8Wyn08XoF
 system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
 ```
 
-**Note:** Since `rgw_realm`, `rgw_zonegroup`, and `rgw_zone` differ between files, a new realm, zonegroup, and master zone are created containing rgws-000 and rgws-001 respectively.
+**Note:** Since `rgw_realm`, `rgw_zonegroup`, and `rgw_zone` differ between files, a new realm, zonegroup, and master zone are created containing rgw-001 and rgw-002 respectively.
 
 **Note:** `rgw_zonegroupmaster` is set to true in each of the files since it will be the only zonegroup in each realm.
 
@@ -302,16 +302,16 @@ The inventory for the rgws section of the master cluster for this example looks 
 
 ```
 [rgws]
-	rgws-000 ansible_ssh_host=192.168.216.145 ansible_ssh_port=22 radosgw_address=192.168.216.145
-	rgws-001 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192.168.215.178
+	rgw-001 ansible_ssh_host=192.168.216.145 ansible_ssh_port=22 radosgw_address=192.168.216.145
+	rgw-002 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192.168.215.178
 ```
 
 The inventory for the rgws section of the secondary cluster for this example looks like:
 
 ```
 [rgws]
-	rgws-002 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192.168.215.199
-	rgws-003 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192.168.194.109
+	rgw-003 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192.168.215.199
+	rgw-004 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192.168.194.109
 ```
 
 ## Requirements
@@ -341,16 +341,16 @@ As per the previous example, all values set here will be set on all rgw hosts.
 
 3. Create & edit files in `host_vars/` to create realms, zonegroups, and master zones on cluster #1.
 
-Here is an example of the file `host_vars/rgws-000` for the the master cluster. 
+Here is an example of the file `host_vars/rgw-001` for the the master cluster. 
 
 ```
 rgw_zonemaster: true
 rgw_zonesecondary: false
 rgw_zonegroupmaster: true
-rgw_multisite_proto: "http"
-rgw_realm: 'france'
-rgw_zonegroup: 'idf'
-rgw_zone: 'paris'
+rgw_multisite_proto: http
+rgw_realm: france
+rgw_zonegroup: idf
+rgw_zone: paris
 radosgw_address: "{{ _radosgw_address }}"
 radosgw_frontend_port: 8080
 rgw_zone_user: jacques.chirac
@@ -359,16 +359,16 @@ system_access_key: P9Eb6S8XNyo4dtZZUUMy
 system_secret_key: qqHCUtfdNnpHq3PZRHW5un9l0bEBM812Uhow0XfB
 ```
 
-Here is an example of the file `host_vars/rgws-001` for the the master cluster.
+Here is an example of the file `host_vars/rgw-002` for the the master cluster.
 
 ```
 rgw_zonemaster: true
 rgw_zonesecondary: false
 rgw_zonegroupmaster: true
-rgw_multisite_proto: "http"
-rgw_realm: 'usa'
-rgw_zonegroup: 'alaska'
-rgw_zone: 'juneau'
+rgw_multisite_proto: http
+rgw_realm: usa
+rgw_zonegroup: alaska
+rgw_zone: juneau
 radosgw_address: "{{ _radosgw_address }}"
 radosgw_frontend_port: 8080
 rgw_zone_user: edward.lewis
@@ -381,16 +381,16 @@ system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
 
 5. Create & edit files in `host_vars/` for the entries in the `[rgws]` section of the inventory on the secondary cluster.
 
-Here is an example of the file `host_vars/rgws-000` for the `rgws-000` entry in the `[rgws]` section of for the example ansible inventory if it was for a secondary cluster.
+Here is an example of the file `host_vars/rgw-003` for the `rgw-003` entry in the `[rgws]` section for a secondary cluster.
 
 ```
 rgw_zonemaster: false
 rgw_zonesecondary: true
 rgw_zonegroupmaster: true
-rgw_multisite_proto: "http"
-rgw_realm: 'france'
-rgw_zonegroup: 'idf'
-rgw_zone: 'versailles'
+rgw_multisite_proto: http
+rgw_realm: france
+rgw_zonegroup: idf
+rgw_zone: versailles
 radosgw_address: "{{ _radosgw_address }}"
 radosgw_frontend_port: 8080
 rgw_zone_user: jacques.chirac
@@ -399,19 +399,19 @@ system_access_key: P9Eb6S8XNyo4dtZZUUMy
 system_secret_key: qqHCUtfdNnpHq3PZRHW5un9l0bEBM812Uhow0XfB
 rgw_pull_proto: http
 rgw_pull_port: 8080
-rgw_pullhost: cluster0-rgw-000-hostname
+rgw_pullhost: rgw-001-hostname
 ```
 
-Here is an example of the file `host_vars/rgws-001` for the `rgws-001` entry in the `[rgws]` section of for the example ansible inventory if it was for a secondary cluster.
+Here is an example of the file `host_vars/rgw-004` for the `rgw-004` entry in the `[rgws]` section for a secondary cluster.
 
 ```
 rgw_zonemaster: false
 rgw_zonesecondary: true
 rgw_zonegroupmaster: true
-rgw_multisite_proto: "http"
-rgw_realm: 'usa'
-rgw_zonegroup: 'alaska'
-rgw_zone: 'juneau'
+rgw_multisite_proto: http
+rgw_realm: usa
+rgw_zonegroup: alaska
+rgw_zone: juneau
 radosgw_address: "{{ _radosgw_address }}"
 radosgw_frontend_port: 8080
 rgw_zone_user: edward.lewis
@@ -420,7 +420,7 @@ system_access_key: yu17wkvAx3B8Wyn08XoF
 system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
 rgw_pull_proto: http
 rgw_pull_port: 8080
-rgw_pullhost: cluster0-rgw-001-hostname
+rgw_pullhost: rgw-002-hostname
 ```
 
 6. Run the ceph-ansible playbook on your secondary cluster.
@@ -441,10 +441,10 @@ Here is an example:
 
 ```
 rgw_instances:
-  - instance_name: 'rgw0'
-    rgw_realm: 'usa'
-    rgw_zonegroup: 'alaska'
-    rgw_zone: 'juneau'
+  - instance_name: rgw1
+    rgw_realm: usa
+    rgw_zonegroup: alaska
+    rgw_zone: juneau
     radosgw_address: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
     rgw_zone_user: edward.lewis
@@ -455,28 +455,28 @@ rgw_instances:
 
 ## Setting rgw_instances for a host in the master zone
 
-Here is an example of a host_vars for a host (ex: rgw-000 in the examples) containing 2 rgw_instances:
+Here is an example of a host_vars for a host (ex: rgw-001 in the examples) containing 2 rgw_instances:
 
 ```
 rgw_zonemaster: true
 rgw_zonesecondary: false
 rgw_zonegroupmaster: true
-rgw_multisite_proto: "http"
+rgw_multisite_proto: http
 rgw_instances:
-  - instance_name: 'rgw0'
-    rgw_realm: 'usa'
-    rgw_zonegroup: 'alaska'
-    rgw_zone: 'juneau'
+  - instance_name: rgw1
+    rgw_realm: usa
+    rgw_zonegroup: alaska
+    rgw_zone: juneau
     radosgw_address: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
     rgw_zone_user: edward.lewis
     rgw_zone_user_display_name: "Edward Lewis"
     system_access_key: yu17wkvAx3B8Wyn08XoF
     system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
-  - instance_name: 'rgw1'
-    rgw_realm: 'france'
-    rgw_zonegroup: 'idf'
-    rgw_zone: 'paris'
+  - instance_name: rgw2
+    rgw_realm: france
+    rgw_zonegroup: idf
+    rgw_zone: paris
     radosgw_address: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8081
     rgw_zone_user: jacques.chirac
@@ -485,7 +485,7 @@ rgw_instances:
     system_secret_key: qqHCUtfdNnpHq3PZRHW5un9l0bEBM812Uhow0XfB
 ```
 
-This example starts up 2 rgws on host rgw-000. `rgw0` is configured to be in realm usa and `rgw1` is configured to be in realm france. 
+This example starts up 2 rgws on host rgw-001. `rgw1` is configured to be in realm usa and `rgw2` is configured to be in realm france. 
 
 The variables `rgw_zonemaster`, `rgw_zonesecondary`, `rgw_zonegroupmaster`, `rgw_multisite_proto` cannot be set in an item of rgw_instances. All of these variables must be set in group_vars/ or host_vars/.
 
@@ -503,31 +503,31 @@ rgw_zonesecondary: true
 rgw_zonegroupmaster: true
 rgw_multisite_proto: "http"
 rgw_instances:
-  - instance_name: 'rgw2'
-    rgw_realm: 'usa'
-    rgw_zonegroup: 'alaska'
-    rgw_zone: 'fairbanks'
+  - instance_name: rgw3
+    rgw_realm: usa
+    rgw_zonegroup: alaska
+    rgw_zone: fairbanks
     radosgw_address: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
     rgw_zone_user: edward.lewis
     rgw_zone_user_display_name: "Edward Lewis"
     system_access_key: yu17wkvAx3B8Wyn08XoF
     system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
-    endpoint: https://rgw-000-hostname:8080
-  - instance_name: 'rgw3'
-    rgw_realm: 'france'
-    rgw_zonegroup: 'idf'
-    rgw_zone: 'versailles'
+    endpoint: https://rgw-001-hostname:8080
+  - instance_name: rgw4
+    rgw_realm: france
+    rgw_zonegroup: idf
+    rgw_zone: versailles
     radosgw_address: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8081
     rgw_zone_user: jacques.chirac
     rgw_zone_user_display_name: "Jacques Chirac"
     system_access_key: P9Eb6S8XNyo4dtZZUUMy
     system_secret_key: qqHCUtfdNnpHq3PZRHW5un9l0bEBM812Uhow0XfB
-    endpoint: https://rgw-000-hostname:8081
+    endpoint: https://rgw-001-hostname:8081
 ```
 
-This example starts up 2 rgws on host that will pull the realm from the rgws on rgw-000 above. `rgw2` is pulling from the rgw endpoint in realm usa in the master zone example above (instance name rgw0). `rgw3` is pulling from the rgw endpoint in realm france in the master zone example above (instance name rgw1). 
+This example starts up 2 rgws on the host that will pull the realm from the rgws on rgw-001 above. `rgw3` is pulling from the rgw endpoint in realm usa in the master zone example above (instance name rgw1). `rgw4` is pulling from the rgw endpoint in realm france in the master zone example above (instance name rgw2). 
 
 Just like the example on the master zone, the variables `rgw_zonemaster`, `rgw_zonesecondary`, `rgw_zonegroupmaster`, `rgw_multisite_proto` cannot be set in an item of rgw_instances. All of these variables must be set in group_vars/ or host_vars/.
 
