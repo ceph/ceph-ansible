@@ -24,7 +24,26 @@
   with_items: "{{ groups[client_group_name] | intersect(ansible_play_batch) }}"
   when: (hostvars[item]['ansible_architecture'] == 'x86_64') or (not containerized_deployment | bool)
 
-- name: run a dummy container (sleep 300) from where we can create pool(s)/key(s)
+- name: set_fact delegated_node, condition_copy_admin_key, docker_exec_cmd
+  set_fact:
+    delegated_node: "{{ groups[mon_group_name][0] if groups.get(mon_group_name, []) | length > 0 else inventory_hostname }}"
+    condition_copy_admin_key: "{{ True if groups.get(mon_group_name, []) | length > 0 else copy_admin_key }}"
+
+- name: set_fact docker_exec_cmd
+  set_fact:
+    docker_exec_cmd: "docker exec {% if groups.get(mon_group_name, []) | length > 0 -%} ceph-mon-{{ hostvars[delegated_node]['ansible_hostname'] }} {% else %} ceph-create-keys {% endif %}"
+  when:
+    - containerized_deployment
+
+- name: ensure the dummy container is not run already
+  command: docker stop ceph-create-keys
+  changed_when: false
+  failed_when: false
+  when:
+    - containerized_deployment
+    - inventory_hostname == groups.get('_filtered_clients') | first
+
+- name: run a dummy container (sleep infinity) from where we can create pool(s)/key(s)
   command: >
     docker run \
     --rm \
@@ -33,25 +52,11 @@
     --name ceph-create-keys \
     --entrypoint=sleep \
     {{ ceph_client_docker_registry}}/{{ ceph_client_docker_image }}:{{ ceph_client_docker_image_tag }} \
-    300
+    infinity
   changed_when: false
   when:
     - containerized_deployment
     - inventory_hostname == groups.get('_filtered_clients') | first
-
-- name: set_fact delegated_node
-  set_fact:
-    delegated_node: "{{ groups[mon_group_name][0] if groups.get(mon_group_name, []) | length > 0 else inventory_hostname }}"
-
-- name: set_fact condition_copy_admin_key
-  set_fact:
-    condition_copy_admin_key: "{{ True if groups.get(mon_group_name, []) | length > 0 else copy_admin_key }}"
-
-- name: set_fact docker_exec_cmd
-  set_fact:
-    docker_exec_cmd: "docker exec {% if groups.get(mon_group_name, []) | length > 0 -%} ceph-mon-{{ hostvars[delegated_node]['ansible_hostname'] }} {% else %} ceph-create-keys {% endif %}"
-  when:
-    - containerized_deployment
 
 - name: create cephx key(s)
   ceph_key:
@@ -140,3 +145,11 @@
     - "{{ hostvars[groups['_filtered_clients'][0]]['slurp_client_keys']['results'] }}"
   when:
     - not item.get('skipped', False)
+
+- name: stop the dummy container
+  command: docker stop ceph-create-keys
+  changed_when: false
+  failed_when: false
+  when:
+    - containerized_deployment
+    - inventory_hostname == groups.get('_filtered_clients') | first
