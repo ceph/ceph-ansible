@@ -107,6 +107,15 @@
   run_once: true
   changed_when: false
 
+- name: disable ssl verification for grafana
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-ssl-verify False"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  changed_when: false
+  when:
+    - dashboard_protocol == "https"
+    - dashboard_grafana_api_no_ssl_verify | bool
+
 - name: set alertmanager host
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-alertmanager-api-host http://{{ grafana_server_addrs | first }}:{{ alertmanager_port }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
