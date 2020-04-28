@@ -2,22 +2,6 @@
 - name: check and deploy filesystem pools
   delegate_to: "{{ groups[mon_group_name][0] }}"
   block:
-    - name: check if filesystem pool already exists
-      block:
-        - name: compile a list of pool names
-          set_fact:
-            cephfs_pool_names: "{{ cephfs_pools | map(attribute='name') | list }}"
-
-        - name: get and store list of filesystem pools
-          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool ls"
-          changed_when: false
-          register: osd_pool_ls
-
-        - name: look whether pools to be created are present in the output
-          set_fact:
-            fs_pools_created: True
-          when: osd_pool_ls.stdout_lines | intersect(cephfs_pool_names) | length > 0
-
     - name: deploy filesystem pools
       when: fs_pools_created is not defined
       block:
@@ -26,52 +10,23 @@
             tasks_from: get_def_crush_rule_name.yml
 
         - name: create filesystem pools
-          command: >
-            {{ ceph_run_cmd }} --cluster {{ cluster }}
-            osd pool create {{ item.name }}
-            {{ item.pg_num | default(osd_pool_default_pg_num) if not item.pg_autoscale_mode | default(False) | bool else 16 }}
-            {{ item.pgp_num | default(item.pg_num) | default(osd_pool_default_pg_num) if not item.pg_autoscale_mode | default(False) | bool else '' }}
-            {%- if item.type | default(1) | int == 1 or item.type | default('replicated') == 'replicated' %}
-            replicated
-            {{ item.rule_name | default(ceph_osd_pool_default_crush_rule_name) }}
-            {{ item.expected_num_objects | default(0) }}
-            {%- else %}
-            erasure
-            {{ item.erasure_profile }}
-            {%- endif %}
-          changed_when: false
-          with_items:
-            - "{{ cephfs_pools }}"
-
-        - name: set the target ratio on pool(s)
-          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} target_size_ratio {{ item.target_size_ratio }}"
-          with_items: "{{ cephfs_pools | unique }}"
-          when:
-            - item.pg_autoscale_mode | default(False) | bool
-            - item.target_size_ratio is defined
-
-        - name: set pg_autoscale_mode value on pool(s)
-          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode {{ item.pg_autoscale_mode | default(False) | ternary('on', 'warn') }}"
-          with_items: "{{ cephfs_pools | unique }}"
-
-        - name: customize pool size
-          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} size {{ item.size | default(osd_pool_default_size) }} {{ '--yes-i-really-mean-it' if item.size | default(osd_pool_default_size) | int == 1 else '' }}"
-          with_items: "{{ cephfs_pools | unique }}"
-          changed_when: false
-          when:
-            - item.size | default(osd_pool_default_size) != ceph_osd_pool_default_size
-            - item.type | default(1) | int != 3
-            - item.type | default('replicated') != 'erasure'
-
-        - name: customize pool min_size
-          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} min_size {{ item.min_size | default(osd_pool_default_min_size) }}"
-          with_items: "{{ cephfs_pools | unique }}"
-          changed_when: false
-          when:
-            - (item.min_size | default(osd_pool_default_min_size))|int > ceph_osd_pool_default_min_size
-            - item.type | default(1) | int != 3
-            - item.type | default('replicated') != 'erasure'
-
+          ceph_pool:
+            name: "{{ item.name }}"
+            state: present
+            cluster: "{{ cluster }}"
+            pg_num: "{{ item.pg_num | default(osd_pool_default_pg_num) if not item.0.pg_autoscale_mode | default(False) | bool else 16 }}"
+            pgp_num: "{{ item.pgp_num | default(item.pg_num) | default(osd_pool_default_pg_num) if not item.pg_autoscale_mode | default(False) | bool else omit }}"
+            size: "{{ item.size | default(omit) }}"
+            min_size: "{{ item.min_size | default(omit) }}"
+            pool_type: "{{ item.type | default('replicated') }}"
+            rule_name: "{{ item.rule_name | default(omit) }}"
+            erasure_profile: "{{ item.erasure_profile | default(omit) }}"
+            pg_autoscale_mode: "{{ item.pg_autoscale_mode | default(omit) }}"
+            target_size_ratio: "{{ item.target_size_ratio | default(omit) }}"
+          with_items: "{{ cephfs_pools }}"
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: check and create ceph filesystem
   delegate_to: "{{ groups[mon_group_name][0] }}"

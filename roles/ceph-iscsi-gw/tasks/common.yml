@@ -52,27 +52,14 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when: containerized_deployment | bool
 
-- name: check if a rbd pool exists
-  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool ls --format json"
-  changed_when: false
-  register: iscsi_pool_exists
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-
-- name: iscsi pool related tasks
-  when: "iscsi_pool_name not in (iscsi_pool_exists.stdout | from_json)"
-  block:
-    - name: create a iscsi pool if it doesn't exist
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool create {{ iscsi_pool_name }} {{ osd_pool_default_pg_num }}"
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-
-    - name: assign application rbd to iscsi pool
-      command: "{{ container_exec_cmd }} ceph --connect-timeout 5 --cluster {{ cluster }} osd pool application enable {{ iscsi_pool_name }} rbd"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      run_once: True
-
-    - name: customize pool size
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd pool set {{ iscsi_pool_name }} size {{ iscsi_pool_size | default(osd_pool_default_size) }} {{ '--yes-i-really-mean-it' if iscsi_pool_size | default(osd_pool_default_size) | int == 1 else '' }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      changed_when: false
-      when: iscsi_pool_size | default(osd_pool_default_size) != ceph_osd_pool_default_size
+- name: create iscsi pool
+  ceph_pool:
+    name: "{{ iscsi_pool_name }}"
+    state: present
+    cluster: "{{ cluster }}"
+    pg_num: "{{ osd_pool_default_pg_num }}"
+    size: "{{ iscsi_pool_size | default(osd_pool_default_size) }}"
+    application: "rbd"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
