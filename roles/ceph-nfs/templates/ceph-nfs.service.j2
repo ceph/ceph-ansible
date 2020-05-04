@@ -10,7 +10,7 @@ After=network.target
 [Service]
 EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/{{ container_binary }} rm ceph-nfs-%i
-ExecStartPre={{ '/bin/mkdir' if ansible_os_family == 'Debian' else '/usr/bin/mkdir' }} -p /etc/ceph /etc/ganesha /var/lib/nfs/ganesha
+ExecStartPre={{ '/bin/mkdir' if ansible_os_family == 'Debian' else '/usr/bin/mkdir' }} -p /etc/ceph /etc/ganesha /var/lib/nfs/ganesha /var/log/ganesha
 ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   -v /var/lib/ceph:/var/lib/ceph:z \
   -v /etc/ceph:/etc/ceph:z \
@@ -18,6 +18,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   -v /etc/ganesha:/etc/ganesha:z \
   -v /var/run/ceph:/var/run/ceph:z \
   -v /var/log/ceph:/var/log/ceph:z \
+  -v /var/log/ganesha:/var/log/ganesha:z \
   {% if ceph_nfs_dynamic_exports %}
   --privileged \
   -v /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket \
