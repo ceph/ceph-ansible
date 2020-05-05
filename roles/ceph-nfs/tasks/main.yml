@@ -33,11 +33,14 @@
   block:
     - name: create keyring directory
       file:
-        path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ceph_nfs_ceph_user }}"
+        path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ item }}"
         state: directory
         owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
         group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
         mode: "0755"
+      with_items:
+        - "{{ ceph_nfs_ceph_user }}"
+        - "{{ ansible_hostname }}"
 
     - name: set_fact rgw_client_name
       set_fact:
@@ -55,7 +58,7 @@
         - ['/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ceph_nfs_ceph_user }}/keyring', '/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring']
       when:
         - not item.0.get('skipped', False)
-        - item.0.item.name == 'client.rgw.' + ceph_nfs_ceph_user
+        - item.0.item.name == 'client.' + ceph_nfs_ceph_user or item.0.item.name == rgw_client_name
 
 - name: include start_nfs.yml
   import_tasks: start_nfs.yml
