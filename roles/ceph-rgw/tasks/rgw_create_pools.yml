@@ -1,7 +1,7 @@
 ---
 - name: remove ec profile
   command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd erasure-code-profile rm {{ item.value.ec_profile }}"
-  with_dict: "{{ rgw_create_pools }}"
+  loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
   when:
@@ -11,7 +11,7 @@
 
 - name: set ec profile
   command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd erasure-code-profile set {{ item.value.ec_profile }} k={{ item.value.ec_k }} m={{ item.value.ec_m }}"
-  with_dict: "{{ rgw_create_pools }}"
+  loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
   when:
@@ -20,7 +20,7 @@
 
 - name: set crush rule
   command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd crush rule create-erasure {{ item.key }} {{ item.value.ec_profile }}"
-  with_dict: "{{ rgw_create_pools }}"
+  loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
   when:
@@ -29,7 +29,7 @@
 
 - name: create ec pools for rgw
   command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num | default(osd_pool_default_pg_num) }} erasure {{ item.value.ec_profile }}"
-  with_dict: "{{ rgw_create_pools }}"
+  loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
   when:
@@ -43,7 +43,7 @@
   retries: 60
   delay: 3
   until: result is succeeded
-  with_dict: "{{ rgw_create_pools }}"
+  loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when: item.value.type is not defined or item.value.type == 'replicated'
 
@@ -53,7 +53,7 @@
   retries: 60
   delay: 3
   until: result is succeeded
-  with_dict: "{{ rgw_create_pools }}"
+  loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
   when:
@@ -67,5 +67,5 @@
   delay: 3
   until: result is succeeded
   changed_when: false
-  with_dict: "{{ rgw_create_pools }}"
+  loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
