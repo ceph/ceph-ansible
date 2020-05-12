@@ -206,15 +206,12 @@ def generate_ceph_cmd(cluster, args, user, user_key, container_image=None):
     return cmd
 
 
-def exec_commands(module, cmd_list):
+def exec_commands(module, cmd):
     '''
     Execute command(s)
     '''
 
-    for cmd in cmd_list:
-        rc, out, err = module.run_command(cmd)
-        if rc != 0:
-            return rc, cmd, out, err
+    rc, out, err = module.run_command(cmd)
 
     return rc, cmd, out, err
 
@@ -223,13 +220,29 @@ def check_pool_exist(cluster, name, user, user_key, output_format='json', contai
     Check if a given pool exists
     '''
 
-    cmd_list = []
-
     args = [ 'stats', name, '-f', output_format ]
 
-    cmd_list.append(generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image))
+    cmd = generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image)
 
-    return cmd_list
+    return cmd
+
+
+def generate_get_config_cmd(param, cluster, user, user_key, container_image=None):
+    _cmd = pre_generate_ceph_cmd(container_image=container_image)
+    args = [
+        '-n',
+        user,
+        '-k',
+        user_key,
+        '--cluster',
+        cluster,
+        'config',
+        'get',
+        'mon.*',
+        param
+    ]
+    cmd = _cmd + args
+    return cmd
 
 
 def get_default_running_config(module, cluster, user, user_key, output_format='json', container_image=None):
@@ -242,24 +255,7 @@ def get_default_running_config(module, cluster, user, user_key, output_format='j
     default_running_values = {}
 
     for param in params:
-        cmd_list = []
-        _cmd = pre_generate_ceph_cmd(container_image=container_image)
-        args = [
-            '-n',
-            user,
-            '-k',
-            user_key,
-            '--cluster',
-            cluster,
-            'config',
-            'get',
-            'mon.*',
-            param
-        ]
-
-        cmd_list.append(_cmd + args)
-
-        rc, cmd, out, err = exec_commands(module, cmd_list)
+        rc, cmd, out, err = exec_commands(module, generate_get_config_cmd(param, cluster, user, user_key, container_image=container_image))
 
         if rc == 0:
             default_running_values[param] = out.strip()
@@ -274,13 +270,12 @@ def get_application_pool(module, cluster, name, user, user_key, output_format='j
     Get application type enabled on a given pool
     '''
 
-    cmd_list = []
 
     args = [ 'application', 'get', name, '-f', output_format ]
 
-    cmd_list.append(generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image))
+    cmd = generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image)
 
-    rc, cmd, out, err = exec_commands(module, cmd_list)
+    rc, cmd, out, err = exec_commands(module, cmd)
 
     return rc, cmd, list(json.loads(out.strip()).keys()), err
 
@@ -290,13 +285,12 @@ def enable_application_pool(module, cluster, name, application, user, user_key, 
     Enable application on a given pool
     '''
 
-    cmd_list = []
 
     args = [ 'application', 'enable', name, application ]
 
-    cmd_list.append(generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image))
+    cmd = generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image)
 
-    rc, cmd, out, err = exec_commands(module, cmd_list)
+    rc, cmd, out, err = exec_commands(module, cmd)
 
     return rc, cmd, out, err
 
@@ -306,13 +300,11 @@ def disable_application_pool(module, cluster, name, application, user, user_key,
     Disable application on a given pool
     '''
 
-    cmd_list = []
-
     args = [ 'application', 'disable', name, application, '--yes-i-really-mean-it' ]
 
-    cmd_list.append(generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image))
+    cmd = generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image)
 
-    rc, cmd, out, err = exec_commands(module, cmd_list)
+    rc, cmd, out, err = exec_commands(module, cmd)
 
     return rc, cmd, out, err
 
@@ -322,13 +314,11 @@ def get_pool_details(module, cluster, name, user, user_key, output_format='json'
     Get details about a given pool
     '''
 
-    cmd_list = []
-
     args = [ 'ls', 'detail', '-f', output_format ]
 
-    cmd_list.append(generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image))
+    cmd = generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image)
 
-    rc, cmd, out, err = exec_commands(module, cmd_list)
+    rc, cmd, out, err = exec_commands(module, cmd)
 
     if rc == 0:
         out = [p for p in json.loads(out.strip()) if p['pool_name'] == name][0]
@@ -372,8 +362,6 @@ def list_pools(cluster, user, user_key, details, output_format='json', container
     List existing pools
     '''
 
-    cmd_list = []
-
     args = [ 'ls' ]
 
     if details:
@@ -381,17 +369,15 @@ def list_pools(cluster, user, user_key, details, output_format='json', container
 
     args.extend([ '-f', output_format ])
 
-    cmd_list.append(generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image))
+    cmd = generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image)
 
-    return cmd_list
+    return cmd
 
 
 def create_pool(cluster, name, user, user_key, user_pool_config, container_image=None):
     '''
     Create a new pool
     '''
-
-    cmd_list = []
 
     args = [ 'create', user_pool_config['pool_name']['value'], '--pg_num', user_pool_config['pg_num']['value'], '--pgp_num', user_pool_config['pgp_num']['value'], user_pool_config['type']['value'] ]
 
@@ -406,9 +392,9 @@ def create_pool(cluster, name, user, user_key, user_pool_config, container_image
 
         args.extend([ '--expected_num_objects', user_pool_config['expected_num_objects']['value'] , '--autoscale-mode', user_pool_config['pg_autoscale_mode']['value']])
 
-    cmd_list.append(generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image))
+    cmd = generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image)
 
-    return cmd_list
+    return cmd
 
 
 def remove_pool(cluster, name, user, user_key, container_image=None):
@@ -416,13 +402,12 @@ def remove_pool(cluster, name, user, user_key, container_image=None):
     Remove a pool
     '''
 
-    cmd_list = []
-
     args = [ 'rm', name, name, '--yes-i-really-really-mean-it']
 
-    cmd_list.append(generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image))
+    cmd = generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image)
 
-    return cmd_list
+    return cmd
+
 
 def update_pool(module, cluster, name, user, user_key, delta, container_image=None):
     '''
@@ -432,14 +417,12 @@ def update_pool(module, cluster, name, user, user_key, delta, container_image=No
     report = ""
 
     for key in delta.keys():
-        cmd_list = []
-
         if key != 'application':
             args = [ 'set', name, delta[key]['cli_set_opt'], delta[key]['value'] ]
 
-            cmd_list.append(generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image))
+            cmd = generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image)
 
-            rc, cmd, out, err = exec_commands(module, cmd_list)
+            rc, cmd, out, err = exec_commands(module, cmd)
             if rc != 0:
                 return rc, cmd, out, err
 
