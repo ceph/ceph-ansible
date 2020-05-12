@@ -265,7 +265,7 @@ def get_default_running_config(module, cluster, user, user_key, output_format='j
     return rc, cmd, default_running_values, err
 
 
-def get_application_pool(module, cluster, name, user, user_key, output_format='json', container_image=None):
+def get_application_pool(cluster, name, user, user_key, output_format='json', container_image=None):
     '''
     Get application type enabled on a given pool
     '''
@@ -275,12 +275,10 @@ def get_application_pool(module, cluster, name, user, user_key, output_format='j
 
     cmd = generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image)
 
-    rc, cmd, out, err = exec_commands(module, cmd)
-
-    return rc, cmd, list(json.loads(out.strip()).keys()), err
+    return cmd
 
 
-def enable_application_pool(module, cluster, name, application, user, user_key, container_image=None):
+def enable_application_pool(cluster, name, application, user, user_key, container_image=None):
     '''
     Enable application on a given pool
     '''
@@ -290,12 +288,10 @@ def enable_application_pool(module, cluster, name, application, user, user_key, 
 
     cmd = generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image)
 
-    rc, cmd, out, err = exec_commands(module, cmd)
-
-    return rc, cmd, out, err
+    return cmd
 
 
-def disable_application_pool(module, cluster, name, application, user, user_key, container_image=None):
+def disable_application_pool(cluster, name, application, user, user_key, container_image=None):
     '''
     Disable application on a given pool
     '''
@@ -304,9 +300,7 @@ def disable_application_pool(module, cluster, name, application, user, user_key,
 
     cmd = generate_ceph_cmd(cluster=cluster, args=args, user=user, user_key=user_key, container_image=container_image)
 
-    rc, cmd, out, err = exec_commands(module, cmd)
-
-    return rc, cmd, out, err
+    return cmd
 
 
 def get_pool_details(module, cluster, name, user, user_key, output_format='json', container_image=None):
@@ -323,12 +317,14 @@ def get_pool_details(module, cluster, name, user, user_key, output_format='json'
     if rc == 0:
         out = [p for p in json.loads(out.strip()) if p['pool_name'] == name][0]
 
-    _rc, _cmd, application_pool, _err = get_application_pool(module, cluster, name, user, user_key, container_image=container_image)
+    _rc, _cmd, application_pool, _err = exec_commands(module, get_application_pool(cluster, name, user, user_key, container_image=container_image))
 
-    if len(application_pool) == 0:
+    application = list(json.loads(application_pool.strip()).keys())
+
+    if len(application) == 0:
         out['application'] = ''
     else:
-        out['application'] = application_pool
+        out['application'] = application[0]
 
     return rc, cmd, out, err
 
@@ -427,11 +423,11 @@ def update_pool(module, cluster, name, user, user_key, delta, container_image=No
                 return rc, cmd, out, err
 
         else:
-            rc, cmd, out, err = disable_application_pool(module, cluster, name, delta['application']['old_application'], user, user_key, container_image=container_image)
+            rc, cmd, out, err = exec_commands(module, disable_application_pool(cluster, name, delta['application']['old_application'], user, user_key, container_image=container_image))
             if rc != 0:
                 return rc, cmd, out, err
 
-            rc, cmd, out, err = enable_application_pool(module, cluster, name, delta['application']['new_application'], user, user_key, container_image=container_image)
+            rc, cmd, out, err = exec_commands(module, enable_application_pool(cluster, name, delta['application']['new_application'], user, user_key, container_image=container_image))
             if rc != 0:
                 return rc, cmd, out, err
 
@@ -591,6 +587,8 @@ def run_module():
                     out = "Pool {} already exists and there is nothing to update.".format(name)
             else:
                 rc, cmd, out, err = exec_commands(module, create_pool(cluster, name, user, user_key, user_pool_config=user_pool_config, container_image=container_image))
+                if user_pool_config['application']['value'] != None:
+                    _rc, _cmd, _out, _err = exec_commands(module, enable_application_pool(cluster, name, user_pool_config['application']['value'], user, user_key, container_image=container_image))
                 changed = True
 
     elif state == "list":
