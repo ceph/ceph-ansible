@@ -55,15 +55,18 @@
     - import_role:
         name: ceph-handler
 
-    - name: get docker version
-      command: docker --version
-      changed_when: false
-      check_mode: no
-      register: ceph_docker_version
+    - name: with docker configuration
+      when: container_binary == 'docker'
+      block:
+        - name: get docker version
+          command: docker --version
+          changed_when: false
+          check_mode: no
+          register: ceph_docker_version
 
-    - name: set_fact ceph_docker_version ceph_docker_version.stdout.split
-      set_fact:
-        ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
+        - name: set_fact ceph_docker_version ceph_docker_version.stdout.split
+          set_fact:
+            ceph_docker_version: "{{ ceph_docker_version.stdout.split(' ')[2] }}"
 
 
   tasks:
