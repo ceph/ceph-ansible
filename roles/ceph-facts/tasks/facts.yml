@@ -285,7 +285,19 @@
 - name: set_fact ceph_run_cmd
   set_fact:
     ceph_run_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /var/log/ceph/:/var/log/ceph/:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'ceph' }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: True
+  run_once: True
+  with_items:
+    - "{{ groups[mon_group_name] if groups[mon_group_name] | default([]) | length > 0 else [] }}"
+    - "{{ inventory_hostname }}"
 
 - name: set_fact ceph_admin_command
   set_fact:
     ceph_admin_command: "{{ ceph_run_cmd }} -n client.admin -k /etc/ceph/{{ cluster }}.client.admin.keyring"
+  delegate_to: "{{ item }}"
+  delegate_facts: True
+  run_once: True
+  with_items:
+    - "{{ groups[mon_group_name] if groups[mon_group_name] | default([]) | length > 0 else [] }}"
+    - "{{ inventory_hostname }}"
