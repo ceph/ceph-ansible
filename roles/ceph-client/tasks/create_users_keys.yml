@@ -109,7 +109,9 @@
       command: "{{ ceph_admin_command | default('') }} --cluster {{ cluster }} osd pool set {{ item.name }} target_size_ratio {{ item.target_size_ratio }}"
       with_items: "{{ pools | unique }}"
       delegate_to: "{{ delegated_node }}"
-      when: item.pg_autoscale_mode | default(False) | bool
+      when:
+        - item.pg_autoscale_mode | default(False) | bool
+        - item.target_size_ratio is defined
 
     - name: set pg_autoscale_mode value on pool(s)
       command: "{{ ceph_admin_command | default('') }} --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode {{ item.pg_autoscale_mode | default(False) | ternary('on', 'warn') }}"
