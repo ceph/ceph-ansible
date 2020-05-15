@@ -33,6 +33,15 @@
   include_tasks: systemd.yml
   when: containerized_deployment | bool
 
+- name: ensure files have correct owner
+  file:
+    path: /var/lib/ceph/osd/
+    state: directory
+    recurse: yes
+    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+  when: cephx | bool
+
 - name: systemd start osd
   systemd:
     name: ceph-osd@{{ item }}
