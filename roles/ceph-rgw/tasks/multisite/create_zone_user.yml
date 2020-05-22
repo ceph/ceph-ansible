@@ -8,21 +8,20 @@
     - hostvars[item.host]['rgw_zonemaster'] | bool
     - hostvars[item.host]['rgw_zonegroupmaster'] | bool
 
-- name: check if the realm system user already exists
-  command: "{{ container_exec_cmd }} radosgw-admin user info --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --uid={{ item.user }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  register: usercheck
-  failed_when: False
-  changed_when: False
-  check_mode: no
-  run_once: True
-  loop: "{{ zone_users }}"
-
 - name: create the zone user(s)
-  command: "{{ container_exec_cmd }} radosgw-admin user create --cluster={{ cluster }} --rgw-realm={{ item.item.realm }} --rgw-zonegroup={{ item.item.zonegroup }} --rgw-zone={{ item.item.zone }} --uid={{ item.item.user }} --display-name='{{ item.item.display_name }}' --access-key={{ item.item.system_access_key }} --secret={{ item.item.system_secret_key }} --system"
+  radosgw_user:
+    name: "{{ item.user }}"
+    cluster: "{{ cluster }}"
+    display_name: "{{ item.display_name }}"
+    access_key: "{{ item.system_access_key }}"
+    secret_key: "{{ item.system_secret_key }}"
+    realm: "{{ item.realm }}"
+    zonegroup: "{{ item.zonegroup }}"
+    zone: "{{ item.zone }}"
+    system: true
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  loop: "{{ usercheck.results }}"
-  when:
-    - zone_users is defined
-    - "'could not fetch user info: no user info saved' in item.stderr"
+  loop: "{{ zone_users }}"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
