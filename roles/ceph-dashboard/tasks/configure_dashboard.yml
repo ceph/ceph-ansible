@@ -182,29 +182,22 @@
   when: groups.get(rgw_group_name, []) | length > 0
   run_once: true
   block:
-    - name: get radosgw system user
-      command: "timeout --foreground -s KILL 20 {{ container_exec_cmd }} radosgw-admin --cluster {{ cluster }} user info --uid={{ dashboard_rgw_api_user_id }}"
-      register: get_rgw_user
-      until: get_rgw_user.rc == 0
-      retries: 3
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      failed_when: false
-      changed_when: false
-
     - name: create radosgw system user
-      command: "timeout --foreground -s KILL 20 {{ container_exec_cmd }} radosgw-admin --cluster {{ cluster }} user create --uid={{ dashboard_rgw_api_user_id }} --display-name='Ceph dashboard' --system"
-      register: create_rgw_user
-      until: create_rgw_user.rc == 0
-      retries: 3
+      radosgw_user:
+        name: "{{ dashboard_rgw_api_user_id }}"
+        cluster: "{{ cluster }}"
+        display_name: "Ceph dashboard"
+        system: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      when:
-        - not rgw_multisite | bool or rgw_zonemaster | bool
-        - get_rgw_user.rc == 22
+      register: rgw_dashboard_user
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
     - name: get the rgw access and secret keys
       set_fact:
-        rgw_access_key: "{{ (create_rgw_user.stdout | default(get_rgw_user.stdout) | from_json)['keys'][0]['access_key'] }}"
-        rgw_secret_key: "{{ (create_rgw_user.stdout | default(get_rgw_user.stdout) | from_json)['keys'][0]['secret_key'] }}"
+        rgw_access_key: "{{ (rgw_dashboard_user.stdout | from_json)['keys'][0]['access_key'] }}"
+        rgw_secret_key: "{{ (rgw_dashboard_user.stdout | from_json)['keys'][0]['secret_key'] }}"
 
     - name: set the rgw user
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-user-id {{ dashboard_rgw_api_user_id }}"
