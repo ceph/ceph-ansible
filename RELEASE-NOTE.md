@@ -38,3 +38,4 @@ Notable changes from stable-4.0
 -------------------------------
 
 * Containers aren’t using the ulimit parameter for configuring the nofile value.
+* Add ceph_pool module for managing pool operations.
