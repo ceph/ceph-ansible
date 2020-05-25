@@ -284,6 +284,7 @@ ceph-ansible provides a set of playbook in ``infrastructure-playbooks`` director
 
    day-2/osds
    day-2/purge
+   day-2/upgrade
 
 Contribution
 ============
