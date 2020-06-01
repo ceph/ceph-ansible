@@ -15,8 +15,8 @@ vrrp_script check_haproxy {
 
 {% for instance in vrrp_instances %}
 vrrp_instance {{ instance['name'] }} {
-    state {{ 'MASTER' if inventory_hostname == groups[rgwloadbalancer_group_name][0] else 'BACKUP' }}
-    priority {{ '100' if inventory_hostname == groups[rgwloadbalancer_group_name][0] else '90' }}
+    state {{ 'MASTER' if inventory_hostname == instance['master'] else 'BACKUP' }}
+    priority {{ '100' if inventory_hostname == instance['master'] else '90' }}
     interface {{ virtual_ip_interface }}
     virtual_router_id {{ 50 + loop.index }}
     advert_int 1
