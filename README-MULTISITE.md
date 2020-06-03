@@ -157,6 +157,7 @@ If there is one more that one rgw being deployed in this configuration, the rgw(
     rgw_zonegroupmaster: true
 
     rgw_multisite_proto: http
+    rgw_multisite_host: "{{ _radosgw_address }}"
     rgw_zone_user: edward.lewis
     rgw_zone_user_display_name: "Edward Lewis"
 
@@ -164,9 +165,11 @@ If there is one more that one rgw being deployed in this configuration, the rgw(
     system_secret_key: MGecsMrWtKZgngOHZdrd6d3JxGO5CPWgT2lcnpSt
     ```
 
-    **Note:** `rgw_zonemaster` should have the value of `true` and `rgw_zonesecondary` should be `false`. Both values always need to be defined when running multisite.
+**Note:** `rgw_zonemaster` should have the value of `true` and `rgw_zonesecondary` should be `false`. Both values always need to be defined when running multisite.
 
-    **Note:** replace the `system_access_key` and `system_secret_key` values with the ones you generated.
+**Note:** `rgw_multisite_host` can be changed to give the SSL FQDN of the machine the RGW is running on.
+
+**Note:** replace the `system_access_key` and `system_secret_key` values with the ones you generated.
 
 3. Run the ceph-ansible playbook for the 1st cluster
 
@@ -191,20 +194,19 @@ If there is one more that one rgw being deployed in this configuration, the rgw(
     rgw_zonegroupmaster: true
 
     rgw_multisite_proto: http
+    rgw_multisite_host: "{{ _radosgw_address }}"
     rgw_zone_user: edward.lewis
     rgw_zone_user_display_name: "Edward Lewis"
 
     system_access_key: 6kWkikvapSnHyE22P7nO
     system_secret_key: MGecsMrWtKZgngOHZdrd6d3JxGO5CPWgT2lcnpSt
 
-    rgw_pull_proto: http
-    rgw_pull_port: 8080
-    rgw_pullhost: rgw-001-hostname
-    ```
+    rgw_pull_endpoint: http://cluster0-rgw-000
+```
 
     **Note:** `rgw_zonemaster` should have the value of `false` and `rgw_zonesecondary` should be `true`
 
-    **Note:** The variables `rgw_pull_port`, `rgw_pull_proto`, `rgw_pullhost`, are joined together to make an endpoint string needed to create secondary zones. This endpoint is of one of the RGW endpoints in a master zone in the zonegroup and realm you want to create secondary zones in. This endpoint **must be resolvable** from the mons and rgws in the cluster the secondary zone(s)  are being created in.
+    **Note:** The variable `rgw_pull_endpoint` is of one of the RGW endpoints in a master zone in the zonegroup and realm you want to create secondary zones in. This endpoint **must be resolvable** from the mons and rgws in the cluster the secondary zone(s)  are being created in.
 
     **Note:** `system_access_key`, and `system_secret_key` should match what you used in the Primary Cluster
 
@@ -255,14 +257,13 @@ Each of the rgws in the inventory should have a file in `host_vars` where the re
     rgw_realm: france
     rgw_zonegroup: idf
     rgw_zone: paris
-    radosgw_address: "{{ _radosgw_address }}"
+    rgw_multisite_host: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
     rgw_zone_user: jacques.chirac
     rgw_zone_user_display_name: "Jacques Chirac"
     system_access_key: P9Eb6S8XNyo4dtZZUUMy
     system_secret_key: qqHCUtfdNnpHq3PZRHW5un9l0bEBM812Uhow0XfB
     ```
-
     Here is an example of the file `host_vars/rgw-002` for the `rgw-002` entry in the `[rgws]` section of for the example ansible inventory.
 
     ```yaml
@@ -273,7 +274,7 @@ Each of the rgws in the inventory should have a file in `host_vars` where the re
     rgw_realm: usa
     rgw_zonegroup: alaska
     rgw_zone: juneau
-    radosgw_address: "{{ _radosgw_address }}"
+    rgw_multisite_host: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
     rgw_zone_user: edward.lewis
     rgw_zone_user_display_name: "Edward Lewis"
@@ -286,6 +287,8 @@ Each of the rgws in the inventory should have a file in `host_vars` where the re
     **Note:** `rgw_zonegroupmaster` is set to true in each of the files since it will be the only zonegroup in each realm.
 
     **Note:** `rgw_zonemaster` should have the value of `true` and `rgw_zonesecondary` should be `false`.
+
+    **Note:** `rgw_multisite_host` can be changed to give the SSL FQDN of the machine the RGW is running on.
 
     **Note:** replace the `system_access_key` and `system_secret_key` values with the ones you generated.
 
@@ -302,7 +305,7 @@ The multisite playbooks in ceph-ansible are flexible enough to create many realm
 
 A multisite configuration consisting of multiple realms across multiple clusters can be configured by having files in `host_vars` for the rgws in each cluster similar to scenario #2.
 
-The host_vars for the rgws in the second cluster would have `rgw_zonesecondary` set to true and the additional `rgw_pull` variables as seen in scenario #2
+The host_vars for the rgws in the second cluster would have `rgw_zonesecondary` set to true and have the `rgw_pull_endpoint` variable set as seen in scenario #2
 
 The inventory for the rgws section of the master cluster for this example looks like:
 
@@ -358,7 +361,7 @@ rgw-004 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192
     rgw_realm: france
     rgw_zonegroup: idf
     rgw_zone: paris
-    radosgw_address: "{{ _radosgw_address }}"
+    rgw_multisite_host: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
     rgw_zone_user: jacques.chirac
     rgw_zone_user_display_name: "Jacques Chirac"
@@ -376,14 +379,13 @@ rgw-004 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192
     rgw_realm: usa
     rgw_zonegroup: alaska
     rgw_zone: juneau
-    radosgw_address: "{{ _radosgw_address }}"
+    rgw_multisite_host: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
     rgw_zone_user: edward.lewis
     rgw_zone_user_display_name: "Edward Lewis"
     system_access_key: yu17wkvAx3B8Wyn08XoF
     system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
     ```
-
 4. Run the ceph-ansible playbook on your master cluster.
 
 5. Create & edit files in `host_vars/` for the entries in the `[rgws]` section of the inventory on the secondary cluster.
@@ -398,15 +400,13 @@ rgw-004 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192
     rgw_realm: france
     rgw_zonegroup: idf
     rgw_zone: versailles
-    radosgw_address: "{{ _radosgw_address }}"
+    rgw_multisite_host: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
     rgw_zone_user: jacques.chirac
     rgw_zone_user_display_name: "Jacques Chirac"
     system_access_key: P9Eb6S8XNyo4dtZZUUMy
     system_secret_key: qqHCUtfdNnpHq3PZRHW5un9l0bEBM812Uhow0XfB
-    rgw_pull_proto: http
-    rgw_pull_port: 8080
-    rgw_pullhost: rgw-001-hostname
+    rgw_pullendpoint: http://cluster0-rgw-000-hostname:8080
     ```
 
     Here is an example of the file `host_vars/rgw-004` for the `rgw-004` entry in the `[rgws]` section for a secondary cluster.
@@ -419,15 +419,13 @@ rgw-004 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192
     rgw_realm: usa
     rgw_zonegroup: alaska
     rgw_zone: juneau
-    radosgw_address: "{{ _radosgw_address }}"
+    rgw_multisite_host: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
     rgw_zone_user: edward.lewis
     rgw_zone_user_display_name: "Edward Lewis"
     system_access_key: yu17wkvAx3B8Wyn08XoF
     system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
-    rgw_pull_proto: http
-    rgw_pull_port: 8080
-    rgw_pullhost: rgw-002-hostname
+    rgw_pullendpoint: http://cluster0-rgw-001-hostname:8080
     ```
 
 6. Run the ceph-ansible playbook on your secondary cluster.
@@ -442,7 +440,7 @@ Data is realm france will be replicated over both clusters and remain isolated f
 
 More than 1 RGW can be running on a single host. To configure multisite for a host with more than one rgw instance running on the host, `rgw_instances` must be configured.
 
-Each item in `rgw_instances` (declared in a host_vars file) represents an RGW on that host. In each item is the multisite configuration for that RGW.
+Each item in `rgw_instances` (declared in a host_vars file) represents an RGW on that host. In each item is all of the multisite configuration for that RGW. 
 
 Here is an example:
 
@@ -452,12 +450,16 @@ rgw_instances:
     rgw_realm: usa
     rgw_zonegroup: alaska
     rgw_zone: juneau
-    radosgw_address: "{{ _radosgw_address }}"
+    rgw_multisite_host: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
     rgw_zone_user: edward.lewis
     rgw_zone_user_display_name: "Edward Lewis"
     system_access_key: yu17wkvAx3B8Wyn08XoF
     system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
+    rgw_zonemaster: true
+    rgw_zonesecondary: false
+    rgw_zonegroupmaster: true
+    rgw_multisite_proto: "http"
 ```
 
 ### Setting rgw_instances for a host in the master zone
@@ -465,50 +467,48 @@ rgw_instances:
 Here is an example of a host_vars for a host (ex: rgw-001 in the examples) containing 2 rgw_instances:
 
 ```yaml
-rgw_zonemaster: true
-rgw_zonesecondary: false
-rgw_zonegroupmaster: true
-rgw_multisite_proto: http
 rgw_instances:
   - instance_name: rgw1
     rgw_realm: usa
     rgw_zonegroup: alaska
     rgw_zone: juneau
-    radosgw_address: "{{ _radosgw_address }}"
+    rgw_multisite_host: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
     rgw_zone_user: edward.lewis
     rgw_zone_user_display_name: "Edward Lewis"
     system_access_key: yu17wkvAx3B8Wyn08XoF
     system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
+    rgw_zonemaster: true
+    rgw_zonesecondary: false
+    rgw_zonegroupmaster: true
+    rgw_multisite_proto: "http"
   - instance_name: rgw2
     rgw_realm: france
     rgw_zonegroup: idf
     rgw_zone: paris
-    radosgw_address: "{{ _radosgw_address }}"
+    rgw_multisite_host: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8081
     rgw_zone_user: jacques.chirac
     rgw_zone_user_display_name: "Jacques Chirac"
     system_access_key: P9Eb6S8XNyo4dtZZUUMy
     system_secret_key: qqHCUtfdNnpHq3PZRHW5un9l0bEBM812Uhow0XfB
+    rgw_zonemaster: true
+    rgw_zonesecondary: false
+    rgw_zonegroupmaster: true
+    rgw_multisite_proto: "http"
 ```
 
 This example starts up 2 rgws on host rgw-001. `rgw1` is configured to be in realm usa and `rgw2` is configured to be in realm france.
 
-The variables `rgw_zonemaster`, `rgw_zonesecondary`, `rgw_zonegroupmaster`, `rgw_multisite_proto` cannot be set in an item of rgw_instances. All of these variables must be set in group_vars/ or host_vars/.
+## Setting rgw_instances for a host in a secondary zone
 
-### Setting rgw_instances for a host in a secondary zone
+On a host with multiple rgws, a rgw instance can be set in a secondary zone if `rgw_pull_endpoint` is set, `rgw_zonesecondary` is set to `true`, and `rgw_zonemaster` is set to `false` for the instance.
 
-To start up multiple rgws on a host that are in a secondary zone, `endpoint` must be added to rgw_instances.
-
-The value of `endpoint` should be the endpoint of an RGW in the master zone of the realm that is resolvable from the host.`rgw_pull_{proto, host, port}` are not necessary since `endpoint` is a combination of all three.
+The value of `rgw_pull_endpoint` should be the endpoint of an RGW in the master zone of the realm that is resolvable from the host.
 
 Here is an example of a host_vars for a host containing 2 rgw_instances in a secondary zone:
 
 ```yaml
-rgw_zonemaster: false
-rgw_zonesecondary: true
-rgw_zonegroupmaster: true
-rgw_multisite_proto: "http"
 rgw_instances:
   - instance_name: rgw3
     rgw_realm: usa
@@ -520,7 +520,11 @@ rgw_instances:
     rgw_zone_user_display_name: "Edward Lewis"
     system_access_key: yu17wkvAx3B8Wyn08XoF
     system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
-    endpoint: https://rgw-001-hostname:8080
+    rgw_zonemaster: false
+    rgw_zonesecondary: true
+    rgw_zonegroupmaster: true
+    rgw_multisite_proto: "http"
+    rgw_pull_endpoint: https://rgw-001-hostname:8080
   - instance_name: rgw4
     rgw_realm: france
     rgw_zonegroup: idf
@@ -531,13 +535,15 @@ rgw_instances:
     rgw_zone_user_display_name: "Jacques Chirac"
     system_access_key: P9Eb6S8XNyo4dtZZUUMy
     system_secret_key: qqHCUtfdNnpHq3PZRHW5un9l0bEBM812Uhow0XfB
-    endpoint: https://rgw-001-hostname:8081
+    rgw_zonemaster: false
+    rgw_zonesecondary: true
+    rgw_zonegroupmaster: true
+    rgw_multisite_proto: "http"
+    rgw_pull_endpoint: https://rgw-001-hostname:8081
 ```
 
 This example starts up 2 rgws on the host that will pull the realm from the rgws on rgw-001 above. `rgw3` is pulling from the rgw endpoint in realm usa in the master zone example above (instance name rgw1). `rgw4` is pulling from the rgw endpoint in realm france in the master zone example above (instance name rgw2).
 
-Just like the example on the master zone, the variables `rgw_zonemaster`, `rgw_zonesecondary`, `rgw_zonegroupmaster`, `rgw_multisite_proto` cannot be set in an item of rgw_instances. All of these variables must be set in group_vars/ or host_vars/.
-
-### Conclusion
+## Conclusion
 
 `rgw_instances` can be used in host_vars for multisite deployments like scenarios 2 and 3
