@@ -31,6 +31,15 @@
     - item.item.is_master | bool
     - "'No such file or directory' in item.stderr"
 
+- name: add endpoints to their zone groups(s)
+  command: "{{ container_exec_cmd }} radosgw-admin zonegroup modify --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --endpoints {{ item.endpoints }}"
+  loop: "{{ zone_endpoints_list }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  when:
+    - zone_endpoints_list is defined
+    - item.is_master | bool
+
 - name: add endpoints to their zone(s)
   command: "{{ container_exec_cmd }} radosgw-admin zone modify --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --endpoints {{ item.endpoints }}"
   loop: "{{ zone_endpoints_list }}"
