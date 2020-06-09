@@ -323,18 +323,6 @@
         - "{{ playbook_dir }}/group_vars/osds.yml"
         skip: true
 
-  - name: find all osd_disk_prepare logs
-    find:
-      paths: "{{ ceph_osd_docker_run_script_path | default('/usr/share') }}"
-      pattern: "ceph-osd-prepare-*.log"
-    register: osd_disk_prepare_logs
-
-  - name: ensure all osd_disk_prepare logs are removed
-    file:
-      path: "{{ item.path }}"
-      state: absent
-    with_items: "{{ osd_disk_prepare_logs.files }}"
-
 - name: purge ceph mon cluster
 
   hosts: "{{ mon_group_name|default('mons') }}"
