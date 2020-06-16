@@ -43,7 +43,9 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: True
   changed_when: False
-  when: not rolling_update | default(False) | bool
+  when:
+    - not rolling_update | default(False) | bool
+    - not switch_to_containers | default(False) | bool
 
 - name: include container_options_facts.yml
   include_tasks: container_options_facts.yml
@@ -70,6 +72,7 @@
   changed_when: False
   when:
     - not rolling_update | default(False) | bool
+    - not switch_to_containers | default(False) | bool
     - inventory_hostname == ansible_play_hosts_all | last
 
 - name: wait for all osd to be up
