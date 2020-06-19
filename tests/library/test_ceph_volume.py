@@ -81,6 +81,8 @@ class TestCephVolumeModule(object):
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
                                  'docker.io/ceph/daemon:latest-luminous',
+                                 '--cluster',
+                                 'ceph',
                                  'lvm',
                                  'zap',
                                  '--destroy',
@@ -93,6 +95,8 @@ class TestCephVolumeModule(object):
         fake_module.params = {'data': '/dev/sda'}
         fake_container_image = None
         expected_command_list = ['ceph-volume',
+                                 '--cluster',
+                                 'ceph',
                                  'lvm',
                                  'zap',
                                  '--destroy',
@@ -105,6 +109,8 @@ class TestCephVolumeModule(object):
         fake_module.params = {'osd_fsid': 'a_uuid'}
         fake_container_image = None
         expected_command_list = ['ceph-volume',
+                                 '--cluster',
+                                 'ceph',
                                  'lvm',
                                  'zap',
                                  '--destroy',
@@ -115,6 +121,8 @@ class TestCephVolumeModule(object):
 
     def test_activate_osd(self):
         expected_command_list = ['ceph-volume',
+                                 '--cluster',
+                                 'ceph',
                                  'lvm',
                                  'activate',
                                  '--all']
@@ -164,6 +172,8 @@ class TestCephVolumeModule(object):
         fake_module = MagicMock()
         fake_container_image = None
         expected_command_list = ['ceph-volume',
+                                 '--cluster',
+                                 'ceph',
                                  'inventory',
                                  '--format=json',
                                  ]
@@ -183,6 +193,8 @@ class TestCephVolumeModule(object):
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
                                  'docker.io/ceph/daemon:latest-luminous',
+                                 '--cluster',
+                                 'ceph',
                                  'inventory',
                                  '--format=json',
                                  ]
