@@ -8,6 +8,10 @@ Ansible playbooks for Ceph, the distributed filesystem.
 Installation
 ============
 
+Requirements for containerized deployment
+-----------------------------------------
+At the moment ceph-ansible is only supporting docker and podman.
+
 GitHub
 ------
 
