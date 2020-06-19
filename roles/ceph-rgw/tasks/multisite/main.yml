@@ -5,40 +5,16 @@
 # Include the tasks depending on the zone type
 - name: include_tasks master.yml
   include_tasks: master.yml
-  when:
-    - rgw_zonemaster | bool
-    - not rgw_zonesecondary | bool
-
-- name: include_tasks start_radosgw.yml for zonemaster rgws
-  include_tasks: ../start_radosgw.yml
-  when:
-    - rgw_zonemaster | bool
-    - not rgw_zonesecondary | bool
-    - not containerized_deployment | bool
-
-- name: include_tasks start_docker_rgw.yml for zonemaster rgws
-  include_tasks: ../start_docker_rgw.yml
-  when:
-    - rgw_zonemaster | bool
-    - not rgw_zonesecondary | bool
-    - containerized_deployment | bool
 
 - name: include_tasks secondary.yml
   include_tasks: secondary.yml
-  when:
-    - not rgw_zonemaster | bool
-    - rgw_zonesecondary | bool
 
 - name: include_tasks start_radosgw.yml for zonesecondary rgws
   include_tasks: ../start_radosgw.yml
   when:
-    - not rgw_zonemaster | bool
-    - rgw_zonesecondary | bool
     - not containerized_deployment | bool
 
 - name: include_tasks start_docker_rgw.yml for zonesecondary rgws
   include_tasks: ../start_docker_rgw.yml
   when:
-    - not rgw_zonemaster | bool
-    - rgw_zonesecondary | bool
     - containerized_deployment | bool
