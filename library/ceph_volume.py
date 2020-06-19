@@ -217,20 +217,21 @@ def container_exec(binary, container_image):
     return command_exec
 
 
-def build_ceph_volume_cmd(action, container_image, cluster=None):
+def build_cmd(action, container_image, cluster='ceph', binary='ceph-volume'):
     '''
     Build the ceph-volume command
     '''
 
+    _binary = binary
+
     if container_image:
-        binary = 'ceph-volume'
         cmd = container_exec(
             binary, container_image)
     else:
-        binary = ['ceph-volume']
+        binary = [binary]
         cmd = binary
 
-    if cluster:
+    if _binary == 'ceph-volume':
         cmd.extend(['--cluster', cluster])
 
     cmd.extend(action)
@@ -313,7 +314,7 @@ def batch(module, container_image):
 
     # Build the CLI
     action = ['lvm', 'batch']
-    cmd = build_ceph_volume_cmd(action, container_image, cluster)
+    cmd = build_cmd(action, container_image, cluster)
     cmd.extend(['--%s' % objectstore])
     cmd.append('--yes')
 
@@ -396,7 +397,7 @@ def prepare_or_create_osd(module, action, container_image):
 
     # Build the CLI
     action = ['lvm', action]
-    cmd = build_ceph_volume_cmd(action, container_image, cluster)
+    cmd = build_cmd(action, container_image, cluster)
     cmd.extend(['--%s' % objectstore])
     cmd.append('--data')
     cmd.append(data)
@@ -435,7 +436,7 @@ def list_osd(module, container_image):
 
     # Build the CLI
     action = ['lvm', 'list']
-    cmd = build_ceph_volume_cmd(action, container_image, cluster)
+    cmd = build_cmd(action, container_image, cluster)
     if data:
         cmd.append(data)
     cmd.append('--format=json')
@@ -448,7 +449,7 @@ def list_storage_inventory(module, container_image):
     '''
 
     action = ['inventory']
-    cmd = build_ceph_volume_cmd(action, container_image)
+    cmd = build_cmd(action, container_image)
     cmd.append('--format=json')
 
     return cmd
@@ -461,10 +462,28 @@ def activate_osd():
     # build the CLI
     action = ['lvm', 'activate']
     container_image = None
-    cmd = build_ceph_volume_cmd(action, container_image)
+    cmd = build_cmd(action, container_image)
     cmd.append('--all')
 
     return cmd
+
+
+def is_lv(module, vg, lv, container_image):
+    '''
+    Check if an LV exists
+    '''
+
+    args = [ '--noheadings', '--reportformat', 'json', '--select', 'lv_name={},vg_name={}'.format(lv, vg) ]
+
+    cmd = build_cmd(args, container_image, binary='lvs')
+
+    rc, cmd, out, err = exec_command(module, cmd)
+
+    result = json.loads(out)['report'][0]['lv']
+    if rc == 0 and len(result) > 0:
+        return True
+    else:
+        return False
 
 
 def zap_devices(module, container_image):
@@ -489,7 +508,7 @@ def zap_devices(module, container_image):
 
     # build the CLI
     action = ['lvm', 'zap']
-    cmd = build_ceph_volume_cmd(action, container_image)
+    cmd = build_cmd(action, container_image)
     if destroy:
         cmd.append('--destroy')
 
@@ -615,8 +634,27 @@ def run_module():
 
     elif action == 'zap':
         # Zap the OSD
-        rc, cmd, out, err = exec_command(
-            module, zap_devices(module, container_image))
+        skip = []
+        for device_type in ['journal','data', 'db', 'wal']:
+            if module.params.get('{}_vg'.format(device_type), None) and module.params.get(device_type, None):
+                ret = is_lv(module, module.params['{}_vg'.format(device_type)], module.params[device_type], container_image)
+                skip.append(ret)
+                if not ret:
+                    module.params['{}_vg'.format(device_type)] = False
+                    module.params[device_type] = False
+            elif not module.params.get('{}_vg'.format(device_type), None) and module.params.get(device_type, None):
+                skip.append(True)
+
+        cmd = zap_devices(module, container_image)
+
+        if any(skip):
+            rc, cmd, out, err = exec_command(
+                module, cmd)
+        else:
+            out = 'Skipped, nothing to zap'
+            err = ''
+            changed = False
+            rc = 0
 
     elif action == 'list':
         # List Ceph LVM Metadata on a device
