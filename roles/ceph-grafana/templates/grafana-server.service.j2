@@ -11,9 +11,16 @@ After=network.target
 
 [Service]
 EnvironmentFile=-/etc/environment
+{% if container_binary == 'podman' %}
+ExecStartPre=-/usr/bin/rm -f /%t/%n-pid /%t/%n-cid
+{% else %}
 ExecStartPre=-/usr/bin/{{ container_binary }} stop grafana-server
 ExecStartPre=-/usr/bin/{{ container_binary }} rm grafana-server
+{% endif %}
 ExecStart=/usr/bin/{{ container_binary }} run --rm --name=grafana-server \
+{% if container_binary == 'podman' %}
+  -d --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
+{% endif %}
   -v /etc/grafana:/etc/grafana:Z \
   -v /var/lib/grafana:/var/lib/grafana:Z \
   --net=host \
@@ -23,12 +30,20 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --name=grafana-server \
   --memory-swap={{ grafana_container_memory * 2 }}GB \
   -e GF_INSTALL_PLUGINS={{ grafana_plugins|join(',') }} \
   {{ grafana_container_image }}
+{% if container_binary == 'podman' %}
+ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
+{% else %}
 ExecStop=-/usr/bin/{{ container_binary }} stop grafana-server
+{% endif %}
 KillMode=none
 Restart=always
 RestartSec=10s
 TimeoutStartSec=120
 TimeoutStopSec=15
+{% if container_binary == 'podman' %}
+Type=forking
+PIDFile=/%t/%n-pid
+{% endif %}
 
 [Install]
 WantedBy=multi-user.target
