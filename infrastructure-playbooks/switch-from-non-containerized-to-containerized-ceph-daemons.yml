@@ -192,19 +192,6 @@
     - ceph-mgr
 
 
-- name: set osd flags
-  hosts: "{{ mon_group_name | default('mons') }}[0]"
-  become: True
-  roles:
-    - ceph-defaults
-  post_tasks:
-    - name: set osd flags
-      command: "docker exec ceph-mon-{{ ansible_hostname }} ceph --cluster {{ cluster }} osd set {{ item }}"
-      with_items:
-        - noout
-        - nodeep-scrub
-
-
 - name: switching from non-containerized to containerized ceph osd
 
   vars:
@@ -356,18 +343,6 @@
       when:
         - (ceph_pgs.stdout | from_json).pgmap.num_pgs != 0
 
-
-- name: unset osd flags
-  hosts: "{{ mon_group_name | default('mons') }}[0]"
-  become: True
-  roles:
-    - ceph-defaults
-  post_tasks:
-    - name: set osd flags
-      command: "docker exec ceph-mon-{{ ansible_hostname }} ceph --cluster {{ cluster }} osd unset {{ item }}"
-      with_items:
-        - noout
-        - nodeep-scrub
 
 - name: switching from non-containerized to containerized ceph mds
 
