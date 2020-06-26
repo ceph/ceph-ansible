@@ -92,6 +92,11 @@
   changed_when: false
   failed_when: false # Do not fail if the option does not exist, it only exists post-14.2.0
 
+- include_tasks: configure_dashboard_backends.yml
+  with_items: '{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}'
+  vars:
+    dashboard_backend: '{{ item }}'
+
 - name: disable mgr dashboard module (restart)
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mgr module disable dashboard"
   delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -164,11 +169,6 @@
   run_once: true
   changed_when: false
   when: dashboard_frontend_vip is defined and dashboard_frontend_vip |length > 0
-
-- include_tasks: configure_dashboard_backends.yml
-  with_items: '{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}'
-  vars:
-    dashboard_backend: '{{ item }}'
 
 - name: dashboard object gateway management frontend
   when: groups.get(rgw_group_name, []) | length > 0
