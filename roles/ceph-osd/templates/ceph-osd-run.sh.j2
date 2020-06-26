@@ -17,6 +17,10 @@ function id_to_device () {
   docker run --rm --net=host --ulimit nofile=1024:4096 --ipc=host --pid=host --privileged=true -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /dev:/dev -v /etc/localtime:/etc/localtime:ro -e DEBUG=verbose -e CLUSTER={{ cluster }} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} osd_ceph_disk_dmcrypt_data_map
 {% endif %}
   DATA_PART=$(docker run --rm --ulimit nofile=1024:4096 --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z --entrypoint ceph-disk {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} list | grep ", osd\.${1}," | awk '{ print $1 }')
+  if [ -z "${DATA_PART}" ]; then
+    echo "No data partition found for OSD ${i}"
+    exit 1
+  fi
   if [[ "${DATA_PART}" =~ ^/dev/(cciss|nvme|loop) ]]; then
     OSD_DEVICE=${DATA_PART:0:-2}
   else
