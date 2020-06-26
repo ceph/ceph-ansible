@@ -714,10 +714,17 @@ def run_module():
             module.fail_json(msg='non-zero return code', **result)
 
         if not report:
-            # if not asking for a report, let's just run the batch command
-            changed = report_result['changed']
-            if changed:
-                # Batch prepare the OSD
+            if 'changed' in report_result:
+                # we have the old batch implementation
+                # if not asking for a report, let's just run the batch command
+                changed = report_result['changed']
+                if changed:
+                    # Batch prepare the OSD
+                    rc, cmd, out, err = exec_command(
+                        module, batch(module, container_image))
+            else:
+                # we have the refactored batch, its idempotent so lets just
+                # run it
                 rc, cmd, out, err = exec_command(
                     module, batch(module, container_image))
         else:
