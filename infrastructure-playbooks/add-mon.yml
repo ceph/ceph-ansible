@@ -16,12 +16,20 @@
 
     - name: gather facts
       setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
       when: not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
     - import_role:
         name: ceph-defaults
 
     - name: gather and delegate facts
       setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
       delegate_to: "{{ item }}"
       delegate_facts: true
       with_items: "{{ groups[mon_group_name] }}"

@@ -32,11 +32,19 @@
 
     - name: gather facts
       setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
       when:
         - not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
 
     - name: gather and delegate facts
       setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
       delegate_to: "{{ item }}"
       delegate_facts: True
       with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
