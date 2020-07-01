@@ -8,16 +8,6 @@
     mode: "{{ ceph_directories_mode }}"
   with_items: "{{ rbd_client_admin_socket_path }}"
 
-- name: create rados gateway instance directories
-  file:
-    path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}.{{ item.instance_name }}"
-    state: directory
-    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    mode: "{{ ceph_directories_mode }}"
-  with_items: "{{ rgw_instances }}"
-  when: rgw_instances is defined
-
 - name: get keys from monitors
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
   register: _rgw_keys
