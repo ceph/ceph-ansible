@@ -30,22 +30,10 @@
     - name: red hat based systems - dev repo related tasks
       block:
         - name: add nfs-ganesha dev repo
-          yum_repository:
-            name: nfs-ganesha
-            baseurl: https://download.nfs-ganesha.org/3/LATEST/CentOS/el-$releasever/$basearch
-            description: nfs-ganesha repository
-            gpgcheck: true
-            gpgkey: https://download.nfs-ganesha.org/3/rsa.pub
-            file: nfs-ganesha-dev
-
-        - name: add nfs-ganesha dev noarch repo
-          yum_repository:
-            name: nfs-ganesha-noarch
-            baseurl: https://download.nfs-ganesha.org/3/LATEST/CentOS/el-$releasever/noarch
-            description: nfs-ganesha noarch repository
-            gpgcheck: true
-            gpgkey: https://download.nfs-ganesha.org/3/rsa.pub
-            file: nfs-ganesha-dev
+          get_url:
+            url: 'https://shaman.ceph.com/api/repos/nfs-ganesha/next/latest/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/flavors/{{ nfs_ganesha_flavor }}/repo'
+            dest: /etc/yum.repos.d/nfs-ganesha-dev.repo
+            force: true
       when:
         - nfs_ganesha_dev | bool
         - ceph_repository == 'dev'
