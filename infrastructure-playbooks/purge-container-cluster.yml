@@ -468,6 +468,35 @@
           failed_when: false
       when: dashboard_enabled | bool
 
+- name: purge ceph-crash containers
+  hosts:
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+  gather_facts: false
+  become: true
+  tasks:
+    - name: stop ceph-crash container
+      service:
+        name: "ceph-crash@{{ ansible_hostname }}"
+        state: stopped
+        enabled: no
+      failed_when: false
+
+    - name: remove service file
+      file:
+        name: "/etc/systemd/system/ceph-crash.service"
+        state: absent
+      failed_when: false
+
+    - name: remove /var/lib/ceph/crash
+      file:
+        path: /var/lib/ceph/crash
+        state: absent
+
 - name: check container hosts
 
   hosts:
