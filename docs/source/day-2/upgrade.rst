@@ -1,5 +1,5 @@
 Upgrading the ceph cluster
--------------------
+--------------------------
 
 ceph-ansible provides a playbook in ``infrastructure-playbooks`` for upgrading a Ceph cluster: ``rolling_update.yml``.
 
