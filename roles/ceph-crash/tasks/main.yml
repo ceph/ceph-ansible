@@ -1,0 +1,71 @@
+---
+- name: create and copy client.crash keyring
+  when: cephx | bool
+  block:
+    - name: create client.crash keyring
+      ceph_key:
+        state: present
+        name: "client.crash"
+        caps: "{{ {'mon': 'allow profile crash', 'mgr': 'allow profile crash'} }}"
+        cluster: "{{ cluster }}"
+        dest: "{{ ceph_conf_key_directory }}"
+        import_key: True
+        mode: "{{ ceph_keyring_permissions }}"
+        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
+      run_once: True
+
+    - name: get keys from monitors
+      command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} auth get client.crash"
+      register: _crash_keys
+      delegate_to: "{{ groups.get(mon_group_name)[0] }}"
+      run_once: true
+
+    - name: get a list of node where the keyring should be copied
+      set_fact:
+        list_target_node: "{{ list_target_node | default([]) | union(((groups.get('all') | difference(groups.get(grafana_server_group_name, []) + groups.get(client_group_name, []) + groups.get(nfs_group_name, []) + groups.get(iscsi_gw_group_name, []))) + groups.get(item, [])) | unique) }}"
+      run_once: True
+      with_items:
+        - "{{ mon_group_name if groups.get(mon_group_name, []) | length > 0 else [] }}"
+        - "{{ osd_group_name if groups.get(osd_group_name, []) | length > 0 else [] }}"
+        - "{{ mds_group_name if groups.get(mds_group_name, []) | length > 0 else [] }}"
+        - "{{ rgw_group_name if groups.get(rgw_group_name, []) | length > 0 else [] }}"
+        - "{{ rbdmirror_group_name if groups.get(rbdmirror_group_name, []) | length > 0 else [] }}"
+        - "{{ mgr_group_name if groups.get(mgr_group_name, []) | length > 0 else [] }}"
+
+    - name: copy ceph key(s) if needed
+      copy:
+        dest: "{{ ceph_conf_key_directory }}/{{ cluster }}.client.crash.keyring"
+        content: "{{ _crash_keys.stdout + '\n' }}"
+        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        mode: "{{ ceph_keyring_permissions }}"
+      with_items: "{{ list_target_node }}"
+      delegate_to: "{{ item }}"
+      run_once: True
+
+- name: start ceph-crash daemon
+  when: containerized_deployment | bool
+  block:
+    - name: create /var/lib/ceph/crash/posted
+      file:
+        path: /var/lib/ceph/crash/posted
+        state: directory
+        mode: '0755'
+        owner: "{{ ceph_uid }}"
+        group: "{{ ceph_uid }}"
+
+    - name: include_tasks systemd.yml
+      include_tasks: systemd.yml
+
+- name: start the ceph-crash service
+  systemd:
+    name: "{{ 'ceph-crash@' + ansible_hostname if containerized_deployment | bool else 'ceph-crash.service' }}"
+    state: started
+    enabled: yes
+    masked: no
+    daemon_reload: yes

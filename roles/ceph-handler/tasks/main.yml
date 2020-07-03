@@ -37,3 +37,14 @@
   set_fact:
     handler_mgr_status: "{{ (mgr_socket_stat.get('rc') == 0) if not containerized_deployment | bool else (ceph_mgr_container_stat.get('rc') == 0 and ceph_mgr_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(mgr_group_name, [])
+
+- name: set_fact handler_crash_status
+  set_fact:
+    handler_crash_status: "{{ crash_process.get('rc') == 0 if not containerized_deployment | bool else (ceph_crash_container_stat.get('rc') == 0 and ceph_crash_container_stat.get('stdout_lines', []) | length != 0) }}"
+  when:
+    - inventory_hostname in groups.get(mon_group_name, [])
+      or inventory_hostname in groups.get(mgr_group_name, [])
+      or inventory_hostname in groups.get(osd_group_name, [])
+      or inventory_hostname in groups.get(mds_group_name, [])
+      or inventory_hostname in groups.get(rgw_group_name, [])
+      or inventory_hostname in groups.get(rbdmirror_group_name, [])
