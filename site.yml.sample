@@ -15,8 +15,8 @@
   - rgwloadbalancers
 
   gather_facts: false
-  any_errors_fatal: true
   become: true
+  any_errors_fatal: true
 
   tags: always
 
@@ -24,7 +24,10 @@
     delegate_facts_host: True
 
   pre_tasks:
-    # If we can't get python2 installed before any module is used we will fail
+    - import_role:
+        name: ceph-defaults
+
+    # If we can't get python installed before any module is used we will fail
     # so just try what we can to get it installed
 
     - import_tasks: raw_install_python.yml
@@ -60,7 +63,21 @@
     - import_role:
         name: ceph-infra
     - import_role:
+        name: ceph-handler
+      when: containerized_deployment | bool
+    - import_role:
+        name: ceph-container-engine
+      when: containerized_deployment | bool
+      tags: with_pkg
+    - import_role:
         name: ceph-common
+      when: not containerized_deployment | bool
+    - import_role:
+        name: ceph-container-common
+      tags: fetch_container_image
+      when:
+        - containerized_deployment | bool
+        - (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
 
 - hosts: mons
   gather_facts: false
@@ -476,8 +493,25 @@
   tasks:
     - import_role:
         name: ceph-defaults
+
+    - name: containerized deployment related tasks
+      when: containerized_deployment | bool
+      block:
+        - name: check if podman binary is present
+          stat:
+            path: /usr/bin/podman
+          register: podman_binary
+
+        - name: set_fact container_binary
+          set_fact:
+            container_binary: "{{ 'podman' if (podman_binary.stat.exists and ansible_distribution == 'Fedora') or (ansible_os_family == 'RedHat' and ansible_distribution_major_version == '8') else 'docker' }}"
+
+        - name: set_fact container_exec_cmd
+          set_fact:
+            container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+
     - name: get ceph status from the first monitor
-      command: ceph --cluster {{ cluster }} -s
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} -s"
       register: ceph_status
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
