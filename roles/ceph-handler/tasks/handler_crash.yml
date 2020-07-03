@@ -1,0 +1,18 @@
+---
+- name: set _crash_handler_called before restart
+  set_fact:
+    _crash_handler_called: True
+
+- name: restart the ceph-crash service
+  systemd:
+    name: ceph-crash@{{ ansible_hostname }}
+    state: restarted
+    enabled: yes
+    masked: no
+    daemon_reload: yes
+  ignore_errors: true
+  when: hostvars[inventory_hostname]['_crash_handler_called'] | default(False) | bool
+
+- name: set _crash_handler_called after restart
+  set_fact:
+    _crash_handler_called: False

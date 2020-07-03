@@ -29,3 +29,18 @@ class TestCephConf(object):
             if pattern.search(mon_host_line) is None:
                 result = False
             assert result
+
+class TestCephCrash(object):
+    @pytest.mark.no_docker
+    @pytest.mark.ceph_crash
+    def test_ceph_crash_service_enabled_and_running(self, node, host):
+        s = host.service("ceph-crash")
+        assert s.is_enabled
+        assert s.is_running
+
+    @pytest.mark.docker
+    @pytest.mark.ceph_crash
+    def test_ceph_crash_service_enabled_and_running_container(self, node, host):
+        s = host.service("ceph-crash@{hostname}".format(hostname=node["vars"]["inventory_hostname"]))
+        assert s.is_enabled
+        assert s.is_running

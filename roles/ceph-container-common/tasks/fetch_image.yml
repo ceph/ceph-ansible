@@ -63,6 +63,14 @@
     - ceph_nfs_container_stat.get('rc') == 0
     - ceph_nfs_container_stat.get('stdout_lines', [])|length != 0
 
+- name: inspect ceph crash container
+  command: "{{ container_binary }} inspect {{ ceph_crash_container_stat.stdout }}"
+  changed_when: false
+  register: ceph_crash_inspect
+  when:
+    - ceph_crash_container_stat.get('rc') == 0
+    - ceph_crash_container_stat.get('stdout_lines', [])|length != 0
+
 # NOTE(leseb): using failed_when to handle the case when the image is not present yet
 - name: "inspecting ceph mon container image before pulling"
   command: "{{ container_binary }} inspect {{ (ceph_mon_inspect.stdout | from_json)[0].Image }}"
@@ -127,6 +135,13 @@
     - nfs_group_name in group_names
     - ceph_nfs_inspect.get('rc') == 0
 
+- name: "inspecting ceph crash container image before pulling"
+  command: "{{ container_binary }} inspect {{ (ceph_crash_inspect.stdout | from_json)[0].Image }}"
+  changed_when: false
+  failed_when: false
+  register: ceph_crash_container_inspect_before_pull
+  when: ceph_crash_inspect.get('rc') == 0
+
 - name: set_fact ceph_mon_image_repodigest_before_pulling
   set_fact:
     ceph_mon_image_repodigest_before_pulling: "{{ (ceph_mon_container_inspect_before_pull.stdout | from_json)[0].Id }}"
@@ -161,6 +176,11 @@
   when:
     - mgr_group_name in group_names
     - ceph_mgr_container_inspect_before_pull.get('rc') == 0
+
+- name: set_fact ceph_crash_image_repodigest_before_pulling
+  set_fact:
+    ceph_crash_image_repodigest_before_pulling: "{{ (ceph_crash_container_inspect_before_pull.stdout | from_json)[0].Id }}"
+  when: ceph_crash_container_inspect_before_pull.get('rc') == 0
 
 - name: set_fact ceph_rbd_mirror_image_repodigest_before_pulling
   set_fact:
@@ -265,6 +285,15 @@
     - nfs_group_name in group_names
     - ceph_nfs_container_inspect_before_pull.get('rc') == 0
     - ceph_nfs_image_repodigest_before_pulling != image_repodigest_after_pulling
+
+- name: set_fact ceph_crash_image_updated
+  set_fact:
+    ceph_crash_image_updated: "{{ ceph_crash_image_repodigest_before_pulling != image_repodigest_after_pulling }}"
+  changed_when: true
+  notify: restart ceph crash
+  when:
+    - ceph_crash_container_inspect_before_pull.get('rc') == 0
+    - ceph_crash_image_repodigest_before_pulling != image_repodigest_after_pulling
 
 - name: export local ceph dev image
   command: >
