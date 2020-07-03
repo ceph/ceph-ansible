@@ -127,6 +127,9 @@ def node(host, request):
             request.function, group_names)
         pytest.skip(reason)
 
+    if request.node.get_closest_marker('ceph_crash') and group_names in [['nfss'], ['iscsigws'], ['clients'], ['grafana-server']]:
+        pytest.skip('Not a valid test for nfs, client or iscsigw nodes')
+
     if request.node.get_closest_marker("no_docker") and docker:
         pytest.skip(
             "Not a valid test for containerized deployments or atomic hosts")
