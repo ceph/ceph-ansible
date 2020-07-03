@@ -77,6 +77,8 @@ The ``master`` branch should be considered experimental and used with caution.
 
 - ``master`` Support for Ceph versions ``luminous``, and ``mimic``. This branch supports Ansible version ``2.6``.
 
+.. NOTE:: ``stable-3.0`` and ``stable-3.1`` branches of ceph-ansible are deprecated and no longer maintained.
+
 Configuration and Usage
 =======================
 
