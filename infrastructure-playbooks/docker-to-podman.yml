@@ -1,0 +1,127 @@
+# This playbook  *doesn't* add podman support in stable-3.2 at all.
+# This is a tripleO dedicated playbook which is intended to be run
+# early during FFU workflow in order to prepare the OS upgrade.
+
+- hosts:
+  - mons
+  - osds
+  - mdss
+  - rgws
+  - nfss
+  - rbdmirrors
+  - clients
+  - iscsigws
+  - iscsi-gws # for backward compatibility only!
+  - mgrs
+
+  gather_facts: false
+  become: True
+  any_errors_fatal: true
+
+  vars:
+    delegate_facts_host: True
+
+  roles:
+    - ceph-defaults
+
+  post_tasks:
+    - name: gather facts
+      setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
+      when: not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
+
+    - name: gather and delegate facts
+      setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
+      delegate_to: "{{ item }}"
+      delegate_facts: True
+      with_items: "{{ groups['all'] | difference(groups.get(client_group_name | default('clients'), [])) }}"
+      run_once: true
+      when: delegate_facts_host | bool
+
+- hosts:
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+    - "{{ iscsi_gw_group_name | default('iscsigws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+  gather_facts: false
+  become: true
+  roles:
+    - ceph-defaults
+  post_tasks:
+    - import_role:
+        name: ceph-facts
+    - import_role:
+        name: ceph-handler
+    - import_role:
+        name: ceph-docker-common
+        tasks_from: ceph_docker_version.yml
+
+    - name: set_fact docker2podman and container_binary
+      set_fact:
+        docker2podman: True
+        container_binary: podman
+
+    - import_role:
+        name: ceph-mon
+        tasks_from: docker2podman.yml
+      when: inventory_hostname in groups.get(mon_group_name, [])
+
+    - import_role:
+        name: ceph-iscsi-gw
+        tasks_from: docker2podman.yml
+      when: inventory_hostname in groups.get(iscsi_gw_group_name, [])
+
+    - import_role:
+        name: ceph-mds
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(mds_group_name, [])
+
+    - import_role:
+        name: ceph-mgr
+        tasks_from: docker2podman.yml
+      when: inventory_hostname in groups.get(mgr_group_name, [])
+
+    - import_role:
+        name: ceph-nfs
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(nfs_group_name, [])
+
+    - import_role:
+        name: ceph-osd
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(osd_group_name, [])
+
+    - import_role:
+        name: ceph-rbd-mirror
+        tasks_from: docker2podman.yml
+      when: inventory_hostname in groups.get(rbdmirror_group_name, [])
+
+    - import_role:
+        name: ceph-rgw
+        tasks_from: docker2podman.yml
+      when: inventory_hostname in groups.get(rgw_group_name, [])
+
+    # This is needed, otherwise containers won't come back after the reboot
+    # because this file is added later by the call of rolling_update playbook.
+    - name: add /etc/tmpfiles.d/ceph-common.conf
+      copy:
+        content: "d /run/ceph 0770 root root -"
+        dest: /etc/tmpfiles.d/ceph-common.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: reload systemd daemon
+      systemd:
+        daemon_reload: yes

@@ -40,16 +40,8 @@
     image: "{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
   when: containerized_deployment_with_kv
 
-- name: generate systemd unit file
-  become: true
-  template:
-    src: "{{ role_path }}/templates/ceph-mon.service.j2"
-    dest: /etc/systemd/system/ceph-mon@.service
-    owner: "root"
-    group: "root"
-    mode: "0644"
-  notify:
-    - restart ceph mons
+- name: include systemd.yml
+  include_tasks: systemd.yml
 
 - name: systemd start mon container
   systemd:

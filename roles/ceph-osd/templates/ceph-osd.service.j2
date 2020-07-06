@@ -1,15 +1,19 @@
 # {{ ansible_managed }}
 [Unit]
 Description=Ceph OSD
+{% if container_binary == 'docker' %}
 After=docker.service
 Requires=docker.service
+{% else %}
+After=network.target
+{% endif %}
 
 [Service]
 EnvironmentFile=-/etc/environment
-ExecStartPre=-/usr/bin/docker stop ceph-osd-%i
-ExecStartPre=-/usr/bin/docker rm -f ceph-osd-%i
+ExecStartPre=-/usr/bin/{{ container_binary }} stop ceph-osd-%i
+ExecStartPre=-/usr/bin/{{ container_binary }} rm -f ceph-osd-%i
 ExecStart={{ ceph_osd_docker_run_script_path }}/ceph-osd-run.sh %i
-ExecStop=-/usr/bin/docker stop ceph-osd-%i
+ExecStop=-/usr/bin/{{ container_binary }} stop ceph-osd-%i
 Restart=always
 RestartSec=10s
 TimeoutStartSec=120

@@ -22,8 +22,8 @@ class TestInstall(object):
 
 class TestCephConf(object):
 
-    def test_ceph_config_has_mon_host_line(self, node, File):
-        assert File(node["conf_path"]).contains("^mon host = .*$")
+    def test_ceph_config_has_mon_host_line(self, node, host):
+        assert host.file(node["conf_path"]).contains("^mon host = .*$")
 
     def test_mon_host_line_has_correct_value(self, node, host):
         mon_host_line = host.check_output("grep 'mon host = ' /etc/ceph/{cluster}.conf".format(cluster=node['cluster_name']))

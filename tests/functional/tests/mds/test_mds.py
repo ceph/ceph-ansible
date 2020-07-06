@@ -21,13 +21,15 @@ class TestMDSs(object):
 
     def test_mds_is_up(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
+        container_binary = node['container_binary']
         if node['docker']:
-            docker_exec_cmd = 'docker exec ceph-mds-{hostname}'.format(hostname=hostname)
+            container_exec_cmd = '{container_binary} exec ceph-mds-{hostname}'.format(  # noqa E501
+                hostname=hostname, container_binary=container_binary)
         else:
-            docker_exec_cmd = ''
+            container_exec_cmd = ''
 
-        cmd = "sudo {docker_exec_cmd} ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
-            docker_exec_cmd=docker_exec_cmd,
+        cmd = "sudo {container_exec_cmd} ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
+            container_exec_cmd=container_exec_cmd,
             cluster=node['cluster_name']
         )
         cluster_status = json.loads(host.check_output(cmd))

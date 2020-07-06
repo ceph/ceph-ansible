@@ -1,0 +1,25 @@
+---
+- name: generate systemd unit file
+  become: true
+  template:
+    src: "{{ role_path }}/templates/ceph-radosgw.service.j2"
+    dest: /etc/systemd/system/ceph-radosgw@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify:
+    - restart ceph rgws
+
+# For backward compatibility
+- name: disable old systemd unit ('ceph-rgw@'|'ceph-radosgw@radosgw.'|'ceph-radosgw@') if present
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+    daemon_reload: yes
+  with_items:
+    - "ceph-rgw@{{ ansible_hostname }}"
+    - "ceph-radosgw@{{ ansible_hostname }}.service"
+    - "ceph-radosgw@radosgw.{{ ansible_hostname }}.service"
+    - ceph-radosgw@radosgw.gateway.service
+  ignore_errors: true

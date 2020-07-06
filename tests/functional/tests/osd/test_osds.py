@@ -12,9 +12,9 @@ class TestOSDs(object):
             osds = cmd.stdout.rstrip("\n").split("\n")
         return osds
 
-    def _get_docker_exec_cmd(self, host):
+    def _get_docker_exec_cmd(self, node, host):
         osd_id = host.check_output(
-            "docker ps -q --filter='name=ceph-osd' | head -1")
+            "{container_binary} ps -q --filter='name=ceph-osd' | head -1".format(container_binary=node['container_binary']))
         return osd_id
 
 
@@ -86,8 +86,10 @@ class TestOSDs(object):
 
     @pytest.mark.docker
     def test_all_docker_osds_are_up_and_in(self, node, host):
-        cmd = "sudo docker exec {osd_id} ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(
-            osd_id=self._get_docker_exec_cmd(host),
+        container_binary= node['container_binary']
+        cmd = "sudo {container_binary} exec {osd_id} ceph --cluster={cluster} --connect-timeout 5 --keyring /var/lib/ceph/bootstrap-osd/{cluster}.keyring -n client.bootstrap-osd osd tree -f json".format(
+            container_binary=container_binary,
+            osd_id=self._get_docker_exec_cmd(node, host),
             cluster=node["cluster_name"]
         )
         output = json.loads(host.check_output(cmd))
