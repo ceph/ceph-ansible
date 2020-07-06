@@ -1,0 +1,44 @@
+---
+# this is only here to let the CI tests know
+# that this scenario is using docker
+docker: True
+container_binary: docker
+
+containerized_deployment: True
+monitor_interface: "{{ 'eth1' if ansible_distribution == 'CentOS' else 'ens6' }}"
+radosgw_interface: "{{ 'eth1' if ansible_distribution == 'CentOS' else 'ens6' }}"
+ceph_mon_docker_subnet: "{{ public_network }}"
+ceph_docker_on_openstack: False
+public_network: "192.168.58.0/24"
+cluster_network: "192.168.59.0/24"
+rgw_override_bucket_index_max_shards: 16
+rgw_bucket_default_quota_max_objects: 1638400
+ceph_conf_overrides:
+  global:
+    mon_allow_pool_size_one: true
+    mon_warn_on_pool_no_redundancy: false
+    osd_pool_default_size: 1
+openstack_config: False
+openstack_glance_pool:
+  name: "images"
+  pg_num: "{{ osd_pool_default_pg_num }}"
+  pgp_num: "{{ osd_pool_default_pg_num }}"
+  rule_name: "HDD"
+  type: 1
+  erasure_profile: ""
+  expected_num_objects: ""
+  size: 1
+openstack_cinder_pool:
+  name: "volumes"
+  pg_num: "{{ osd_pool_default_pg_num }}"
+  pgp_num: "{{ osd_pool_default_pg_num }}"
+  rule_name: "HDD"
+  type: 1
+  erasure_profile: ""
+  expected_num_objects: ""
+  size: 1
+openstack_pools:
+  - "{{ openstack_glance_pool }}"
+  - "{{ openstack_cinder_pool }}"
+handler_health_mon_check_delay: 10
+handler_health_osd_check_delay: 10

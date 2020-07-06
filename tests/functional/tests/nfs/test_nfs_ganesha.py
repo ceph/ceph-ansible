@@ -26,12 +26,13 @@ class TestNFSs(object):
     def test_nfs_is_up(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
         cluster = node['cluster_name']
+        container_binary = node['container_binary']
         if node['docker']:
-            docker_exec_cmd = 'docker exec ceph-nfs-{hostname}'.format(hostname=hostname)
+            container_exec_cmd = '{container_binary} exec ceph-nfs-{hostname}'.format(container_binary=container_binary, hostname=hostname)
         else:
-            docker_exec_cmd = ''
-        cmd = "sudo {docker_exec_cmd} ceph --name client.rgw.{hostname} --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
-            docker_exec_cmd=docker_exec_cmd,
+            container_exec_cmd = ''
+        cmd = "sudo {container_exec_cmd} ceph --name client.rgw.{hostname} --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
+            container_exec_cmd=container_exec_cmd,
             hostname=hostname,
             cluster=cluster
         )

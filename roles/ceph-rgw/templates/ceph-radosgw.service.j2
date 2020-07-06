@@ -1,16 +1,20 @@
 [Unit]
 Description=Ceph RGW
+{% if container_binary == 'docker' %}
 After=docker.service
 Requires=docker.service
+{% else %}
+After=network.target
+{% endif %}
 {% set cpu_limit = ansible_processor_vcpus|int if ceph_rgw_docker_cpu_limit|int > ansible_processor_vcpus|int else ceph_rgw_docker_cpu_limit|int %}
 
 [Service]
 EnvironmentFile=-/etc/environment
-ExecStartPre=-/usr/bin/docker stop ceph-rgw-{{ ansible_hostname }}
-ExecStartPre=-/usr/bin/docker rm ceph-rgw-{{ ansible_hostname }}
-ExecStart=/usr/bin/docker run --rm --net=host \
+ExecStartPre=-/usr/bin/{{ container_binary }} stop ceph-rgw-{{ ansible_hostname }}
+ExecStartPre=-/usr/bin/{{ container_binary }} rm ceph-rgw-{{ ansible_hostname }}
+ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   --memory={{ ceph_rgw_docker_memory_limit }} \
-  {% if ceph_docker_version.split('.')[0] is version_compare('13', '>=') -%}
+  {% if (container_binary == 'docker' and ceph_docker_version.split('.')[0] is version_compare('13', '>=')) or container_binary == 'podman' -%}
   --cpus={{ cpu_limit }} \
   {% else -%}
   --cpu-quota={{ cpu_limit * 100000 }} \
@@ -33,7 +37,7 @@ ExecStart=/usr/bin/docker run --rm --net=host \
   --name=ceph-rgw-{{ ansible_hostname }} \
   {{ ceph_rgw_docker_extra_env }} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-ExecStopPost=-/usr/bin/docker stop ceph-rgw-{{ ansible_hostname }}
+ExecStopPost=-/usr/bin/{{ container_binary }} stop ceph-rgw-{{ ansible_hostname }}
 Restart=always
 RestartSec=10s
 TimeoutStartSec=120

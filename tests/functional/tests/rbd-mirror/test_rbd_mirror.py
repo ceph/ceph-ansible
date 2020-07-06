@@ -30,15 +30,16 @@ class TestRbdMirrors(object):
     def test_rbd_mirror_is_up(self, node, host):
         hostname=node["vars"]["inventory_hostname"]
         cluster=node["cluster_name"]
+        container_binary = node["container_binary"]
         daemons = []
         if node['docker']:
-            docker_exec_cmd = 'docker exec ceph-rbd-mirror-{hostname}'.format(hostname=hostname)
+            container_exec_cmd = '{container_binary} exec ceph-rbd-mirror-{hostname}'.format(container_binary=container_binary, hostname=hostname)
         else:
-            docker_exec_cmd = ''
+            container_exec_cmd = ''
         hostname = node["vars"]["inventory_hostname"]
         cluster = node['cluster_name']
-        cmd = "sudo {docker_exec_cmd} ceph --name client.bootstrap-rbd --keyring /var/lib/ceph/bootstrap-rbd/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
-            docker_exec_cmd=docker_exec_cmd,
+        cmd = "sudo {container_exec_cmd} ceph --name client.bootstrap-rbd --keyring /var/lib/ceph/bootstrap-rbd/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(
+            container_exec_cmd=container_exec_cmd,
             hostname=hostname,
             cluster=cluster
         )

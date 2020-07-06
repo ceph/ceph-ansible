@@ -38,6 +38,7 @@ def node(host, request):
     osd_scenario = ansible_vars.get("osd_scenario")
     lvm_scenario = osd_scenario in ['lvm', 'lvm-batch']
     devices = ansible_vars.get("devices", [])
+    container_binary = ''
     ceph_release_num = {
         'jewel': 10,
         'kraken': 11,
@@ -98,6 +99,11 @@ def node(host, request):
         cluster_name = ansible_vars.get("cluster", "ceph")
     conf_path = "/etc/ceph/{}.conf".format(cluster_name)
 
+    if docker:
+        container_binary = "docker"
+    if docker and str_to_bool(os.environ.get('IS_PODMAN', False)):  # noqa E501
+        container_binary = "podman"
+
     data = dict(
         address=address,
         subnet=subnet,
@@ -112,6 +118,7 @@ def node(host, request):
         ceph_stable_release=ceph_stable_release,
         ceph_release_num=ceph_release_num,
         rolling_update=rolling_update,
+        container_binary=container_binary
     )
     return data
 

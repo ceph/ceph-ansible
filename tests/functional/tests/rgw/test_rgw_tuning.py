@@ -37,7 +37,9 @@ class TestRGWs(object):
     def test_docker_rgw_tuning_pools_are_set(self, node, host):
         hostname = node["vars"]["inventory_hostname"]
         cluster = node['cluster_name']
-        cmd = "sudo docker exec ceph-rgw-{hostname} ceph --cluster={cluster} -n client.rgw.{hostname} --connect-timeout 5 --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring  osd dump".format(
+        container_binary = node['container_binary']
+        cmd = "sudo {container_binary} exec ceph-rgw-{hostname} ceph --cluster={cluster} -n client.rgw.{hostname} --connect-timeout 5 --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring  osd dump".format(
+            container_binary=container_binary,
             hostname=hostname,
             cluster=cluster
         )
