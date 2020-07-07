@@ -81,12 +81,6 @@ rgw_pull_port: 8080
 rgw_pullhost: cluster0-rgw0
 ```
 
-<<<<<<< HEAD
-**Note:** pullhost should be the rgw_multisite_endpoint_addr of the RGW that is configured as the Zone Master
-**Note:** rgw_zone_user, system_access_key, and system_secret_key should match what you used in the master cluster
-**Note:** rgw_zonemaster should have the value of false and rgw_zonesecondary should be true
-
-=======
 **Note:** `rgw_zonemaster` should have the value of `false` and `rgw_zonesecondary` should be `true`
 
 **Note:** `rgw_pullhost` should be the `rgw_multisite_endpoint_addr` of the RGW that is configured in the Primary Cluster
@@ -96,7 +90,6 @@ rgw_pullhost: cluster0-rgw0
 **Note:** `ansible_fqdn` domain name assigned to `rgw_multisite_endpoint_addr` must be resolvable from the Primary Ceph cluster's mon and rgw node(s)
 
 **Note:** if there is more than 1 RGW in the Secondary Cluster, `rgw_multisite_endpoints` needs to be set with the RGWs in the Secondary Cluster just like it was set in the Primary Cluster
->>>>>>> 37f46a8c... rgw multisite: add more than 1 rgw to the master or secondary zone
 
 5. Run the ceph-ansible playbook on your 2nd cluster
 
