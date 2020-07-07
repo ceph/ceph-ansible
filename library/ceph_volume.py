@@ -636,18 +636,22 @@ def run_module():
         # Zap the OSD
         skip = []
         for device_type in ['journal','data', 'db', 'wal']:
+            # 1/ if we passed vg/lv
             if module.params.get('{}_vg'.format(device_type), None) and module.params.get(device_type, None):
+                # 2/ check this is an actual lv/vg
                 ret = is_lv(module, module.params['{}_vg'.format(device_type)], module.params[device_type], container_image)
                 skip.append(ret)
+                # 3/ This isn't a lv/vg device
                 if not ret:
                     module.params['{}_vg'.format(device_type)] = False
                     module.params[device_type] = False
+            # 4/ no journal|data|db|wal|_vg was passed, so it must be a raw device
             elif not module.params.get('{}_vg'.format(device_type), None) and module.params.get(device_type, None):
                 skip.append(True)
 
         cmd = zap_devices(module, container_image)
 
-        if any(skip):
+        if any(skip) or module.params.get('osd_fsid', None):
             rc, cmd, out, err = exec_command(
                 module, cmd)
         else:
