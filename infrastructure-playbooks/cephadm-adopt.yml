@@ -417,7 +417,7 @@
       when: not containerized_deployment | bool
 
 - name: redeploy mds daemons
-  hosts: "{{ mds_group_name|default('mdss') }}"
+  hosts: "{{ mon_group_name|default('mons') }}"
   become: true
   gather_facts: false
   tasks:
@@ -477,7 +477,7 @@
         state: absent
 
 - name: rgw realm/zonegroup/zone requirements
-  hosts: "{{ rgw_group_name|default('rgws') }}"
+  hosts: "{{ mon_group_name|default('mons') }}"
   become: true
   gather_facts: false
   tasks:
@@ -516,6 +516,13 @@
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
+    - name: update the placement of radosgw hosts
+      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rgw {{ rgw_realm | default('default') }} {{ rgw_zone | default('default') }} '{{ groups.get(rgw_group_name, []) | length }} label:{{ rgw_group_name }}' --port {{ radosgw_frontend_port }} {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}"
+      run_once: true
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
 - name: redeploy rgw daemons
   hosts: "{{ rgw_group_name|default('rgws') }}"
   serial: 1
@@ -528,13 +535,6 @@
     - import_role:
         name: ceph-facts
         tasks_from: set_radosgw_address.yml
-
-    - name: update the placement of radosgw hosts
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rgw {{ item.rgw_realm | default('default') }} {{ item.rgw_zone | default('default') }} 1 {{ ansible_hostname }} --port {{ item.radosgw_frontend_port }} {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}"
-      changed_when: false
-      loop: '{{ rgw_instances }}'
-      environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: stop and disable ceph-radosgw systemd service
       service:
@@ -581,7 +581,7 @@
         state: absent
 
 - name: redeploy rbd-mirror daemons
-  hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+  hosts: "{{ mon_group_name|default('mons') }}"
   become: true
   gather_facts: false
   tasks:
