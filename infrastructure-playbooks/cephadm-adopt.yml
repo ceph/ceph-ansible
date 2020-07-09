@@ -249,6 +249,29 @@
       set_fact:
         ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
 
+    - name: get the client.admin keyring
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} auth get client.admin"
+      changed_when: false
+      run_once: true
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      register: client_admin_keyring
+
+    - name: copy the client.admin keyring
+      copy:
+        dest: "/etc/ceph/{{ cluster }}.client.admin.keyring"
+        content: "{{ client_admin_keyring.stdout + '\n' }}"
+        owner: "{{ ceph_uid | int if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid | int if containerized_deployment | bool else 'ceph' }}"
+        mode: "{{ ceph_keyring_permissions }}"
+      run_once: true
+      delegate_to: "{{ item }}"
+      with_items:
+        - "{{ groups.get(osd_group_name, []) }}"
+        - "{{ groups.get(mds_group_name, []) }}"
+        - "{{ groups.get(rgw_group_name, []) }}"
+        - "{{ groups.get(mgr_group_name, []) }}"
+        - "{{ groups.get(rbdmirror_group_name, []) }}"
+
     - name: assimilate ceph configuration
       command: "{{ ceph_cmd }} --cluster {{ cluster }} config assimilate-conf -i /etc/ceph/{{ cluster }}.conf"
       changed_when: false
