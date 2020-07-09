@@ -564,41 +564,42 @@ def run_module():
 
         file_args['path'] = file_path
 
-        if import_key or state == "info":
-            user = "client.admin"
-            user_key = os.path.join(
-                "/etc/ceph/" + cluster + ".client.admin.keyring")
-            output_format = "json"
-            _info_key = []
-            rc, cmd, out, err = exec_commands(
-                module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
-            key_exist = rc
-            if key_exist == 0:
-                _info_key = json.loads(out)
-                if not secret:
-                    secret = _info_key[0]['key']
-                _secret = _info_key[0]['key']
-                if not caps:
-                    caps = _info_key[0]['caps']
-                _caps = _info_key[0]['caps']
-                if secret == _secret and caps == _caps:
-                    if not os.path.isfile(file_path):
-                        rc, cmd, out, err = exec_commands(module, get_key(cluster, name, file_path, container_image))  # noqa E501
-                        result["rc"] = rc
-                        if rc != 0:
-                            result["stdout"] = "Couldn't fetch the key {0} at {1}.".format(name, file_path) # noqa E501
-                            module.exit_json(**result)
-                        result["stdout"] = "fetched the key {0} at {1}.".format(name, file_path) # noqa E501
+        if state != 'info':
+            if import_key:
+                user = "client.admin"
+                user_key = os.path.join(
+                    "/etc/ceph/" + cluster + ".client.admin.keyring")
+                output_format = "json"
+                _info_key = []
+                rc, cmd, out, err = exec_commands(
+                    module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
+                key_exist = rc
+                if key_exist == 0:
+                    _info_key = json.loads(out)
+                    if not secret:
+                        secret = _info_key[0]['key']
+                    _secret = _info_key[0]['key']
+                    if not caps:
+                        caps = _info_key[0]['caps']
+                    _caps = _info_key[0]['caps']
+                    if secret == _secret and caps == _caps:
+                        if not os.path.isfile(file_path):
+                            rc, cmd, out, err = exec_commands(module, get_key(cluster, name, file_path, container_image))  # noqa E501
+                            result["rc"] = rc
+                            if rc != 0:
+                                result["stdout"] = "Couldn't fetch the key {0} at {1}.".format(name, file_path) # noqa E501
+                                module.exit_json(**result)
+                            result["stdout"] = "fetched the key {0} at {1}.".format(name, file_path) # noqa E501
 
-                    result["stdout"] = "{0} already exists and doesn't need to be updated.".format(name) # noqa E501
+                        result["stdout"] = "{0} already exists and doesn't need to be updated.".format(name) # noqa E501
+                        result["rc"] = 0
+                        module.set_fs_attributes_if_different(file_args, False)
+                        module.exit_json(**result)
+            else:
+                if os.path.isfile(file_path) and not secret or not caps:
+                    result["stdout"] = "{0} already exists in {1} you must provide secret *and* caps when import_key is {2}".format(name, dest, import_key) # noqa E501
                     result["rc"] = 0
-                    module.set_fs_attributes_if_different(file_args, False)
                     module.exit_json(**result)
-        else:
-            if os.path.isfile(file_path) and not secret or not caps:
-                result["stdout"] = "{0} already exists in {1} you must provide secret *and* caps when import_key is {2}".format(name, dest, import_key) # noqa E501
-                result["rc"] = 0
-                module.exit_json(**result)
 
     # "update" is here only for backward compatibility
     if state in ["present", "update"]:
@@ -624,17 +625,16 @@ def run_module():
             module, delete_key(cluster, name, container_image))
 
     elif state == "info":
-        if rc != 0:
-            result["stdout"] = "skipped, since {0} does not exist".format(name)
-            result['rc'] = 0
-            module.exit_json(**result)
-
         user = "client.admin"
         keyring_filename = cluster + '.' + user + '.keyring'
         user_key = os.path.join("/etc/ceph/", keyring_filename)
         output_format = "json"
         rc, cmd, out, err = exec_commands(
             module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
+        if rc != 0:
+            result["stdout"] = "skipped, since {0} does not exist".format(name)
+            result['rc'] = 0
+            module.exit_json(**result)
 
     elif state == "list":
         user = "client.admin"
