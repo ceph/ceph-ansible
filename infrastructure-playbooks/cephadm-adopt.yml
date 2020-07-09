@@ -225,6 +225,36 @@
       run_once: true
       delegate_to: '{{ groups[mon_group_name][0] }}'
 
+    - name: set container image base in ceph configuration
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_base {{ ceph_docker_registry }}/{{ ceph_docker_image }}"
+      changed_when: false
+      run_once: true
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+
+    - name: set dashboard container image in ceph mgr configuration
+      when: dashboard_enabled | bool
+      run_once: true
+      block:
+        - name: set alertmanager container image in ceph configuration
+          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_alertmanager {{ alertmanager_container_image }}"
+          changed_when: false
+          delegate_to: '{{ groups[mon_group_name][0] }}'
+
+        - name: set grafana container image in ceph configuration
+          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_grafana {{ grafana_container_image }}"
+          changed_when: false
+          delegate_to: '{{ groups[mon_group_name][0] }}'
+
+        - name: set node-exporter container image in ceph configuration
+          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_node_exporter {{ node_exporter_container_image }}"
+          changed_when: false
+          delegate_to: '{{ groups[mon_group_name][0] }}'
+
+        - name: set prometheus container image in ceph configuration
+          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_prometheus {{ prometheus_container_image }}"
+          changed_when: false
+          delegate_to: '{{ groups[mon_group_name][0] }}'
+
     - name: manage nodes with cephadm
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} orch host add {{ hostvars[item]['ansible_hostname'] }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ hostvars[item]['group_names'] | join(' ') }}"
       changed_when: false
