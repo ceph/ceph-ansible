@@ -1,0 +1,352 @@
+---
+- name: gather facts and prepare system for cephadm
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+    - "{{ grafana_server_group_name|default('grafana-server') }}"
+  become: true
+  gather_facts: false
+  vars:
+    delegate_facts_host: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: validate if monitor group doesn't exist or empty
+      fail:
+        msg: "you must add a [mons] group and add at least one node."
+      run_once: true
+      when: groups[mon_group_name] is undefined or groups[mon_group_name] | length == 0
+
+    - name: validate if manager group doesn't exist or empty
+      fail:
+        msg: "you must add a [mgrs] group and add at least one node."
+      run_once: true
+      when: groups[mgr_group_name] is undefined or groups[mgr_group_name] | length == 0
+
+    - name: validate monitor network configuration
+      fail:
+        msg: "Either monitor_address, monitor_address_block or monitor_interface must be provided"
+      when:
+        - mon_group_name in group_names
+        - monitor_address == 'x.x.x.x'
+        - monitor_address_block == 'subnet'
+        - monitor_interface == 'interface'
+
+    - name: validate dashboard configuration
+      when: dashboard_enabled | bool
+      run_once: true
+      block:
+        - name: fail if [grafana-server] group doesn't exist or empty
+          fail:
+            msg: "you must add a [grafana-server] group and add at least one node."
+          when: groups[grafana_server_group_name] is undefined or groups[grafana_server_group_name] | length == 0
+
+        - name: fail when dashboard_admin_password is not set
+          fail:
+            msg: "you must set dashboard_admin_password."
+          when: dashboard_admin_password is undefined
+
+    - name: validate container registry credentials
+      fail:
+        msg: 'ceph_docker_registry_username and/or ceph_docker_registry_password variables need to be set'
+      when:
+        - ceph_docker_registry_auth | bool
+        - (ceph_docker_registry_username is not defined or ceph_docker_registry_password is not defined) or
+          (ceph_docker_registry_username | length == 0 or ceph_docker_registry_password | length == 0)
+
+    - name: gather facts
+      setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
+      when: not delegate_facts_host | bool
+
+    - name: gather and delegate facts
+      setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      with_items: "{{ groups['all'] }}"
+      run_once: true
+      when: delegate_facts_host | bool
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: check if it is atomic host
+      stat:
+        path: /run/ostree-booted
+      register: stat_ostree
+
+    - name: set_fact is_atomic
+      set_fact:
+        is_atomic: "{{ stat_ostree.stat.exists }}"
+
+    - import_role:
+        name: ceph-container-engine
+
+    - import_role:
+        name: ceph-container-common
+        tasks_from: registry.yml
+      when: ceph_docker_registry_auth | bool
+
+    - name: install cephadm requirements
+      package:
+        name: ['python3', 'lvm2']
+      register: result
+      until: result is succeeded
+
+    - name: create a cephadm container
+      command: "{{ container_binary }} create --name cephadm {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      changed_when: false
+
+    - name: cp the cephadm cli file
+      command: "{{ container_binary }} cp cephadm:/usr/sbin/cephadm /usr/sbin/cephadm"
+      args:
+        creates: /usr/sbin/cephadm
+
+    - name: remove the cephadm container
+      command: "{{ container_binary }} rm cephadm"
+      changed_when: false
+
+- name: bootstrap the cluster
+  hosts: "{{ mon_group_name|default('mons') }}[0]"
+  become: true
+  gather_facts: false
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: set_monitor_address.yml
+
+    - name: create /etc/ceph directory
+      file:
+        path: /etc/ceph
+        state: directory
+
+    - name: bootstrap the new cluster
+      command: "cephadm bootstrap --mon-ip {{ _current_monitor_address }} --skip-pull --skip-monitoring-stack {{ '--docker' if container_binary == 'docker' else '' }} {{ '--initial-dashboard-user ' + dashboard_admin_user + ' --initial-dashboard-password ' + dashboard_admin_password if dashboard_enabled | bool else '--skip-dashboard' }}"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: set default container image in ceph configuration
+      command: "cephadm shell -- ceph --cluster {{ cluster }} config set global container_image {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: set container image base in ceph configuration
+      command: "cephadm shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_base {{ ceph_docker_registry }}/{{ ceph_docker_image }}"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: set dashboard container image in ceph mgr configuration
+      when: dashboard_enabled | bool
+      block:
+        - name: set alertmanager container image in ceph configuration
+          command: "cephadm shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_alertmanager {{ alertmanager_container_image }}"
+          changed_when: false
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+        - name: set grafana container image in ceph configuration
+          command: "cephadm shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_grafana {{ grafana_container_image }}"
+          changed_when: false
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+        - name: set node-exporter container image in ceph configuration
+          command: "cephadm shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_node_exporter {{ node_exporter_container_image }}"
+          changed_when: false
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+        - name: set prometheus container image in ceph configuration
+          command: "cephadm shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_prometheus {{ prometheus_container_image }}"
+          changed_when: false
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+- name: add the other nodes
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+    - "{{ grafana_server_group_name|default('grafana-server') }}"
+  become: true
+  gather_facts: false
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: get the cephadm ssh pub key
+      command: "cephadm shell -- ceph --cluster {{ cluster }} cephadm get-pub-key"
+      changed_when: false
+      run_once: true
+      register: cephadm_pubpkey
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: allow cephadm key for root account
+      authorized_key:
+        user: root
+        key: '{{ cephadm_pubpkey.stdout }}'
+
+    - name: run cephadm prepare-host
+      command: cephadm prepare-host
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: manage nodes with cephadm
+      command: "cephadm shell -- ceph --cluster {{ cluster }} orch host add {{ hostvars[item]['ansible_hostname'] }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ hostvars[item]['group_names'] | join(' ') }}"
+      changed_when: false
+      run_once: true
+      loop: '{{ ansible_play_hosts_all }}'
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: add ceph label for core component
+      command: "cephadm shell -- ceph --cluster {{ cluster }} orch host label add {{ hostvars[item]['ansible_hostname'] }} ceph"
+      changed_when: false
+      run_once: true
+      loop: '{{ ansible_play_hosts_all }}'
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      when: item in groups.get(mon_group_name, []) or
+            item in groups.get(osd_group_name, []) or
+            item in groups.get(mds_group_name, []) or
+            item in groups.get(rgw_group_name, []) or
+            item in groups.get(mgr_group_name, []) or
+            item in groups.get(rbdmirror_group_name, [])
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+- name: adjust service placement
+  hosts: "{{ mon_group_name|default('mons') }}[0]"
+  become: true
+  gather_facts: false
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: update the placement of monitor hosts
+      command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply mon --placement='label:{{ mon_group_name }}'"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: waiting for the monitor to join the quorum...
+      command: "cephadm shell -- ceph --cluster {{ cluster }} -s --format json"
+      changed_when: false
+      register: ceph_health_raw
+      until: (ceph_health_raw.stdout | from_json)["quorum_names"] | length == groups.get(mon_group_name, []) | length
+      retries: "{{ health_mon_check_retries }}"
+      delay: "{{ health_mon_check_delay }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: update the placement of manager hosts
+      command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply mgr --placement='label:{{ mgr_group_name }}'"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: update the placement of crash hosts
+      command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply crash --placement='label:ceph'"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+- name: adjust monitoring service placement
+  hosts: "{{ grafana_server_group_name|default('grafana-server') }}"
+  become: true
+  gather_facts: false
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: with dashboard enabled
+      when: dashboard_enabled | bool
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      run_once: true
+      block:
+        - name: enable the prometheus module
+          command: "cephadm shell -- ceph --cluster {{ cluster }} mgr module enable prometheus"
+          changed_when: false
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+        - name: update the placement of alertmanager hosts
+          command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply alertmanager --placement='label:{{ grafana_server_group_name }}'"
+          changed_when: false
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+        - name: update the placement of grafana hosts
+          command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply grafana --placement='label:{{ grafana_server_group_name }}'"
+          changed_when: false
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+        - name: update the placement of prometheus hosts
+          command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply prometheus --placement='label:{{ grafana_server_group_name }}'"
+          changed_when: false
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+        - name: update the placement of node-exporter hosts
+          command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply node-exporter --placement='*'"
+          changed_when: false
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+- name: print information
+  hosts: "{{ mon_group_name|default('mons') }}[0]"
+  become: true
+  gather_facts: false
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: show ceph orchestrator services
+      command: "cephadm shell -- ceph --cluster {{ cluster }} orch ls --refresh"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: show ceph orchestrator daemons
+      command: "cephadm shell -- ceph --cluster {{ cluster }} orch ps --refresh"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: inform users about cephadm
+      debug:
+        msg: |
+          This Ceph cluster is now ready to receive more configuration like
+          adding OSD, MDS daemons, create pools or keyring.
+          You can do this by using the cephadm CLI and you don't need to use
+          ceph-ansible playbooks anymore.
