@@ -346,6 +346,17 @@
         state: absent
       when: not containerized_deployment | bool
 
+    - name: waiting for the monitor to join the quorum...
+      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} -s --format json"
+      changed_when: false
+      register: ceph_health_raw
+      until: >
+        ansible_hostname in (ceph_health_raw.stdout | from_json)["quorum_names"]
+      retries: "{{ health_mon_check_retries }}"
+      delay: "{{ health_mon_check_delay }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
 - name: adopt ceph mgr daemons
   hosts: "{{ mgr_group_name|default('mgrs') }}"
   serial: 1
