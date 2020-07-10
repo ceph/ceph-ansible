@@ -380,6 +380,24 @@
         state: absent
       when: not containerized_deployment | bool
 
+- name: set osd flags
+  hosts: "{{ mon_group_name|default('mons') }}"
+  become: true
+  gather_facts: false
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: set osd flags
+      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} osd set {{ item }}"
+      run_once: true
+      changed_when: false
+      with_items:
+        - noout
+        - nodeep-scrub
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
 - name: adopt ceph osd daemons
   hosts: "{{ osd_group_name|default('osd') }}"
   serial: 1
@@ -445,6 +463,38 @@
         path: /etc/systemd/system/ceph-osd@.service.d
         state: absent
       when: not containerized_deployment | bool
+
+    - name: waiting for clean pgs...
+      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} -s --format json"
+      changed_when: false
+      register: ceph_health_post
+      until: >
+        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) > 0)
+        and
+        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | selectattr('state_name', 'search', '^active\\+clean') | map(attribute='count') | list | sum) == (ceph_health_post.stdout | from_json).pgmap.num_pgs)
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      retries: "{{ health_osd_check_retries }}"
+      delay: "{{ health_osd_check_delay }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+- name: unset osd flags
+  hosts: "{{ mon_group_name|default('mons') }}"
+  become: true
+  gather_facts: false
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: unset osd flags
+      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} osd unset {{ item }}"
+      run_once: true
+      changed_when: false
+      with_items:
+        - noout
+        - nodeep-scrub
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
 - name: redeploy mds daemons
   hosts: "{{ mon_group_name|default('mons') }}"
