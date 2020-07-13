@@ -283,14 +283,16 @@
   run_once: True
   with_items:
     - "{{ groups[mon_group_name] if groups[mon_group_name] | default([]) | length > 0 else [] }}"
-    - "{{ inventory_hostname }}"
+    - "{{ groups[mds_group_name] if groups[mds_group_name] | default([]) | length > 0 else [] }}"
+    - "{{ groups[client_group_name] if groups[client_group_name] | default([]) | length > 0 else [] }}"
 
 - name: set_fact ceph_admin_command
   set_fact:
-    ceph_admin_command: "{{ ceph_run_cmd }} -n client.admin -k /etc/ceph/{{ cluster }}.client.admin.keyring"
+    ceph_admin_command: "{{ hostvars[item]['ceph_run_cmd'] }} -n client.admin -k /etc/ceph/{{ cluster }}.client.admin.keyring"
   delegate_to: "{{ item }}"
   delegate_facts: True
   run_once: True
   with_items:
     - "{{ groups[mon_group_name] if groups[mon_group_name] | default([]) | length > 0 else [] }}"
-    - "{{ inventory_hostname }}"
+    - "{{ groups[mds_group_name] if groups[mds_group_name] | default([]) | length > 0 else [] }}"
+    - "{{ groups[client_group_name] if groups[client_group_name] | default([]) | length > 0 else [] }}"
