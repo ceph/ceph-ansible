@@ -5,6 +5,7 @@ import mock
 import pytest
 from ansible.module_utils import basic
 from ansible.module_utils._text import to_bytes
+<<<<<<< HEAD
 
 sys.path.append('./library')
 import ceph_key  # noqa: E402
@@ -27,7 +28,24 @@ class AnsibleExitJson(Exception):
 
 def exit_json(*args, **kwargs):
     raise AnsibleExitJson(kwargs)
+=======
+>>>>>>> 27ca884d9... tests: add more coverage for test_ceph_key
 
+# From ceph-ansible documentation
+def set_module_args(args):
+    if '_ansible_remote_tmp' not in args:
+        args['_ansible_remote_tmp'] = '/tmp'
+    if '_ansible_keep_remote_files' not in args:
+        args['_ansible_keep_remote_files'] = False
+
+    args = json.dumps({'ANSIBLE_MODULE_ARGS': args})
+    basic._ANSIBLE_ARGS = to_bytes(args)
+
+class AnsibleExitJson(Exception):
+    pass
+
+def exit_json(*args, **kwargs):
+    raise AnsibleExitJson(kwargs)
 
 @mock.patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'docker'})
 class TestCephKeyModule(object):
@@ -554,6 +572,7 @@ class TestCephKeyModule(object):
     def test_state_info(self, m_exec_commands, m_exit_json):
         set_module_args({"state": "info",
                          "cluster": "ceph",
+<<<<<<< HEAD
                          "name": "client.admin"}
                         )
         m_exit_json.side_effect = exit_json
@@ -561,12 +580,25 @@ class TestCephKeyModule(object):
                                         ['ceph', 'auth', 'get', 'client.admin', '-f', 'json'],
                                         '[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]',  # noqa: E501
                                         'exported keyring for client.admin')
+=======
+                         "name": "client.admin"
+        })
+        m_exit_json.side_effect = exit_json
+        m_exec_commands.return_value = (0, ['ceph', 'auth', 'get', 'client.admin', '-f', 'json'] ,'[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]', 'exported keyring for client.admin')
+>>>>>>> 27ca884d9... tests: add more coverage for test_ceph_key
 
         with pytest.raises(AnsibleExitJson) as result:
             ceph_key.run_module()
 
         result = result.value.args[0]
+<<<<<<< HEAD
         assert not result['changed']
         assert result['stdout'] == '[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]'  # noqa: E501
         assert result['stderr'] == 'exported keyring for client.admin'
         assert result['rc'] == 0
+=======
+        assert result['changed'] == False
+        assert result['stdout'] == '[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]'
+        assert result['stderr'] == 'exported keyring for client.admin'
+        assert result['rc'] == 0
+>>>>>>> 27ca884d9... tests: add more coverage for test_ceph_key
