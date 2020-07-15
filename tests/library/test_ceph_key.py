@@ -4,7 +4,25 @@ import sys
 sys.path.append('./library')
 import ceph_key
 import mock
+import pytest
+from ansible.module_utils import basic
+from ansible.module_utils._text import to_bytes
 
+# From ceph-ansible documentation
+def set_module_args(args):
+    if '_ansible_remote_tmp' not in args:
+        args['_ansible_remote_tmp'] = '/tmp'
+    if '_ansible_keep_remote_files' not in args:
+        args['_ansible_keep_remote_files'] = False
+
+    args = json.dumps({'ANSIBLE_MODULE_ARGS': args})
+    basic._ANSIBLE_ARGS = to_bytes(args)
+
+class AnsibleExitJson(Exception):
+    pass
+
+def exit_json(*args, **kwargs):
+    raise AnsibleExitJson(kwargs)
 
 @mock.patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'docker'})
 class TestCephKeyModule(object):
@@ -519,3 +537,22 @@ class TestCephKeyModule(object):
         expected_result = "/var/lib/ceph/bootstrap-osd/fake.keyring"
         result = ceph_key.build_key_path(fake_cluster, entity)
         assert result == expected_result
+
+    @mock.patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @mock.patch('ceph_key.exec_commands')
+    def test_state_info(self, m_exec_commands, m_exit_json):
+        set_module_args({"state": "info",
+                         "cluster": "ceph",
+                         "name": "client.admin"
+        })
+        m_exit_json.side_effect = exit_json
+        m_exec_commands.return_value = (0, ['ceph', 'auth', 'get', 'client.admin', '-f', 'json'] ,'[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]', 'exported keyring for client.admin')
+
+        with pytest.raises(AnsibleExitJson) as result:
+            ceph_key.run_module()
+
+        result = result.value.args[0]
+        assert result['changed'] == False
+        assert result['stdout'] == '[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]'
+        assert result['stderr'] == 'exported keyring for client.admin'
+        assert result['rc'] == 0
