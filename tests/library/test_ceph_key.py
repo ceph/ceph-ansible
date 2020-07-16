@@ -556,3 +556,71 @@ class TestCephKeyModule(object):
         assert result['stdout'] == '[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]'
         assert result['stderr'] == 'exported keyring for client.admin'
         assert result['rc'] == 0
+
+    @mock.patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @mock.patch('ceph_key.exec_commands')
+    def test_state_absent_existing_keyring(self, m_exec_commands, m_exit_json):
+        set_module_args({"state": "absent",
+                         "cluster": "ceph",
+                         "name": "client.foo"
+        })
+        m_exit_json.side_effect = exit_json
+        m_exec_commands.return_value = (0,
+                                        ['ceph', 'auth', 'rm', 'client.foo'] ,
+                                        '', 'updated'
+                                        )
+
+        with pytest.raises(AnsibleExitJson) as result:
+            ceph_key.run_module()
+
+        result = result.value.args[0]
+        assert result['changed'] == True
+        assert result['stdout'] == ''
+        assert result['stderr'] == 'updated'
+        assert result['rc'] == 0
+
+    @mock.patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @mock.patch('ceph_key.exec_commands')
+    def test_state_absent_non_existing_keyring(self, m_exec_commands, m_exit_json):
+        set_module_args({"state": "absent",
+                         "cluster": "ceph",
+                         "name": "client.foo"
+        })
+        m_exit_json.side_effect = exit_json
+        m_exec_commands.return_value = (1,
+                                        ['ceph', 'auth', 'get', 'client.foo'] ,
+                                        '', 'Error ENOENT: failed to find client.foo in keyring'
+                                        )
+
+        with pytest.raises(AnsibleExitJson) as result:
+            ceph_key.run_module()
+
+        result = result.value.args[0]
+        assert result['changed'] == False
+        assert result['stdout'] == ''
+        assert result['stderr'] == 'Error ENOENT: failed to find client.foo in keyring'
+        assert result['rc'] == 0
+
+    @mock.patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @mock.patch('ceph_key.exec_commands')
+    def test_state_absent_non_existing_keyring(self, m_exec_commands, m_exit_json):
+        set_module_args({"state": "absent",
+                         "cluster": "ceph",
+                         "name": "client.foo"
+        })
+        m_exit_json.side_effect = exit_json
+        m_exec_commands.return_value = (1,
+                                        ['ceph', 'auth', 'get', 'client.foo'] ,
+                                        '', 'Error ENOENT: failed to find client.foo in keyring'
+                                        )
+
+        with pytest.raises(AnsibleExitJson) as result:
+            ceph_key.run_module()
+
+        result = result.value.args[0]
+        assert result['changed'] == False
+        assert result['stdout'] == ''
+        assert result['stderr'] == 'Error ENOENT: failed to find client.foo in keyring'
+        assert result['rc'] == 0
+
+# entity client.test2 does not exist
