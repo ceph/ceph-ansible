@@ -30,7 +30,7 @@ class TestRGWs(object):
                 hostname=hostname, container_binary=container_binary)
         else:
             container_exec_cmd = ''
-        cmd = "sudo {container_exec_cmd} ceph --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(  # noqa E501
+        cmd = "sudo {container_exec_cmd} ceph --cluster={cluster} --connect-timeout 5 -f json -s".format(  # noqa E501
             container_exec_cmd=container_exec_cmd,
             hostname=hostname,
             cluster=cluster
