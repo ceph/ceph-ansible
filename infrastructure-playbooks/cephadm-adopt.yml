@@ -312,6 +312,10 @@
             inventory_hostname in groups.get(mgr_group_name, []) or
             inventory_hostname in groups.get(rbdmirror_group_name, [])
 
+    - name: set_fact cephadm_cmd
+      set_fact:
+        cephadm_cmd: "cephadm {{ '--docker' if container_binary == 'docker' else '' }}"
+
 - name: adopt ceph mon daemons
   hosts: "{{ mon_group_name|default('mons') }}"
   serial: 1
@@ -322,7 +326,7 @@
         name: ceph-defaults
 
     - name: adopt mon daemon
-      command: "cephadm adopt --cluster {{ cluster }} --skip-pull --style legacy --name mon.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }} {{ '--docker' if container_binary == 'docker' else '' }}"
+      command: "{{ cephadm_cmd }} adopt --cluster {{ cluster }} --skip-pull --style legacy --name mon.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }}"
       args:
         creates: '/var/lib/ceph/{{ fsid }}/mon.{{ ansible_hostname }}/unit.run'
       environment:
@@ -347,7 +351,7 @@
       when: not containerized_deployment | bool
 
     - name: waiting for the monitor to join the quorum...
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} -s --format json"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} -s --format json"
       changed_when: false
       register: ceph_health_raw
       until: >
@@ -367,7 +371,7 @@
         name: ceph-defaults
 
     - name: adopt mgr daemon
-      command: "cephadm adopt --cluster {{ cluster }} --skip-pull --style legacy --name mgr.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }} {{ '--docker' if container_binary == 'docker' else '' }}"
+      command: "{{ cephadm_cmd }} adopt --cluster {{ cluster }} --skip-pull --style legacy --name mgr.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }}"
       args:
         creates: '/var/lib/ceph/{{ fsid }}/mgr.{{ ansible_hostname }}/unit.run'
       environment:
@@ -400,7 +404,7 @@
         name: ceph-defaults
 
     - name: set osd flags
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} osd set {{ item }}"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} osd set {{ item }}"
       changed_when: false
       with_items:
         - noout
@@ -452,7 +456,7 @@
       when: containerized_deployment | bool
 
     - name: adopt osd daemon
-      command: "cephadm adopt --cluster {{ cluster }} --skip-pull --style legacy --name osd.{{ item }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }} {{ '--docker' if container_binary == 'docker' else '' }}"
+      command: "{{ cephadm_cmd }} adopt --cluster {{ cluster }} --skip-pull --style legacy --name osd.{{ item }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }}"
       loop: '{{ (osd_list.stdout | from_json).keys() | list }}'
       args:
         creates: '/var/lib/ceph/{{ fsid }}/osd.{{ item }}/unit.run'
@@ -475,7 +479,7 @@
       when: not containerized_deployment | bool
 
     - name: waiting for clean pgs...
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} -s --format json"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} -s --format json"
       changed_when: false
       register: ceph_health_post
       until: >
@@ -497,7 +501,7 @@
         name: ceph-defaults
 
     - name: unset osd flags
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} osd unset {{ item }}"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} osd unset {{ item }}"
       changed_when: false
       with_items:
         - noout
@@ -514,7 +518,7 @@
         name: ceph-defaults
 
     - name: update the placement of metadata hosts
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply mds {{ cephfs }} --placement='{{ groups.get(mds_group_name, []) | length }} label:{{ mds_group_name }}'"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply mds {{ cephfs }} --placement='{{ groups.get(mds_group_name, []) | length }} label:{{ mds_group_name }}'"
       run_once: true
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -580,35 +584,35 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       block:
         - name: create a default realm
-          command: "cephadm shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} realm create --rgw-realm=default --default"
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} realm create --rgw-realm=default --default"
           run_once: true
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: modify the default zonegroup
-          command: "cephadm shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} zonegroup modify --rgw-realm=default --rgw-zonegroup=default"
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} zonegroup modify --rgw-realm=default --rgw-zonegroup=default"
           run_once: true
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: modify the default zone
-          command: "cephadm shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} zone modify --rgw-realm=default --rgw-zonegroup=default --rgw-zone=default"
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} zone modify --rgw-realm=default --rgw-zonegroup=default --rgw-zone=default"
           run_once: true
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: commit the period
-          command: "cephadm shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} period update --commit"
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} period update --commit"
           run_once: true
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: update the placement of radosgw hosts
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rgw {{ rgw_realm | default('default') }} {{ rgw_zone | default('default') }} --placement='{{ groups.get(rgw_group_name, []) | length }} label:{{ rgw_group_name }}' --port={{ radosgw_frontend_port }} {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rgw {{ rgw_realm | default('default') }} {{ rgw_zone | default('default') }} --placement='{{ groups.get(rgw_group_name, []) | length }} label:{{ rgw_group_name }}' --port={{ radosgw_frontend_port }} {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}"
       run_once: true
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -681,7 +685,7 @@
         name: ceph-defaults
 
     - name: update the placement of rbd-mirror hosts
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rbd-mirror --placement='{{ groups.get(rbdmirror_group_name, []) | length }} label:{{ rbdmirror_group_name }}'"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rbd-mirror --placement='{{ groups.get(rbdmirror_group_name, []) | length }} label:{{ rbdmirror_group_name }}'"
       run_once: true
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -737,7 +741,7 @@
         name: ceph-defaults
 
     - name: update the placement of iscsigw hosts
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply iscsi {{ iscsi_pool_name | default('rbd') }} {{ api_user | default('admin') }} {{ api_password | default('admin') }} {{ trusted_ip_list | default('192.168.122.1') }} --placement='{{ groups.get(iscsi_gw_group_name, []) | length }} label:{{ iscsi_gw_group_name }}'"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply iscsi {{ iscsi_pool_name | default('rbd') }} {{ api_user | default('admin') }} {{ api_password | default('admin') }} {{ trusted_ip_list | default('192.168.122.1') }} --placement='{{ groups.get(iscsi_gw_group_name, []) | length }} label:{{ iscsi_gw_group_name }}'"
       run_once: true
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
@@ -806,7 +810,7 @@
       when: not containerized_deployment | bool
 
     - name: update the placement of ceph-crash hosts
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply crash --placement='label:ceph'"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply crash --placement='label:ceph'"
       run_once: true
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
@@ -847,7 +851,7 @@
             state: link
 
         - name: adopt alertmanager daemon
-          command: "cephadm adopt --cluster {{ cluster }} --skip-pull --style legacy --name alertmanager.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }} {{ '--docker' if container_binary == 'docker' else '' }}"
+          command: "{{ cephadm_cmd }} adopt --cluster {{ cluster }} --skip-pull --style legacy --name alertmanager.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }}"
           args:
             creates: '/var/lib/ceph/{{ fsid }}/alertmanager.{{ ansible_hostname }}/unit.run'
           environment:
@@ -907,7 +911,7 @@
             recurse: true
 
         - name: adopt prometheus daemon
-          command: "cephadm adopt --cluster {{ cluster }} --skip-pull --style legacy --name prometheus.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }} {{ '--docker' if container_binary == 'docker' else '' }}"
+          command: "{{ cephadm_cmd }} adopt --cluster {{ cluster }} --skip-pull --style legacy --name prometheus.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }}"
           args:
             creates: '/var/lib/ceph/{{ fsid }}/prometheus.{{ ansible_hostname }}/unit.run'
           environment:
@@ -931,7 +935,7 @@
             enabled: false
 
         - name: adopt grafana daemon
-          command: "cephadm adopt --cluster {{ cluster }} --skip-pull --style legacy --name grafana.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }} {{ '--docker' if container_binary == 'docker' else '' }}"
+          command: "{{ cephadm_cmd }} adopt --cluster {{ cluster }} --skip-pull --style legacy --name grafana.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }}"
           args:
             creates: '/var/lib/ceph/{{ fsid }}/grafana.{{ ansible_hostname }}/unit.run'
           environment:
@@ -979,7 +983,7 @@
             state: absent
 
         - name: update the placement of node-exporter hosts
-          command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply node-exporter --placement='*'"
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply node-exporter --placement='*'"
           run_once: true
           changed_when: false
           delegate_to: '{{ groups[mon_group_name][0] }}'
@@ -995,13 +999,13 @@
         name: ceph-defaults
 
     - name: update the placement of monitor hosts
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply mon --placement='{{ groups.get(mon_group_name, []) | length }} label:{{ mon_group_name }}'"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply mon --placement='{{ groups.get(mon_group_name, []) | length }} label:{{ mon_group_name }}'"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: update the placement of manager hosts
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply mgr --placement='{{ groups.get(mgr_group_name, []) | length }} label:{{ mgr_group_name }}'"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply mgr --placement='{{ groups.get(mgr_group_name, []) | length }} label:{{ mgr_group_name }}'"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
@@ -1010,19 +1014,19 @@
       when: dashboard_enabled | bool
       block:
         - name: update the placement of alertmanager hosts
-          command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply alertmanager --placement='{{ groups.get(grafana_server_group_name, []) | length }} label:{{ grafana_server_group_name }}'"
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply alertmanager --placement='{{ groups.get(grafana_server_group_name, []) | length }} label:{{ grafana_server_group_name }}'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: update the placement of grafana hosts
-          command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply grafana --placement='{{ groups.get(grafana_server_group_name, []) | length }} label:{{ grafana_server_group_name }}'"
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply grafana --placement='{{ groups.get(grafana_server_group_name, []) | length }} label:{{ grafana_server_group_name }}'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: update the placement of prometheus hosts
-          command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply prometheus --placement='{{ groups.get(grafana_server_group_name, []) | length }} label:{{ grafana_server_group_name }}'"
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply prometheus --placement='{{ groups.get(grafana_server_group_name, []) | length }} label:{{ grafana_server_group_name }}'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
@@ -1036,13 +1040,13 @@
         name: ceph-defaults
 
     - name: show ceph orchestrator services
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch ls --refresh"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch ls --refresh"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: show ceph orchestrator daemons
-      command: "cephadm shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch ps --refresh"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch ps --refresh"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
