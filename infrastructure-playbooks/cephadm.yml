@@ -121,6 +121,10 @@
       command: "{{ container_binary }} rm cephadm"
       changed_when: false
 
+    - name: set_fact cephadm_cmd
+      set_fact:
+        cephadm_cmd: "cephadm {{ '--docker' if container_binary == 'docker' else '' }}"
+
 - name: bootstrap the cluster
   hosts: "{{ mon_group_name|default('mons') }}[0]"
   become: true
@@ -139,19 +143,19 @@
         state: directory
 
     - name: bootstrap the new cluster
-      command: "cephadm bootstrap --mon-ip {{ _current_monitor_address }} --skip-pull --skip-monitoring-stack {{ '--docker' if container_binary == 'docker' else '' }} {{ '--initial-dashboard-user ' + dashboard_admin_user + ' --initial-dashboard-password ' + dashboard_admin_password if dashboard_enabled | bool else '--skip-dashboard' }}"
+      command: "{{ cephadm_cmd }} bootstrap --mon-ip {{ _current_monitor_address }} --skip-pull --skip-monitoring-stack {{ '--initial-dashboard-user ' + dashboard_admin_user + ' --initial-dashboard-password ' + dashboard_admin_password if dashboard_enabled | bool else '--skip-dashboard' }}"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: set default container image in ceph configuration
-      command: "cephadm shell -- ceph --cluster {{ cluster }} config set global container_image {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set global container_image {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: set container image base in ceph configuration
-      command: "cephadm shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_base {{ ceph_docker_registry }}/{{ ceph_docker_image }}"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_base {{ ceph_docker_registry }}/{{ ceph_docker_image }}"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
@@ -160,25 +164,25 @@
       when: dashboard_enabled | bool
       block:
         - name: set alertmanager container image in ceph configuration
-          command: "cephadm shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_alertmanager {{ alertmanager_container_image }}"
+          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_alertmanager {{ alertmanager_container_image }}"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: set grafana container image in ceph configuration
-          command: "cephadm shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_grafana {{ grafana_container_image }}"
+          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_grafana {{ grafana_container_image }}"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: set node-exporter container image in ceph configuration
-          command: "cephadm shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_node_exporter {{ node_exporter_container_image }}"
+          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_node_exporter {{ node_exporter_container_image }}"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: set prometheus container image in ceph configuration
-          command: "cephadm shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_prometheus {{ prometheus_container_image }}"
+          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_prometheus {{ prometheus_container_image }}"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
@@ -201,7 +205,7 @@
         name: ceph-defaults
 
     - name: get the cephadm ssh pub key
-      command: "cephadm shell -- ceph --cluster {{ cluster }} cephadm get-pub-key"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} cephadm get-pub-key"
       changed_when: false
       run_once: true
       register: cephadm_pubpkey
@@ -221,7 +225,7 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: manage nodes with cephadm
-      command: "cephadm shell -- ceph --cluster {{ cluster }} orch host add {{ hostvars[item]['ansible_hostname'] }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ hostvars[item]['group_names'] | join(' ') }}"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ hostvars[item]['ansible_hostname'] }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ hostvars[item]['group_names'] | join(' ') }}"
       changed_when: false
       run_once: true
       loop: '{{ ansible_play_hosts_all }}'
@@ -230,7 +234,7 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: add ceph label for core component
-      command: "cephadm shell -- ceph --cluster {{ cluster }} orch host label add {{ hostvars[item]['ansible_hostname'] }} ceph"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host label add {{ hostvars[item]['ansible_hostname'] }} ceph"
       changed_when: false
       run_once: true
       loop: '{{ ansible_play_hosts_all }}'
@@ -253,13 +257,13 @@
         name: ceph-defaults
 
     - name: update the placement of monitor hosts
-      command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply mon --placement='label:{{ mon_group_name }}'"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply mon --placement='label:{{ mon_group_name }}'"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: waiting for the monitor to join the quorum...
-      command: "cephadm shell -- ceph --cluster {{ cluster }} -s --format json"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} -s --format json"
       changed_when: false
       register: ceph_health_raw
       until: (ceph_health_raw.stdout | from_json)["quorum_names"] | length == groups.get(mon_group_name, []) | length
@@ -269,13 +273,13 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: update the placement of manager hosts
-      command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply mgr --placement='label:{{ mgr_group_name }}'"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply mgr --placement='label:{{ mgr_group_name }}'"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: update the placement of crash hosts
-      command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply crash --placement='label:ceph'"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply crash --placement='label:ceph'"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
@@ -294,31 +298,31 @@
       run_once: true
       block:
         - name: enable the prometheus module
-          command: "cephadm shell -- ceph --cluster {{ cluster }} mgr module enable prometheus"
+          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} mgr module enable prometheus"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: update the placement of alertmanager hosts
-          command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply alertmanager --placement='label:{{ grafana_server_group_name }}'"
+          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply alertmanager --placement='label:{{ grafana_server_group_name }}'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: update the placement of grafana hosts
-          command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply grafana --placement='label:{{ grafana_server_group_name }}'"
+          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply grafana --placement='label:{{ grafana_server_group_name }}'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: update the placement of prometheus hosts
-          command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply prometheus --placement='label:{{ grafana_server_group_name }}'"
+          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply prometheus --placement='label:{{ grafana_server_group_name }}'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: update the placement of node-exporter hosts
-          command: "cephadm shell -- ceph --cluster {{ cluster }} orch apply node-exporter --placement='*'"
+          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply node-exporter --placement='*'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
@@ -332,13 +336,13 @@
         name: ceph-defaults
 
     - name: show ceph orchestrator services
-      command: "cephadm shell -- ceph --cluster {{ cluster }} orch ls --refresh"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch ls --refresh"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: show ceph orchestrator daemons
-      command: "cephadm shell -- ceph --cluster {{ cluster }} orch ps --refresh"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch ps --refresh"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
