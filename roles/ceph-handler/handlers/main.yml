@@ -69,6 +69,13 @@
     - name: ceph crash handler
       include_tasks: handler_crash.yml
       listen: "restart ceph crash"
+      when:
+        - inventory_hostname in groups.get(mon_group_name, [])
+          or inventory_hostname in groups.get(mgr_group_name, [])
+          or inventory_hostname in groups.get(osd_group_name, [])
+          or inventory_hostname in groups.get(mds_group_name, [])
+          or inventory_hostname in groups.get(rgw_group_name, [])
+          or inventory_hostname in groups.get(rbdmirror_group_name, [])
 
     - name: remove tempdir for scripts
       file:
