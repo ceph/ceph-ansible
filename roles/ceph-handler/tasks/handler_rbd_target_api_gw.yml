@@ -3,16 +3,10 @@
   set_fact:
     _rbd_target_api_handler_called: True
 
-- name: copy rbd-target-api restart script
-  template:
-    src: restart_rbd_target_api.sh.j2
-    dest: "{{ tmpdirpath.path }}/restart_rbd_target_api.sh"
-    owner: root
-    group: root
-    mode: 0750
-
 - name: restart rbd-target-api
-  command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_rbd_target_api.sh
+  service:
+    name: rbd-target-api
+    state: restarted
   when:
     - ceph_rbd_target_api_stat.get('rc') == 0
     - hostvars[item]['_rbd_target_api_handler_called'] | default(False) | bool
@@ -29,16 +23,10 @@
   set_fact:
     _rbd_target_gw_handler_called: True
 
-- name: copy rbd-target-gw restart script
-  template:
-    src: restart_rbd_target_gw.sh.j2
-    dest: "{{ tmpdirpath.path }}/restart_rbd_target_gw.sh"
-    owner: root
-    group: root
-    mode: 0750
-
 - name: restart rbd-target-gw
-  command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_rbd_target_gw.sh
+  service:
+    name: rbd-target-gw
+    state: restarted
   when:
     - ceph_rbd_target_gw_stat.get('rc') == 0
     - hostvars[item]['_rbd_target_gw_handler_called'] | default(False) | bool
