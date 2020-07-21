@@ -21,15 +21,15 @@
     - ansible_os_family in ['Suse', 'RedHat']
 
 - name: create mds keyring
-  command: ceph --cluster {{ cluster }} --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring auth get-or-create mds.{{ mds_name }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/{{ cluster }}-{{ mds_name }}/keyring
+  command: ceph --cluster {{ cluster }} --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring auth get-or-create mds.{{ ansible_hostname }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/{{ cluster }}-{{ ansible_hostname }}/keyring
   args:
-    creates: /var/lib/ceph/mds/{{ cluster }}-{{ mds_name }}/keyring
+    creates: /var/lib/ceph/mds/{{ cluster }}-{{ ansible_hostname }}/keyring
   changed_when: false
   when: cephx
 
 - name: set mds key permissions
   file:
-    path: /var/lib/ceph/mds/{{ cluster }}-{{ mds_name }}/keyring
+    path: /var/lib/ceph/mds/{{ cluster }}-{{ ansible_hostname }}/keyring
     owner: "ceph"
     group: "ceph"
     mode: "0600"
@@ -55,7 +55,7 @@
 
 - name: start and add that the metadata service to the init sequence
   service:
-    name: ceph-mds@{{ mds_name }}
+    name: ceph-mds@{{ ansible_hostname }}
     state: started
     enabled: yes
     masked: no
