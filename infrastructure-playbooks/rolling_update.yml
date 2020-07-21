@@ -191,7 +191,6 @@
         enabled: no
         masked: yes
       ignore_errors: True
-      when: not containerized_deployment | bool
 
     # NOTE: we mask the service so the RPM can't restart it
     # after the package gets upgraded
@@ -202,7 +201,6 @@
         enabled: no
         masked: yes
       ignore_errors: True
-      when: not containerized_deployment | bool
 
     # only mask the service for mgr because it must be upgraded
     # after ALL monitors, even when collocated
@@ -226,28 +224,12 @@
     - import_role:
         name: ceph-mon
 
-    - name: start ceph mon
-      systemd:
-        name: ceph-mon@{{ monitor_name }}
-        state: started
-        enabled: yes
-      when: not containerized_deployment | bool
-
     - name: start ceph mgr
       systemd:
         name: ceph-mgr@{{ ansible_hostname }}
         state: started
         enabled: yes
       ignore_errors: True # if no mgr collocated with mons
-      when: not containerized_deployment | bool
-
-    - name: restart containerized ceph mon
-      systemd:
-        name: ceph-mon@{{ monitor_name }}
-        state: restarted
-        enabled: yes
-        daemon_reload: yes
-      when: containerized_deployment | bool
 
     - name: non container | waiting for the monitor to join the quorum...
       command: ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" -s --format json
@@ -392,18 +374,10 @@
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
       register: osd_ids
       changed_when: false
-      when: not containerized_deployment | bool
 
-    - name: get osd unit names - container
-      shell: systemctl list-units | grep -E "loaded * active" | grep -oE "ceph-osd@([0-9]+).service"
-      register: osd_names
-      changed_when: false
-      when: containerized_deployment | bool
-
-    - name: set num_osds for container
+    - name: set num_osds
       set_fact:
-        num_osds: "{{ osd_names.stdout_lines|default([])|length }}"
-      when: containerized_deployment | bool
+        num_osds: "{{ osd_ids.stdout_lines|default([])|length }}"
 
     - name: set_fact container_exec_cmd_osd
       set_fact:
@@ -417,12 +391,6 @@
         enabled: no
         masked: yes
       with_items: "{{ osd_ids.stdout_lines }}"
-      when: not containerized_deployment | bool
-
-    - name: set num_osds for non container
-      set_fact:
-        num_osds: "{{ osd_ids.stdout_lines|default([])|length }}"
-      when: not containerized_deployment | bool
 
     - import_role:
         name: ceph-handler
@@ -436,25 +404,6 @@
         name: ceph-config
     - import_role:
         name: ceph-osd
-
-    - name: start ceph osd
-      systemd:
-        name: ceph-osd@{{ item }}
-        state: started
-        enabled: yes
-        masked: no
-      with_items: "{{ osd_ids.stdout_lines }}"
-      when: not containerized_deployment | bool
-
-    - name: restart containerized ceph osd
-      systemd:
-        name: "{{ item }}"
-        state: restarted
-        enabled: yes
-        masked: no
-        daemon_reload: yes
-      with_items: "{{ osd_names.stdout_lines }}"
-      when: containerized_deployment | bool
 
     - name: scan ceph-disk osds with ceph-volume if deploying nautilus
       command: "ceph-volume --cluster={{ cluster }} simple scan --force"
@@ -614,7 +563,6 @@
         name: ceph-mds@{{ ansible_hostname }}
         enabled: no
         masked: yes
-      when: not containerized_deployment | bool
 
     - import_role:
         name: ceph-handler
@@ -628,14 +576,6 @@
         name: ceph-config
     - import_role:
         name: ceph-mds
-
-    - name: restart ceph mds
-      systemd:
-        name: ceph-mds@{{ ansible_hostname }}
-        state: restarted
-        enabled: yes
-        masked: no
-        daemon_reload: yes
 
 
 - name: upgrade standbys ceph mdss cluster
@@ -656,7 +596,6 @@
         name: ceph-mds@{{ ansible_hostname }}
         enabled: no
         masked: yes
-      when: not containerized_deployment | bool
 
     - import_role:
         name: ceph-handler
@@ -670,14 +609,6 @@
         name: ceph-config
     - import_role:
         name: ceph-mds
-
-    - name: restart ceph mds
-      systemd:
-        name: ceph-mds@{{ ansible_hostname }}
-        state: restarted
-        enabled: yes
-        masked: no
-        daemon_reload: yes
 
     - name: set max_mds
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds {{ mds_max_mds }}"
@@ -714,7 +645,6 @@
         enabled: no
         masked: yes
       with_items: "{{ rgw_instances }}"
-      when: not containerized_deployment | bool
 
     - import_role:
         name: ceph-handler
@@ -728,16 +658,6 @@
         name: ceph-config
     - import_role:
         name: ceph-rgw
-
-    - name: restart containerized ceph rgw
-      systemd:
-        name: ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}
-        state: restarted
-        enabled: yes
-        masked: no
-        daemon_reload: yes
-      with_items: "{{ rgw_instances }}"
-      when: containerized_deployment | bool
 
 
 - name: upgrade ceph rbd mirror node
@@ -771,23 +691,6 @@
     - import_role:
         name: ceph-rbd-mirror
 
-    - name: start ceph rbd mirror
-      systemd:
-        name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
-        state: started
-        enabled: yes
-        masked: no
-      when: not containerized_deployment | bool
-
-    - name: restart containerized ceph rbd mirror
-      systemd:
-        name: ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}
-        state: restarted
-        enabled: yes
-        masked: no
-        daemon_reload: yes
-      when: containerized_deployment | bool
-
 
 - name: upgrade ceph nfs node
   vars:
@@ -808,6 +711,17 @@
       failed_when: false
       when: not containerized_deployment | bool
 
+    - name: systemd stop nfs container
+      systemd:
+        name: ceph-nfs@{{ ceph_nfs_service_suffix | default(ansible_hostname) }}
+        state: stopped
+        enabled: no
+        masked: yes
+      failed_when: false
+      when:
+        - ceph_nfs_enable_service | bool
+        - containerized_deployment | bool
+
     - import_role:
         name: ceph-defaults
     - import_role:
@@ -824,27 +738,6 @@
         name: ceph-config
     - import_role:
         name: ceph-nfs
-
-    - name: start nfs gateway
-      systemd:
-        name: nfs-ganesha
-        state: started
-        enabled: yes
-        masked: no
-      when:
-        - not containerized_deployment | bool
-        - ceph_nfs_enable_service | bool
-
-    - name: systemd restart nfs container
-      systemd:
-        name: ceph-nfs@{{ ceph_nfs_service_suffix | default(ansible_hostname) }}
-        state: restarted
-        enabled: yes
-        masked: no
-        daemon_reload: yes
-      when:
-        - ceph_nfs_enable_service | bool
-        - containerized_deployment | bool
 
 
 - name: upgrade ceph iscsi gateway node
@@ -923,6 +816,12 @@
   gather_facts: false
   become: true
   tasks:
+    - name: stop the ceph-crash service
+      systemd:
+        name: "{{ 'ceph-crash@' + ansible_hostname if containerized_deployment | bool else 'ceph-crash.service' }}"
+        state: stopped
+        enabled: no
+        masked: yes
     - import_role:
         name: ceph-defaults
     - import_role:
