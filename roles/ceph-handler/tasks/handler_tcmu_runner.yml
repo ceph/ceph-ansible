@@ -3,16 +3,10 @@
   set_fact:
     _tcmu_runner_handler_called: True
 
-- name: copy tcmu-runner restart script
-  template:
-    src: restart_tcmu_runner.sh.j2
-    dest: "{{ tmpdirpath.path }}/restart_tcmu_runner.sh"
-    owner: root
-    group: root
-    mode: 0750
-
 - name: restart tcmu-runner
-  command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_tcmu_runner.sh
+  service:
+    name: tcmu-runner
+    state: restarted
   when:
     - ceph_tcmu_runner_stat.get('rc') == 0
     - hostvars[item]['_tcmu_runner_handler_called'] | default(False) | bool
