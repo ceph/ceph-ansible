@@ -146,7 +146,7 @@
     - name: umount osd lockbox
       mount:
         path: "/var/lib/ceph/osd-lockbox/{{ ceph_osd_data_json[item.2]['data']['uuid'] }}"
-        state: unmounted
+        state: absent
       loop: "{{ _osd_hosts }}"
       delegate_to: "{{ item.0 }}"
       when:
@@ -158,12 +158,10 @@
     - name: umount osd data
       mount:
         path: "/var/lib/ceph/osd/{{ cluster }}-{{ item.2 }}"
-        state: unmounted
+        state: absent
       loop: "{{ _osd_hosts }}"
       delegate_to: "{{ item.0 }}"
-      when:
-        - not containerized_deployment | bool
-        - item.2 not in _lvm_list.keys()
+      when: not containerized_deployment | bool
 
     - name: get parent device for data partition
       command: lsblk --noheadings --output PKNAME --nodeps "{{ ceph_osd_data_json[item.2]['data']['path'] }}"
@@ -227,6 +225,13 @@
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it"
       run_once: true
       with_items: "{{ osd_to_kill.split(',') }}"
+
+    - name: remove osd data dir
+      file:
+        path: "/var/lib/ceph/osd/{{ cluster }}-{{ item.2 }}"
+        state: absent
+      loop: "{{ _osd_hosts }}"
+      delegate_to: "{{ item.0 }}"
 
     - name: show ceph health
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} -s"
