@@ -14,10 +14,12 @@
         path: /run/ostree-booted
       register: stat_ostree
       tags: always
+
     - name: set_fact is_atomic
       set_fact:
         is_atomic: '{{ stat_ostree.stat.exists }}'
       tags: always
+
     # Some images may not have lvm2 installed
     - name: install lvm2
       package:
@@ -26,22 +28,26 @@
       register: result
       until: result is succeeded
       when: not is_atomic | bool
+
     - name: create volume group
       lvg:
         vg: test_group
         pvs: "{{ pv_devices[0] | default('/dev/sdb') }}"
+
     - name: create logical volume 1
       lvol:
         vg: test_group
         lv: data-lv1
         size: 50%FREE
         shrink: false
+
     - name: create logical volume 2
       lvol:
         vg: test_group
         lv: data-lv2
         size: 100%FREE
         shrink: false
+
     - name: partition  "{{ pv_devices[1] | default('/dev/sdc') }}"for journals
       parted:
         device: "{{ pv_devices[1] | default('/dev/sdc') }}"
@@ -52,6 +58,7 @@
         label: gpt
         state: present
       tags: partitions
+
     - name: partition  "{{ pv_devices[1] | default('/dev/sdc') }}"for journals
       parted:
         device: "{{ pv_devices[1] | default('/dev/sdc') }}"
@@ -62,10 +69,12 @@
         state: present
         label: gpt
       tags: partitions
+
     - name: create journals vg from  "{{ pv_devices[1] | default('/dev/sdc') }}2"
       lvg:
         vg: journals
         pvs: "{{ pv_devices[1] | default('/dev/sdc') }}2"
+
     - name: create journal1 lv
       lvol:
         vg: journals
