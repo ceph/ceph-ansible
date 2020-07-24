@@ -882,10 +882,85 @@
       vars:
         msgr2_migration: True
 
-- import_playbook: ../dashboard.yml
-  when:
-    - dashboard_enabled | bool
-    - groups.get(grafana_server_group_name, []) | length > 0
+- name: upgrade node-exporter
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: with dashboard configuration
+      when: dashboard_enabled | bool
+      block:
+        - name: stop node-exporter
+          service:
+            name: node_exporter
+            state: stopped
+          failed_when: false
+
+        - import_role:
+            name: ceph-facts
+        - import_role:
+            name: ceph-container-engine
+        - import_role:
+            name: ceph-container-common
+            tasks_from: registry
+          when:
+            - not containerized_deployment | bool
+            - ceph_docker_registry_auth | bool
+        - import_role:
+            name: ceph-node-exporter
+
+- name: upgrade monitoring node
+  hosts: "{{ grafana_server_group_name }}"
+  gather_facts: false
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: with dashboard configuration
+      when: dashboard_enabled | bool
+      block:
+        - name: stop monitoring services
+          service:
+            name: '{{ item }}'
+            state: stopped
+          failed_when: false
+          with_items:
+            - alertmanager
+            - prometheus
+            - grafana-server
+
+        - import_role:
+            name: ceph-facts
+        - import_role:
+            name: ceph-facts
+            tasks_from: grafana
+        - import_role:
+            name: ceph-prometheus
+        - import_role:
+            name: ceph-grafana
+
+- name: upgrade ceph dashboard
+  hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) | default(omit) }}"
+  gather_facts: false
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: with dashboard configuration
+      when: dashboard_enabled | bool
+      block:
+        - import_role:
+            name: ceph-facts
+        - import_role:
+            name: ceph-facts
+            tasks_from: grafana
+        - import_role:
+            name: ceph-dashboard
 
 - name: show ceph status
   hosts: "{{ mon_group_name|default('mons') }}"
