@@ -9,7 +9,7 @@
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ iscsi_gw_group_name|default('iscsigws') }}"
-    - "{{ grafana_server_group_name|default('grafana-server') }}"
+    - "{{ monitoring_group_name|default('monitoring') }}"
   become: true
   gather_facts: false
   vars:
@@ -43,10 +43,10 @@
       when: dashboard_enabled | bool
       run_once: true
       block:
-        - name: fail if [grafana-server] group doesn't exist or empty
+        - name: fail if [monitoring] group doesn't exist or empty
           fail:
-            msg: "you must add a [grafana-server] group and add at least one node."
-          when: groups[grafana_server_group_name] is undefined or groups[grafana_server_group_name] | length == 0
+            msg: "you must add a [monitoring] group and add at least one node."
+          when: groups[monitoring_group_name] is undefined or groups[monitoring_group_name] | length == 0
 
         - name: fail when dashboard_admin_password is not set
           fail:
@@ -197,7 +197,7 @@
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ iscsi_gw_group_name|default('iscsigws') }}"
-    - "{{ grafana_server_group_name|default('grafana-server') }}"
+    - "{{ monitoring_group_name|default('monitoring') }}"
   become: true
   gather_facts: false
   tasks:
@@ -285,7 +285,7 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
 - name: adjust monitoring service placement
-  hosts: "{{ grafana_server_group_name|default('grafana-server') }}"
+  hosts: "{{ monitoring_group_name|default('monitoring') }}"
   become: true
   gather_facts: false
   tasks:
@@ -304,19 +304,19 @@
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: update the placement of alertmanager hosts
-          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply alertmanager --placement='label:{{ grafana_server_group_name }}'"
+          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply alertmanager --placement='label:{{ monitoring_group_name }}'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: update the placement of grafana hosts
-          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply grafana --placement='label:{{ grafana_server_group_name }}'"
+          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply grafana --placement='label:{{ monitoring_group_name }}'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: update the placement of prometheus hosts
-          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply prometheus --placement='label:{{ grafana_server_group_name }}'"
+          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply prometheus --placement='label:{{ monitoring_group_name }}'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'

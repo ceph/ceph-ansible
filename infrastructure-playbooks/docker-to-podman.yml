@@ -8,7 +8,7 @@
   - clients
   - iscsigws
   - mgrs
-  - grafana-server
+  - monitoring
 
   gather_facts: false
   become: True
@@ -54,7 +54,7 @@
     - "{{ mgr_group_name | default('mgrs') }}"
     - "{{ iscsi_gw_group_name | default('iscsigws') }}"
     - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
-    - "{{ grafana_server_group_name|default('grafana-server') }}"
+    - "{{ monitoring_group_name | default('monitoring') }}"
   gather_facts: false
   become: true
   tasks:
@@ -117,7 +117,7 @@
             - "{{ prometheus_container_image }}"
           when:
             - dashboard_enabled | bool
-            - inventory_hostname in groups.get(grafana_server_group_name, [])
+            - inventory_hostname in groups.get(monitoring_group_name, [])
 
         - name: "pulling {{ node_exporter_container_image }} image from docker daemon"
           command: "{{ timeout_command }} {{ container_binary }} pull docker-daemon:{{ node_exporter_container_image }}"
@@ -193,17 +193,17 @@
         - import_role:
             name: ceph-facts
             tasks_from: grafana.yml
-          when: inventory_hostname in groups.get(grafana_server_group_name, [])
+          when: inventory_hostname in groups.get(monitoring_group_name, [])
 
         - import_role:
             name: ceph-grafana
             tasks_from: systemd.yml
-          when: inventory_hostname in groups.get(grafana_server_group_name, [])
+          when: inventory_hostname in groups.get(monitoring_group_name, [])
 
         - import_role:
             name: ceph-prometheus
             tasks_from: systemd.yml
-          when: inventory_hostname in groups.get(grafana_server_group_name, [])
+          when: inventory_hostname in groups.get(monitoring_group_name, [])
 
     - name: reload systemd daemon
       systemd:
