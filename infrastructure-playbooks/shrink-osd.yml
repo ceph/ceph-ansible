@@ -123,7 +123,9 @@
       delegate_to: "{{ item.item.0 }}"
       register: ceph_osd_files_content
       loop: "{{ ceph_osd_data.results }}"
-      when: item.skipped is undefined
+      when:
+        - item.skipped is undefined
+        - item.matched > 0
 
     - name: set_fact ceph_osd_files_json
       set_fact:
@@ -189,7 +191,7 @@
       until: result is succeeded
       when:
         - item.2 not in _lvm_list.keys()
-        - ceph_osd_data_json[item.2]['encrypted'] | bool
+        - ceph_osd_data_json[item.2]['encrypted'] | default(False) | bool
         - ceph_osd_data_json[item.2][item.3] is defined
 
     - name: use ceph-volume lvm zap to destroy all partitions
