@@ -563,6 +563,7 @@
         name: ceph-mds@{{ ansible_hostname }}
         enabled: no
         masked: yes
+      when: not containerized_deployment | bool
 
     - import_role:
         name: ceph-handler
@@ -577,6 +578,18 @@
     - import_role:
         name: ceph-mds
 
+    - name: restart ceph mds
+      systemd:
+        name: ceph-mds@{{ ansible_hostname }}
+        state: restarted
+        enabled: yes
+        masked: no
+      when: not containerized_deployment | bool
+
+    - name: restart active mds
+      command: "{{ container_binary }} stop ceph-mds-{{ ansible_hostname }}"
+      changed_when: false
+      when: containerized_deployment | bool
 
 - name: upgrade standbys ceph mdss cluster
   vars:
@@ -596,6 +609,7 @@
         name: ceph-mds@{{ ansible_hostname }}
         enabled: no
         masked: yes
+      when: not containerized_deployment | bool
 
     - import_role:
         name: ceph-handler
