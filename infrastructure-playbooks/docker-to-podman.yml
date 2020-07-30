@@ -97,6 +97,14 @@
         tasks_from: systemd.yml
       when: inventory_hostname in groups.get(nfs_group_name, [])
 
+    - name: set_fact disk_list
+      set_fact:
+        disk_list:
+          rc: 0
+      when:
+        - inventory_hostname in groups.get(osd_group_name, [])
+        - osd_scenario != 'lvm'
+
     - import_role:
         name: ceph-osd
         tasks_from: systemd.yml
