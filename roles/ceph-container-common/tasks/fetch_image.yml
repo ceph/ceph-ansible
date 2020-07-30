@@ -82,13 +82,12 @@
     - ceph_mon_inspect.get('rc') == 0
 
 - name: "inspecting ceph osd container image before pulling"
-  command: "{{ container_binary }} inspect {{ (ceph_osd_inspect.stdout | from_json)[0].Image }}"
+  command: "{{ container_binary }} inspect {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
   changed_when: false
   failed_when: false
   register: ceph_osd_container_inspect_before_pull
   when:
     - osd_group_name in group_names
-    - ceph_osd_inspect.get('rc') == 0
 
 - name: "inspecting ceph rgw container image before pulling"
   command: "{{ container_binary }} inspect {{ (ceph_rgw_inspect.stdout | from_json)[0].Image }}"
