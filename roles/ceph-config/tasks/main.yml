@@ -178,3 +178,17 @@
       - restart ceph mgrs
       - restart ceph rbdmirrors
       - restart ceph rbd-target-api-gw
+
+- name: "Common to all scenarios"
+  block:
+  - name: Create logrotate file.
+    template:
+      src: "etc/logrotate.d/ceph.j2"
+      dest: "/etc/logrotate.d/ceph"
+      owner: root
+      group: root
+      mode: '0644'
+      setype: etc_t
+      seuser: system_u
+    when: ceph_conf_logrotate | bool
+
