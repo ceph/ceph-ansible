@@ -429,10 +429,13 @@
         enabled: no
       with_items: "{{ rgw_instances }}"
 
-    - name: remove old systemd unit file
+    - name: remove old systemd unit files
       file:
-        path: /usr/lib/systemd/system/ceph-radosgw@.service
+        path: /usr/lib/systemd/system/{{ item }}
         state: absent
+      with_items:
+        - ceph-radosgw@.service
+        - ceph-radosgw.target
 
     - import_role:
         name: ceph-handler
