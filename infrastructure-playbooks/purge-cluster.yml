@@ -88,15 +88,15 @@
     - name: ensure cephfs mountpoint(s) are unmounted
       command: umount -a -t ceph
 
-    - name: check if rbdmap is still installed
-      command: command -v rbdmap
-      register: command_rbdmap
-      failed_when: false
-      changed_when: false
+    - name: find mapped rbd ids
+      find:
+        paths: /sys/bus/rbd/devices
+        file_type: any
+      register: rbd_mapped_ids
 
-    - name: ensure rbd devices are unmapped
-      command: rbdmap unmap-all
-      when: command_rbdmap.rc == 0
+    - name: use sysfs to unmap rbd devices
+      shell: "echo {{ item.path | basename }} > /sys/bus/rbd/remove_single_major"
+      with_items: "{{ rbd_mapped_ids.files }}"
 
     - name: unload ceph kernel modules
       modprobe:
