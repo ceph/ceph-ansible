@@ -17,3 +17,20 @@
   include_tasks: setup_ntp.yml
   when: ntp_service_enabled | bool
   tags: configure_ntp
+
+- name: ensure logrotate is installed
+  package:
+    name: logrotate
+    state: present
+  register: result
+  until: result is succeeded
+  when: not is_atomic | bool
+
+- name: add logrotate configuration
+  template:
+    src: logrotate.conf.j2
+    dest: /etc/logrotate.d/ceph
+    mode: "0644"
+    owner: root
+    group: root
+  when: containerized_deployment | bool
