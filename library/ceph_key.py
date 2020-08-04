@@ -547,8 +547,12 @@ def run_module():
     )
 
     if module.check_mode:
+<<<<<<< HEAD
         module.exit_json(**result)
 
+=======
+        return result
+>>>>>>> 13e2311cb... ceph_key: refact the code and minor fixes
     startd = datetime.datetime.now()
 
     # will return either the image name or None
@@ -557,11 +561,11 @@ def run_module():
     # Test if the key exists, if it does we skip its creation
     # We only want to run this check when a key needs to be added
     # There is no guarantee that any cluster is running and we don't need one
-    key_exist = 1
     _secret = secret
     _caps = caps
     key_exist = 1
 
+<<<<<<< HEAD
     if not user_key:
         user_key_filename = '{}.{}.keyring'.format(cluster, user)
         user_key_dir = '/etc/ceph'
@@ -569,6 +573,11 @@ def run_module():
     else:
         user_key_path = user_key
 
+=======
+    user = "client.admin"
+    keyring_filename = cluster + '.' + user + '.keyring'
+    user_key = os.path.join("/etc/ceph/", keyring_filename)
+>>>>>>> 13e2311cb... ceph_key: refact the code and minor fixes
     output_format = "json"
 
     if (state in ["present", "update"]):
@@ -590,7 +599,11 @@ def run_module():
         if import_key:
             _info_key = []
             rc, cmd, out, err = exec_commands(
+<<<<<<< HEAD
                 module, info_key(cluster, name, user, user_key_path, output_format, container_image))  # noqa E501
+=======
+                module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
+>>>>>>> 13e2311cb... ceph_key: refact the code and minor fixes
             key_exist = rc
             if not caps and key_exist != 0:
                 fatal("Capabilities must be provided when state is 'present'", module)  # noqa E501
@@ -606,7 +619,11 @@ def run_module():
                 _caps = _info_key[0]['caps']
                 if secret == _secret and caps == _caps:
                     if not os.path.isfile(file_path):
+<<<<<<< HEAD
                         rc, cmd, out, err = exec_commands(module, get_key(cluster, user, user_key_path, name, file_path, container_image))  # noqa E501
+=======
+                        rc, cmd, out, err = exec_commands(module, get_key(cluster, name, file_path, container_image))  # noqa E501
+>>>>>>> 13e2311cb... ceph_key: refact the code and minor fixes
                         result["rc"] = rc
                         if rc != 0:
                             result["stdout"] = "Couldn't fetch the key {0} at {1}.".format(name, file_path) # noqa E501
@@ -615,16 +632,13 @@ def run_module():
 
                     result["stdout"] = "{0} already exists and doesn't need to be updated.".format(name) # noqa E501
                     result["rc"] = 0
+                    module.set_fs_attributes_if_different(file_args, False)
                     module.exit_json(**result)
-
-    # "update" is here only for backward compatibility
-    if state in ["present", "update"]:
-        if not caps and import_key and rc != 0:
-            fatal("Capabilities must be provided when state is 'present'", module)  # noqa E501
-        if import_key and key_exist != 0 and secret is None and caps is None:
-            fatal("Keyring doesn't exist, you must provide 'secret' and 'caps'", module)  # noqa E501
-
-        # There's no need to run create_key() if neither secret nor caps have changed
+        else:
+            if os.path.isfile(file_path) and not secret or not caps:
+                result["stdout"] = "{0} already exists in {1} you must provide secret *and* caps when import_key is {2}".format(name, dest, import_key) # noqa E501
+                result["rc"] = 0
+                module.exit_json(**result)
         if (key_exist == 0 and (secret != _secret or caps != _caps)) or key_exist != 0:
             rc, cmd, out, err = exec_commands(module, create_key(
                 module, result, cluster, user, user_key_path, name, secret, caps, import_key, file_path, container_image))  # noqa E501
@@ -632,24 +646,24 @@ def run_module():
                 result["stdout"] = "Couldn't create or update {0}".format(name)
                 result["stderr"] = err
                 module.exit_json(**result)
+            module.set_fs_attributes_if_different(file_args, False)
             changed = True
 
-        module.set_fs_attributes_if_different(file_args, False)
 
     elif state == "absent":
         if key_exist == 0:
             rc, cmd, out, err = exec_commands(
+<<<<<<< HEAD
                 module, delete_key(cluster, user, user_key_path, name, container_image))
+=======
+                module, delete_key(cluster, name, container_image))
+>>>>>>> 13e2311cb... ceph_key: refact the code and minor fixes
             if rc == 0:
                 changed = True
         else:
             rc = 0
 
     elif state == "info":
-        user = "client.admin"
-        keyring_filename = cluster + '.' + user + '.keyring'
-        user_key = os.path.join("/etc/ceph/", keyring_filename)
-        output_format = "json"
         rc, cmd, out, err = exec_commands(
             module, info_key(cluster, name, user, user_key_path, output_format, container_image))  # noqa E501
         if rc != 0:
@@ -658,9 +672,6 @@ def run_module():
             module.exit_json(**result)
 
     elif state == "list":
-        user = "client.admin"
-        keyring_filename = cluster + '.' + user + '.keyring'
-        user_key = os.path.join("/etc/ceph/", keyring_filename)
         rc, cmd, out, err = exec_commands(
             module, list_keys(cluster, user, user_key_path, container_image))
 
