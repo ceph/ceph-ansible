@@ -1,13 +1,16 @@
 ---
 - name: create the realm(s)
-  command: "{{ container_exec_cmd }} radosgw-admin realm create --cluster={{ cluster }} --rgw-realm={{ item.item }} {{ '--default' if realms | length == 1 else '' }}"
+  radosgw_realm:
+    name: "{{ item }}"
+    cluster: "{{ cluster }}"
+    default: "{{ true if realms | length == 1 else false }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  loop: "{{ realmcheck.results }}"
-  when:
-    - realms is defined
-    - realms | length > 0
-    - "'No such file or directory' in item.stderr"
+  loop: "{{ realms }}"
+  when: realms is defined
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: create zonegroup(s)
   command: "{{ container_exec_cmd }} radosgw-admin zonegroup create --cluster={{ cluster }} --rgw-realm={{ item.item.realm }} --rgw-zonegroup={{ item.item.zonegroup }} {{ '--default' if zonegroups | length == 1 else '' }} {{ '--master' if item.item.is_master | bool else '' }}"
