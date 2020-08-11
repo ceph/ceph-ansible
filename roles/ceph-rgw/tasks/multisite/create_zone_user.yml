@@ -9,7 +9,7 @@
     - hostvars[item.host]['rgw_zonegroupmaster'] | bool
 
 - name: check if the realm system user already exists
-  command: "{{ container_exec_cmd }} radosgw-admin user info --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --uid={{ item.user }}"
+  command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} radosgw-admin user info --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --uid={{ item.user }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   register: usercheck
   failed_when: False
@@ -19,7 +19,7 @@
   loop: "{{ zone_users }}"
 
 - name: create the zone user(s)
-  command: "{{ container_exec_cmd }} radosgw-admin user create --cluster={{ cluster }} --rgw-realm={{ item.item.realm }} --rgw-zonegroup={{ item.item.zonegroup }} --rgw-zone={{ item.item.zone }} --uid={{ item.item.user }} --display-name='{{ item.item.display_name }}' --access-key={{ item.item.system_access_key }} --secret={{ item.item.system_secret_key }} --system"
+  command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} radosgw-admin user create --cluster={{ cluster }} --rgw-realm={{ item.item.realm }} --rgw-zonegroup={{ item.item.zonegroup }} --rgw-zone={{ item.item.zone }} --uid={{ item.item.user }} --display-name='{{ item.item.display_name }}' --access-key={{ item.item.system_access_key }} --secret={{ item.item.system_secret_key }} --system"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   loop: "{{ usercheck.results }}"

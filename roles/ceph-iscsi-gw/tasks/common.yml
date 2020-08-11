@@ -1,6 +1,6 @@
 ---
 - name: get keys from monitors
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
+  command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
   register: _iscsi_keys
   with_items:
     - { name: "client.admin", path: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}" }

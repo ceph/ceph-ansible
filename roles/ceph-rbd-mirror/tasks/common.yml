@@ -1,6 +1,6 @@
 ---
 - name: get keys from monitors
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
+  command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
   register: _rbd_mirror_keys
   with_items:
     - { name: "client.bootstrap-rbd-mirror", path: "/var/lib/ceph/bootstrap-rbd-mirror/{{ cluster }}.keyring", copy_key: true }

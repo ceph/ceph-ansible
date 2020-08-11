@@ -15,7 +15,7 @@
       - "iscsi-gateway-pub.key"
 
 - name: check for existing crt file(s) in monitor key/value store
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config get iscsi/ssl/{{ item }}"
+  command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} config get iscsi/ssl/{{ item }}"
   with_items: "{{ crt_files }}"
   changed_when: false
   failed_when: false
@@ -65,7 +65,7 @@
       delegate_to: localhost
 
     - name: store ssl crt/key files
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config-key put iscsi/ssl/{{ item.item }} {{ item.content }}"
+      command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} config-key put iscsi/ssl/{{ item.item }} {{ item.content }}"
       run_once: true
       delegate_to: "{{ groups.get(mon_group_name)[0] }}"
       with_items: "{{ iscsi_ssl_files_content.results }}"

@@ -135,13 +135,13 @@
 
     - block:
         - name: get ceph cluster status
-          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
+          command: "{{ hostvars[mon_host]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json"
           register: check_cluster_status
           delegate_to: "{{ mon_host }}"
 
         - block:
             - name: display ceph health detail
-              command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} health detail"
+              command: "{{ hostvars[mon_host]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} health detail"
               delegate_to: "{{ mon_host }}"
 
             - name: fail if cluster isn't in an acceptable state

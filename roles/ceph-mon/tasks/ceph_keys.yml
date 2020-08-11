@@ -1,14 +1,15 @@
 ---
 - name: waiting for the monitor(s) to form the quorum...
   command: >
-    {{ container_exec_cmd }}
+    {{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }}
     ceph
     --cluster {{ cluster }}
-    daemon mon.{{ ansible_hostname }}
+    daemon mon.{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['ansible_hostname'] }}
     mon_status
     --format json
   register: ceph_health_raw
   run_once: true
+  delegate_to: "{{ groups.get(mon_group_name)[0] }}"
   until: >
     (ceph_health_raw.stdout | length > 0) and (ceph_health_raw.stdout | default('{}') | from_json)['state'] in ['leader', 'peon']
   retries: "{{ handler_health_mon_check_retries }}"

@@ -1,6 +1,6 @@
 ---
 - name: remove ec profile
-  command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd erasure-code-profile rm {{ item.value.ec_profile }}"
+  command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --connect-timeout 10 --cluster {{ cluster }} osd erasure-code-profile rm {{ item.value.ec_profile }}"
   loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
@@ -10,7 +10,7 @@
   failed_when: false
 
 - name: set ec profile
-  command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd erasure-code-profile set {{ item.value.ec_profile }} k={{ item.value.ec_k }} m={{ item.value.ec_m }}"
+  command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --connect-timeout 10 --cluster {{ cluster }} osd erasure-code-profile set {{ item.value.ec_profile }} k={{ item.value.ec_k }} m={{ item.value.ec_m }}"
   loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
@@ -19,7 +19,7 @@
     - item.value.type == 'ec'
 
 - name: set crush rule
-  command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd crush rule create-erasure {{ item.key }} {{ item.value.ec_profile }}"
+  command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --connect-timeout 10 --cluster {{ cluster }} osd crush rule create-erasure {{ item.key }} {{ item.value.ec_profile }}"
   loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
@@ -28,7 +28,7 @@
     - item.value.type == 'ec'
 
 - name: create ec pools for rgw
-  command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num | default(osd_pool_default_pg_num) }} erasure {{ item.value.ec_profile }}"
+  command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num | default(osd_pool_default_pg_num) }} erasure {{ item.value.ec_profile }}"
   loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
@@ -37,7 +37,7 @@
     - item.value.type == 'ec'
 
 - name: create replicated pools for rgw
-  command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num | default(osd_pool_default_pg_num) }} replicated {{ item.value.rule_name | default(ceph_osd_pool_default_crush_rule_name) }}"
+  command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool create {{ item.key }} {{ item.value.pg_num | default(osd_pool_default_pg_num) }} replicated {{ item.value.rule_name | default(ceph_osd_pool_default_crush_rule_name) }}"
   changed_when: false
   register: result
   retries: 60
@@ -48,7 +48,7 @@
   when: item.value.type is not defined or item.value.type == 'replicated'
 
 - name: customize replicated pool size
-  command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool set {{ item.key }} size {{ item.value.size | default(osd_pool_default_size) }} {{ '--yes-i-really-mean-it' if item.value.size | default(osd_pool_default_size) | int == 1 else '' }}"
+  command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool set {{ item.key }} size {{ item.value.size | default(osd_pool_default_size) }} {{ '--yes-i-really-mean-it' if item.value.size | default(osd_pool_default_size) | int == 1 else '' }}"
   register: result
   retries: 60
   delay: 3
@@ -74,7 +74,7 @@
     - item.value.rule_name | default(ceph_osd_pool_default_crush_rule_name)
 
 - name: set the rgw_create_pools pools application to rgw
-  command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool application enable {{ item.key }} rgw"
+  command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool application enable {{ item.key }} rgw"
   register: result
   retries: 60
   delay: 3

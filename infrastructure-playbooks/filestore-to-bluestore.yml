@@ -41,7 +41,7 @@
             name: ceph-facts
 
         - name: get ceph osd tree data
-          command: "{{ container_exec_cmd }} ceph osd tree -f json"
+          command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph osd tree -f json"
           delegate_to: "{{ groups[mon_group_name][0] }}"
           register: osd_tree
           run_once: true
@@ -82,7 +82,7 @@
               ignore_errors: true
 
             - name: mark out osds
-              command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ (item.0.stdout | from_json).whoami }}"
+              command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd out {{ (item.0.stdout | from_json).whoami }}"
               with_together:
                 - "{{ simple_scan.results }}"
                 - "{{ partlabel.results }}"
@@ -170,7 +170,7 @@
         - name: ceph-volume prepared OSDs related tasks
           block:
             - name: mark out osds
-              command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ item }}"
+              command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd out {{ item }}"
               with_items: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json).keys() | list }}"
               delegate_to: "{{ groups[mon_group_name][0] }}"
               run_once: true
@@ -193,7 +193,7 @@
                 - item.type == 'data'
 
             - name: mark down osds
-              command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd down {{ item }}"
+              command: "{{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd down {{ item }}"
               with_items: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json).keys() | list }}"
               delegate_to: "{{ groups[mon_group_name][0] }}"
               run_once: true
@@ -266,7 +266,7 @@
 
         - name: purge osd(s) from the cluster
           command: >
-            {{ container_exec_cmd }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it
+            {{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it
           run_once: true
           delegate_to: "{{ groups[mon_group_name][0] }}"
           with_items: "{{ osd_ids }}"

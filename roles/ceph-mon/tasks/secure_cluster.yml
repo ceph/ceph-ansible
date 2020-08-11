@@ -1,14 +1,16 @@
 ---
 - name: collect all the pools
   command: >
-    {{ container_exec_cmd }} rados --cluster {{ cluster }} lspools
+    {{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} rados --cluster {{ cluster }} lspools
+  delegate_to: "{{ groups.get(mon_group_name)[0] }}"
   changed_when: false
   register: ceph_pools
   check_mode: no
 
 - name: secure the cluster
   command: >
-    {{ container_exec_cmd }} ceph --cluster {{ cluster }} osd pool set {{ item[0] }} {{ item[1] }} true
+    {{ hostvars[groups.get(mon_group_name | default('mons'))[0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item[0] }} {{ item[1] }} true
+  delegate_to: "{{ groups.get(mon_group_name)[0] }}"
   changed_when: false
   with_nested:
     - "{{ ceph_pools.stdout_lines|default([]) }}"
