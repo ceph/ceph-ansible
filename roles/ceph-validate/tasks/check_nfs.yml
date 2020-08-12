@@ -1,9 +1,30 @@
 ---
+- name: fail if nfs_obj_gw and nfs_file_gw are both enabled
+  fail:
+    msg: "nfs_obj_gw and nfs_file_gw are mutually exclusive"
+  when:
+    - nfs_obj_gw | bool
+    - nfs_file_gw | bool
+
+- name: fail if there is no nodes in the rgw group
+  fail:
+    msg: "You need to add a node in the {{ rgw_group_name }} group if nfs_obj_gw is True"
+  when:
+    - nfs_obj_gw | bool
+    - groups.get(rgw_group_name, []) | length == 0
+
+- name: fail if there is no nodes in the mds group
+  fail:
+    msg: "You need to add a node in the {{ mds_group_name }} group if nfs_file_gw is True"
+  when:
+    - nfs_file_gw | bool
+    - groups.get(mds_group_name, []) | length == 0
+
 - name: fail if ceph_nfs_rgw_access_key or ceph_nfs_rgw_secret_key are undefined (nfs standalone)
   fail:
     msg: "ceph_nfs_rgw_access_key and ceph_nfs_rgw_secret_key must be set if nfs_obj_gw is True"
   when:
-    - nfs_obj_gw
+    - nfs_obj_gw | bool
     - groups.get(mon_group_name, []) | length == 0
     - (ceph_nfs_rgw_access_key is undefined or ceph_nfs_rgw_secret_key is undefined)
 
