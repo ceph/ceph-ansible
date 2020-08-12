@@ -13,15 +13,19 @@
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: create zonegroup(s)
-  command: "{{ container_exec_cmd }} radosgw-admin zonegroup create --cluster={{ cluster }} --rgw-realm={{ item.item.realm }} --rgw-zonegroup={{ item.item.zonegroup }} {{ '--default' if zonegroups | length == 1 else '' }} {{ '--master' if item.item.is_master | bool else '' }}"
+  radosgw_zonegroup:
+    name: "{{ item.zonegroup }}"
+    cluster: "{{ cluster }}"
+    realm: "{{ item.realm }}"
+    default: "{{ true if zonegroups | length == 1 else false }}"
+    master: "{{ true if item.is_master | bool else false }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  loop: "{{ zonegroupcheck.results }}"
-  when:
-    - zonegroups is defined
-    - zonegroups | length > 0
-    - item.item.is_master | bool
-    - "'No such file or directory' in item.stderr"
+  loop: "{{ zonegroups }}"
+  when: zonegroups is defined
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: create the master zone
   command: "{{ container_exec_cmd }} radosgw-admin zone create --cluster={{ cluster }} --rgw-realm={{ item.item.realm }} --rgw-zonegroup={{ item.item.zonegroup }} --rgw-zone={{ item.item.zone }} --access-key={{ item.item.system_access_key }} --secret={{ item.item.system_secret_key }} {{ '--default' if zones | length == 1 else '' }} --master"
@@ -35,13 +39,20 @@
     - "'No such file or directory' in item.stderr"
 
 - name: add endpoints to their zone groups(s)
-  command: "{{ container_exec_cmd }} radosgw-admin zonegroup modify --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --endpoints {{ item.endpoints }}"
-  loop: "{{ zone_endpoints_list }}"
+  radosgw_zonegroup:
+    name: "{{ item.zonegroup }}"
+    cluster: "{{ cluster }}"
+    realm: "{{ item.realm }}"
+    endpoints: "{{ item.endpoints.split(',') }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
+  loop: "{{ zone_endpoints_list }}"
   when:
     - zone_endpoints_list is defined
     - item.is_master | bool
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: add endpoints to their zone(s)
   command: "{{ container_exec_cmd }} radosgw-admin zone modify --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --endpoints {{ item.endpoints }}"
