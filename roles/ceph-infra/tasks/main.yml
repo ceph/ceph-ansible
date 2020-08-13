@@ -24,8 +24,16 @@
     state: present
   register: result
   until: result is succeeded
-  when: not is_atomic | bool
   tags: with_pkg
+  when:
+    - not is_atomic | bool
+    - containerized_deployment | bool
+    - inventory_hostname in groups.get(mon_group_name, []) or
+      inventory_hostname in groups.get(osd_group_name, []) or
+      inventory_hostname in groups.get(mds_group_name, []) or
+      inventory_hostname in groups.get(rgw_group_name, []) or
+      inventory_hostname in groups.get(mgr_group_name, []) or
+      inventory_hostname in groups.get(rbdmirror_group_name, [])
 
 - name: add logrotate configuration
   template:
