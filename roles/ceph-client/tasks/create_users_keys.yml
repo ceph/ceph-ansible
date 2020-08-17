@@ -144,6 +144,18 @@
         - item.type | default(1) | int != 3
         - item.type | default('replicated') != 'erasure'
 
+    - name: customize pool crush_rule
+      command: >
+        {{ ceph_admin_command | default('') }} --cluster {{ cluster }}
+        osd pool set {{ item.name }} crush_rule {{ item.rule_name | default(ceph_osd_pool_default_crush_rule_name) }}
+      with_items: "{{ pools | unique }}"
+      delegate_to: "{{ delegated_node }}"
+      changed_when: false
+      when:
+        - item.rule_name | default(ceph_osd_pool_default_crush_rule_name)
+        - item.type | default(1) | int != 3
+        - item.type | default('replicated') != 'erasure'
+
     - name: assign application to pool(s)
       command: "{{ ceph_admin_command | default('') }} --cluster {{ cluster }} osd pool application enable {{ item.name }} {{ item.application }}"
       with_items: "{{ pools | unique }}"

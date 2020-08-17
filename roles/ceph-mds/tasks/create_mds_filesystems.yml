@@ -72,6 +72,14 @@
             - item.type | default(1) | int != 3
             - item.type | default('replicated') != 'erasure'
 
+        - name: customize pool crush_rule
+          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} crush_rule {{ item.rule_name | default(ceph_osd_pool_default_crush_rule_name) }}"
+          with_items: "{{ cephfs_pools | unique }}"
+          changed_when: false
+          when:
+            - item.rule_name | default(ceph_osd_pool_default_crush_rule_name)
+            - item.type | default(1) | int != 3
+            - item.type | default('replicated') != 'erasure'
 
 - name: check and create ceph filesystem
   delegate_to: "{{ groups[mon_group_name][0] }}"
