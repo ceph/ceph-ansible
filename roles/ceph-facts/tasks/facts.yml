@@ -104,12 +104,12 @@
     # this task shouldn't run in a rolling_update situation
     # because it blindly picks a mon, which may be down because
     # of the rolling update
-    - name: is ceph running already?
-      command: "{{ timeout_command }} {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
+    - name: get current fsid if cluster is already running
+      command: "{{ timeout_command }} {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fsid"
       changed_when: false
       failed_when: false
       check_mode: no
-      register: ceph_current_status
+      register: current_fsid
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"
       when:
@@ -117,9 +117,9 @@
 
 # set this as a default when performing a rolling_update
 # so the rest of the tasks here will succeed
-- name: set_fact ceph_current_status rc 1
+- name: set_fact current_fsid rc 1
   set_fact:
-    ceph_current_status:
+    current_fsid:
       rc: 1
   when: rolling_update or groups.get(mon_group_name, []) | length == 0
 
@@ -144,33 +144,27 @@
     fsid: "{{ (rolling_update_fsid.stdout | from_json).fsid }}"
   when: rolling_update | bool
 
-- name: set_fact ceph_current_status (convert to json)
+- name: set_fact fsid from current_fsid
   set_fact:
-    ceph_current_status: "{{ ceph_current_status.stdout | from_json }}"
-  when:
-    - not rolling_update | bool
-    - ceph_current_status.rc == 0
-
-- name: set_fact fsid from ceph_current_status
-  set_fact:
-    fsid: "{{ ceph_current_status.fsid }}"
-  when: ceph_current_status.fsid is defined
+    fsid: "{{ current_fsid.stdout }}"
+  run_once: true
+  when: current_fsid.rc == 0
 
 - name: fsid related tasks
   when:
     - generate_fsid | bool
-    - ceph_current_status.fsid is undefined
+    - current_fsid.rc != 0
     - not rolling_update | bool
   block:
-  - name: generate cluster fsid
-    command: "{{ hostvars[groups[mon_group_name][0]]['discovered_interpreter_python'] }} -c 'import uuid; print(str(uuid.uuid4()))'"
-    register: cluster_uuid
-    delegate_to: "{{ groups[mon_group_name][0] }}"
-    run_once: true
+    - name: generate cluster fsid
+      command: "{{ hostvars[groups[mon_group_name][0]]['discovered_interpreter_python'] }} -c 'import uuid; print(str(uuid.uuid4()))'"
+      register: cluster_uuid
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
 
-  - name: set_fact fsid
-    set_fact:
-      fsid: "{{ cluster_uuid.stdout }}"
+    - name: set_fact fsid
+      set_fact:
+        fsid: "{{ cluster_uuid.stdout }}"
 
 - name: resolve device link(s)
   command: readlink -f {{ item }}
@@ -214,20 +208,39 @@
     - item.value.holders|count == 0
     - item.key is not match osd_auto_discovery_exclude
 
-- name: set_fact rgw_hostname
-  set_fact:
-    rgw_hostname: "{% set _value = ansible_hostname -%}
-    {% for key in (ceph_current_status['servicemap']['services']['rgw']['daemons'] | list) -%}
-    {% if key == ansible_fqdn -%}
-    {% set _value = key -%}
-    {% endif -%}
-    {% endfor -%}
-    {{ _value }}"
+- name: backward compatibility tasks related
   when:
-    - inventory_hostname in groups.get(rgw_group_name, []) or inventory_hostname in groups.get(nfs_group_name, [])
-    - ceph_current_status['servicemap'] is defined
-    - ceph_current_status['servicemap']['services'] is defined
-    - ceph_current_status['servicemap']['services']['rgw'] is defined
+    - inventory_hostname in groups.get(rgw_group_name, [])
+      or inventory_hostname in groups.get(nfs_group_name, [])
+  block:
+    - name: get ceph current status
+      command: "{{ timeout_command }} {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
+      changed_when: false
+      failed_when: false
+      check_mode: no
+      register: ceph_current_status
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"
+
+    - name: set_fact ceph_current_status
+      set_fact:
+        ceph_current_status: "{{ ceph_current_status.stdout | from_json }}"
+      run_once: true
+      when: ceph_current_status.rc == 0
+
+    - name: set_fact rgw_hostname
+      set_fact:
+        rgw_hostname: "{% set _value = ansible_hostname -%}
+        {% for key in (ceph_current_status['servicemap']['services']['rgw']['daemons'] | list) -%}
+        {% if key == ansible_fqdn -%}
+        {% set _value = key -%}
+        {% endif -%}
+        {% endfor -%}
+        {{ _value }}"
+      when:
+        - ceph_current_status['servicemap'] is defined
+        - ceph_current_status['servicemap']['services'] is defined
+        - ceph_current_status['servicemap']['services']['rgw'] is defined
 
 - name: set_fact osd_pool_default_pg_num
   set_fact:
