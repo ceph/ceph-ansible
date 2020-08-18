@@ -13,6 +13,7 @@
     src: prometheus.yml.j2
     dest: "{{ prometheus_conf_dir }}/prometheus.yml"
     owner: "{{ prometheus_user_id }}"
+    mode: 0640
   notify: service handler
 
 - name: make sure the alerting rules directory exists
@@ -42,7 +43,8 @@
   template:
     src: alertmanager.yml.j2
     dest: "{{ alertmanager_conf_dir }}/alertmanager.yml"
-    owner: "root"
+    owner: "{{ prometheus_user_id }}"
+    mode: 0640
   notify: service handler
 
 - name: include setup_container.yml
