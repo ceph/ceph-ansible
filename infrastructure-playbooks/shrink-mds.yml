@@ -78,9 +78,9 @@
   tasks:
     # get rid of this as soon as "systemctl stop ceph-msd@$HOSTNAME" also
     # removes the MDS from the FS map.
-    - name: exit mds if it the deployment is containerized
+    - name: exit mds when containerized deployment
+      command: "{{ container_exec_cmd | default('') }} ceph tell mds.{{ mds_to_kill_hostname }} exit"
       when: containerized_deployment | bool
-      command: "{{ container_exec_cmd | default('') }} ceph tell mds.{{ mds_to_kill }} exit"
 
     - name: get ceph status
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
