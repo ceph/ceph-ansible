@@ -1,0 +1,281 @@
+---
+- name: check prerequisites
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: check the leapp data archive is present on the ansible controller
+      debug:
+        msg: "{{ lookup('file', leapp_data_filename) }}"
+
+
+- name: update rhel7 to latest packages
+  hosts:
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ iscsi_gw_group_name | default('iscsigws') }}"
+    - "{{ client_group_name | default('clients') }}"
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: enable repos
+      rhsm_repository:
+        name: ['rhel-7-server-rpms', 'rhel-7-server-extras-rpms']
+        purge: True
+
+    - name: set release
+      command: subscription-manager release --set {{ leapp_rhel_release }}
+      changed_when: false
+
+    - name: update system
+      command: yum update -y
+      changed_when: false
+
+
+- name: reboot mon nodes
+  hosts: "{{ mon_group_name | default('mons') }}"
+  serial: 1
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: import_tasks reboot_nodes.yml
+      import_tasks: reboot_nodes.yml
+
+
+- name: reboot mgr nodes
+  hosts: "{{ mgr_group_name | default('mgrs') }}"
+  serial: 1
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: import_tasks reboot_nodes.yml
+      import_tasks: reboot_nodes.yml
+
+
+- name: set osd flags
+  hosts: "{{ mon_group_name | default('mons') }}[0]"
+  become: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: import_tasks set_osd_flags.yml
+      import_tasks: set_osd_flags.yml
+
+
+- name: reboot osd nodes
+  hosts: "{{ osd_group_name | default('osds') }}"
+  serial: 1
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: set_fact container_exec_cmd_osd
+      set_fact:
+        container_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+      when: containerized_deployment | bool
+
+    - name: import_tasks reboot_nodes.yml
+      import_tasks: reboot_nodes.yml
+
+    - name: import_tasks pgs_check.yml
+      import_tasks: pgs_check.yml
+
+
+- name: unset osd flags
+  hosts: "{{ mon_group_name | default('mons') }}[0]"
+  become: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: set_fact container_exec_cmd_osd
+      set_fact:
+        container_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+      when: containerized_deployment | bool
+
+    - name: import_tasks unset_osd_flags.yml
+      import_tasks: unset_osd_flags.yml
+
+
+
+- name: reboot ceph mdss nodes, deactivate all rank > 0
+  hosts: "{{ groups[mon_group_name|default('mons')][0] }}"
+  become: true
+  tasks:
+    - name: deactivate all mds rank > 0
+      when: groups.get(mds_group_name, []) | length > 0
+      block:
+        - import_role:
+            name: ceph-defaults
+        - import_role:
+            name: ceph-facts
+
+        - name: deactivate all mds rank > 0 if any
+          when: groups.get(mds_group_name, []) | length > 1
+          block:
+            - name: set max_mds 1 on ceph fs
+              command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds 1"
+              changed_when: false
+
+            - name: wait until only rank 0 is up
+              command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs get {{ cephfs }} -f json"
+              changed_when: false
+              register: wait_rank_zero
+              retries: 720
+              delay: 5
+              until: (wait_rank_zero.stdout | from_json).mdsmap.in | length == 1 and (wait_rank_zero.stdout | from_json).mdsmap.in[0]  == 0
+
+            - name: get name of remaining active mds
+              command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs dump -f json"
+              changed_when: false
+              register: _mds_active_name
+
+            - name: set_fact mds_active_name
+              set_fact:
+                mds_active_name: "{{ (_mds_active_name.stdout | from_json)['filesystems'][0]['mdsmap']['info'][item.key]['name'] }}"
+              with_dict: "{{ (_mds_active_name.stdout | default('{}') | from_json).filesystems[0]['mdsmap']['info'] | default({}) }}"
+
+            - name: set_fact mds_active_host
+              set_fact:
+                mds_active_host: "{{ [hostvars[item]['inventory_hostname']] }}"
+              with_items: "{{ groups[mds_group_name] }}"
+              when: hostvars[item]['ansible_hostname'] == mds_active_name
+
+            - name: create standby_mdss group
+              add_host:
+                name: "{{ item }}"
+                groups: standby_mdss
+                ansible_host: "{{ hostvars[item]['ansible_host'] | default(omit) }}"
+                ansible_port: "{{ hostvars[item]['ansible_port'] | default(omit) }}"
+              with_items: "{{ groups[mds_group_name] | difference(mds_active_host) }}"
+
+
+
+
+
+
+
+- hosts: "{{ client_group_name | default('clients') }}"
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: reboot
+      reboot:
+        reboot_timeout: 600
+        test_command: uptime
+
+
+- hosts: 
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ iscsi_gw_group_name | default('iscsigws') }}"
+    - "{{ client_group_name | default('clients') }}"
+
+    - import_role:
+        name: ceph-defaults
+
+    - name: install leapp
+      package:
+        name: leapp
+        state: present
+
+    - name: untar leapp tarball
+      unarchive:
+        src: leapp-data8.tar.gz
+        dest: /etc/leapp/files
+      changed_when: false
+
+    - name: run leapp preupgrade
+      command: leapp preupgrade
+      register: leapp_preupgrade_result
+      changed_when: false
+
+    - name: run leapp upgrade
+      command: leapp upgrade
+      changed_when: false
+
+
+
+- hosts:
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ iscsi_gw_group_name | default('iscsigws') }}"
+  serial: 1
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: reboot
+      reboot:
+        reboot_timeout: 3600
+        test_command: uptime
+
+
+- hosts: "{{ client_group_name | default('clients') }}"
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: reboot
+      reboot:
+        reboot_timeout: 3600
+        test_command: uptime
+
+
+- hosts:
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ iscsi_gw_group_name | default('iscsigws') }}"
+    - "{{ client_group_name | default('clients') }}"
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: set_fact ansible_python_interpreter
+      set_fact:
+        ansible_python_interpreter: /usr/bin/python3
+
+    - name: Enable SELinux
+      selinux:
+        policy: targeted
+        state: enforcing
+
+# enable RHCS4-EL8 repo?
