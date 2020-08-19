@@ -83,19 +83,6 @@
   register: ceph_volume_osd_ids
   when: osd_scenario == 'lvm'
 
-- name: generate systemd unit file
-  become: true
-  template:
-    src: "{{ role_path }}/templates/ceph-osd.service.j2"
-    dest: /etc/systemd/system/ceph-osd@.service
-    owner: "root"
-    group: "root"
-    mode: "0644"
-  notify:
-    - restart ceph osds
-  when:
-    - containerized_deployment
-
 - name: device to id migration
   when:
     - containerized_deployment | bool
