@@ -122,21 +122,46 @@
   run_once: true
   changed_when: false
 
-- name: set or update dashboard admin username and password
-  shell: |
-    if {{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard ac-user-show {{ dashboard_admin_user | quote }}; then
-      {{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard ac-user-set-password {{ dashboard_admin_user | quote }} {{ dashboard_admin_password | quote }}
-    else
-      {{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard ac-user-create {{ dashboard_admin_user | quote }} {{ dashboard_admin_password | quote }}
-    fi
-    {{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard ac-user-set-roles {{ dashboard_admin_user | quote }} {{ 'read-only' if dashboard_admin_user_ro | bool else 'administrator' }}
+- name: check if dashboard admin user exists
+  command: timeout --foreground -s KILL 10 {{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard ac-user-show {{ dashboard_admin_user | quote }}
+  register: dashboard_admin_user_exist
   retries: 6
   delay: 5
-  register: ac_result
+  run_once: true
+  failed_when: false
+  changed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
+  until: dashboard_admin_user_exist.rc == 0
+
+- name: update dashboard admin password
+  command: timeout --foreground -s KILL 10 {{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard ac-user-set-password {{ dashboard_admin_user | quote }} {{ dashboard_admin_password | quote }}
+  register: update_dashboard_admin_user
+  retries: 6
+  delay: 5
+  run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  until: update_dashboard_admin_user.rc == 0
+  when: dashboard_admin_user_exist.rc == 0
+
+- name: create dashboard admin user
+  command: timeout --foreground -s KILL 10 {{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard ac-user-create {{ dashboard_admin_user | quote }} {{ dashboard_admin_password | quote }}
+  register: create_dashboard_admin_user
+  retries: 6
+  delay: 5
+  run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  until: create_dashboard_admin_user.rc == 0
+  when: dashboard_admin_user_exist.rc != 0
+
+- name: set dashboard admin user role
+  command: timeout --foreground -s KILL 10 {{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard ac-user-set-roles {{ dashboard_admin_user | quote }} {{ 'read-only' if dashboard_admin_user_ro | bool else 'administrator' }}
+  register: dashboard_admin_user_role
+  retries: 6
+  delay: 5
   run_once: true
   changed_when: false
-  until: ac_result.rc == 0
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  until: dashboard_admin_user_role.rc == 0
 
 - name: set grafana api user
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-username {{ grafana_admin_user }}"
