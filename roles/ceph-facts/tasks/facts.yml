@@ -36,11 +36,9 @@
 - name: find a running monitor
   when: groups.get(mon_group_name, []) | length > 0
   block:
-    - name: set_fact container_exec_cmd
-      set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] if not rolling_update else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}"
-      when:
-        - containerized_deployment | bool
+    - name: import_tasks container_exec_cmd.yml
+      import_tasks: container_exec_cmd.yml
+      when: containerized_deployment | bool
 
     - name: find a running mon container
       command: "{{ container_binary }} ps -q --filter name=ceph-mon-{{ hostvars[item]['ansible_hostname'] }}"
