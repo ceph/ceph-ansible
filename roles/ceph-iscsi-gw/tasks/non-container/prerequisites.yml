@@ -34,6 +34,8 @@
             url: 'https://shaman.ceph.com/api/repos/{{ item }}/master/latest/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo'
             dest: '/etc/yum.repos.d/{{ item }}-dev.repo'
             force: true
+          register: result
+          until: result is succeeded
           with_items: "{{ common_repos }}"
 
         - name: ceph-iscsi development repository
@@ -41,6 +43,8 @@
             url: 'https://shaman.ceph.com/api/repos/{{ item }}/master/latest/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo'
             dest: '/etc/yum.repos.d/{{ item }}-dev.repo'
             force: true
+          register: result
+          until: result is succeeded
           with_items: '{{ iscsi_base }}'
           when: ceph_repository == 'dev'
 
@@ -49,6 +53,8 @@
             url: 'https://download.ceph.com/ceph-iscsi/{{ "3" if use_new_ceph_iscsi | bool else "2" }}/rpm/el{{ ansible_distribution_major_version }}/ceph-iscsi.repo'
             dest: /etc/yum.repos.d/ceph-iscsi.repo
             force: true
+          register: result
+          until: result is succeeded
           when: ceph_repository == 'community'
 
     - name: install ceph iscsi package
