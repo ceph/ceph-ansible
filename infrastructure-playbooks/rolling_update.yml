@@ -84,7 +84,6 @@
 
     - import_role:
         name: ceph-facts
-
     - import_role:
         name: ceph-infra
 
@@ -94,6 +93,7 @@
       when:
         - containerized_deployment | bool
         - ceph_docker_registry_auth | bool
+        - (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
 
     - import_role:
         name: ceph-validate
@@ -130,8 +130,11 @@
 
     - import_role:
         name: ceph-defaults
+
     - import_role:
         name: ceph-facts
+        tasks_from: find_running_mon.yml
+      when: containerized_deployment | bool
 
     - block:
         - name: get ceph cluster status
@@ -281,8 +284,6 @@
         - import_role:
             name: ceph-defaults
         - import_role:
-            name: ceph-facts
-        - import_role:
             name: ceph-handler
         - import_role:
             name: ceph-common
@@ -317,8 +318,6 @@
     - import_role:
         name: ceph-defaults
     - import_role:
-        name: ceph-facts
-    - import_role:
         name: ceph-handler
     - import_role:
         name: ceph-common
@@ -338,9 +337,6 @@
   tasks:
     - import_role:
         name: ceph-defaults
-    - import_role:
-        name: ceph-facts
-        tasks_from: container_binary.yml
 
     - name: set osd flags
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set {{ item }}"
@@ -360,8 +356,6 @@
   tasks:
     - import_role:
         name: ceph-defaults
-    - import_role:
-        name: ceph-facts
 
     - name: get osd numbers - non container
       shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
@@ -438,9 +432,6 @@
   tasks:
     - import_role:
         name: ceph-defaults
-    - import_role:
-        name: ceph-facts
-        tasks_from: container_binary.yml
 
     - name: set_fact container_exec_cmd_osd
       set_fact:
@@ -462,8 +453,6 @@
       block:
         - import_role:
             name: ceph-defaults
-        - import_role:
-            name: ceph-facts
 
         - name: deactivate all mds rank > 0 if any
           when: groups.get(mds_group_name, []) | length > 1
@@ -548,9 +537,6 @@
     - import_role:
         name: ceph-defaults
 
-    - import_role:
-        name: ceph-facts
-
     - name: prevent restart from the packaging
       systemd:
         name: ceph-mds@{{ ansible_hostname }}
@@ -594,9 +580,6 @@
     - import_role:
         name: ceph-defaults
 
-    - import_role:
-        name: ceph-facts
-
     - name: prevent restarts from the packaging
       systemd:
         name: ceph-mds@{{ ansible_hostname }}
@@ -634,8 +617,6 @@
 
     - import_role:
         name: ceph-defaults
-    - import_role:
-        name: ceph-facts
 
     - name: stop ceph rgw when upgrading from stable-3.2
       systemd:
@@ -684,8 +665,6 @@
     - import_role:
         name: ceph-defaults
     - import_role:
-        name: ceph-facts
-    - import_role:
         name: ceph-handler
     - import_role:
         name: ceph-common
@@ -732,8 +711,6 @@
     - import_role:
         name: ceph-defaults
     - import_role:
-        name: ceph-facts
-    - import_role:
         name: ceph-handler
     - import_role:
         name: ceph-common
@@ -773,8 +750,6 @@
     - import_role:
         name: ceph-defaults
     - import_role:
-        name: ceph-facts
-    - import_role:
         name: ceph-handler
     - import_role:
         name: ceph-common
@@ -798,15 +773,10 @@
     - import_role:
         name: ceph-defaults
     - import_role:
-        name: ceph-facts
-    - import_role:
         name: ceph-handler
     - import_role:
         name: ceph-common
       when: not containerized_deployment | bool
-    - import_role:
-        name: ceph-container-common
-      when: containerized_deployment | bool
     - import_role:
         name: ceph-config
     - import_role:
@@ -832,9 +802,6 @@
     - import_role:
         name: ceph-defaults
     - import_role:
-        name: ceph-facts
-        tasks_from: container_binary.yml
-    - import_role:
         name: ceph-handler
     - import_role:
         name: ceph-crash
@@ -854,8 +821,6 @@
   tasks:
     - import_role:
         name: ceph-defaults
-    - import_role:
-        name: ceph-facts
 
     - name: container | disallow pre-pacific OSDs and enable all new pacific-only functionality
       command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph osd require-osd-release pacific"
@@ -907,8 +872,6 @@
           failed_when: false
 
         - import_role:
-            name: ceph-facts
-        - import_role:
             name: ceph-container-engine
         - import_role:
             name: ceph-container-common
@@ -942,8 +905,6 @@
 
         - import_role:
             name: ceph-facts
-        - import_role:
-            name: ceph-facts
             tasks_from: grafana
         - import_role:
             name: ceph-prometheus
@@ -961,8 +922,6 @@
     - name: with dashboard configuration
       when: dashboard_enabled | bool
       block:
-        - import_role:
-            name: ceph-facts
         - import_role:
             name: ceph-facts
             tasks_from: grafana
