@@ -184,23 +184,15 @@
 
     # NOTE: we mask the service so the RPM can't restart it
     # after the package gets upgraded
-    - name: stop ceph mon - shortname
+    - name: stop ceph mon
       systemd:
-        name: ceph-mon@{{ ansible_hostname }}
+        name: ceph-mon@{{ item }}
         state: stopped
         enabled: no
         masked: yes
-      ignore_errors: True
-
-    # NOTE: we mask the service so the RPM can't restart it
-    # after the package gets upgraded
-    - name: stop ceph mon - fqdn
-      systemd:
-        name: ceph-mon@{{ ansible_fqdn }}
-        state: stopped
-        enabled: no
-        masked: yes
-      ignore_errors: True
+      with_items:
+        - "{{ ansible_hostname }}"
+        - "{{ ansible_fqdn }}"
 
     # only mask the service for mgr because it must be upgraded
     # after ALL monitors, even when collocated
@@ -229,7 +221,8 @@
         name: ceph-mgr@{{ ansible_hostname }}
         state: started
         enabled: yes
-      ignore_errors: True # if no mgr collocated with mons
+      when: inventory_hostname in groups[mgr_group_name] | default([])
+            or groups[mgr_group_name] | default([]) | length == 0
 
     - name: non container | waiting for the monitor to join the quorum...
       command: ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" -s --format json
