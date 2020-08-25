@@ -95,6 +95,11 @@
       changed_when: false
       delegate_to: "{{ delegated_node }}"
 
+    - name: set nodelete flag on pool(s)
+      command: "{{ ceph_admin_command | default('') }} --cluster {{ cluster }} osd pool set {{ item.name }} nodelete {{ item.nodelete | default(False) | ternary('true', 'false') }}"
+      delegate_to: "{{ delegated_node }}"
+      with_items: "{{ pools | unique }}"
+
 - name: get client cephx keys
   copy:
     dest: "{{ item.source }}"
