@@ -48,4 +48,4 @@ example:
 
 .. code-block:: shell
 
-   $ ansible-playbook -vv -i hosts infrastructure-playbooks/shrink-osds.yml -e osd_to_kill=1,2,3
+   $ ansible-playbook -vv -i hosts infrastructure-playbooks/shrink-osd.yml -e osd_to_kill=1,2,3
