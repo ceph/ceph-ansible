@@ -14,6 +14,7 @@
   until:
     - mgr_dump.rc == 0
     - (mgr_dump.stdout | from_json).available | bool
+  when: not ansible_check_mode
 
 - name: get enabled modules from ceph-mgr
   command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} --format json mgr module ls"
