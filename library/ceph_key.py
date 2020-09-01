@@ -528,14 +528,15 @@ def run_module():
         changed=changed,
         stdout='',
         stderr='',
-        rc='',
+        rc=0,
         start='',
         end='',
         delta='',
     )
 
     if module.check_mode:
-        return result
+        module.exit_json(**result)
+
     startd = datetime.datetime.now()
 
     # will return either the image name or None

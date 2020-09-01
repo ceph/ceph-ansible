@@ -526,11 +526,11 @@ def run_module():
     }
 
     if module.check_mode:
-        return dict(
+        module.exit_json(
             changed=False,
             stdout='',
             stderr='',
-            rc='',
+            rc=0,
             start='',
             end='',
             delta='',
@@ -614,4 +614,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
