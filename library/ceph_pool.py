@@ -475,7 +475,6 @@ def run_module():
     module = AnsibleModule(
         argument_spec=module_args,
         supports_check_mode=True,
-        add_file_common_args=True,
     )
 
     # Gather module parameters in variables
@@ -597,7 +596,13 @@ def run_module():
             out = "Couldn't list pool(s) present on the cluster"
 
     elif state == "absent":
-        rc, cmd, out, err = exec_commands(module, remove_pool(cluster, name, user, user_key, container_image=container_image))
+        rc, cmd, out, err = exec_commands(module, check_pool_exist(cluster, name, user, user_key, container_image=container_image))
+        if rc == 0:
+            rc, cmd, out, err = exec_commands(module, remove_pool(cluster, name, user, user_key, container_image=container_image))
+            changed = True
+        else:
+            rc = 0
+            out = "Skipped, since pool {} doesn't exist".format(name)
 
 
     exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)
