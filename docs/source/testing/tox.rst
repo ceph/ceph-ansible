@@ -30,9 +30,9 @@ The following environent variables are available for use:
 * ``UPDATE_CEPH_STABLE_RELEASE``: (default: ``kraken``) This would configure the ``ceph-ansible`` variable ``ceph_stable_relese`` during an ``update``
   scenario. This is set automatically when using the ``jewel-*`` or ``kraken-*`` testing scenarios.
 
-* ``CEPH_DOCKER_REGISTRY``: (default: ``docker.io``) This would configure the ``ceph-ansible`` variable ``ceph_docker_registry``.
+* ``CEPH_DOCKER_REGISTRY``: (default: ``quay.ceph.io``) This would configure the ``ceph-ansible`` variable ``ceph_docker_registry``.
 
-* ``CEPH_DOCKER_IMAGE``: (default: ``ceph/daemon``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image``.
+* ``CEPH_DOCKER_IMAGE``: (default: ``ceph-ci/daemon``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image``.
 
 * ``CEPH_DOCKER_IMAGE_TAG``: (default: ``latest``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image_name``.
 
