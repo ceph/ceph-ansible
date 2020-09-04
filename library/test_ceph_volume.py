@@ -36,9 +36,9 @@ class TestCephVolumeModule(object):
         result = ceph_volume.get_wal("wal-lv", "wal-vg")
         assert result == "wal-vg/wal-lv"
 
-    def test_container_exec(sefl):
+    def test_container_exec(self):
         fake_binary = "ceph-volume"
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
+        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
                                  '--ulimit', 'nofile=1024:4096',
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
@@ -48,14 +48,14 @@ class TestCephVolumeModule(object):
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous']
+                                 'quay.ceph.io/ceph-ci/daemon:latest-luminous']
         result = ceph_volume.container_exec(fake_binary, fake_container_image)
         assert result == expected_command_list
 
     def test_zap_osd_container(self):
         fake_module = MagicMock()
         fake_module.params = {'data': '/dev/sda'}
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
+        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
                                  '--ulimit', 'nofile=1024:4096',
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
@@ -65,7 +65,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous',
+                                 'quay.ceph.io/ceph-ci/daemon:latest-luminous',
                                  'lvm',
                                  'zap',
                                  '--destroy',
@@ -124,7 +124,7 @@ class TestCephVolumeModule(object):
     def test_list_osd_container(self):
         fake_module = MagicMock()
         fake_module.params = {'cluster': 'ceph', 'data': '/dev/sda'}
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
+        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
                                  '--ulimit', 'nofile=1024:4096',
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
@@ -134,7 +134,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous',
+                                 'quay.ceph.io/ceph-ci/daemon:latest-luminous',
                                  '--cluster',
                                  'ceph',
                                  'lvm',
@@ -152,7 +152,7 @@ class TestCephVolumeModule(object):
                               'cluster': 'ceph', }
 
         fake_action = "create"
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
+        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
                                  '--ulimit', 'nofile=1024:4096',
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
@@ -162,7 +162,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous',
+                                 'quay.ceph.io/ceph-ci/daemon:latest-luminous',
                                  '--cluster',
                                  'ceph',
                                  'lvm',
@@ -201,7 +201,7 @@ class TestCephVolumeModule(object):
                               'cluster': 'ceph', }
 
         fake_action = "prepare"
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
+        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
                                  '--ulimit', 'nofile=1024:4096',
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
@@ -211,7 +211,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous',
+                                 'quay.ceph.io/ceph-ci/daemon:latest-luminous',
                                  '--cluster',
                                  'ceph',
                                  'lvm',
@@ -251,7 +251,7 @@ class TestCephVolumeModule(object):
                               'cluster': 'ceph',
                               'batch_devices': ["/dev/sda", "/dev/sdb"]}
 
-        fake_container_image = "docker.io/ceph/daemon:latest-luminous"
+        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
         expected_command_list = ['docker', 'run', '--rm', '--privileged', '--net=host', '--ipc=host',  # noqa E501
                                  '--ulimit', 'nofile=1024:4096',
                                  '-v', '/run/lock/lvm:/run/lock/lvm:z',
@@ -261,7 +261,7 @@ class TestCephVolumeModule(object):
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-volume',
-                                 'docker.io/ceph/daemon:latest-luminous',
+                                 'quay.ceph.io/ceph-ci/daemon:latest-luminous',
                                  '--cluster',
                                  'ceph',
                                  'lvm',
