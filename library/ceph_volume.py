@@ -1,4 +1,5 @@
 #!/usr/bin/python
+
 import datetime
 import copy
 import json
@@ -443,6 +444,7 @@ def list_osd(module, container_image):
 
     return cmd
 
+
 def list_storage_inventory(module, container_image):
     '''
     List storage inventory.
@@ -453,6 +455,7 @@ def list_storage_inventory(module, container_image):
     cmd.append('--format=json')
 
     return cmd
+
 
 def activate_osd():
     '''
@@ -473,7 +476,7 @@ def is_lv(module, vg, lv, container_image):
     Check if an LV exists
     '''
 
-    args = [ '--noheadings', '--reportformat', 'json', '--select', 'lv_name={},vg_name={}'.format(lv, vg) ]
+    args = ['--noheadings', '--reportformat', 'json', '--select', 'lv_name={},vg_name={}'.format(lv, vg)]  # noqa E501
 
     cmd = build_cmd(args, container_image, binary='lvs')
 
@@ -614,8 +617,7 @@ def run_module():
 
         if out_dict:
             data = module.params['data']
-            result['stdout'] = 'skipped, since {0} is already used for an osd'.format(  # noqa E501
-            data)
+            result['stdout'] = 'skipped, since {0} is already used for an osd'.format(data)  # noqa E501
             result['rc'] = 0
             module.exit_json(**result)
 
@@ -635,18 +637,18 @@ def run_module():
     elif action == 'zap':
         # Zap the OSD
         skip = []
-        for device_type in ['journal','data', 'db', 'wal']:
+        for device_type in ['journal', 'data', 'db', 'wal']:
             # 1/ if we passed vg/lv
-            if module.params.get('{}_vg'.format(device_type), None) and module.params.get(device_type, None):
+            if module.params.get('{}_vg'.format(device_type), None) and module.params.get(device_type, None):  # noqa E501
                 # 2/ check this is an actual lv/vg
-                ret = is_lv(module, module.params['{}_vg'.format(device_type)], module.params[device_type], container_image)
+                ret = is_lv(module, module.params['{}_vg'.format(device_type)], module.params[device_type], container_image)  # noqa E501
                 skip.append(ret)
                 # 3/ This isn't a lv/vg device
                 if not ret:
                     module.params['{}_vg'.format(device_type)] = False
                     module.params[device_type] = False
-            # 4/ no journal|data|db|wal|_vg was passed, so it must be a raw device
-            elif not module.params.get('{}_vg'.format(device_type), None) and module.params.get(device_type, None):
+            # 4/ no journal|data|db|wal|_vg was passed, so it must be a raw device  # noqa E501
+            elif not module.params.get('{}_vg'.format(device_type), None) and module.params.get(device_type, None):  # noqa E501
                 skip.append(True)
 
         cmd = zap_devices(module, container_image)
@@ -694,7 +696,7 @@ def run_module():
             strategy_changed_in_out = "strategy changed" in out
             strategy_changed_in_err = "strategy changed" in err
             strategy_changed = strategy_changed_in_out or \
-                               strategy_changed_in_err
+                strategy_changed_in_err
             if strategy_changed:
                 if strategy_changed_in_out:
                     out = json.dumps({"changed": False,
