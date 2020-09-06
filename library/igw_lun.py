@@ -69,6 +69,7 @@ author:
   - 'Paul Cuzner'
 
 """
+
 import os  # noqa E402
 import logging  # noqa E402
 from logging.handlers import RotatingFileHandler  # noqa E402
@@ -79,11 +80,10 @@ from ceph_iscsi_config.lun import LUN  # noqa E402
 from ceph_iscsi_config.utils import valid_size  # noqa E402
 import ceph_iscsi_config.settings as settings  # noqa E402
 
+
 # the main function is called ansible_main to allow the call stack
 # to be checked to determine whether the call to the ceph_iscsi_config
 # modules is from ansible or not
-
-
 def ansible_main():
 
     # Define the fields needs to create/map rbd's the the host(s)
