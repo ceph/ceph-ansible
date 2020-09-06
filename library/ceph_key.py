@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+
 # Copyright 2018, Red Hat, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -188,6 +189,7 @@ def str_to_bool(val):
         return False
     else:
         raise ValueError("Invalid input value: %s" % val)
+
 
 def fatal(message, module):
     '''
@@ -460,14 +462,14 @@ def lookup_ceph_initial_entities(module, out):
     else:
         fatal("'auth_dump' key not present in json output:", module)  # noqa E501
 
-    if len(entities) != len(CEPH_INITIAL_KEYS) and not str_to_bool(os.environ.get('CEPH_ROLLING_UPDATE', False)):
+    if len(entities) != len(CEPH_INITIAL_KEYS) and not str_to_bool(os.environ.get('CEPH_ROLLING_UPDATE', False)):  # noqa E501
         # must be missing in auth_dump, as if it were in CEPH_INITIAL_KEYS
         # it'd be in entities from the above test. Report what's missing.
         missing = []
         for e in CEPH_INITIAL_KEYS:
             if e not in entities:
                 missing.append(e)
-        fatal("initial keyring does not contain keys: " + ' '.join(missing), module)
+        fatal("initial keyring does not contain keys: " + ' '.join(missing), module)  # noqa E501
     return entities
 
 
@@ -561,8 +563,8 @@ def run_module():
             file_path = dest
         else:
             if 'bootstrap' in dest:
-                # Build a different path for bootstrap keys as there are stored as
-                # /var/lib/ceph/bootstrap-rbd/ceph.keyring
+                # Build a different path for bootstrap keys as there are stored
+                # as /var/lib/ceph/bootstrap-rbd/ceph.keyring
                 keyring_filename = cluster + '.keyring'
             else:
                 keyring_filename = cluster + "." + name + ".keyring"
@@ -605,7 +607,7 @@ def run_module():
                 result["stdout"] = "{0} already exists in {1} you must provide secret *and* caps when import_key is {2}".format(name, dest, import_key) # noqa E501
                 result["rc"] = 0
                 module.exit_json(**result)
-        if (key_exist == 0 and (secret != _secret or caps != _caps)) or key_exist != 0:
+        if (key_exist == 0 and (secret != _secret or caps != _caps)) or key_exist != 0:  # noqa E501
             rc, cmd, out, err = exec_commands(module, create_key(
                 module, result, cluster, name, secret, caps, import_key, file_path, container_image))  # noqa E501
             if rc != 0:
@@ -614,7 +616,6 @@ def run_module():
                 module.exit_json(**result)
             module.set_fs_attributes_if_different(file_args, False)
             changed = True
-
 
     elif state == "absent":
         if key_exist == 0:
@@ -645,7 +646,7 @@ def run_module():
         rc, cmd, out, err = exec_commands(
             module, list_keys(cluster, user, user_key, container_image))
         if rc != 0:
-            result["stdout"] = "failed to retrieve ceph keys".format(name)
+            result["stdout"] = "failed to retrieve ceph keys"
             result["sdterr"] = err
             result['rc'] = 0
             module.exit_json(**result)

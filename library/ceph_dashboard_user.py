@@ -280,7 +280,10 @@ def run_module():
         name=dict(type='str', required=True),
         state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),
         password=dict(type='str', required=False, no_log=True),
-        roles=dict(type='list', required=False, choices=['administrator', 'read-only', 'block-manager', 'rgw-manager', 'cluster-manager', 'pool-manager', 'cephfs-manager'], default=[]),
+        roles=dict(type='list',
+                   required=False,
+                   choices=['administrator', 'read-only', 'block-manager', 'rgw-manager', 'cluster-manager', 'pool-manager', 'cephfs-manager'],
+                   default=[]),
     )
 
     module = AnsibleModule(
