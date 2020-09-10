@@ -457,7 +457,7 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         name=dict(type='str', required=True),
-        state=dict(type='str', required=True, choices=['present', 'absent', 'list']),
+        state=dict(type='str', required=False, default='present', choices=['present', 'absent', 'list']),
         details=dict(type='bool', required=False, default=False),
         size=dict(type='str', required=False),
         min_size=dict(type='str', required=False),
