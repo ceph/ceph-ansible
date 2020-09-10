@@ -89,14 +89,15 @@
         name: ceph-infra
 
     - import_role:
+        name: ceph-validate
+
+    - import_role:
         name: ceph-container-common
         tasks_from: registry
       when:
+        - (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
         - containerized_deployment | bool
         - ceph_docker_registry_auth | bool
-
-    - import_role:
-        name: ceph-validate
 
     - set_fact: rolling_update=true
 
@@ -806,7 +807,9 @@
       when: not containerized_deployment | bool
     - import_role:
         name: ceph-container-common
-      when: containerized_deployment | bool
+      when:
+        - (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
+        - containerized_deployment | bool
     - import_role:
         name: ceph-config
     - import_role:
