@@ -166,47 +166,9 @@
       set_fact:
         fsid: "{{ cluster_uuid.stdout }}"
 
-- name: resolve device link(s)
-  command: readlink -f {{ item }}
-  changed_when: false
-  check_mode: no
-  with_items: "{{ devices }}"
-  register: devices_prepare_canonicalize
-  when:
-    - devices is defined
-    - inventory_hostname in groups.get(osd_group_name, [])
-    - not osd_auto_discovery | default(False) | bool
-
-- name: set_fact build devices from resolved symlinks
-  set_fact:
-    devices: "{{ devices | default([]) + [ item.stdout ] }}"
-  with_items: "{{ devices_prepare_canonicalize.results }}"
-  when:
-    - devices is defined
-    - inventory_hostname in groups.get(osd_group_name, [])
-    - not osd_auto_discovery | default(False) | bool
-
-- name: set_fact build final devices list
-  set_fact:
-    devices: "{{ devices | reject('search','/dev/disk') | list | unique }}"
-  when:
-    - devices is defined
-    - inventory_hostname in groups.get(osd_group_name, [])
-    - not osd_auto_discovery | default(False) | bool
-
-- name: set_fact devices generate device list when osd_auto_discovery
-  set_fact:
-    devices: "{{ (devices | default([]) + [ item.key | regex_replace('^', '/dev/') ]) | unique }}"
-  with_dict: "{{ ansible_devices }}"
-  when:
-    - osd_auto_discovery | default(False) | bool
-    - inventory_hostname in groups.get(osd_group_name, [])
-    - ansible_devices is defined
-    - item.value.removable == "0"
-    - item.value.sectors != "0"
-    - item.value.partitions|count == 0
-    - item.value.holders|count == 0
-    - item.key is not match osd_auto_discovery_exclude
+- name: import_tasks devices.yml
+  import_tasks: devices.yml
+  when: inventory_hostname in groups.get(osd_group_name, [])
 
 - name: backward compatibility tasks related
   when:
