@@ -20,10 +20,12 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-container-engine
+      when: (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
     - import_role:
         name: ceph-container-common
         tasks_from: registry
       when:
+        - (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
         - not containerized_deployment | bool
         - ceph_docker_registry_auth | bool
     - import_role:
