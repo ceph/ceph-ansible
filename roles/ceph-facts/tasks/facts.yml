@@ -137,12 +137,16 @@
   register: rolling_update_fsid
   delegate_to: "{{ mon_host | default(groups[mon_group_name][0]) }}"
   until: rolling_update_fsid is succeeded
-  when: rolling_update | bool
+  when:
+    - rolling_update | bool
+    - groups.get(mon_group_name, []) | length > 0
 
 - name: set_fact fsid
   set_fact:
     fsid: "{{ (rolling_update_fsid.stdout | from_json).fsid }}"
-  when: rolling_update | bool
+  when:
+    - rolling_update | bool
+    - groups.get(mon_group_name, []) | length > 0
 
 - name: set_fact fsid from current_fsid
   set_fact:

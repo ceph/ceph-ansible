@@ -861,25 +861,33 @@
       command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd require-osd-release pacific"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
-      when: containerized_deployment | bool
+      when:
+        - containerized_deployment | bool
+        - groups.get(mon_group_name, []) | length > 0
 
     - name: non container | disallow pre-pacific OSDs and enable all new pacific-only functionality
       command: "ceph --cluster {{ cluster }} osd require-osd-release pacific"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
-      when: not containerized_deployment | bool
+      when:
+        - not containerized_deployment | bool
+        - groups.get(mon_group_name, []) | length > 0
 
     - name: container | enable msgr2 protocol
       command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} mon enable-msgr2"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
-      when: containerized_deployment | bool
+      when:
+        - containerized_deployment | bool
+        - groups.get(mon_group_name, []) | length > 0
 
     - name: non container | enable msgr2 protocol
       command: "ceph --cluster {{ cluster }} mon enable-msgr2"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
-      when: not containerized_deployment | bool
+      when:
+        - not containerized_deployment | bool
+        - groups.get(mon_group_name, []) | length > 0
 
     - import_role:
         name: ceph-handler
