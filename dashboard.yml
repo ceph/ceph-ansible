@@ -1,5 +1,14 @@
 ---
-- hosts: all
+- hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+    - "{{ grafana_server_group_name|default('grafana-server') }}"
   gather_facts: false
   become: true
   pre_tasks:
@@ -20,12 +29,10 @@
       tags: ['ceph_update_config']
     - import_role:
         name: ceph-container-engine
-      when: (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
     - import_role:
         name: ceph-container-common
         tasks_from: registry
       when:
-        - (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
         - not containerized_deployment | bool
         - ceph_docker_registry_auth | bool
     - import_role:
