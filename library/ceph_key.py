@@ -70,9 +70,9 @@ options:
             return a json output.
             If 'info' is used, the module will return in a json format the
             description of a given keyring.
-        required: true
-        choices: ['present', 'absent', 'list', 'info']
-        default: list
+        required: false
+        choices: ['present', 'update', 'absent', 'list', 'info', 'fetch_initial_keys']
+        default: present
     caps:
         description:
             - CephX key capabilities
@@ -506,7 +506,7 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         name=dict(type='str', required=False),
-        state=dict(type='str', required=True),
+        state=dict(type='str', required=False, default='present', choices=['present', 'update', 'absent', 'list', 'info', 'fetch_initial_keys']),
         caps=dict(type='dict', required=False, default=None),
         secret=dict(type='str', required=False, default=None, no_log=True),
         import_key=dict(type='bool', required=False, default=True),
