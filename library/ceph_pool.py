@@ -52,9 +52,9 @@ options:
             If 'absent' is used, the module will simply delete the pool.
             If 'list' is used, the module will return all details about the existing pools
             (json formatted).
-        required: true
+        required: false
         choices: ['present', 'absent', 'list']
-        default: list
+        default: present
     size:
         description:
             - set the replica size of the pool.
