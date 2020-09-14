@@ -31,7 +31,7 @@ fake_params = {'cluster': fake_cluster,
                'roles': fake_roles}
 
 
-class TestRadosgwRealmModule(object):
+class TestCephDashboardUserModule(object):
 
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
     def test_container_exec(self):
