@@ -142,6 +142,9 @@ def node(host, request):
         pytest.skip(
             "Not a valid test with dashboard disabled")
 
+    if request.node.get_closest_marker("dashboard") and group_names == ['clients']:
+        pytest.skip('Not a valid test for client node')
+
     data = dict(
         vars=ansible_vars,
         docker=docker,
