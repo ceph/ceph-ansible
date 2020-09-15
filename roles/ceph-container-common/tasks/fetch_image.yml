@@ -204,6 +204,10 @@
   retries: "{{ docker_pull_retry }}"
   delay: 10
   when: (ceph_docker_dev_image is undefined or not ceph_docker_dev_image | bool)
+  environment:
+    HTTP_PROXY: "{{ ceph_docker_http_proxy | default('') }}"
+    HTTPS_PROXY: "{{ ceph_docker_https_proxy | default('') }}"
+    NO_PROXY: "{{ ceph_docker_no_proxy }}"
 
 - name: "inspecting {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image after pulling"
   command: "{{ container_binary }} inspect {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
