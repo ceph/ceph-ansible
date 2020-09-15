@@ -39,11 +39,49 @@
   tags: with_pkg
   when: inventory_hostname in groups.get(osd_group_name, [])
 
-- name: start container service
-  service:
-    name: '{{ container_service_name }}'
-    state: started
-    enabled: yes
-  tags:
-    with_pkg
+- name: extra configuration for docker
   when: container_service_name == 'docker'
+  block:
+    - name: create the systemd docker override directory
+      file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+      when: ceph_docker_http_proxy is defined or ceph_docker_https_proxy is defined
+
+    - name: create the systemd docker override file
+      template:
+        src: docker-proxy.conf.j2
+        dest: /etc/systemd/system/docker.service.d/proxy.conf
+        mode: 0600
+        owner: root
+        group: root
+      register: proxy_created
+      when: ceph_docker_http_proxy is defined or ceph_docker_https_proxy is defined
+
+    - name: remove docker proxy configuration
+      file:
+        path: /etc/systemd/system/docker.service.d/proxy.conf
+        state: absent
+      register: proxy_removed
+      when:
+        - ceph_docker_http_proxy is not defined
+        - ceph_docker_https_proxy is not defined
+
+    # using xxx.changed here instead of an ansible handler because we need to
+    # have an immediate effect and not wait the end of the play.
+    # using flush_handlers via the meta action plugin isn't enough too because
+    # it flushes all handlers and not only the one notified in this role.
+    - name: restart docker
+      systemd:
+        name: "{{ container_service_name }}"
+        state: restarted
+        daemon_reload: yes
+      when: proxy_created.changed | bool or proxy_removed.changed | bool
+
+    - name: start container service
+      service:
+        name: '{{ container_service_name }}'
+        state: started
+        enabled: yes
+      tags:
+        with_pkg
