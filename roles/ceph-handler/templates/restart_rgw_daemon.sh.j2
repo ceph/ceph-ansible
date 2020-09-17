@@ -3,6 +3,7 @@
 RETRIES="{{ handler_health_rgw_check_retries }}"
 DELAY="{{ handler_health_rgw_check_delay }}"
 HOST_NAME="{{ ansible_hostname }}"
+RGW_MULTISITE="{{ rgw_multisite }}"
 RGW_NUMS={{ rgw_instances | length | int }}
 RGW_FRONTEND_SSL_CERT={{ radosgw_frontend_ssl_certificate }}
 if [ -n "$RGW_FRONTEND_SSL_CERT" ]; then
@@ -11,7 +12,11 @@ else
     RGW_PROTOCOL=http
 fi
 INSTANCES_NAME=({% for i in rgw_instances %}{{ i.instance_name }} {% endfor %})
-RGW_IPS=({% for i in rgw_instances %}{{ i.rgw_multisite_host }} {% endfor %})
+if [ $RGW_MULTISITE ]; then
+    RGW_IPS=({% for i in rgw_instances %}{{ i.rgw_multisite_host }} {% endfor %})
+else
+    RGW_IPS=({% for i in rgw_instances %}{{ i.radosgw_address }} {% endfor %})
+fi
 RGW_PORTS=({% for i in rgw_instances %}{{ i.radosgw_frontend_port }} {% endfor %})
 declare -a DOCKER_EXECS
 declare -a SOCKET_PREFIX
