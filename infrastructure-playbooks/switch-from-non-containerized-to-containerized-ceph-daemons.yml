@@ -90,21 +90,6 @@
         state: stopped
         enabled: no
 
-    - name: set_fact ceph_uid for ubuntu
-      set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is search("ubuntu")
-
-    - name: set_fact ceph_uid for red hat
-      set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
-
-    - name: set_fact ceph_uid for rhel
-      set_fact:
-         ceph_uid: 167
-      when: ceph_docker_image is search("rhceph")
-
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
     # as in this case we know we want all owned by ceph user
@@ -172,14 +157,6 @@
         state: stopped
         enabled: no
       failed_when: false
-
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
-
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
 
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
@@ -280,20 +257,6 @@
         - name: set guid on lockbox partition
           shell: 'sgdisk --partition-guid=5:$(uuidgen) {{ item.stdout[:-2] if item.stdout is match("^/dev/(cciss|nvme|loop).*") else item.stdout[:-1] }}'
           with_items: '{{ lockbox_devices.results }}'
-
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
-
-    - name: set_fact ceph_uid for red hat
-      set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("centos") or ceph_docker_image_tag | string is search("fedora")
-
-    - name: set_fact ceph_uid for rhel
-      set_fact:
-         ceph_uid: 167
-      when: ceph_docker_image is search("rhceph")
 
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
@@ -396,14 +359,6 @@
         state: stopped
         enabled: no
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
-
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
-
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
     # as in this case we know we want all owned by ceph user
@@ -438,14 +393,6 @@
         state: stopped
         enabled: no
 
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
-
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
-
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
     # as in this case we know we want all owned by ceph user
@@ -479,14 +426,6 @@
         name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
         state: stopped
         enabled: no
-
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
-
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
 
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
@@ -525,14 +464,6 @@
         state: stopped
         enabled: no
       failed_when: false
-
-    - set_fact:
-        ceph_uid: 64045
-      when: ceph_docker_image_tag | string is match("latest") or ceph_docker_image_tag | string is search("ubuntu")
-
-    - set_fact:
-        ceph_uid: 167
-      when: ceph_docker_image_tag | string is search("centos") or ceph_docker_image is search("rhceph") or ceph_docker_image_tag | string is search("fedora")
 
     # NOTE: changed from file module to raw find command for performance reasons
     # The file module has to run checks on current ownership of all directories and files. This is unnecessary
