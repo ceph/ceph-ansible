@@ -25,9 +25,8 @@ logfile: |
   {% endif %}
   {% endif %}
   {% endfor %}
-
 # Since this playbook can be run multiple times across different devices, {{ var.split('/')[-1] }} is used quite frequently in this play-book.
 # This is used to strip the device name away from its path (ex: sdc from /dev/sdc) to differenciate the names of vgs, journals, or lvs if the prefixes are not changed across multiple runs.
-nvme_device_basename: "{{ nvme_device.split('/')[-1] }}"
+nvme_device_basename: "{{ nvme_device.split('/')[-1] | regex_replace(':', '') }}"
 # Only one volume group is created in the playbook for all the LVs on NVMe. This volume group takes up the entire device specified in "nvme_device".
 nvme_vg_name: "ceph-nvme-vg-{{ nvme_device_basename }}"

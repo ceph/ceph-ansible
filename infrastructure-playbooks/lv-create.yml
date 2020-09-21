@@ -1,14 +1,8 @@
-- name: creates logical volumes for the bucket index or fs journals on a single device. 
+- name: creates logical volumes for the bucket index or fs journals on a single device.
   become: true
   hosts: osds
 
   tasks:
-
-  - name: include vars of lv_vars.yaml
-    include_vars:
-      file: lv_vars.yaml
-    failed_when: false
-
   # need to check if lvm2 is installed
   - name: install lvm2
     package:
@@ -18,9 +12,9 @@
     until: result is succeeded
 
   - include_role:
-      name: ceph-lvm-create
+      name: ceph-lvm
     vars:
-      nvme_device: "{{ outer.nvme_device | default('dummy')}}"
+      nvme_device: "{{ outer.nvme_device | default('dummy') }}"
       hdd_devices: "{{ outer.hdd_devices }}"
       nvme_device_lvs: "{{ outer.nvme_device_lvs }}"
     with_items:

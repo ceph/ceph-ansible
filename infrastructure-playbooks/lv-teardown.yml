@@ -18,11 +18,6 @@
          invoking the playbook"
     when: ireallymeanit != 'yes'
 
-  - name: include vars of lv_vars.yaml
-    include_vars:
-      file: lv_vars.yaml
-    failed_when: false
-
   # need to check if lvm2 is installed
   - name: install lvm2
     package:
@@ -33,21 +28,26 @@
 
 # BEGIN TEARDOWN
   - name: find any existing osd filesystems
-    shell: "grep /var/lib/ceph/osd /proc/mounts | awk '{print $2}'"
+    shell: "set -o pipefail && grep /var/lib/ceph/osd /proc/mounts | awk '{print $2}'"
     register: old_osd_filesystems
+    changed_when: false
 
   - name: tear down any existing osd filesystems
     command: "umount -v {{ item }}"
     with_items: "{{ old_osd_filesystems.stdout_lines }}"
+    register: umount
+    changed_when: umount.rc == 0
 
   - name: kill all lvm commands that may have been hung
     command: "killall -q lvcreate pvcreate vgcreate lvconvert || echo -n"
     failed_when: false
+    changed_when: false
 
   - include_role:
-      name: ceph-lvm-teardown
+      name: ceph-lvm
+      tasks_from: teardown.yml
     vars:
-      nvme_device: "{{ outer.nvme_device | default('dummy')}}"
+      nvme_device: "{{ outer.nvme_device | default('dummy') }}"
       hdd_devices: "{{ outer.hdd_devices }}"
       nvme_device_lvs: "{{ outer.nvme_device_lvs }}"
     with_items:
