@@ -25,335 +25,359 @@
     - import_role:
         name: ceph-defaults
 
-    - name: set_fact current_objectstore
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: set_fact container_run_cmd, container_exec_cmd
       set_fact:
-        current_objectstore: '{{ osd_objectstore }}'
+        container_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment | bool else '' }}ceph-volume {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
+        container_exec_cmd: "{{ container_binary + ' exec ceph-mon-' + hostvars[groups[mon_group_name][0]]['ansible_hostname'] if containerized_deployment | bool else '' }}"
 
-    - name: warn user about osd already using bluestore
-      debug:
-        msg: 'WARNING: {{ inventory_hostname }} is already using bluestore. Skipping all tasks.'
-      when: current_objectstore == 'bluestore'
+    - name: get ceph osd tree data
+      command: "{{ container_exec_cmd }} ceph osd tree -f json"
+      register: osd_tree
+      run_once: true
 
-    - name: shrink and redeploy filestore osds
-      when: current_objectstore == 'filestore'
+    - name: set_fact osd_ids
+      set_fact:
+        osd_ids: "{{ osd_ids | default([]) + item }}"
+      with_items:
+        - "{{ ((osd_tree.stdout | default('{}') | from_json).nodes | selectattr('name', 'match', inventory_hostname) | map(attribute='children') | list) }}"
+
+    - name: get osd metadata
+      command: "{{ container_exec_cmd }} ceph osd metadata osd.{{ item }} -f json"
+      register: osd_metadata
+      run_once: true
+      with_items: "{{ osd_ids }}"
+
+    - name: set_fact osd_objectstore
+      set_fact:
+        _osd_objectstore: "{{ _osd_objectstore | default({}) | combine({item.item: (item.stdout | from_json).osd_objectstore }) }}"
+      with_items: "{{ osd_metadata.results }}"
+
+    - name: get ceph-volume lvm inventory data
+      command: "{{ container_run_cmd }} --cluster {{ cluster }} inventory --format json"
+      register: ceph_volume_inventory
+
+    - name: set_fact inventory
+      set_fact:
+        inventory: "{{ ceph_volume_inventory.stdout | from_json }}"
+
+    - name: set_fact ceph_disk_osds
+      set_fact:
+        ceph_disk_osds_devices: "{{ ceph_disk_osds_devices | default([]) + [item.path] }}"
+      with_items: "{{ inventory }}"
+      when:
+        - not item.available | bool
+        - "'Used by ceph-disk' in item.rejected_reasons"
+
+    - name: ceph-disk prepared OSDs related tasks
+      when: ceph_disk_osds_devices | default([]) | length > 0
       block:
-        - import_role:
-            name: ceph-facts
-            tasks_from: container_binary.yml
+        - name: get partlabel
+          command: blkid "{{ item + 'p' if item is match('/dev/(cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}$') else item }}"1 -s PARTLABEL -o value
+          register: partlabel
+          with_items: "{{ ceph_disk_osds_devices | default([]) }}"
 
-        - name: set_fact container_run_cmd, container_exec_cmd
-          set_fact:
-            container_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment | bool else '' }}ceph-volume {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
-            container_exec_cmd: "{{ container_binary + ' exec ceph-mon-' + hostvars[groups[mon_group_name][0]]['ansible_hostname'] if containerized_deployment | bool else '' }}"
+        - name: get simple scan data
+          command: "{{ container_run_cmd }} --cluster {{ cluster }} simple scan {{ item.item + 'p1' if item.item is match('/dev/(cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}$') else item.item + '1' }} --stdout"
+          register: simple_scan
+          with_items: "{{ partlabel.results | default([]) }}"
+          when: item.stdout == 'ceph data'
+          ignore_errors: true
 
-
-        - name: get ceph osd tree data
-          command: "{{ container_exec_cmd }} ceph osd tree -f json"
+        - name: mark out osds
+          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ (item.0.stdout | from_json).whoami }}"
+          with_together:
+            - "{{ simple_scan.results }}"
+            - "{{ partlabel.results }}"
           delegate_to: "{{ groups[mon_group_name][0] }}"
-          register: osd_tree
           run_once: true
+          when:
+            - item.1.stdout == 'ceph data'
+            - _osd_objectstore[(item.0.stdout | from_json).whoami] == 'filestore'
+
+        - name: stop and disable old osd services
+          service:
+            name: "ceph-osd@{{ (item.0.stdout | from_json).whoami }}"
+            state: stopped
+            enabled: no
+          with_together:
+            - "{{ simple_scan.results }}"
+            - "{{ partlabel.results }}"
+          when:
+            - item.1.stdout == 'ceph data'
+            - _osd_objectstore[(item.0.stdout | from_json).whoami] == 'filestore'
+
+        - name: umount osd data
+          mount:
+            path: "/var/lib/ceph/osd/{{ cluster }}-{{ (item.0.stdout | from_json).whoami }}"
+            state: unmounted
+          with_together:
+            - "{{ simple_scan.results }}"
+            - "{{ partlabel.results }}"
+          when:
+            - item.1.stdout == 'ceph data'
+            - _osd_objectstore[(item.0.stdout | from_json).whoami] == 'filestore'
+       
+
+        - name: umount osd lockbox
+          mount:
+            path: "/var/lib/ceph/osd-lockbox/{{ (item.0.stdout | from_json).data.uuid }}"
+            state: unmounted
+          with_together:
+            - "{{ simple_scan.results }}"
+            - "{{ partlabel.results }}"
+          when:
+            - item.1.stdout == 'ceph data'
+            - (item.0.stdout | from_json).encrypted | default(False) | bool
+            - _osd_objectstore[(item.0.stdout | from_json).whoami] == 'filestore'
+
+        - name: ensure dmcrypt for data device is closed
+          command: cryptsetup close "{{ (item.0.stdout | from_json).data.uuid }}"
+          with_together:
+            - "{{ simple_scan.results }}"
+            - "{{ partlabel.results }}"
+          failed_when: false
+          changed_when: false
+          when:
+            - item.1.stdout == 'ceph data'
+            - (item.0.stdout | from_json).encrypted | default(False) | bool
+            - _osd_objectstore[(item.0.stdout | from_json).whoami] == 'filestore' 
+
+        - name: ensure dmcrypt for journal device is closed
+          command: cryptsetup close "{{ (item.0.stdout | from_json).journal.uuid }}"
+          with_together:
+            - "{{ simple_scan.results }}"
+            - "{{ partlabel.results }}"
+          failed_when: false
+          changed_when: false
+          when:
+            - item.1.stdout == 'ceph data'
+            - (item.0.stdout | from_json).encrypted | default(False) | bool
+            - _osd_objectstore[(item.0.stdout | from_json).whoami] == 'filestore'
+
+        - name: zap data devices
+          command: "{{ container_run_cmd }} --cluster {{ cluster }} lvm zap --destroy {{ (item.0.stdout | from_json).data.path }}"
+          with_together:
+            - "{{ simple_scan.results }}"
+            - "{{ partlabel.results }}"
+          when:
+            - item.1.stdout == 'ceph data'
+            - _osd_objectstore[(item.0.stdout | from_json).whoami] == 'filestore'
+
+        - name: zap journal devices
+          command: "{{ container_run_cmd }} --cluster {{ cluster }} lvm zap --destroy {{ (item.0.stdout | from_json).journal.path }}"
+          with_together:
+            - "{{ simple_scan.results }}"
+            - "{{ partlabel.results }}"
+          when:
+            - item.1.stdout == 'ceph data'
+            - (item.0.stdout | from_json).journal.path is defined
+            - _osd_objectstore[(item.0.stdout | from_json).whoami] == 'filestore'
+
+    - name: get ceph-volume lvm list data
+      command: "{{ container_run_cmd }} --cluster {{ cluster }} lvm list --format json"
+      register: ceph_volume_lvm_list
+
+    - name: set_fact _lvm_list
+      set_fact:
+        _lvm_list: "{{ _lvm_list | default([]) + item.value }}"
+      with_dict: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json) }}"
+
+    - name: ceph-volume prepared OSDs related tasks
+      block:
+        - name: mark out osds
+          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ item }}"
+          with_items: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json).keys() | list }}"
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          run_once: true
+          when: _osd_objectstore[item] == 'filestore' 
 
         - name: get ceph-volume lvm inventory data
           command: "{{ container_run_cmd }} --cluster {{ cluster }} inventory --format json"
           register: ceph_volume_inventory
 
-        - name: set_fact inventory
-          set_fact:
-            inventory: "{{ ceph_volume_inventory.stdout | from_json }}"
-
-        - name: set_fact ceph_disk_osds
-          set_fact:
-            ceph_disk_osds_devices: "{{ ceph_disk_osds_devices | default([]) + [item.path] }}"
-          with_items: "{{ inventory }}"
-          when:
-            - not item.available | bool
-            - "'Used by ceph-disk' in item.rejected_reasons"
-
-        - name: ceph-disk prepared OSDs related tasks
-          when: ceph_disk_osds_devices | default([]) | length > 0
-          block:
-            - name: get partlabel
-              command: blkid "{{ item + 'p' if item is match('/dev/(cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}$') else item }}"1 -s PARTLABEL -o value
-              register: partlabel
-              with_items: "{{ ceph_disk_osds_devices | default([]) }}"
-
-            - name: get simple scan data
-              command: "{{ container_run_cmd }} --cluster {{ cluster }} simple scan {{ item.item + 'p1' if item.item is match('/dev/(cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}$') else item.item + '1' }} --stdout"
-              register: simple_scan
-              with_items: "{{ partlabel.results | default([]) }}"
-              when: item.stdout == 'ceph data'
-              ignore_errors: true
-
-            - name: mark out osds
-              command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ (item.0.stdout | from_json).whoami }}"
-              with_together:
-                - "{{ simple_scan.results }}"
-                - "{{ partlabel.results }}"
-              delegate_to: "{{ groups[mon_group_name][0] }}"
-              run_once: true
-              when: item.1.stdout == 'ceph data'
-
-            - name: stop and disable old osd services
-              service:
-                name: "ceph-osd@{{ (item.0.stdout | from_json).whoami }}"
-                state: stopped
-                enabled: no
-              with_together:
-                - "{{ simple_scan.results }}"
-                - "{{ partlabel.results }}"
-              when: item.1.stdout == 'ceph data'
-
-            - name: umount osd data
-              mount:
-                path: "/var/lib/ceph/osd/{{ cluster }}-{{ (item.0.stdout | from_json).whoami }}"
-                state: unmounted
-              with_together:
-                - "{{ simple_scan.results }}"
-                - "{{ partlabel.results }}"
-              when: item.1.stdout == 'ceph data'
-
-            - name: umount osd lockbox
-              mount:
-                path: "/var/lib/ceph/osd-lockbox/{{ (item.0.stdout | from_json).data.uuid }}"
-                state: unmounted
-              with_together:
-                - "{{ simple_scan.results }}"
-                - "{{ partlabel.results }}"
-              when:
-                - item.1.stdout == 'ceph data'
-                - (item.0.stdout | from_json).encrypted | default(False) | bool
-
-            - name: ensure dmcrypt for data device is closed
-              command: cryptsetup close "{{ (item.0.stdout | from_json).data.uuid }}"
-              with_together:
-                - "{{ simple_scan.results }}"
-                - "{{ partlabel.results }}"
-              failed_when: false
-              changed_when: false
-              when:
-                - item.1.stdout == 'ceph data'
-                - (item.0.stdout | from_json).encrypted | default(False) | bool
-
-            - name: ensure dmcrypt for journal device is closed
-              command: cryptsetup close "{{ (item.0.stdout | from_json).journal.uuid }}"
-              with_together:
-                - "{{ simple_scan.results }}"
-                - "{{ partlabel.results }}"
-              failed_when: false
-              changed_when: false
-              when:
-                - item.1.stdout == 'ceph data'
-                - (item.0.stdout | from_json).encrypted | default(False) | bool
-
-            - name: zap data devices
-              command: "{{ container_run_cmd }} --cluster {{ cluster }} lvm zap --destroy {{ (item.0.stdout | from_json).data.path }}"
-              with_together:
-                - "{{ simple_scan.results }}"
-                - "{{ partlabel.results }}"
-              when: item.1.stdout == 'ceph data'
-
-            - name: zap journal devices
-              command: "{{ container_run_cmd }} --cluster {{ cluster }} lvm zap --destroy {{ (item.0.stdout | from_json).journal.path }}"
-              with_together:
-                - "{{ simple_scan.results }}"
-                - "{{ partlabel.results }}"
-              when:
-                - item.1.stdout == 'ceph data'
-                - (item.0.stdout | from_json).journal.path is defined
-
-        - name: get ceph-volume lvm list data
-          command: "{{ container_run_cmd }} --cluster {{ cluster }} lvm list --format json"
-          register: ceph_volume_lvm_list
-
-        - name: set_fact _lvm_list
-          set_fact:
-            _lvm_list: "{{ _lvm_list | default([]) + item.value }}"
-          with_dict: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json) }}"
-
-        - name: ceph-volume prepared OSDs related tasks
-          block:
-            - name: mark out osds
-              command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ item }}"
-              with_items: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json).keys() | list }}"
-              delegate_to: "{{ groups[mon_group_name][0] }}"
-              run_once: true
-
-            - name: stop and disable old osd services
-              service:
-                name: "ceph-osd@{{ item }}"
-                state: stopped
-                enabled: no
-              with_items: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json).keys() | list }}"
-
-            - name: stop and disable ceph-volume services
-              service:
-                name: "ceph-volume@lvm-{{ item.tags['ceph.osd_id'] }}-{{ item.tags['ceph.osd_fsid'] }}"
-                state: stopped
-                enabled: no
-              with_items: "{{ _lvm_list }}"
-              when:
-                - not containerized_deployment | bool
-                - item.type == 'data'
-
-            - name: mark down osds
-              command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd down {{ item }}"
-              with_items: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json).keys() | list }}"
-              delegate_to: "{{ groups[mon_group_name][0] }}"
-              run_once: true
-
-            - name: ensure all dmcrypt for data and journal are closed
-              command: cryptsetup close "{{ item['lv_uuid'] }}"
-              with_items: "{{ _lvm_list }}"
-              changed_when: false
-              failed_when: false
-              when: item['tags'].get('ceph.encrypted', 0) | int == 1
-
-            - name: set_fact osd_fsid_list
-              set_fact:
-                osd_fsid_list: "{{ osd_fsid_list | default([]) + [{'osd_fsid': item.tags['ceph.osd_fsid'], 'destroy': (item.lv_name.startswith('osd-data-') and item.vg_name.startswith('ceph-')) | ternary(true, false), 'device': item.devices[0], 'journal': item['tags']['ceph.journal_device'] }] }}"
-              with_items: "{{ _lvm_list }}"
-              when: item.type == 'data'
-
-            - name: zap ceph-volume prepared OSDs
-              ceph_volume:
-                action: "zap"
-                osd_fsid: "{{ item.osd_fsid }}"
-                destroy: false
-              environment:
-                CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-                CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-              loop: "{{ osd_fsid_list }}"
-              when: osd_fsid_list is defined
-
-            - name: zap destroy ceph-volume prepared devices
-              ceph_volume:
-                action: "zap"
-                data: "{{ item.device }}"
-                destroy: true
-              environment:
-                CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-                CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-              loop: "{{ osd_fsid_list }}"
-              when:
-                - osd_fsid_list is defined
-                - item.destroy | bool
-
-            - name: test if the journal device hasn't been already destroyed because of collocation
-              stat:
-                path: "{{ item.journal }}"
-              loop: "{{ osd_fsid_list }}"
-              register: journal_path
-              when:
-                - osd_fsid_list is defined
-                - item.destroy | bool
-                - item.journal is defined
-                - item.journal not in (lvm_volumes | selectattr('journal', 'defined') | map(attribute='journal') | list)
-
-            - name: zap destroy ceph-volume prepared journal devices
-              ceph_volume:
-                action: "zap"
-                data: "{{ item.0.journal }}"
-                destroy: true
-              environment:
-                CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
-                CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-              loop: "{{ osd_fsid_list | zip(journal_path.results) | list }}"
-              when:
-                - osd_fsid_list is defined
-                - item.0.destroy | bool
-                - item.0.journal is defined
-                - item.0.journal not in (lvm_volumes | selectattr('journal', 'defined') | map(attribute='journal') | list)
-                - item.1.stat.exists | bool
-
-            - name: ensure all dm are closed
-              command: dmsetup remove "{{ item['lv_path'] }}"
-              with_items: "{{ _lvm_list }}"
-              changed_when: false
-              failed_when: false
-              when:
-                - item['lv_path'] is defined
-                  # Do not close mappers for non 'lvm batch' devices
-                - devices | default([]) | length > 0
-
-            - name: ensure all pv are removed
-              command: "pvremove --yes {{ item.devices[0] }}"
-              with_items: "{{ _lvm_list }}"
-              failed_when: false
-              when:
-                - item.type == 'data'
-                - item.lv_name.startswith('osd-data-') | bool
-                - item.vg_name.startswith('ceph-') | bool
-          when: _lvm_list is defined
-
-        - name: set_fact osd_ids
-          set_fact:
-            osd_ids: "{{ osd_ids | default([]) + [item] }}"
+        - name: stop and disable old osd services
+          service:
+            name: "ceph-osd@{{ item }}"
+            state: stopped
+            enabled: no
           with_items:
-            - "{{ ((osd_tree.stdout | default('{}') | from_json).nodes | selectattr('name', 'match', inventory_hostname) | map(attribute='children') | list) }}"
+            - "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json).keys() | list }}"
+            - _osd_objectstore[item] == 'filestore'
 
-        - name: purge osd(s) from the cluster
-          command: >
-            {{ container_exec_cmd }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it
-          run_once: true
-          delegate_to: "{{ groups[mon_group_name][0] }}"
-          with_items: "{{ osd_ids }}"
-
-        - name: purge /var/lib/ceph/osd directories
-          file:
-            path: "/var/lib/ceph/osd/{{ cluster }}-{{ item }}"
-            state: absent
-          with_items: "{{ osd_ids }}"
-
-        - name: force osd_objectstore to bluestore
-          set_fact:
-            osd_objectstore: bluestore
-
-        - name: refresh ansible devices fact
-          setup:
-            gather_subset:
-              - 'all'
-              - '!facter'
-              - '!ohai'
-            filter: ansible_devices
-          when: osd_auto_discovery | bool
-
-        - import_role:
-            name: ceph-defaults
-        - import_role:
-            name: ceph-facts
-
-        - name: remove gpt header
-          command: parted -s "{{ item }}" mklabel msdos
-          with_items: "{{ (devices + dedicated_devices | default([]) + ceph_disk_osds_devices | default([])) | unique }}"
-
-        - name: update lvm_volumes configuration for bluestore
+        - name: stop and disable ceph-volume services
+          service:
+            name: "ceph-volume@lvm-{{ item.tags['ceph.osd_id'] }}-{{ item.tags['ceph.osd_fsid'] }}"
+            state: stopped
+            enabled: no
+          with_items: "{{ _lvm_list }}"
           when:
-            - lvm_volumes | length > 0
-            - not osd_auto_discovery | bool
-          block:
-            - name: reuse filestore journal partition for bluestore db
-              set_fact:
-                config_part: "{{ config_part | default([]) + [item | combine({'db': item.journal})] }}"
-              with_items: "{{ lvm_volumes | selectattr('journal_vg', 'undefined') | list }}"
+            - not containerized_deployment | bool
+            - item.type == 'data'
+            - _osd_objectstore[item.tags['ceph.osd_id']] == 'filestore'
 
-            - name: reuse filestore journal vg/lv for bluestore db
-              set_fact:
-                config_vglv: "{{ config_vglv | default([]) + [item | combine({'db': item.journal, 'db_vg': item.journal_vg})] }}"
-              with_items: "{{ lvm_volumes | selectattr('journal_vg', 'defined') | list }}"
+        - name: mark down osds
+          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd down {{ item }}"
+          with_items: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json).keys() | list }}"
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          run_once: true
+          when: _osd_objectstore[item] == 'filestore'
 
-            - name: override lvm_volumes with bluestore configuration
-              set_fact:
-                lvm_volumes: "{{ config_part | default([]) + config_vglv | default([]) }}"
+        - name: ensure all dmcrypt for data and journal are closed
+          command: cryptsetup close "{{ item['lv_uuid'] }}"
+          with_items: "{{ _lvm_list }}"
+          changed_when: false
+          failed_when: false
+          when:
+            - item['tags'].get('ceph.encrypted', 0) | int == 1
+            - item.tags['ceph.osd_id'] == 'fliestore'
 
-        - import_role:
-            name: ceph-handler
-        - import_role:
-            name: ceph-container-common
-          when: containerized_deployment | bool
-        - import_role:
-            name: ceph-config
-        - import_role:
-            name: ceph-osd
+        - name: set_fact osd_fsid_list
+          set_fact:
+            osd_fsid_list: "{{ osd_fsid_list | default([]) + [{'osd_fsid': item.tags['ceph.osd_fsid'], 'destroy': (item.lv_name.startswith('osd-data-') and item.vg_name.startswith('ceph-')) | ternary(true, false), 'device': item.devices[0]}] }}"
+          with_items: "{{ _lvm_list }}"
+          when:
+            - item.type == 'data'
+            - item.tags['ceph.osd_id'] == 'filestore'
+
+        - name: zap ceph-volume prepared OSDs
+          ceph_volume:
+            action: "zap"
+            osd_fsid: "{{ item.osd_fsid }}"
+            destroy: false
+          environment:
+            CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+          loop: "{{ osd_fsid_list }}"
+          when: osd_fsid_list is defined
+
+        - name: zap destroy ceph-volume prepared devices
+          ceph_volume:
+            action: "zap"
+            data: "{{ item.device }}"
+            destroy: true
+          environment:
+            CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+          loop: "{{ osd_fsid_list }}"
+          when:
+            - osd_fsid_list is defined
+            - item.destroy | bool
+
+        - name: test if the journal device hasn't been already destroyed because of collocation
+          stat:
+            path: "{{ item.journal }}"
+          loop: "{{ osd_fsid_list }}"
+          register: journal_path
+          when:
+            - osd_fsid_list is defined
+            - item.destroy | bool
+            - item.journal is defined
+            - item.journal not in (lvm_volumes | selectattr('journal', 'defined') | map(attribute='journal') | list)
+
+        - name: zap destroy ceph-volume prepared journal devices
+          ceph_volume:
+            action: "zap"
+            data: "{{ item.0.journal }}"
+            destroy: true
+          environment:
+            CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+          loop: "{{ osd_fsid_list | zip(journal_path.results) | list }}"
+          when:
+            - osd_fsid_list is defined
+            - item.0.destroy | bool
+            - item.0.journal is defined
+            - item.0.journal not in (lvm_volumes | selectattr('journal', 'defined') | map(attribute='journal') | list)
+            - item.1.stat.exists | bool
+
+        - name: ensure all dm are closed
+          command: dmsetup remove "{{ item['lv_path'] }}"
+          with_items: "{{ _lvm_list }}"
+          changed_when: false
+          failed_when: false
+          when:
+            - item['lv_path'] is defined
+              # Do not close mappers for non 'lvm batch' devices
+            - devices | default([]) | length > 0
+            - item.tags['ceph.osd_id'] == 'fliestore'
+
+        - name: ensure all pv are removed
+          command: "pvremove --yes {{ item.devices[0] }}"
+          with_items: "{{ _lvm_list }}"
+          failed_when: false
+          when:
+            - item.type == 'data'
+            - item.lv_name.startswith('osd-data-') | bool
+            - item.vg_name.startswith('ceph-') | bool
+            - item.tags['ceph.osd_id'] == 'fliestore'
+      when: _lvm_list is defined
+
+    - name: purge osd(s) from the cluster
+      command: >
+        {{ container_exec_cmd }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items: "{{ osd_ids }}"
+      when: _osd_objectstore[item] == 'filestore'
+
+    - name: purge /var/lib/ceph/osd directories
+      file:
+        path: "/var/lib/ceph/osd/{{ cluster }}-{{ item }}"
+        state: absent
+      with_items: "{{ osd_ids }}"
+      when: _osd_objectstore[item] == 'filestore'
+
+    - name: remove gpt header
+      command: parted -s "{{ item }}" mklabel msdos
+      with_items: "{{ (devices + dedicated_devices + ceph_disk_osds_devices | default([])) | unique }}"
+
+    - name: refresh ansible devices fact
+      setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
+        filter: ansible_devices
+      when: osd_auto_discovery | bool
+
+    - name: update lvm_volumes configuration for bluestore
+      when: lvm_volumes is defined
+      block:
+        - name: reuse filestore journal partition for bluestore db
+          set_fact:
+            config_part: "{{ config_part | default([]) + [item | combine({'db': item.journal})] }}"
+          with_items: "{{ lvm_volumes | selectattr('journal_vg', 'undefined') | list }}"
+
+        - name: reuse filestore journal vg/lv for bluestore db
+          set_fact:
+            config_vglv: "{{ config_vglv | default([]) + [item | combine({'db': item.journal, 'db_vg': item.journal_vg})] }}"
+          with_items: "{{ lvm_volumes | selectattr('journal_vg', 'defined') | list }}"
+
+        - name: override lvm_volumes with bluestore configuration
+          set_fact:
+            lvm_volumes: "{{ config_part | default([]) + config_vglv | default([]) }}"
+
+    - name: force osd_objectstore to bluestore
+      set_fact:
+        osd_objectstore: bluestore
+
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+    - import_role:
+        name: ceph-handler
+    - import_role:
+        name: ceph-container-common
+      when: containerized_deployment | bool
+    - import_role:
+        name: ceph-config
+    - import_role:
+        name: ceph-osd
