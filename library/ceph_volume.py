@@ -435,10 +435,9 @@ def list_osd(module, container_image):
     data = get_data(data, data_vg)
 
     # Build the CLI
-    action = ['lvm', 'list']
+    action = ['lvm', 'list', data]
     cmd = build_cmd(action, container_image, cluster)
-    if data:
-        cmd.append(data)
+
     cmd.append('--format=json')
 
     return cmd
