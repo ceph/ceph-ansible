@@ -48,3 +48,18 @@
       or inventory_hostname in groups.get(mds_group_name, [])
       or inventory_hostname in groups.get(rgw_group_name, [])
       or inventory_hostname in groups.get(rbdmirror_group_name, [])
+
+- name: rgw multi-instances related tasks
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
+    - handler_rgw_status | bool
+  block:
+    - name: import_role ceph-config
+      import_role:
+        name: ceph-config
+
+    - name: import_role ceph-rgw
+      import_role:
+        name: ceph-rgw
+        tasks_from: pre_requisite.yml
+      when: not containerized_deployment | bool
