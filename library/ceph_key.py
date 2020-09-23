@@ -463,7 +463,7 @@ def run_module():
         state=dict(type='str', required=True),
         containerized=dict(type='str', required=False, default=None),
         caps=dict(type='dict', required=False, default=None),
-        secret=dict(type='str', required=False, default=None),
+        secret=dict(type='str', required=False, default=None, no_log=True),
         import_key=dict(type='bool', required=False, default=True),
         auid=dict(type='str', required=False, default=None),
         dest=dict(type='str', required=False, default='/etc/ceph'),
