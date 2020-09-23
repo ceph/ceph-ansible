@@ -500,7 +500,7 @@ def run_module():
         name=dict(type='str', required=False),
         state=dict(type='str', required=False, default='present', choices=['present', 'update', 'absent', 'list', 'info', 'fetch_initial_keys']),
         caps=dict(type='dict', required=False, default=None),
-        secret=dict(type='str', required=False, default=None),
+        secret=dict(type='str', required=False, default=None, no_log=True),
         import_key=dict(type='bool', required=False, default=True),
         dest=dict(type='str', required=False, default='/etc/ceph/'),
     )
