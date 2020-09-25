@@ -137,6 +137,7 @@ from ansible.module_utils.basic import AnsibleModule  # noqa E402
 import datetime  # noqa E402
 import json  # noqa E402
 import os  # noqa E402
+import platform  # noqa E402
 import stat  # noqa E402
 import time  # noqa E402
 
@@ -237,8 +238,8 @@ def generate_get_config_cmd(param, cluster, user, user_key, container_image=None
         '--cluster',
         cluster,
         'config',
-        'get',
-        'mon.*',
+        'show',
+        'mon.{}'.format(platform.node().split('.')[0]),
         param
     ]
     cmd = _cmd + args

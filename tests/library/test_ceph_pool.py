@@ -1,5 +1,6 @@
 import json
 import os
+import platform
 import sys
 sys.path.append('./library')
 import ceph_pool
@@ -194,8 +195,8 @@ class TestCephPoolModule(object):
                 '--cluster',
                 'ceph',
                 'config',
-                'get',
-                'mon.*',
+                'show',
+                'mon.{}'.format(platform.node().split('.')[0]),
                 param
             ])
             cmd_list.append(ceph_pool.generate_get_config_cmd(param, fake_cluster_name, fake_user, fake_user_key, container_image=fake_container_image_name))
