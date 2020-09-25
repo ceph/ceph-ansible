@@ -76,7 +76,6 @@ ansible_provision = proc do |ansible|
       monitor_interface: ETH,
       ceph_mon_docker_subnet: "#{PUBLIC_SUBNET}.0/24",
       devices: settings['disks'],
-      ceph_docker_on_openstack: BOX == 'openstack',
       radosgw_interface: ETH,
       generate_fsid: 'true',
     })
