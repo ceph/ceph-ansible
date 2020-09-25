@@ -3,7 +3,7 @@
   apt:
     name: ceph-mds
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default('') if ceph_origin == 'repository' and ceph_repository == 'uca' else '' }}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else '' }}"
+    default_release: "{{ ceph_stable_release_uca | default('') if ceph_origin == 'repository' and ceph_repository == 'uca' else '' }}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports | bool else '' }}"
   when:
     - mds_group_name in group_names
     - ansible_os_family == 'Debian'
@@ -25,7 +25,7 @@
   args:
     creates: /var/lib/ceph/mds/{{ cluster }}-{{ ansible_hostname }}/keyring
   changed_when: false
-  when: cephx
+  when: cephx | bool
 
 - name: set mds key permissions
   file:
@@ -33,7 +33,7 @@
     owner: "ceph"
     group: "ceph"
     mode: "0600"
-  when: cephx
+  when: cephx | bool
 
 - name: ensure systemd service override directory exists
   file:

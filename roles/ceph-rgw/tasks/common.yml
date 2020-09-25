@@ -3,8 +3,8 @@
   file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "{{ ceph_directories_mode }}"
   with_items: "{{ rbd_client_admin_socket_path }}"
 
@@ -24,8 +24,8 @@
   copy:
     dest: "{{ item.item.path }}"
     content: "{{ item.stdout + '\n' }}"
-    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "{{ ceph_keyring_permissions }}"
   with_items: "{{ _rgw_keys.results }}"
   when:
@@ -36,8 +36,8 @@
   copy:
     content: "{{ radosgw_frontend_ssl_certificate_data }}"
     dest: "{{ radosgw_frontend_ssl_certificate }}"
-    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: 0440
   when: radosgw_frontend_ssl_certificate | length > 0 and radosgw_frontend_ssl_certificate_data | length > 0
   notify: restart ceph rgws

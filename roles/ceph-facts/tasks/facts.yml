@@ -38,7 +38,7 @@
   block:
     - name: set_fact container_exec_cmd
       set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] if not rolling_update else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}"
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] if not rolling_update | bool else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}"
       when:
         - containerized_deployment | bool
 
@@ -121,7 +121,7 @@
   set_fact:
     current_fsid:
       rc: 1
-  when: rolling_update or groups.get(mon_group_name, []) | length == 0
+  when: rolling_update | bool or groups.get(mon_group_name, []) | length == 0
 
 - name: create a local fetch directory if it does not exist
   file:
@@ -346,7 +346,7 @@
 
 - name: set_fact ceph_run_cmd
   set_fact:
-    ceph_run_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /var/log/ceph/:/var/log/ceph/:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'ceph' }}"
+    ceph_run_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /var/log/ceph/:/var/log/ceph/:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
   delegate_to: "{{ item }}"
   delegate_facts: True
   run_once: True

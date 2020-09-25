@@ -14,8 +14,8 @@
   copy:
     dest: "{{ item.item.path }}"
     content: "{{ item.stdout + '\n' }}"
-    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "{{ ceph_keyring_permissions }}"
   with_items: "{{ _iscsi_keys.results }}"
   when:
@@ -60,5 +60,5 @@
     size: "{{ iscsi_pool_size | default(osd_pool_default_size) }}"
     application: "rbd"
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"

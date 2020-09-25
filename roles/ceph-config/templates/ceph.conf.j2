@@ -2,7 +2,7 @@
 # {{ ansible_managed }}
 
 [global]
-{% if not cephx %}
+{% if not cephx | bool %}
 auth cluster required = none
 auth service required = none
 auth client required = none
@@ -82,7 +82,7 @@ filestore xattr use omap = true
 {% if osd_objectstore == 'bluestore' %}
 {% set _num_osds = num_osds | default(0) | int %}
 [osd]
-{% if is_hci and _num_osds > 0 %}
+{% if is_hci | bool and _num_osds > 0 %}
 {# hci_safety_factor is the safety factor for HCI deployments #}
 {% if ansible_memtotal_mb * 1048576 * hci_safety_factor / _num_osds > osd_memory_target %}
 {% set _osd_memory_target = (ansible_memtotal_mb * 1048576 * hci_safety_factor / _num_osds) | int %}
@@ -130,7 +130,7 @@ rgw_zone = {{ instance['rgw_zone'] }}
 {% if inventory_hostname in groups.get(nfs_group_name, []) and inventory_hostname not in groups.get(rgw_group_name, []) %}
 {% for host in groups[nfs_group_name] %}
 {% set _rgw_hostname = hostvars[host]['rgw_hostname'] | default(hostvars[host]['ansible_hostname']) %}
-{% if nfs_obj_gw %}
+{% if nfs_obj_gw | bool %}
 [client.rgw.{{ _rgw_hostname }}]
 host = {{ _rgw_hostname }}
 keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname }}/keyring

@@ -1,7 +1,7 @@
 #jinja2: trim_blocks: "true", lstrip_blocks: "true"
 # {{ ansible_managed }}
 
-{% if ceph_nfs_dynamic_exports and not ceph_nfs_rados_backend %}
+{% if ceph_nfs_dynamic_exports | bool and not ceph_nfs_rados_backend | bool %}
 %include /etc/ganesha/export.d/INDEX.conf
 {% endif %}
 
@@ -12,7 +12,7 @@ NFS_Core_Param
 {% endif %}
 }
 
-{% if ceph_nfs_disable_caching or nfs_file_gw %}
+{% if ceph_nfs_disable_caching | bool or nfs_file_gw | bool %}
 EXPORT_DEFAULTS {
 	Attr_Expiration_Time = 0;
 }
@@ -25,7 +25,7 @@ CACHEINODE {
 }
 {% endif %}
 
-{% if ceph_nfs_rados_backend %}
+{% if ceph_nfs_rados_backend | bool %}
 RADOS_URLS {
    ceph_conf = '/etc/ceph/{{ cluster }}.conf';
    userid = "{{ ceph_nfs_ceph_user }}";
@@ -42,7 +42,7 @@ RADOS_KV {
 }
 {% endif %}
 
-{% if nfs_file_gw %}
+{% if nfs_file_gw | bool %}
 EXPORT
 {
 	Export_id={{ ceph_nfs_ceph_export_id }};
@@ -71,7 +71,7 @@ EXPORT
         {{ ganesha_ceph_export_overrides | default(None) }}
 }
 {% endif %}
-{% if nfs_obj_gw %}
+{% if nfs_obj_gw | bool %}
 EXPORT
 {
 	Export_id={{ ceph_nfs_rgw_export_id }};
