@@ -5,37 +5,37 @@
 # We do not want to run these checks on initial deployment (`socket.rc == 0`)
 - name: set_fact handler_mon_status
   set_fact:
-    handler_mon_status: "{{ (mon_socket_stat.get('rc') == 0) if not containerized_deployment | bool else (ceph_mon_container_stat.get('rc') == 0 and ceph_mon_container_stat.get('stdout_lines', []) | length != 0) }}"
+    handler_mon_status: "{{ (mon_socket.get('rc') == 0) if not containerized_deployment | bool else (ceph_mon_container_stat.get('rc') == 0 and ceph_mon_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(mon_group_name, [])
 
 - name: set_fact handler_osd_status
   set_fact:
-    handler_osd_status: "{{ (osd_socket_stat.get('rc') == 0 and ceph_current_status.fsid is defined) if not containerized_deployment | bool else (ceph_osd_container_stat.get('rc') == 0 and ceph_osd_container_stat.get('stdout_lines', []) | length != 0) }}"
+    handler_osd_status: "{{ (osd_socket.get('rc') == 0 and ceph_current_status.fsid is defined) if not containerized_deployment | bool else (ceph_osd_container_stat.get('rc') == 0 and ceph_osd_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(osd_group_name, [])
 
 - name: set_fact handler_mds_status
   set_fact:
-    handler_mds_status: "{{ (mds_socket_stat.get('rc') == 0) if not containerized_deployment | bool else (ceph_mds_container_stat.get('rc') == 0 and ceph_mds_container_stat.get('stdout_lines', []) | length != 0) }}"
+    handler_mds_status: "{{ (mds_socket.get('rc') == 0) if not containerized_deployment | bool else (ceph_mds_container_stat.get('rc') == 0 and ceph_mds_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(mds_group_name, [])
 
 - name: set_fact handler_rgw_status
   set_fact:
-    handler_rgw_status: "{{ (rgw_socket_stat.get('rc') == 0) if not containerized_deployment | bool else (ceph_rgw_container_stat.get('rc') == 0 and ceph_rgw_container_stat.get('stdout_lines', []) | length != 0) }}"
+    handler_rgw_status: "{{ (rgw_socket.get('rc') == 0) if not containerized_deployment | bool else (ceph_rgw_container_stat.get('rc') == 0 and ceph_rgw_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(rgw_group_name, [])
 
 - name: set_fact handler_nfs_status
   set_fact:
-    handler_nfs_status: "{{ (nfs_socket_stat.get('rc') == 0) if not containerized_deployment | bool else (ceph_nfs_container_stat.get('rc') == 0 and ceph_nfs_container_stat.get('stdout_lines', []) | length != 0) }}"
+    handler_nfs_status: "{{ (nfs_socket.get('rc') == 0) if not containerized_deployment | bool else (ceph_nfs_container_stat.get('rc') == 0 and ceph_nfs_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(nfs_group_name, [])
 
 - name: set_fact handler_rbd_status
   set_fact:
-    handler_rbd_mirror_status: "{{ (rbd_mirror_socket_stat.get('rc') == 0) if not containerized_deployment | bool else (ceph_rbd_mirror_container_stat.get('rc') == 0 and ceph_rbd_mirror_container_stat.get('stdout_lines', []) | length != 0) }}"
+    handler_rbd_mirror_status: "{{ (rbd_mirror_socket.get('rc') == 0) if not containerized_deployment | bool else (ceph_rbd_mirror_container_stat.get('rc') == 0 and ceph_rbd_mirror_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(rbdmirror_group_name, [])
 
 - name: set_fact handler_mgr_status
   set_fact:
-    handler_mgr_status: "{{ (mgr_socket_stat.get('rc') == 0) if not containerized_deployment | bool else (ceph_mgr_container_stat.get('rc') == 0 and ceph_mgr_container_stat.get('stdout_lines', []) | length != 0) }}"
+    handler_mgr_status: "{{ (mgr_socket.get('rc') == 0) if not containerized_deployment | bool else (ceph_mgr_container_stat.get('rc') == 0 and ceph_mgr_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(mgr_group_name, [])
 
 - name: set_fact handler_crash_status
