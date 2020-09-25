@@ -36,16 +36,10 @@ osd pool default crush rule = {{ osd_pool_default_crush_rule }}
 fsid = {{ fsid }}
 mon host = {% if nb_mon > 0 %}
 {% for host in _monitor_addresses -%}
-{% if msgr2_migration | default(False) %}
-[{{ "v2:" + host.addr + mon_host_v2.suffix }},{{ "v1:" + host.addr + mon_host_v1.suffix }}]
-{%- elif not msgr2_migration | default(False) and rolling_update -%}
-{{ host.addr }}
-{%- else -%}
-{% if mon_host_v1.enabled %}
+{% if mon_host_v1.enabled | bool %}
 {% set _v1 = ',v1:' + host.addr + mon_host_v1.suffix %}
 {% endif %}
 [{{ "v2:" + host.addr + mon_host_v2.suffix }}{{ _v1 | default('') }}]
-{%- endif %}
 {%- if not loop.last -%},{%- endif %}
 {%- endfor %}
 {% elif nb_mon == 0 %}

@@ -842,22 +842,14 @@
         name: ceph-crash
 
 - name: complete upgrade
-  hosts:
-  - "{{ mon_group_name | default('mons') }}"
-  - "{{ mgr_group_name | default('mgrs') }}"
-  - "{{ osd_group_name | default('osds') }}"
-  - "{{ mds_group_name | default('mdss') }}"
-  - "{{ rgw_group_name | default('rgws') }}"
-  - "{{ nfs_group_name | default('nfss') }}"
-  - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
-  - "{{ client_group_name | default('clients') }}"
-  - "{{ iscsi_gw_group_name | default('iscsigws') }}"
+  hosts: "{{ mon_group_name | default('mons') }}"
   become: True
   tasks:
     - import_role:
         name: ceph-defaults
     - import_role:
         name: ceph-facts
+        tasks_from: container_binary.yml
 
     - name: container | disallow pre-pacific OSDs and enable all new pacific-only functionality
       command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} osd require-osd-release pacific"
@@ -874,30 +866,6 @@
       when:
         - not containerized_deployment | bool
         - groups.get(mon_group_name, []) | length > 0
-
-    - name: container | enable msgr2 protocol
-      command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} mon enable-msgr2"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      run_once: True
-      when:
-        - containerized_deployment | bool
-        - groups.get(mon_group_name, []) | length > 0
-
-    - name: non container | enable msgr2 protocol
-      command: "ceph --cluster {{ cluster }} mon enable-msgr2"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      run_once: True
-      when:
-        - not containerized_deployment | bool
-        - groups.get(mon_group_name, []) | length > 0
-
-    - import_role:
-        name: ceph-handler
-    - name: import_role ceph-config
-      import_role:
-        name: ceph-config
-      vars:
-        msgr2_migration: True
 
 - name: upgrade node-exporter
   hosts: all
