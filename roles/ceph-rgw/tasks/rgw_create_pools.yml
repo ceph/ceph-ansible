@@ -30,6 +30,7 @@
 - name: create ec pools for rgw
   ceph_pool:
     name: "{{ item.key }}"
+    state: present
     cluster: "{{ cluster }}"
     pg_num: "{{ item.value.pg_num | default(osd_pool_default_pg_num) }}"
     pgp_num: "{{ item.value.pg_num | default(osd_pool_default_pg_num) }}"
@@ -48,12 +49,13 @@
 - name: create replicated pools for rgw
   ceph_pool:
     name: "{{ item.key }}"
+    state: present
     cluster: "{{ cluster }}"
     pg_num: "{{ item.value.pg_num | default(osd_pool_default_pg_num) }}"
     pgp_num: "{{ item.value.pg_num | default(osd_pool_default_pg_num) }}"
-    size: "{{ item.value.size | default(omit) }}"
+    size: "{{ item.value.size | default(osd_pool_default_size) }}"
     pool_type: replicated
-    rule_name: "{{ item.value.rule_name | default(omit) }}"
+    rule_name: "{{ item.value.rule_name | default(ceph_osd_pool_default_crush_rule_name) }}"
     application: rgw
   loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
