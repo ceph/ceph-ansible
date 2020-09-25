@@ -35,8 +35,8 @@
       file:
         path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ item }}"
         state: directory
-        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
         mode: "0755"
       with_items:
         - "{{ ceph_nfs_ceph_user }}"
@@ -51,8 +51,8 @@
         dest: "{{ item.1 }}"
         content: "{{ item.0.content | b64decode }}"
         mode: "{{ item.0.item.get('mode', '0600') }}"
-        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
       with_nested:
         - "{{ hostvars[groups['_filtered_clients'][0]]['slurp_client_keys']['results'] | default([]) }}"
         - ['/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ceph_nfs_ceph_user }}/keyring', '/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring']

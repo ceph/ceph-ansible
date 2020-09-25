@@ -35,11 +35,11 @@
     caps:
       mon: allow *
     import_key: False
-    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "0400"
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: copy the initial key in /etc/ceph (for containers)
@@ -53,8 +53,8 @@
   file:
     path: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}
     state: directory
-    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "{{ ceph_directories_mode }}"
     recurse: true
 
@@ -65,11 +65,11 @@
     caps: "{{ client_admin_ceph_authtool_cap }}"
     import_key: False
     cluster: "{{ cluster }}"
-    owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "0400"
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: create_custom_admin_secret
   when:
@@ -78,7 +78,7 @@
 
 - name: set_fact ceph-authtool container command
   set_fact:
-    ceph_authtool_cmd: "{{ container_binary + ' run --net=host --rm -v /var/lib/ceph:/var/lib/ceph:z -v /etc/ceph/:/etc/ceph/:z --entrypoint=ceph-authtool ' + ceph_client_docker_registry + '/' + ceph_client_docker_image + ':' + ceph_client_docker_image_tag if containerized_deployment else 'ceph-authtool' }}"
+    ceph_authtool_cmd: "{{ container_binary + ' run --net=host --rm -v /var/lib/ceph:/var/lib/ceph:z -v /etc/ceph/:/etc/ceph/:z --entrypoint=ceph-authtool ' + ceph_client_docker_registry + '/' + ceph_client_docker_image + ':' + ceph_client_docker_image_tag if containerized_deployment | bool else 'ceph-authtool' }}"
 
 - name: import admin keyring into mon keyring
   command: >
@@ -91,14 +91,14 @@
 
 - name: set_fact ceph-mon container command
   set_fact:
-    ceph_mon_cmd: "{{ container_binary + ' run --rm --net=host -v /var/lib/ceph/:/var/lib/ceph:z -v /etc/ceph/:/etc/ceph/:z --entrypoint=ceph-mon ' + ceph_client_docker_registry + '/' + ceph_client_docker_image + ':' +ceph_client_docker_image_tag if containerized_deployment else 'ceph-mon' }}"
+    ceph_mon_cmd: "{{ container_binary + ' run --rm --net=host -v /var/lib/ceph/:/var/lib/ceph:z -v /etc/ceph/:/etc/ceph/:z --entrypoint=ceph-mon ' + ceph_client_docker_registry + '/' + ceph_client_docker_image + ':' +ceph_client_docker_image_tag if containerized_deployment | bool else 'ceph-mon' }}"
 
 - name: ceph monitor mkfs with keyring
   command: >
     {{ ceph_mon_cmd }}
     --cluster {{ cluster }}
-    --setuser "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    --setgroup "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    --setuser "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    --setgroup "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     --mkfs
     -i {{ monitor_name }}
     --fsid {{ fsid }}
@@ -111,8 +111,8 @@
   command: >
     {{ ceph_mon_cmd }}
     --cluster {{ cluster }}
-    --setuser "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-    --setgroup "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+    --setuser "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    --setgroup "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     --mkfs
     -i {{ monitor_name }}
     --fsid {{ fsid }}

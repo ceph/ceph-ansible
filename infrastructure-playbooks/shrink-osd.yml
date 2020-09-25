@@ -70,7 +70,7 @@
 
     - name: set_fact container_run_cmd
       set_fact:
-        container_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment else '' }}ceph-volume {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else '' }}"
+        container_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment | bool else '' }}ceph-volume {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
 
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd }} timeout 5 ceph --cluster {{ cluster }} health"
@@ -212,7 +212,7 @@
         osd_fsid: "{{ item.1 }}"
       environment:
         CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       delegate_to: "{{ item.0 }}"
       loop: "{{ _osd_hosts }}"

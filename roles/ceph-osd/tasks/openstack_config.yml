@@ -18,7 +18,7 @@
       with_items: "{{ openstack_pools }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: create openstack cephx key(s)
@@ -31,7 +31,7 @@
         cluster: "{{ cluster }}"
         mode: "{{ item.mode|default(omit) }}"
       environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_items: "{{ openstack_keys }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -47,8 +47,8 @@
       copy:
         dest: "/etc/ceph/{{ cluster }}.{{ item.0.item.name }}.keyring"
         content: "{{ item.0.stdout + '\n' }}"
-        owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
-        group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
+        owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
         mode: "{{ item.0.item.mode }}"
       with_nested:
         - "{{ _osp_keys.results }}"
