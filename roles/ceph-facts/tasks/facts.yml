@@ -326,7 +326,19 @@
   changed_when: false
   check_mode: no
   failed_when: false
-  when: ceph_conf.stat.exists
+  when: ceph_conf.stat.exists | bool
+
+- name: get default crush rule value from running monitor ceph configuration
+  command: grep 'osd pool default crush rule' /etc/ceph/{{ cluster }}.conf
+  register: crush_rule_variable
+  changed_when: false
+  check_mode: no
+  failed_when: false
+  run_once: true
+  delegate_to: "{{ running_mon }}"
+  when:
+    - running_mon is defined
+    - not ceph_conf.stat.exists | bool
 
 - name: set_fact osd_pool_default_crush_rule
   set_fact:
