@@ -51,8 +51,8 @@ options:
             If 'present' is used, the module creates a pool if it doesn't exist
             or update it if it already exists.
             If 'absent' is used, the module will simply delete the pool.
-            If 'list' is used, the module will return all details about the existing pools
-            (json formatted).
+            If 'list' is used, the module will return all details about the
+            existing pools. (json formatted).
         required: false
         choices: ['present', 'absent', 'list']
         default: present
@@ -247,27 +247,7 @@ def generate_get_config_cmd(param, cluster, user, user_key, container_image=None
     return cmd
 
 
-def get_default_running_config(module, cluster, user, user_key, output_format='json', container_image=None):  # noqa E501
-    '''
-    Get some default values set in the cluster
-    '''
-
-    params = ['osd_pool_default_size', 'osd_pool_default_min_size', 'osd_pool_default_pg_num', 'osd_pool_default_pgp_num']  # noqa E501
-
-    default_running_values = {}
-
-    for param in params:
-        rc, cmd, out, err = exec_commands(module, generate_get_config_cmd(param, cluster, user, user_key, container_image=container_image))  # noqa E501
-
-        if rc == 0:
-            default_running_values[param] = out.strip()
-        else:
-            return rc, cmd, out, err
-
-    return rc, cmd, default_running_values, err
-
-
-def get_application_pool(cluster, name, user, user_key, output_format='json', container_image=None):  # noqa E501
+def get_application_pool(cluster, name, user, user_key, output_format='json', container_image=None):
     '''
     Get application type enabled on a given pool
     '''
@@ -319,6 +299,23 @@ def get_pool_details(module, cluster, name, user, user_key, output_format='json'
 
     _rc, _cmd, application_pool, _err = exec_commands(module, get_application_pool(cluster, name, user, user_key, container_image=container_image))  # noqa E501
 
+    # This is a trick because "target_size_ratio" isn't present at the same level in the dict
+    # ie:
+    # {
+    # 'pg_num': 8,
+    # 'pgp_num': 8,
+    # 'pg_autoscale_mode': 'on',
+    #     'options': {
+    #          'target_size_ratio': 0.1
+    #     }
+    # }
+    # If 'target_size_ratio' is present in 'options', we set it, this way we end up
+    # with a dict containing all needed keys at the same level.
+    if 'target_size_ratio' in out['options'].keys():
+        out['target_size_ratio'] = out['options']['target_size_ratio']
+    else:
+        out['target_size_ratio'] = None
+
     application = list(json.loads(application_pool.strip()).keys())
 
     if len(application) == 0:
@@ -335,15 +332,12 @@ def compare_pool_config(user_pool_config, running_pool_details):
     '''
 
     delta = {}
-    filter_keys = ['pg_num', 'pg_placement_num', 'size', 'pg_autoscale_mode']
+    filter_keys = [ 'pg_num', 'pg_placement_num', 'size', 'pg_autoscale_mode', 'target_size_ratio']
     for key in filter_keys:
-        if str(running_pool_details[key]) != user_pool_config[key]['value']:
+        if str(running_pool_details[key]) != user_pool_config[key]['value'] and user_pool_config[key]['value']:
             delta[key] = user_pool_config[key]
 
-    if str(running_pool_details['options'].get('target_size_ratio')) != user_pool_config['target_size_ratio']['value'] and user_pool_config['target_size_ratio']['value'] is not None:  # noqa E501
-        delta['target_size_ratio'] = user_pool_config['target_size_ratio']
-
-    if running_pool_details['application'] != user_pool_config['application']['value'] and user_pool_config['application']['value'] is not None:  # noqa E501
+    if running_pool_details['application'] != user_pool_config['application']['value'] and user_pool_config['application']['value'] != None:
         delta['application'] = {}
         delta['application']['new_application'] = user_pool_config['application']['value']  # noqa E501
         # to be improved (for update_pools()...)
@@ -375,10 +369,16 @@ def create_pool(cluster, name, user, user_key, user_pool_config, container_image
     Create a new pool
     '''
 
-    args = ['create', user_pool_config['pool_name']['value'], '--pg_num', user_pool_config['pg_num']['value'], '--pgp_num', user_pool_config['pgp_num']['value'], user_pool_config['type']['value']]  # noqa E501
+    args = [ 'create', user_pool_config['pool_name']['value'], user_pool_config['type']['value'] ]
+
+    if user_pool_config['pg_autoscale_mode']['value'] != 'on':
+        args.extend(['--pg_num', user_pool_config['pg_num']['value'], '--pgp_num', user_pool_config['pgp_num']['value']])
 
     if user_pool_config['type']['value'] == 'replicated':
-        args.extend([user_pool_config['crush_rule']['value'], '--expected_num_objects', user_pool_config['expected_num_objects']['value'], '--size', user_pool_config['size']['value'], '--autoscale-mode', user_pool_config['pg_autoscale_mode']['value']])  # noqa E501
+        args.extend([ user_pool_config['crush_rule']['value'], '--expected_num_objects', user_pool_config['expected_num_objects']['value'], '--autoscale-mode', user_pool_config['pg_autoscale_mode']['value'] ])
+
+    if user_pool_config['size']['value'] and user_pool_config['type']['value'] == "replicated":
+        args.extend(['--size', user_pool_config['size']['value']])
 
     elif user_pool_config['type']['value'] == 'erasure':
         args.extend([user_pool_config['erasure_profile']['value']])
@@ -462,8 +462,8 @@ def run_module():
         details=dict(type='bool', required=False, default=False),
         size=dict(type='str', required=False),
         min_size=dict(type='str', required=False),
-        pg_num=dict(type='str', required=False, default=None),
-        pgp_num=dict(type='str', required=False, default=None),
+        pg_num=dict(type='str', required=False),
+        pgp_num=dict(type='str', required=False),
         pg_autoscale_mode=dict(type='str', required=False, default='on'),
         target_size_ratio=dict(type='str', required=False, default=None),
         pool_type=dict(type='str', required=False, default='replicated', choices=['replicated', 'erasure', '1', '3']),  # noqa E501
@@ -475,7 +475,7 @@ def run_module():
 
     module = AnsibleModule(
         argument_spec=module_args,
-        supports_check_mode=True,
+        supports_check_mode=True
     )
 
     # Gather module parameters in variables
@@ -483,8 +483,10 @@ def run_module():
     name = module.params.get('name')
     state = module.params.get('state')
     details = module.params.get('details')
-    pg_num = module.params.get('pg')
-    pgp_num = module.params.get('pgp')
+    size = module.params.get('size')
+    min_size = module.params.get('min_size')
+    pg_num = module.params.get('pg_num')
+    pgp_num = module.params.get('pgp_num')
     pg_autoscale_mode = module.params.get('pg_autoscale_mode')
     target_size_ratio = module.params.get('target_size_ratio')
     application = module.params.get('application')
@@ -512,16 +514,18 @@ def run_module():
     expected_num_objects = module.params.get('expected_num_objects')
 
     user_pool_config = {
-        'pool_name': {'value': name},
-        'pg_num': {'value': pg_num, 'cli_set_opt': 'pg_num'},
-        'pgp_num': {'value': pgp_num, 'cli_set_opt': 'pgp_num'},
-        'pg_autoscale_mode': {'value': pg_autoscale_mode, 'cli_set_opt': 'pg_autoscale_mode'},  # noqa E501
-        'target_size_ratio': {'value': target_size_ratio, 'cli_set_opt': 'target_size_ratio'},  # noqa E501
-        'application': {'value': application},
-        'type': {'value': pool_type},
-        'erasure_profile': {'value': erasure_profile},
-        'crush_rule': {'value': rule_name, 'cli_set_opt': 'crush_rule'},
-        'expected_num_objects': {'value': expected_num_objects}
+        'pool_name': { 'value': name },
+        'pg_num': { 'value': pg_num, 'cli_set_opt': 'pg_num' },
+        'pgp_num': { 'value': pgp_num, 'cli_set_opt': 'pgp_num' },
+        'pg_autoscale_mode': { 'value': pg_autoscale_mode, 'cli_set_opt': 'pg_autoscale_mode' },
+        'target_size_ratio': { 'value': target_size_ratio, 'cli_set_opt': 'target_size_ratio' },
+        'application': {'value': application },
+        'type': { 'value': pool_type },
+        'erasure_profile': { 'value': erasure_profile },
+        'crush_rule': { 'value': rule_name, 'cli_set_opt': 'crush_rule' },
+        'expected_num_objects': { 'value': expected_num_objects },
+        'size': { 'value': size },
+        'min_size': { 'value': min_size, 'cli_set_opt': 'size' }
     }
 
     if module.check_mode:
@@ -545,49 +549,25 @@ def run_module():
     keyring_filename = cluster + '.' + user + '.keyring'
     user_key = os.path.join("/etc/ceph/", keyring_filename)
 
-    def_opt = {
-        'size': {
-            'conf_name': 'osd_pool_default_size',
-            'cli_set_opt': 'size'
-        },
-        'min_size': {
-            'conf_name': 'osd_pool_default_min_size',
-            'cli_set_opt': 'min_size'
-        },
-        'pg_num': {
-            'conf_name': 'osd_pool_default_pg_num',
-            'cli_set_opt': 'pg_num'
-        },
-        'pgp_num': {
-            'conf_name': 'osd_pool_default_pgp_num',
-            'cli_set_opt': 'pgp_num'
-        }
-    }
-
     if state == "present":
-        rc, cmd, default_running_ceph_config, err = get_default_running_config(module, cluster, user, user_key, container_image=container_image)  # noqa E501
+        rc, cmd, out, err = exec_commands(module, check_pool_exist(cluster, name, user, user_key, container_image=container_image))
         if rc == 0:
-            for k, v in def_opt.items():
-                if module.params[k] is None:
-                    user_pool_config[k] = {'value': default_running_ceph_config[v['conf_name']], 'cli_set_opt': v['cli_set_opt']}  # noqa E501
-                else:
-                    user_pool_config[k] = {'value': module.params.get(k), 'cli_set_opt': v['cli_set_opt']}  # noqa E501
-            rc, cmd, out, err = exec_commands(module, check_pool_exist(cluster, name, user, user_key, container_image=container_image))  # noqa E501
-            if rc == 0:
-                running_pool_details = get_pool_details(module, cluster, name, user, user_key, container_image=container_image)  # noqa E501
-                user_pool_config['pg_placement_num'] = { 'value': str(running_pool_details[2]['pg_placement_num']), 'cli_set_opt': 'pgp_num' }  # noqa E501
-                delta = compare_pool_config(user_pool_config, running_pool_details[2])  # noqa E501
-                if len(delta) > 0 and running_pool_details[2]['erasure_code_profile'] == "" and 'size' not in delta.keys():  # noqa E501
-                    rc, cmd, out, err = update_pool(module, cluster, name, user, user_key, delta, container_image=container_image)  # noqa E501
-                    if rc == 0:
-                        changed = True
-                else:
-                    out = "Pool {} already exists and there is nothing to update.".format(name)  # noqa E501
+            running_pool_details = get_pool_details(module, cluster, name, user, user_key, container_image=container_image)
+            user_pool_config['pg_placement_num'] = { 'value': str(running_pool_details[2]['pg_placement_num']), 'cli_set_opt': 'pgp_num' }
+            delta = compare_pool_config(user_pool_config, running_pool_details[2])
+            if len(delta) > 0 and running_pool_details[2]['erasure_code_profile'] == "" and 'size' not in delta.keys():
+                rc, cmd, out, err = update_pool(module, cluster, name, user, user_key, delta, container_image=container_image)
+                if rc == 0:
+                    changed = True
             else:
-                rc, cmd, out, err = exec_commands(module, create_pool(cluster, name, user, user_key, user_pool_config=user_pool_config, container_image=container_image))  # noqa E501
-                if user_pool_config['application']['value'] is not None:
-                    _rc, _cmd, _out, _err = exec_commands(module, enable_application_pool(cluster, name, user_pool_config['application']['value'], user, user_key, container_image=container_image))  # noqa E501
-                changed = True
+                out = "Pool {} already exists and there is nothing to update.".format(name)
+        else:
+            rc, cmd, out, err = exec_commands(module, create_pool(cluster, name, user, user_key, user_pool_config=user_pool_config, container_image=container_image))
+            if user_pool_config['application']['value'] != None:
+                rc, _, _, _ = exec_commands(module, enable_application_pool(cluster, name, user_pool_config['application']['value'], user, user_key, container_image=container_image))
+            if user_pool_config['min_size']['value'] != None:
+                pass
+            changed = True
 
     elif state == "list":
         rc, cmd, out, err = exec_commands(module, list_pools(cluster, name, user, user_key, details, container_image=container_image))  # noqa E501
@@ -595,15 +575,25 @@ def run_module():
             out = "Couldn't list pool(s) present on the cluster"
 
     elif state == "absent":
-        rc, cmd, out, err = exec_commands(module, check_pool_exist(cluster, name, user, user_key, container_image=container_image))
+        rc, cmd, out, err = exec_commands(module,
+                                        check_pool_exist(cluster,
+                                        name, user,
+                                        user_key, container_image=container_image))
         if rc == 0:
-            rc, cmd, out, err = exec_commands(module, remove_pool(cluster, name, user, user_key, container_image=container_image))
+            rc, cmd, out, err = exec_commands(module,
+                                              remove_pool(cluster,
+                                                          name,
+                                                          user,
+                                                          user_key,
+                                                          container_image=
+                                                          container_image))
             changed = True
         else:
             rc = 0
             out = "Skipped, since pool {} doesn't exist".format(name)
 
-    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)  # noqa E501
+    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd,
+                changed=changed)
 
 
 def main():
