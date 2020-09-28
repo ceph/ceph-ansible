@@ -81,6 +81,10 @@ class TestCephPoolModule(object):
             'expected_num_objects': 0,
             'fast_read': False,
             'options': {},
+            # 'target_size_ratio' is a key present in the dict above
+            # 'options': {}
+            # see comment in get_pool_details() for more details
+            'target_size_ratio': None,
             'application_metadata': {
                 'rbd': {}
             },
