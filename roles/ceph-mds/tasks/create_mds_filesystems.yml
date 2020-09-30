@@ -22,24 +22,14 @@
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
-- name: check and create ceph filesystem
+- name: create ceph filesystem
+  ceph_fs:
+    name: "{{ cephfs }}"
+    cluster: "{{ cluster }}"
+    data: "{{ cephfs_data_pool.name }}"
+    metadata: "{{ cephfs_metadata_pool.name }}"
+    max_mds: "{{ mds_max_mds if not rolling_update | bool else omit }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  block:
-    - name: check if ceph filesystem already exists
-      command: "{{ ceph_run_cmd }} --cluster {{ cluster }} fs get {{ cephfs }}"
-      register: check_existing_cephfs
-      changed_when: false
-      failed_when: false
-
-    - name: create ceph filesystem
-      command: "{{ ceph_run_cmd }} --cluster {{ cluster }} fs new {{ cephfs }} {{ cephfs_metadata_pool.name }} {{ cephfs_data_pool.name }}"
-      changed_when: false
-      when: check_existing_cephfs.rc != 0
-
-- name: set max_mds
-  command: "{{ ceph_run_cmd }} --cluster {{ cluster }} fs set {{ cephfs }} max_mds {{ mds_max_mds }}"
-  changed_when: false
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  when:
-    - mds_max_mds > 1
-    - not rolling_update | bool
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
