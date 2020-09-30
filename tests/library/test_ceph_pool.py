@@ -404,7 +404,7 @@ class TestCephPoolModule(object):
 
         assert cmd == expected_command
 
-    def test_create_replicated_pool(self):
+    def test_create_replicated_pool_pg_autoscaler_enabled(self):
         self.fake_user_pool_config['type']['value'] = 'replicated'
         expected_command = [
                 'podman',
@@ -429,18 +429,14 @@ class TestCephPoolModule(object):
                 'pool',
                 'create',
                 self.fake_user_pool_config['pool_name']['value'],
-                '--pg_num',
-                self.fake_user_pool_config['pg_num']['value'],
-                '--pgp_num',
-                self.fake_user_pool_config['pgp_num']['value'],
                 self.fake_user_pool_config['type']['value'],
                 self.fake_user_pool_config['crush_rule']['value'],
                 '--expected_num_objects',
                 self.fake_user_pool_config['expected_num_objects']['value'],
-                '--size',
-                self.fake_user_pool_config['size']['value'],
                 '--autoscale-mode',
-                self.fake_user_pool_config['pg_autoscale_mode']['value']
+                self.fake_user_pool_config['pg_autoscale_mode']['value'],
+                '--size',
+                self.fake_user_pool_config['size']['value']
         ]
 
         cmd = ceph_pool.create_pool(fake_cluster_name,
@@ -450,7 +446,55 @@ class TestCephPoolModule(object):
 
         assert cmd == expected_command
 
-    def test_create_erasure_pool(self):
+    def test_create_replicated_pool_pg_autoscaler_disabled(self):
+        self.fake_user_pool_config['type']['value'] = 'replicated'
+        self.fake_user_pool_config['pg_autoscale_mode']['value'] = 'off'
+        expected_command = [
+                'podman',
+                'run',
+                '--rm',
+                '--net=host',
+                '-v',
+                '/etc/ceph:/etc/ceph:z',
+                '-v',
+                '/var/lib/ceph/:/var/lib/ceph/:z',
+                '-v',
+                '/var/log/ceph/:/var/log/ceph/:z',
+                '--entrypoint=ceph',
+                fake_container_image_name,
+                '-n',
+                'client.admin',
+                '-k',
+                '/etc/ceph/ceph.client.admin.keyring',
+                '--cluster',
+                'ceph',
+                'osd',
+                'pool',
+                'create',
+                self.fake_user_pool_config['pool_name']['value'],
+                self.fake_user_pool_config['type']['value'],
+                '--pg_num',
+                self.fake_user_pool_config['pg_num']['value'],
+                '--pgp_num',
+                self.fake_user_pool_config['pgp_num']['value'],
+                self.fake_user_pool_config['crush_rule']['value'],
+                '--expected_num_objects',
+                self.fake_user_pool_config['expected_num_objects']['value'],
+                '--autoscale-mode',
+                self.fake_user_pool_config['pg_autoscale_mode']['value'],
+                '--size',
+                self.fake_user_pool_config['size']['value']
+        ]
+
+        cmd = ceph_pool.create_pool(fake_cluster_name,
+                                    self.fake_user_pool_config['pool_name']['value'],
+                                    fake_user, fake_user_key,
+                                    self.fake_user_pool_config,
+                                    container_image=fake_container_image_name)
+
+        assert cmd == expected_command
+
+    def test_create_erasure_pool_pg_autoscaler_enabled(self):
         self.fake_user_pool_config['type']['value'] = 'erasure'
         self.fake_user_pool_config['erasure_profile']['value'] = 'erasure-default'
         self.fake_user_pool_config['crush_rule']['value'] = 'erasure_rule'
@@ -477,11 +521,55 @@ class TestCephPoolModule(object):
                 'pool',
                 'create',
                 self.fake_user_pool_config['pool_name']['value'],
+                self.fake_user_pool_config['type']['value'],
+                self.fake_user_pool_config['erasure_profile']['value'],
+                self.fake_user_pool_config['crush_rule']['value'],
+                '--expected_num_objects',
+                self.fake_user_pool_config['expected_num_objects']['value'],
+                '--autoscale-mode',
+                self.fake_user_pool_config['pg_autoscale_mode']['value']
+        ]
+
+        cmd = ceph_pool.create_pool(fake_cluster_name,
+                                    self.fake_user_pool_config['pool_name']['value'],
+                                    fake_user, fake_user_key, self.fake_user_pool_config,
+                                    container_image=fake_container_image_name)
+
+        assert cmd == expected_command
+
+    def test_create_erasure_pool_pg_autoscaler_disabled(self):
+        self.fake_user_pool_config['type']['value'] = 'erasure'
+        self.fake_user_pool_config['erasure_profile']['value'] = 'erasure-default'
+        self.fake_user_pool_config['crush_rule']['value'] = 'erasure_rule'
+        self.fake_user_pool_config['pg_autoscale_mode']['value'] = 'off'
+        expected_command = [
+                'podman',
+                'run',
+                '--rm',
+                '--net=host',
+                '-v',
+                '/etc/ceph:/etc/ceph:z',
+                '-v',
+                '/var/lib/ceph/:/var/lib/ceph/:z',
+                '-v',
+                '/var/log/ceph/:/var/log/ceph/:z',
+                '--entrypoint=ceph',
+                fake_container_image_name,
+                '-n',
+                'client.admin',
+                '-k',
+                '/etc/ceph/ceph.client.admin.keyring',
+                '--cluster',
+                'ceph',
+                'osd',
+                'pool',
+                'create',
+                self.fake_user_pool_config['pool_name']['value'],
+                self.fake_user_pool_config['type']['value'],
                 '--pg_num',
                 self.fake_user_pool_config['pg_num']['value'],
                 '--pgp_num',
                 self.fake_user_pool_config['pgp_num']['value'],
-                self.fake_user_pool_config['type']['value'],
                 self.fake_user_pool_config['erasure_profile']['value'],
                 self.fake_user_pool_config['crush_rule']['value'],
                 '--expected_num_objects',
