@@ -1,11 +1,9 @@
-import json
 import os
 import sys
-sys.path.append('./library')
 import ceph_pool
-from mock.mock import patch, Mock, MagicMock
+from mock.mock import patch
 
-
+sys.path.append('./library')
 fake_user = 'client.admin'
 fake_user_key = '/etc/ceph/ceph.client.admin.keyring'
 fake_pool_name = 'foo'
@@ -139,7 +137,6 @@ class TestCephPoolModule(object):
                 'cli_set_opt': 'pgp_num'
             }}
 
-
     def test_check_pool_exist(self):
         expected_command_list = [
             'podman',
@@ -168,11 +165,17 @@ class TestCephPoolModule(object):
             'json'
             ]
 
-        cmd = ceph_pool.check_pool_exist(fake_cluster_name, self.fake_user_pool_config['pool_name']['value'], fake_user, fake_user_key, output_format='json', container_image=fake_container_image_name)
+        cmd = ceph_pool.check_pool_exist(fake_cluster_name,
+                                         self.fake_user_pool_config['pool_name']['value'],
+                                         fake_user, fake_user_key, output_format='json',
+                                         container_image=fake_container_image_name)
         assert cmd == expected_command_list
 
     def test_get_default_running_config(self):
-        params = ['osd_pool_default_size', 'osd_pool_default_min_size', 'osd_pool_default_pg_num', 'osd_pool_default_pgp_num']
+        params = ['osd_pool_default_size',
+                  'osd_pool_default_min_size',
+                  'osd_pool_default_pg_num',
+                  'osd_pool_default_pgp_num']
 
         expected_command_list = []
         cmd_list = []
@@ -202,9 +205,11 @@ class TestCephPoolModule(object):
                 'mon.*',
                 param
             ])
-            cmd_list.append(ceph_pool.generate_get_config_cmd(param, fake_cluster_name, fake_user, fake_user_key, container_image=fake_container_image_name))
+            cmd_list.append(ceph_pool.generate_get_config_cmd(param,
+                                                              fake_cluster_name,
+                                                              fake_user, fake_user_key,
+                                                              container_image=fake_container_image_name))
         assert cmd_list == expected_command_list
-
 
     def test_get_application_pool(self):
         expected_command = [
@@ -235,7 +240,10 @@ class TestCephPoolModule(object):
                 'json'
         ]
 
-        cmd = ceph_pool.get_application_pool(fake_cluster_name, self.fake_user_pool_config['pool_name']['value'], fake_user, fake_user_key, 'json', container_image=fake_container_image_name)
+        cmd = ceph_pool.get_application_pool(fake_cluster_name,
+                                             self.fake_user_pool_config['pool_name']['value'],
+                                             fake_user, fake_user_key, 'json',
+                                             container_image=fake_container_image_name)
 
         assert cmd == expected_command
 
@@ -267,7 +275,10 @@ class TestCephPoolModule(object):
                 'rbd'
         ]
 
-        cmd = ceph_pool.enable_application_pool(fake_cluster_name, self.fake_user_pool_config['pool_name']['value'], 'rbd', fake_user, fake_user_key, container_image=fake_container_image_name)
+        cmd = ceph_pool.enable_application_pool(fake_cluster_name,
+                                                self.fake_user_pool_config['pool_name']['value'],
+                                                'rbd', fake_user, fake_user_key,
+                                                container_image=fake_container_image_name)
 
         assert cmd == expected_command
 
@@ -300,16 +311,18 @@ class TestCephPoolModule(object):
                 '--yes-i-really-mean-it'
         ]
 
-        cmd = ceph_pool.disable_application_pool(fake_cluster_name, self.fake_user_pool_config['pool_name']['value'], 'rbd', fake_user, fake_user_key, container_image=fake_container_image_name)
+        cmd = ceph_pool.disable_application_pool(fake_cluster_name,
+                                                 self.fake_user_pool_config['pool_name']['value'],
+                                                 'rbd', fake_user, fake_user_key,
+                                                 container_image=fake_container_image_name)
 
         assert cmd == expected_command
-
 
     def test_compare_pool_config_no_diff(self):
         delta = ceph_pool.compare_pool_config(self.fake_user_pool_config, self.fake_running_pool_details)
 
         assert delta == {}
-        
+
     def test_compare_pool_config_std_diff(self):
         self.fake_user_pool_config['size']['value'] = '3'
         delta = ceph_pool.compare_pool_config(self.fake_user_pool_config, self.fake_running_pool_details)
@@ -327,7 +340,6 @@ class TestCephPoolModule(object):
         delta = ceph_pool.compare_pool_config(self.fake_user_pool_config, self.fake_running_pool_details)
 
         assert delta == {'application': {'new_application': 'foo', 'old_application': 'rbd', 'value': 'foo'}}
-
 
     def test_list_pools_details(self):
         expected_command = [
@@ -392,7 +404,6 @@ class TestCephPoolModule(object):
 
         assert cmd == expected_command
 
-
     def test_create_replicated_pool(self):
         self.fake_user_pool_config['type']['value'] = 'replicated'
         expected_command = [
@@ -432,7 +443,10 @@ class TestCephPoolModule(object):
                 self.fake_user_pool_config['pg_autoscale_mode']['value']
         ]
 
-        cmd = ceph_pool.create_pool(fake_cluster_name, self.fake_user_pool_config['pool_name']['value'], fake_user, fake_user_key, self.fake_user_pool_config, container_image=fake_container_image_name)
+        cmd = ceph_pool.create_pool(fake_cluster_name,
+                                    self.fake_user_pool_config['pool_name']['value'],
+                                    fake_user, fake_user_key, self.fake_user_pool_config,
+                                    container_image=fake_container_image_name)
 
         assert cmd == expected_command
 
@@ -476,7 +490,10 @@ class TestCephPoolModule(object):
                 self.fake_user_pool_config['pg_autoscale_mode']['value']
         ]
 
-        cmd = ceph_pool.create_pool(fake_cluster_name, self.fake_user_pool_config['pool_name']['value'], fake_user, fake_user_key, self.fake_user_pool_config, container_image=fake_container_image_name)
+        cmd = ceph_pool.create_pool(fake_cluster_name,
+                                    self.fake_user_pool_config['pool_name']['value'],
+                                    fake_user, fake_user_key, self.fake_user_pool_config,
+                                    container_image=fake_container_image_name)
 
         assert cmd == expected_command
 
@@ -508,6 +525,7 @@ class TestCephPoolModule(object):
                 '--yes-i-really-really-mean-it'
         ]
 
-        cmd = ceph_pool.remove_pool(fake_cluster_name, self.fake_user_pool_config['pool_name']['value'], fake_user, fake_user_key, container_image=fake_container_image_name)
+        cmd = ceph_pool.remove_pool(fake_cluster_name, self.fake_user_pool_config['pool_name']['value'],
+                                    fake_user, fake_user_key, container_image=fake_container_image_name)
 
         assert cmd == expected_command
