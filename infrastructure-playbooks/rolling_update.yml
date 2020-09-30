@@ -469,8 +469,15 @@
           when: groups.get(mds_group_name, []) | length > 1
           block:
             - name: set max_mds 1 on ceph fs
-              command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds 1"
-              changed_when: false
+              ceph_fs:
+                name: "{{ cephfs }}"
+                cluster: "{{ cluster }}"
+                data: "{{ cephfs_data_pool.name }}"
+                metadata: "{{ cephfs_metadata_pool.name }}"
+                max_mds: 1
+              environment:
+                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+                CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
             - name: wait until only rank 0 is up
               command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs get {{ cephfs }} -f json"
@@ -618,9 +625,16 @@
         name: ceph-mds
 
     - name: set max_mds
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs set {{ cephfs }} max_mds {{ mds_max_mds }}"
-      changed_when: false
+      ceph_fs:
+        name: "{{ cephfs }}"
+        cluster: "{{ cluster }}"
+        max_mds: "{{ mds_max_mds }}"
+        data: "{{ cephfs_data_pool.name }}"
+        metadata: "{{ cephfs_metadata_pool.name }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       when: inventory_hostname == groups['standby_mdss'] | last
 
 
