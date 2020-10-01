@@ -1,7 +1,8 @@
 import sys
-sys.path.append('./library')
-import ceph_crush
 import pytest
+
+sys.path.append('./library')
+import ceph_crush  # noqa: E402
 
 
 class TestCephCrushModule(object):
@@ -19,14 +20,14 @@ class TestCephCrushModule(object):
             ("root", "maroute"),
         ]
         with pytest.raises(Exception):
-            result = ceph_crush.sort_osd_crush_location(location, None)
+            ceph_crush.sort_osd_crush_location(location, None)
 
     def test_lower_than_two_bucket(self):
         location = [
             ("chassis", "monchassis"),
         ]
         with pytest.raises(Exception):
-            result = ceph_crush.sort_osd_crush_location(location, None)
+            ceph_crush.sort_osd_crush_location(location, None)
 
     def test_invalid_bucket_type(self):
         location = [
@@ -35,7 +36,7 @@ class TestCephCrushModule(object):
             ("rackyyyyy", "monrack"),
         ]
         with pytest.raises(Exception):
-            result = ceph_crush.sort_osd_crush_location(location, None)
+            ceph_crush.sort_osd_crush_location(location, None)
 
     def test_ordering(self):
         expected_result = [
