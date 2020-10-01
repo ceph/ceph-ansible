@@ -1,11 +1,9 @@
-import json
 import os
 import sys
-sys.path.append('./library')
-import ceph_dashboard_user
-from mock.mock import patch, Mock, MagicMock
+from mock.mock import patch, MagicMock
 import pytest
-
+sys.path.append('./library')
+import ceph_dashboard_user  # noqa: E402
 
 fake_binary = 'ceph'
 fake_cluster = 'ceph'
