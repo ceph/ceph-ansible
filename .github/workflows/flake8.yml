@@ -1,25 +1,18 @@
 name: flake8
-on:
-  pull_request:
+on: [pull_request]
 jobs:
-  flake8:
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ '3.6', '3.7', '3.8' ]
+    name: Python ${{ matrix.python-version }}
     steps:
-      - uses: actions/checkout@v1
-      - uses: ricardochaves/python-lint@v1.3.0
+      - uses: actions/checkout@v2
+      - name: Setup python
+        uses: actions/setup-python@v2
         with:
-          python-root-list: "./library/"
-          use-pylint: false
-          use-pycodestyle: false
-          use-flake8: true
-          use-black: false
-          use-mypy: false
-          use-isort: false
-          extra-pylint-options: ""
-          extra-pycodestyle-options: ""
-          extra-flake8-options: "--max-line-length 160"
-          extra-black-options: ""
-          extra-mypy-options: ""
-          extra-isort-options: ""
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - run: pip install flake8
+      - run: flake8 --max-line-length 160 ./library/ ./tests/library/
