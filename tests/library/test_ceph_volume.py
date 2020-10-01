@@ -1,8 +1,8 @@
 import sys
-sys.path.append('./library')
-import ceph_volume
 import mock
 import os
+sys.path.append('./library')
+import ceph_volume  # noqa: E402
 
 
 # Python 3
