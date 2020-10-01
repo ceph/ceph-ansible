@@ -1,0 +1,18 @@
+name: ansible-lint
+on: [pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ '3.6', '3.7', '3.8' ]
+    name: Python ${{ matrix.python-version }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - run: pip install -r <(grep ansible tests/requirements.txt) ansible-lint
+      - run: ansible-lint -x 106,204,205,208 -v --force-color ./roles/*/ ./infrastructure-playbooks/*.yml site-container.yml.sample site-container.yml.sample
