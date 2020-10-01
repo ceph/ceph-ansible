@@ -1,9 +1,32 @@
 import json
 import os
 import sys
-sys.path.append('./library')
 import ceph_key
 import mock
+
+<<<<<<< HEAD
+=======
+sys.path.append('./library')
+
+
+# From ceph-ansible documentation
+def set_module_args(args):
+    if '_ansible_remote_tmp' not in args:
+        args['_ansible_remote_tmp'] = '/tmp'
+    if '_ansible_keep_remote_files' not in args:
+        args['_ansible_keep_remote_files'] = False
+
+    args = json.dumps({'ANSIBLE_MODULE_ARGS': args})
+    basic._ANSIBLE_ARGS = to_bytes(args)
+
+
+class AnsibleExitJson(Exception):
+    pass
+
+
+def exit_json(*args, **kwargs):
+    raise AnsibleExitJson(kwargs)
+>>>>>>> e49a5241f... flake8: fix all tests/library/*.py files
 
 
 @mock.patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'docker'})
@@ -77,6 +100,7 @@ class TestCephKeyModule(object):
         fake_key = "/tmp/my-key"
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-nautilus"
         expected_command_list = ['docker',
+<<<<<<< HEAD
             'run',
             '--rm',
             '--net=host',  # noqa E501
@@ -93,6 +117,24 @@ class TestCephKeyModule(object):
             fake_cluster,
             'auth',
             'arg']
+=======
+                                 'run',
+                                 '--rm',
+                                 '--net=host',  # noqa E501
+                                 '-v', '/etc/ceph:/etc/ceph:z',
+                                 '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
+                                 '--entrypoint=ceph',
+                                 'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                 '-n',
+                                 "fake-user",
+                                 '-k',
+                                 "/tmp/my-key",
+                                 '--cluster',
+                                 fake_cluster,
+                                 'auth',
+                                 'arg']
+>>>>>>> e49a5241f... flake8: fix all tests/library/*.py files
         result = ceph_key.generate_ceph_cmd(
             fake_cluster, fake_args, fake_user, fake_key, fake_container_image)
         assert result == expected_command_list
@@ -179,13 +221,13 @@ class TestCephKeyModule(object):
         fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         expected_command_list = [
-            ['ceph-authtool', '--create-keyring', fake_file_destination, '--name', fake_name,  # noqa E501
-                '--add-key', fake_secret, '--cap', 'mon', 'allow *', '--cap', 'osd', 'allow rwx'],  # noqa E501
-            ['ceph', '-n', 'client.admin', '-k', '/etc/ceph/fake.client.admin.keyring', '--cluster', fake_cluster, 'auth',  # noqa E501
+            ['ceph-authtool', '--create-keyring', fake_file_destination, '--name', fake_name,
+                '--add-key', fake_secret, '--cap', 'mon', 'allow *', '--cap', 'osd', 'allow rwx'],
+            ['ceph', '-n', 'client.admin', '-k', '/etc/ceph/fake.client.admin.keyring', '--cluster', fake_cluster, 'auth',
                 'import', '-i', fake_file_destination],
         ]
         result = ceph_key.create_key(fake_module, fake_result, fake_cluster,
-                                     fake_name, fake_secret, fake_caps, fake_import_key, fake_file_destination)  # noqa E501
+                                     fake_name, fake_secret, fake_caps, fake_import_key, fake_file_destination)
         assert result == expected_command_list
 
     def test_create_key_container(self):
@@ -204,6 +246,7 @@ class TestCephKeyModule(object):
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-nautilus"
         expected_command_list = [
+<<<<<<< HEAD
             ['docker',   # noqa E128
             'run',
             '--rm',
@@ -235,6 +278,38 @@ class TestCephKeyModule(object):
         ]
         result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_name,  # noqa E501
                                      fake_secret, fake_caps, fake_import_key, fake_file_destination, fake_container_image)  # noqa E501
+=======
+            ['docker',
+             'run',
+             '--rm',
+             '--net=host',
+             '-v', '/etc/ceph:/etc/ceph:z',
+             '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+             '-v', '/var/log/ceph/:/var/log/ceph/:z',
+             '--entrypoint=ceph-authtool',
+             'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+             '--create-keyring', fake_file_destination,
+             '--name', fake_name,
+             '--add-key', fake_secret,
+             '--cap', 'mon', 'allow *',
+             '--cap', 'osd', 'allow rwx'],
+            ['docker',
+             'run',
+             '--rm',
+             '--net=host',
+             '-v', '/etc/ceph:/etc/ceph:z',
+             '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+             '-v', '/var/log/ceph/:/var/log/ceph/:z',
+             '--entrypoint=ceph',
+             'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+             '-n', 'client.admin',
+             '-k', '/etc/ceph/fake.client.admin.keyring',
+             '--cluster', fake_cluster,
+             'auth', 'import',
+             '-i', fake_file_destination]]
+        result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_name,
+                                     fake_secret, fake_caps, fake_import_key, fake_file_destination, fake_container_image)
+>>>>>>> e49a5241f... flake8: fix all tests/library/*.py files
         assert result == expected_command_list
 
     def test_create_key_non_container_no_import(self):
@@ -286,6 +361,7 @@ class TestCephKeyModule(object):
         fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         # create_key passes (one for ceph-authtool and one for itself) itw own array so the expected result is an array within an array # noqa E501
+<<<<<<< HEAD
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-nautilus"
         expected_command_list = [['docker',   # noqa E128
                                  'run',
@@ -310,13 +386,39 @@ class TestCephKeyModule(object):
                                  'allow rwx']]
         result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_name,  # noqa E501
                                      fake_secret, fake_caps, fake_import_key, fake_file_destination, fake_container_image)  # noqa E501
+=======
+        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        expected_command_list = [['docker',
+                                  'run',
+                                  '--rm',
+                                  '--net=host',
+                                  '-v', '/etc/ceph:/etc/ceph:z',
+                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
+                                  '--entrypoint=ceph-authtool',
+                                  'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                  '--create-keyring',
+                                  fake_file_destination,
+                                  '--name',
+                                  fake_name,
+                                  '--add-key',
+                                  fake_secret,
+                                  '--cap',
+                                  'mon',
+                                  'allow *',
+                                  '--cap',
+                                  'osd',
+                                  'allow rwx']]
+        result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_name,
+                                     fake_secret, fake_caps, fake_import_key, fake_file_destination, fake_container_image)
+>>>>>>> e49a5241f... flake8: fix all tests/library/*.py files
         assert result == expected_command_list
 
     def test_delete_key_non_container(self):
         fake_cluster = "fake"
         fake_name = "client.fake"
         expected_command_list = [
-            ['ceph',  '-n', 'client.admin', '-k', '/etc/ceph/fake.client.admin.keyring',  # noqa E501
+            ['ceph',  '-n', 'client.admin', '-k', '/etc/ceph/fake.client.admin.keyring',
                 '--cluster', fake_cluster, 'auth', 'del', fake_name],
         ]
         result = ceph_key.delete_key(fake_cluster, fake_name)
@@ -325,6 +427,7 @@ class TestCephKeyModule(object):
     def test_delete_key_container(self):
         fake_cluster = "fake"
         fake_name = "client.fake"
+<<<<<<< HEAD
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-nautilus"
         expected_command_list = [['docker',   # noqa E128
                                  'run',
@@ -340,6 +443,22 @@ class TestCephKeyModule(object):
                                  '--cluster', fake_cluster,
                                  'auth', 'del', fake_name]
         ]
+=======
+        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        expected_command_list = [['docker',
+                                  'run',
+                                  '--rm',
+                                  '--net=host',
+                                  '-v', '/etc/ceph:/etc/ceph:z',
+                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
+                                  '--entrypoint=ceph',
+                                  'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                  '-n', 'client.admin',
+                                  '-k', '/etc/ceph/fake.client.admin.keyring',
+                                  '--cluster', fake_cluster,
+                                  'auth', 'del', fake_name]]
+>>>>>>> e49a5241f... flake8: fix all tests/library/*.py files
         result = ceph_key.delete_key(
             fake_cluster, fake_name, fake_container_image)
         assert result == expected_command_list
@@ -351,7 +470,7 @@ class TestCephKeyModule(object):
         fake_key = "/tmp/my-key"
         fake_output_format = "json"
         expected_command_list = [
-            ['ceph', '-n', "fake-user", '-k', "/tmp/my-key", '--cluster', fake_cluster, 'auth',  # noqa E501
+            ['ceph', '-n', "fake-user", '-k', "/tmp/my-key", '--cluster', fake_cluster, 'auth',
                 'get', fake_name, '-f', 'json'],
         ]
         result = ceph_key.info_key(
@@ -364,6 +483,7 @@ class TestCephKeyModule(object):
         fake_user = "fake-user"
         fake_key = "/tmp/my-key"
         fake_output_format = "json"
+<<<<<<< HEAD
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-nautilus"
         expected_command_list = [['docker',   # noqa E128
                                  'run',
@@ -380,8 +500,25 @@ class TestCephKeyModule(object):
                                  'auth', 'get', fake_name,
                                  '-f', 'json']
         ]
+=======
+        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        expected_command_list = [['docker',
+                                  'run',
+                                  '--rm',
+                                  '--net=host',
+                                  '-v', '/etc/ceph:/etc/ceph:z',
+                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
+                                  '--entrypoint=ceph',
+                                  'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                  '-n', "fake-user",
+                                  '-k', "/tmp/my-key",
+                                  '--cluster', fake_cluster,
+                                  'auth', 'get', fake_name,
+                                  '-f', 'json']]
+>>>>>>> e49a5241f... flake8: fix all tests/library/*.py files
         result = ceph_key.info_key(
-            fake_cluster, fake_name, fake_user, fake_key, fake_output_format, fake_container_image)  # noqa E501
+            fake_cluster, fake_name, fake_user, fake_key, fake_output_format, fake_container_image)
         assert result == expected_command_list
 
     def test_list_key_non_container(self):
@@ -402,6 +539,7 @@ class TestCephKeyModule(object):
         fake_dest = "/fake/ceph"
         fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
+<<<<<<< HEAD
         expected_command_list = [['docker',   # noqa E128
                                  'run',
                                  '--rm',
@@ -417,8 +555,24 @@ class TestCephKeyModule(object):
                                  'auth', 'get',
                                  fake_name, '-o', fake_file_destination],
         ]
+=======
+        expected_command_list = [['docker',
+                                  'run',
+                                  '--rm',
+                                  '--net=host',
+                                  '-v', '/etc/ceph:/etc/ceph:z',
+                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
+                                  '--entrypoint=ceph',
+                                  'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                  '-n', "client.admin",
+                                  '-k', "/etc/ceph/fake.client.admin.keyring",
+                                  '--cluster', fake_cluster,
+                                  'auth', 'get',
+                                  fake_name, '-o', fake_file_destination], ]
+>>>>>>> e49a5241f... flake8: fix all tests/library/*.py files
         result = ceph_key.get_key(
-            fake_cluster, fake_name, fake_file_destination, fake_container_image)  # noqa E501
+            fake_cluster, fake_name, fake_file_destination, fake_container_image)
         assert result == expected_command_list
 
     def test_get_key_non_container(self):
@@ -428,11 +582,11 @@ class TestCephKeyModule(object):
         fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         expected_command_list = [
-            ['ceph', '-n', "client.admin", '-k', "/etc/ceph/fake.client.admin.keyring",  # noqa E501
-                '--cluster', fake_cluster, 'auth', 'get', fake_name, '-o', fake_file_destination],  # noqa E501
+            ['ceph', '-n', "client.admin", '-k', "/etc/ceph/fake.client.admin.keyring",
+                '--cluster', fake_cluster, 'auth', 'get', fake_name, '-o', fake_file_destination],
         ]
         result = ceph_key.get_key(
-            fake_cluster, fake_name, fake_file_destination)  # noqa E501
+            fake_cluster, fake_name, fake_file_destination)
         assert result == expected_command_list
 
     def test_list_key_non_container_with_mon_key(self):
@@ -440,9 +594,9 @@ class TestCephKeyModule(object):
         fake_cluster = "fake"
         fake_user = "mon."
         fake_keyring_dirname = fake_cluster + "-" + fake_hostname
-        fake_key = os.path.join("/var/lib/ceph/mon/", fake_keyring_dirname, 'keyring') # noqa E501
+        fake_key = os.path.join("/var/lib/ceph/mon/", fake_keyring_dirname, 'keyring')
         expected_command_list = [
-            ['ceph', '-n', "mon.", '-k', "/var/lib/ceph/mon/fake-mon01/keyring",  # noqa E501
+            ['ceph', '-n', "mon.", '-k', "/var/lib/ceph/mon/fake-mon01/keyring",
                 '--cluster', fake_cluster, 'auth', 'ls', '-f', 'json'],
         ]
         result = ceph_key.list_keys(fake_cluster, fake_user, fake_key)
@@ -453,6 +607,7 @@ class TestCephKeyModule(object):
         fake_cluster = "fake"
         fake_user = "mon."
         fake_keyring_dirname = fake_cluster + "-" + fake_hostname
+<<<<<<< HEAD
         fake_key = os.path.join("/var/lib/ceph/mon/", fake_keyring_dirname, 'keyring') # noqa E501
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-nautilus"
         expected_command_list = [['docker',   # noqa E128
@@ -471,12 +626,32 @@ class TestCephKeyModule(object):
                                  '-f', 'json'],
         ]
         result = ceph_key.list_keys(fake_cluster, fake_user, fake_key, fake_container_image)  # noqa E501
+=======
+        fake_key = os.path.join("/var/lib/ceph/mon/", fake_keyring_dirname, 'keyring')
+        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        expected_command_list = [['docker',
+                                  'run',
+                                  '--rm',
+                                  '--net=host',
+                                  '-v', '/etc/ceph:/etc/ceph:z',
+                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
+                                  '--entrypoint=ceph',
+                                  'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                  '-n', "mon.",
+                                  '-k', "/var/lib/ceph/mon/fake-mon01/keyring",
+                                  '--cluster', fake_cluster,
+                                  'auth', 'ls',
+                                  '-f', 'json'], ]
+        result = ceph_key.list_keys(fake_cluster, fake_user, fake_key, fake_container_image)
+>>>>>>> e49a5241f... flake8: fix all tests/library/*.py files
         assert result == expected_command_list
 
     def test_list_key_container(self):
         fake_cluster = "fake"
         fake_user = "fake-user"
         fake_key = "/tmp/my-key"
+<<<<<<< HEAD
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-nautilus"
         expected_command_list = [['docker',   # noqa E128
                                  'run',
@@ -493,6 +668,23 @@ class TestCephKeyModule(object):
                                  'auth', 'ls',
                                  '-f', 'json'],
         ]
+=======
+        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        expected_command_list = [['docker',
+                                  'run',
+                                  '--rm',
+                                  '--net=host',
+                                  '-v', '/etc/ceph:/etc/ceph:z',
+                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
+                                  '--entrypoint=ceph',
+                                  'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                  '-n', "fake-user",
+                                  '-k', "/tmp/my-key",
+                                  '--cluster', fake_cluster,
+                                  'auth', 'ls',
+                                  '-f', 'json'], ]
+>>>>>>> e49a5241f... flake8: fix all tests/library/*.py files
         result = ceph_key.list_keys(
             fake_cluster, fake_user, fake_key, fake_container_image)
         assert result == expected_command_list
@@ -519,3 +711,28 @@ class TestCephKeyModule(object):
         expected_result = "/var/lib/ceph/bootstrap-osd/fake.keyring"
         result = ceph_key.build_key_path(fake_cluster, entity)
         assert result == expected_result
+<<<<<<< HEAD
+=======
+
+    @mock.patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @mock.patch('ceph_key.exec_commands')
+    def test_state_info(self, m_exec_commands, m_exit_json):
+        set_module_args({"state": "info",
+                         "cluster": "ceph",
+                         "name": "client.admin"}
+                        )
+        m_exit_json.side_effect = exit_json
+        m_exec_commands.return_value = (0,
+                                        ['ceph', 'auth', 'get', 'client.admin', '-f', 'json'],
+                                        '[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]',  # noqa: E501
+                                        'exported keyring for client.admin')
+
+        with pytest.raises(AnsibleExitJson) as result:
+            ceph_key.run_module()
+
+        result = result.value.args[0]
+        assert not result['changed']
+        assert result['stdout'] == '[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]'  # noqa: E501
+        assert result['stderr'] == 'exported keyring for client.admin'
+        assert result['rc'] == 0
+>>>>>>> e49a5241f... flake8: fix all tests/library/*.py files
