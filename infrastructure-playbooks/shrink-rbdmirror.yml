@@ -69,6 +69,7 @@
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} service dump -f json"
       register: ceph_health
+      changed_when: false
       until: ceph_health is succeeded
       retries: 5
       delay: 2
@@ -120,3 +121,4 @@
 
     - name: show ceph health
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s"
+      changed_when: false

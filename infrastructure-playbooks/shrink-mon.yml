@@ -82,6 +82,7 @@
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd }} timeout 5 ceph --cluster {{ cluster }} health"
       register: ceph_health
+      changed_when: false
       until: ceph_health.stdout.find("HEALTH") > -1
       delegate_to: "{{ mon_host }}"
       retries: 5
@@ -107,6 +108,7 @@
 
     - name: remove monitor from the quorum
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mon remove {{ mon_to_kill_hostname }}"
+      changed_when: false
       failed_when: false
       delegate_to: "{{ mon_host }}"
 
@@ -114,6 +116,7 @@
     - name: verify the monitor is out of the cluster
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} quorum_status -f json"
       delegate_to: "{{ mon_host }}"
+      changed_when: false
       failed_when: false
       register: result
       until: mon_to_kill_hostname not in (result.stdout | from_json)['quorum_names']
@@ -136,7 +139,9 @@
     - name: show ceph health
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} -s"
       delegate_to: "{{ mon_host }}"
+      changed_when: false
 
     - name: show ceph mon status
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mon stat"
       delegate_to: "{{ mon_host }}"
+      changed_when: false

@@ -137,6 +137,7 @@
     - name: waiting for the monitor to join the quorum...
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} quorum_status --format json"
       register: ceph_health_raw
+      changed_when: false
       until: >
         hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
       retries: "{{ health_mon_check_retries }}"
@@ -341,6 +342,7 @@
         {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} pg stat --format json
       register: ceph_pgs
       delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
 
     - name: container - waiting for clean pgs...
       command: >
@@ -354,6 +356,7 @@
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
       when: (ceph_pgs.stdout | from_json).pg_summary.num_pgs != 0
+      changed_when: false
 
 
 - name: unset osd flags
