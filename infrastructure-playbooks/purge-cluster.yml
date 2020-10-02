@@ -87,6 +87,7 @@
 
     - name: ensure cephfs mountpoint(s) are unmounted
       command: umount -a -t ceph
+      changed_when: false
 
     - name: find mapped rbd ids
       find:
@@ -96,6 +97,7 @@
 
     - name: use sysfs to unmap rbd devices
       shell: "echo {{ item.path | basename }} > /sys/bus/rbd/remove_single_major"
+      changed_when: false
       with_items: "{{ rbd_mapped_ids.files }}"
 
     - name: unload ceph kernel modules
@@ -415,6 +417,7 @@
       blkid -t TYPE=crypto_LUKS -s PARTLABEL -s PARTUUID | grep "ceph.*." | grep -o PARTUUID.* | cut -d '"' -f 2
     register: encrypted_ceph_partuuid
     failed_when: false
+    changed_when: false
 
   - name: get osd data and lockbox mount points
     shell: |
@@ -425,9 +428,12 @@
 
   - name: drop all cache
     shell: "sync && sleep 1 && echo 3 > /proc/sys/vm/drop_caches"
+    changed_when: false
 
   - name: umount osd data partition
-    shell: umount {{ item }}
+    mount:
+      path: "{{ item }}"
+      state: unmounted
     with_items: "{{ mounted_osd.stdout_lines }}"
 
   - name: remove osd mountpoint tree
@@ -470,12 +476,14 @@
 
   - name: get physical sector size
     command: blockdev --getpbsz /dev/disk/by-partuuid/{{ item }}
+    changed_when: false
     with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
     when: encrypted_ceph_partuuid.stdout_lines | length > 0
     register: phys_sector_size
 
   - name: wipe dmcrypt device
     command: dd if=/dev/zero of=/dev/disk/by-partuuid/{{ item.0 }} bs={{ item.1.stdout }} count={{ item.2.stdout }} oflag=direct
+    changed_when: false
     with_together:
       - "{{ encrypted_ceph_partuuid.stdout_lines }}"
       - "{{ payload_offset.results }}"
@@ -484,17 +492,20 @@
   - name: get ceph data partitions
     shell: |
       blkid -o device -t PARTLABEL="ceph data"
+    changed_when: false
     failed_when: false
     register: ceph_data_partition_to_erase_path
 
   - name: get ceph lockbox partitions
     shell: |
       blkid -o device -t PARTLABEL="ceph lockbox"
+    changed_when: false
     failed_when: false
     register: ceph_lockbox_partition_to_erase_path
 
   - name: see if ceph-volume is installed
     command: command -v ceph-volume
+    changed_when: false
     failed_when: false
     register: ceph_volume_present
 
@@ -530,24 +541,28 @@
   - name: get ceph block partitions
     shell: |
       blkid -o device -t PARTLABEL="ceph block"
+    changed_when: false
     failed_when: false
     register: ceph_block_partition_to_erase_path
 
   - name: get ceph journal partitions
     shell: |
       blkid -o device -t PARTLABEL="ceph journal"
+    changed_when: false
     failed_when: false
     register: ceph_journal_partition_to_erase_path
 
   - name: get ceph db partitions
     shell: |
       blkid -o device -t PARTLABEL="ceph block.db"
+    changed_when: false
     failed_when: false
     register: ceph_db_partition_to_erase_path
 
   - name: get ceph wal partitions
     shell: |
       blkid -o device -t PARTLABEL="ceph block.wal"
+    changed_when: false
     failed_when: false
     register: ceph_wal_partition_to_erase_path
 
@@ -563,6 +578,7 @@
   - name: resolve parent device
     command: lsblk --nodeps -no pkname "{{ item }}"
     register: tmp_resolved_parent_device
+    changed_when: false
     with_items: "{{ combined_devices_list }}"
 
   - name: set_fact resolved_parent_device
@@ -574,6 +590,7 @@
       set -o pipefail;
       wipefs --all "{{ item }}"
       dd if=/dev/zero of="{{ item }}" bs=1 count=4096
+    changed_when: false
     with_items: "{{ combined_devices_list }}"
 
   - name: zap ceph journal/block db/block wal partitions
@@ -592,6 +609,7 @@
       partprobe /dev/"{{ item }}"
       udevadm settle --timeout=600
     with_items: "{{ resolved_parent_device }}"
+    changed_when: false
 
 - name: purge ceph mon cluster
 
@@ -809,7 +827,7 @@
   - name: request data removal
     local_action:
       module: command
-        echo requesting data removal
+        echo requesting data removal  # noqa 301
     become: false
     notify: remove data
 
@@ -839,6 +857,7 @@
   - name: check for anything running ceph
     command: "ps -u ceph -U ceph"
     register: check_for_running_ceph
+    changed_when: false
     failed_when: check_for_running_ceph.rc == 0
 
   - name: find ceph systemd unit files to remove

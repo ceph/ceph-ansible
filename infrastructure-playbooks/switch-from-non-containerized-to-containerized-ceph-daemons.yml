@@ -137,6 +137,7 @@
     - name: waiting for the monitor to join the quorum...
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} quorum_status --format json"
       register: ceph_health_raw
+      changed_when: false
       until: >
         hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
       retries: "{{ health_mon_check_retries }}"
@@ -212,6 +213,7 @@
 
     - name: set osd flags
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set {{ item }}"
+      changed_when: false
       with_items:
         - noout
         - nodeep-scrub
@@ -338,6 +340,7 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
+      changed_when: false
 
 
 - name: unset osd flags
@@ -352,6 +355,7 @@
 
     - name: set osd flags
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset {{ item }}"
+      changed_when: false
       with_items:
         - noout
         - nodeep-scrub
