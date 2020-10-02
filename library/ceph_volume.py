@@ -691,6 +691,8 @@ def run_module():
         rc, cmd, out, err = exec_command(
             module, batch_report_cmd)
         try:
+            if not out:
+                out = '{}'
             report_result = json.loads(out)
         except ValueError:
             strategy_changed_in_out = "strategy changed" in out
