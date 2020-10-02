@@ -366,13 +366,13 @@
 
   - name: wait for server to boot
     become: false
-    local_action:
-      module: wait_for
+    wait_for:
       port: 22
       host: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
       state: started
       delay: 10
       timeout: 500
+      delegate_to: localhost
 
   - name: remove data
     shell: rm -rf /var/lib/ceph/*
@@ -444,9 +444,8 @@
     ignore_errors: true
 
   - name: is reboot needed
-    local_action:
-      module: command
-        echo requesting reboot
+    command: echo requesting reboot
+    delegate_to: localhost
     become: false
     notify:
       - restart machine
@@ -827,10 +826,9 @@
      state: absent
 
   - name: request data removal
-    local_action:
-      module: command
-        echo requesting data removal  # noqa 301
+    command: echo requesting data removal  # noqa 301
     become: false
+    delegate_to: localhost
     notify: remove data
 
   - name: purge dnf cache
