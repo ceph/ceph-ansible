@@ -345,6 +345,7 @@
 
     - name: set osd flags
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set {{ item }}"
+      changed_when: false
       with_items:
         - noout
         - nodeep-scrub
@@ -415,6 +416,7 @@
 
     - name: get num_pgs - non container
       command: "{{ container_exec_cmd_update_osd|default('') }} ceph --cluster {{ cluster }} pg stat --format json"
+      changed_when: false
       register: ceph_pgs
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
@@ -448,6 +450,7 @@
 
     - name: unset osd flags
       command: "{{ container_exec_cmd_update_osd | default('') }} ceph osd unset {{ item }} --cluster {{ cluster }}"
+      changed_when: false
       with_items:
         - noout
         - nodeep-scrub
@@ -979,6 +982,7 @@
 
     - name: show ceph status
       command: "{{ container_exec_cmd_status|default('') }} ceph --cluster {{ cluster }} -s"
+      changed_when: false
       run_once: True
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
@@ -986,3 +990,4 @@
       command: "{{ container_exec_cmd_status|default('') }} ceph --cluster {{ cluster }} versions"
       run_once: True
       delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false

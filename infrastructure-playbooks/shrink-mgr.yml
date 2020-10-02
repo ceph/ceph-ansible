@@ -44,6 +44,7 @@
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} health"
       register: ceph_health
+      changed_when: false
       until: ceph_health is succeeded
       retries: 5
       delay: 2
@@ -115,6 +116,7 @@
     - name: fail if the mgr is reported in ceph mgr dump
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} mgr dump -f json"
       register: mgr_dump
+      changed_when: false
       failed_when: mgr_to_kill_hostname in (([mgr_dump.stdout | from_json] | map(attribute='active_name') | list) + (mgr_dump.stdout | from_json)['standbys'] | map(attribute='name') | list)
       until: mgr_to_kill_hostname not in (([mgr_dump.stdout | from_json] | map(attribute='active_name') | list) + (mgr_dump.stdout | from_json)['standbys'] | map(attribute='name') | list)
       retries: 12
@@ -129,3 +131,4 @@
   post_tasks:
     - name: show ceph health
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s"
+      changed_when: false

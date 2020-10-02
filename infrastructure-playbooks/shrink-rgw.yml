@@ -71,6 +71,7 @@
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} health"
       register: ceph_health
+      changed_when: false
       until: ceph_health is succeeded
       retries: 5
       delay: 2
@@ -78,6 +79,7 @@
     - name: get rgw instances
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
       register: rgw_instances
+      changed_when: false
 
 
     - name: exit playbook, if the rgw_to_kill doesn't exist
@@ -106,6 +108,7 @@
       command: "systemctl is-active ceph-radosgw@rgw.{{ rgw_to_kill }}"
       register: rgw_to_kill_status
       failed_when: rgw_to_kill_status.rc == 0
+      changed_when: false
       delegate_to: "{{ rgw_host }}"
       retries: 5
       delay: 2
@@ -113,6 +116,7 @@
     - name: exit if rgw_to_kill is reported in ceph status
       command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
       register: ceph_status
+      changed_when: false
       failed_when:
         - (ceph_status.stdout | from_json).services.rgw is defined
         - rgw_to_kill in (ceph_status.stdout | from_json).services.rgw.daemons.keys() | list
@@ -130,3 +134,4 @@
   post_tasks:
     - name: show ceph health
       command: "{{ container_exec_cmd | default('')}} ceph --cluster {{ cluster }} -s"
+      changed_when: false
