@@ -71,6 +71,7 @@
 
     - name: ensure cephfs mountpoint are unmounted
       command: umount -a -t ceph
+      changed_when: false
 
     - name: find mapped rbd ids
       find:
@@ -80,6 +81,7 @@
 
     - name: use sysfs to unmap rbd devices
       shell: "echo {{ item.path | basename }} > /sys/bus/rbd/remove_single_major"
+      changed_when: false
       with_items: "{{ rbd_mapped_ids.files }}"
 
     - name: unload ceph kernel modules
@@ -268,6 +270,7 @@
     shell: |
       systemctl list-units --all | grep -oE "ceph-osd@([0-9]+).service"
     register: osd_units
+    changed_when: false
     ignore_errors: true
 
   - name: disable ceph osd service
@@ -576,6 +579,7 @@
 
     - name: remove ceph container image
       command: "{{ container_binary }} rmi {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      changed_when: false
       tags:
         - remove_img
 
@@ -668,6 +672,7 @@
 
   - name: remove ceph data
     shell: rm -rf /var/lib/ceph/*
+    changed_when: false
 
   # (todo): remove this when we are able to manage docker
   # service on atomic host.
