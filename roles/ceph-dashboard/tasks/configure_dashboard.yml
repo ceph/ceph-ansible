@@ -91,6 +91,12 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
 
+    - name: disable redirect mechanism of the dashboard
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/standby_behaviour error"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      when: dashboard_frontend_vip is defined and dashboard_frontend_vip |length > 0
+
 - name: "set the dashboard port ({{ dashboard_port }})"
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/server_port {{ dashboard_port }}"
   changed_when: false
