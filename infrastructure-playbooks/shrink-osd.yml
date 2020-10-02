@@ -75,12 +75,14 @@
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd }} timeout 5 ceph --cluster {{ cluster }} health"
       register: ceph_health
+      changed_when: false
       until: ceph_health.stdout.find("HEALTH") > -1
       retries: 5
       delay: 2
 
     - name: find the host(s) where the osd(s) is/are running on
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd find {{ item }}"
+      changed_when: false
       with_items: "{{ osd_to_kill.split(',') }}"
       register: find_osd_hosts
 
@@ -99,6 +101,7 @@
 
     - name: get ceph-volume lvm list data
       command: "{{ container_run_cmd }} lvm list --format json"
+      changed_when: false
       register: _lvm_list_data
       delegate_to: "{{ item.0 }}"
       loop: "{{ _osd_hosts }}"
@@ -135,6 +138,7 @@
 
     - name: mark osd(s) out of the cluster
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ osd_to_kill.replace(',', ' ') }}"
+      changed_when: false
       run_once: true
 
     - name: stop osd(s) service
@@ -220,11 +224,13 @@
 
     - name: ensure osds are marked down
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd down {{ osd_to_kill.replace(',', ' ') }}"
+      changed_when: false
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: purge osd(s) from the cluster
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it"
+      changed_when: false
       run_once: true
       with_items: "{{ osd_to_kill.split(',') }}"
 
@@ -237,6 +243,8 @@
 
     - name: show ceph health
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} -s"
+      changed_when: false
 
     - name: show ceph osd tree
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd tree"
+      changed_when: false
