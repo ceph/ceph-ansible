@@ -1,13 +1,13 @@
 import json
 import os
 import sys
-import ceph_key
 import mock
 import pytest
 from ansible.module_utils import basic
 from ansible.module_utils._text import to_bytes
 
 sys.path.append('./library')
+import ceph_key  # noqa: E402
 
 
 # From ceph-ansible documentation
@@ -42,10 +42,8 @@ class TestCephKeyModule(object):
             'mon': 'allow *',
             'osd': 'allow rwx',
         }
-        fake_cmd = ['ceph']
         fake_type = "ceph-authtool"
         expected_command_list = [
-            'ceph',
             '--cap',
             'mon',
             'allow *',
@@ -53,7 +51,7 @@ class TestCephKeyModule(object):
             'osd',
             'allow rwx'
         ]
-        result = ceph_key.generate_caps(fake_cmd, fake_type, fake_caps)
+        result = ceph_key.generate_caps(fake_type, fake_caps)
         assert result == expected_command_list
 
     def test_generate_caps_not_ceph_authtool(self):
@@ -61,16 +59,14 @@ class TestCephKeyModule(object):
             'mon': 'allow *',
             'osd': 'allow rwx',
         }
-        fake_cmd = ['ceph']
         fake_type = ""
         expected_command_list = [
-            'ceph',
             'mon',
             'allow *',
             'osd',
             'allow rwx'
         ]
-        result = ceph_key.generate_caps(fake_cmd, fake_type, fake_caps)
+        result = ceph_key.generate_caps(fake_type, fake_caps)
         assert result == expected_command_list
 
     def test_generate_ceph_cmd_list_non_container(self):
@@ -189,6 +185,8 @@ class TestCephKeyModule(object):
 
     def test_create_key_non_container(self):
         fake_module = "fake"
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_result = " fake"
         fake_cluster = "fake"
         fake_name = "client.fake"
@@ -204,15 +202,17 @@ class TestCephKeyModule(object):
         expected_command_list = [
             ['ceph-authtool', '--create-keyring', fake_file_destination, '--name', fake_name,
                 '--add-key', fake_secret, '--cap', 'mon', 'allow *', '--cap', 'osd', 'allow rwx'],
-            ['ceph', '-n', 'client.admin', '-k', '/etc/ceph/fake.client.admin.keyring', '--cluster', fake_cluster, 'auth',
+            ['ceph', '-n', fake_user, '-k', fake_user_key, '--cluster', fake_cluster, 'auth',
                 'import', '-i', fake_file_destination],
         ]
-        result = ceph_key.create_key(fake_module, fake_result, fake_cluster,
+        result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_user, fake_user_key,
                                      fake_name, fake_secret, fake_caps, fake_import_key, fake_file_destination)
         assert result == expected_command_list
 
     def test_create_key_container(self):
         fake_module = "fake"
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_result = "fake"
         fake_cluster = "fake"
         fake_name = "client.fake"
@@ -255,12 +255,14 @@ class TestCephKeyModule(object):
              '--cluster', fake_cluster,
              'auth', 'import',
              '-i', fake_file_destination]]
-        result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_name,
+        result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_user, fake_user_key, fake_name,
                                      fake_secret, fake_caps, fake_import_key, fake_file_destination, fake_container_image)
         assert result == expected_command_list
 
     def test_create_key_non_container_no_import(self):
         fake_module = "fake"
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_result = "fake"
         fake_cluster = "fake"
         fake_name = "client.fake"
@@ -289,12 +291,14 @@ class TestCephKeyModule(object):
             'osd',
             'allow rwx', ]
         ]
-        result = ceph_key.create_key(fake_module, fake_result, fake_cluster,
+        result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_user, fake_user_key,
                                      fake_name, fake_secret, fake_caps, fake_import_key, fake_file_destination)  # noqa E501
         assert result == expected_command_list
 
     def test_create_key_container_no_import(self):
         fake_module = "fake"
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_result = "fake"
         fake_cluster = "fake"
         fake_name = "client.fake"
@@ -309,7 +313,7 @@ class TestCephKeyModule(object):
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         # create_key passes (one for ceph-authtool and one for itself) itw own array so the expected result is an array within an array # noqa E501
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
-        expected_command_list = [['docker',
+        expected_command_list = [['docker',   # noqa E128
                                   'run',
                                   '--rm',
                                   '--net=host',
@@ -330,21 +334,25 @@ class TestCephKeyModule(object):
                                   '--cap',
                                   'osd',
                                   'allow rwx']]
-        result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_name,
+        result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_user, fake_user_key, fake_name,
                                      fake_secret, fake_caps, fake_import_key, fake_file_destination, fake_container_image)
         assert result == expected_command_list
 
     def test_delete_key_non_container(self):
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_cluster = "fake"
         fake_name = "client.fake"
         expected_command_list = [
             ['ceph',  '-n', 'client.admin', '-k', '/etc/ceph/fake.client.admin.keyring',
                 '--cluster', fake_cluster, 'auth', 'del', fake_name],
         ]
-        result = ceph_key.delete_key(fake_cluster, fake_name)
+        result = ceph_key.delete_key(fake_cluster, fake_user, fake_user_key, fake_name)
         assert result == expected_command_list
 
     def test_delete_key_container(self):
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_cluster = "fake"
         fake_name = "client.fake"
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
@@ -362,31 +370,32 @@ class TestCephKeyModule(object):
                                   '--cluster', fake_cluster,
                                   'auth', 'del', fake_name]]
         result = ceph_key.delete_key(
-            fake_cluster, fake_name, fake_container_image)
+            fake_cluster, fake_user, fake_user_key, fake_name, fake_container_image)
         assert result == expected_command_list
 
     def test_info_key_non_container(self):
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_cluster = "fake"
         fake_name = "client.fake"
         fake_user = "fake-user"
-        fake_key = "/tmp/my-key"
         fake_output_format = "json"
         expected_command_list = [
-            ['ceph', '-n', "fake-user", '-k', "/tmp/my-key", '--cluster', fake_cluster, 'auth',
+            ['ceph', '-n', fake_user, '-k', fake_user_key, '--cluster', fake_cluster, 'auth',
                 'get', fake_name, '-f', 'json'],
         ]
         result = ceph_key.info_key(
-            fake_cluster, fake_name, fake_user, fake_key, fake_output_format)
+            fake_cluster, fake_name, fake_user, fake_user_key, fake_output_format)
         assert result == expected_command_list
 
     def test_info_key_container(self):
         fake_cluster = "fake"
         fake_name = "client.fake"
-        fake_user = "fake-user"
-        fake_key = "/tmp/my-key"
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_output_format = "json"
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
-        expected_command_list = [['docker',
+        expected_command_list = [['docker',   # noqa E128
                                   'run',
                                   '--rm',
                                   '--net=host',
@@ -395,13 +404,13 @@ class TestCephKeyModule(object):
                                   '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                   '--entrypoint=ceph',
                                   'quay.ceph.io/ceph-ci/daemon:latest-luminous',
-                                  '-n', "fake-user",
-                                  '-k', "/tmp/my-key",
+                                  '-n', fake_user,
+                                  '-k', fake_user_key,
                                   '--cluster', fake_cluster,
                                   'auth', 'get', fake_name,
                                   '-f', 'json']]
         result = ceph_key.info_key(
-            fake_cluster, fake_name, fake_user, fake_key, fake_output_format, fake_container_image)
+            fake_cluster, fake_name, fake_user, fake_user_key, fake_output_format, fake_container_image)  # noqa E501
         assert result == expected_command_list
 
     def test_list_key_non_container(self):
@@ -417,12 +426,14 @@ class TestCephKeyModule(object):
 
     def test_get_key_container(self):
         fake_cluster = "fake"
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_name = "client.fake"
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
         fake_dest = "/fake/ceph"
         fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
-        expected_command_list = [['docker',
+        expected_command_list = [['docker',   # noqa E128
                                   'run',
                                   '--rm',
                                   '--net=host',
@@ -431,27 +442,29 @@ class TestCephKeyModule(object):
                                   '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                   '--entrypoint=ceph',
                                   'quay.ceph.io/ceph-ci/daemon:latest-luminous',
-                                  '-n', "client.admin",
-                                  '-k', "/etc/ceph/fake.client.admin.keyring",
+                                  '-n', fake_user,
+                                  '-k', fake_user_key,
                                   '--cluster', fake_cluster,
                                   'auth', 'get',
-                                  fake_name, '-o', fake_file_destination], ]
+                                  fake_name, '-o', fake_file_destination]]
         result = ceph_key.get_key(
-            fake_cluster, fake_name, fake_file_destination, fake_container_image)
+            fake_cluster, fake_user, fake_user_key, fake_name, fake_file_destination, fake_container_image)
         assert result == expected_command_list
 
     def test_get_key_non_container(self):
         fake_cluster = "fake"
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_dest = "/fake/ceph"
         fake_name = "client.fake"
         fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         expected_command_list = [
-            ['ceph', '-n', "client.admin", '-k', "/etc/ceph/fake.client.admin.keyring",
+            ['ceph', '-n', fake_user, '-k', fake_user_key,
                 '--cluster', fake_cluster, 'auth', 'get', fake_name, '-o', fake_file_destination],
         ]
         result = ceph_key.get_key(
-            fake_cluster, fake_name, fake_file_destination)
+            fake_cluster, fake_user, fake_user_key, fake_name, fake_file_destination)
         assert result == expected_command_list
 
     def test_list_key_non_container_with_mon_key(self):
