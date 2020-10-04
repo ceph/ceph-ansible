@@ -14,6 +14,7 @@ def str_to_bool(val):
     else:
         raise ValueError("Invalid input value: %s" % val)
 
+
 @pytest.fixture(scope="module")
 def setup(host):
     cluster_address = ""
@@ -27,7 +28,6 @@ def setup(host):
     container_binary = ansible_vars.get("container_binary", "")
     osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
     group_names = ansible_vars["group_names"]
-    fsid = ansible_vars.get("fsid")
 
     ansible_distribution = ansible_facts["ansible_facts"]["ansible_distribution"]
 
@@ -81,6 +81,7 @@ def setup(host):
         container_binary=container_binary)
 
     return data
+
 
 @pytest.fixture()
 def node(host, request):

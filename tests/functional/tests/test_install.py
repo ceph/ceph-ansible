@@ -30,6 +30,7 @@ class TestCephConf(object):
                 result = False
             assert result
 
+
 class TestCephCrash(object):
     @pytest.mark.no_docker
     @pytest.mark.ceph_crash
