@@ -92,23 +92,6 @@
   include_tasks: crush_rules.yml
   when: hostvars[groups[mon_group_name][0]]['crush_rule_config'] | default(crush_rule_config) | bool
 
-- name: set_fact openstack_keys_tmp - preserve backward compatibility after the introduction of the ceph_keys module
-  set_fact:
-    openstack_keys_tmp: "{{ openstack_keys_tmp|default([]) + [ { 'key': item.key, 'name': item.name, 'caps': { 'mon': item.mon_cap, 'osd': item.osd_cap|default(''), 'mds': item.mds_cap|default(''), 'mgr': item.mgr_cap|default('') } , 'mode': item.mode } ] }}"
-  with_items: "{{ openstack_keys }}"
-  when:
-    - not add_osd | bool
-    - openstack_config | bool
-    - item.get('mon_cap', None)
-    # it's enough to assume we are running an old-fashionned syntax simply by checking the presence of mon_cap since every key needs this cap
-
-- name: set_fact keys - override keys_tmp with keys
-  set_fact:
-    openstack_keys: "{{ openstack_keys_tmp }}"
-  when:
-    - not add_osd | bool
-    - openstack_keys_tmp is defined
-
 # Create the pools listed in openstack_pools
 - name: include openstack_config.yml
   include_tasks: openstack_config.yml
