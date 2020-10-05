@@ -1,15 +1,4 @@
 ---
-- name: set_fact keys_tmp - preserve backward compatibility after the introduction of the ceph_keys module
-  set_fact:
-    keys_tmp: "{{ keys_tmp|default([]) + [ { 'key': item.key, 'name': item.name, 'caps': { 'mon': item.mon_cap, 'osd': item.osd_cap|default(''), 'mds': item.mds_cap|default(''), 'mgr': item.mgr_cap|default('') } , 'mode': item.mode } ] }}"
-  when: item.get('mon_cap', None) # it's enough to assume we are running an old-fashionned syntax simply by checking the presence of mon_cap since every key needs this cap
-  with_items: "{{ keys }}"
-
-- name: set_fact keys - override keys_tmp with keys
-  set_fact:
-    keys: "{{ keys_tmp }}"
-  when: keys_tmp is defined
-
 # dummy container setup is only supported on x86_64
 # when running with containerized_deployment: true this task
 # creates a group that contains only x86_64 hosts.

@@ -259,3 +259,23 @@
     - keys | length > 0
     - item.key is defined
     - item.key is not match("^[a-zA-Z0-9+/]{38}==$")
+
+- name: validate openstack_keys caps
+  fail:
+    msg: '{{ item.name }} key has no caps defined'
+  with_items: '{{ openstack_keys }}'
+  when:
+    - osd_group_name in group_names
+    - openstack_keys is defined
+    - openstack_keys | length > 0
+    - item.caps is not defined
+
+- name: validate clients keys caps
+  fail:
+    msg: '{{ item.name }} key has no caps defined'
+  with_items: '{{ keys }}'
+  when:
+    - client_group_name in group_names
+    - keys is defined
+    - keys | length > 0
+    - item.caps is not defined
