@@ -89,92 +89,30 @@
       - devices | default([]) | length > 0
       - not (lvm_batch_report.stdout | default('{}') | from_json).changed | default(false) | bool
 
-# ceph-common
-- name: config file operation for non-containerized scenarios
+- name: create ceph conf directory
+  file:
+    path: "/etc/ceph"
+    state: directory
+    owner: "ceph"
+    group: "ceph"
+    mode: "{{ ceph_directories_mode }}"
   when: not containerized_deployment | bool
-  block:
-  - name: create ceph conf directory
-    file:
-      path: "/etc/ceph"
-      state: directory
-      owner: "ceph"
-      group: "ceph"
-      mode: "{{ ceph_directories_mode }}"
 
-  - name: "generate ceph configuration file: {{ cluster }}.conf"
-    action: config_template
-    args:
-      src: ceph.conf.j2
-      dest: /etc/ceph/{{ cluster }}.conf
-      owner: "ceph"
-      group: "ceph"
-      mode: "0644"
-      config_overrides: "{{ ceph_conf_overrides }}"
-      config_type: ini
-    notify:
-      - restart ceph mons
-      - restart ceph osds
-      - restart ceph mdss
-      - restart ceph rgws
-      - restart ceph mgrs
-      - restart ceph rbdmirrors
-      - restart ceph rbd-target-api-gw
-
-  - name: "ensure fetch directory exists"
-    run_once: true
-    become: false
-    file:
-      path: "{{ fetch_directory }}/{{ fsid }}/etc/ceph"
-      state: directory
-      mode: "{{ ceph_directories_mode }}"
-    delegate_to: localhost
-    when: ceph_conf_local | bool
-
-  - name: "generate {{ cluster }}.conf configuration file locally"
-    config_template:
-    become: false
-    run_once: true
-    delegate_to: localhost
-    args:
-      src: "ceph.conf.j2"
-      dest: "{{ fetch_directory }}/{{ fsid }}/etc/ceph/{{ cluster }}.conf"
-      config_overrides: "{{ ceph_conf_overrides }}"
-      config_type: ini
-    when:
-      - inventory_hostname in groups.get(mon_group_name, [])
-      - ceph_conf_local | bool
-
-- name: config file operations for containerized scenarios
-  when: containerized_deployment | bool
-  block:
-  - name: create a local fetch directory if it does not exist
-    file:
-      path: "{{ fetch_directory }}"
-      state: directory
-    delegate_to: localhost
-    changed_when: false
-    become: false
-    run_once: true
-    when:
-      - (cephx or generate_fsid) | bool
-      - ((inventory_hostname in groups.get(mon_group_name, [])) or
-        (groups.get(nfs_group_name, []) | length > 0) and inventory_hostname == groups.get(nfs_group_name, [])[0])
-
-  - name: "generate {{ cluster }}.conf configuration file"
-    action: config_template
-    args:
-      src: "ceph.conf.j2"
-      dest: "{{ ceph_conf_key_directory }}/{{ cluster }}.conf"
-      owner: "root"
-      group: "root"
-      mode: "0644"
-      config_overrides: "{{ ceph_conf_overrides }}"
-      config_type: ini
-    notify:
-      - restart ceph mons
-      - restart ceph osds
-      - restart ceph mdss
-      - restart ceph rgws
-      - restart ceph mgrs
-      - restart ceph rbdmirrors
-      - restart ceph rbd-target-api-gw
+- name: "generate {{ cluster }}.conf configuration file"
+  action: config_template
+  args:
+    src: "ceph.conf.j2"
+    dest: "{{ ceph_conf_key_directory }}/{{ cluster }}.conf"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    mode: "0644"
+    config_overrides: "{{ ceph_conf_overrides }}"
+    config_type: ini
+  notify:
+    - restart ceph mons
+    - restart ceph osds
+    - restart ceph mdss
+    - restart ceph rgws
+    - restart ceph mgrs
+    - restart ceph rbdmirrors
+    - restart ceph rbd-target-api-gw
