@@ -21,9 +21,6 @@ runs of ``ceph-ansible``.
 
 The following environent variables are available for use:
 
-* ``FETCH_DIRECTORY`` : (default: ``changedir``) This would configure the ``ceph-ansible`` variable ``fetch_directory``. This defaults to
-  the ``changedir`` of the given scenario and should not need to be changed.
-
 * ``CEPH_STABLE_RELEASE``: (default: ``jewel``) This would configure the ``ceph-ansible`` variable ``ceph_stable_relese``. This is set
   automatically when using the ``jewel-*`` or ``kraken-*`` testing scenarios.
 
