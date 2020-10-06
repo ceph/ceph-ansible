@@ -124,15 +124,6 @@
       rc: 1
   when: rolling_update | bool or groups.get(mon_group_name, []) | length == 0
 
-- name: create a local fetch directory if it does not exist
-  file:
-    path: "{{ fetch_directory }}"
-    state: directory
-  delegate_to: localhost
-  changed_when: false
-  become: false
-  when: cephx | bool or generate_fsid | bool
-
 - name: get current fsid
   command: "{{ timeout_command }} {{ container_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}.asok config get fsid"
   register: rolling_update_fsid
