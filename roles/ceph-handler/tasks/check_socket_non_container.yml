@@ -1,197 +1,209 @@
 ---
-- name: check for a ceph mon socket
-  shell: stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mon*.asok
-  changed_when: false
-  failed_when: false
-  check_mode: no
+- name: find ceph mon socket
+  find:
+    paths: ["{{ rbd_client_admin_socket_path }}"]
+    recurse: yes
+    file_type: any
+    patterns: "{{ cluster }}-mon*.asok"
+    use_regex: no
   register: mon_socket_stat
   when: inventory_hostname in groups.get(mon_group_name, [])
 
 - name: check if the ceph mon socket is in-use
-  command: grep -q {{ mon_socket_stat.stdout }} /proc/net/unix
+  command: grep -q {{ item.path }} /proc/net/unix
   changed_when: false
   failed_when: false
   check_mode: no
   register: mon_socket
+  with_items: "{{ mon_socket_stat.files }}"
   when:
     - inventory_hostname in groups.get(mon_group_name, [])
-    - mon_socket_stat.rc == 0
+    - mon_socket_stat.files | length > 0
 
 - name: remove ceph mon socket if exists and not used by a process
   file:
-    name: "{{ mon_socket_stat.stdout }}"
+    name: "{{ item.0.path }}"
     state: absent
+  with_together:
+    - "{{ mon_socket_stat.files }}"
+    - "{{ mon_socket.results }}"
   when:
     - inventory_hostname in groups.get(mon_group_name, [])
-    - mon_socket_stat.rc == 0
-    - mon_socket.rc == 1
+    - mon_socket_stat.files | length > 0
+    - item.1.rc == 1
 
-- name: check for a ceph osd socket
-  shell: |
-    stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-osd*.asok
-  changed_when: false
-  failed_when: false
-  check_mode: no
+- name: find ceph osd socket
+  find:
+    paths: ["{{ rbd_client_admin_socket_path }}"]
+    recurse: yes
+    file_type: any
+    patterns: "{{ cluster }}-osd.*.asok"
+    use_regex: no
   register: osd_socket_stat
   when: inventory_hostname in groups.get(osd_group_name, [])
 
 - name: check if the ceph osd socket is in-use
-  command: grep -q {{ osd_socket_stat.stdout }} /proc/net/unix
+  command: grep -q {{ item.path }} /proc/net/unix
   changed_when: false
   failed_when: false
   check_mode: no
   register: osd_socket
+  with_items: "{{ osd_socket_stat.files }}"
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
-    - osd_socket_stat.rc == 0
+    - osd_socket_stat.files | length > 0
 
 - name: remove ceph osd socket if exists and not used by a process
   file:
-    name: "{{ osd_socket_stat.stdout }}"
+    name: "{{ item.0.path }}"
     state: absent
+  with_together:
+    - "{{ osd_socket_stat.files }}"
+    - "{{ osd_socket.results }}"
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
-    - osd_socket_stat.rc == 0
-    - osd_socket.rc == 1
+    - osd_socket_stat.files | length > 0
+    - item.1.rc == 1
 
-- name: check for a ceph mds socket
-  shell: |
-    stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mds*.asok
-  changed_when: false
-  failed_when: false
-  check_mode: no
+- name: find ceph osd socket
+  find:
+    paths: ["{{ rbd_client_admin_socket_path }}"]
+    recurse: yes
+    file_type: any
+    patterns: "{{ cluster }}-mds*.asok"
+    use_regex: no
   register: mds_socket_stat
   when: inventory_hostname in groups.get(mds_group_name, [])
 
 - name: check if the ceph mds socket is in-use
-  command: grep -q {{ mds_socket_stat.stdout }} /proc/net/unix
+  command: grep -q {{ item.path }} /proc/net/unix
   changed_when: false
   failed_when: false
   check_mode: no
   register: mds_socket
+  with_items: "{{ mds_socket_stat.files }}"
   when:
     - inventory_hostname in groups.get(mds_group_name, [])
-    - mds_socket_stat.rc == 0
+    - mds_socket_stat.files | length > 0
 
 - name: remove ceph mds socket if exists and not used by a process
   file:
-    name: "{{ mds_socket_stat.stdout }}"
+    name: "{{ item.0.path }}"
     state: absent
+  with_together:
+    - "{{ mds_socket_stat.files }}"
+    - "{{ mds_socket.results }}"
   when:
     - inventory_hostname in groups.get(mds_group_name, [])
-    - mds_socket_stat.rc == 0
-    - mds_socket.rc == 1
+    - mds_socket_stat.files | length > 0
+    - item.1.rc == 1
 
-- name: check for a ceph rgw socket
-  shell: |
-    stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-client.rgw*.asok
-  changed_when: false
-  failed_when: false
-  check_mode: no
+- name: find ceph rgw socket
+  find:
+    paths: ["{{ rbd_client_admin_socket_path }}"]
+    recurse: yes
+    file_type: any
+    patterns: "{{ cluster }}-client.rgw*.asok"
+    use_regex: no
   register: rgw_socket_stat
   when: inventory_hostname in groups.get(rgw_group_name, [])
 
 - name: check if the ceph rgw socket is in-use
-  command: grep -q {{ rgw_socket_stat.stdout }} /proc/net/unix
+  command: grep -q {{ item.path }} /proc/net/unix
   changed_when: false
   failed_when: false
   check_mode: no
   register: rgw_socket
+  with_items: "{{ rgw_socket_stat.files }}"
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
-    - rgw_socket_stat.rc == 0
+    - rgw_socket_stat.files | length > 0
 
 - name: remove ceph rgw socket if exists and not used by a process
   file:
-    name: "{{ rgw_socket_stat.stdout }}"
+    name: "{{ item.0.path }}"
     state: absent
+  with_together:
+    - "{{ rgw_socket_stat.files }}"
+    - "{{ rgw_socket.results }}"
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
-    - rgw_socket_stat.rc == 0
-    - rgw_socket.rc == 1
+    - rgw_socket_stat.files | length > 0
+    - item.1.rc == 1
 
-- name: check for a ceph mgr socket
-  shell: |
-    stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mgr*.asok
-  changed_when: false
-  failed_when: false
-  check_mode: no
+- name: find ceph mgr socket
+  find:
+    paths: ["{{ rbd_client_admin_socket_path }}"]
+    recurse: yes
+    file_type: any
+    patterns: "{{ cluster }}-mgr*.asok"
+    use_regex: no
   register: mgr_socket_stat
   when: inventory_hostname in groups.get(mgr_group_name, [])
 
 - name: check if the ceph mgr socket is in-use
-  command: grep -q {{ mgr_socket_stat.stdout }} /proc/net/unix
+  command: grep -q {{ item.path }} /proc/net/unix
   changed_when: false
   failed_when: false
   check_mode: no
   register: mgr_socket
+  with_items: "{{ mgr_socket_stat.files }}"
   when:
     - inventory_hostname in groups.get(mgr_group_name, [])
-    - mgr_socket_stat.rc == 0
+    - mgr_socket_stat.files | length > 0
 
 - name: remove ceph mgr socket if exists and not used by a process
   file:
-    name: "{{ mgr_socket_stat.stdout }}"
+    name: "{{ item.0.path }}"
     state: absent
+  with_together:
+    - "{{ mgr_socket_stat.files }}"
+    - "{{ mgr_socket.results }}"
   when:
     - inventory_hostname in groups.get(mgr_group_name, [])
-    - mgr_socket_stat.rc == 0
-    - mgr_socket.rc == 1
+    - mgr_socket_stat.files | length > 0
+    - item.1.rc == 1
 
-- name: check for a ceph rbd mirror socket
-  shell: |
-    stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-client.rbd-mirror*.asok
-  changed_when: false
-  failed_when: false
-  check_mode: no
+- name: find ceph rbd mirror socket
+  find:
+    paths: ["{{ rbd_client_admin_socket_path }}"]
+    recurse: yes
+    file_type: any
+    patterns: "{{ cluster }}-client.rbd-mirror*.asok"
+    use_regex: no
   register: rbd_mirror_socket_stat
   when: inventory_hostname in groups.get(rbdmirror_group_name, [])
 
 - name: check if the ceph rbd mirror socket is in-use
-  command: grep -q {{ rbd_mirror_socket_stat.stdout }} /proc/net/unix
+  command: grep -q {{ item.path }} /proc/net/unix
   changed_when: false
   failed_when: false
   check_mode: no
   register: rbd_mirror_socket
+  with_items: "{{ rbd_mirror_socket_stat.files }}"
   when:
     - inventory_hostname in groups.get(rbdmirror_group_name, [])
-    - rbd_mirror_socket_stat.rc == 0
+    - rbd_mirror_socket_stat.files | length > 0
 
 - name: remove ceph rbd mirror socket if exists and not used by a process
   file:
-    name: "{{ rbd_mirror_socket_stat.stdout }}"
+    name: "{{ item.0.path }}"
     state: absent
+  with_together:
+    - "{{ rbd_mirror_socket_stat.files }}"
+    - "{{ rbd_mirror_socket.results }}"
   when:
     - inventory_hostname in groups.get(rbdmirror_group_name, [])
-    - rbd_mirror_socket_stat.rc == 0
-    - rbd_mirror_socket.rc == 1
+    - rbd_mirror_socket_stat.files | length > 0
+    - item.1.rc == 1
 
-- name: check for a ceph nfs ganesha socket
-  command: stat --printf=%n /var/run/ganesha.pid
+- name: check for a nfs ganesha pid
+  command: "pgrep ganesha.nfsd"
+  register: nfs_process
   changed_when: false
   failed_when: false
   check_mode: no
-  register: nfs_socket_stat
   when: inventory_hostname in groups.get(nfs_group_name, [])
-
-- name: check if the ceph nfs ganesha socket is in-use
-  command: grep -q {{ nfs_socket_stat.stdout }} /proc/net/unix
-  changed_when: false
-  failed_when: false
-  check_mode: no
-  register: nfs_socket
-  when:
-    - inventory_hostname in groups.get(nfs_group_name, [])
-    - nfs_socket_stat.rc == 0
-
-- name: remove ceph nfs ganesha socket if exists and not used by a process
-  file:
-    name: "{{ nfs_socket_stat.stdout }}"
-    state: absent
-  when:
-    - inventory_hostname in groups.get(nfs_group_name, [])
-    - nfs_socket_stat.rc == 0
-    - nfs_socket.rc == 1
 
 - name: check for a tcmu-runner
   command: "pgrep tcmu-runner"
