@@ -4,6 +4,12 @@
   changed_when: false
   register: ceph_keys
 
+- name: create a local fetch directory if it does not exist
+  file:
+    path: "{{ fetch_directory | default('fetch/') }}"
+    state: directory
+  delegate_to: localhost
+  become: false
 
 - name: "copy ceph user and bootstrap keys to the ansible server in {{ fetch_directory }}/{{ fsid }}/"
   fetch:
