@@ -16,7 +16,7 @@ function id_to_device () {
 {% if dmcrypt | bool %}
  {{ container_binary }} run --rm --net=host --ulimit nofile=1024:4096 --ipc=host --pid=host --privileged=true -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /dev:/dev -v /etc/localtime:/etc/localtime:ro -e DEBUG=verbose -e CLUSTER={{ cluster }} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} osd_ceph_disk_dmcrypt_data_map
 {% endif %}
-  DATA_PART=$(docker run --rm --ulimit nofile=1024:4096 --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z --entrypoint ceph-disk {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} list | grep ", osd\.${1}," | awk '{ print $1 }')
+  DATA_PART=$({{ container_binary }} run --rm --ulimit nofile=1024:4096 --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z --entrypoint ceph-disk {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} list | grep ", osd\.${1}," | awk '{ print $1 }')
   if [ -z "${DATA_PART}" ]; then
     echo "No data partition found for OSD ${i}"
     exit 1
@@ -29,7 +29,7 @@ function id_to_device () {
 }
 
 function expose_partitions () {
-  DOCKER_ENV=$(docker run --rm --net=host --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z -e CLUSTER={{ cluster }} -e OSD_DEVICE=${1} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list)
+  DOCKER_ENV=$({{ container_binary }} run --rm --net=host --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z -e CLUSTER={{ cluster }} -e OSD_DEVICE=${1} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list)
 }
 {% else -%}
 # NOTE(leseb): maintains backwards compatibility with old ceph-docker Jewel images
@@ -58,7 +58,7 @@ function expose_partitions {
     # NOTE(leseb): if we arrive here this probably means we just switched from non-containers to containers.
     # This is tricky as we don't have any info on the type of OSD, this is 'only' a problem for non-collocated scenarios
     # We can't assume that the 'ceph' is still present so calling Docker exec instead
-    part=$(docker run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} list /dev/${1} | awk '/journal / {print $1}')
+    part=$({{ container_binary }} run --privileged=true -v /dev:/dev --entrypoint /usr/sbin/ceph-disk {{ ceph_docker_registry}}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} list /dev/${1} | awk '/journal / {print $1}')
     DOCKER_ENV="-e OSD_JOURNAL=$part"
   fi
   # if empty, the previous command didn't find anything so we fail
