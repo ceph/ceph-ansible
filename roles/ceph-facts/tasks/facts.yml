@@ -298,29 +298,35 @@
     path: '/etc/ceph/{{ cluster }}.conf'
   register: ceph_conf
 
+- name: set default osd_pool_default_crush_rule fact
+  set_fact:
+    osd_pool_default_crush_rule: "{{ ceph_osd_pool_default_crush_rule }}"
+
 - name: get default crush rule value from ceph configuration
-  command: grep 'osd pool default crush rule' /etc/ceph/{{ cluster }}.conf
-  register: crush_rule_variable
-  changed_when: false
-  check_mode: no
-  failed_when: false
+  block:
+    - &read-osd-pool-default-crush-rule
+      name: read osd pool default crush rule
+      command: grep 'osd pool default crush rule' /etc/ceph/{{ cluster }}.conf
+      register: crush_rule_variable
+      changed_when: false
+      check_mode: no
+      failed_when: crush_rule_variable.rc not in (0, 1)
+    - &set-osd-pool-default-crush-rule-fact
+      name: set osd_pool_default_crush_rule fact
+      set_fact:
+        osd_pool_default_crush_rule: "{{ crush_rule_variable.stdout.split(' = ')[1] }}"
+      when: crush_rule_variable.rc == 0
   when: ceph_conf.stat.exists | bool
 
 - name: get default crush rule value from running monitor ceph configuration
-  command: grep 'osd pool default crush rule' /etc/ceph/{{ cluster }}.conf
-  register: crush_rule_variable
-  changed_when: false
-  check_mode: no
-  failed_when: false
-  run_once: true
-  delegate_to: "{{ running_mon }}"
+  block:
+    - <<: *read-osd-pool-default-crush-rule
+      run_once: true
+      delegate_to: "{{ running_mon }}"
+    - *set-osd-pool-default-crush-rule-fact
   when:
     - running_mon is defined
     - not ceph_conf.stat.exists | bool
-
-- name: set_fact osd_pool_default_crush_rule
-  set_fact:
-    osd_pool_default_crush_rule: "{{ crush_rule_variable.stdout.split(' = ')[1] if crush_rule_variable.get('rc', 1) | int == 0 else ceph_osd_pool_default_crush_rule }}"
 
 - name: import_tasks set_monitor_address.yml
   import_tasks: set_monitor_address.yml
