@@ -143,10 +143,16 @@
         state: directory
 
     - name: bootstrap the new cluster
-      command: "{{ cephadm_cmd }} bootstrap --mon-ip {{ _current_monitor_address }} --skip-pull --skip-monitoring-stack {{ '--initial-dashboard-user ' + dashboard_admin_user + ' --initial-dashboard-password ' + dashboard_admin_password if dashboard_enabled | bool else '--skip-dashboard' }}"
-      changed_when: false
-      environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+      cephadm_bootstrap:
+        mon_ip: "{{ _current_monitor_address }}"
+        image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+        docker: "{{ true if container_binary == 'docker' else false }}"
+        pull: false
+        dashboard: "{{ dashboard_enabled }}"
+        dashboard_user: "{{ dashboard_admin_user if dashboard_enabled | bool else omit }}"
+        dashboard_password: "{{ dashboard_admin_password if dashboard_enabled | bool else omit }}"
+        monitoring: false
+        firewalld: "{{ configure_firewall }}"
 
     - name: set default container image in ceph configuration
       command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set global container_image {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
