@@ -240,6 +240,14 @@
       changed_when: false
       failed_when: false
 
+    # systemd module does not support --runtime option
+    - name: disable ceph-osd@.service runtime-enabled
+      command: "systemctl disable --runtime {{ item }}"
+      changed_when: false
+      failed_when: false
+      with_items: "{{ running_osds.stdout_lines | default([])}}"
+      when: item.startswith('ceph-osd@')
+
     - name: stop/disable/mask non-containerized ceph osd(s) (if any)
       systemd:
         name: "{{ item }}"
