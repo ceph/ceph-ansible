@@ -30,6 +30,7 @@
     - name: get initial keyring when it already exists
       set_fact:
         monitor_keyring: "{{ (initial_mon_key.stdout | from_json)[0]['key'] if initial_mon_key is not skipped else monitor_keyring.stdout }}"
+      when: initial_mon_key.stdout|default('')|length > 0 or monitor_keyring is not skipped
 
     - name: create monitor initial keyring
       ceph_key:
