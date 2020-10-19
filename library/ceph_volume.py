@@ -656,6 +656,8 @@ def run_module():
         if any(skip) or module.params.get('osd_fsid', None):
             rc, cmd, out, err = exec_command(
                 module, cmd)
+            for scan_cmd in ['vgscan', 'lvscan']:
+                module.run_command([scan_cmd, '--cache'])
         else:
             out = 'Skipped, nothing to zap'
             err = ''
