@@ -61,12 +61,12 @@
         name: ceph-infra
     - import_role:
         name: ceph-common
+    - import_role:
+        name: ceph-handler
+    - import_role:
+        name: ceph-config
+      tags: ['ceph_update_config']
 
-- hosts: mons
-  gather_facts: false
-  become: True
-  any_errors_fatal: true
-  pre_tasks:
     - name: set ceph monitor install 'In Progress'
       run_once: true
       set_stats:
@@ -74,27 +74,9 @@
           installer_phase_ceph_mon:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-
-  tasks:
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-handler
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-config
-      tags: ['ceph_update_config']
-    - import_role:
+    - include_role:
         name: ceph-mon
-    - import_role:
-        name: ceph-mgr
-      when: groups.get(mgr_group_name, []) | length == 0
-
-  post_tasks:
+      when: inventory_hostname in groups.get(mon_group_name, [])
     - name: set ceph monitor install 'Complete'
       run_once: true
       set_stats:
@@ -103,11 +85,6 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: mgrs
-  gather_facts: false
-  become: True
-  any_errors_fatal: true
-  pre_tasks:
     - name: set ceph manager install 'In Progress'
       run_once: true
       set_stats:
@@ -115,24 +92,11 @@
           installer_phase_ceph_mgr:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-
-  tasks:
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-handler
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-config
-      tags: ['ceph_update_config']
-    - import_role:
+    - include_role:
         name: ceph-mgr
-
-  post_tasks:
+      when:
+        - (inventory_hostname in groups.get(mon_group_name, []) and groups.get(mgr_group_name, []) | length == 0) or
+          (inventory_hostname in groups.get(mgr_group_name, []) and groups.get(mgr_group_name, []) | length > 0)
     - name: set ceph manager install 'Complete'
       run_once: true
       set_stats:
@@ -141,11 +105,6 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: osds
-  gather_facts: false
-  become: True
-  any_errors_fatal: true
-  pre_tasks:
     - name: set ceph osd install 'In Progress'
       run_once: true
       set_stats:
@@ -154,23 +113,10 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-  tasks:
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-handler
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-config
-      tags: ['ceph_update_config']
-    - import_role:
+    - include_role:
         name: ceph-osd
+      when: inventory_hostname in groups.get(osd_group_name, [])
 
-  post_tasks:
     - name: set ceph osd install 'Complete'
       run_once: true
       set_stats:
@@ -179,11 +125,6 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: mdss
-  gather_facts: false
-  become: True
-  any_errors_fatal: true
-  pre_tasks:
     - name: set ceph mds install 'In Progress'
       run_once: true
       set_stats:
@@ -192,23 +133,10 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-  tasks:
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-handler
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-config
-      tags: ['ceph_update_config']
-    - import_role:
+    - include_role:
         name: ceph-mds
+      when: inventory_hostname in groups.get(mds_group_name, [])
 
-  post_tasks:
     - name: set ceph mds install 'Complete'
       run_once: true
       set_stats:
@@ -217,11 +145,6 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: rgws
-  gather_facts: false
-  become: True
-  any_errors_fatal: true
-  pre_tasks:
     - name: set ceph rgw install 'In Progress'
       run_once: true
       set_stats:
@@ -230,23 +153,10 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-  tasks:
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-handler
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-config
-      tags: ['ceph_update_config']
-    - import_role:
+    - include_role:
         name: ceph-rgw
+      when: inventory_hostname in groups.get(rgw_group_name, [])
 
-  post_tasks:
     - name: set ceph rgw install 'Complete'
       run_once: true
       set_stats:
@@ -255,12 +165,6 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: clients
-  gather_facts: false
-  become: True
-  any_errors_fatal: true
-  tags: 'ceph_client'
-  pre_tasks:
     - name: set ceph client install 'In Progress'
       run_once: true
       set_stats:
@@ -269,23 +173,10 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-  tasks:
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-handler
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-config
-      tags: ['ceph_update_config']
-    - import_role:
+    - include_role:
         name: ceph-client
+      when: inventory_hostname in groups.get(client_group_name, [])
 
-  post_tasks:
     - name: set ceph client install 'Complete'
       run_once: true
       set_stats:
@@ -294,11 +185,6 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: nfss
-  gather_facts: false
-  become: True
-  any_errors_fatal: true
-  pre_tasks:
     - name: set ceph nfs install 'In Progress'
       run_once: true
       set_stats:
@@ -307,23 +193,9 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-  tasks:
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-handler
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-config
-      tags: ['ceph_update_config']
-    - import_role:
+    - include_role:
         name: ceph-nfs
-
-  post_tasks:
+      when: inventory_hostname in groups.get(nfs_group_name, [])
     - name: set ceph nfs install 'Complete'
       run_once: true
       set_stats:
@@ -332,11 +204,6 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: rbdmirrors
-  gather_facts: false
-  become: True
-  any_errors_fatal: true
-  pre_tasks:
     - name: set ceph rbd mirror install 'In Progress'
       run_once: true
       set_stats:
@@ -345,23 +212,10 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-  tasks:
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-handler
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-config
-      tags: ['ceph_update_config']
-    - import_role:
+    - include_role:
         name: ceph-rbd-mirror
+      when: inventory_hostname in groups.get(rbdmirror_group_name, [])
 
-  post_tasks:
     - name: set ceph rbd mirror install 'Complete'
       run_once: true
       set_stats:
@@ -370,12 +224,6 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts:
-    - iscsigws
-  gather_facts: false
-  become: True
-  any_errors_fatal: true
-  pre_tasks:
     - name: set ceph iscsi gateway install 'In Progress'
       run_once: true
       set_stats:
@@ -384,23 +232,10 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-  tasks:
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-handler
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-config
-      tags: ['ceph_update_config']
-    - import_role:
+    - include_role:
         name: ceph-iscsi-gw
+      when: inventory_hostname in groups.get(iscsi_gw_group_name, [])
 
-  post_tasks:
     - name: set ceph iscsi gw install 'Complete'
       run_once: true
       set_stats:
@@ -409,12 +244,6 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts:
-    - rgwloadbalancers
-  gather_facts: false
-  become: True
-  any_errors_fatal: true
-  pre_tasks:
     - name: set ceph rgw loadbalancer install 'In Progress'
       run_once: true
       set_stats:
@@ -423,17 +252,10 @@
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-  tasks:
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
+    - include_role:
         name: ceph-rgw-loadbalancer
+      when: inventory_hostname in groups.get(rgwloadbalancer_group_name, [])
 
-  post_tasks:
     - name: set ceph rgw loadbalancer install 'Complete'
       run_once: true
       set_stats:

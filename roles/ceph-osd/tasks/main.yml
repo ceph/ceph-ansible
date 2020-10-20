@@ -1,7 +1,7 @@
 ---
 - name: set_fact add_osd
   set_fact:
-    add_osd: "{{ groups[osd_group_name] | length != ansible_play_hosts_all | length }}"
+    add_osd: "{{ (groups[osd_group_name] | length) != (ansible_play_hosts_all | intersect(groups[osd_group_name]) | length) }}"
 
 - name: set_fact container_exec_cmd
   set_fact:
@@ -73,7 +73,7 @@
   when:
     - not rolling_update | default(False) | bool
     - not switch_to_containers | default(False) | bool
-    - inventory_hostname == ansible_play_hosts_all | last
+    - inventory_hostname == ansible_play_hosts_all | intersect(groups[osd_group_name]) | last
 
 - name: wait for all osd to be up
   command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd stat -f json"
@@ -87,7 +87,7 @@
     - (wait_for_all_osds_up.stdout | from_json)["num_osds"] == (wait_for_all_osds_up.stdout | from_json)["num_up_osds"]
   when:
     - not ansible_check_mode
-    - inventory_hostname == ansible_play_hosts_all | last
+    - inventory_hostname == ansible_play_hosts_all | intersect(groups[osd_group_name]) | last
 
 - name: include crush_rules.yml
   include_tasks: crush_rules.yml
