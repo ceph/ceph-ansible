@@ -142,10 +142,16 @@
               (mds_to_kill in standby_mdss | default([]))
 
     - name: delete the filesystem when killing last mds
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs rm --yes-i-really-mean-it {{ cephfs }}"
+      ceph_fs:
+        name: "{{ cephfs }}"
+        cluster: "{{ cluster }}"
+        state: absent
       when:
         - (ceph_status.stdout | from_json)['fsmap']['up'] | int == 0
         - (ceph_status.stdout | from_json)['fsmap']['up:standby'] | int == 0
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
     - name: purge mds store
       file:
