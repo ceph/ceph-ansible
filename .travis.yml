@@ -7,8 +7,7 @@ notifications:
   webhooks: https://galaxy.ansible.com/api/v1/notifications/
 install:
   - pip install -r tests/requirements.txt
-  - pip install ansible-lint==4.2.0 pytest-cov
+  - pip install ansible-lint==4.2.0
 script:
   - if [[ -n $(grep --exclude-dir=.git -P "\xa0" -r .) ]]; then echo 'NBSP characters found'; exit 1; fi
-  - pytest --cov=library/ --cov=plugins/filter/ -vvvv tests/library/ tests/plugins/filter/
   - for i in $(ls -1 roles/); do ANSIBLE_LOG_PATH=/dev/null ansible-lint -x 204 -v roles/$i/; if [ $? -ne 0 ]; then exit 1; fi; done
