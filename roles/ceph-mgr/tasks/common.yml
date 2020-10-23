@@ -54,7 +54,14 @@
           - { 'name': "mgr.{{ ansible_hostname }}", 'path': "/var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring", 'copy_key': true }
 
     - name: get keys from monitors
-      command: "{{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
+      ceph_key:
+        name: "{{ item.name }}"
+        cluster: "{{ cluster }}"
+        output_format: plain
+        state: info
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       register: _mgr_keys
       with_items: "{{ _mgr_keys }}"
       delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"

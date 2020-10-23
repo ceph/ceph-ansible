@@ -11,7 +11,14 @@
     - /var/lib/ceph/mds/{{ cluster }}-{{ ansible_hostname }}
 
 - name: get keys from monitors
-  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
+  ceph_key:
+    name: "{{ item.name }}"
+    cluster: "{{ cluster }}"
+    output_format: plain
+    state: info
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: _mds_keys
   with_items:
     - { name: "client.bootstrap-mds", path: "/var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring", copy_key: true }

@@ -48,7 +48,11 @@
     - groups.get(mon_group_name, []) | length > 0
   block:
     - name: get keys from monitors
-      command: "ceph --cluster {{ cluster }} auth get {{ item.name }}"
+      ceph_key:
+        name: "{{ item.name }}"
+        cluster: "{{ cluster }}"
+        output_format: plain
+        state: info
       register: _rgw_keys
       with_items:
         - { name: "client.bootstrap-rgw", path: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring", copy_key: "{{ nfs_obj_gw }}" }

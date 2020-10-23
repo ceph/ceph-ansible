@@ -280,8 +280,14 @@
         ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
 
     - name: get the client.admin keyring
-      command: "{{ ceph_cmd }} --cluster {{ cluster }} auth get client.admin"
-      changed_when: false
+      ceph_key:
+        name: client.admin
+        cluster: "{{ cluster }}"
+        output_format: plain
+        state: info
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       run_once: true
       delegate_to: '{{ groups[mon_group_name][0] }}'
       register: client_admin_keyring
