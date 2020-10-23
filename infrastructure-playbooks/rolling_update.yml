@@ -480,12 +480,17 @@
                 CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
             - name: wait until only rank 0 is up
-              command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs get {{ cephfs }} -f json"
-              changed_when: false
+              ceph_fs:
+                name: "{{ cephfs }}"
+                cluster: "{{ cluster }}"
+                state: info
               register: wait_rank_zero
               retries: 720
               delay: 5
               until: (wait_rank_zero.stdout | from_json).mdsmap.in | length == 1 and (wait_rank_zero.stdout | from_json).mdsmap.in[0]  == 0
+              environment:
+                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+                CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
             - name: get name of remaining active mds
               command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs dump -f json"
