@@ -25,8 +25,16 @@ class AnsibleExitJson(Exception):
     pass
 
 
+class AnsibleFailJson(Exception):
+    pass
+
+
 def exit_json(*args, **kwargs):
     raise AnsibleExitJson(kwargs)
+
+
+def fail_json(*args, **kwargs):
+    raise AnsibleFailJson(kwargs)
 
 
 @mock.patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'docker'})
@@ -373,27 +381,27 @@ class TestCephKeyModule(object):
             fake_cluster, fake_user, fake_user_key, fake_name, fake_container_image)
         assert result == expected_command_list
 
-    def test_info_key_non_container(self):
+    @pytest.mark.parametrize('output_format', ['json', 'plain', 'xml', 'yaml'])
+    def test_info_key_non_container(self, output_format):
         fake_user = 'client.admin'
         fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_cluster = "fake"
         fake_name = "client.fake"
         fake_user = "fake-user"
-        fake_output_format = "json"
         expected_command_list = [
             ['ceph', '-n', fake_user, '-k', fake_user_key, '--cluster', fake_cluster, 'auth',
-                'get', fake_name, '-f', 'json'],
+                'get', fake_name, '-f', output_format],
         ]
         result = ceph_key.info_key(
-            fake_cluster, fake_name, fake_user, fake_user_key, fake_output_format)
+            fake_cluster, fake_name, fake_user, fake_user_key, output_format)
         assert result == expected_command_list
 
-    def test_info_key_container(self):
+    @pytest.mark.parametrize('output_format', ['json', 'plain', 'xml', 'yaml'])
+    def test_info_key_container_json(self, output_format):
         fake_cluster = "fake"
         fake_name = "client.fake"
         fake_user = 'client.admin'
         fake_user_key = '/etc/ceph/fake.client.admin.keyring'
-        fake_output_format = "json"
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
         expected_command_list = [['docker',   # noqa E128
                                   'run',
@@ -408,9 +416,9 @@ class TestCephKeyModule(object):
                                   '-k', fake_user_key,
                                   '--cluster', fake_cluster,
                                   'auth', 'get', fake_name,
-                                  '-f', 'json']]
+                                  '-f', output_format]]
         result = ceph_key.info_key(
-            fake_cluster, fake_name, fake_user, fake_user_key, fake_output_format, fake_container_image)  # noqa E501
+            fake_cluster, fake_name, fake_user, fake_user_key, output_format, fake_container_image)  # noqa E501
         assert result == expected_command_list
 
     def test_list_key_non_container(self):
@@ -552,14 +560,16 @@ class TestCephKeyModule(object):
 
     @mock.patch('ansible.module_utils.basic.AnsibleModule.exit_json')
     @mock.patch('ceph_key.exec_commands')
-    def test_state_info(self, m_exec_commands, m_exit_json):
+    @pytest.mark.parametrize('output_format', ['json', 'plain', 'xml', 'yaml'])
+    def test_state_info(self, m_exec_commands, m_exit_json, output_format):
         set_module_args({"state": "info",
                          "cluster": "ceph",
-                         "name": "client.admin"}
+                         "name": "client.admin",
+                         "output_format": output_format}
                         )
         m_exit_json.side_effect = exit_json
         m_exec_commands.return_value = (0,
-                                        ['ceph', 'auth', 'get', 'client.admin', '-f', 'json'],
+                                        ['ceph', 'auth', 'get', 'client.admin', '-f', output_format],
                                         '[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]',  # noqa: E501
                                         'exported keyring for client.admin')
 
@@ -568,6 +578,23 @@ class TestCephKeyModule(object):
 
         result = result.value.args[0]
         assert not result['changed']
+        assert result['cmd'] == ['ceph', 'auth', 'get', 'client.admin', '-f', output_format]
         assert result['stdout'] == '[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]'  # noqa: E501
         assert result['stderr'] == 'exported keyring for client.admin'
         assert result['rc'] == 0
+
+    @mock.patch('ansible.module_utils.basic.AnsibleModule.fail_json')
+    def test_state_info_invalid_format(self, m_fail_json):
+        invalid_format = 'txt'
+        set_module_args({"state": "info",
+                         "cluster": "ceph",
+                         "name": "client.admin",
+                         "output_format": invalid_format}
+                        )
+        m_fail_json.side_effect = fail_json
+
+        with pytest.raises(AnsibleFailJson) as result:
+            ceph_key.run_module()
+
+        result = result.value.args[0]
+        assert result['msg'] == 'value of output_format must be one of: json, plain, xml, yaml, got: {}'.format(invalid_format)
