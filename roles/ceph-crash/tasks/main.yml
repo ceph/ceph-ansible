@@ -21,11 +21,16 @@
       run_once: True
 
     - name: get keys from monitors
-      command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} auth get client.crash"
+      ceph_key:
+        name: client.crash
+        cluster: "{{ cluster }}"
+        output_format: plain
+        state: info
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       register: _crash_keys
       delegate_to: "{{ groups.get(mon_group_name)[0] }}"
-      check_mode: False
-      changed_when: False
       run_once: true
 
     - name: copy ceph key(s) if needed

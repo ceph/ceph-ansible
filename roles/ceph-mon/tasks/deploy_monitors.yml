@@ -1,9 +1,15 @@
 ---
 - name: check if monitor initial keyring already exists
-  command: >
-    {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} --name mon. -k
-    /var/lib/ceph/mon/{{ cluster }}-{{ hostvars[groups[mon_group_name][0] if running_mon is undefined else running_mon]['ansible_hostname'] }}/keyring
-    auth get-key mon.
+  ceph_key:
+    name: mon.
+    cluster: "{{ cluster }}"
+    user: mon.
+    user_key: "/var/lib/ceph/mon/{{ cluster }}-{{ hostvars[groups[mon_group_name][0] if running_mon is undefined else running_mon]['ansible_hostname'] }}/keyring"
+    output_format: json
+    state: info
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: initial_mon_key
   run_once: True
   delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"
@@ -24,7 +30,7 @@
 
 - name: get initial keyring when it already exists
   set_fact:
-    monitor_keyring: "{{ initial_mon_key.stdout if monitor_keyring.skipped is defined else monitor_keyring.stdout if initial_mon_key.skipped is defined }}"
+    monitor_keyring: "{{ (initial_mon_key.stdout | from_json)[0].key if monitor_keyring.skipped is defined else monitor_keyring.stdout if initial_mon_key.skipped is defined }}"
   when: initial_mon_key is not skipped or monitor_keyring is not skipped
 
 - name: create monitor initial keyring
