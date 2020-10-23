@@ -103,6 +103,12 @@ options:
             This command can ONLY run from a monitor node.
         required: false
         default: false
+    output_format:
+        description:
+            - The key output format when retrieving the information of an
+            entity.
+        required: false
+        default: json
 '''
 
 EXAMPLES = '''
@@ -162,6 +168,13 @@ caps:
   ceph_key:
     name: "my_key""
     state: info
+
+- name: info cephx admin key (plain)
+  ceph_key:
+    name: client.admin
+    output_format: plain
+    state: info
+  register: client_admin_key
 
 - name: list cephx keys
   ceph_key:
@@ -512,7 +525,8 @@ def run_module():
         import_key=dict(type='bool', required=False, default=True),
         dest=dict(type='str', required=False, default='/etc/ceph/'),
         user=dict(type='str', required=False, default='client.admin'),
-        user_key=dict(type='str', required=False, default=None)
+        user_key=dict(type='str', required=False, default=None),
+        output_format=dict(type='str', required=False, default='json', choices=['json', 'plain', 'xml', 'yaml'])
     )
 
     module = AnsibleModule(
@@ -533,6 +547,7 @@ def run_module():
     dest = module.params.get('dest')
     user = module.params.get('user')
     user_key = module.params.get('user_key')
+    output_format = module.params.get('output_format')
 
     changed = False
 
@@ -567,8 +582,6 @@ def run_module():
         user_key_path = os.path.join(user_key_dir, user_key_filename)
     else:
         user_key_path = user_key
-
-    output_format = "json"
 
     if (state in ["present", "update"]):
         # if dest is not a directory, the user wants to change the file's name
