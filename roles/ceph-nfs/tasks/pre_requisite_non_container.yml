@@ -79,14 +79,16 @@
       when: nfs_obj_gw | bool
       block:
         - name: create rados gateway keyring
-          command: ceph --cluster {{ cluster }} --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
-          args:
-            creates: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
-          changed_when: false
-
-        - name: set rados gateway key permissions
-          file:
-            path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
-            owner: "ceph"
-            group: "ceph"
-            mode: "0600"
+          ceph_key:
+            name: "client.rgw.{{ ansible_hostname }}"
+            cluster: "{{ cluster }}"
+            user: client.bootstrap-rgw
+            user_key: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring"
+            caps:
+              mon: "allow rw"
+              osd: "allow rwx"
+            dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring"
+            import_key: false
+            owner: ceph
+            group: ceph
+            mode: "{{ ceph_keyring_permissions }}"
