@@ -76,15 +76,15 @@
     - inventory_hostname == ansible_play_hosts_all | last
 
 - name: wait for all osd to be up
-  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} -s -f json"
+  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd stat -f json"
   register: wait_for_all_osds_up
   retries: "{{ nb_retry_wait_osd_up }}"
   delay: "{{ delay_wait_osd_up }}"
   changed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
   until:
-    - (wait_for_all_osds_up.stdout | from_json)["osdmap"]["num_osds"] | int > 0
-    - (wait_for_all_osds_up.stdout | from_json)["osdmap"]["num_osds"] == (wait_for_all_osds_up.stdout | from_json)["osdmap"]["num_up_osds"]
+    - (wait_for_all_osds_up.stdout | from_json)["num_osds"] | int > 0
+    - (wait_for_all_osds_up.stdout | from_json)["num_osds"] == (wait_for_all_osds_up.stdout | from_json)["num_up_osds"]
   when:
     - not ansible_check_mode
     - inventory_hostname == ansible_play_hosts_all | last
