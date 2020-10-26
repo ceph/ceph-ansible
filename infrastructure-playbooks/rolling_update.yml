@@ -225,7 +225,7 @@
             or groups[mgr_group_name] | default([]) | length == 0
 
     - name: non container | waiting for the monitor to join the quorum...
-      command: ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" -s --format json
+      command: ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" quorum_status --format json
       register: ceph_health_raw
       until:
         - ceph_health_raw.rc == 0
@@ -237,7 +237,7 @@
 
     - name: container | waiting for the containerized monitor to join the quorum...
       command: >
-        {{ container_binary }} exec ceph-mon-{{ ansible_hostname }} ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" -s --format json
+        {{ container_binary }} exec ceph-mon-{{ ansible_hostname }} ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" quorum_status --format json
       register: ceph_health_raw
       until:
         - ceph_health_raw.rc == 0
