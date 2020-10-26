@@ -67,7 +67,7 @@
         container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
 
     - name: exit playbook, if can not connect to the cluster
-      command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} -s -f json"
+      command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} service dump -f json"
       register: ceph_health
       until: ceph_health is succeeded
       retries: 5
@@ -80,14 +80,14 @@
     - name: set_fact rbdmirror_gids
       set_fact:
         rbdmirror_gids: "{{ rbdmirror_gids | default([]) + [ item ] }}"
-      with_items: "{{  (ceph_health.stdout | from_json)['servicemap']['services']['rbd-mirror']['daemons'].keys() | list }}"
+      with_items: "{{  (ceph_health.stdout | from_json)['services']['rbd-mirror']['daemons'].keys() | list }}"
       when: item != 'summary'
 
     - name: set_fact rbdmirror_to_kill_gid
       set_fact:
-        rbdmirror_to_kill_gid: "{{ (ceph_health.stdout | from_json)['servicemap']['services']['rbd-mirror']['daemons'][item]['gid'] }}"
+        rbdmirror_to_kill_gid: "{{ (ceph_health.stdout | from_json)['services']['rbd-mirror']['daemons'][item]['gid'] }}"
       with_items: "{{ rbdmirror_gids }}"
-      when: (ceph_health.stdout | from_json)['servicemap']['services']['rbd-mirror']['daemons'][item]['metadata']['id'] == rbdmirror_to_kill_hostname
+      when: (ceph_health.stdout | from_json)['services']['rbd-mirror']['daemons'][item]['metadata']['id'] == rbdmirror_to_kill_hostname
 
   tasks:
     - name: stop rbdmirror service
@@ -106,14 +106,14 @@
 
   post_tasks:
     - name: get servicemap details
-      command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} -s -f json"
+      command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} service dump -f json"
       register: ceph_health
       failed_when:
-        - "'rbd-mirror' in (ceph_health.stdout | from_json)['servicemap']['services'].keys() | list"
-        - rbdmirror_to_kill_gid in (ceph_health.stdout | from_json)['servicemap']['services']['rbd-mirror']['daemons'].keys() | list
+        - "'rbd-mirror' in (ceph_health.stdout | from_json)['services'].keys() | list"
+        - rbdmirror_to_kill_gid in (ceph_health.stdout | from_json)['services']['rbd-mirror']['daemons'].keys() | list
       until:
-        - "'rbd-mirror' in (ceph_health.stdout | from_json)['servicemap']['services'].keys() | list"
-        - rbdmirror_to_kill_gid not in (ceph_health.stdout | from_json)['servicemap']['services']['rbd-mirror']['daemons'].keys() | list
+        - "'rbd-mirror' in (ceph_health.stdout | from_json)['services'].keys() | list"
+        - rbdmirror_to_kill_gid not in (ceph_health.stdout | from_json)['services']['rbd-mirror']['daemons'].keys() | list
       when: rbdmirror_to_kill_gid is defined
       retries: 12
       delay: 10
