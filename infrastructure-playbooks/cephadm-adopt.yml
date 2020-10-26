@@ -485,13 +485,13 @@
       when: not containerized_deployment | bool
 
     - name: waiting for clean pgs...
-      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} -s --format json"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} pg stat --format json"
       changed_when: false
       register: ceph_health_post
       until: >
-        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) > 0)
+        (((ceph_health_post.stdout | from_json).pg_summary.num_pg_by_state | length) > 0)
         and
-        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | selectattr('state_name', 'search', '^active\\+clean') | map(attribute='count') | list | sum) == (ceph_health_post.stdout | from_json).pgmap.num_pgs)
+        (((ceph_health_post.stdout | from_json).pg_summary.num_pg_by_state | selectattr('name', 'search', '^active\\+clean') | map(attribute='num') | list | sum) == (ceph_health_post.stdout | from_json).pg_summary.num_pgs)
       delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
