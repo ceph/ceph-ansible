@@ -136,8 +136,8 @@
 
     - block:
         - name: get ceph cluster status
-          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} -s -f json"
-          register: check_cluster_status
+          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} health -f json"
+          register: check_cluster_health
           delegate_to: "{{ mon_host }}"
 
         - block:
@@ -148,7 +148,7 @@
             - name: fail if cluster isn't in an acceptable state
               fail:
                 msg: "cluster is not in an acceptable state!"
-          when: (check_cluster_status.stdout | from_json).health.status == 'HEALTH_ERR'
+          when: (check_cluster_health.stdout | from_json).status == 'HEALTH_ERR'
       when: inventory_hostname == groups[mon_group_name] | first
 
     - name: ensure /var/lib/ceph/bootstrap-rbd-mirror is present
