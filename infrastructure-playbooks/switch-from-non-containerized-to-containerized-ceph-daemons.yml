@@ -320,12 +320,12 @@
   post_tasks:
     - name: container - waiting for clean pgs...
       command: >
-        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json
+        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} pg stat --format json
       register: ceph_health_post
       until: >
-        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) > 0)
+        (((ceph_health_post.stdout | from_json).pg_summary.num_pg_by_state | length) > 0)
         and
-        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | selectattr('state_name', 'search', '^active\\+clean') | map(attribute='count') | list | sum) == (ceph_health_post.stdout | from_json).pgmap.num_pgs)
+        (((ceph_health_post.stdout | from_json).pg_summary.num_pg_by_state | selectattr('name', 'search', '^active\\+clean') | map(attribute='num') | list | sum) == (ceph_health_post.stdout | from_json).pg_summary.num_pgs)
       delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
