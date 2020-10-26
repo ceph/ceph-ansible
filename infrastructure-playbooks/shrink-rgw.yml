@@ -76,12 +76,12 @@
       delay: 2
 
     - name: get rgw instances
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
       register: rgw_instances
 
 
     - name: exit playbook, if the rgw_to_kill doesn't exist
-      when: rgw_to_kill not in (rgw_instances.stdout | from_json).servicemap.services.rgw.daemons.keys() | list
+      when: rgw_to_kill not in (rgw_instances.stdout | from_json).services.rgw.daemons.keys() | list
       fail:
         msg: >
           It seems that the rgw instance given is not part of the ceph cluster. Please
@@ -111,14 +111,14 @@
       delay: 2
 
     - name: exit if rgw_to_kill is reported in ceph status
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
       register: ceph_status
       failed_when:
-        - (ceph_status.stdout | from_json).servicemap.services.rgw is defined
-        - rgw_to_kill in (ceph_status.stdout | from_json).servicemap.services.rgw.daemons.keys() | list
+        - (ceph_status.stdout | from_json).services.rgw is defined
+        - rgw_to_kill in (ceph_status.stdout | from_json).services.rgw.daemons.keys() | list
       until:
-        - (ceph_status.stdout | from_json).servicemap.services.rgw is defined
-        - rgw_to_kill not in (ceph_status.stdout | from_json).servicemap.services.rgw.daemons.keys() | list
+        - (ceph_status.stdout | from_json).services.rgw is defined
+        - rgw_to_kill not in (ceph_status.stdout | from_json).services.rgw.daemons.keys() | list
       retries: 3
       delay: 3
 
