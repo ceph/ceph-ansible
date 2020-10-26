@@ -266,7 +266,7 @@
       or inventory_hostname in groups.get(nfs_group_name, [])
   block:
     - name: get ceph current status
-      command: "{{ timeout_command }} {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s -f json"
+      command: "{{ timeout_command }} {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
       changed_when: false
       failed_when: false
       check_mode: no
@@ -283,16 +283,15 @@
     - name: set_fact rgw_hostname
       set_fact:
         rgw_hostname: "{% set _value = ansible_hostname -%}
-        {% for key in (ceph_current_status['servicemap']['services']['rgw']['daemons'] | list) -%}
+        {% for key in (ceph_current_status['services']['rgw']['daemons'] | list) -%}
         {% if key == ansible_fqdn -%}
         {% set _value = key -%}
         {% endif -%}
         {% endfor -%}
         {{ _value }}"
       when:
-        - ceph_current_status['servicemap'] is defined
-        - ceph_current_status['servicemap']['services'] is defined
-        - ceph_current_status['servicemap']['services']['rgw'] is defined
+        - ceph_current_status['services'] is defined
+        - ceph_current_status['services']['rgw'] is defined
 
 - name: check if the ceph conf exists
   stat:
