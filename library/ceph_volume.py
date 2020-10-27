@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from ansible.module_utils.basic import AnsibleModule
 import datetime
 import copy
 import json
@@ -185,9 +186,6 @@ EXAMPLES = '''
     wal: /dev/sdc2
     action: create
 '''
-
-
-from ansible.module_utils.basic import AnsibleModule  # noqa 4502
 
 
 def fatal(message, module):
