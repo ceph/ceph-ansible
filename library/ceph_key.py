@@ -17,6 +17,15 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
+from ansible.module_utils.basic import AnsibleModule
+import datetime
+import json
+import os
+import struct
+import time
+import base64
+import socket
+
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
@@ -187,17 +196,6 @@ caps:
 
 RETURN = '''#  '''
 
-from ansible.module_utils.basic import AnsibleModule  # noqa E402
-import datetime  # noqa E402
-import grp  # noqa E402
-import json  # noqa E402
-import os  # noqa E402
-import pwd  # noqa E402
-import stat  # noqa E402
-import struct  # noqa E402
-import time  # noqa E402
-import base64  # noqa E402
-import socket  # noqa E402
 
 CEPH_INITIAL_KEYS = ['client.admin', 'client.bootstrap-mds', 'client.bootstrap-mgr',  # noqa E501
                      'client.bootstrap-osd', 'client.bootstrap-rbd', 'client.bootstrap-rbd-mirror', 'client.bootstrap-rgw']  # noqa E501
