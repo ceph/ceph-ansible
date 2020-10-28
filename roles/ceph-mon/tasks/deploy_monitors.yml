@@ -56,13 +56,25 @@
   changed_when: false
   when: containerized_deployment | bool
 
-- name: create (and fix ownership of) monitor directory
+- name: create monitor directory
   file:
     path: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}
     state: directory
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "{{ ceph_directories_mode }}"
+
+# We don't do the recursion in the task above to avoid setting `mode` (which
+# defaults to 0755) on files.
+#
+# This is only needed when upgrading from older versions of Ceph that used to
+# run as `root` (https://github.com/ceph/ceph-ansible/issues/1635).
+- name: recursively fix ownership of monitor directory
+  file:
+    path: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}
+    state: directory
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     recurse: true
 
 - name: create custom admin keyring
