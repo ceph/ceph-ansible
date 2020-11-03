@@ -346,8 +346,12 @@
         tasks_from: container_binary.yml
 
     - name: set osd flags
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set {{ item }}"
-      changed_when: false
+      ceph_osd_flag:
+        name: "{{ item }}"
+        cluster: "{{ cluster }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_items:
         - noout
         - nodeep-scrub
@@ -449,14 +453,14 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
-    - name: set_fact container_exec_cmd_osd
-      set_fact:
-        container_exec_cmd_update_osd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-      when: containerized_deployment | bool
-
     - name: unset osd flags
-      command: "{{ container_exec_cmd_update_osd | default('') }} ceph osd unset {{ item }} --cluster {{ cluster }}"
-      changed_when: false
+      ceph_osd_flag:
+        name: "{{ item }}"
+        cluster: "{{ cluster }}"
+        state: absent
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_items:
         - noout
         - nodeep-scrub

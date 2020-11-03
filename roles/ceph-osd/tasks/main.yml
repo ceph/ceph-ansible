@@ -39,10 +39,14 @@
   include_tasks: common.yml
 
 - name: set noup flag
-  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd set noup"
+  ceph_osd_flag:
+    name: noup
+    cluster: "{{ cluster }}"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: True
-  changed_when: False
   when:
     - not rolling_update | default(False) | bool
     - not switch_to_containers | default(False) | bool
@@ -67,9 +71,14 @@
   include_tasks: start_osds.yml
 
 - name: unset noup flag
-  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd unset noup"
+  ceph_osd_flag:
+    name: noup
+    cluster: "{{ cluster }}"
+    state: absent
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  changed_when: False
   when:
     - not rolling_update | default(False) | bool
     - not switch_to_containers | default(False) | bool
