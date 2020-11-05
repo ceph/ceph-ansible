@@ -1,22 +1,17 @@
 ---
-- name: remove ec profile
-  command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd erasure-code-profile rm {{ item.value.ec_profile }}"
-  loop: "{{ rgw_create_pools | dict2items }}"
+- name: create ec profile
+  ceph_ec_profile:
+    name: "{{ item.value.ec_profile }}"
+    k: "{{ item.value.ec_k }}"
+    m: "{{ item.value.ec_m }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  changed_when: false
+  loop: "{{ rgw_create_pools | dict2items }}"
   when:
     - item.value.type is defined
     - item.value.type == 'ec'
-  failed_when: false
-
-- name: set ec profile
-  command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd erasure-code-profile set {{ item.value.ec_profile }} k={{ item.value.ec_k }} m={{ item.value.ec_m }}"
-  loop: "{{ rgw_create_pools | dict2items }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  changed_when: false
-  when:
-    - item.value.type is defined
-    - item.value.type == 'ec'
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: set crush rule
   command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd crush rule create-erasure {{ item.key }} {{ item.value.ec_profile }}"
