@@ -5,9 +5,7 @@ import mock
 import pytest
 from ansible.module_utils import basic
 from ansible.module_utils._text import to_bytes
-
-sys.path.append('./library')
-import ceph_key  # noqa: E402
+import ceph_key
 
 
 # From ceph-ansible documentation

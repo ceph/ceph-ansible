@@ -16,9 +16,16 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
+try:
+    from ansible.module_utils.ca_common import generate_ceph_cmd, \
+                                               is_containerized, \
+                                               exec_command, \
+                                               exit_module
+except ImportError:
+    from module_utils.ca_common import generate_ceph_cmd, is_containerized, exec_command, exit_module
+
 import datetime
 import json
-import os
 
 
 ANSIBLE_METADATA = {
@@ -105,76 +112,6 @@ EXAMPLES = '''
 RETURN = '''#  '''
 
 
-def container_exec(binary, container_image):
-    '''
-    Build the docker CLI to run a command inside a container
-    '''
-
-    container_binary = os.getenv('CEPH_CONTAINER_BINARY')
-    command_exec = [container_binary,
-                    'run',
-                    '--rm',
-                    '--net=host',
-                    '-v', '/etc/ceph:/etc/ceph:z',
-                    '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                    '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                    '--entrypoint=' + binary, container_image]
-    return command_exec
-
-
-def is_containerized():
-    '''
-    Check if we are running on a containerized cluster
-    '''
-
-    if 'CEPH_CONTAINER_IMAGE' in os.environ:
-        container_image = os.getenv('CEPH_CONTAINER_IMAGE')
-    else:
-        container_image = None
-
-    return container_image
-
-
-def pre_generate_ceph_cmd(container_image=None):
-    '''
-    Generate ceph prefix comaand
-    '''
-    if container_image:
-        cmd = container_exec('ceph', container_image)
-    else:
-        cmd = ['ceph']
-
-    return cmd
-
-
-def generate_ceph_cmd(cluster, args, container_image=None):
-    '''
-    Generate 'ceph' command line to execute
-    '''
-
-    cmd = pre_generate_ceph_cmd(container_image=container_image)
-
-    base_cmd = [
-        '--cluster',
-        cluster,
-        'dashboard'
-    ]
-
-    cmd.extend(base_cmd + args)
-
-    return cmd
-
-
-def exec_commands(module, cmd):
-    '''
-    Execute command(s)
-    '''
-
-    rc, out, err = module.run_command(cmd)
-
-    return rc, cmd, out, err
-
-
 def create_user(module, container_image=None):
     '''
     Create a new user
@@ -186,7 +123,7 @@ def create_user(module, container_image=None):
 
     args = ['ac-user-create', name, password]
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['dashboard'], args=args, container_image=container_image)
 
     return cmd
 
@@ -204,7 +141,7 @@ def set_roles(module, container_image=None):
 
     args.extend(roles)
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['dashboard'], args=args, container_image=container_image)
 
     return cmd
 
@@ -220,7 +157,7 @@ def set_password(module, container_image=None):
 
     args = ['ac-user-set-password', name, password]
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['dashboard'], args=args, container_image=container_image)
 
     return cmd
 
@@ -235,7 +172,7 @@ def get_user(module, container_image=None):
 
     args = ['ac-user-show', name, '--format=json']
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['dashboard'], args=args, container_image=container_image)
 
     return cmd
 
@@ -250,26 +187,9 @@ def remove_user(module, container_image=None):
 
     args = ['ac-user-delete', name]
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['dashboard'], args=args, container_image=container_image)
 
     return cmd
-
-
-def exit_module(module, out, rc, cmd, err, startd, changed=False):
-    endd = datetime.datetime.now()
-    delta = endd - startd
-
-    result = dict(
-        cmd=cmd,
-        start=str(startd),
-        end=str(endd),
-        delta=str(delta),
-        rc=rc,
-        stdout=out.rstrip("\r\n"),
-        stderr=err.rstrip("\r\n"),
-        changed=changed,
-    )
-    module.exit_json(**result)
 
 
 def run_module():
@@ -313,31 +233,31 @@ def run_module():
     container_image = is_containerized()
 
     if state == "present":
-        rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, get_user(module, container_image=container_image))
         if rc == 0:
             user = json.loads(out)
             user['roles'].sort()
             roles.sort()
             if user['roles'] != roles:
-                rc, cmd, out, err = exec_commands(module, set_roles(module, container_image=container_image))
+                rc, cmd, out, err = exec_command(module, set_roles(module, container_image=container_image))
                 changed = True
-            rc, cmd, out, err = exec_commands(module, set_password(module, container_image=container_image))
+            rc, cmd, out, err = exec_command(module, set_password(module, container_image=container_image))
         else:
-            rc, cmd, out, err = exec_commands(module, create_user(module, container_image=container_image))
-            rc, cmd, out, err = exec_commands(module, set_roles(module, container_image=container_image))
+            rc, cmd, out, err = exec_command(module, create_user(module, container_image=container_image))
+            rc, cmd, out, err = exec_command(module, set_roles(module, container_image=container_image))
             changed = True
 
     elif state == "absent":
-        rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, get_user(module, container_image=container_image))
         if rc == 0:
-            rc, cmd, out, err = exec_commands(module, remove_user(module, container_image=container_image))
+            rc, cmd, out, err = exec_command(module, remove_user(module, container_image=container_image))
             changed = True
         else:
             rc = 0
             out = "Dashboard User {} doesn't exist".format(name)
 
     elif state == "info":
-        rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, get_user(module, container_image=container_image))
 
     exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)
 
