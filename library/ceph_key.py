@@ -18,6 +18,10 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
+try:
+    from ansible.module_utils.ca_common import is_containerized, container_exec
+except ImportError:
+    from module_utils.ca_common import is_containerized, container_exec
 import datetime
 import json
 import os
@@ -223,36 +227,6 @@ def fatal(message, module):
         module.fail_json(msg=message, rc=1)
     else:
         raise(Exception(message))
-
-
-def container_exec(binary, container_image):
-    '''
-    Build the docker CLI to run a command inside a container
-    '''
-
-    container_binary = os.getenv('CEPH_CONTAINER_BINARY')
-    command_exec = [container_binary,
-                    'run',
-                    '--rm',
-                    '--net=host',
-                    '-v', '/etc/ceph:/etc/ceph:z',
-                    '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                    '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                    '--entrypoint=' + binary, container_image]
-    return command_exec
-
-
-def is_containerized():
-    '''
-    Check if we are running on a containerized cluster
-    '''
-
-    if 'CEPH_CONTAINER_IMAGE' in os.environ:
-        container_image = os.getenv('CEPH_CONTAINER_IMAGE')
-    else:
-        container_image = None
-
-    return container_image
 
 
 def generate_secret():

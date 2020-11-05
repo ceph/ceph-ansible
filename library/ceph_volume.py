@@ -1,6 +1,10 @@
 #!/usr/bin/python
 
 from ansible.module_utils.basic import AnsibleModule
+try:
+    from ansible.module_utils.ca_common import exec_command, is_containerized
+except ImportError:
+    from module_utils.ca_common import exec_command, is_containerized
 import datetime
 import copy
 import json
@@ -236,28 +240,6 @@ def build_cmd(action, container_image, cluster='ceph', binary='ceph-volume'):
     cmd.extend(action)
 
     return cmd
-
-
-def exec_command(module, cmd):
-    '''
-    Execute command
-    '''
-
-    rc, out, err = module.run_command(cmd)
-    return rc, cmd, out, err
-
-
-def is_containerized():
-    '''
-    Check if we are running on a containerized cluster
-    '''
-
-    if 'CEPH_CONTAINER_IMAGE' in os.environ:
-        container_image = os.getenv('CEPH_CONTAINER_IMAGE')
-    else:
-        container_image = None
-
-    return container_image
 
 
 def get_data(data, data_vg):
