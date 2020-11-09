@@ -11,16 +11,29 @@
     - osd_crush_location is defined
 
 - name: create configured crush rules
-  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd crush rule {{ 'create-replicated' if item.class is defined else 'create-simple' }} {{ item.name }} {{ item.root }} {{ item.type }} {{ item.class | default('') }}"
-  changed_when: false
+  ceph_crush_rule:
+    name: "{{ item.name }}"
+    cluster: "{{ cluster }}"
+    rule_type: replicated
+    bucket_root: "{{ item.root }}"
+    bucket_type: "{{ item.type }}"
+    device_class: "{{ item.class | default(omit) }}"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   with_items: "{{ hostvars[groups[mon_group_name][0]]['crush_rules'] | default(crush_rules) | unique }}"
   delegate_to: '{{ groups[mon_group_name][0] }}'
   run_once: true
 
 - name: get id for new default crush rule
-  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd -f json crush rule dump {{ item.name }}"
+  ceph_crush_rule:
+    name: "{{ item.name }}"
+    cluster: "{{ cluster }}"
+    state: info
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: info_ceph_default_crush_rule
-  changed_when: false
   with_items: "{{ hostvars[groups[mon_group_name][0]]['crush_rules'] | default(crush_rules) | unique }}"
   delegate_to: '{{ groups[mon_group_name][0] }}'
   run_once: true

@@ -1,8 +1,13 @@
 ---
 - name: get current default crush rule details
-  command: "{{ hostvars[delegated_node | default(groups[mon_group_name][0])]['ceph_admin_command'] }} --cluster {{ cluster }} osd -f json crush rule dump"
+  ceph_crush_rule:
+    name: null
+    cluster: "{{ cluster }}"
+    state: info
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: default_crush_rule_details
-  changed_when: false
   delegate_to: "{{ delegated_node | default(groups[mon_group_name][0]) }}"
   run_once: true
 

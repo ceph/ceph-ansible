@@ -14,10 +14,16 @@
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: set crush rule
-  command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd crush rule create-erasure {{ item.key }} {{ item.value.ec_profile }}"
+  ceph_crush_rule:
+    name: "{{ item.key }}"
+    cluster: "{{ cluster }}"
+    rule_type: erasure
+    profile: "{{ item.value.ec_profile }}"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  changed_when: false
   when:
     - item.value.type is defined
     - item.value.type == 'ec'
