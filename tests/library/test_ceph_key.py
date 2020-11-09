@@ -1,38 +1,9 @@
 import json
 import os
-import sys
 import mock
 import pytest
-from ansible.module_utils import basic
-from ansible.module_utils._text import to_bytes
+import ca_test_common
 import ceph_key
-
-
-# From ceph-ansible documentation
-def set_module_args(args):
-    if '_ansible_remote_tmp' not in args:
-        args['_ansible_remote_tmp'] = '/tmp'
-    if '_ansible_keep_remote_files' not in args:
-        args['_ansible_keep_remote_files'] = False
-
-    args = json.dumps({'ANSIBLE_MODULE_ARGS': args})
-    basic._ANSIBLE_ARGS = to_bytes(args)
-
-
-class AnsibleExitJson(Exception):
-    pass
-
-
-class AnsibleFailJson(Exception):
-    pass
-
-
-def exit_json(*args, **kwargs):
-    raise AnsibleExitJson(kwargs)
-
-
-def fail_json(*args, **kwargs):
-    raise AnsibleFailJson(kwargs)
 
 
 @mock.patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'docker'})
@@ -560,18 +531,17 @@ class TestCephKeyModule(object):
     @mock.patch('ceph_key.exec_commands')
     @pytest.mark.parametrize('output_format', ['json', 'plain', 'xml', 'yaml'])
     def test_state_info(self, m_exec_commands, m_exit_json, output_format):
-        set_module_args({"state": "info",
-                         "cluster": "ceph",
-                         "name": "client.admin",
-                         "output_format": output_format}
-                        )
-        m_exit_json.side_effect = exit_json
+        ca_test_common.set_module_args({"state": "info",
+                                        "cluster": "ceph",
+                                        "name": "client.admin",
+                                        "output_format": output_format})
+        m_exit_json.side_effect = ca_test_common.exit_json
         m_exec_commands.return_value = (0,
                                         ['ceph', 'auth', 'get', 'client.admin', '-f', output_format],
                                         '[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]',  # noqa: E501
                                         'exported keyring for client.admin')
 
-        with pytest.raises(AnsibleExitJson) as result:
+        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
             ceph_key.run_module()
 
         result = result.value.args[0]
@@ -584,14 +554,13 @@ class TestCephKeyModule(object):
     @mock.patch('ansible.module_utils.basic.AnsibleModule.fail_json')
     def test_state_info_invalid_format(self, m_fail_json):
         invalid_format = 'txt'
-        set_module_args({"state": "info",
-                         "cluster": "ceph",
-                         "name": "client.admin",
-                         "output_format": invalid_format}
-                        )
-        m_fail_json.side_effect = fail_json
+        ca_test_common.set_module_args({"state": "info",
+                                        "cluster": "ceph",
+                                        "name": "client.admin",
+                                        "output_format": invalid_format})
+        m_fail_json.side_effect = ca_test_common.fail_json
 
-        with pytest.raises(AnsibleFailJson) as result:
+        with pytest.raises(ca_test_common.AnsibleFailJson) as result:
             ceph_key.run_module()
 
         result = result.value.args[0]
