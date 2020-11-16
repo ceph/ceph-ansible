@@ -184,8 +184,13 @@
         fsid: "{{ (current_fsid.stdout | from_json).fsid }}"
 
     - name: enable cephadm mgr module
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} mgr module enable cephadm"
-      changed_when: false
+      ceph_mgr_module:
+        name: cephadm
+        cluster: "{{ cluster }}"
+        state: enable
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       run_once: true
       delegate_to: '{{ groups[mon_group_name][0] }}'
 

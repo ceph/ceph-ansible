@@ -110,16 +110,26 @@
     dashboard_backend: '{{ item }}'
 
 - name: disable mgr dashboard module (restart)
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mgr module disable dashboard"
+  ceph_mgr_module:
+    name: dashboard
+    cluster: "{{ cluster }}"
+    state: disable
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  changed_when: false
 
 - name: enable mgr dashboard module (restart)
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mgr module enable dashboard"
+  ceph_mgr_module:
+    name: dashboard
+    cluster: "{{ cluster }}"
+    state: enable
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  changed_when: false
 
 - name: create dashboard admin user
   ceph_dashboard_user:
@@ -270,13 +280,23 @@
       when: ip_version == 'ipv6'
 
 - name: disable mgr dashboard module (restart)
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mgr module disable dashboard"
-  changed_when: false
+  ceph_mgr_module:
+    name: dashboard
+    cluster: "{{ cluster }}"
+    state: disable
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
 
 - name: enable mgr dashboard module (restart)
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mgr module enable dashboard"
-  changed_when: false
+  ceph_mgr_module:
+    name: dashboard
+    cluster: "{{ cluster }}"
+    state: enable
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
