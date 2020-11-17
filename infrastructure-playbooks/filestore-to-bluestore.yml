@@ -78,7 +78,13 @@
               with_items: "{{ ceph_disk_osds_devices | default([]) }}"
 
             - name: get simple scan data
-              command: "{{ container_run_cmd }} --cluster {{ cluster }} simple scan {{ item.item + 'p1' if item.item is match('/dev/(cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}$') else item.item + '1' }} --stdout"
+              ceph_volume_simple_scan:
+                path: "{{ item.item + 'p1' if item.item is match('/dev/(cciss/c[0-9]d[0-9]|nvme[0-9]n[0-9]){1,2}$') else item.item + '1' }}"
+                cluster: "{{ cluster }"
+                stdout: true
+              environment:
+                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+                CEPH_CONTAINER_BINARY: "{{ container_binary }}"
               register: simple_scan
               with_items: "{{ partlabel.results | default([]) }}"
               when: item.stdout == 'ceph data'
