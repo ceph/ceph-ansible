@@ -405,13 +405,17 @@
         name: ceph-osd
 
     - name: scan ceph-disk osds with ceph-volume if deploying nautilus
-      command: "ceph-volume --cluster={{ cluster }} simple scan --force"
+      ceph_volume_simple_scan:
+        cluster: "{{ cluster }}"
+        force: true
       environment:
         CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
       when: not containerized_deployment | bool
 
     - name: activate scanned ceph-disk osds and migrate to ceph-volume if deploying nautilus
-      command: "ceph-volume --cluster={{ cluster }} simple activate --all"
+      ceph_volume_simple_activate:
+        cluster: "{{ cluster }}"
+        osd_all: true
       environment:
         CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
       when: not containerized_deployment | bool
