@@ -437,13 +437,13 @@
         tasks_from: container_binary.yml
       when: containerized_deployment | bool
 
-    - name: set_fact ceph_volume
-      set_fact:
-        ceph_volume: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run:/var/run --entrypoint=ceph-volume ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph-volume' }}"
-
     - name: get osd list
-      command: "{{ ceph_volume }} --cluster {{ cluster }} lvm list --format json"
-      changed_when: false
+      ceph_volume:
+        cluster: "{{ cluster }}"
+        action: list
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       register: osd_list
 
     - name: set osd fsid for containerized deployment

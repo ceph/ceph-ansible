@@ -68,10 +68,6 @@
         container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
       when: containerized_deployment | bool
 
-    - name: set_fact container_run_cmd
-      set_fact:
-        container_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment | bool else '' }}ceph-volume {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
-
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd }} timeout 5 ceph --cluster {{ cluster }} health"
       register: ceph_health
@@ -100,8 +96,12 @@
       when: hostvars[item.0]['ansible_hostname'] == item.1
 
     - name: get ceph-volume lvm list data
-      command: "{{ container_run_cmd }} lvm list --format json"
-      changed_when: false
+      ceph_volume:
+        cluster: "{{ cluster }}"
+        action: list
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       register: _lvm_list_data
       delegate_to: "{{ item.0 }}"
       loop: "{{ _osd_hosts }}"
@@ -204,7 +204,14 @@
         - ceph_osd_data_json[item.2][item.3] is defined
 
     - name: use ceph-volume lvm zap to destroy all partitions
-      command: "{{ container_run_cmd }} lvm zap --destroy {{ ceph_osd_data_json[item.2]['pkname_data'] if item.3 == 'data' else ceph_osd_data_json[item.2][item.3]['path'] }}"
+      ceph_volume:
+        cluster: "{{ cluster }}"
+        action: zap
+        destroy: true
+        data: "{{ ceph_osd_data_json[item.2]['pkname_data'] if item.3 == 'data' else ceph_osd_data_json[item.2][item.3]['path'] }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_nested:
         - "{{ _osd_hosts }}"
         - [ 'block', 'block.db', 'block.wal', 'journal', 'data' ]

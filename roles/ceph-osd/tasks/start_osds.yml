@@ -9,14 +9,13 @@
   changed_when: false
   register: osd_ids_non_container
 
-- name: set_fact container_exec_start_osd
-  set_fact:
-    container_exec_start_osd: "{{ container_binary + ' run --rm --net=host --privileged=true -v /var/run/udev/:/var/run/udev/:z -v /run/lvm/:/run/lvm/ -v /etc/ceph:/etc/ceph:z -v /dev:/dev --entrypoint=ceph-volume ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph-volume' }}"
-
 - name: collect osd ids
-  command: "{{ container_exec_start_osd }} lvm list --format json"
-  changed_when: false
-  failed_when: false
+  ceph_volume:
+    cluster: "{{ cluster }}"
+    action: list
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: ceph_osd_ids
 
 - name: include_tasks systemd.yml

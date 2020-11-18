@@ -54,7 +54,12 @@
           run_once: true
 
         - name: get ceph-volume lvm inventory data
-          command: "{{ container_run_cmd }} --cluster {{ cluster }} inventory --format json"
+          ceph_volume:
+            cluster: "{{ cluster }}"
+            action: inventory
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
           register: ceph_volume_inventory
 
         - name: set_fact inventory
@@ -158,14 +163,28 @@
                 - (item.0.stdout | from_json).encrypted | default(False) | bool
 
             - name: zap data devices
-              command: "{{ container_run_cmd }} --cluster {{ cluster }} lvm zap --destroy {{ (item.0.stdout | from_json).data.path }}"
+              ceph_volume:
+                cluster: "{{ cluster }}"
+                action: zap
+                destroy: true
+                data: "{{ (item.0.stdout | from_json).data.path }}"
+              environment:
+                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+                CEPH_CONTAINER_BINARY: "{{ container_binary }}"
               with_together:
                 - "{{ simple_scan.results }}"
                 - "{{ partlabel.results }}"
               when: item.1.stdout == 'ceph data'
 
             - name: zap journal devices
-              command: "{{ container_run_cmd }} --cluster {{ cluster }} lvm zap --destroy {{ (item.0.stdout | from_json).journal.path }}"
+              ceph_volume:
+                cluster: "{{ cluster }}"
+                action: zap
+                destroy: true
+                journal: "{{ (item.0.stdout | from_json).journal.path }}"
+              environment:
+                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+                CEPH_CONTAINER_BINARY: "{{ container_binary }}"
               with_together:
                 - "{{ simple_scan.results }}"
                 - "{{ partlabel.results }}"
@@ -174,7 +193,12 @@
                 - (item.0.stdout | from_json).journal.path is defined
 
         - name: get ceph-volume lvm list data
-          command: "{{ container_run_cmd }} --cluster {{ cluster }} lvm list --format json"
+          ceph_volume:
+            cluster: "{{ cluster }}"
+            action: list
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
           register: ceph_volume_lvm_list
 
         - name: set_fact _lvm_list
