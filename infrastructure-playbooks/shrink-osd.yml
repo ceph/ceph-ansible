@@ -137,8 +137,13 @@
       when: item.skipped is undefined
 
     - name: mark osd(s) out of the cluster
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ osd_to_kill.replace(',', ' ') }}"
-      changed_when: false
+      ceph_osd:
+        ids: "{{ osd_to_kill.split(',') }}"
+        cluster: "{{ cluster }}"
+        state: out
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       run_once: true
 
     - name: stop osd(s) service
@@ -223,14 +228,24 @@
       when: item.2 in _lvm_list.keys()
 
     - name: ensure osds are marked down
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd down {{ osd_to_kill.replace(',', ' ') }}"
-      changed_when: false
+      ceph_osd:
+        ids: "{{ osd_to_kill.split(',') }}"
+        cluster: "{{ cluster }}"
+        state: down
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: purge osd(s) from the cluster
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it"
-      changed_when: false
+      ceph_osd:
+        ids: "{{ item }}"
+        cluster: "{{ cluster }}"
+        state: purge
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       run_once: true
       with_items: "{{ osd_to_kill.split(',') }}"
 
