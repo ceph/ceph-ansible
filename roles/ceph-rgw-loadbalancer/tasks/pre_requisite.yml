@@ -6,6 +6,16 @@
   register: result
   until: result is succeeded
 
+- name: create ssl certificate file
+  copy:
+    content: "{{ haproxy_frontend_ssl_certificate_content }}"
+    dest: "{{ haproxy_frontend_ssl_certificate_path }}"
+    owner: "root"
+    group: "root"
+    mode: "0600"
+  when: haproxy_frontend_ssl_certificate_content is defined
+  notify: restart haproxy
+
 - name: "generate haproxy configuration file: haproxy.cfg"
   template:
     src: haproxy.cfg.j2

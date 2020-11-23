@@ -9,7 +9,7 @@ global
     group       haproxy
     daemon
     stats socket /var/lib/haproxy/stats
-{% if haproxy_frontend_ssl_certificate %}
+{% if haproxy_frontend_ssl_certificate is defined or haproxy_frontend_ssl_certificate_content is defined %}
     tune.ssl.default-dh-param {{ haproxy_ssl_dh_param }}
     ssl-default-bind-ciphers {{ haproxy_ssl_ciphers | join(':') }}
     ssl-default-bind-options {{ haproxy_ssl_options | join(' ') }}
@@ -33,8 +33,8 @@ defaults
     maxconn                 8000
 
 frontend rgw-frontend
-{% if haproxy_frontend_ssl_certificate %}
-    bind *:{{ haproxy_frontend_ssl_port }} ssl crt {{ haproxy_frontend_ssl_certificate }}
+{% if haproxy_frontend_ssl_certificate is defined or haproxy_frontend_ssl_certificate_content is defined %}
+    bind *:{{ haproxy_frontend_ssl_port }} ssl crt {{ haproxy_frontend_ssl_certificate_path }}
 {% else %}
     bind *:{{ haproxy_frontend_port }}
 {% endif %}
