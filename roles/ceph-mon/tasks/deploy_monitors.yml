@@ -50,10 +50,10 @@
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: copy the initial key in /etc/ceph (for containers)
-  command: >
-    cp /var/lib/ceph/tmp/{{ cluster }}.mon..keyring
-       /etc/ceph/{{ cluster }}.mon.keyring
-  changed_when: false
+  copy:
+    src: /var/lib/ceph/tmp/{{ cluster }}.mon..keyring
+    dest: /etc/ceph/{{ cluster }}.mon.keyring
+    remote_src: true
   when: containerized_deployment | bool
 
 - name: create monitor directory
