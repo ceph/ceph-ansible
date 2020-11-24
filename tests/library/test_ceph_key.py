@@ -565,3 +565,15 @@ class TestCephKeyModule(object):
 
         result = result.value.args[0]
         assert result['msg'] == 'value of output_format must be one of: json, plain, xml, yaml, got: {}'.format(invalid_format)
+
+    @mock.patch('ceph_key.generate_secret')
+    @mock.patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    def test_generate_key(self, m_exit_json, m_generate_secret):
+        fake_secret = b'AQDaLb1fAAAAABAAsIMKdGEKu+lGOyXnRfT0Hg=='
+        ca_test_common.set_module_args({"state": "generate_secret"})
+        m_exit_json.side_effect = ca_test_common.exit_json
+        m_generate_secret.return_value = fake_secret
+
+        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
+            ceph_key.run_module()
+        assert result.value.args[0]['stdout'] == fake_secret.decode()
