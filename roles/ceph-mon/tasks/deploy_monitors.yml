@@ -4,7 +4,7 @@
     name: mon.
     cluster: "{{ cluster }}"
     user: mon.
-    user_key: "/var/lib/ceph/mon/{{ cluster }}-{{ hostvars[groups[mon_group_name][0] if running_mon is undefined else running_mon]['ansible_hostname'] }}/keyring"
+    user_key: "/var/lib/ceph/mon/{{ cluster }}-{{ hostvars[running_mon]['ansible_hostname'] }}/keyring"
     output_format: json
     state: info
   environment:
@@ -12,26 +12,21 @@
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: initial_mon_key
   run_once: True
-  delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"
-  when: ceph_current_status.fsid is defined
+  delegate_to: "{{ running_mon }}"
+  when: running_mon is defined
 
 - name: generate monitor initial keyring
-  command: >
-    {{ hostvars[groups[mon_group_name][0] if running_mon is undefined else running_mon]['discovered_interpreter_python'] }} -c "import os ; import struct ;
-    import time; import base64 ; key = os.urandom(16) ;
-    header = struct.pack('<hiih',1,int(time.time()),0,len(key)) ;
-    print(base64.b64encode(header + key).decode())"
+  ceph_key:
+    state: generate_secret
   register: monitor_keyring
-  run_once: True
-  delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"
+  delegate_to: localhost
+  run_once: true
   when:
     - initial_mon_key.skipped is defined
-    - ceph_current_status.fsid is undefined
 
 - name: get initial keyring when it already exists
   set_fact:
-    monitor_keyring: "{{ (initial_mon_key.stdout | from_json)[0].key if monitor_keyring.skipped is defined else monitor_keyring.stdout if initial_mon_key.skipped is defined }}"
-  when: initial_mon_key is not skipped or monitor_keyring is not skipped
+    monitor_keyring: "{{ (initial_mon_key.stdout | from_json)[0]['key'] if initial_mon_key is not skipped else monitor_keyring.stdout }}"
 
 - name: create monitor initial keyring
   ceph_key:

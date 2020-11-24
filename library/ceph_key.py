@@ -83,8 +83,9 @@ options:
             return a json output.
             If 'info' is used, the module will return in a json format the
             description of a given keyring.
+            If 'generate_secret' is used, the module will simply output a cephx keyring.
         required: false
-        choices: ['present', 'update', 'absent', 'list', 'info', 'fetch_initial_keys']
+        choices: ['present', 'update', 'absent', 'list', 'info', 'fetch_initial_keys', 'generate_secret']
         default: present
     caps:
         description:
@@ -491,7 +492,8 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         name=dict(type='str', required=False),
-        state=dict(type='str', required=False, default='present', choices=['present', 'update', 'absent', 'list', 'info', 'fetch_initial_keys']),
+        state=dict(type='str', required=False, default='present', choices=['present', 'update', 'absent',
+                                                                           'list', 'info', 'fetch_initial_keys', 'generate_secret']),
         caps=dict(type='dict', required=False, default=None),
         secret=dict(type='str', required=False, default=None, no_log=True),
         import_key=dict(type='bool', required=False, default=True),
@@ -677,9 +679,12 @@ def run_module():
             file_args = module.load_file_common_arguments(module.params)
             file_args['path'] = key_path
             module.set_fs_attributes_if_different(file_args, False)
-    else:
-        module.fail_json(
-            msg='State must either be "present" or "absent" or "list" or "info" or "fetch_initial_keys".', changed=False, rc=1)  # noqa E501
+    elif state == "generate_secret":
+        out = generate_secret().decode()
+        cmd = ''
+        rc = 0
+        err = ''
+        changed = True
 
     endd = datetime.datetime.now()
     delta = endd - startd
