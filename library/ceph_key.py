@@ -70,8 +70,9 @@ options:
             return a json output.
             If 'info' is used, the module will return in a json format the
             description of a given keyring.
+            If 'generate_secret' is used, the module will simply output a cephx keyring.
         required: true
-        choices: ['present', 'absent', 'list', 'info']
+        choices: ['present', 'absent', 'list', 'info', 'generate_secret']
         default: list
     caps:
         description:
@@ -704,9 +705,12 @@ def run_module():
             file_args = module.load_file_common_arguments(module.params)
             file_args['path'] = key_path
             module.set_fs_attributes_if_different(file_args, False)
-    else:
-        module.fail_json(
-            msg='State must either be "present" or "absent" or "list" or "info" or "fetch_initial_keys".', changed=False, rc=1)  # noqa E501
+    elif state == "generate_secret":
+        out = generate_secret().decode()
+        cmd = ''
+        rc = 0
+        err = ''
+        changed = True
 
     endd = datetime.datetime.now()
     delta = endd - startd
