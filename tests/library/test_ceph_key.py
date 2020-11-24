@@ -25,8 +25,16 @@ class AnsibleExitJson(Exception):
     pass
 
 
+class AnsibleFailJson(Exception):
+    pass
+
+
 def exit_json(*args, **kwargs):
     raise AnsibleExitJson(kwargs)
+
+
+def fail_json(*args, **kwargs):
+    raise AnsibleFailJson(kwargs)
 
 
 @mock.patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'docker'})
@@ -571,3 +579,15 @@ class TestCephKeyModule(object):
         assert result['stdout'] == '[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]'  # noqa: E501
         assert result['stderr'] == 'exported keyring for client.admin'
         assert result['rc'] == 0
+
+    @mock.patch('ceph_key.generate_secret')
+    @mock.patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    def test_generate_key(self, m_exit_json, m_generate_secret):
+        fake_secret = b'AQDaLb1fAAAAABAAsIMKdGEKu+lGOyXnRfT0Hg=='
+        set_module_args({"state": "generate_secret"})
+        m_exit_json.side_effect = exit_json
+        m_generate_secret.return_value = fake_secret
+
+        with pytest.raises(AnsibleExitJson) as result:
+            ceph_key.run_module()
+        assert result.value.args[0]['stdout'] == fake_secret.decode()
