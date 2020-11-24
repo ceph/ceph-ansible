@@ -720,10 +720,6 @@ def run_module():
         else:
             cmd = batch_report_cmd
 
-    else:
-        module.fail_json(
-            msg='State must either be "create" or "prepare" or "activate" or "list" or "zap" or "batch" or "inventory".', changed=False, rc=1)  # noqa E501
-
     endd = datetime.datetime.now()
     delta = endd - startd
 
