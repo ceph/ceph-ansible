@@ -4,9 +4,7 @@ from ansible.module_utils._text import to_bytes
 import json
 import os
 import pytest
-import sys
-sys.path.append('./library')
-import ceph_volume_simple_activate  # noqa : E402
+import ceph_volume_simple_activate
 
 fake_cluster = 'ceph'
 fake_container_binary = 'podman'
