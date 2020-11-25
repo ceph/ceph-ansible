@@ -4,6 +4,7 @@
     path: "{{ item }}"
     state: directory
     owner: "{{ prometheus_user_id }}"
+    group: "{{ prometheus_user_id }}"
   with_items:
    - "{{ prometheus_conf_dir }}"
    - "{{ prometheus_data_dir }}"
@@ -13,6 +14,7 @@
     src: prometheus.yml.j2
     dest: "{{ prometheus_conf_dir }}/prometheus.yml"
     owner: "{{ prometheus_user_id }}"
+    group: "{{ prometheus_user_id }}"
     mode: 0640
   notify: service handler
 
@@ -20,21 +22,23 @@
   file:
     path: "/etc/prometheus/alerting/"
     state: directory
-    recurse: yes
+    owner: "{{ prometheus_user_id }}"
+    group: "{{ prometheus_user_id }}"
 
 - name: copy alerting rules
   copy:
     src: "ceph_dashboard.yml"
     dest: "/etc/prometheus/alerting/ceph_dashboard.yml"
-    owner: root
-    group: root
+    owner: "{{ prometheus_user_id }}"
+    group: "{{ prometheus_user_id }}"
     mode: 0644
 
 - name: create alertmanager directories
   file:
     path: "{{ item }}"
     state: directory
-    owner: "root"
+    owner: "{{ prometheus_user_id }}"
+    group: "{{ prometheus_user_id }}"
   with_items:
    - "{{ alertmanager_conf_dir }}"
    - "{{ alertmanager_data_dir }}"
@@ -44,6 +48,7 @@
     src: alertmanager.yml.j2
     dest: "{{ alertmanager_conf_dir }}/alertmanager.yml"
     owner: "{{ prometheus_user_id }}"
+    group: "{{ prometheus_user_id }}"
     mode: 0640
   notify: service handler
 
