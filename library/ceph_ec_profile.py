@@ -113,9 +113,9 @@ def get_profile(module, name, cluster='ceph', container_image=None):
 
     args = ['get', name, '--format=json']
 
-    cmd = generate_ceph_cmd(cluster=cluster,
-                            sub_cmd=['osd', 'erasure-code-profile'],
+    cmd = generate_ceph_cmd(sub_cmd=['osd', 'erasure-code-profile'],
                             args=args,
+                            cluster=cluster,
                             container_image=container_image)
 
     return cmd
@@ -132,9 +132,9 @@ def create_profile(module, name, k, m, stripe_unit, cluster='ceph', force=False,
     if force:
         args.append('--force')
 
-    cmd = generate_ceph_cmd(cluster=cluster,
-                            sub_cmd=['osd', 'erasure-code-profile'],
+    cmd = generate_ceph_cmd(sub_cmd=['osd', 'erasure-code-profile'],
                             args=args,
+                            cluster=cluster,
                             container_image=container_image)
 
     return cmd
@@ -147,9 +147,9 @@ def delete_profile(module, name, cluster='ceph', container_image=None):
 
     args = ['rm', name]
 
-    cmd = generate_ceph_cmd(cluster=cluster,
-                            sub_cmd=['osd', 'erasure-code-profile'],
+    cmd = generate_ceph_cmd(sub_cmd=['osd', 'erasure-code-profile'],
                             args=args,
+                            cluster=cluster,
                             container_image=container_image)
 
     return cmd

@@ -2,10 +2,13 @@ import os
 import datetime
 
 
-def generate_ceph_cmd(cluster, sub_cmd, args, user='client.admin', user_key='/etc/ceph/ceph.client.admin.keyring', container_image=None):
+def generate_ceph_cmd(sub_cmd, args, user_key=None, cluster='ceph', user='client.admin', container_image=None):
     '''
     Generate 'ceph' command line to execute
     '''
+
+    if not user_key:
+        user_key = '/etc/ceph/{}.{}.keyring'.format(cluster, user)
 
     cmd = pre_generate_ceph_cmd(container_image=container_image)
 

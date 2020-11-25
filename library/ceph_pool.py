@@ -167,9 +167,9 @@ def check_pool_exist(cluster,
 
     args = ['stats', name, '-f', output_format]
 
-    cmd = generate_ceph_cmd(cluster=cluster,
-                            sub_cmd=['osd', 'pool'],
+    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
                             args=args,
+                            cluster=cluster,
                             user=user,
                             user_key=user_key,
                             container_image=container_image)
@@ -211,9 +211,9 @@ def get_application_pool(cluster,
 
     args = ['application', 'get', name, '-f', output_format]
 
-    cmd = generate_ceph_cmd(cluster=cluster,
-                            sub_cmd=['osd', 'pool'],
+    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
                             args=args,
+                            cluster=cluster,
                             user=user,
                             user_key=user_key,
                             container_image=container_image)
@@ -233,9 +233,9 @@ def enable_application_pool(cluster,
 
     args = ['application', 'enable', name, application]
 
-    cmd = generate_ceph_cmd(cluster=cluster,
-                            sub_cmd=['osd', 'pool'],
+    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
                             args=args,
+                            cluster=cluster,
                             user=user,
                             user_key=user_key,
                             container_image=container_image)
@@ -256,9 +256,9 @@ def disable_application_pool(cluster,
     args = ['application', 'disable', name,
             application, '--yes-i-really-mean-it']
 
-    cmd = generate_ceph_cmd(cluster=cluster,
-                            sub_cmd=['osd', 'pool'],
+    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
                             args=args,
+                            cluster=cluster,
                             user=user,
                             user_key=user_key,
                             container_image=container_image)
@@ -279,9 +279,9 @@ def get_pool_details(module,
 
     args = ['ls', 'detail', '-f', output_format]
 
-    cmd = generate_ceph_cmd(cluster=cluster,
-                            sub_cmd=['osd', 'pool'],
+    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
                             args=args,
+                            cluster=cluster,
                             user=user,
                             user_key=user_key,
                             container_image=container_image)
@@ -367,9 +367,9 @@ def list_pools(cluster,
 
     args.extend(['-f', output_format])
 
-    cmd = generate_ceph_cmd(cluster=cluster,
-                            sub_cmd=['osd', 'pool'],
+    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
                             args=args,
+                            cluster=cluster,
                             user=user,
                             user_key=user_key,
                             container_image=container_image)
@@ -418,9 +418,9 @@ def create_pool(cluster,
                      '--autoscale-mode',
                      user_pool_config['pg_autoscale_mode']['value']])
 
-    cmd = generate_ceph_cmd(cluster=cluster,
-                            sub_cmd=['osd', 'pool'],
+    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
                             args=args,
+                            cluster=cluster,
                             user=user,
                             user_key=user_key,
                             container_image=container_image)
@@ -435,9 +435,9 @@ def remove_pool(cluster, name, user, user_key, container_image=None):
 
     args = ['rm', name, name, '--yes-i-really-really-mean-it']
 
-    cmd = generate_ceph_cmd(cluster=cluster,
-                            sub_cmd=['osd', 'pool'],
+    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
                             args=args,
+                            cluster=cluster,
                             user=user,
                             user_key=user_key,
                             container_image=container_image)
@@ -460,9 +460,9 @@ def update_pool(module, cluster, name,
                     delta[key]['cli_set_opt'],
                     delta[key]['value']]
 
-            cmd = generate_ceph_cmd(cluster=cluster,
-                                    sub_cmd=['osd', 'pool'],
+            cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
                                     args=args,
+                                    cluster=cluster,
                                     user=user,
                                     user_key=user_key,
                                     container_image=container_image)
