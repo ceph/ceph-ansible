@@ -16,6 +16,10 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
+try:
+    from ansible.module_utils.ca_common import exit_module
+except ImportError:
+    from module_utils.ca_common import exit_module
 import datetime
 import os
 
@@ -91,23 +95,6 @@ EXAMPLES = '''
 '''
 
 RETURN = '''#  '''
-
-
-def exit_module(module, out, rc, cmd, err, startd, changed=False):
-    endd = datetime.datetime.now()
-    delta = endd - startd
-
-    result = dict(
-        cmd=cmd,
-        start=str(startd),
-        end=str(endd),
-        delta=str(delta),
-        rc=rc,
-        stdout=out.rstrip("\r\n"),
-        stderr=err.rstrip("\r\n"),
-        changed=changed,
-    )
-    module.exit_json(**result)
 
 
 def main():
