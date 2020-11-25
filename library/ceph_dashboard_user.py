@@ -123,7 +123,7 @@ def create_user(module, container_image=None):
 
     args = ['ac-user-create', name, password]
 
-    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['dashboard'], args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 
@@ -141,7 +141,7 @@ def set_roles(module, container_image=None):
 
     args.extend(roles)
 
-    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['dashboard'], args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 
@@ -157,7 +157,7 @@ def set_password(module, container_image=None):
 
     args = ['ac-user-set-password', name, password]
 
-    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['dashboard'], args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 
@@ -172,7 +172,7 @@ def get_user(module, container_image=None):
 
     args = ['ac-user-show', name, '--format=json']
 
-    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['dashboard'], args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 
@@ -187,7 +187,7 @@ def remove_user(module, container_image=None):
 
     args = ['ac-user-delete', name]
 
-    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['dashboard'], args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 

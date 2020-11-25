@@ -119,7 +119,7 @@ def create_fs(module, container_image=None):
 
     args = ['new', name, metadata, data]
 
-    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['fs'], args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(sub_cmd=['fs'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 
@@ -134,7 +134,7 @@ def get_fs(module, container_image=None):
 
     args = ['get', name, '--format=json']
 
-    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['fs'], args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(sub_cmd=['fs'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 
@@ -149,7 +149,7 @@ def remove_fs(module, container_image=None):
 
     args = ['rm', name, '--yes-i-really-mean-it']
 
-    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['fs'], args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(sub_cmd=['fs'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 
@@ -164,7 +164,7 @@ def fail_fs(module, container_image=None):
 
     args = ['fail', name]
 
-    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['fs'], args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(sub_cmd=['fs'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 
@@ -180,7 +180,7 @@ def set_fs(module, container_image=None):
 
     args = ['set', name, 'max_mds', str(max_mds)]
 
-    cmd = generate_ceph_cmd(cluster=cluster, sub_cmd=['fs'], args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(sub_cmd=['fs'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 
