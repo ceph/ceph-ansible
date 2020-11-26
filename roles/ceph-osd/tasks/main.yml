@@ -97,10 +97,12 @@
   when:
     - not ansible_check_mode
     - inventory_hostname == ansible_play_hosts_all | last
+  tags: wait_all_osds_up
 
 - name: include crush_rules.yml
   include_tasks: crush_rules.yml
   when: hostvars[groups[mon_group_name][0]]['crush_rule_config'] | default(crush_rule_config) | bool
+  tags: wait_all_osds_up
 
 # Create the pools listed in openstack_pools
 - name: include openstack_config.yml
@@ -110,3 +112,4 @@
     - not rolling_update | default(False) | bool
     - openstack_config | bool
     - inventory_hostname == groups[osd_group_name] | last
+  tags: wait_all_osds_up
