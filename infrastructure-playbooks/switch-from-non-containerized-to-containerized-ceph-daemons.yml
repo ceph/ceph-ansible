@@ -238,7 +238,7 @@
     - name: collect running osds
       shell: |
         set -o pipefail;
-        systemctl list-units | grep -E "loaded * active" | grep -Eo 'ceph-osd@[0-9]+.service|ceph-volume|ceph\.target'
+        systemctl list-units | grep -E "loaded * active" | grep -Eo 'ceph-osd@[0-9]+.service|ceph-volume'
       register: running_osds
       changed_when: false
       failed_when: false
@@ -258,6 +258,11 @@
         enabled: no
       with_items: "{{ running_osds.stdout_lines | default([]) }}"
       when: running_osds != []
+
+    - name: disable ceph.target
+      systemd:
+        name: ceph.target
+        enabled: no
 
     - name: remove old ceph-osd systemd units
       file:
