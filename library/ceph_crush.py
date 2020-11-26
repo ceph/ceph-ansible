@@ -166,14 +166,14 @@ def run_module():
         changed=False,
         stdout='',
         stderr='',
-        rc=0,
+        rc='',
         start='',
         end='',
         delta='',
     )
 
     if module.check_mode:
-        module.exit_json(**result)
+        return result
 
     startd = datetime.datetime.now()
 
