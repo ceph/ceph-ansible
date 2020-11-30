@@ -386,7 +386,11 @@
     when: lvm_volumes is not defined
 
   - name: get osd numbers
+<<<<<<< HEAD
     shell: "if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi"
+=======
+    shell: if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi  # noqa 306
+>>>>>>> 86a8889ee... common: do not use pipefail when not needed
     register: osd_ids
     changed_when: false
 
@@ -408,12 +412,21 @@
 
   # NOTE(leseb): hope someone will find a more elegant way one day...
   - name: see if encrypted partitions are present
+<<<<<<< HEAD
     shell: |
       blkid -t TYPE=crypto_LUKS -s PARTLABEL -s PARTUUID | grep "ceph.*." | grep -o PARTUUID.* | cut -d '"' -f 2
     register: encrypted_ceph_partuuid
 
   - name: get osd data and lockbox mount points
     shell: "(grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'"
+=======
+    shell: blkid -t TYPE=crypto_LUKS -s PARTLABEL -s PARTUUID | grep "ceph.*." | grep -o PARTUUID.* | cut -d '"' -f 2  # noqa 306
+    register: encrypted_ceph_partuuid
+    changed_when: false
+
+  - name: get osd data and lockbox mount points
+    shell: (grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'  # noqa 306
+>>>>>>> 86a8889ee... common: do not use pipefail when not needed
     register: mounted_osd
     changed_when: false
 
@@ -455,7 +468,11 @@
     when: encrypted_ceph_partuuid.stdout_lines | length > 0
 
   - name: get payload_offset
+<<<<<<< HEAD
     shell: cryptsetup luksDump /dev/disk/by-partuuid/{{ item }} | awk '/Payload offset:/ { print $3 }'
+=======
+    shell: cryptsetup luksDump /dev/disk/by-partuuid/{{ item }} | awk '/Payload offset:/ { print $3 }'  # noqa 306
+>>>>>>> 86a8889ee... common: do not use pipefail when not needed
     register: payload_offset
     with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
     when: encrypted_ceph_partuuid.stdout_lines | length > 0
@@ -567,7 +584,7 @@
       dd if=/dev/zero of="{{ item }}" bs=1 count=4096
     with_items: "{{ combined_devices_list }}"
 
-  - name: zap ceph journal/block db/block wal partitions
+  - name: zap ceph journal/block db/block wal partitions  # noqa 306
     shell: |
       # if the disk passed is a raw device AND the boot system disk
       if parted -s /dev/"{{ item }}" print | grep -sq boot; then
