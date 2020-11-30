@@ -388,9 +388,7 @@
     when: lvm_volumes is not defined
 
   - name: get osd numbers
-    shell: |
-      set -o pipefail;
-      if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi
+    shell: if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi  # noqa 306
     register: osd_ids
     changed_when: false
 
@@ -412,17 +410,12 @@
 
   # NOTE(leseb): hope someone will find a more elegant way one day...
   - name: see if encrypted partitions are present
-    shell: |
-      set -o pipefail;
-      blkid -t TYPE=crypto_LUKS -s PARTLABEL -s PARTUUID | grep "ceph.*." | grep -o PARTUUID.* | cut -d '"' -f 2
+    shell: blkid -t TYPE=crypto_LUKS -s PARTLABEL -s PARTUUID | grep "ceph.*." | grep -o PARTUUID.* | cut -d '"' -f 2  # noqa 306
     register: encrypted_ceph_partuuid
-    failed_when: false
     changed_when: false
 
   - name: get osd data and lockbox mount points
-    shell: |
-      set -o pipefail;
-      (grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'
+    shell: (grep /var/lib/ceph/osd /proc/mounts || echo -n) | awk '{ print $2 }'  # noqa 306
     register: mounted_osd
     changed_when: false
 
@@ -466,9 +459,7 @@
     when: encrypted_ceph_partuuid.stdout_lines | length > 0
 
   - name: get payload_offset
-    shell: |
-      set -o pipefail;
-      cryptsetup luksDump /dev/disk/by-partuuid/{{ item }} | awk '/Payload offset:/ { print $3 }'
+    shell: cryptsetup luksDump /dev/disk/by-partuuid/{{ item }} | awk '/Payload offset:/ { print $3 }'  # noqa 306
     register: payload_offset
     with_items: "{{ encrypted_ceph_partuuid.stdout_lines }}"
     when: encrypted_ceph_partuuid.stdout_lines | length > 0
@@ -586,15 +577,13 @@
 
   - name: wipe partitions
     shell: |
-      set -o pipefail;
       wipefs --all "{{ item }}"
       dd if=/dev/zero of="{{ item }}" bs=1 count=4096
     changed_when: false
     with_items: "{{ combined_devices_list }}"
 
-  - name: zap ceph journal/block db/block wal partitions
+  - name: zap ceph journal/block db/block wal partitions  # noqa 306
     shell: |
-      set -o pipefail;
       # if the disk passed is a raw device AND the boot system disk
       if parted -s /dev/"{{ item }}" print | grep -sq boot; then
         echo "Looks like /dev/{{ item }} has a boot partition,"
