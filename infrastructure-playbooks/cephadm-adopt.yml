@@ -337,11 +337,13 @@
         name: ceph-defaults
 
     - name: adopt mon daemon
-      command: "{{ cephadm_cmd }} adopt --cluster {{ cluster }} --skip-pull --style legacy --name mon.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }}"
-      args:
-        creates: '/var/lib/ceph/{{ fsid }}/mon.{{ ansible_hostname }}/unit.run'
-      environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+      cephadm_adopt:
+        name: "mon.{{ ansible_hostname }}"
+        cluster: "{{ cluster }}"
+        image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+        docker: "{{ true if container_binary == 'docker' else false }}"
+        pull: false
+        firewalld: "{{ true if configure_firewall | bool else false }}"
 
     - name: reset failed ceph-mon systemd unit
       command: 'systemctl reset-failed ceph-mon@{{ ansible_hostname }}'  # noqa 303
@@ -382,11 +384,13 @@
         name: ceph-defaults
 
     - name: adopt mgr daemon
-      command: "{{ cephadm_cmd }} adopt --cluster {{ cluster }} --skip-pull --style legacy --name mgr.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }}"
-      args:
-        creates: '/var/lib/ceph/{{ fsid }}/mgr.{{ ansible_hostname }}/unit.run'
-      environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+      cephadm_adopt:
+        name: "mgr.{{ ansible_hostname }}"
+        cluster: "{{ cluster }}"
+        image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+        docker: "{{ true if container_binary == 'docker' else false }}"
+        pull: false
+        firewalld: "{{ true if configure_firewall | bool else false }}"
 
     - name: reset failed ceph-mgr systemd unit
       command: 'systemctl reset-failed ceph-mgr@{{ ansible_hostname }}'  # noqa 303
@@ -467,12 +471,14 @@
       when: containerized_deployment | bool
 
     - name: adopt osd daemon
-      command: "{{ cephadm_cmd }} adopt --cluster {{ cluster }} --skip-pull --style legacy --name osd.{{ item }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }}"
+      cephadm_adopt:
+        name: "osd.{{ item }}"
+        cluster: "{{ cluster }}"
+        image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+        docker: "{{ true if container_binary == 'docker' else false }}"
+        pull: false
+        firewalld: "{{ true if configure_firewall | bool else false }}"
       loop: '{{ (osd_list.stdout | from_json).keys() | list }}'
-      args:
-        creates: '/var/lib/ceph/{{ fsid }}/osd.{{ item }}/unit.run'
-      environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: remove ceph-osd systemd unit and ceph-osd-run.sh files
       file:
@@ -862,11 +868,13 @@
             state: link
 
         - name: adopt alertmanager daemon
-          command: "{{ cephadm_cmd }} adopt --cluster {{ cluster }} --skip-pull --style legacy --name alertmanager.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }}"
-          args:
-            creates: '/var/lib/ceph/{{ fsid }}/alertmanager.{{ ansible_hostname }}/unit.run'
-          environment:
-            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+          cephadm_adopt:
+            name: "alertmanager.{{ ansible_hostname }}"
+            cluster: "{{ cluster }}"
+            image: "{{ alertmanager_container_image }}"
+            docker: "{{ true if container_binary == 'docker' else false }}"
+            pull: false
+            firewalld: "{{ true if configure_firewall | bool else false }}"
 
         - name: remove alertmanager systemd unit file
           file:
@@ -922,11 +930,13 @@
             recurse: true
 
         - name: adopt prometheus daemon
-          command: "{{ cephadm_cmd }} adopt --cluster {{ cluster }} --skip-pull --style legacy --name prometheus.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }}"
-          args:
-            creates: '/var/lib/ceph/{{ fsid }}/prometheus.{{ ansible_hostname }}/unit.run'
-          environment:
-            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+          cephadm_adopt:
+            name: "prometheus.{{ ansible_hostname }}"
+            cluster: "{{ cluster }}"
+            image: "{{ prometheus_container_image }}"
+            docker: "{{ true if container_binary == 'docker' else false }}"
+            pull: false
+            firewalld: "{{ true if configure_firewall | bool else false }}"
 
         - name: remove prometheus systemd unit file
           file:
@@ -946,11 +956,13 @@
             enabled: false
 
         - name: adopt grafana daemon
-          command: "{{ cephadm_cmd }} adopt --cluster {{ cluster }} --skip-pull --style legacy --name grafana.{{ ansible_hostname }} {{ '--skip-firewalld' if not configure_firewall | bool else '' }}"
-          args:
-            creates: '/var/lib/ceph/{{ fsid }}/grafana.{{ ansible_hostname }}/unit.run'
-          environment:
-            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+          cephadm_adopt:
+            name: "grafana.{{ ansible_hostname }}"
+            cluster: "{{ cluster }}"
+            image: "{{ grafana_container_image }}"
+            docker: "{{ true if container_binary == 'docker' else false }}"
+            pull: false
+            firewalld: "{{ true if configure_firewall | bool else false }}"
 
         - name: remove grafana systemd unit file
           file:
