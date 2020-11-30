@@ -5,11 +5,10 @@
 # when running with containerized_deployment: false this task
 # will add all client hosts to the group (and not filter).
 - name: create filtered clients group
-  add_host:
-    name: "{{ item }}"
-    groups: _filtered_clients
-  with_items: "{{ groups[client_group_name] | intersect(ansible_play_batch) }}"
-  when: (hostvars[item]['ansible_architecture'] == 'x86_64') or (not containerized_deployment | bool)
+  group_by:
+    key: _filtered_clients
+    parents: "{{ client_group_name }}"
+  when: (ansible_architecture == 'x86_64') or (not containerized_deployment | bool)
 
 - name: set_fact delegated_node
   set_fact:
