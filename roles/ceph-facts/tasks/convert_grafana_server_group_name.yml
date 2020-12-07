@@ -2,15 +2,8 @@
 - name: convert grafana-server group name if exist
   add_host:
     name: "{{ item }}"
-    groups: "monitoring"
+    groups: "{{ monitoring_group_name }}"
     ansible_host: "{{ hostvars[item]['ansible_host'] | default(omit) }}"
     ansible_port: "{{ hostvars[item]['ansible_port'] | default(omit) }}"
-  delegate_to: localhost
-  with_items: "{{ groups.get(grafana_server_group_name, []) }}"
-  when: groups.get(grafana_server_group_name, []) | length > 0
-  run_once: True
-
-- name: set_fact monitoring_group_name
-  set_fact:
-    monitoring_group_name: "{{ grafana_server_group_name | default(monitoring_group_name) }}"
+  with_items: "{{ groups.get((grafana_server_group_name|default('grafana-server')), []) }}"
   run_once: True
