@@ -75,6 +75,16 @@
         resizefs: yes
       when: is_atomic | bool
 
+    - name: update openssl for CentOS 8.3
+      package:
+        name: openssl
+        state: latest
+      register: result
+      until: result is succeeded
+      when:
+        - ansible_distribution == 'CentOS'
+        - containerized_deployment | default(false) | bool
+
     # https://tracker.ceph.com/issues/46759
     - name: install pyyaml for ceph-volume
       package:
