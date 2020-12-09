@@ -231,26 +231,22 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: manage nodes with cephadm
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ hostvars[item]['ansible_hostname'] }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ hostvars[item]['group_names'] | join(' ') }}"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_hostname }} {{ ansible_default_ipv4.address }} {{ group_names | join(' ') }}"
       changed_when: false
-      run_once: true
-      loop: '{{ ansible_play_hosts_all }}'
       delegate_to: '{{ groups[mon_group_name][0] }}'
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: add ceph label for core component
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host label add {{ hostvars[item]['ansible_hostname'] }} ceph"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host label add {{ ansible_hostname }} ceph"
       changed_when: false
-      run_once: true
-      loop: '{{ ansible_play_hosts_all }}'
       delegate_to: '{{ groups[mon_group_name][0] }}'
-      when: item in groups.get(mon_group_name, []) or
-            item in groups.get(osd_group_name, []) or
-            item in groups.get(mds_group_name, []) or
-            item in groups.get(rgw_group_name, []) or
-            item in groups.get(mgr_group_name, []) or
-            item in groups.get(rbdmirror_group_name, [])
+      when: inventory_hostname in groups.get(mon_group_name, []) or
+            inventory_hostname in groups.get(osd_group_name, []) or
+            inventory_hostname in groups.get(mds_group_name, []) or
+            inventory_hostname in groups.get(rgw_group_name, []) or
+            inventory_hostname in groups.get(mgr_group_name, []) or
+            inventory_hostname in groups.get(rbdmirror_group_name, [])
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
