@@ -74,15 +74,3 @@
         size: +100%FREE
         resizefs: yes
       when: is_atomic | bool
-
-    # https://tracker.ceph.com/issues/46759
-    - name: install pyyaml for ceph-volume
-      package:
-        name: "{{ 'python3-pyyaml' if ansible_distribution_major_version | int == 8 else 'python36-PyYAML' }}"
-      register: result
-      until: result is succeeded
-      when:
-        - not is_atomic | bool
-        - ansible_distribution == 'CentOS'
-        - inventory_hostname in groups.get('osds', [])
-        - not containerized_deployment | default(false) | bool
