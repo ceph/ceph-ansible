@@ -261,24 +261,20 @@
           delegate_to: '{{ groups[mon_group_name][0] }}'
 
     - name: manage nodes with cephadm
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} orch host add {{ hostvars[item]['ansible_hostname'] }} {{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ hostvars[item]['group_names'] | join(' ') }}"
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} orch host add {{ ansible_hostname }} {{ ansible_default_ipv4.address }} {{ group_names | join(' ') }}"
       changed_when: false
-      run_once: true
-      loop: '{{ ansible_play_hosts_all }}'
       delegate_to: '{{ groups[mon_group_name][0] }}'
 
     - name: add ceph label for core component
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} orch host label add {{ hostvars[item]['ansible_hostname'] }} ceph"
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} orch host label add {{ ansible_hostname }} ceph"
       changed_when: false
-      run_once: true
-      loop: '{{ ansible_play_hosts_all }}'
       delegate_to: '{{ groups[mon_group_name][0] }}'
-      when: item in groups.get(mon_group_name, []) or
-            item in groups.get(osd_group_name, []) or
-            item in groups.get(mds_group_name, []) or
-            item in groups.get(rgw_group_name, []) or
-            item in groups.get(mgr_group_name, []) or
-            item in groups.get(rbdmirror_group_name, [])
+      when: inventory_hostname in groups.get(mon_group_name, []) or
+            inventory_hostname in groups.get(osd_group_name, []) or
+            inventory_hostname in groups.get(mds_group_name, []) or
+            inventory_hostname in groups.get(rgw_group_name, []) or
+            inventory_hostname in groups.get(mgr_group_name, []) or
+            inventory_hostname in groups.get(rbdmirror_group_name, [])
 
     - name: set_fact ceph_cmd
       set_fact:
