@@ -63,6 +63,7 @@
         name: ceph-common
 
 - hosts: mons
+  tags: mons
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -104,6 +105,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: mgrs
+  tags: mgrs
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -142,6 +144,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: osds
+  tags: osds
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -180,6 +183,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: mdss
+  tags: mdss
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -218,6 +222,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: rgws
+  tags: rgws
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -237,6 +242,13 @@
     - import_role:
         name: ceph-facts
       tags: ['ceph_update_config']
+    - name: multisite specific
+      when: rgw_multisite | bool
+      block:
+        - import_role:
+            name: ceph-validate
+        - import_role:
+            name: ceph-infra
     - import_role:
         name: ceph-handler
       tags: ['ceph_update_config']
@@ -256,6 +268,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: clients
+  tags: clients
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -295,6 +308,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: nfss
+  tags: nfss
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -333,6 +347,7 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: rbdmirrors
+  tags: rbdmirrors
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -370,8 +385,8 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts:
-    - iscsigws
+- hosts: iscsigws
+  tags: iscsigws
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -409,8 +424,8 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts:
-    - rgwloadbalancers
+- hosts: rgwloadbalancers
+  tags: rgwloadbalancers
   gather_facts: false
   become: True
   any_errors_fatal: true
