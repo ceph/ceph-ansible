@@ -104,6 +104,25 @@
   when: hostvars[groups[mon_group_name][0]]['crush_rule_config'] | default(crush_rule_config) | bool
   tags: wait_all_osds_up
 
+- name: create erasure coded profile
+  ceph_ec_profile:
+    cluster: "{{ cluster }}"
+    name: "{{ item.name }}"
+    state: present
+    stripe_unit: "{{ item.stripe_unit | default(omit) }}"
+    k: "{{ item.k }}"
+    m: "{{ item.m }}"
+    crush_root: "{{ item.crush_root | default(omit) }}"
+    crush_device_class: "{{ item.crush_device_class | default(omit) }}"
+  with_items: "{{ ec_profiles }}"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+  when:
+    - ec_profiles is defined
+    - ec_profiles | length > 0
+    - inventory_hostname == ansible_play_hosts_all | last
+
 # Create the pools listed in openstack_pools
 - name: include openstack_config.yml
   include_tasks: openstack_config.yml
