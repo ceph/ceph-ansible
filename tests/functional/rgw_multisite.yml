@@ -2,51 +2,67 @@
 - hosts: rgws
   gather_facts: True
   become: True
-  vars:
-    s3cmd_cmd: "s3cmd --no-ssl --access_key=P9Eb6S8XNyo4dtZZUUMy --secret_key=qqHCUtfdNnpHq3PZRHW5un9l0bEBM812Uhow0XfB --host={{ rgw_multisite_endpoint_addr }}:8080 --host-bucket={{ rgw_multisite_endpoint_addr }}:8080"
   tasks:
+    - name: import_role ceph-defaults
+      import_role:
+        name: ceph-defaults
+
+    - name: import_role ceph-facts
+      include_role:
+        name: ceph-facts
+        tasks_from: "{{ item }}.yml"
+      with_items:
+        - set_radosgw_address
+        - container_binary
+
     - name: install s3cmd
       package:
         name: s3cmd
         state: present
       register: result
       until: result is succeeded
-      when: not containerized_deployment | default(false) | bool
+      when: not containerized_deployment | bool
 
     - name: generate and upload a random 10Mb file - containerized deployment
-      command: >
-        podman run --rm --name=rgw_multisite_test --entrypoint=/bin/bash {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} -c 'dd if=/dev/urandom of=/tmp/testinfra.img bs=1M count=10; {{ s3cmd_cmd }} mb s3://testinfra; {{ s3cmd_cmd }} put /tmp/testinfra.img s3://testinfra'
+      shell: >
+        {{ container_binary }} run --rm --name=rgw_multisite_test --entrypoint=bash {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} -c 'dd if=/dev/urandom of=/tmp/testinfra-{{ item.rgw_realm }}.img bs=1M count=10;
+        s3cmd --no-ssl --access_key={{ item.system_access_key }} --secret_key={{ item.system_secret_key }} --host={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} --host-bucket={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} mb s3://testinfra-{{ item.rgw_realm }};
+        s3cmd --no-ssl --access_key={{ item.system_access_key }} --secret_key={{ item.system_secret_key }} --host={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} --host-bucket={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} put /tmp/testinfra-{{ item.rgw_realm }}.img s3://testinfra-{{ item.rgw_realm }}'
+      with_items: "{{ rgw_instances_host }}"
       when:
         - rgw_zonemaster | bool
-        - containerized_deployment | default(False) | bool
+        - containerized_deployment | bool
 
     - name: generate and upload a random a 10Mb file - non containerized
-      shell: >
-        dd if=/dev/urandom of=/tmp/testinfra.img bs=1M count=10;
-        {{ s3cmd_cmd }} mb s3://testinfra;
-        {{ s3cmd_cmd }} put /tmp/testinfra.img s3://testinfra
+      shell: |
+        dd if=/dev/urandom of=/tmp/testinfra-{{ item.rgw_realm }}.img bs=1M count=10;
+        s3cmd --no-ssl --access_key={{ item.system_access_key }} --secret_key={{ item.system_secret_key }} --host={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} --host-bucket={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} mb s3://testinfra-{{ item.rgw_realm }};
+        s3cmd --no-ssl --access_key={{ item.system_access_key }} --secret_key={{ item.system_secret_key }} --host={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} --host-bucket={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} put /tmp/testinfra-{{ item.rgw_realm }}.img s3://testinfra-{{ item.rgw_realm }};
+      with_items: "{{ rgw_instances_host }}"
       when:
-        - rgw_zonemaster | default(False) | bool
-        - not containerized_deployment | default(False) | bool
+        - rgw_zonemaster | bool
+        - not containerized_deployment | bool
 
     - name: get info from replicated file - containerized deployment
       command: >
-        podman run --rm --name=rgw_multisite_test --entrypoint=/bin/bash {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} -c '{{ s3cmd_cmd }} info s3://testinfra/testinfra.img'
-      register: s3cmd_info_status
+        {{ container_binary }} run --rm --name=rgw_multisite_test --entrypoint=s3cmd {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} --no-ssl --access_key={{ item.system_access_key }} --secret_key={{ item.system_secret_key }} --host={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} --host-bucket={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} info s3://testinfra-{{ item.rgw_realm }}/testinfra-{{ item.rgw_realm }}.img
+      with_items: "{{ rgw_instances_host }}"
+      register: result
+      retries: 60
+      delay: 1
+      until: result is succeeded
       when:
-        - not rgw_zonemaster | default(False) | bool
-        - containerized_deployment | default(False) | bool
-      retries: 10
-      delay: 2
-      until: s3cmd_info_status.get('rc', 1) == 0
+        - not rgw_zonemaster | bool
+        - containerized_deployment | bool
 
     - name: get info from replicated file - non containerized
       command: >
-        {{ s3cmd_cmd }} info s3://testinfra/testinfra.img
-      register: s3cmd_info_status
+        s3cmd --no-ssl --access_key={{ item.system_access_key }} --secret_key={{ item.system_secret_key }} --host={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} --host-bucket={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} info s3://testinfra-{{ item.rgw_realm }}/testinfra-{{ item.rgw_realm }}.img
+      with_items: "{{ rgw_instances_host }}"
+      register: result
+      retries: 60
+      delay: 1
+      until: result is succeeded
       when:
-        - not rgw_zonemaster | default(False) | bool
-        - not containerized_deployment | default(False) | bool
-      retries: 10
-      delay: 2
-      until: s3cmd_info_status.get('rc', 1) == 0
+        - not rgw_zonemaster | bool
+        - not containerized_deployment | bool
