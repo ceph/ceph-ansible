@@ -10,12 +10,14 @@
    - "{{ prometheus_data_dir }}"
 
 - name: write prometheus config file
-  template:
+  config_template:
     src: prometheus.yml.j2
     dest: "{{ prometheus_conf_dir }}/prometheus.yml"
     owner: "{{ prometheus_user_id }}"
     group: "{{ prometheus_user_id }}"
     mode: 0640
+    config_type: yaml
+    config_overrides: "{{ prometheus_conf_overrides }}"
   notify: service handler
 
 - name: make sure the alerting rules directory exists
@@ -44,12 +46,14 @@
    - "{{ alertmanager_data_dir }}"
 
 - name: write alertmanager config file
-  template:
+  config_template:
     src: alertmanager.yml.j2
     dest: "{{ alertmanager_conf_dir }}/alertmanager.yml"
     owner: "{{ prometheus_user_id }}"
     group: "{{ prometheus_user_id }}"
     mode: 0640
+    config_type: yaml
+    config_overrides: "{{ alertmanager_conf_overrides }}"
   notify: service handler
 
 - name: include setup_container.yml
