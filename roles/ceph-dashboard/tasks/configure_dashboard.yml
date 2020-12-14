@@ -266,14 +266,14 @@
         - generate_crt | default(false) | bool
 
     - name: add iscsi gateways - ipv4
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard iscsi-gateway-add {{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}:{{ hostvars[item]['api_port'] | default(5000) }}"
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard iscsi-gateway-add {{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_fqdn'] }}:{{ hostvars[item]['api_port'] | default(5000) }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ groups[iscsi_gw_group_name] }}"
       when: ip_version == 'ipv4'
 
     - name: add iscsi gateways - ipv6
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard iscsi-gateway-add {{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap }}:{{ hostvars[item]['api_port'] | default(5000) }}"
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard iscsi-gateway-add {{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_fqdn'] }}:{{ hostvars[item]['api_port'] | default(5000) }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ groups[iscsi_gw_group_name] }}"
