@@ -2,7 +2,10 @@
 #
 # Use it like this:
 # ansible-playbook infrastructure-playbooks/filestore-to-bluestore.yml --limit <osd-node-to-migrate>
-# *ALL* osds on nodes will be shrinked and redeployed using bluestore backend with ceph-volume
+# If all osds on the node are using filestore backend, then *ALL* of them will be shrinked and redeployed using bluestore backend with ceph-volume.
+#
+# If a mix of filestore and bluestore OSDs is detected on the node, the node will be skipped unless you pass `force_filestore_to_bluestore=True` as an extra var.
+# ie: ansible-playbook infrastructure-playbooks/filestore-to-bluestore.yml --limit <osd-node-to-migrate> -e force_filestore_to_bluestore=True
 
 - hosts: "{{ osd_group_name }}"
   become: true
@@ -25,34 +28,55 @@
     - import_role:
         name: ceph-defaults
 
-    - name: set_fact current_objectstore
+    - name: import_role ceph-facts
+      import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: set_fact container_run_cmd, container_exec_cmd
       set_fact:
-        current_objectstore: '{{ osd_objectstore }}'
+        container_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment | bool else '' }}ceph-volume {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
+        container_exec_cmd: "{{ container_binary + ' exec ceph-mon-' + hostvars[groups[mon_group_name][0]]['ansible_hostname'] if containerized_deployment | bool else '' }}"
 
-    - name: warn user about osd already using bluestore
-      debug:
-        msg: 'WARNING: {{ inventory_hostname }} is already using bluestore. Skipping all tasks.'
-      when: current_objectstore == 'bluestore'
+    - name: get ceph osd tree data
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd tree -f json"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      register: osd_tree
+      changed_when: false
+      run_once: true
 
-    - name: shrink and redeploy filestore osds
-      when: current_objectstore == 'filestore'
+    - name: set_fact osd_ids
+      set_fact:
+        osd_ids: "{{ osd_ids | default([]) | union(item) }}"
+      with_items:
+        - "{{ ((osd_tree.stdout | default('{}') | trim | from_json).nodes | selectattr('name', 'match', '^' + inventory_hostname + '$') | map(attribute='children') | list) }}"
+
+    - name: get osd metadata
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd metadata osd.{{ item }} -f json"
+      register: osd_metadata
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      changed_when: false
+      with_items: "{{ osd_ids }}"
+
+    - name: set_fact _osd_objectstore
+      set_fact:
+        _osd_objectstore: "{{ _osd_objectstore | default([]) | union([(item.stdout | from_json).osd_objectstore]) }}"
+      with_items: "{{ osd_metadata.results }}"
+
+    - name: set_fact skip_this_node
+      set_fact:
+        skip_this_node: "{{ ('filestore' in _osd_objectstore and 'bluestore' in _osd_objectstore and not force_filestore_to_bluestore | default(False)) or ('filestore' not in _osd_objectstore) }}"
+
+    - name: add node to skipped node list
+      set_fact:
+        skipped_nodes: "{{ skipped_nodes | default([]) | union([inventory_hostname]) }}"
+      when:
+        - skip_this_node | bool
+
+    - name: filestore to bluestore migration workflow
+      when: not skip_this_node | bool
       block:
-        - import_role:
-            name: ceph-facts
-            tasks_from: container_binary.yml
-
-        - name: set_fact container_run_cmd, container_exec_cmd
-          set_fact:
-            container_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment | bool else '' }}ceph-volume {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
-            container_exec_cmd: "{{ container_binary + ' exec ceph-mon-' + hostvars[groups[mon_group_name][0]]['ansible_hostname'] if containerized_deployment | bool else '' }}"
-
-
-        - name: get ceph osd tree data
-          command: "{{ container_exec_cmd }} ceph osd tree -f json"
-          delegate_to: "{{ groups[mon_group_name][0] }}"
-          register: osd_tree
-          run_once: true
-
         - name: get ceph-volume lvm inventory data
           ceph_volume:
             cluster: "{{ cluster }}"
@@ -408,3 +432,15 @@
             name: ceph-config
         - import_role:
             name: ceph-osd
+
+    - name: report any skipped node during this playbook
+      debug:
+        msg: |
+          "WARNING:"
+          "The following nodes were skipped because OSDs are either"
+          "all bluestore ones or there's a mix of filestore and bluestore OSDs"
+
+          "{{ ' '.join(skipped_nodes) }}"
+      when:
+        - inventory_hostname == ansible_play_hosts_all | last
+        - skipped_nodes is defined
