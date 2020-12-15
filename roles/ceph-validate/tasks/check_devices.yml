@@ -33,26 +33,10 @@
       when:
         - item.skipped is undefined
 
-- name: devices variable's tasks related
-  when:
-    - devices is defined
-    - devices | length > 0
-  block:
-    - name: resolve devices in devices
-      command: "readlink -f {{ item }}"
-      changed_when: false
-      register: devices_resolved
-      with_items: "{{ devices }}"
-
-    - name: set_fact devices_resolved
-      set_fact:
-        _devices: "{{ _devices | default([]) + [item.stdout] }}"
-      with_items: "{{ devices_resolved.results }}"
-
 - name: fail if root_device is passed in lvm_volumes or devices
   fail:
     msg: "{{ root_device }} found in either lvm_volumes or devices variable"
-  when: root_device in lvm_volumes_data_devices | default([]) or root_device in _devices | default([])
+  when: root_device in lvm_volumes_data_devices | default([]) or root_device in devices | default([])
 
 - name: check devices are block devices
   block:
