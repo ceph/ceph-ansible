@@ -1,17 +1,7 @@
 ---
-- name: find device used for operating system
-  command: findmnt -v -n -T / -o SOURCE
-  changed_when: false
-  register: root_device
-
-- name: resolve root_device
-  command: "readlink -f {{ root_device.stdout }}"
-  changed_when: false
-  register: _root_device
-
 - name: set_fact root_device
   set_fact:
-    root_device: "{{ _root_device.stdout }}"
+    root_device: "{{ ansible_facts['mounts'] | selectattr('mount', 'match', '^/$') | map(attribute='device') | first }}"
 
 - name: lvm_volumes variable's tasks related
   when:
