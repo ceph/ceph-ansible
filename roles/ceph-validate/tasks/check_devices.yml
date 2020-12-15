@@ -13,15 +13,13 @@
       changed_when: false
       register: _lvm_volumes_data_devices
       with_items: "{{ lvm_volumes }}"
-      when:
-        - item.data_vg is undefined
+      when: item.data_vg is undefined
 
     - name: set_fact lvm_volumes_data_devices
       set_fact:
         lvm_volumes_data_devices: "{{ lvm_volumes_data_devices | default([]) + [item.stdout] }}"
       with_items: "{{ _lvm_volumes_data_devices.results }}"
-      when:
-        - item.skipped is undefined
+      when: item.skipped is undefined
 
 - name: fail if root_device is passed in lvm_volumes or devices
   fail:
@@ -56,3 +54,81 @@
         - item.skipped is undefined
         - item.disk.table == 'gpt'
         - item.partitions | length == 0
+
+- name: check logical volume in lvm_volumes
+  when: lvm_volumes is defined
+  block:
+    - name: check data logical volume
+      stat:
+        path: "/dev/{{ item.data_vg }}/{{ item.data }}"
+        follow: true
+      register: lvm_volumes_data
+      loop: "{{ lvm_volumes }}"
+      when:
+        - item.data is defined
+        - item.data_vg is defined
+
+    - name: fail if one of the data logical volume is not a device or doesn't exist
+      fail:
+        msg: "{{ item.item.data_vg }}/{{ item.item.data }} doesn't exist or isn't a block"
+      loop: "{{ lvm_volumes_data.results }}"
+      when:
+        - item.skipped is undefined
+        - not item.stat.exists | bool or not item.stat.isblk | bool
+
+    - name: check bluestore db logical volume
+      stat:
+        path: "/dev/{{ item.db_vg }}/{{ item.db }}"
+        follow: true
+      register: lvm_volumes_db
+      loop: "{{ lvm_volumes }}"
+      when:
+        - osd_objectstore == 'bluestore'
+        - item.db is defined
+        - item.db_vg is defined
+
+    - name: fail if one of the bluestore db logical volume is not a device or doesn't exist
+      fail:
+        msg: "{{ item.item.db_vg }}/{{ item.item.db }} doesn't exist or isn't a block"
+      loop: "{{ lvm_volumes_db.results }}"
+      when:
+        - item.skipped is undefined
+        - not item.stat.exists | bool or not item.stat.isblk | bool
+
+    - name: check bluestore wal logical volume
+      stat:
+        path: "/dev/{{ item.wal_vg }}/{{ item.wal }}"
+        follow: true
+      register: lvm_volumes_wal
+      loop: "{{ lvm_volumes }}"
+      when:
+        - osd_objectstore == 'bluestore'
+        - item.wal is defined
+        - item.wal_vg is defined
+
+    - name: fail if one of the bluestore wal logical volume is not a device or doesn't exist
+      fail:
+        msg: "{{ item.item.wal_vg }}/{{ item.item.wal }} doesn't exist or isn't a block"
+      loop: "{{ lvm_volumes_wal.results }}"
+      when:
+        - item.skipped is undefined
+        - not item.stat.exists | bool or not item.stat.isblk | bool
+
+    - name: check filestore journal logical volume
+      stat:
+        path: "/dev/{{ item.journal_vg }}/{{ item.journal }}"
+        follow: true
+      register: lvm_volumes_journal
+      loop: "{{ lvm_volumes }}"
+      when:
+        - osd_objectstore == 'filestore'
+        - item.journal is defined
+        - item.journal_vg is defined
+
+    - name: fail if one of the filestore journal logical volume is not a device or doesn't exist
+      fail:
+        msg: "{{ item.item.journal_vg }}/{{ item.item.journal }} doesn't exist or isn't a block"
+      loop: "{{ lvm_volumes_journal.results }}"
+      when:
+        - item.skipped is undefined
+        - not item.stat.exists | bool or not item.stat.isblk | bool
