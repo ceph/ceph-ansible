@@ -58,15 +58,22 @@
           CEPH_CONTAINER_BINARY: "{{ container_binary }}"
           PYTHONIOENCODING: utf-8
         when: _devices | default([]) | length > 0
-    when:
-      - devices | default([]) | length > 0
 
-  - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report'
-    set_fact:
-      num_osds: "{{ ((lvm_batch_report.stdout | default('{}') | from_json).osds | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
+      - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report' (legacy report)
+        set_fact:
+          num_osds: "{{ ((lvm_batch_report.stdout | default('{}') | from_json).osds | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
+        when:
+          - (lvm_batch_report.stdout | default('{}') | from_json) is mapping
+          - (lvm_batch_report.stdout | default('{}') | from_json).changed | default(true) | bool
+
+      - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report' (new report)
+        set_fact:
+          num_osds: "{{ ((lvm_batch_report.stdout | default('{}') | from_json) | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
+        when:
+          - (lvm_batch_report.stdout | default('{}') | from_json) is not mapping
+          - (lvm_batch_report.stdout | default('{}') | from_json).changed | default(true) | bool
     when:
       - devices | default([]) | length > 0
-      - (lvm_batch_report.stdout | default('{}') | from_json).changed | default(true) | bool
 
   - name: run 'ceph-volume lvm list' to see how many osds have already been created
     ceph_volume:
