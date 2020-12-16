@@ -1,0 +1,88 @@
+---
+- name: resolve device link(s)
+  command: readlink -f {{ item }}
+  changed_when: false
+  check_mode: no
+  with_items: "{{ devices }}"
+  register: devices_prepare_canonicalize
+  when:
+    - devices is defined
+    - not osd_auto_discovery | default(False) | bool
+
+- name: set_fact build devices from resolved symlinks
+  set_fact:
+    devices: "{{ devices | default([]) + [ item.stdout ] }}"
+  with_items: "{{ devices_prepare_canonicalize.results }}"
+  when:
+    - devices is defined
+    - not osd_auto_discovery | default(False) | bool
+
+- name: set_fact build final devices list
+  set_fact:
+    devices: "{{ devices | reject('search','/dev/disk') | list | unique }}"
+  when:
+    - devices is defined
+    - not osd_auto_discovery | default(False) | bool
+
+- name: resolve dedicated_device link(s)
+  command: readlink -f {{ item }}
+  changed_when: false
+  check_mode: no
+  with_items: "{{ dedicated_devices }}"
+  register: dedicated_devices_prepare_canonicalize
+  when:
+    - dedicated_devices is defined
+    - not osd_auto_discovery | default(False) | bool
+
+- name: set_fact build dedicated_devices from resolved symlinks
+  set_fact:
+    dedicated_devices: "{{ dedicated_devices | default([]) + [ item.stdout ] }}"
+  with_items: "{{ dedicated_devices_prepare_canonicalize.results }}"
+  when:
+    - dedicated_devices is defined
+    - not osd_auto_discovery | default(False) | bool
+
+- name: set_fact build final dedicated_devices list
+  set_fact:
+    dedicated_devices: "{{ dedicated_devices | reject('search','/dev/disk') | list | unique }}"
+  when:
+    - dedicated_devices is defined
+    - not osd_auto_discovery | default(False) | bool
+
+- name: resolve bluestore_wal_device link(s)
+  command: readlink -f {{ item }}
+  changed_when: false
+  check_mode: no
+  with_items: "{{ bluestore_wal_devices }}"
+  register: bluestore_wal_devices_prepare_canonicalize
+  when:
+    - bluestore_wal_devices is defined
+    - not osd_auto_discovery | default(False) | bool
+
+- name: set_fact build bluestore_wal_devices from resolved symlinks
+  set_fact:
+    bluestore_wal_devices: "{{ bluestore_wal_devices | default([]) + [ item.stdout ] }}"
+  with_items: "{{ bluestore_wal_devices_prepare_canonicalize.results }}"
+  when:
+    - bluestore_wal_devices is defined
+    - not osd_auto_discovery | default(False) | bool
+
+- name: set_fact build final bluestore_wal_devices list
+  set_fact:
+    bluestore_wal_devices: "{{ bluestore_wal_devices | reject('search','/dev/disk') | list | unique }}"
+  when:
+    - bluestore_wal_devices is defined
+    - not osd_auto_discovery | default(False) | bool
+
+- name: set_fact devices generate device list when osd_auto_discovery
+  set_fact:
+    devices: "{{ (devices | default([]) + [ item.key | regex_replace('^', '/dev/') ]) | unique }}"
+  with_dict: "{{ ansible_facts['devices'] }}"
+  when:
+    - osd_auto_discovery | default(False) | bool
+    - ansible_facts['devices'] is defined
+    - item.value.removable == "0"
+    - item.value.sectors != "0"
+    - item.value.partitions|count == 0
+    - item.value.holders|count == 0
+    - item.key is not match osd_auto_discovery_exclude
