@@ -395,6 +395,9 @@ def create_pool(cluster,
                      user_pool_config['pg_num']['value'],
                      '--pgp_num',
                      user_pool_config['pgp_num']['value']])
+    elif user_pool_config['target_size_ratio']['value']:
+        args.extend(['--target_size_ratio',
+                     user_pool_config['target_size_ratio']['value']])
 
     if user_pool_config['type']['value'] == 'replicated':
         args.extend([user_pool_config['crush_rule']['value'],
