@@ -45,8 +45,25 @@ options:
         description:
             - name of the ceph OSD flag.
         required: true
-        choices: ['noup', 'nodown', 'noout', 'nobackfill', 'norebalance',
-                 'norecover', 'noscrub', 'nodeep-scrub']
+        choices: ['noup', 'nodown', 'noout', 'nobackfill', 'norebalance', 'norecover', 'noscrub', 'nodeep-scrub']
+    level:
+        description:
+            - This is applicable only when 'name' is 'noout'.
+              This flag can be applied at several levels:
+              1/ at the whole cluster level
+              2/ at the bucket level
+              3/ at the osd.X level
+        required: false
+        choices: ['osd', 'bucket', 'cluster']
+        default: 'cluster'
+    osd:
+        description:
+            - pass the osd when 'level' is 'osd'
+        required: false
+    bucket:
+        description:
+            - pass the bucket name when 'level' is 'bucket'
+        required: false
     cluster:
         description:
             - The ceph cluster name.
@@ -75,6 +92,19 @@ EXAMPLES = '''
   loop:
     - 'noup'
     - 'norebalance'
+
+- name: set noup flag on osd.123
+  ceph_osd_flag:
+    name: noup
+    level: osd
+    osd: osd.123
+
+- name: unset noup flag on bucket 'host-456'
+  ceph_osd_flag:
+    state: absent
+    name: noup
+    level: bucket
+    bucket: host-456
 '''
 
 RETURN = '''#  '''
@@ -84,13 +114,23 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             name=dict(type='str', required=True, choices=['noup', 'nodown', 'noout', 'nobackfill', 'norebalance', 'norecover', 'noscrub', 'nodeep-scrub']),  # noqa: E501
+            level=dict(type='str', required=False, default='cluster', choices=['cluster', 'bucket', 'osd']),
+            osd=dict(type='str', required=False),
+            bucket=dict(type='str', required=False),
             cluster=dict(type='str', required=False, default='ceph'),
             state=dict(type='str', required=False, default='present', choices=['present', 'absent']),  # noqa: E501
         ),
         supports_check_mode=True,
+        required_if=[
+            ['level', 'osd', ['osd']],
+            ['level', 'bucket', ['bucket']]
+            ]
     )
 
     name = module.params.get('name')
+    level = module.params.get('level')
+    osd = module.params.get('osd')
+    bucket = module.params.get('bucket')
     cluster = module.params.get('cluster')
     state = module.params.get('state')
 
@@ -98,10 +138,20 @@ def main():
 
     container_image = is_containerized()
 
-    if state == 'present':
-        cmd = generate_ceph_cmd(['osd', 'set'], [name], cluster=cluster, container_image=container_image)  # noqa: E501
+    osd_sub_cmd = ['osd']
+    if name == 'noout' and level in ['osd', 'bucket']:
+        if level == 'osd':
+            action = ['add-noout'] if state == 'present' else ['rm-noout']
+            name = osd
+        if level == 'bucket':
+            action = ['set-group', 'noout'] if state == 'present' else ['unset-group', 'noout']
+            name = bucket
+        osd_sub_cmd.extend(action)
+
     else:
-        cmd = generate_ceph_cmd(['osd', 'unset'], [name], cluster=cluster, container_image=container_image)  # noqa: E501
+        osd_sub_cmd.extend(['set']) if state == 'present' else osd_sub_cmd.extend(['unset'])
+
+    cmd = generate_ceph_cmd(osd_sub_cmd, [name], cluster=cluster, container_image=container_image)
 
     if module.check_mode:
         exit_module(

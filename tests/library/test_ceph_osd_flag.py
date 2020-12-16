@@ -154,3 +154,80 @@ class TestCephOSDFlagModule(object):
         assert result['rc'] == rc
         assert result['stderr'] == stderr
         assert result['stdout'] == stdout
+
+    @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.run_command')
+    @pytest.mark.parametrize('state', ['present', 'absent'])
+    def test_flag_noout_osd_level(self, m_run_command, m_exit_json, state):
+        ca_test_common.set_module_args({
+            'name': 'noout',
+            'state': state,
+            'level': 'osd',
+            'osd': 'osd.123'
+        })
+        m_exit_json.side_effect = ca_test_common.exit_json
+        stdout = ''
+        stderr = ''
+        rc = 0
+        m_run_command.return_value = rc, stdout, stderr
+
+        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
+            ceph_osd_flag.main()
+
+        result = result.value.args[0]
+
+        assert result['cmd'] == ['ceph', '-n', 'client.admin', '-k', '/etc/ceph/ceph.client.admin.keyring',
+                                 '--cluster', 'ceph', 'osd', 'add-noout' if state == 'present' else 'rm-noout', 'osd.123']
+        assert result['rc'] == rc
+        assert result['stderr'] == ''
+        assert result['stdout'] == ''
+
+    @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.run_command')
+    @pytest.mark.parametrize('state', ['present', 'absent'])
+    def test_flag_noout_bucket_level(self, m_run_command, m_exit_json, state):
+        ca_test_common.set_module_args({
+            'name': 'noout',
+            'state': state,
+            'level': 'bucket',
+            'bucket': 'my_osd_host_123'
+        })
+        m_exit_json.side_effect = ca_test_common.exit_json
+        stdout = ''
+        stderr = ''
+        rc = 0
+        m_run_command.return_value = rc, stdout, stderr
+
+        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
+            ceph_osd_flag.main()
+
+        result = result.value.args[0]
+        assert result['cmd'] == ['ceph', '-n', 'client.admin', '-k', '/etc/ceph/ceph.client.admin.keyring',
+                                 '--cluster', 'ceph', 'osd', 'set-group' if state == 'present' else 'unset-group', 'noout', 'my_osd_host_123']
+        assert result['rc'] == rc
+        assert result['stderr'] == ''
+        assert result['stdout'] == ''
+
+    @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.run_command')
+    @pytest.mark.parametrize('state', ['present', 'absent'])
+    def test_flag_noout_cluster_level(self, m_run_command, m_exit_json, state):
+        ca_test_common.set_module_args({
+            'name': 'noout',
+            'state': state
+        })
+        m_exit_json.side_effect = ca_test_common.exit_json
+        stdout = ''
+        stderr = ''
+        rc = 0
+        m_run_command.return_value = rc, stdout, stderr
+
+        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
+            ceph_osd_flag.main()
+
+        result = result.value.args[0]
+        assert result['cmd'] == ['ceph', '-n', 'client.admin', '-k', '/etc/ceph/ceph.client.admin.keyring',
+                                 '--cluster', 'ceph', 'osd', 'set' if state == 'present' else 'unset', 'noout']
+        assert result['rc'] == rc
+        assert result['stderr'] == ''
+        assert result['stdout'] == ''
