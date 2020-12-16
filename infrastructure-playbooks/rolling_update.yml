@@ -412,9 +412,8 @@
         name: ceph-mgr
 
 
-- name: set osd flags
-  hosts: "{{ osd_group_name | default('osds') }}"
-  tags: osds
+- name: set osd flag nodeep-scrub
+  hosts: "{{ mon_group_name | default('mons') }}[0]"
   become: True
   gather_facts: false
   tasks:
@@ -426,7 +425,6 @@
 
     - name: set osd flags, disable autoscaler and balancer
       run_once: true
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       block:
         - name: get pool list
           command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool ls detail -f json"
@@ -475,6 +473,14 @@
             - noout
             - nodeep-scrub
 
+    - name: set osd flag nodeep-scrub
+      ceph_osd_flag:
+        name: "nodeep-scrub"
+        cluster: "{{ cluster }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
 - name: upgrade ceph osds cluster
   vars:
     health_osd_check_retries: 600
@@ -490,6 +496,17 @@
         name: ceph-defaults
     - import_role:
         name: ceph-facts
+
+    - name: set osd flag noout
+      ceph_osd_flag:
+        name: noout
+        level: bucket
+        bucket: "{{ inventory_hostname }}"
+        cluster: "{{ cluster }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
     - name: get osd numbers - non container
       shell: if [ -d /var/lib/ceph/osd ] ; then ls /var/lib/ceph/osd | sed 's/.*-//' ; fi  # noqa 306
@@ -554,6 +571,18 @@
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
 
+    - name: unset osd flag noout
+      ceph_osd_flag:
+        name: noout
+        state: absent
+        level: bucket
+        bucket: "{{ inventory_hostname }}"
+        cluster: "{{ cluster }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
 
 - name: complete osd upgrade
   hosts: "{{ osd_group_name | default('osds') }}"
@@ -600,6 +629,16 @@
           command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"
           changed_when: false
           when: (balancer_status_update.stdout | from_json)['active'] | bool
+
+    - name: unset osd flag nodeep-scrub
+      ceph_osd_flag:
+        name: "nodeep-scrub"
+        cluster: "{{ cluster }}"
+        state: absent
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
 
 - name: upgrade ceph mdss cluster, deactivate all rank > 0
   hosts: "{{ mon_group_name | default('mons') }}[0]"
