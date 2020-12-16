@@ -82,7 +82,7 @@ class TestCephPoolModule(object):
             # 'target_size_ratio' is a key present in the dict above
             # 'options': {}
             # see comment in get_pool_details() for more details
-            'target_size_ratio': None,
+            'target_size_ratio': 0.3,
             'application_metadata': {
                 'rbd': {}
             },
@@ -105,7 +105,7 @@ class TestCephPoolModule(object):
                 'cli_set_opt': 'pg_autoscale_mode'
             },
             'target_size_ratio': {
-                'value': None,
+                'value': '0.3',
                 'cli_set_opt': 'target_size_ratio'
             },
             'application': {
@@ -430,6 +430,8 @@ class TestCephPoolModule(object):
                 'create',
                 self.fake_user_pool_config['pool_name']['value'],
                 self.fake_user_pool_config['type']['value'],
+                '--target_size_ratio',
+                self.fake_user_pool_config['target_size_ratio']['value'],
                 self.fake_user_pool_config['crush_rule']['value'],
                 '--expected_num_objects',
                 self.fake_user_pool_config['expected_num_objects']['value'],
@@ -522,6 +524,8 @@ class TestCephPoolModule(object):
                 'create',
                 self.fake_user_pool_config['pool_name']['value'],
                 self.fake_user_pool_config['type']['value'],
+                '--target_size_ratio',
+                self.fake_user_pool_config['target_size_ratio']['value'],
                 self.fake_user_pool_config['erasure_profile']['value'],
                 self.fake_user_pool_config['crush_rule']['value'],
                 '--expected_num_objects',
