@@ -18,9 +18,6 @@
     bucket_root: "{{ item.root }}"
     bucket_type: "{{ item.type }}"
     device_class: "{{ item.class | default(omit) }}"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   with_items: "{{ hostvars[groups[mon_group_name][0]]['crush_rules'] | default(crush_rules) | unique }}"
   delegate_to: '{{ groups[mon_group_name][0] }}'
   run_once: true
@@ -30,9 +27,6 @@
     name: "{{ item.name }}"
     cluster: "{{ cluster }}"
     state: info
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: info_ceph_default_crush_rule
   with_items: "{{ hostvars[groups[mon_group_name][0]]['crush_rules'] | default(crush_rules) | unique }}"
   delegate_to: '{{ groups[mon_group_name][0] }}'

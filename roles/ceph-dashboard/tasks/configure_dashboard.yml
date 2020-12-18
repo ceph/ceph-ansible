@@ -114,9 +114,6 @@
     name: dashboard
     cluster: "{{ cluster }}"
     state: disable
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
 
@@ -125,9 +122,6 @@
     name: dashboard
     cluster: "{{ cluster }}"
     state: enable
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
 
@@ -139,9 +133,6 @@
     roles: ["{{ 'read-only' if dashboard_admin_user_ro | bool else 'administrator' }}"]
   run_once: true
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: set grafana api user
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-username {{ grafana_admin_user }}"
@@ -200,9 +191,6 @@
         system: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       register: rgw_dashboard_user
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
     - name: get the rgw access and secret keys
       set_fact:
@@ -284,9 +272,6 @@
     name: dashboard
     cluster: "{{ cluster }}"
     state: disable
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
 
@@ -295,8 +280,5 @@
     name: dashboard
     cluster: "{{ cluster }}"
     state: enable
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true

@@ -36,9 +36,6 @@
     name: "{{ item }}"
     cluster: "{{ cluster }}"
     state: disable
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   with_items: "{{ _ceph_mgr_modules.get('enabled_modules', []) }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when: item not in ceph_mgr_modules
@@ -48,9 +45,6 @@
     name: "{{ item }}"
     cluster: "{{ cluster }}"
     state: enable
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   with_items: "{{ ceph_mgr_modules }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when: (item in _disabled_ceph_mgr_modules or _disabled_ceph_mgr_modules == [])

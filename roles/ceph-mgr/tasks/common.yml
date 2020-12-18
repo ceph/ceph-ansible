@@ -20,9 +20,6 @@
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "0400"
     dest: "/var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   when: groups.get(mgr_group_name, []) | length == 0 # the key is present already since one of the mons created it in "create ceph mgr keyring(s)"
 
 - name: create and copy keyrings
@@ -40,9 +37,6 @@
         owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
         group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
         mode: "0400"
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_items: "{{ groups.get(mgr_group_name, []) }}"
       run_once: True
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -59,9 +53,6 @@
         cluster: "{{ cluster }}"
         output_format: plain
         state: info
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       register: _mgr_keys
       with_items: "{{ _mgr_keys }}"
       delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"

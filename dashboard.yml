@@ -89,6 +89,9 @@
 - hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) | default(omit) }}"
   gather_facts: false
   become: true
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   pre_tasks:
     - name: set ceph dashboard install 'In Progress'
       run_once: true

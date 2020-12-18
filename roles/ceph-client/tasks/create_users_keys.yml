@@ -29,9 +29,6 @@
     mode: "{{ item.mode | default(ceph_keyring_permissions) }}"
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   with_items:
     - "{{ keys }}"
   delegate_to: "{{ delegated_node }}"
@@ -74,9 +71,6 @@
         pg_autoscale_mode: "{{ item.pg_autoscale_mode | default(omit) }}"
         target_size_ratio: "{{ item.target_size_ratio | default(omit) }}"
         application: "{{ item.application | default(omit) }}"
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_items: "{{ pools }}"
       changed_when: false
       delegate_to: "{{ delegated_node }}"

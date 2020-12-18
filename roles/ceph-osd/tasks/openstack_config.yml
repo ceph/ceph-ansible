@@ -17,9 +17,6 @@
         application: "{{ item.application | default(omit) }}"
       with_items: "{{ openstack_pools }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: create openstack cephx key(s)
   block:
@@ -30,9 +27,6 @@
         secret: "{{ item.key | default('') }}"
         cluster: "{{ cluster }}"
         mode: "{{ item.mode | default(ceph_keyring_permissions) }}"
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_items: "{{ openstack_keys }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
@@ -42,9 +36,6 @@
         cluster: "{{ cluster }}"
         output_format: plain
         state: info
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       register: _osp_keys
       with_items: "{{ openstack_keys }}"
       delegate_to: "{{ groups.get(mon_group_name)[0] }}"

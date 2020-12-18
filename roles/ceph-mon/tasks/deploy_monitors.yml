@@ -7,9 +7,6 @@
     user_key: "/var/lib/ceph/mon/{{ cluster }}-{{ hostvars[running_mon]['ansible_hostname'] }}/keyring"
     output_format: json
     state: info
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: initial_mon_key
   run_once: True
   delegate_to: "{{ running_mon }}"
@@ -41,9 +38,6 @@
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "0400"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: copy the initial key in /etc/ceph (for containers)
   copy:
@@ -83,9 +77,6 @@
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "0400"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: create_custom_admin_secret
   when:
     - cephx | bool

@@ -18,9 +18,6 @@
     target_size_ratio: "{{ item.target_size_ratio | default(omit) }}"
   with_items: "{{ cephfs_pools }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: create ceph filesystem
   ceph_fs:
@@ -30,6 +27,3 @@
     metadata: "{{ cephfs_metadata_pool.name }}"
     max_mds: "{{ mds_max_mds if not rolling_update | bool else omit }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
