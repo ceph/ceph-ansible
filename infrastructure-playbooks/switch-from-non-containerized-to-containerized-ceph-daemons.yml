@@ -135,11 +135,10 @@
 
   post_tasks:
     - name: waiting for the monitor to join the quorum...
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} quorum_status --format json"
+      command: "{{ container_binary }} run --rm  -v /etc/ceph:/etc/ceph:z --entrypoint=ceph {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} --cluster {{ cluster }} quorum_status --format json"
       register: ceph_health_raw
+      until: ansible_hostname in (ceph_health_raw.stdout | trim | from_json)["quorum_names"]
       changed_when: false
-      until: >
-        hostvars[mon_host]['ansible_hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
 
