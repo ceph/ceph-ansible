@@ -372,8 +372,8 @@ def run_module():
         realm=dict(type='str', require=True),
         zonegroup=dict(type='str', require=True),
         endpoints=dict(type='list', require=False, default=[]),
-        access_key=dict(type='str', required=False),
-        secret_key=dict(type='str', required=False),
+        access_key=dict(type='str', required=False, no_log=True),
+        secret_key=dict(type='str', required=False, no_log=True),
         default=dict(type='bool', required=False, default=False),
         master=dict(type='bool', required=False, default=False),
     )
