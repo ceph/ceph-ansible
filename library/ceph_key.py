@@ -261,7 +261,7 @@ def generate_caps(_type, caps):
     return caps_cli
 
 
-def generate_ceph_cmd(cluster, args, user, user_key_path, container_image=None):
+def generate_ceph_cmd(cluster, args, user, user_key_path, container_image=None, no_log=False):
     '''
     Generate 'ceph' command line to execute
     '''
@@ -269,7 +269,7 @@ def generate_ceph_cmd(cluster, args, user, user_key_path, container_image=None):
     if container_image:
         binary = 'ceph'
         cmd = container_exec(
-            binary, container_image)
+            binary, container_image, no_log=no_log)
     else:
         binary = ['ceph']
         cmd = binary
@@ -401,7 +401,7 @@ def info_key(cluster, name, user, user_key_path, output_format, container_image=
     return cmd_list
 
 
-def list_keys(cluster, user, user_key_path, container_image=None):
+def list_keys(cluster, user, user_key_path, container_image=None, no_log=False):
     '''
     List all CephX keys
     '''
@@ -415,7 +415,7 @@ def list_keys(cluster, user, user_key_path, container_image=None):
     ]
 
     cmd_list.append(generate_ceph_cmd(
-        cluster, args, user, user_key_path, container_image))
+        cluster, args, user, user_key_path, container_image, no_log=no_log))
 
     return cmd_list
 
@@ -645,7 +645,7 @@ def run_module():
         keyring_filename = cluster + "-" + hostname + "/keyring"
         user_key_path = os.path.join("/var/lib/ceph/mon/", keyring_filename)
         rc, cmd, out, err = exec_commands(
-            module, list_keys(cluster, user, user_key_path, container_image))
+            module, list_keys(cluster, user, user_key_path, container_image, no_log=True))
         if rc != 0:
             result["stdout"] = "failed to retrieve ceph keys"
             result["sdterr"] = err

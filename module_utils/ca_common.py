@@ -26,7 +26,7 @@ def generate_ceph_cmd(sub_cmd, args, user_key=None, cluster='ceph', user='client
     return cmd
 
 
-def container_exec(binary, container_image):
+def container_exec(binary, container_image, no_log=False):
     '''
     Build the docker CLI to run a command inside a container
     '''
@@ -38,8 +38,14 @@ def container_exec(binary, container_image):
                     '--net=host',
                     '-v', '/etc/ceph:/etc/ceph:z',
                     '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                    '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                    '--entrypoint=' + binary, container_image]
+                    '-v', '/var/log/ceph/:/var/log/ceph/:z'
+    ]
+
+    if no_log:
+        command_exec.append('--log-drive=none')
+
+    command_exec.extend(['--entrypoint=' + binary, container_image])
+
     return command_exec
 
 

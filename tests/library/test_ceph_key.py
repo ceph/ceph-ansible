@@ -577,3 +577,28 @@ class TestCephKeyModule(object):
         with pytest.raises(ca_test_common.AnsibleExitJson) as result:
             ceph_key.run_module()
         assert result.value.args[0]['stdout'] == fake_secret.decode()
+
+    @mock.patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'podman'})
+    @mock.patch.dict(os.environ, {'CEPH_CONTAINER_IMAGE': 'docker.io/ceph/daemon:latest'})
+    @mock.patch('ansible.module_utils.basic.AnsibleModule.fail_json')
+    @mock.patch('ceph_key.exec_commands')
+    def test_state_fetch_keys(self, m_exec_commands, m_fail_json):
+        output_format = "plain"
+        ca_test_common.set_module_args({"state": "fetch_initial_keys",
+                                        "cluster": "ceph",
+                                        "name": "client.admin",
+                                        "output_format": output_format})
+
+        m_exec_commands.return_value = (0,
+                                        ['ceph', 'auth', 'get', 'client.admin', '-f', output_format],
+                                        '[{"entity":"client.admin","key":"AQC1tw5fF156GhAAoJCvHGX/jl/k7/N4VZm8iQ==","caps":{"mds":"allow *","mgr":"allow *","mon":"allow *","osd":"allow *"}}]',  # noqa: E501
+                                        'exported keyring for client.admin')
+
+
+        m_fail_json.side_effect = ca_test_common.fail_json
+
+        with pytest.raises(ca_test_common.AnsibleFailJson) as result:
+            ceph_key.run_module()
+
+        import pdb; pdb.set_trace()
+        result = result.value.args[0]
