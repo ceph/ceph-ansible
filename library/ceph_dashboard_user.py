@@ -119,11 +119,10 @@ def create_user(module, container_image=None):
 
     cluster = module.params.get('cluster')
     name = module.params.get('name')
-    password = module.params.get('password')
 
-    args = ['ac-user-create', name, password]
+    args = ['ac-user-create', '-i', '-',  name]
 
-    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
+    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image, interactive=True)
 
     return cmd
 
@@ -153,11 +152,10 @@ def set_password(module, container_image=None):
 
     cluster = module.params.get('cluster')
     name = module.params.get('name')
-    password = module.params.get('password')
 
-    args = ['ac-user-set-password', name, password]
+    args = ['ac-user-set-password', '-i', '-', name]
 
-    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
+    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image, interactive=True)
 
     return cmd
 
@@ -214,6 +212,7 @@ def run_module():
     name = module.params.get('name')
     state = module.params.get('state')
     roles = module.params.get('roles')
+    password = module.params.get('password')
 
     if module.check_mode:
         module.exit_json(
@@ -241,9 +240,9 @@ def run_module():
             if user['roles'] != roles:
                 rc, cmd, out, err = exec_command(module, set_roles(module, container_image=container_image))
                 changed = True
-            rc, cmd, out, err = exec_command(module, set_password(module, container_image=container_image))
+            rc, cmd, out, err = exec_command(module, set_password(module, container_image=container_image), stdin=password)
         else:
-            rc, cmd, out, err = exec_command(module, create_user(module, container_image=container_image))
+            rc, cmd, out, err = exec_command(module, create_user(module, container_image=container_image), stdin=password)
             rc, cmd, out, err = exec_command(module, set_roles(module, container_image=container_image))
             changed = True
 
