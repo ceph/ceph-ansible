@@ -107,20 +107,23 @@ import stat  # noqa E402
 import time  # noqa E402
 
 
-def container_exec(binary, container_image):
+def container_exec(binary, container_image, interactive=False):
     '''
     Build the docker CLI to run a command inside a container
     '''
 
     container_binary = os.getenv('CEPH_CONTAINER_BINARY')
-    command_exec = [container_binary,
-                    'run',
-                    '--rm',
-                    '--net=host',
-                    '-v', '/etc/ceph:/etc/ceph:z',
-                    '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                    '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                    '--entrypoint=' + binary, container_image]
+    command_exec = [container_binary, 'run']
+
+    if interactive:
+        command_exec.extend(['--interactive'])
+
+    command_exec.extend(['--rm',
+                         '--net=host',
+                         '-v', '/etc/ceph:/etc/ceph:z',
+                         '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+                         '-v', '/var/log/ceph/:/var/log/ceph/:z',
+                         '--entrypoint=' + binary, container_image])
     return command_exec
 
 
@@ -137,24 +140,24 @@ def is_containerized():
     return container_image
 
 
-def pre_generate_ceph_cmd(container_image=None):
+def pre_generate_ceph_cmd(container_image=None, interactive=False):
     '''
     Generate ceph prefix comaand
     '''
     if container_image:
-        cmd = container_exec('ceph', container_image)
+        cmd = container_exec('ceph', container_image, interactive=interactive)
     else:
         cmd = ['ceph']
 
     return cmd
 
 
-def generate_ceph_cmd(cluster, args, container_image=None):
+def generate_ceph_cmd(cluster, args, container_image=None, interactive=False):
     '''
     Generate 'ceph' command line to execute
     '''
 
-    cmd = pre_generate_ceph_cmd(container_image=container_image)
+    cmd = pre_generate_ceph_cmd(container_image=container_image, interactive=interactive)
 
     base_cmd = [
         '--cluster',
@@ -167,12 +170,12 @@ def generate_ceph_cmd(cluster, args, container_image=None):
     return cmd
 
 
-def exec_commands(module, cmd):
+def exec_commands(module, cmd, stdin=None):
     '''
     Execute command(s)
     '''
 
-    rc, out, err = module.run_command(cmd)
+    rc, out, err = module.run_command(cmd, data=stdin)
 
     return rc, cmd, out, err
 
@@ -184,11 +187,10 @@ def create_user(module, container_image=None):
 
     cluster = module.params.get('cluster')
     name = module.params.get('name')
-    password = module.params.get('password')
 
-    args = ['ac-user-create', name, password]
+    args = ['ac-user-create', '-i', '-',  name]
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image, interactive=True)
 
     return cmd
 
@@ -218,11 +220,10 @@ def set_password(module, container_image=None):
 
     cluster = module.params.get('cluster')
     name = module.params.get('name')
-    password = module.params.get('password')
 
-    args = ['ac-user-set-password', name, password]
+    args = ['ac-user-set-password', '-i', '-', name]
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image, interactive=True)
 
     return cmd
 
@@ -296,6 +297,7 @@ def run_module():
     name = module.params.get('name')
     state = module.params.get('state')
     roles = module.params.get('roles')
+    password = module.params.get('password')
 
     if module.check_mode:
         module.exit_json(
@@ -323,9 +325,9 @@ def run_module():
             if user['roles'] != roles:
                 rc, cmd, out, err = exec_commands(module, set_roles(module, container_image=container_image))
                 changed = True
-            rc, cmd, out, err = exec_commands(module, set_password(module, container_image=container_image))
+            rc, cmd, out, err = exec_commands(module, set_password(module, container_image=container_image), stdin=password)
         else:
-            rc, cmd, out, err = exec_commands(module, create_user(module, container_image=container_image))
+            rc, cmd, out, err = exec_commands(module, create_user(module, container_image=container_image), stdin=password)
             rc, cmd, out, err = exec_commands(module, set_roles(module, container_image=container_image))
             changed = True
 
