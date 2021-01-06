@@ -1,102 +1,146 @@
-from mock.mock import MagicMock
+from mock.mock import MagicMock, patch
+import os
 import ceph_dashboard_user
 
-fake_binary = 'ceph'
-fake_cluster = 'ceph'
 fake_container_binary = 'podman'
 fake_container_image = 'docker.io/ceph/daemon:latest'
-fake_container_cmd = [
-    fake_container_binary,
-    'run',
-    '--rm',
-    '--net=host',
-    '-v', '/etc/ceph:/etc/ceph:z',
-    '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-    '-v', '/var/log/ceph/:/var/log/ceph/:z',
-    '--entrypoint=' + fake_binary,
-    fake_container_image
-]
-fake_user = 'foo'
-fake_password = 'bar'
-fake_roles = ['read-only', 'block-manager']
-fake_params = {'cluster': fake_cluster,
-               'name': fake_user,
-               'password': fake_password,
-               'roles': fake_roles}
 
 
 class TestCephDashboardUserModule(object):
+    def setup_method(self):
+        self.fake_params = []
+        self.fake_binary = 'ceph'
+        self.fake_cluster = 'ceph'
+        self.fake_name = 'foo'
+        self.fake_user = 'foo'
+        self.fake_password = 'bar'
+        self.fake_module = MagicMock()
+        self.fake_module.params = self.fake_params
+        self.fake_roles = ['read-only', 'block-manager']
+        self.fake_params = {'cluster': self.fake_cluster,
+                            'name': self.fake_user,
+                            'password': self.fake_password,
+                            'roles': self.fake_roles}
 
     def test_create_user(self):
-        fake_module = MagicMock()
-        fake_module.params = fake_params
+        self.fake_module.params = self.fake_params
         expected_cmd = [
-            fake_binary,
+            self.fake_binary,
             '-n', 'client.admin',
             '-k', '/etc/ceph/ceph.client.admin.keyring',
-            '--cluster', fake_cluster,
+            '--cluster', self.fake_cluster,
             'dashboard', 'ac-user-create',
-            fake_user,
-            fake_password
+            '-i', '-',
+            self.fake_user
         ]
 
-        assert ceph_dashboard_user.create_user(fake_module) == expected_cmd
+        assert ceph_dashboard_user.create_user(self.fake_module) == expected_cmd
+
+    @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
+    @patch.dict(os.environ, {'CEPH_CONTAINER_IMAGE': fake_container_image})
+    def test_create_user_container(self):
+        fake_container_cmd = [
+            fake_container_binary,
+            'run',
+            '--interactive',
+            '--rm',
+            '--net=host',
+            '-v', '/etc/ceph:/etc/ceph:z',
+            '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+            '-v', '/var/log/ceph/:/var/log/ceph/:z',
+            '--entrypoint=' + self.fake_binary,
+            fake_container_image
+        ]
+        self.fake_module.params = self.fake_params
+        expected_cmd = fake_container_cmd + [
+            '-n', 'client.admin',
+            '-k', '/etc/ceph/ceph.client.admin.keyring',
+            '--cluster', self.fake_cluster,
+            'dashboard', 'ac-user-create',
+            '-i', '-',
+            self.fake_user
+        ]
+
+        assert ceph_dashboard_user.create_user(self.fake_module, container_image=fake_container_image) == expected_cmd
 
     def test_set_roles(self):
-        fake_module = MagicMock()
-        fake_module.params = fake_params
+        self.fake_module.params = self.fake_params
         expected_cmd = [
-            fake_binary,
+            self.fake_binary,
             '-n', 'client.admin',
             '-k', '/etc/ceph/ceph.client.admin.keyring',
-            '--cluster', fake_cluster,
+            '--cluster', self.fake_cluster,
             'dashboard', 'ac-user-set-roles',
-            fake_user
+            self.fake_user
         ]
-        expected_cmd.extend(fake_roles)
+        expected_cmd.extend(self.fake_roles)
 
-        assert ceph_dashboard_user.set_roles(fake_module) == expected_cmd
+        assert ceph_dashboard_user.set_roles(self.fake_module) == expected_cmd
 
     def test_set_password(self):
-        fake_module = MagicMock()
-        fake_module.params = fake_params
+        self.fake_module.params = self.fake_params
         expected_cmd = [
-            fake_binary,
+            self.fake_binary,
             '-n', 'client.admin',
             '-k', '/etc/ceph/ceph.client.admin.keyring',
-            '--cluster', fake_cluster,
+            '--cluster', self.fake_cluster,
             'dashboard', 'ac-user-set-password',
-            fake_user,
-            fake_password
+            '-i', '-',
+            self.fake_user
         ]
 
-        assert ceph_dashboard_user.set_password(fake_module) == expected_cmd
+        assert ceph_dashboard_user.set_password(self.fake_module) == expected_cmd
 
-    def test_get_user(self):
-        fake_module = MagicMock()
-        fake_module.params = fake_params
-        expected_cmd = [
-            fake_binary,
+    @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
+    @patch.dict(os.environ, {'CEPH_CONTAINER_IMAGE': fake_container_image})
+    def test_set_password_container(self):
+        fake_container_cmd = [
+            fake_container_binary,
+            'run',
+            '--interactive',
+            '--rm',
+            '--net=host',
+            '-v', '/etc/ceph:/etc/ceph:z',
+            '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+            '-v', '/var/log/ceph/:/var/log/ceph/:z',
+            '--entrypoint=' + self.fake_binary,
+            fake_container_image
+        ]
+        self.fake_module.params = self.fake_params
+        expected_cmd = fake_container_cmd + [
             '-n', 'client.admin',
             '-k', '/etc/ceph/ceph.client.admin.keyring',
-            '--cluster', fake_cluster,
+            '--cluster', self.fake_cluster,
+            'dashboard', 'ac-user-set-password',
+            '-i', '-',
+            self.fake_user
+        ]
+
+        assert ceph_dashboard_user.set_password(self.fake_module, container_image=fake_container_image) == expected_cmd
+
+    def test_get_user(self):
+        self.fake_module.params = self.fake_params
+        expected_cmd = [
+            self.fake_binary,
+            '-n', 'client.admin',
+            '-k', '/etc/ceph/ceph.client.admin.keyring',
+            '--cluster', self.fake_cluster,
             'dashboard', 'ac-user-show',
-            fake_user,
+            self.fake_user,
             '--format=json'
         ]
 
-        assert ceph_dashboard_user.get_user(fake_module) == expected_cmd
+        assert ceph_dashboard_user.get_user(self.fake_module) == expected_cmd
 
     def test_remove_user(self):
-        fake_module = MagicMock()
-        fake_module.params = fake_params
+        self.fake_module.params = self.fake_params
         expected_cmd = [
-            fake_binary,
+            self.fake_binary,
             '-n', 'client.admin',
             '-k', '/etc/ceph/ceph.client.admin.keyring',
-            '--cluster', fake_cluster,
+            '--cluster', self.fake_cluster,
             'dashboard', 'ac-user-delete',
-            fake_user
+            self.fake_user
         ]
 
-        assert ceph_dashboard_user.remove_user(fake_module) == expected_cmd
+        assert ceph_dashboard_user.remove_user(self.fake_module) == expected_cmd
