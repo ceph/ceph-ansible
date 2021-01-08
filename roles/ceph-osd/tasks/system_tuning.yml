@@ -37,15 +37,13 @@
   when: disable_transparent_hugepage | bool
 
 - name: get default vm.min_free_kbytes
-  command: sysctl -b vm.min_free_kbytes
-  changed_when: false
-  failed_when: false
-  check_mode: no
+  slurp:
+    src: /proc/sys/vm/min_free_kbytes
   register: default_vm_min_free_kbytes
 
 - name: set_fact vm_min_free_kbytes
   set_fact:
-    vm_min_free_kbytes: "{{ 4194303 if ansible_memtotal_mb >= 49152 else default_vm_min_free_kbytes.stdout }}"
+    vm_min_free_kbytes: "{{ 4194303 if ansible_memtotal_mb >= 49152 else default_vm_min_free_kbytes.content | b64decode | trim }}"
 
 - name: apply operating system tuning
   sysctl:
