@@ -33,13 +33,12 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
-    - name: set_fact container_run_cmd, container_exec_cmd
+    - name: set_fact ceph_cmd
       set_fact:
-        container_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment | bool else '' }}ceph-volume {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
-        container_exec_cmd: "{{ container_binary + ' exec ceph-mon-' + hostvars[groups[mon_group_name][0]]['ansible_hostname'] if containerized_deployment | bool else '' }}"
+        ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
 
     - name: get ceph osd tree data
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd tree -f json"
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd tree -f json"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       register: osd_tree
       changed_when: false
@@ -52,7 +51,7 @@
         - "{{ ((osd_tree.stdout | default('{}') | trim | from_json).nodes | selectattr('name', 'match', '^' + inventory_hostname + '$') | map(attribute='children') | list) }}"
 
     - name: get osd metadata
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd metadata osd.{{ item }} -f json"
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd metadata osd.{{ item }} -f json"
       register: osd_metadata
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
