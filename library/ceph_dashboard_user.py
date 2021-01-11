@@ -61,7 +61,11 @@ options:
             - roles of the Ceph Dashboard user.
         required: false
         default: []
-
+    interactive:
+        description:
+            - use password from file or stdin
+        required: false
+        default: True
 author:
     - Dimitri Savineau <dsavinea@redhat.com>
 '''
@@ -187,10 +191,15 @@ def create_user(module, container_image=None):
 
     cluster = module.params.get('cluster')
     name = module.params.get('name')
+    interactive = module.params.get('interactive')
 
-    args = ['ac-user-create', '-i', '-',  name]
+    if interactive:
+        args = ['ac-user-create', '-i', '-',  name]
+    else:
+        password = module.params.get('password')
+        args = ['ac-user-create', name, password]
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image, interactive=True)
+    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image, interactive=interactive)
 
     return cmd
 
@@ -220,10 +229,15 @@ def set_password(module, container_image=None):
 
     cluster = module.params.get('cluster')
     name = module.params.get('name')
+    interactive = module.params.get('interactive')
 
-    args = ['ac-user-set-password', '-i', '-', name]
+    if interactive:
+        args = ['ac-user-set-password', '-i', '-', name]
+    else:
+        password = module.params.get('password')
+        args = ['ac-user-set-password', name, password]
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image, interactive=True)
+    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image, interactive=interactive)
 
     return cmd
 
@@ -285,6 +299,7 @@ def run_module():
                    required=False,
                    choices=['administrator', 'read-only', 'block-manager', 'rgw-manager', 'cluster-manager', 'pool-manager', 'cephfs-manager'],
                    default=[]),
+        interactive=dict(type='bool', required=False, default=True),
     )
 
     module = AnsibleModule(
@@ -298,6 +313,7 @@ def run_module():
     state = module.params.get('state')
     roles = module.params.get('roles')
     password = module.params.get('password')
+    interactive = module.params.get('interactive')
 
     if module.check_mode:
         module.exit_json(
@@ -318,6 +334,9 @@ def run_module():
 
     if state == "present":
         rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))
+        stdin = password
+        if not interactive:
+            stdin = None
         if rc == 0:
             user = json.loads(out)
             user['roles'].sort()
@@ -325,9 +344,9 @@ def run_module():
             if user['roles'] != roles:
                 rc, cmd, out, err = exec_commands(module, set_roles(module, container_image=container_image))
                 changed = True
-            rc, cmd, out, err = exec_commands(module, set_password(module, container_image=container_image), stdin=password)
+            rc, cmd, out, err = exec_commands(module, set_password(module, container_image=container_image), stdin=stdin)
         else:
-            rc, cmd, out, err = exec_commands(module, create_user(module, container_image=container_image), stdin=password)
+            rc, cmd, out, err = exec_commands(module, create_user(module, container_image=container_image), stdin=stdin)
             rc, cmd, out, err = exec_commands(module, set_roles(module, container_image=container_image))
             changed = True
 
