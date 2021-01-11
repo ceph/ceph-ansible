@@ -294,3 +294,13 @@
   when:
     - rgwloadbalancer_group_name in group_names
     - (virtual_ips | length) > (groups[rgwloadbalancer_group_name] | length)
+
+- name: validate ec_profiles variable
+  fail:
+    msg: "ec_profiles is not defined correctly. "
+  with_items: "{{ ec_profiles }}"
+  when:
+    - ec_profiles is defined
+    - item.name is not defined or
+      ((item.k is not defined or
+      item.m is not defined) and (item.state | default('present') == 'present'))
