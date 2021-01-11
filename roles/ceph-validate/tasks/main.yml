@@ -279,3 +279,18 @@
     - keys is defined
     - keys | length > 0
     - item.caps is not defined
+
+- name: check virtual_ips is defined
+  fail:
+    msg: "virtual_ips is not defined."
+  when:
+    - rgwloadbalancer_group_name in group_names
+    - groups[rgwloadbalancer_group_name] | length > 0
+    - virtual_ips is not defined
+
+- name: validate virtual_ips length
+  fail:
+    msg: "There are more virual_ips defined than rgwloadbalancer nodes"
+  when:
+    - rgwloadbalancer_group_name in group_names
+    - (virtual_ips | length) > (groups[rgwloadbalancer_group_name] | length)
