@@ -125,12 +125,26 @@
   run_once: true
   changed_when: false
 
+- name: check dashboard password in file option command
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard ac-user-set-password"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  changed_when: false
+  failed_when: false
+  register: dashboard_password_in_file_option
+
+- name: set_fact dashboard_password_from_stdin
+  set_fact:
+    dashboard_password_from_stdin: "{{ ' -i ' in dashboard_password_in_file_option.stderr }}"
+  run_once: true
+
 - name: create dashboard admin user
   ceph_dashboard_user:
     name: "{{ dashboard_admin_user }}"
     cluster: "{{ cluster }}"
     password: "{{ dashboard_admin_password }}"
     roles: ["{{ 'read-only' if dashboard_admin_user_ro | bool else 'administrator' }}"]
+    interactive: "{{ dashboard_password_from_stdin }}"
   run_once: true
   delegate_to: "{{ groups[mon_group_name][0] }}"
   environment:
@@ -151,6 +165,14 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false
+  when: dashboard_password_from_stdin | bool
+
+- name: set grafana api password (legacy)
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-password {{ grafana_admin_password }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  changed_when: false
+  when: not dashboard_password_from_stdin | bool
 
 - name: disable ssl verification for grafana
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-ssl-verify False"
@@ -218,6 +240,13 @@
         stdin_add_newline: no
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
+      when: dashboard_password_from_stdin | bool
+
+    - name: set the rgw access key (legacy)
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-access-key {{ rgw_access_key }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: not dashboard_password_from_stdin | bool
 
     - name: set the rgw secret key
       command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard set-rgw-api-secret-key -i -"
@@ -226,6 +255,13 @@
         stdin_add_newline: no
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
+      when: dashboard_password_from_stdin | bool
+
+    - name: set the rgw secret key (legacy)
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-secret-key {{ rgw_secret_key }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: not dashboard_password_from_stdin | bool
 
     - name: set the rgw host
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-host {{ hostvars[groups[rgw_group_name][0]]['rgw_instances'][0]['radosgw_address'] }}"
@@ -276,7 +312,18 @@
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ groups[iscsi_gw_group_name] }}"
-      when: ip_version == 'ipv4'
+      when:
+        - ip_version == 'ipv4'
+        - dashboard_password_from_stdin | bool
+
+    - name: add iscsi gateways - ipv4 (legacy)
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard iscsi-gateway-add {{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}:{{ hostvars[item]['api_port'] | default(5000) }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items: "{{ groups[iscsi_gw_group_name] }}"
+      when:
+        - ip_version == 'ipv4'
+        - not dashboard_password_from_stdin | bool
 
     - name: add iscsi gateways - ipv6
       command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard iscsi-gateway-add -i -"
@@ -286,7 +333,18 @@
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ groups[iscsi_gw_group_name] }}"
-      when: ip_version == 'ipv6'
+      when:
+        - ip_version == 'ipv6'
+        - dashboard_password_from_stdin | bool
+
+    - name: add iscsi gateways - ipv6 (legacy)
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard iscsi-gateway-add {{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap }}:{{ hostvars[item]['api_port'] | default(5000) }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items: "{{ groups[iscsi_gw_group_name] }}"
+      when:
+        - ip_version == 'ipv6'
+        - not dashboard_password_from_stdin | bool
 
 - name: disable mgr dashboard module (restart)
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mgr module disable dashboard"

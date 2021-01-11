@@ -91,26 +91,41 @@ class TestCephDashboardUserModule(object):
         ])
         assert ceph_dashboard_user.generate_ceph_cmd(self.fake_cluster, [], image) == expected_cmd
 
-    def test_create_user(self):
+    @pytest.mark.parametrize('interactive', [True, False])
+    def test_create_user(self, interactive):
+        self.fake_params.update({'interactive': interactive})
         self.fake_module.params = self.fake_params
         expected_cmd = [
             self.fake_binary,
             '--cluster', self.fake_cluster,
-            'dashboard', 'ac-user-create',
-            '-i', '-',
-            self.fake_user
+            'dashboard', 'ac-user-create'
         ]
+        if interactive:
+            expected_cmd.extend([
+                '-i', '-',
+                self.fake_user
+            ])
+        else:
+            expected_cmd.extend([
+                self.fake_user,
+                self.fake_password
+            ])
 
         assert ceph_dashboard_user.create_user(self.fake_module) == expected_cmd
 
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
     @patch.dict(os.environ, {'CEPH_CONTAINER_IMAGE': fake_container_image})
-    def test_create_user_container(self):
+    @pytest.mark.parametrize('interactive', [True, False])
+    def test_create_user_container(self, interactive):
+        self.fake_params.update({'interactive': interactive})
         self.fake_module.params = self.fake_params
         expected_cmd = [
             fake_container_binary,
             'run',
-            '--interactive',
+        ]
+        if interactive:
+            expected_cmd.append('--interactive')
+        expected_cmd.extend([
             '--rm',
             '--net=host',
             '-v', '/etc/ceph:/etc/ceph:z',
@@ -120,9 +135,17 @@ class TestCephDashboardUserModule(object):
             fake_container_image,
             '--cluster', self.fake_cluster,
             'dashboard', 'ac-user-create',
-            '-i', '-',
-            self.fake_user
-        ]
+        ])
+        if interactive:
+            expected_cmd.extend([
+                '-i', '-',
+                self.fake_user
+            ])
+        else:
+            expected_cmd.extend([
+                self.fake_user,
+                self.fake_password
+            ])
 
         assert ceph_dashboard_user.create_user(self.fake_module, container_image=fake_container_image) == expected_cmd
 
@@ -138,26 +161,41 @@ class TestCephDashboardUserModule(object):
 
         assert ceph_dashboard_user.set_roles(self.fake_module) == expected_cmd
 
-    def test_set_password(self):
+    @pytest.mark.parametrize('interactive', [True, False])
+    def test_set_password(self, interactive):
+        self.fake_params.update({'interactive': interactive})
         self.fake_module.params = self.fake_params
         expected_cmd = [
             self.fake_binary,
             '--cluster', self.fake_cluster,
             'dashboard', 'ac-user-set-password',
-            '-i', '-',
-            self.fake_user
         ]
+        if interactive:
+            expected_cmd.extend([
+                '-i', '-',
+                self.fake_user
+            ])
+        else:
+            expected_cmd.extend([
+                self.fake_user,
+                self.fake_password
+            ])
 
         assert ceph_dashboard_user.set_password(self.fake_module) == expected_cmd
 
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
     @patch.dict(os.environ, {'CEPH_CONTAINER_IMAGE': fake_container_image})
-    def test_set_password_container(self):
+    @pytest.mark.parametrize('interactive', [True, False])
+    def test_set_password_container(self, interactive):
+        self.fake_params.update({'interactive': interactive})
         self.fake_module.params = self.fake_params
         expected_cmd = [
             fake_container_binary,
             'run',
-            '--interactive',
+        ]
+        if interactive:
+            expected_cmd.append('--interactive')
+        expected_cmd.extend([
             '--rm',
             '--net=host',
             '-v', '/etc/ceph:/etc/ceph:z',
@@ -167,9 +205,17 @@ class TestCephDashboardUserModule(object):
             fake_container_image,
             '--cluster', self.fake_cluster,
             'dashboard', 'ac-user-set-password',
-            '-i', '-',
-            self.fake_user
-        ]
+        ])
+        if interactive:
+            expected_cmd.extend([
+                '-i', '-',
+                self.fake_user
+            ])
+        else:
+            expected_cmd.extend([
+                self.fake_user,
+                self.fake_password
+            ])
 
         assert ceph_dashboard_user.set_password(self.fake_module, container_image=fake_container_image) == expected_cmd
 
