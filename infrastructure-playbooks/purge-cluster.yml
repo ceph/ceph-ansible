@@ -581,15 +581,20 @@
     changed_when: false
     with_items: "{{ combined_devices_list }}"
 
+  - name: check parent device partition
+    parted:
+      device: "/dev/{{ item }}"
+    loop: "{{ resolved_parent_device }}"
+    register: parted_info
+
+  - name: fail if there is a boot partition on the device
+    fail:
+      msg: "{{ item.item }} has a boot partition"
+    loop: "{{ parted_info.results }}"
+    when: "'boot' in (item.partitions | map(attribute='flags') | list | flatten)"
+
   - name: zap ceph journal/block db/block wal partitions  # noqa 306
     shell: |
-      # if the disk passed is a raw device AND the boot system disk
-      if parted -s /dev/"{{ item }}" print | grep -sq boot; then
-        echo "Looks like /dev/{{ item }} has a boot partition,"
-        echo "if you want to delete specific partitions point to the partition instead of the raw device"
-        echo "Do not use your system disk!"
-        exit 1
-      fi
       sgdisk -Z --clear --mbrtogpt -g -- /dev/"{{ item }}"
       dd if=/dev/zero of=/dev/"{{ item }}" bs=1M count=200
       parted -s /dev/"{{ item }}" mklabel gpt
