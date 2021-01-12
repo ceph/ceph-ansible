@@ -1,8 +1,10 @@
 ---
 - name: container registry authentication
-  command: '{{ container_binary }} login -u {{ ceph_docker_registry_username }} -p {{ ceph_docker_registry_password | quote }} {{ ceph_docker_registry }}'
+  command: '{{ container_binary }} login -u {{ ceph_docker_registry_username }} --password-stdin {{ ceph_docker_registry }}'
+  args:
+    stdin: '{{ ceph_docker_registry_password }}'
+    stdin_add_newline: no
   changed_when: false
-  no_log: true
   environment:
     HTTP_PROXY: "{{ ceph_docker_http_proxy | default('') }}"
     HTTPS_PROXY: "{{ ceph_docker_https_proxy | default('') }}"
