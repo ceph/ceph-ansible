@@ -1,56 +1,58 @@
 ---
-- name: check if monitor initial keyring already exists
-  ceph_key:
-    name: mon.
-    cluster: "{{ cluster }}"
-    user: mon.
-    user_key: "/var/lib/ceph/mon/{{ cluster }}-{{ hostvars[running_mon]['ansible_hostname'] }}/keyring"
-    output_format: json
-    state: info
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-  register: initial_mon_key
-  run_once: True
-  delegate_to: "{{ running_mon }}"
-  when: running_mon is defined
+- name: cephx related tasks
+  when: cephx | bool
+  block:
+    - name: check if monitor initial keyring already exists
+      ceph_key:
+        name: mon.
+        cluster: "{{ cluster }}"
+        user: mon.
+        user_key: "/var/lib/ceph/mon/{{ cluster }}-{{ hostvars[running_mon]['ansible_hostname'] }}/keyring"
+        output_format: json
+        state: info
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      register: initial_mon_key
+      run_once: True
+      delegate_to: "{{ running_mon }}"
+      when: running_mon is defined
 
-- name: generate monitor initial keyring
-  ceph_key:
-    state: generate_secret
-  register: monitor_keyring
-  delegate_to: localhost
-  become: false
-  run_once: true
-  when:
-    - initial_mon_key.skipped is defined
+    - name: generate monitor initial keyring
+      ceph_key:
+        state: generate_secret
+      register: monitor_keyring
+      delegate_to: localhost
+      become: false
+      run_once: true
+      when: initial_mon_key.skipped is defined
 
-- name: get initial keyring when it already exists
-  set_fact:
-    monitor_keyring: "{{ (initial_mon_key.stdout | from_json)[0]['key'] if initial_mon_key is not skipped else monitor_keyring.stdout }}"
+    - name: get initial keyring when it already exists
+      set_fact:
+        monitor_keyring: "{{ (initial_mon_key.stdout | from_json)[0]['key'] if initial_mon_key is not skipped else monitor_keyring.stdout }}"
 
-- name: create monitor initial keyring
-  ceph_key:
-    name: mon.
-    dest: "/var/lib/ceph/tmp/"
-    secret: "{{ monitor_keyring }}"
-    cluster: "{{ cluster }}"
-    caps:
-      mon: allow *
-    import_key: False
-    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
-    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
-    mode: "0400"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+    - name: create monitor initial keyring
+      ceph_key:
+        name: mon.
+        dest: "/var/lib/ceph/tmp/"
+        secret: "{{ monitor_keyring }}"
+        cluster: "{{ cluster }}"
+        caps:
+          mon: allow *
+        import_key: False
+        owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        mode: "0400"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
-- name: copy the initial key in /etc/ceph (for containers)
-  copy:
-    src: /var/lib/ceph/tmp/{{ cluster }}.mon..keyring
-    dest: /etc/ceph/{{ cluster }}.mon.keyring
-    remote_src: true
-  when: containerized_deployment | bool
+    - name: copy the initial key in /etc/ceph (for containers)
+      copy:
+        src: /var/lib/ceph/tmp/{{ cluster }}.mon..keyring
+        dest: /etc/ceph/{{ cluster }}.mon.keyring
+        remote_src: true
+      when: containerized_deployment | bool
 
 - name: create monitor directory
   file:
