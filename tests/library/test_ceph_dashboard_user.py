@@ -8,19 +8,18 @@ fake_container_image = 'docker.io/ceph/daemon:latest'
 
 class TestCephDashboardUserModule(object):
     def setup_method(self):
-        self.fake_params = []
         self.fake_binary = 'ceph'
         self.fake_cluster = 'ceph'
         self.fake_name = 'foo'
         self.fake_user = 'foo'
         self.fake_password = 'bar'
-        self.fake_module = MagicMock()
-        self.fake_module.params = self.fake_params
         self.fake_roles = ['read-only', 'block-manager']
         self.fake_params = {'cluster': self.fake_cluster,
                             'name': self.fake_user,
                             'password': self.fake_password,
                             'roles': self.fake_roles}
+        self.fake_module = MagicMock()
+        self.fake_module.params = self.fake_params
 
     def test_create_user(self):
         self.fake_module.params = self.fake_params
