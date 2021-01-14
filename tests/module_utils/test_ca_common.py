@@ -1,4 +1,4 @@
-from mock.mock import patch
+from mock.mock import patch, MagicMock
 import os
 import ca_common
 import pytest
@@ -128,3 +128,17 @@ class TestCommon(object):
         ])
         result = ca_common.generate_ceph_cmd(sub_cmd, args, user='client.foo', container_image=image)
         assert result == expected_cmd
+
+    @pytest.mark.parametrize('stdin', [None, 'foo'])
+    def test_exec_command(self, stdin):
+        fake_module = MagicMock()
+        rc = 0
+        stderr = ''
+        stdout = 'ceph version 1.2.3'
+        fake_module.run_command.return_value = 0, stdout, stderr
+        expected_cmd = [self.fake_binary, '--version']
+        _rc, _cmd, _out, _err = ca_common.exec_command(fake_module, expected_cmd, stdin=stdin)
+        assert _rc == rc
+        assert _cmd == expected_cmd
+        assert _err == stderr
+        assert _out == stdout
