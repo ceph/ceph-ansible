@@ -29,8 +29,9 @@
         s3cmd --no-ssl --access_key={{ item.system_access_key }} --secret_key={{ item.system_secret_key }} --host={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} --host-bucket={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} mb s3://testinfra-{{ item.rgw_realm }};
         s3cmd --no-ssl --access_key={{ item.system_access_key }} --secret_key={{ item.system_secret_key }} --host={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} --host-bucket={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} put /tmp/testinfra-{{ item.rgw_realm }}.img s3://testinfra-{{ item.rgw_realm }}'
       with_items: "{{ rgw_instances_host }}"
+      tags: upload
       when:
-        - rgw_zonemaster | bool
+        - item.rgw_zonemaster | default(rgw_zonemaster) | bool
         - containerized_deployment | bool
 
     - name: generate and upload a random a 10Mb file - non containerized
@@ -39,8 +40,9 @@
         s3cmd --no-ssl --access_key={{ item.system_access_key }} --secret_key={{ item.system_secret_key }} --host={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} --host-bucket={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} mb s3://testinfra-{{ item.rgw_realm }};
         s3cmd --no-ssl --access_key={{ item.system_access_key }} --secret_key={{ item.system_secret_key }} --host={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} --host-bucket={{ item.radosgw_address }}:{{ item.radosgw_frontend_port }} put /tmp/testinfra-{{ item.rgw_realm }}.img s3://testinfra-{{ item.rgw_realm }};
       with_items: "{{ rgw_instances_host }}"
+      tags: upload
       when:
-        - rgw_zonemaster | bool
+        - item.rgw_zonemaster | default(rgw_zonemaster) | bool
         - not containerized_deployment | bool
 
     - name: get info from replicated file - containerized deployment
@@ -51,8 +53,9 @@
       retries: 60
       delay: 1
       until: result is succeeded
+      tags: download
       when:
-        - not rgw_zonemaster | bool
+        - not item.rgw_zonemaster | default(rgw_zonemaster) | bool
         - containerized_deployment | bool
 
     - name: get info from replicated file - non containerized
@@ -63,6 +66,7 @@
       retries: 60
       delay: 1
       until: result is succeeded
+      tags: download
       when:
-        - not rgw_zonemaster | bool
+        - not item.rgw_zonemaster | default(rgw_zonemaster) | bool
         - not containerized_deployment | bool

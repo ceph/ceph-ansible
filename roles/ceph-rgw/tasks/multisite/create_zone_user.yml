@@ -5,8 +5,8 @@
   loop: "{{ rgw_instances_all }}"
   run_once: true
   when:
-    - hostvars[item.host]['rgw_zonemaster'] | bool
-    - hostvars[item.host]['rgw_zonegroupmaster'] | bool
+    - item.rgw_zonemaster | default(hostvars[item.host]['rgw_zonemaster']) | bool
+    - item.rgw_zonegroupmaster | default(hostvars[item.host]['rgw_zonegroupmaster']) | bool
 
 - name: create the zone user(s)
   radosgw_user:
@@ -22,6 +22,7 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   loop: "{{ zone_users }}"
+  when: zone_users is defined
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"

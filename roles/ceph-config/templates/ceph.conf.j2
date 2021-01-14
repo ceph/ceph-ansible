@@ -119,9 +119,11 @@ rgw frontends = {{ frontend_line(radosgw_frontend_type) }} {{ radosgw_frontend_o
 rgw thread pool size = {{ radosgw_thread_pool_size }}
 {% endif %}
 {% if rgw_multisite | bool %}
+{% if ((instance['rgw_zonemaster'] | default(rgw_zonemaster) | bool) or (deploy_secondary_zones | default(True) | bool)) %}
 rgw_realm = {{ instance['rgw_realm'] }}
 rgw_zonegroup = {{ instance['rgw_zonegroup'] }}
 rgw_zone = {{ instance['rgw_zone'] }}
+{% endif %}
 {% endif %}
 {% endfor %}
 {% endif %}
