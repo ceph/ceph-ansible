@@ -241,3 +241,17 @@ class TestCephDashboardUserModule(object):
         ]
 
         assert ceph_dashboard_user.remove_user(self.fake_module) == expected_cmd
+
+    @pytest.mark.parametrize('stdin', [None, 'foo'])
+    def test_exec_command(self, stdin):
+        fake_module = MagicMock()
+        rc = 0
+        stderr = ''
+        stdout = 'ceph version 1.2.3'
+        fake_module.run_command.return_value = 0, stdout, stderr
+        expected_cmd = [self.fake_binary, '--version']
+        _rc, _cmd, _out, _err = ceph_dashboard_user.exec_commands(fake_module, expected_cmd, stdin=stdin)
+        assert _rc == rc
+        assert _cmd == expected_cmd
+        assert _err == stderr
+        assert _out == stdout
