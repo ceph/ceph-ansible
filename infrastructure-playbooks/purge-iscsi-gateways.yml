@@ -81,16 +81,22 @@
             name: ceph-facts
             tasks_from: container_binary
 
-        - name: set_fact container_exec_cmd
-          set_fact:
-            container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
-          when: containerized_deployment | bool
-
         - name: get iscsi gateway list
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} dashboard iscsi-gateway-list -f json"
+          ceph_dashboard_iscsi:
+            cluster: "{{ cluster }}"
+            state: list
           changed_when: false
           register: gateways
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
         - name: remove iscsi gateways
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} dashboard iscsi-gateway-rm {{ item }}"
+          ceph_dashboard_iscsi:
+            cluster: "{{ cluster }}"
+            name: "{{ item }}"
+            state: absent
           with_items: '{{ (gateways.stdout | from_json)["gateways"] }}'
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
