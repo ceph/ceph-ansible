@@ -1,4 +1,16 @@
 ---
+- name: create list secondary_realms
+  set_fact:
+    secondary_realms: "{{ secondary_realms | default([]) | union([{ 'realm': item.rgw_realm, 'zonegroup': item.rgw_zonegroup, 'zone': item.rgw_zone, 'endpoint': item.endpoint, 'system_access_key': item.system_access_key, 'system_secret_key': item.system_secret_key, 'is_master': item.rgw_zonemaster | default(rgw_zonemaster) }]) }}"
+  loop: "{{ rgw_instances }}"
+  when: not item.rgw_zonemaster | default(rgw_zonemaster) | bool
+
+- name: ensure connection to primary cluster from rgw
+  uri:
+    url: "{{ item.endpoint }}"
+  loop: "{{ secondary_realms }}"
+  when: secondary_realms is defined
+
 - name: ensure connection to primary cluster from mon
   uri:
     url: "{{ item.endpoint }}"
@@ -10,19 +22,18 @@
 - name: ensure connection to primary cluster from rgw
   uri:
     url: "{{ item.endpoint }}"
-  loop: "{{ rgw_instances }}"
+  loop: "{{ secondary_realms }}"
+  when: secondary_realms is defined
 
 - name: fetch the realm(s)
   command: "{{ container_exec_cmd }} radosgw-admin realm pull --cluster={{ cluster }} --rgw-realm={{ item.realm }} --url={{ item.endpoint }} --access-key={{ item.system_access_key }} --secret={{ item.system_secret_key }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
   loop: "{{ secondary_realms }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
   when: secondary_realms is defined
 
 - name: get the period(s)
   command: "{{ container_exec_cmd }} radosgw-admin period get --cluster={{ cluster }} --rgw-realm={{ item.realm }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
   loop: "{{ secondary_realms }}"
   when: secondary_realms is defined
 
@@ -54,8 +65,8 @@
     zonegroup: "{{ item.zonegroup }}"
     endpoints: "{{ item.endpoints.split(',') }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
   loop: "{{ zone_endpoints_list }}"
+  run_once: true
   when:
     - zone_endpoints_list is defined
     - not item.is_master | bool
@@ -66,8 +77,8 @@
 - name: update period for zone creation
   command: "{{ container_exec_cmd }} radosgw-admin --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} period update --commit"
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
   loop: "{{ zone_endpoints_list }}"
+  run_once: true
   when:
     - zone_endpoints_list is defined
     - not item.is_master | bool

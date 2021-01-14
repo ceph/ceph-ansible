@@ -8,14 +8,16 @@
 - name: fail if either rgw_zonemaster or rgw_zonesecondary is undefined
   fail:
     msg: "rgw_zonemaster and rgw_zonesecondary must be defined"
-  when: rgw_zonemaster is undefined or rgw_zonesecondary is undefined
+  loop: "{{ rgw_instances }}"
+  when: item.rgw_zonemaster | default(rgw_zonemaster) is undefined or item.rgw_zonesecondary | default(rgw_zonesecondary) is undefined
 
 - name: fail if rgw_zonemaster and rgw_zonesecondary are both true
   fail:
     msg: "rgw_zonemaster and rgw_zonesecondary cannot both be true"
+  loop: "{{ rgw_instances }}"
   when:
-    - rgw_zonemaster | bool
-    - rgw_zonesecondary | bool
+    - item.rgw_zonemaster | default(rgw_zonemaster) | bool
+    - item.rgw_zonesecondary | default(rgw_zonesecondary) | bool
 
 - name: fail if rgw_zonegroup is not set
   fail:
@@ -58,6 +60,7 @@
     msg: "endpoint has not been set by the user"
   loop: "{{ rgw_instances }}"
   when:
-    - rgw_zonesecondary | bool
-    - rgw_pull_port is undefined and rgw_pullhost is undefined and rgw_pull_proto is undefined
+    - item.rgw_zonesecondary | default(rgw_zonesecondary) | bool
+    - rgw_pull_port is undefined and rgw_pullhost is undefined and item.rgw_pull_proto | default(rgw_pull_proto) is undefined
     - item.endpoint is undefined
+
