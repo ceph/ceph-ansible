@@ -1,44 +1,32 @@
 ---
-- name: include_tasks create_realm_zonegroup_zone_lists.yml
-  include_tasks: create_realm_zonegroup_zone_lists.yml
-
 # Include the tasks depending on the zone type
 - name: include_tasks master.yml
   include_tasks: master.yml
+  loop: "{{ rgw_instances }}"
+  loop_control:
+    loop_var: outer_item
   when:
-    - rgw_zonemaster | bool
-    - not rgw_zonesecondary | bool
-
-- name: include_tasks start_radosgw.yml for zonemaster rgws
-  include_tasks: ../start_radosgw.yml
-  when:
-    - rgw_zonemaster | bool
-    - not rgw_zonesecondary | bool
-    - not containerized_deployment | bool
-
-- name: include_tasks start_docker_rgw.yml for zonemaster rgws
-  include_tasks: ../start_docker_rgw.yml
-  when:
-    - rgw_zonemaster | bool
-    - not rgw_zonesecondary | bool
-    - containerized_deployment | bool
+    - outer_item.rgw_zonemaster | default(rgw_zonemaster) | bool
+    - not outer_item.rgw_zonesecondary | default(rgw_zonesecondary) | bool
 
 - name: include_tasks secondary.yml
   include_tasks: secondary.yml
+  loop: "{{ rgw_instances }}"
+  loop_control:
+    loop_var: outer_item
   when:
-    - not rgw_zonemaster | bool
-    - rgw_zonesecondary | bool
+    - not outer_item.rgw_zonemaster | default(rgw_zonemaster) | bool
+    - outer_item.rgw_zonesecondary | default(rgw_zonesecondary) | bool
 
-- name: include_tasks start_radosgw.yml for zonesecondary rgws
+- name: include_tasks start_radosgw.yml
   include_tasks: ../start_radosgw.yml
+  with_items: "{{ rgw_instances }}"
   when:
-    - not rgw_zonemaster | bool
-    - rgw_zonesecondary | bool
     - not containerized_deployment | bool
 
-- name: include_tasks start_docker_rgw.yml for zonesecondary rgws
+- name: include_tasks start_docker_rgw.yml
   include_tasks: ../start_docker_rgw.yml
+  with_items: "{{ rgw_instances }}"
   when:
-    - not rgw_zonemaster | bool
-    - rgw_zonesecondary | bool
     - containerized_deployment | bool
+

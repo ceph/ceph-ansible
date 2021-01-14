@@ -20,6 +20,10 @@
     enabled: yes
     masked: no
   with_items: "{{ rgw_instances }}"
+  when:
+    - not rgw_multisite | bool or
+      ((rgw_multisite | bool and item.rgw_zonesecondary | default(rgw_zonesecondary) | bool and test_endpoints_from_rgw.status == 200) or
+      (rgw_multisite | bool and item.rgw_zonemaster | default(rgw_zonemaster)))
 
 - name: enable the ceph-radosgw.target service
   systemd:
