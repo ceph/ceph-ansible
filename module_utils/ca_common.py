@@ -100,6 +100,7 @@ def exit_module(module, out, rc, cmd, err, startd, changed=False):
     )
     module.exit_json(**result)
 
+
 def fatal(message, module):
     '''
     Report a fatal error and exit
