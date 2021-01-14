@@ -1,4 +1,11 @@
 ---
+- name: create list secondary_realms
+  set_fact:
+    secondary_realms: "{{ secondary_realms | default([]) | union([{ 'realm': item.rgw_realm, 'zonegroup': item.rgw_zonegroup, 'zone': item.rgw_zone, 'endpoint': item.endpoint, 'system_access_key': item.system_access_key, 'system_secret_key': item.system_secret_key, 'is_master': item.rgw_zonemaster | default(hostvars[item.host]['rgw_zonemaster']) }]) }}"
+  loop: "{{ rgw_instances_all }}"
+  run_once: true
+  when: not item.rgw_zonemaster | default(hostvars[item.host]['rgw_zonemaster']) | bool
+
 - name: ensure connection to primary cluster from mon
   uri:
     url: "{{ item.endpoint }}"
@@ -11,6 +18,7 @@
   uri:
     url: "{{ item.endpoint }}"
   loop: "{{ rgw_instances }}"
+  when: not item.rgw_zonemaster | default(rgw_zonemaster) | bool
 
 - name: fetch the realm(s)
   command: "{{ container_exec_cmd }} radosgw-admin realm pull --cluster={{ cluster }} --rgw-realm={{ item.realm }} --url={{ item.endpoint }} --access-key={{ item.system_access_key }} --secret={{ item.system_secret_key }}"

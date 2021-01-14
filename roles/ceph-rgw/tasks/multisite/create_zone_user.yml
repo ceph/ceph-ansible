@@ -5,8 +5,8 @@
   loop: "{{ rgw_instances_all }}"
   run_once: true
   when:
-    - hostvars[item.host]['rgw_zonemaster'] | bool
-    - hostvars[item.host]['rgw_zonegroupmaster'] | bool
+    - item.rgw_zonemaster | default(hostvars[item.host]['rgw_zonemaster']) | bool
+    - item.rgw_zonegroupmaster | default(hostvars[item.host]['rgw_zonegroupmaster']) | bool
 
 - name: check if the realm system user already exists
   command: "{{ container_exec_cmd }} radosgw-admin user info --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --uid={{ item.user }}"
