@@ -8,6 +8,10 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
+try:
+    from ansible.module_utils.ca_common import fatal
+except ImportError:
+    from module_utils.ca_common import fatal
 import datetime
 
 ANSIBLE_METADATA = {
@@ -60,16 +64,6 @@ EXAMPLES = '''
 '''
 
 RETURN = '''#  '''
-
-
-def fatal(message, module):
-    '''
-    Report a fatal error and exit
-    '''
-    if module:
-        module.fail_json(msg=message, rc=1)
-    else:
-        raise(Exception(message))
 
 
 def generate_cmd(cluster, subcommand, bucket, bucket_type, containerized=None):

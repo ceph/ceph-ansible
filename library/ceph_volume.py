@@ -2,9 +2,9 @@
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-    from ansible.module_utils.ca_common import exec_command, is_containerized
+    from ansible.module_utils.ca_common import exec_command, is_containerized, fatal
 except ImportError:
-    from module_utils.ca_common import exec_command, is_containerized
+    from module_utils.ca_common import exec_command, is_containerized, fatal
 import datetime
 import copy
 import json
@@ -184,17 +184,6 @@ EXAMPLES = '''
     wal: /dev/sdc2
     action: create
 '''
-
-
-def fatal(message, module):
-    '''
-    Report a fatal error and exit
-    '''
-
-    if module:
-        module.fail_json(msg=message, changed=False, rc=1)
-    else:
-        raise(Exception(message))
 
 
 def container_exec(binary, container_image):
