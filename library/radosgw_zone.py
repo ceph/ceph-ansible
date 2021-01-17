@@ -122,6 +122,16 @@ import stat  # noqa E402
 import time  # noqa E402
 
 
+def fatal(message, module):
+    '''
+    Report a fatal error and exit
+    '''
+    if module:
+        module.fail_json(msg=message, rc=1)
+    else:
+        raise(Exception(message))
+
+
 def container_exec(binary, container_image):
     '''
     Build the docker CLI to run a command inside a container
@@ -414,24 +424,27 @@ def run_module():
         if rc == 0:
             zone = json.loads(out)
             _rc, _cmd, _out, _err = exec_commands(module, get_zonegroup(module, container_image=container_image))
-            zonegroup = json.loads(_out)
-            if not access_key:
-                access_key = ''
-            if not secret_key:
-                secret_key = ''
-            current = {
-                'endpoints': next(zone['endpoints'] for zone in zonegroup['zones'] if zone['name'] == name),
-                'access_key': zone['system_key']['access_key'],
-                'secret_key': zone['system_key']['secret_key']
-            }
-            asked = {
-                'endpoints': endpoints,
-                'access_key': access_key,
-                'secret_key': secret_key
-            }
-            if current != asked:
-                rc, cmd, out, err = exec_commands(module, modify_zone(module, container_image=container_image))
-                changed = True
+            if _rc == 0:
+                zonegroup = json.loads(_out)
+                if not access_key:
+                    access_key = ''
+                if not secret_key:
+                    secret_key = ''
+                current = {
+                    'endpoints': next(zone['endpoints'] for zone in zonegroup['zones'] if zone['name'] == name),
+                    'access_key': zone['system_key']['access_key'],
+                    'secret_key': zone['system_key']['secret_key']
+                }
+                asked = {
+                    'endpoints': endpoints,
+                    'access_key': access_key,
+                    'secret_key': secret_key
+                }
+                if current != asked:
+                    rc, cmd, out, err = exec_commands(module, modify_zone(module, container_image=container_image))
+                    changed = True
+            else:
+                fatal(_err, module)
         else:
             rc, cmd, out, err = exec_commands(module, create_zone(module, container_image=container_image))
             changed = True
