@@ -19,9 +19,9 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-    from ansible.module_utils.ca_common import is_containerized, container_exec
+    from ansible.module_utils.ca_common import is_containerized, container_exec, fatal
 except ImportError:
-    from module_utils.ca_common import is_containerized, container_exec
+    from module_utils.ca_common import is_containerized, container_exec, fatal
 import datetime
 import json
 import os
@@ -217,17 +217,6 @@ def str_to_bool(val):
         return False
     else:
         raise ValueError("Invalid input value: %s" % val)
-
-
-def fatal(message, module):
-    '''
-    Report a fatal error and exit
-    '''
-
-    if module:
-        module.fail_json(msg=message, rc=1)
-    else:
-        raise(Exception(message))
 
 
 def generate_secret():

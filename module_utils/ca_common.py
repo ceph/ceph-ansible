@@ -99,3 +99,13 @@ def exit_module(module, out, rc, cmd, err, startd, changed=False):
         changed=changed,
     )
     module.exit_json(**result)
+
+def fatal(message, module):
+    '''
+    Report a fatal error and exit
+    '''
+
+    if module:
+        module.fail_json(msg=message, rc=1)
+    else:
+        raise(Exception(message))
