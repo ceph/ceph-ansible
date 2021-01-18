@@ -75,6 +75,11 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
+    - import_role:
+        name: ceph-facts
+        tasks_from: convert_grafana_server_group_name.yml
+      when: groups.get((grafana_server_group_name|default('grafana-server')), []) | length > 0
+
     - name: get the ceph version
       command: "{{ container_binary + ' run --rm --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --version"
       changed_when: false
