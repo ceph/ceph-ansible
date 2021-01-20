@@ -172,13 +172,12 @@
           command: "{{ container_binary }} rm cephadm"
           changed_when: false
 
-    - name: set_fact container_exec_cmd
+    - name: set_fact ceph_cmd
       set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
-      when: containerized_deployment | bool
+        ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --cluster {{ cluster }}"
 
     - name: get current fsid
-      command: "{{ container_exec_cmd | default('') }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}.asok config get fsid --format json"
+      command: "{{ ceph_cmd }} fsid"
       register: current_fsid
       run_once: true
       changed_when: false
@@ -186,7 +185,8 @@
 
     - name: set_fact fsid
       set_fact:
-        fsid: "{{ (current_fsid.stdout | from_json).fsid }}"
+        fsid: "{{ current_fsid.stdout }}"
+      run_once: true
 
     - name: enable cephadm mgr module
       ceph_mgr_module:
@@ -200,19 +200,19 @@
       delegate_to: '{{ groups[mon_group_name][0] }}'
 
     - name: set cephadm as orchestrator backend
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} orch set backend cephadm"
+      command: "{{ ceph_cmd }} orch set backend cephadm"
       changed_when: false
       run_once: true
       delegate_to: '{{ groups[mon_group_name][0] }}'
 
     - name: generate cephadm ssh key
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} cephadm generate-key"
+      command: "{{ ceph_cmd }} cephadm generate-key"
       changed_when: false
       run_once: true
       delegate_to: '{{ groups[mon_group_name][0] }}'
 
     - name: get the cephadm ssh pub key
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} cephadm get-pub-key"
+      command: "{{ ceph_cmd }} cephadm get-pub-key"
       changed_when: false
       run_once: true
       register: cephadm_pubpkey
@@ -230,13 +230,13 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: set default container image in ceph configuration
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} config set global container_image {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      command: "{{ ceph_cmd }} config set global container_image {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       changed_when: false
       run_once: true
       delegate_to: '{{ groups[mon_group_name][0] }}'
 
     - name: set container image base in ceph configuration
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_base {{ ceph_docker_registry }}/{{ ceph_docker_image }}"
+      command: "{{ ceph_cmd }} config set mgr mgr/cephadm/container_image_base {{ ceph_docker_registry }}/{{ ceph_docker_image }}"
       changed_when: false
       run_once: true
       delegate_to: '{{ groups[mon_group_name][0] }}'
@@ -246,32 +246,32 @@
       run_once: true
       block:
         - name: set alertmanager container image in ceph configuration
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_alertmanager {{ alertmanager_container_image }}"
+          command: "{{ ceph_cmd }} config set mgr mgr/cephadm/container_image_alertmanager {{ alertmanager_container_image }}"
           changed_when: false
           delegate_to: '{{ groups[mon_group_name][0] }}'
 
         - name: set grafana container image in ceph configuration
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_grafana {{ grafana_container_image }}"
+          command: "{{ ceph_cmd }} config set mgr mgr/cephadm/container_image_grafana {{ grafana_container_image }}"
           changed_when: false
           delegate_to: '{{ groups[mon_group_name][0] }}'
 
         - name: set node-exporter container image in ceph configuration
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_node_exporter {{ node_exporter_container_image }}"
+          command: "{{ ceph_cmd }} config set mgr mgr/cephadm/container_image_node_exporter {{ node_exporter_container_image }}"
           changed_when: false
           delegate_to: '{{ groups[mon_group_name][0] }}'
 
         - name: set prometheus container image in ceph configuration
-          command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_prometheus {{ prometheus_container_image }}"
+          command: "{{ ceph_cmd }} config set mgr mgr/cephadm/container_image_prometheus {{ prometheus_container_image }}"
           changed_when: false
           delegate_to: '{{ groups[mon_group_name][0] }}'
 
     - name: manage nodes with cephadm
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} orch host add {{ ansible_hostname }} {{ ansible_default_ipv4.address }} {{ group_names | join(' ') }}"
+      command: "{{ ceph_cmd }} orch host add {{ ansible_hostname }} {{ ansible_default_ipv4.address }} {{ group_names | join(' ') }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
 
     - name: add ceph label for core component
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} orch host label add {{ ansible_hostname }} ceph"
+      command: "{{ ceph_cmd }} orch host label add {{ ansible_hostname }} ceph"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       when: inventory_hostname in groups.get(mon_group_name, []) or
@@ -280,10 +280,6 @@
             inventory_hostname in groups.get(rgw_group_name, []) or
             inventory_hostname in groups.get(mgr_group_name, []) or
             inventory_hostname in groups.get(rbdmirror_group_name, [])
-
-    - name: set_fact ceph_cmd
-      set_fact:
-        ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
 
     - name: get the client.admin keyring
       ceph_key:
@@ -315,7 +311,7 @@
         - "{{ groups.get(rbdmirror_group_name, []) }}"
 
     - name: assimilate ceph configuration
-      command: "{{ ceph_cmd }} --cluster {{ cluster }} config assimilate-conf -i /etc/ceph/{{ cluster }}.conf"
+      command: "{{ ceph_cmd }} config assimilate-conf -i /etc/ceph/{{ cluster }}.conf"
       changed_when: false
       when: inventory_hostname in groups.get(mon_group_name, []) or
             inventory_hostname in groups.get(osd_group_name, []) or
@@ -496,6 +492,12 @@
         state: absent
       when: not containerized_deployment | bool
 
+    - name: remove osd directory
+      file:
+        path: "/var/lib/ceph/osd/{{ cluster }}-{{ item }}"
+        state: absent
+      loop: '{{ (osd_list.stdout | from_json).keys() | list }}'
+
     - name: waiting for clean pgs...
       command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} pg stat --format json"
       changed_when: false
@@ -557,6 +559,7 @@
         name: 'ceph-mds@{{ ansible_hostname }}'
         state: stopped
         enabled: false
+      failed_when: false
 
     - name: stop and disable ceph-mds systemd target
       service:
@@ -655,6 +658,7 @@
         name: 'ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}'
         state: stopped
         enabled: false
+      failed_when: false
       loop: '{{ rgw_instances }}'
 
     - name: stop and disable ceph-radosgw systemd target
@@ -724,6 +728,7 @@
         name: 'ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}'
         state: stopped
         enabled: false
+      failed_when: false
 
     - name: stop and disable rbd-mirror systemd target
       service:
@@ -780,6 +785,7 @@
         name: '{{ item }}'
         state: stopped
         enabled: false
+      failed_when: false
       with_items:
         - rbd-target-api
         - rbd-target-gw
@@ -847,12 +853,23 @@
     - name: with dashboard enabled
       when: dashboard_enabled | bool
       block:
+        - name: ensure alertmanager/prometheus data directories are present
+          file:
+            path: "{{ item }}"
+            state: directory
+            owner: "{{ prometheus_user_id }}"
+            group: "{{ prometheus_user_id }}"
+          with_items:
+           - "{{ alertmanager_data_dir }}"
+           - "{{ prometheus_data_dir }}"
+
         # (workaround) cephadm adopt alertmanager only stops prometheus-alertmanager systemd service
         - name: stop and disable alertmanager systemd unit
           service:
             name: alertmanager
             state: stopped
             enabled: false
+          failed_when: false
 
         # (workaround) cephadm adopt alertmanager only uses /etc/prometheus/alertmanager.yml
         - name: create alertmanager config symlink
@@ -892,6 +909,7 @@
             name: prometheus
             state: stopped
             enabled: false
+          failed_when: false
 
         - name: remove alertmanager data symlink
           file:
@@ -955,6 +973,7 @@
             name: grafana-server
             state: stopped
             enabled: false
+          failed_when: false
 
         - name: adopt grafana daemon
           cephadm_adopt:
@@ -1000,6 +1019,7 @@
             name: node_exporter
             state: stopped
             enabled: false
+          failed_when: false
 
         - name: remove node_exporter systemd unit file
           file:
