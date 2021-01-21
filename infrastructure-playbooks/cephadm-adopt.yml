@@ -605,29 +605,39 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       block:
         - name: create a default realm
-          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} realm create --rgw-realm=default --default"
-          run_once: true
-          changed_when: false
+          radosgw_realm:
+            cluster: "{{ cluster }}"
+            name: default
+            default: true
           environment:
-            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
         - name: modify the default zonegroup
-          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} zonegroup modify --rgw-realm=default --rgw-zonegroup=default"
-          run_once: true
-          changed_when: false
+          radosgw_zonegroup:
+            cluster: "{{ cluster }}"
+            name: default
+            realm: default
+            master: true
+            default: true
           environment:
-            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
         - name: modify the default zone
-          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} zone modify --rgw-realm=default --rgw-zonegroup=default --rgw-zone=default"
-          run_once: true
-          changed_when: false
+          radosgw_zone:
+            cluster: "{{ cluster }}"
+            name: default
+            realm: default
+            zonegroup: default
+            master: true
+            default: true
           environment:
-            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
         - name: commit the period
           command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} period update --commit"
-          run_once: true
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
