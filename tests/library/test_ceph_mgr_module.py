@@ -93,8 +93,8 @@ class TestCephMgrModuleModule(object):
             'name': fake_module,
         })
         m_exit_json.side_effect = ca_test_common.exit_json
-        stdout = 'module \'{}\' is already enabled'.format(fake_module)
-        stderr = ''
+        stderr = 'module \'{}\' is already enabled'.format(fake_module)
+        stdout = ''
         rc = 0
         m_run_command.return_value = rc, stdout, stderr
 

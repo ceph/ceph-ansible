@@ -107,7 +107,7 @@ def main():
         )
     else:
         rc, out, err = module.run_command(cmd)
-        if out == "module '{}' is already enabled".format(name):
+        if 'is already enabled' in err:
             changed = False
         else:
             changed = True
