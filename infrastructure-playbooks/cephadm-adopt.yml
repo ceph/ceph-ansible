@@ -408,7 +408,7 @@
       when: not containerized_deployment | bool
 
 - name: set osd flags
-  hosts: "{{ mon_group_name|default('mons') }}[0]"
+  hosts: "{{ osd_group_name|default('osds') }}"
   become: true
   gather_facts: false
   tasks:
@@ -416,13 +416,18 @@
         name: ceph-defaults
 
     - name: set osd flags
-      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} osd set {{ item }}"
-      changed_when: false
+      ceph_osd_flag:
+        cluster: "{{ cluster }}"
+        name: "{{ item }}"
+        state: present
       with_items:
         - noout
         - nodeep-scrub
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
       environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: adopt ceph osd daemons
   hosts: "{{ osd_group_name|default('osd') }}"
@@ -513,7 +518,7 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
 - name: unset osd flags
-  hosts: "{{ mon_group_name|default('mons') }}[0]"
+  hosts: "{{ osd_group_name|default('osds') }}"
   become: true
   gather_facts: false
   tasks:
@@ -521,13 +526,18 @@
         name: ceph-defaults
 
     - name: unset osd flags
-      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} osd unset {{ item }}"
-      changed_when: false
+      ceph_osd_flag:
+        cluster: "{{ cluster }}"
+        name: "{{ item }}"
+        state: absent
       with_items:
         - noout
         - nodeep-scrub
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
       environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: redeploy mds daemons
   hosts: "{{ mds_group_name|default('mdss') }}"
