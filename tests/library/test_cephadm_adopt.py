@@ -34,31 +34,29 @@ class TestCephadmAdoptModule(object):
 
         result = result.value.args[0]
         assert not result['changed']
-        assert result['cmd'] == ['cephadm', 'adopt', '--cluster', fake_cluster, '--name', fake_name, '--style', 'legacy']
+        assert result['cmd'] == ['cephadm', 'ls', '--no-detail']
         assert result['rc'] == 0
         assert not result['stdout']
         assert not result['stderr']
 
-    @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.fail_json')
     @patch('ansible.module_utils.basic.AnsibleModule.run_command')
-    def test_with_failure(self, m_run_command, m_exit_json):
+    def test_with_failure(self, m_run_command, m_fail_json):
         ca_test_common.set_module_args({
             'name': fake_name
         })
-        m_exit_json.side_effect = ca_test_common.exit_json
+        m_fail_json.side_effect = ca_test_common.fail_json
         stdout = ''
         stderr = 'ERROR: cephadm should be run as root'
         rc = 1
         m_run_command.return_value = rc, stdout, stderr
 
-        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
+        with pytest.raises(ca_test_common.AnsibleFailJson) as result:
             cephadm_adopt.main()
 
         result = result.value.args[0]
-        assert result['changed']
-        assert result['cmd'] == ['cephadm', 'adopt', '--cluster', fake_cluster, '--name', fake_name, '--style', 'legacy']
         assert result['rc'] == 1
-        assert result['stderr'] == 'ERROR: cephadm should be run as root'
+        assert result['msg'] == 'ERROR: cephadm should be run as root'
 
     @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
     @patch('ansible.module_utils.basic.AnsibleModule.run_command')
@@ -76,7 +74,10 @@ class TestCephadmAdoptModule(object):
                  'firewalld ready'.format(fake_name, fake_name)
         stderr = ''
         rc = 0
-        m_run_command.return_value = rc, stdout, stderr
+        m_run_command.side_effect = [
+            (0, '[{{"style":"legacy","name":"{}"}}]'.format(fake_name), ''),
+            (rc, stdout, stderr)
+        ]
 
         with pytest.raises(ca_test_common.AnsibleExitJson) as result:
             cephadm_adopt.main()
@@ -90,6 +91,28 @@ class TestCephadmAdoptModule(object):
 
     @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
     @patch('ansible.module_utils.basic.AnsibleModule.run_command')
+    def test_already_adopted(self, m_run_command, m_exit_json):
+        ca_test_common.set_module_args({
+            'name': fake_name
+        })
+        m_exit_json.side_effect = ca_test_common.exit_json
+        stderr = ''
+        stdout = '[{{"style":"cephadm:v1","name":"{}"}}]'.format(fake_name)
+        rc = 0
+        m_run_command.return_value = rc, stdout, stderr
+
+        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
+            cephadm_adopt.main()
+
+        result = result.value.args[0]
+        assert not result['changed']
+        assert result['cmd'] == ['cephadm', 'ls', '--no-detail']
+        assert result['rc'] == 0
+        assert result['stderr'] == stderr
+        assert result['stdout'] == '{} is already adopted'.format(fake_name)
+
+    @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.run_command')
     def test_with_docker(self, m_run_command, m_exit_json):
         ca_test_common.set_module_args({
             'name': fake_name,
@@ -99,7 +122,10 @@ class TestCephadmAdoptModule(object):
         stdout = ''
         stderr = ''
         rc = 0
-        m_run_command.return_value = rc, stdout, stderr
+        m_run_command.side_effect = [
+            (0, '[{{"style":"legacy","name":"{}"}}]'.format(fake_name), ''),
+            (rc, stdout, stderr)
+        ]
 
         with pytest.raises(ca_test_common.AnsibleExitJson) as result:
             cephadm_adopt.main()
@@ -120,7 +146,10 @@ class TestCephadmAdoptModule(object):
         stdout = ''
         stderr = ''
         rc = 0
-        m_run_command.return_value = rc, stdout, stderr
+        m_run_command.side_effect = [
+            (0, '[{{"style":"legacy","name":"{}"}}]'.format(fake_name), ''),
+            (rc, stdout, stderr)
+        ]
 
         with pytest.raises(ca_test_common.AnsibleExitJson) as result:
             cephadm_adopt.main()
@@ -141,7 +170,10 @@ class TestCephadmAdoptModule(object):
         stdout = ''
         stderr = ''
         rc = 0
-        m_run_command.return_value = rc, stdout, stderr
+        m_run_command.side_effect = [
+            (0, '[{{"style":"legacy","name":"{}"}}]'.format(fake_name), ''),
+            (rc, stdout, stderr)
+        ]
 
         with pytest.raises(ca_test_common.AnsibleExitJson) as result:
             cephadm_adopt.main()
@@ -162,7 +194,10 @@ class TestCephadmAdoptModule(object):
         stdout = ''
         stderr = ''
         rc = 0
-        m_run_command.return_value = rc, stdout, stderr
+        m_run_command.side_effect = [
+            (0, '[{{"style":"legacy","name":"{}"}}]'.format(fake_name), ''),
+            (rc, stdout, stderr)
+        ]
 
         with pytest.raises(ca_test_common.AnsibleExitJson) as result:
             cephadm_adopt.main()
