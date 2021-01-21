@@ -17,6 +17,7 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
 import datetime
+import json
 
 
 ANSIBLE_METADATA = {
@@ -135,6 +136,35 @@ def main():
 
     startd = datetime.datetime.now()
 
+    cmd = ['cephadm', 'ls', '--no-detail']
+
+    if module.check_mode:
+        exit_module(
+            module=module,
+            out='',
+            rc=0,
+            cmd=cmd,
+            err='',
+            startd=startd,
+            changed=False
+        )
+    else:
+        rc, out, err = module.run_command(cmd)
+
+    if rc == 0:
+        if name in [x["name"] for x in json.loads(out) if x["style"] == "cephadm:v1"]:
+            exit_module(
+                module=module,
+                out='{} is already adopted'.format(name),
+                rc=0,
+                cmd=cmd,
+                err='',
+                startd=startd,
+                changed=False
+            )
+    else:
+        module.fail_json(msg=err, rc=rc)
+
     cmd = ['cephadm']
 
     if docker:
@@ -151,27 +181,16 @@ def main():
     if not firewalld:
         cmd.append('--skip-firewalld')
 
-    if module.check_mode:
-        exit_module(
-            module=module,
-            out='',
-            rc=0,
-            cmd=cmd,
-            err='',
-            startd=startd,
-            changed=False
-        )
-    else:
-        rc, out, err = module.run_command(cmd)
-        exit_module(
-            module=module,
-            out=out,
-            rc=rc,
-            cmd=cmd,
-            err=err,
-            startd=startd,
-            changed=True
-        )
+    rc, out, err = module.run_command(cmd)
+    exit_module(
+        module=module,
+        out=out,
+        rc=rc,
+        cmd=cmd,
+        err=err,
+        startd=startd,
+        changed=True
+    )
 
 
 if __name__ == '__main__':
