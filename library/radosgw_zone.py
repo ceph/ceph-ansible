@@ -329,6 +329,30 @@ def get_zonegroup(module, container_image=None):
     return cmd
 
 
+def get_realm(module, container_image=None):
+    '''
+    Get existing realm
+    '''
+
+    cluster = module.params.get('cluster')
+    realm = module.params.get('realm')
+
+    cmd = pre_generate_radosgw_cmd(container_image=container_image)
+
+    args = [
+        '--cluster',
+        cluster,
+        'realm',
+        'get',
+        '--rgw-realm=' + realm,
+        '--format=json'
+    ]
+
+    cmd.extend(args)
+
+    return cmd
+
+
 def remove_zone(module, container_image=None):
     '''
     Remove a zone
@@ -415,28 +439,33 @@ def run_module():
         rc, cmd, out, err = exec_commands(module, get_zone(module, container_image=container_image))
         if rc == 0:
             zone = json.loads(out)
-            _rc, _cmd, _out, _err = exec_commands(module, get_zonegroup(module, container_image=container_image))
-            if _rc == 0:
-                zonegroup = json.loads(_out)
-                if not access_key:
-                    access_key = ''
-                if not secret_key:
-                    secret_key = ''
-                current = {
-                    'endpoints': next(zone['endpoints'] for zone in zonegroup['zones'] if zone['name'] == name),
-                    'access_key': zone['system_key']['access_key'],
-                    'secret_key': zone['system_key']['secret_key']
-                }
-                asked = {
-                    'endpoints': endpoints,
-                    'access_key': access_key,
-                    'secret_key': secret_key
-                }
-                if current != asked:
-                    rc, cmd, out, err = exec_commands(module, modify_zone(module, container_image=container_image))
-                    changed = True
-            else:
+            _rc, _cmd, _out, _err = exec_commands(module, get_realm(module, container_image=container_image))
+            if _rc != 0:
                 fatal(_err, module)
+            realm = json.loads(_out)
+            _rc, _cmd, _out, _err = exec_commands(module, get_zonegroup(module, container_image=container_image))
+            if _rc != 0:
+                fatal(_err, module)
+            zonegroup = json.loads(_out)
+            if not access_key:
+                access_key = ''
+            if not secret_key:
+                secret_key = ''
+            current = {
+                'endpoints': next(zone['endpoints'] for zone in zonegroup['zones'] if zone['name'] == name),
+                'access_key': zone['system_key']['access_key'],
+                'secret_key': zone['system_key']['secret_key'],
+                'realm_id': zone['realm_id']
+            }
+            asked = {
+                'endpoints': endpoints,
+                'access_key': access_key,
+                'secret_key': secret_key,
+                'realm_id': realm['id']
+            }
+            if current != asked:
+                rc, cmd, out, err = exec_commands(module, modify_zone(module, container_image=container_image))
+                changed = True
         else:
             rc, cmd, out, err = exec_commands(module, create_zone(module, container_image=container_image))
             changed = True
