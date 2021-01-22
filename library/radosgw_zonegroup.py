@@ -16,6 +16,10 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
+try:
+    from ansible.module_utils.ca_common import fatal
+except ImportError:
+    from module_utils.ca_common import fatal
 import datetime
 import json
 import os
@@ -251,6 +255,30 @@ def get_zonegroup(module, container_image=None):
     return cmd
 
 
+def get_realm(module, container_image=None):
+    '''
+    Get existing realm
+    '''
+
+    cluster = module.params.get('cluster')
+    realm = module.params.get('realm')
+
+    cmd = pre_generate_radosgw_cmd(container_image=container_image)
+
+    args = [
+        '--cluster',
+        cluster,
+        'realm',
+        'get',
+        '--rgw-realm=' + realm,
+        '--format=json'
+    ]
+
+    cmd.extend(args)
+
+    return cmd
+
+
 def remove_zonegroup(module, container_image=None):
     '''
     Remove a zonegroup
@@ -327,13 +355,19 @@ def run_module():
         rc, cmd, out, err = exec_commands(module, get_zonegroup(module, container_image=container_image))
         if rc == 0:
             zonegroup = json.loads(out)
+            _rc, _cmd, _out, _err = exec_commands(module, get_realm(module, container_image=container_image))
+            if _rc != 0:
+                fatal(_err, module)
+            realm = json.loads(_out)
             current = {
                 'endpoints': zonegroup['endpoints'],
-                'master': zonegroup.get('is_master', 'false')
+                'master': zonegroup.get('is_master', 'false'),
+                'realm_id': zonegroup['realm_id']
             }
             asked = {
                 'endpoints': endpoints,
-                'master': master
+                'master': master,
+                'realm_id': realm['id']
             }
             if current != asked:
                 rc, cmd, out, err = exec_commands(module, modify_zonegroup(module, container_image=container_image))

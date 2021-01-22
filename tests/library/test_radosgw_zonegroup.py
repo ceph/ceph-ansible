@@ -117,6 +117,19 @@ class TestRadosgwZonegroupModule(object):
 
         assert radosgw_zonegroup.get_zonegroup(fake_module) == expected_cmd
 
+    def test_get_realm(self):
+        fake_module = MagicMock()
+        fake_module.params = fake_params
+        expected_cmd = [
+            fake_binary,
+            '--cluster', fake_cluster,
+            'realm', 'get',
+            '--rgw-realm=' + fake_realm,
+            '--format=json'
+        ]
+
+        assert radosgw_zonegroup.get_realm(fake_module) == expected_cmd
+
     def test_remove_zonegroup(self):
         fake_module = MagicMock()
         fake_module.params = fake_params
