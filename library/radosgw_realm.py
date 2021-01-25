@@ -61,6 +61,18 @@ options:
             - set the default flag on the realm.
         required: false
         default: false
+    url:
+        description:
+            - URL to the master RADOS Gateway zone.
+        required: false
+    access_key:
+        description:
+            - S3 access key of the master RADOS Gateway zone.
+        required: false
+    secret_key:
+        description:
+            - S3 secret key of the master RADOS Gateway zone.
+        required: false
 
 author:
     - Dimitri Savineau <dsavinea@redhat.com>
@@ -205,6 +217,24 @@ def remove_realm(module, container_image=None):
     return cmd
 
 
+def pull_realm(module, container_image=None):
+    '''
+    Pull a realm
+    '''
+
+    cluster = module.params.get('cluster')
+    name = module.params.get('name')
+    url = module.params.get('url')
+    access_key = module.params.get('access_key')
+    secret_key = module.params.get('secret_key')
+
+    args = ['pull', '--rgw-realm=' + name, '--url=' + url, '--access-key=' + access_key, '--secret=' + secret_key]
+
+    cmd = generate_radosgw_cmd(cluster=cluster, args=args, container_image=container_image)
+
+    return cmd
+
+
 def exit_module(module, out, rc, cmd, err, startd, changed=False):
     endd = datetime.datetime.now()
     delta = endd - startd
@@ -226,13 +256,17 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         name=dict(type='str', required=True),
-        state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),
+        state=dict(type='str', required=False, choices=['present', 'absent', 'info', 'pull'], default='present'),
         default=dict(type='bool', required=False, default=False),
+        url=dict(type='str', required=False),
+        access_key=dict(type='str', required=False),
+        secret_key=dict(type='str', required=False),
     )
 
     module = AnsibleModule(
         argument_spec=module_args,
         supports_check_mode=True,
+        required_if=[['state', 'pull', ['url', 'access_key', 'secret_key']]],
     )
 
     # Gather module parameters in variables
@@ -273,6 +307,9 @@ def run_module():
 
     elif state == "info":
         rc, cmd, out, err = exec_commands(module, get_realm(module, container_image=container_image))
+
+    elif state == "pull":
+        rc, cmd, out, err = exec_commands(module, pull_realm(module, container_image=container_image))
 
     exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)
 
