@@ -21,11 +21,20 @@
   when: not item.rgw_zonemaster | default(rgw_zonemaster) | bool
 
 - name: fetch the realm(s)
-  command: "{{ container_exec_cmd }} radosgw-admin realm pull --cluster={{ cluster }} --rgw-realm={{ item.realm }} --url={{ item.endpoint }} --access-key={{ item.system_access_key }} --secret={{ item.system_secret_key }}"
+  radosgw_realm:
+    name: "{{ item.realm }}"
+    cluster: "{{ cluster }}"
+    url: "{{ item.endpoint }}"
+    access_key: "{{ item.system_access_key }}"
+    secret_key: "{{ item.system_secret_key }}"
+    state: pull
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   loop: "{{ secondary_realms }}"
   when: secondary_realms is defined
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: get the period(s)
   command: "{{ container_exec_cmd }} radosgw-admin period get --cluster={{ cluster }} --rgw-realm={{ item.realm }}"

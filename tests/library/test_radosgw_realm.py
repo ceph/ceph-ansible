@@ -25,6 +25,9 @@ fake_realm = 'foo'
 fake_params = {'cluster': fake_cluster,
                'name': fake_realm,
                'default': True}
+fake_url = 'http://192.168.42.100:8080'
+fake_access_key = '8XQHmFxixz7LCM2AdM2p'
+fake_secret_key = 'XC8IhEPJprL6SrpaJDmolVs7jbOvoe2E3AaWKGRx'
 
 
 class TestRadosgwRealmModule(object):
@@ -103,3 +106,19 @@ class TestRadosgwRealmModule(object):
         ]
 
         assert radosgw_realm.remove_realm(fake_module) == expected_cmd
+
+    def test_pull_realm(self):
+        fake_module = MagicMock()
+        fake_params.update({'url': fake_url, 'access_key': fake_access_key, 'secret_key': fake_secret_key})
+        fake_module.params = fake_params
+        expected_cmd = [
+            fake_binary,
+            '--cluster', fake_cluster,
+            'realm', 'pull',
+            '--rgw-realm=' + fake_realm,
+            '--url=' + fake_url,
+            '--access-key=' + fake_access_key,
+            '--secret=' + fake_secret_key
+        ]
+
+        assert radosgw_realm.pull_realm(fake_module) == expected_cmd
