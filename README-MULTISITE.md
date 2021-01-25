@@ -449,11 +449,15 @@ Here is an example:
 ```yaml
 rgw_instances:
   - instance_name: rgw1
+    rgw_zonemaster: true
+    rgw_zonesecondary: false
+    rgw_zonegroupmaster: true
     rgw_realm: usa
     rgw_zonegroup: alaska
     rgw_zone: juneau
     radosgw_address: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
+    rgw_multisite_proto: http
     rgw_zone_user: edward.lewis
     rgw_zone_user_display_name: "Edward Lewis"
     system_access_key: yu17wkvAx3B8Wyn08XoF
@@ -465,27 +469,31 @@ rgw_instances:
 Here is an example of a host_vars for a host (ex: rgw-001 in the examples) containing 2 rgw_instances:
 
 ```yaml
-rgw_zonemaster: true
-rgw_zonesecondary: false
-rgw_zonegroupmaster: true
-rgw_multisite_proto: http
 rgw_instances:
   - instance_name: rgw1
+    rgw_zonemaster: true
+    rgw_zonesecondary: false
+    rgw_zonegroupmaster: true
     rgw_realm: usa
     rgw_zonegroup: alaska
     rgw_zone: juneau
     radosgw_address: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
+    rgw_multisite_proto: http
     rgw_zone_user: edward.lewis
     rgw_zone_user_display_name: "Edward Lewis"
     system_access_key: yu17wkvAx3B8Wyn08XoF
     system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
   - instance_name: rgw2
+    rgw_zonemaster: true
+    rgw_zonesecondary: false
+    rgw_zonegroupmaster: true
     rgw_realm: france
     rgw_zonegroup: idf
     rgw_zone: paris
     radosgw_address: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8081
+    rgw_multisite_proto: http
     rgw_zone_user: jacques.chirac
     rgw_zone_user_display_name: "Jacques Chirac"
     system_access_key: P9Eb6S8XNyo4dtZZUUMy
@@ -494,7 +502,7 @@ rgw_instances:
 
 This example starts up 2 rgws on host rgw-001. `rgw1` is configured to be in realm usa and `rgw2` is configured to be in realm france.
 
-The variables `rgw_zonemaster`, `rgw_zonesecondary`, `rgw_zonegroupmaster`, `rgw_multisite_proto` cannot be set in an item of rgw_instances. All of these variables must be set in group_vars/ or host_vars/.
+**Note:** The old format of declaring `rgw_zonemaster`, `rgw_zonesecondary`, `rgw_zonegroupmaster`, `rgw_multisite_proto` outside of `rgw_instances` still works but declaring the values at the instance level (as seen above) is preferred.
 
 ### Setting rgw_instances for a host in a secondary zone
 
@@ -505,28 +513,32 @@ The value of `endpoint` should be the endpoint of an RGW in the master zone of t
 Here is an example of a host_vars for a host containing 2 rgw_instances in a secondary zone:
 
 ```yaml
-rgw_zonemaster: false
-rgw_zonesecondary: true
-rgw_zonegroupmaster: true
-rgw_multisite_proto: "http"
 rgw_instances:
   - instance_name: rgw3
+    rgw_zonemaster: false
+    rgw_zonesecondary: true
+    rgw_zonegroupmaster: true
     rgw_realm: usa
     rgw_zonegroup: alaska
     rgw_zone: fairbanks
     radosgw_address: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8080
+    rgw_multisite_proto: "http"
     rgw_zone_user: edward.lewis
     rgw_zone_user_display_name: "Edward Lewis"
     system_access_key: yu17wkvAx3B8Wyn08XoF
     system_secret_key: 5YZfaSUPqxSNIkZQQA3lBZ495hnIV6k2HAz710BY
     endpoint: https://rgw-001-hostname:8080
   - instance_name: rgw4
+    rgw_zonemaster: false
+    rgw_zonesecondary: true
+    rgw_zonegroupmaster: true
     rgw_realm: france
     rgw_zonegroup: idf
     rgw_zone: versailles
     radosgw_address: "{{ _radosgw_address }}"
     radosgw_frontend_port: 8081
+    rgw_multisite_proto: "http"
     rgw_zone_user: jacques.chirac
     rgw_zone_user_display_name: "Jacques Chirac"
     system_access_key: P9Eb6S8XNyo4dtZZUUMy
@@ -536,8 +548,9 @@ rgw_instances:
 
 This example starts up 2 rgws on the host that will pull the realm from the rgws on rgw-001 above. `rgw3` is pulling from the rgw endpoint in realm usa in the master zone example above (instance name rgw1). `rgw4` is pulling from the rgw endpoint in realm france in the master zone example above (instance name rgw2).
 
-Just like the example on the master zone, the variables `rgw_zonemaster`, `rgw_zonesecondary`, `rgw_zonegroupmaster`, `rgw_multisite_proto` cannot be set in an item of rgw_instances. All of these variables must be set in group_vars/ or host_vars/.
+**Note:** The old format of declaring `rgw_zonemaster`, `rgw_zonesecondary`, `rgw_zonegroupmaster`, `rgw_multisite_proto` outside of `rgw_instances` still works but declaring the values at the instance level (as seen above) is preferred.
 
 ### Conclusion
 
 `rgw_instances` can be used in host_vars for multisite deployments like scenarios 2 and 3
+
