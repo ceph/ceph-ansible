@@ -35,6 +35,7 @@
     zonegroup: "{{ item.zonegroup }}"
     access_key: "{{ item.system_access_key }}"
     secret_key: "{{ item.system_secret_key }}"
+    endpoints: "{{ item.endpoints.split(',') }}"
     default: "{{ true if zones | length == 1 else false }}"
     master: true
   delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -55,26 +56,9 @@
     endpoints: "{{ item.endpoints.split(',') }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  loop: "{{ zone_endpoints_list }}"
+  loop: "{{ zones }}"
   when:
-    - zone_endpoints_list is defined
-    - item.is_master | bool
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-
-- name: add endpoints to their zone(s)
-  radosgw_zone:
-    name: "{{ item.zone }}"
-    cluster: "{{ cluster }}"
-    realm: "{{ item.realm }}"
-    zonegroup: "{{ item.zonegroup }}"
-    endpoints: "{{ item.endpoints.split(',') }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: true
-  loop: "{{ zone_endpoints_list }}"
-  when:
-    - zone_endpoints_list is defined
+    - zones is defined
     - item.is_master | bool
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
@@ -84,9 +68,9 @@
   command: "{{ container_exec_cmd }} radosgw-admin --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} period update --commit"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  loop: "{{ zone_endpoints_list }}"
+  loop: "{{ zones }}"
   when:
-    - zone_endpoints_list is defined
+    - zones is defined
     - item.is_master | bool
 
 - name: include_tasks create_zone_user.yml
