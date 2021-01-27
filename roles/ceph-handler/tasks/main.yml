@@ -68,4 +68,10 @@
       import_role:
         name: ceph-rgw
         tasks_from: multisite.yml
-      when: rgw_multisite | bool
+      when:
+        - rgw_multisite | bool
+        - not multisite_called_from_handler_role | default(False) | bool
+
+    - name: set_fact multisite_called_from_handler_role
+      set_fact:
+        multisite_called_from_handler_role: true
