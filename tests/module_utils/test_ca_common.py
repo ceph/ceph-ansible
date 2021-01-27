@@ -38,16 +38,6 @@ class TestCommon(object):
 
     @pytest.mark.parametrize('image', [None, fake_container_image])
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_pre_generate_ceph_cmd(self, image):
-        if image:
-            expected_cmd = self.fake_container_cmd
-        else:
-            expected_cmd = [self.fake_binary]
-
-        assert ca_common.pre_generate_ceph_cmd(image) == expected_cmd
-
-    @pytest.mark.parametrize('image', [None, fake_container_image])
-    @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
     def test_generate_ceph_cmd(self, image):
         sub_cmd = ['osd', 'pool']
         args = ['create', 'foo']

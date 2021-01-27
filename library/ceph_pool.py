@@ -20,13 +20,11 @@ __metaclass__ = type
 from ansible.module_utils.basic import AnsibleModule
 try:
     from ansible.module_utils.ca_common import generate_ceph_cmd, \
-                                               pre_generate_ceph_cmd, \
                                                is_containerized, \
                                                exec_command, \
                                                exit_module
 except ImportError:
     from module_utils.ca_common import generate_ceph_cmd, \
-                                       pre_generate_ceph_cmd, \
                                        is_containerized, \
                                        exec_command, \
                                        exit_module
@@ -182,20 +180,16 @@ def generate_get_config_cmd(param,
                             user,
                             user_key,
                             container_image=None):
-    _cmd = pre_generate_ceph_cmd(container_image=container_image)
-    args = [
-        '-n',
-        user,
-        '-k',
-        user_key,
-        '--cluster',
-        cluster,
-        'config',
-        'get',
-        'mon.*',
-        param
-    ]
-    cmd = _cmd + args
+
+    args = ['get', 'mon.*', param]
+
+    cmd = generate_ceph_cmd(sub_cmd=['config'],
+                            args=args,
+                            cluster=cluster,
+                            user=user,
+                            user_key=user_key,
+                            container_image=container_image)
+
     return cmd
 
 

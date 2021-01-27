@@ -10,7 +10,10 @@ def generate_ceph_cmd(sub_cmd, args, user_key=None, cluster='ceph', user='client
     if not user_key:
         user_key = '/etc/ceph/{}.{}.keyring'.format(cluster, user)
 
-    cmd = pre_generate_ceph_cmd(container_image=container_image, interactive=interactive)
+    if container_image:
+        cmd = container_exec('ceph', container_image, interactive=interactive)
+    else:
+        cmd = ['ceph']
 
     base_cmd = [
         '-n',
@@ -57,18 +60,6 @@ def is_containerized():
         container_image = None
 
     return container_image
-
-
-def pre_generate_ceph_cmd(container_image=None, interactive=False):
-    '''
-    Generate ceph prefix comaand
-    '''
-    if container_image:
-        cmd = container_exec('ceph', container_image, interactive=interactive)
-    else:
-        cmd = ['ceph']
-
-    return cmd
 
 
 def exec_command(module, cmd, stdin=None):
