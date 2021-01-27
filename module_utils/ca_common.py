@@ -2,7 +2,7 @@ import os
 import datetime
 
 
-def generate_ceph_cmd(sub_cmd, args, user_key=None, cluster='ceph', user='client.admin', container_image=None, interactive=False):
+def generate_cmd(sub_cmd, args, binary='ceph', user_key=None, cluster='ceph', user='client.admin', container_image=None, interactive=False):
     '''
     Generate 'ceph' command line to execute
     '''
@@ -11,9 +11,9 @@ def generate_ceph_cmd(sub_cmd, args, user_key=None, cluster='ceph', user='client
         user_key = '/etc/ceph/{}.{}.keyring'.format(cluster, user)
 
     if container_image:
-        cmd = container_exec('ceph', container_image, interactive=interactive)
+        cmd = container_exec(binary, container_image, interactive=interactive)
     else:
-        cmd = ['ceph']
+        cmd = [binary]
 
     base_cmd = [
         '-n',

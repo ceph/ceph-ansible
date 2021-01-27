@@ -17,12 +17,12 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-    from ansible.module_utils.ca_common import generate_ceph_cmd, \
+    from ansible.module_utils.ca_common import generate_cmd, \
                                                is_containerized, \
                                                exec_command, \
                                                exit_module
 except ImportError:
-    from module_utils.ca_common import generate_ceph_cmd, is_containerized, exec_command, exit_module
+    from module_utils.ca_common import generate_cmd, is_containerized, exec_command, exit_module
 
 import datetime
 import json
@@ -122,7 +122,7 @@ def create_user(module, container_image=None):
 
     args = ['ac-user-create', '-i', '-',  name]
 
-    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image, interactive=True)
+    cmd = generate_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image, interactive=True)
 
     return cmd
 
@@ -140,7 +140,7 @@ def set_roles(module, container_image=None):
 
     args.extend(roles)
 
-    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 
@@ -155,7 +155,7 @@ def set_password(module, container_image=None):
 
     args = ['ac-user-set-password', '-i', '-', name]
 
-    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image, interactive=True)
+    cmd = generate_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image, interactive=True)
 
     return cmd
 
@@ -170,7 +170,7 @@ def get_user(module, container_image=None):
 
     args = ['ac-user-show', name, '--format=json']
 
-    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 
@@ -185,7 +185,7 @@ def remove_user(module, container_image=None):
 
     args = ['ac-user-delete', name]
 
-    cmd = generate_ceph_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['dashboard'], args=args, cluster=cluster, container_image=container_image)
 
     return cmd
 

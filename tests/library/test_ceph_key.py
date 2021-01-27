@@ -46,7 +46,7 @@ class TestCephKeyModule(object):
         result = ceph_key.generate_caps(fake_type, fake_caps)
         assert result == expected_command_list
 
-    def test_generate_ceph_cmd_list_non_container(self):
+    def test_generate_cmd_list_non_container(self):
         fake_cluster = "fake"
         fake_args = ['arg']
         fake_user = "fake-user"
@@ -62,11 +62,11 @@ class TestCephKeyModule(object):
             'auth',
             'arg'
         ]
-        result = ceph_key.generate_ceph_cmd(
+        result = ceph_key.generate_cmd(
             fake_cluster, fake_args, fake_user, fake_key)
         assert result == expected_command_list
 
-    def test_generate_ceph_cmd_list_container(self):
+    def test_generate_cmd_list_container(self):
         fake_cluster = "fake"
         fake_args = ['arg']
         fake_user = "fake-user"
@@ -89,7 +89,7 @@ class TestCephKeyModule(object):
                                  fake_cluster,
                                  'auth',
                                  'arg']
-        result = ceph_key.generate_ceph_cmd(
+        result = ceph_key.generate_cmd(
             fake_cluster, fake_args, fake_user, fake_key, fake_container_image)
         assert result == expected_command_list
 

@@ -38,7 +38,7 @@ class TestCommon(object):
 
     @pytest.mark.parametrize('image', [None, fake_container_image])
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_generate_ceph_cmd(self, image):
+    def test_generate_cmd(self, image):
         sub_cmd = ['osd', 'pool']
         args = ['create', 'foo']
         if image:
@@ -54,11 +54,11 @@ class TestCommon(object):
             'osd', 'pool',
             'create', 'foo'
         ])
-        assert ca_common.generate_ceph_cmd(sub_cmd, args, cluster=self.fake_cluster, container_image=image) == expected_cmd
+        assert ca_common.generate_cmd(sub_cmd, args, cluster=self.fake_cluster, container_image=image) == expected_cmd
 
     @pytest.mark.parametrize('image', [None, fake_container_image])
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_generate_ceph_cmd_different_cluster_name(self, image):
+    def test_generate_cmd_different_cluster_name(self, image):
         sub_cmd = ['osd', 'pool']
         args = ['create', 'foo']
         if image:
@@ -74,12 +74,12 @@ class TestCommon(object):
             'osd', 'pool',
             'create', 'foo'
         ])
-        result = ca_common.generate_ceph_cmd(sub_cmd, args, cluster='foo', container_image=image)
+        result = ca_common.generate_cmd(sub_cmd, args, cluster='foo', container_image=image)
         assert result == expected_cmd
 
     @pytest.mark.parametrize('image', [None, fake_container_image])
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_generate_ceph_cmd_different_cluster_name_and_user(self, image):
+    def test_generate_cmd_different_cluster_name_and_user(self, image):
         sub_cmd = ['osd', 'pool']
         args = ['create', 'foo']
         if image:
@@ -95,12 +95,12 @@ class TestCommon(object):
             'osd', 'pool',
             'create', 'foo'
         ])
-        result = ca_common.generate_ceph_cmd(sub_cmd, args, cluster='foo', user='client.foo', container_image=image)
+        result = ca_common.generate_cmd(sub_cmd, args, cluster='foo', user='client.foo', container_image=image)
         assert result == expected_cmd
 
     @pytest.mark.parametrize('image', [None, fake_container_image])
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_generate_ceph_cmd_different_user(self, image):
+    def test_generate_cmd_different_user(self, image):
         sub_cmd = ['osd', 'pool']
         args = ['create', 'foo']
         if image:
@@ -116,7 +116,7 @@ class TestCommon(object):
             'osd', 'pool',
             'create', 'foo'
         ])
-        result = ca_common.generate_ceph_cmd(sub_cmd, args, user='client.foo', container_image=image)
+        result = ca_common.generate_cmd(sub_cmd, args, user='client.foo', container_image=image)
         assert result == expected_cmd
 
     @pytest.mark.parametrize('stdin', [None, 'foo'])

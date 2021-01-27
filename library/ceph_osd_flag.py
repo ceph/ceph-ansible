@@ -17,9 +17,9 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-    from ansible.module_utils.ca_common import exit_module, generate_ceph_cmd, is_containerized
+    from ansible.module_utils.ca_common import exit_module, generate_cmd, is_containerized
 except ImportError:
-    from module_utils.ca_common import exit_module, generate_ceph_cmd, is_containerized
+    from module_utils.ca_common import exit_module, generate_cmd, is_containerized
 import datetime
 
 
@@ -94,9 +94,9 @@ def main():
     container_image = is_containerized()
 
     if state == 'present':
-        cmd = generate_ceph_cmd(['osd', 'set'], [name], cluster=cluster, container_image=container_image)
+        cmd = generate_cmd(['osd', 'set'], [name], cluster=cluster, container_image=container_image)
     else:
-        cmd = generate_ceph_cmd(['osd', 'unset'], [name], cluster=cluster, container_image=container_image)
+        cmd = generate_cmd(['osd', 'unset'], [name], cluster=cluster, container_image=container_image)
 
     if module.check_mode:
         exit_module(

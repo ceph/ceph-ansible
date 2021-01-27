@@ -250,7 +250,7 @@ def generate_caps(_type, caps):
     return caps_cli
 
 
-def generate_ceph_cmd(cluster, args, user, user_key_path, container_image=None):
+def generate_cmd(cluster, args, user, user_key_path, container_image=None):
     '''
     Generate 'ceph' command line to execute
     '''
@@ -326,7 +326,7 @@ def create_key(module, result, cluster, user, user_key_path, name, secret, caps,
         cluster, name, secret, caps, dest, container_image))
 
     if import_key or user != 'client.admin':
-        cmd_list.append(generate_ceph_cmd(
+        cmd_list.append(generate_cmd(
             cluster, args, user, user_key_path, container_image))
 
     return cmd_list
@@ -344,7 +344,7 @@ def delete_key(cluster, user, user_key_path, name, container_image=None):
         name,
     ]
 
-    cmd_list.append(generate_ceph_cmd(
+    cmd_list.append(generate_cmd(
         cluster, args, user, user_key_path, container_image))
 
     return cmd_list
@@ -364,7 +364,7 @@ def get_key(cluster, user, user_key_path, name, dest, container_image=None):
         dest,
     ]
 
-    cmd_list.append(generate_ceph_cmd(
+    cmd_list.append(generate_cmd(
         cluster, args, user, user_key_path, container_image))
 
     return cmd_list
@@ -384,7 +384,7 @@ def info_key(cluster, name, user, user_key_path, output_format, container_image=
         output_format,
     ]
 
-    cmd_list.append(generate_ceph_cmd(
+    cmd_list.append(generate_cmd(
         cluster, args, user, user_key_path, container_image))
 
     return cmd_list
@@ -403,7 +403,7 @@ def list_keys(cluster, user, user_key_path, container_image=None):
         'json',
     ]
 
-    cmd_list.append(generate_ceph_cmd(
+    cmd_list.append(generate_cmd(
         cluster, args, user, user_key_path, container_image))
 
     return cmd_list
