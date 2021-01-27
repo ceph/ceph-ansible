@@ -1,9 +1,5 @@
-import os
-import sys
-from mock.mock import patch, MagicMock
-import pytest
-sys.path.append('./library')
-import radosgw_user  # noqa: E402
+from mock.mock import MagicMock
+import radosgw_user
 
 
 fake_binary = 'radosgw-admin'
@@ -36,52 +32,18 @@ fake_params = {'cluster': fake_cluster,
                'zone': fake_zone,
                'system': True,
                'admin': True}
+fake_admin = 'client.admin'
+fake_keyring = '/etc/ceph/{}.{}.keyring'.format(fake_cluster, fake_admin)
 
 
 class TestRadosgwUserModule(object):
-
-    @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_container_exec(self):
-        cmd = radosgw_user.container_exec(fake_binary, fake_container_image)
-        assert cmd == fake_container_cmd
-
-    def test_not_is_containerized(self):
-        assert radosgw_user.is_containerized() is None
-
-    @patch.dict(os.environ, {'CEPH_CONTAINER_IMAGE': fake_container_image})
-    def test_is_containerized(self):
-        assert radosgw_user.is_containerized() == fake_container_image
-
-    @pytest.mark.parametrize('image', [None, fake_container_image])
-    @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_pre_generate_radosgw_cmd(self, image):
-        if image:
-            expected_cmd = fake_container_cmd
-        else:
-            expected_cmd = [fake_binary]
-
-        assert radosgw_user.pre_generate_radosgw_cmd(image) == expected_cmd
-
-    @pytest.mark.parametrize('image', [None, fake_container_image])
-    @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_generate_radosgw_cmd(self, image):
-        if image:
-            expected_cmd = fake_container_cmd
-        else:
-            expected_cmd = [fake_binary]
-
-        expected_cmd.extend([
-            '--cluster',
-            fake_cluster,
-            'user'
-        ])
-        assert radosgw_user.generate_radosgw_cmd(fake_cluster, [], image) == expected_cmd
 
     def test_create_user(self):
         fake_module = MagicMock()
         fake_module.params = fake_params
         expected_cmd = [
             fake_binary,
+            '-n', fake_admin, '-k', fake_keyring,
             '--cluster', fake_cluster,
             'user', 'create',
             '--uid=' + fake_user,
@@ -103,6 +65,7 @@ class TestRadosgwUserModule(object):
         fake_module.params = fake_params
         expected_cmd = [
             fake_binary,
+            '-n', fake_admin, '-k', fake_keyring,
             '--cluster', fake_cluster,
             'user', 'modify',
             '--uid=' + fake_user,
@@ -124,6 +87,7 @@ class TestRadosgwUserModule(object):
         fake_module.params = fake_params
         expected_cmd = [
             fake_binary,
+            '-n', fake_admin, '-k', fake_keyring,
             '--cluster', fake_cluster,
             'user', 'info',
             '--uid=' + fake_user,
@@ -140,6 +104,7 @@ class TestRadosgwUserModule(object):
         fake_module.params = fake_params
         expected_cmd = [
             fake_binary,
+            '-n', fake_admin, '-k', fake_keyring,
             '--cluster', fake_cluster,
             'user', 'rm',
             '--uid=' + fake_user,

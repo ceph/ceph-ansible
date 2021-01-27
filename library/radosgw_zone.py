@@ -17,12 +17,11 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-    from ansible.module_utils.ca_common import fatal
+    from ansible.module_utils.ca_common import exec_command, exit_module, fatal, generate_cmd, is_containerized
 except ImportError:
-    from module_utils.ca_common import fatal
+    from module_utils.ca_common import exec_command, exit_module, fatal, generate_cmd, is_containerized
 import datetime
 import json
-import os
 
 
 ANSIBLE_METADATA = {
@@ -124,76 +123,6 @@ EXAMPLES = '''
 RETURN = '''#  '''
 
 
-def container_exec(binary, container_image):
-    '''
-    Build the docker CLI to run a command inside a container
-    '''
-
-    container_binary = os.getenv('CEPH_CONTAINER_BINARY')
-    command_exec = [container_binary,
-                    'run',
-                    '--rm',
-                    '--net=host',
-                    '-v', '/etc/ceph:/etc/ceph:z',
-                    '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                    '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                    '--entrypoint=' + binary, container_image]
-    return command_exec
-
-
-def is_containerized():
-    '''
-    Check if we are running on a containerized cluster
-    '''
-
-    if 'CEPH_CONTAINER_IMAGE' in os.environ:
-        container_image = os.getenv('CEPH_CONTAINER_IMAGE')
-    else:
-        container_image = None
-
-    return container_image
-
-
-def pre_generate_radosgw_cmd(container_image=None):
-    '''
-    Generate radosgw-admin prefix comaand
-    '''
-    if container_image:
-        cmd = container_exec('radosgw-admin', container_image)
-    else:
-        cmd = ['radosgw-admin']
-
-    return cmd
-
-
-def generate_radosgw_cmd(cluster, args, container_image=None):
-    '''
-    Generate 'radosgw' command line to execute
-    '''
-
-    cmd = pre_generate_radosgw_cmd(container_image=container_image)
-
-    base_cmd = [
-        '--cluster',
-        cluster,
-        'zone'
-    ]
-
-    cmd.extend(base_cmd + args)
-
-    return cmd
-
-
-def exec_commands(module, cmd):
-    '''
-    Execute command(s)
-    '''
-
-    rc, out, err = module.run_command(cmd)
-
-    return rc, cmd, out, err
-
-
 def create_zone(module, container_image=None):
     '''
     Create a new zone
@@ -231,7 +160,7 @@ def create_zone(module, container_image=None):
     if master:
         args.append('--master')
 
-    cmd = generate_radosgw_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['zone'], binary='radosgw-admin', cluster=cluster, args=args, container_image=container_image)
 
     return cmd
 
@@ -273,7 +202,7 @@ def modify_zone(module, container_image=None):
     if master:
         args.append('--master')
 
-    cmd = generate_radosgw_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['zone'], binary='radosgw-admin', cluster=cluster, args=args, container_image=container_image)
 
     return cmd
 
@@ -296,9 +225,7 @@ def get_zone(module, container_image=None):
         '--format=json'
     ]
 
-    cmd = generate_radosgw_cmd(cluster=cluster,
-                               args=args,
-                               container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['zone'], binary='radosgw-admin', cluster=cluster, args=args, container_image=container_image)
 
     return cmd
 
@@ -312,19 +239,14 @@ def get_zonegroup(module, container_image=None):
     realm = module.params.get('realm')
     zonegroup = module.params.get('zonegroup')
 
-    cmd = pre_generate_radosgw_cmd(container_image=container_image)
-
     args = [
-        '--cluster',
-        cluster,
-        'zonegroup',
         'get',
         '--rgw-realm=' + realm,
         '--rgw-zonegroup=' + zonegroup,
         '--format=json'
     ]
 
-    cmd.extend(args)
+    cmd = generate_cmd(sub_cmd=['zonegroup'], binary='radosgw-admin', cluster=cluster, args=args, container_image=container_image)
 
     return cmd
 
@@ -337,18 +259,13 @@ def get_realm(module, container_image=None):
     cluster = module.params.get('cluster')
     realm = module.params.get('realm')
 
-    cmd = pre_generate_radosgw_cmd(container_image=container_image)
-
     args = [
-        '--cluster',
-        cluster,
-        'realm',
         'get',
         '--rgw-realm=' + realm,
         '--format=json'
     ]
 
-    cmd.extend(args)
+    cmd = generate_cmd(sub_cmd=['realm'], binary='radosgw-admin', cluster=cluster, args=args, container_image=container_image)
 
     return cmd
 
@@ -370,26 +287,9 @@ def remove_zone(module, container_image=None):
         '--rgw-zone=' + name
     ]
 
-    cmd = generate_radosgw_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['zone'], binary='radosgw-admin', cluster=cluster, args=args, container_image=container_image)
 
     return cmd
-
-
-def exit_module(module, out, rc, cmd, err, startd, changed=False):
-    endd = datetime.datetime.now()
-    delta = endd - startd
-
-    result = dict(
-        cmd=cmd,
-        start=str(startd),
-        end=str(endd),
-        delta=str(delta),
-        rc=rc,
-        stdout=out.rstrip("\r\n"),
-        stderr=err.rstrip("\r\n"),
-        changed=changed,
-    )
-    module.exit_json(**result)
 
 
 def run_module():
@@ -436,14 +336,14 @@ def run_module():
     container_image = is_containerized()
 
     if state == "present":
-        rc, cmd, out, err = exec_commands(module, get_zone(module, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, get_zone(module, container_image=container_image))
         if rc == 0:
             zone = json.loads(out)
-            _rc, _cmd, _out, _err = exec_commands(module, get_realm(module, container_image=container_image))
+            _rc, _cmd, _out, _err = exec_command(module, get_realm(module, container_image=container_image))
             if _rc != 0:
                 fatal(_err, module)
             realm = json.loads(_out)
-            _rc, _cmd, _out, _err = exec_commands(module, get_zonegroup(module, container_image=container_image))
+            _rc, _cmd, _out, _err = exec_command(module, get_zonegroup(module, container_image=container_image))
             if _rc != 0:
                 fatal(_err, module)
             zonegroup = json.loads(_out)
@@ -464,23 +364,23 @@ def run_module():
                 'realm_id': realm['id']
             }
             if current != asked:
-                rc, cmd, out, err = exec_commands(module, modify_zone(module, container_image=container_image))
+                rc, cmd, out, err = exec_command(module, modify_zone(module, container_image=container_image))
                 changed = True
         else:
-            rc, cmd, out, err = exec_commands(module, create_zone(module, container_image=container_image))
+            rc, cmd, out, err = exec_command(module, create_zone(module, container_image=container_image))
             changed = True
 
     elif state == "absent":
-        rc, cmd, out, err = exec_commands(module, get_zone(module, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, get_zone(module, container_image=container_image))
         if rc == 0:
-            rc, cmd, out, err = exec_commands(module, remove_zone(module, container_image=container_image))
+            rc, cmd, out, err = exec_command(module, remove_zone(module, container_image=container_image))
             changed = True
         else:
             rc = 0
             out = "Zone {} doesn't exist".format(name)
 
     elif state == "info":
-        rc, cmd, out, err = exec_commands(module, get_zone(module, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, get_zone(module, container_image=container_image))
 
     exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)
 

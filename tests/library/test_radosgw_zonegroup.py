@@ -1,9 +1,5 @@
-import os
-import sys
-from mock.mock import patch, MagicMock
-import pytest
-sys.path.append('./library')
-import radosgw_zonegroup  # noqa: E402
+from mock.mock import MagicMock
+import radosgw_zonegroup
 
 
 fake_binary = 'radosgw-admin'
@@ -30,52 +26,18 @@ fake_params = {'cluster': fake_cluster,
                'endpoints': fake_endpoints,
                'default': True,
                'master': True}
+fake_admin = 'client.admin'
+fake_keyring = '/etc/ceph/{}.{}.keyring'.format(fake_cluster, fake_admin)
 
 
 class TestRadosgwZonegroupModule(object):
-
-    @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_container_exec(self):
-        cmd = radosgw_zonegroup.container_exec(fake_binary, fake_container_image)
-        assert cmd == fake_container_cmd
-
-    def test_not_is_containerized(self):
-        assert radosgw_zonegroup.is_containerized() is None
-
-    @patch.dict(os.environ, {'CEPH_CONTAINER_IMAGE': fake_container_image})
-    def test_is_containerized(self):
-        assert radosgw_zonegroup.is_containerized() == fake_container_image
-
-    @pytest.mark.parametrize('image', [None, fake_container_image])
-    @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_pre_generate_radosgw_cmd(self, image):
-        if image:
-            expected_cmd = fake_container_cmd
-        else:
-            expected_cmd = [fake_binary]
-
-        assert radosgw_zonegroup.pre_generate_radosgw_cmd(image) == expected_cmd
-
-    @pytest.mark.parametrize('image', [None, fake_container_image])
-    @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_generate_radosgw_cmd(self, image):
-        if image:
-            expected_cmd = fake_container_cmd
-        else:
-            expected_cmd = [fake_binary]
-
-        expected_cmd.extend([
-            '--cluster',
-            fake_cluster,
-            'zonegroup'
-        ])
-        assert radosgw_zonegroup.generate_radosgw_cmd(fake_cluster, [], image) == expected_cmd
 
     def test_create_zonegroup(self):
         fake_module = MagicMock()
         fake_module.params = fake_params
         expected_cmd = [
             fake_binary,
+            '-n', fake_admin, '-k', fake_keyring,
             '--cluster', fake_cluster,
             'zonegroup', 'create',
             '--rgw-realm=' + fake_realm,
@@ -92,6 +54,7 @@ class TestRadosgwZonegroupModule(object):
         fake_module.params = fake_params
         expected_cmd = [
             fake_binary,
+            '-n', fake_admin, '-k', fake_keyring,
             '--cluster', fake_cluster,
             'zonegroup', 'modify',
             '--rgw-realm=' + fake_realm,
@@ -108,6 +71,7 @@ class TestRadosgwZonegroupModule(object):
         fake_module.params = fake_params
         expected_cmd = [
             fake_binary,
+            '-n', fake_admin, '-k', fake_keyring,
             '--cluster', fake_cluster,
             'zonegroup', 'get',
             '--rgw-realm=' + fake_realm,
@@ -122,6 +86,7 @@ class TestRadosgwZonegroupModule(object):
         fake_module.params = fake_params
         expected_cmd = [
             fake_binary,
+            '-n', fake_admin, '-k', fake_keyring,
             '--cluster', fake_cluster,
             'realm', 'get',
             '--rgw-realm=' + fake_realm,
@@ -135,6 +100,7 @@ class TestRadosgwZonegroupModule(object):
         fake_module.params = fake_params
         expected_cmd = [
             fake_binary,
+            '-n', fake_admin, '-k', fake_keyring,
             '--cluster', fake_cluster,
             'zonegroup', 'delete',
             '--rgw-realm=' + fake_realm,
