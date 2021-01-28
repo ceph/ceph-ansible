@@ -7,3 +7,8 @@
 - name: set_fact container_binary
   set_fact:
     container_binary: "{{ 'podman' if (podman_binary.stat.exists and ansible_distribution == 'Fedora') or (ansible_os_family == 'RedHat' and ansible_distribution_major_version == '8') else 'docker' }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: True
+  run_once: true
+  with_items:
+    - "{{ ansible_play_hosts_all | union(groups.get(mon_group_name, [])) }}"
