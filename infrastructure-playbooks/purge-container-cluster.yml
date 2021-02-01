@@ -316,8 +316,10 @@
       CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
       CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-    with_items: "{{ devices | default([]) }}"
-    when: devices | default([]) | length > 0
+    with_items:
+      - "{{ devices | default([]) }}"
+      - "{{ dedicated_devices | default([]) }}"
+      - "{{ bluestore_wal_devices | default([]) }}"
 
   - name: remove ceph osd service
     file:
