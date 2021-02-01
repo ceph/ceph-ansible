@@ -512,10 +512,8 @@
       action: "zap"
     environment:
       CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-    with_items: "{{ lvm_volumes }}"
-    when:
-      - lvm_volumes | default([]) | length > 0
-      - ceph_volume_present.rc == 0
+    with_items: "{{ lvm_volumes | default([]) }}"
+    when: ceph_volume_present.rc == 0
 
   - name: zap and destroy osds created by ceph-volume with devices
     ceph_volume:
@@ -523,10 +521,11 @@
       action: "zap"
     environment:
       CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-    with_items: "{{ devices | default([]) }}"
-    when:
-      - devices | default([]) | length > 0
-      - ceph_volume_present.rc == 0
+    with_items:
+      - "{{ devices | default([]) }}"
+      - "{{ dedicated_devices | default([]) }}"
+      - "{{ bluestore_wal_devices | default([]) }}"
+    when: ceph_volume_present.rc == 0
 
   - name: get ceph block partitions
     shell: |
