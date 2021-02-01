@@ -220,6 +220,29 @@
         - rbdmirror_group_name is defined
         - rbdmirror_group_name in group_names
 
+    - name: open ceph networks on cephfsmirror
+      firewalld:
+        zone: "{{ ceph_cephfsmirror_firewall_zone }}"
+        source: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items: "{{ public_network.split(',') }}"
+      when:
+        - cephfsmirror_group_name is defined
+        - cephfsmirror_group_name in group_names
+
+    - name: open cephfsmirror ports
+      firewalld:
+        service: ceph
+        zone: "{{ ceph_cephfsmirror_firewall_zone }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      when:
+        - cephfsmirror_group_name is defined
+        - cephfsmirror_group_name in group_names
+
     - name: open ceph networks on iscsi
       firewalld:
         zone: "{{ ceph_iscsi_firewall_zone }}"

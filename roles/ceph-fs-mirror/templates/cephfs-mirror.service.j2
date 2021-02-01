@@ -1,0 +1,52 @@
+[Unit]
+Description=CephFS mirror
+{% if container_binary == 'docker' %}
+After=docker.service
+Requires=docker.service
+{% else %}
+After=network.target
+{% endif %}
+
+[Service]
+EnvironmentFile=-/etc/environment
+{% if container_binary == 'podman' %}
+ExecStartPre=-/usr/bin/rm -f /%t/%n-pid /%t/%n-cid
+ExecStartPre=-/usr/bin/{{ container_binary }} rm --storage cephfs-mirror-{{ ansible_hostname }}
+{% else %}
+ExecStartPre=-/usr/bin/{{ container_binary }} stop cephfs-mirror-{{ ansible_hostname }}
+{% endif %}
+ExecStartPre=-/usr/bin/{{ container_binary }} rm cephfs-mirror-{{ ansible_hostname }}
+ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
+{% if container_binary == 'podman' %}
+  -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
+{% endif %}
+  --memory={{ ceph_fs_mirror_container_memory_limit }} \
+  --cpus={{ ceph_fs_mirror_container_cpu_limit }} \
+  -v /var/lib/ceph:/var/lib/ceph:z \
+  -v /etc/ceph:/etc/ceph:z \
+  -v /var/run/ceph:/var/run/ceph:z \
+  -v /etc/localtime:/etc/localtime:ro \
+  -v /var/log/ceph:/var/log/ceph:z \
+  -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+  --name=cephfs-mirror-{{ ansible_hostname }} \
+  {{ ceph_fs_mirror_container_extra_env }} \
+  --entrypoint=/usr/bin/cephfs-mirror
+  {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  --cluster {{ cluster }} --id {{ ansible_hostname }} -f
+{% if container_binary == 'podman' %}
+ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
+{% else %}
+ExecStopPost=-/usr/bin/{{ container_binary }} stop cephfs-mirror-{{ ansible_hostname }}
+{% endif %}
+KillMode=none
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120
+TimeoutStopSec=15
+{% if container_binary == 'podman' %}
+Type=forking
+PIDFile=/%t/%n-pid
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target

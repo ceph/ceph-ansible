@@ -1,0 +1,56 @@
+---
+- name: install cephfs-mirror package
+  package:
+    name: cephfs-mirror
+    state: "{{ (upgrade_ceph_packages | bool) | ternary('latest','present') }}"
+  register: result
+  until: result is succeeded
+  when: not containerized_deployment | bool
+  tags:
+    - package-install
+    - with_pkg
+
+- name: create cephfs-mirror keyring
+  ceph_key:
+    name: "client.cephfs-mirror.{{ ansible_hostname }}"
+    cluster: "{{ cluster }}"
+    caps:
+      mon: "allow r"
+      mds: "allow r"
+      mgr: "allow r"
+      osd: "allow tag cephfs metadata=*, allow r tag cephfs data=*"
+    dest: "/etc/ceph/{{ cluster }}.client.cephfs-mirror.{{ ansible_hostname }}.keyring"
+    import_key: false
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    mode: "{{ ceph_keyring_permissions }}"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ hostvars[groups[mon_group_name][0]]['container_binary'] }}"
+  delegate_to: "{{ groups.get(mon_group_name)[0] }}"
+  run_once: true
+  register: _cephfs_mirror_key
+  when: cephx | bool
+
+- name: copy ceph key(s) if needed
+  copy:
+    dest: "{{ item.item.path }}"
+    content: "{{ item.stdout + '\n' }}"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    mode: "{{ ceph_keyring_permissions }}"
+  with_items: "{{ _cephfs_mirror_key.results }}"
+  when:
+    - cephx | bool
+
+- name: include_tasks systemd.yml
+  include_tasks: systemd.yml
+
+- name: systemd start cephfs mirror
+  systemd:
+    name: "cephfs-mirror@{{ ansible_hostname }}"
+    state: started
+    enabled: yes
+    masked: no
+    daemon_reload: yes
+...

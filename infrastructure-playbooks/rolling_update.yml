@@ -46,6 +46,7 @@
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ cephfsmirror_group_name|default('cephfsmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
     - "{{ iscsi_gw_group_name|default('iscsigws') }}"
@@ -728,6 +729,38 @@
         name: ceph-rbd-mirror
 
 
+- name: upgrade cephfs mirror node
+  vars:
+    upgrade_ceph_packages: True
+  hosts: "{{ cephfsmirror_group_name|default('cephfsmirrors') }}"
+  serial: 1
+  become: True
+  tasks:
+    - name: stop cephfs mirror
+      systemd:
+        name: "cephfs-mirror@{{ ansible_hostname }}"
+        state: stopped
+        enabled: no
+        masked: yes
+
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+    - import_role:
+        name: ceph-handler
+    - import_role:
+        name: ceph-common
+      when: not containerized_deployment | bool
+    - import_role:
+        name: ceph-container-common
+      when: containerized_deployment | bool
+    - import_role:
+        name: ceph-config
+    - import_role:
+        name: ceph-fs-mirror
+
+
 - name: upgrade ceph nfs node
   vars:
     upgrade_ceph_packages: True
@@ -850,6 +883,7 @@
     - "{{ mds_group_name | default('mdss') }}"
     - "{{ rgw_group_name | default('rgws') }}"
     - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ cephfsmirror_group_name | default('cephfsmirrors') }}"
     - "{{ mgr_group_name | default('mgrs') }}"
   gather_facts: false
   become: true

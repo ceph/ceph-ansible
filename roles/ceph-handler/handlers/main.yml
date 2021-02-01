@@ -49,6 +49,11 @@
       when: rbdmirror_group_name in group_names
       listen: "restart ceph rbdmirrors"
 
+    - name: cephfsmirrors handler
+      include_tasks: handler_cephfsmirrors.yml
+      when: cephfsmirror_group_name in group_names
+      listen: "restart ceph cephfsmirrors"
+
     - name: mgrs handler
       include_tasks: handler_mgrs.yml
       when: mgr_group_name in group_names
@@ -74,6 +79,7 @@
           or inventory_hostname in groups.get(mds_group_name, [])
           or inventory_hostname in groups.get(rgw_group_name, [])
           or inventory_hostname in groups.get(rbdmirror_group_name, [])
+          or inventory_hostname in groups.get(cephfsmirror_group_name, [])
 
     - name: remove tempdir for scripts
       file:

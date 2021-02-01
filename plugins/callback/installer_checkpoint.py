@@ -28,6 +28,7 @@ class CallbackModule(CallbackBase):
             'installer_phase_ceph_rgw',
             'installer_phase_ceph_nfs',
             'installer_phase_ceph_rbdmirror',
+            'installer_phase_ceph_fsmirror',
             'installer_phase_ceph_client',
             'installer_phase_ceph_iscsi_gw',
             'installer_phase_ceph_rgw_loadbalancer',
@@ -65,6 +66,10 @@ class CallbackModule(CallbackBase):
             'installer_phase_ceph_rbdmirror': {
                 'title': 'Install Ceph RBD Mirror',
                 'playbook': 'roles/ceph-rbd-mirror/tasks/main.yml'
+            },
+            'installer_phase_ceph_fsmirror': {
+                'title': 'Install Ceph FS Mirror',
+                'playbook': 'roles/ceph-fs-mirror/tasks/main.yml'
             },
             'installer_phase_ceph_client': {
                 'title': 'Install Ceph Client',

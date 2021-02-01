@@ -8,6 +8,7 @@
   - rgws
   - nfss
   - rbdmirrors
+  - cephfsmirrors
   - clients
   - mgrs
   - iscsigws
@@ -370,6 +371,44 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
+- hosts: cephfsmirrors
+  gather_facts: false
+  become: True
+  any_errors_fatal: true
+  pre_tasks:
+    - name: set ceph fs mirror install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_fsmirror:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+  tasks:
+    - import_role:
+        name: ceph-defaults
+      tags: ['ceph_update_config']
+    - import_role:
+        name: ceph-facts
+      tags: ['ceph_update_config']
+    - import_role:
+        name: ceph-handler
+      tags: ['ceph_update_config']
+    - import_role:
+        name: ceph-config
+      tags: ['ceph_update_config']
+    - import_role:
+        name: ceph-fs-mirror
+
+  post_tasks:
+    - name: set ceph fs mirror install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_fsmirror:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
 - hosts:
     - iscsigws
   gather_facts: false
@@ -453,6 +492,7 @@
   - mdss
   - rgws
   - rbdmirrors
+  - cephfsmirrors
   - mgrs
 
   gather_facts: false

@@ -34,6 +34,7 @@
     - "{{ mds_group_name|default('mdss') }}"
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ cephfsmirror_group_name|default('cephfsmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
 
   become: true
@@ -540,6 +541,58 @@
     - import_role:
         name: ceph-rbd-mirror
 
+- name: switching from non-containerized to containerized cephfs-mirror
+
+  hosts: "{{ cephfsmirror_group_name|default('cephfsmirrors') }}"
+
+  vars:
+    containerized_deployment: true
+    cephfsmirror_group_name: cephfsmirrors
+
+  serial: 1
+  become: true
+  pre_tasks:
+    - name: stop non-containerized cephfs mirror(s)
+      service:
+        name: "cephfs-mirror@{{ ansible_hostname }}"
+        state: stopped
+        enabled: no
+
+    - name: remove old systemd unit files
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /usr/lib/systemd/system/cephfs-mirror@.service
+        - /usr/lib/systemd/system/cephfs-mirror.target
+        - /lib/systemd/system/cephfs-mirror@.service
+        - /lib/systemd/system/cephfs-mirror.target
+
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+
+    # NOTE: changed from file module to raw find command for performance reasons
+    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
+    # as in this case we know we want all owned by ceph user
+    - name: set proper ownership on ceph directories
+      command: "find /var/lib/ceph /etc/ceph -not -( -user {{ ceph_uid }} -or -group {{ ceph_uid }} -) -execdir chown {{ ceph_uid }}:{{ ceph_uid }} {} +"
+      changed_when: false
+
+  tasks:
+    - import_role:
+        name: ceph-handler
+
+    - import_role:
+        name: ceph-container-engine
+
+    - import_role:
+        name: ceph-container-common
+
+    - import_role:
+        name: ceph-fs-mirror
 
 - name: switching from non-containerized to containerized ceph nfs
 

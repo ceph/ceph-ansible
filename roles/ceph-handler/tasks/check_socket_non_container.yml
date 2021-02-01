@@ -197,6 +197,39 @@
     - rbd_mirror_socket_stat.files | length > 0
     - item.1.rc == 1
 
+- name: find ceph fs mirror socket
+  find:
+    paths: ["{{ rbd_client_admin_socket_path }}"]
+    recurse: yes
+    file_type: any
+    patterns: "{{ cluster }}-client.cephfs-mirror*.asok"
+    use_regex: no
+  register: cephfs_mirror_socket_stat
+  when: inventory_hostname in groups.get(cephfsmirror_group_name, [])
+
+- name: check if the ceph fs mirror socket is in-use
+  command: grep -q {{ item.path }} /proc/net/unix
+  changed_when: false
+  failed_when: false
+  check_mode: no
+  register: cephfs_mirror_socket
+  with_items: "{{ cephfs_mirror_socket_stat.files }}"
+  when:
+    - inventory_hostname in groups.get(cephfsmirror_group_name, [])
+    - cephfs_mirror_socket_stat.files | length > 0
+
+- name: remove ceph fs mirror socket if exists and not used by a process
+  file:
+    name: "{{ item.0.path }}"
+    state: absent
+  with_together:
+    - "{{ cephfs_mirror_socket_stat.files }}"
+    - "{{ cephfs_mirror_socket.results }}"
+  when:
+    - inventory_hostname in groups.get(cephfsmirror_group_name, [])
+    - cephfs_mirror_socket_stat.files | length > 0
+    - item.1.rc == 1
+
 - name: check for a nfs ganesha pid
   command: "pgrep ganesha.nfsd"
   register: nfs_process

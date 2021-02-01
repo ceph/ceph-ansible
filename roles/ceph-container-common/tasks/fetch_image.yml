@@ -54,6 +54,15 @@
     - ceph_rbd_mirror_container_stat.get('rc') == 0
     - ceph_rbd_mirror_container_stat.get('stdout_lines', [])|length != 0
 
+- name: inspect cephfs mirror container
+  command: "{{ container_binary }} inspect {{ ceph_cephfs_mirror_container_stat.stdout }}"
+  changed_when: false
+  register: ceph_cephfs_mirror_inspect
+  when:
+    - cephfsmirror_group_name in group_names
+    - ceph_cephfs_mirror_container_stat.get('rc') == 0
+    - ceph_cephfs_mirror_container_stat.get('stdout_lines', [])|length != 0
+
 - name: inspect ceph nfs container
   command: "{{ container_binary }} inspect {{ ceph_nfs_container_stat.stdout }}"
   changed_when: false
@@ -126,6 +135,15 @@
     - rbdmirror_group_name in group_names
     - ceph_rbd_mirror_inspect.get('rc') == 0
 
+- name: "inspecting cephfs mirror container image before pulling"
+  command: "{{ container_binary }} inspect {{ (ceph_cephfs_mirror_inspect.stdout | from_json)[0].Image }}"
+  changed_when: false
+  failed_when: false
+  register: ceph_cephfs_mirror_container_inspect_before_pull
+  when:
+    - cephfsmirror_group_name in group_names
+    - ceph_cephfs_mirror_inspect.get('rc') == 0
+
 - name: "inspecting ceph nfs container image before pulling"
   command: "{{ container_binary }} inspect {{ (ceph_nfs_inspect.stdout | from_json)[0].Image }}"
   changed_when: false
@@ -188,6 +206,13 @@
   when:
     - rbdmirror_group_name in group_names
     - ceph_rbd_mirror_container_inspect_before_pull.get('rc') == 0
+
+- name: set_fact ceph_cephfs_mirror_image_repodigest_before_pulling
+  set_fact:
+    ceph_cephfs_mirror_image_repodigest_before_pulling: "{{ (ceph_cephfs_mirror_container_inspect_before_pull.stdout | from_json)[0].Id }}"
+  when:
+    - cephfsmirror_group_name in group_names
+    - ceph_cephfs_mirror_container_inspect_before_pull.get('rc') == 0
 
 - name: set_fact ceph_nfs_image_repodigest_before_pulling
   set_fact:
@@ -279,6 +304,16 @@
     - rbdmirror_group_name in group_names
     - ceph_rbd_mirror_container_inspect_before_pull.get('rc') == 0
     - ceph_rbd_mirror_image_repodigest_before_pulling != image_repodigest_after_pulling
+
+- name: set_fact ceph_cephfs_mirror_image_updated
+  set_fact:
+    ceph_cephfs_mirror_image_updated: "{{ ceph_cephfs_mirror_image_repodigest_before_pulling != image_repodigest_after_pulling }}"
+  changed_when: true
+  notify: restart ceph cephfsmirrors
+  when:
+    - cephfsmirror_group_name in group_names
+    - ceph_cephfs_mirror_container_inspect_before_pull.get('rc') == 0
+    - ceph_cephfs_mirror_image_repodigest_before_pulling != image_repodigest_after_pulling
 
 - name: set_fact ceph_nfs_image_updated
   set_fact:
