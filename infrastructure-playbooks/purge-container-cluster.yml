@@ -645,6 +645,27 @@
         ansible_os_family == 'RedHat' and
         not is_atomic
 
+    - name: find any service-cid file left
+      find:
+        paths: /run
+        patterns:
+          - "ceph-*.service-cid"
+          - "rbd-target-api.service-cid"
+          - "rbd-target-gw.service-cid"
+          - "tcmu-runner.service-cid"
+          - "node_exporter.service-cid"
+          - "prometheus.service-cid"
+          - "grafana-server.service-cid"
+          - "alertmanager.service-cid"
+      register: service_cid_files
+
+    - name: rm any service-cid file
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      with_items: "{{ service_cid_files.files }}"
+
+
 - name: purge ceph directories
 
   hosts:
