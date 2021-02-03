@@ -891,7 +891,16 @@
         - groups.get(mon_group_name, []) | length > 0
 
 - name: upgrade node-exporter
-  hosts: all
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+    - "{{ monitoring_group_name|default('monitoring') }}"
   gather_facts: false
   become: true
   tasks:
