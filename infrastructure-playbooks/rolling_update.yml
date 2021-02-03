@@ -92,11 +92,17 @@
         name: ceph-validate
 
     - import_role:
+        name: ceph-container-engine
+      when:
+        - (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
+        - (containerized_deployment | bool) or (dashboard_enabled | bool)
+
+    - import_role:
         name: ceph-container-common
         tasks_from: registry
       when:
         - (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
-        - containerized_deployment | bool
+        - (containerized_deployment | bool) or (dashboard_enabled | bool)
         - ceph_docker_registry_auth | bool
 
     - name: set_fact rolling_update
