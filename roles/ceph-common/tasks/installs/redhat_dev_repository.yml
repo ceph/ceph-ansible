@@ -1,8 +1,15 @@
 ---
+- name: get latest available build
+  uri:
+    url: "https://shaman.ceph.com/api/search/?status=ready&project=ceph&flavor=default&distros=centos/{{ ansible_distribution_major_version }}/{{ ansible_architecture }}&ref={{ ceph_dev_branch }}&sha1={{ ceph_dev_sha1 }}"
+    return_content: yes
+  run_once: true
+  register: latest_build
+
 - name: fetch ceph red hat development repository
   uri:
     # Use the centos repo since we don't currently have a dedicated red hat repo
-    url: https://shaman.ceph.com/api/repos/ceph/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/centos/{{ ansible_distribution_major_version }}/repo
+    url: "{{ (latest_build.content | from_json)[0]['chacra_url'] }}repo"
     return_content: yes
   register: ceph_dev_yum_repo
 
