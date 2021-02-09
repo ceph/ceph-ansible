@@ -249,7 +249,7 @@ def get_wal(wal, wal_vg):
     return wal
 
 
-def batch(module, container_image):
+def batch(module, container_image, report=None):
     '''
     Batch prepare OSD devices
     '''
@@ -280,7 +280,8 @@ def batch(module, container_image):
     action = ['lvm', 'batch']
     cmd = build_cmd(action, container_image, cluster)
     cmd.extend(['--%s' % objectstore])
-    cmd.append('--yes')
+    if not report:
+        cmd.append('--yes')
 
     if container_image:
         cmd.append('--prepare')
@@ -646,7 +647,7 @@ def run_module():
             '--format=json',
         ]
 
-        cmd = batch(module, container_image)
+        cmd = batch(module, container_image, report=True)
         batch_report_cmd = copy.copy(cmd)
         batch_report_cmd.extend(report_flags)
 
