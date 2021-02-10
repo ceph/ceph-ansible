@@ -81,6 +81,8 @@ The ``master`` branch should be considered experimental and used with caution.
 
 - ``stable-5.0`` Supports Ceph version ``octopus``. This branch requires Ansible version ``2.9``.
 
+- ``stable-6.0`` Supports Ceph version ``pacific``. This branch requires Ansible version ``2.9``.
+
 - ``master`` Supports the master branch of Ceph. This branch requires Ansible version ``2.9``.
 
 .. NOTE:: ``stable-3.0`` and ``stable-3.1`` branches of ceph-ansible are deprecated and no longer maintained.
