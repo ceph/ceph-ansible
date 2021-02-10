@@ -43,7 +43,9 @@
 
     - name: disable time sync using timesyncd if we are not using it
       command: timedatectl set-ntp no
-      when: ntp_daemon_type != "timesyncd"
+      when:
+        - not (ansible_distribution == 'RedHat' and ansible_distribution_version is version('8.3', '>'))
+        - ntp_daemon_type != "timesyncd"
 
     - name: enable ntpd
       service:
