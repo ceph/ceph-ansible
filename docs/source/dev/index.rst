@@ -69,7 +69,7 @@ For example:
 
 .. code-block:: none
 
-   jenkins test luminous-ansible2.3-journal_collocation
+   jenkins test centos-non_container-all_daemons
 
 Backporting changes
 -------------------
@@ -81,9 +81,9 @@ If a change should be backported to a ``stable-*`` Git branch:
 - Determine the latest available stable branch:
   ``git branch -r --list "origin/stable-[0-9].[0-9]" | sort -r | sed 1q``
 - Create a new local branch for your pull request, based on the stable branch:
-  ``git checkout --no-track -b my-backported-change origin/stable-3.0``
+  ``git checkout --no-track -b my-backported-change origin/stable-5.0``
 - Cherry-pick your change: ``git cherry-pick -x (your-sha1)``
-- Create a new pull request against the ``stable-3.0`` branch.
+- Create a new pull request against the ``stable-5.0`` branch.
 - Ensure that your pull requests's title has the prefix "backport:", so it's clear
   to reviewers what this is about.
 - Add a comment in your backport pull request linking to the original (master) pull request.
@@ -96,7 +96,7 @@ stable branch with your change. For example:
 
 .. code-block:: console
 
-   $ git checkout stable-3.0
+   $ git checkout stable-5.0
    $ git pull --ff-only
-   $ git tag v3.0.12
-   $ git push origin v3.0.12
+   $ git tag v5.0.12
+   $ git push origin v5.0.12
