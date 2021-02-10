@@ -30,7 +30,9 @@
                     regexp: "nfs_ganesha_dev:.*"
                     replace: "nfs_ganesha_dev: true"
                     dest: "{{ group_vars_path }}/nfss"
-              when: "'all_daemons' in group_vars_path.split('/')"
+              when:
+                - setup_nfs_dev_repo | default(True) | bool
+                - "'all_daemons' in group_vars_path.split('/')"
           when: change_dir is defined
 
         - name: print contents of {{ group_vars_path }}/all
