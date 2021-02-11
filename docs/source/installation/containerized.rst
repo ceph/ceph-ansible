@@ -37,6 +37,9 @@ You can configure your own container register, image and tag by using the ``ceph
 
    ``ceph_docker_image`` should have both image namespace and image name concatenated and separated by a slash character.
 
+   ``ceph_docker_image_tag`` should be set to a fixed tag, not to any "latest" tags unless you know what you are doing. Using a "latest" tag
+   might make the playbook restart all the daemons deployed in your cluster since these tags are intended to be updated periodically.
+
 Container registry authentication
 ---------------------------------
 
