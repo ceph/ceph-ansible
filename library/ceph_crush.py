@@ -139,16 +139,14 @@ def exec_commands(module, cmd_list):
     return rc, cmd, out, err
 
 
-def run_module():
-    module_args = dict(
-        cluster=dict(type='str', required=False, default='ceph'),
-        location=dict(type='dict', required=True),
-        containerized=dict(type='str', required=True, default=None),
-    )
-
+def main():
     module = AnsibleModule(
-        argument_spec=module_args,
-        supports_check_mode=True
+        argument_spec=dict(
+            cluster=dict(type='str', required=False, default='ceph'),
+            location=dict(type='dict', required=True),
+            containerized=dict(type='str', required=False, default=None),
+        ),
+        supports_check_mode=True,
     )
 
     cluster = module.params['cluster']
@@ -192,10 +190,6 @@ def run_module():
         module.fail_json(msg='non-zero return code', **result)
 
     module.exit_json(**result)
-
-
-def main():
-    run_module()
 
 
 if __name__ == '__main__':
