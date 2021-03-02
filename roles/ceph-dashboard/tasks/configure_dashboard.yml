@@ -281,7 +281,7 @@
     - name: add iscsi gateways - ipv4
       command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard iscsi-gateway-add -i -"
       args:
-        stdin: "{{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}:{{ hostvars[item]['api_port'] | default(5000) }}"
+        stdin: "{{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(igw_network.split(',')) | first }}:{{ hostvars[item]['api_port'] | default(5000) }}"
         stdin_add_newline: no
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -291,7 +291,7 @@
     - name: add iscsi gateways - ipv6
       command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard iscsi-gateway-add -i -"
       args:
-        stdin: "{{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap }}:{{ hostvars[item]['api_port'] | default(5000) }}"
+        stdin: "{{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(igw_network.split(',')) | last | ipwrap }}:{{ hostvars[item]['api_port'] | default(5000) }}"
         stdin_add_newline: no
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
