@@ -36,7 +36,7 @@
     - name: set_fact container_run_cmd, container_exec_cmd
       set_fact:
         container_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment | bool else '' }}ceph-volume {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
-        container_exec_cmd: "{{ container_binary + ' exec ceph-mon-' + hostvars[groups[mon_group_name][0]]['ansible_hostname'] if containerized_deployment | bool else '' }}"
+        container_exec_cmd: "{{ container_binary + ' exec ceph-mon-' + hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] if containerized_deployment | bool else '' }}"
 
     - name: get ceph osd tree data
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd tree -f json"

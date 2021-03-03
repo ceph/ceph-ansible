@@ -5,7 +5,7 @@
 
 - name: set_fact container_exec_cmd
   set_fact:
-    container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[item]['ansible_hostname'] }}"
+    container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[item]['ansible_facts']['hostname'] }}"
   with_items: "{{ groups.get(mon_group_name, []) }}"
   delegate_to: "{{ item }}"
   delegate_facts: true
@@ -23,7 +23,7 @@
   until: result is succeeded
   when:
     - not containerized_deployment | bool
-    - ansible_os_family != 'ClearLinux'
+    - ansible_facts['os_family'] != 'ClearLinux'
 
 - name: install numactl when needed
   package:

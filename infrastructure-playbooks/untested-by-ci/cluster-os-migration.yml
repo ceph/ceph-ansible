@@ -19,31 +19,31 @@
 
     - name: Check if the node has be migrated already
       stat: >
-        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/migration_completed
+        path=/var/lib/ceph/mon/ceph-{{ ansible_facts['hostname'] }}/migration_completed
       register: migration_completed
       failed_when: false
 
     - name: Check for failed run
       stat: >
-        path=/var/lib/ceph/{{ ansible_hostname }}.tar
+        path=/var/lib/ceph/{{ ansible_facts['hostname'] }}.tar
       register: mon_archive_leftover
 
     - fail: msg="Looks like an archive is already there, please remove it!"
       when: migration_completed.stat.exists == False and mon_archive_leftover.stat.exists == True
 
     - name: Compress the store as much as possible
-      command: ceph tell mon.{{ ansible_hostname }} compact
+      command: ceph tell mon.{{ ansible_facts['hostname'] }} compact
       when: migration_completed.stat.exists == False
 
     - name: Check if sysvinit
       stat: >
-        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/sysvinit
+        path=/var/lib/ceph/mon/ceph-{{ ansible_facts['hostname'] }}/sysvinit
       register: monsysvinit
       changed_when: False
 
     - name: Check if upstart
       stat: >
-        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/upstart
+        path=/var/lib/ceph/mon/ceph-{{ ansible_facts['hostname'] }}/upstart
       register: monupstart
       changed_when: False
 
@@ -70,7 +70,7 @@
       service: >
         name=ceph-mon
         state=restarted
-        args=id={{ ansible_hostname }}
+        args=id={{ ansible_facts['hostname'] }}
       when: monupstart.stat.exists == True and migration_completed.stat.exists == False
 
     - name: Restart the Monitor after compaction (Sysvinit)
@@ -92,7 +92,7 @@
       service: >
         name=ceph-mon
         state=stopped
-        args=id={{ ansible_hostname }}
+        args=id={{ ansible_facts['hostname'] }}
       when: monupstart.stat.exists == True and migration_completed.stat.exists == False
 
     - name: Stop the monitor (Sysvinit)
@@ -125,15 +125,15 @@
     # NOTE (leseb): should we convert upstart to sysvinit here already?
     - name: Archive monitor stores
       shell: >
-        tar -cpvzf - --one-file-system . /etc/ceph/* | cat > {{ ansible_hostname }}.tar
+        tar -cpvzf - --one-file-system . /etc/ceph/* | cat > {{ ansible_facts['hostname'] }}.tar
         chdir=/var/lib/ceph/
-        creates={{ ansible_hostname }}.tar
+        creates={{ ansible_facts['hostname'] }}.tar
       when: migration_completed.stat.exists == False
 
     - name: Scp the Monitor store
       fetch: >
-        src=/var/lib/ceph/{{ ansible_hostname }}.tar
-        dest={{ backup_dir }}/monitors-backups/{{ ansible_hostname }}.tar
+        src=/var/lib/ceph/{{ ansible_facts['hostname'] }}.tar
+        dest={{ backup_dir }}/monitors-backups/{{ ansible_facts['hostname'] }}.tar
         flat=yes
       when: migration_completed.stat.exists == False
 
@@ -155,13 +155,13 @@
 
     - name: Check if sysvinit
       stat: >
-        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/sysvinit
+        path=/var/lib/ceph/mon/ceph-{{ ansible_facts['hostname'] }}/sysvinit
       register: monsysvinit
       changed_when: False
 
     - name: Check if upstart
       stat: >
-        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/upstart
+        path=/var/lib/ceph/mon/ceph-{{ ansible_facts['hostname'] }}/upstart
       register: monupstart
       changed_when: False
 
@@ -169,7 +169,7 @@
       service: >
         name=ceph-mon
         state=stopped
-        args=id={{ ansible_hostname }}
+        args=id={{ ansible_facts['hostname'] }}
       when: monupstart.stat.exists == True and migration_completed.stat.exists == False
 
     - name: Make sure the monitor is stopped (Sysvinit)
@@ -182,7 +182,7 @@
     # NOTE (leseb): 'creates' was added in Ansible 1.6
     - name: Copy and unarchive the monitor store
       unarchive: >
-        src={{ backup_dir }}/monitors-backups/{{ ansible_hostname }}.tar
+        src={{ backup_dir }}/monitors-backups/{{ ansible_facts['hostname'] }}.tar
         dest=/var/lib/ceph/
         copy=yes
         mode=0600
@@ -218,7 +218,7 @@
 
     - name: Waiting for the monitor to join the quorum...
       shell: >
-        ceph -s | grep monmap | sed 's/.*quorum//' | egrep -q {{ ansible_hostname }}
+        ceph -s | grep monmap | sed 's/.*quorum//' | egrep -q {{ ansible_facts['hostname'] }}
       register: result
       until: result.rc == 0
       retries: 5
@@ -229,7 +229,7 @@
 
     - name: Done moving to the next monitor
       file: >
-        path=/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/migration_completed
+        path=/var/lib/ceph/mon/ceph-{{ ansible_facts['hostname'] }}/migration_completed
         state=touch
         owner=root
         group=root
@@ -252,7 +252,7 @@
 
     - name: Check for failed run
       stat: >
-        path=/var/lib/ceph/{{ ansible_hostname }}.tar
+        path=/var/lib/ceph/{{ ansible_facts['hostname'] }}.tar
       register: osd_archive_leftover
 
     - fail: msg="Looks like an archive is already there, please remove it!"
@@ -297,9 +297,9 @@
 
     - name: Archive ceph configs
       shell: >
-        tar -cpvzf - --one-file-system . /etc/ceph/ceph.conf | cat > {{ ansible_hostname }}.tar
+        tar -cpvzf - --one-file-system . /etc/ceph/ceph.conf | cat > {{ ansible_facts['hostname'] }}.tar
         chdir=/var/lib/ceph/
-        creates={{ ansible_hostname }}.tar
+        creates={{ ansible_facts['hostname'] }}.tar
       when: migration_completed.stat.exists == False
 
     - name: Create backup directory
@@ -315,7 +315,7 @@
 
     - name: Scp OSDs dirs and configs
       fetch: >
-        src=/var/lib/ceph/{{ ansible_hostname }}.tar
+        src=/var/lib/ceph/{{ ansible_facts['hostname'] }}.tar
         dest={{ backup_dir }}/osds-backups/
         flat=yes
       when: migration_completed.stat.exists == False
@@ -371,7 +371,7 @@
     # NOTE (leseb): 'creates' was added in Ansible 1.6
     - name: Copy and unarchive the OSD configs
       unarchive: >
-        src={{ backup_dir }}/osds-backups/{{ ansible_hostname }}.tar
+        src={{ backup_dir }}/osds-backups/{{ ansible_facts['hostname'] }}.tar
         dest=/var/lib/ceph/
         copy=yes
         mode=0600
@@ -446,7 +446,7 @@
 
     - name: Check for failed run
       stat: >
-        path=/var/lib/ceph/{{ ansible_hostname }}.tar
+        path=/var/lib/ceph/{{ ansible_facts['hostname'] }}.tar
       register: rgw_archive_leftover
 
     - fail: msg="Looks like an archive is already there, please remove it!"
@@ -454,9 +454,9 @@
 
     - name: Archive rados gateway configs
       shell: >
-        tar -cpvzf - --one-file-system . /etc/ceph/* | cat > {{ ansible_hostname }}.tar
+        tar -cpvzf - --one-file-system . /etc/ceph/* | cat > {{ ansible_facts['hostname'] }}.tar
         chdir=/var/lib/ceph/
-        creates={{ ansible_hostname }}.tar
+        creates={{ ansible_facts['hostname'] }}.tar
       when: migration_completed.stat.exists == False
 
     - name: Create backup directory
@@ -472,7 +472,7 @@
 
     - name: Scp RGWs dirs and configs
       fetch: >
-        src=/var/lib/ceph/{{ ansible_hostname }}.tar
+        src=/var/lib/ceph/{{ ansible_facts['hostname'] }}.tar
         dest={{ backup_dir }}/rgws-backups/
         flat=yes
       when: migration_completed.stat.exists == False
@@ -512,7 +512,7 @@
     # NOTE (leseb): 'creates' was added in Ansible 1.6
     - name: Copy and unarchive the OSD configs
       unarchive: >
-        src={{ backup_dir }}/rgws-backups/{{ ansible_hostname }}.tar
+        src={{ backup_dir }}/rgws-backups/{{ ansible_facts['hostname'] }}.tar
         dest=/var/lib/ceph/
         copy=yes
         mode=0600

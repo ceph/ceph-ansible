@@ -6,7 +6,7 @@
   when:
     - not containerized_deployment | bool
     - ceph_mon_systemd_overrides is defined
-    - ansible_service_mgr == 'systemd'
+    - ansible_facts['service_mgr'] == 'systemd'
 
 - name: add ceph-mon systemd service overrides
   config_template:
@@ -17,7 +17,7 @@
   when:
     - not containerized_deployment | bool
     - ceph_mon_systemd_overrides is defined
-    - ansible_service_mgr == 'systemd'
+    - ansible_facts['service_mgr'] == 'systemd'
 
 - name: include_tasks systemd.yml
   include_tasks: systemd.yml
@@ -25,7 +25,7 @@
 
 - name: start the monitor service
   systemd:
-    name: ceph-mon@{{ monitor_name if not containerized_deployment else ansible_hostname }}
+    name: ceph-mon@{{ monitor_name if not containerized_deployment | bool else ansible_facts['hostname'] }}
     state: started
     enabled: yes
     masked: no

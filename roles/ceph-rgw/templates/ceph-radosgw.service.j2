@@ -6,17 +6,17 @@ Requires=docker.service
 {% else %}
 After=network.target
 {% endif %}
-{% set cpu_limit = ansible_processor_vcpus|int if ceph_rgw_docker_cpu_limit|int > ansible_processor_vcpus|int else ceph_rgw_docker_cpu_limit|int %}
+{% set cpu_limit = ansible_facts['processor_vcpus']|int if ceph_rgw_docker_cpu_limit|int > ansible_facts['processor_vcpus']|int else ceph_rgw_docker_cpu_limit|int %}
 
 [Service]
 EnvironmentFile=/var/lib/ceph/radosgw/{{ cluster }}-%i/EnvironmentFile
 {% if container_binary == 'podman' %}
 ExecStartPre=-/usr/bin/rm -f /%t/%n-pid /%t/%n-cid
-ExecStartPre=-/usr/bin/{{ container_binary }} rm --storage ceph-rgw-{{ ansible_hostname }}-${INST_NAME}
+ExecStartPre=-/usr/bin/{{ container_binary }} rm --storage ceph-rgw-{{ ansible_facts['hostname'] }}-${INST_NAME}
 {% else %}
-ExecStartPre=-/usr/bin/{{ container_binary }} stop ceph-rgw-{{ ansible_hostname }}-${INST_NAME}
+ExecStartPre=-/usr/bin/{{ container_binary }} stop ceph-rgw-{{ ansible_facts['hostname'] }}-${INST_NAME}
 {% endif %}
-ExecStartPre=-/usr/bin/{{ container_binary }} rm ceph-rgw-{{ ansible_hostname }}-${INST_NAME}
+ExecStartPre=-/usr/bin/{{ container_binary }} rm ceph-rgw-{{ ansible_facts['hostname'] }}-${INST_NAME}
 ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
 {% if container_binary == 'podman' %}
   -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
@@ -34,7 +34,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   -v /var/run/ceph:/var/run/ceph:z \
   -v /etc/localtime:/etc/localtime:ro \
   -v /var/log/ceph:/var/log/ceph:z \
-  {% if ansible_distribution == 'RedHat' -%}
+  {% if ansible_facts['distribution'] == 'RedHat' -%}
   -v /etc/pki/ca-trust/extracted:/etc/pki/ca-trust/extracted:z \
   {% endif -%}
   {% if radosgw_frontend_ssl_certificate -%}
@@ -42,15 +42,15 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   {% endif -%}
   -e CEPH_DAEMON=RGW \
   -e CLUSTER={{ cluster }} \
-  -e RGW_NAME={{ ansible_hostname }}.${INST_NAME} \
+  -e RGW_NAME={{ ansible_facts['hostname'] }}.${INST_NAME} \
   -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
-  --name=ceph-rgw-{{ ansible_hostname }}-${INST_NAME} \
+  --name=ceph-rgw-{{ ansible_facts['hostname'] }}-${INST_NAME} \
   {{ ceph_rgw_docker_extra_env }} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
 {% if container_binary == 'podman' %}
 ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
 {% else %}
-ExecStopPost=-/usr/bin/{{ container_binary }} stop ceph-rgw-{{ ansible_hostname }}-${INST_NAME}
+ExecStopPost=-/usr/bin/{{ container_binary }} stop ceph-rgw-{{ ansible_facts['hostname'] }}-${INST_NAME}
 {% endif %}
 KillMode=none
 Restart=always
