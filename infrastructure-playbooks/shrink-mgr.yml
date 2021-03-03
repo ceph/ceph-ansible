@@ -39,7 +39,7 @@
     - name: set_fact container_exec_cmd
       when: containerized_deployment | bool
       set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_facts['hostname'] }}"
 
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} health"
@@ -92,7 +92,7 @@
 
     - name: set_fact mgr_to_kill_hostname
       set_fact:
-        mgr_to_kill_hostname: "{{ hostvars[mgr_to_kill]['ansible_hostname'] }}"
+        mgr_to_kill_hostname: "{{ hostvars[mgr_to_kill]['ansible_facts']['hostname'] }}"
 
   tasks:
     - name: stop manager services and verify it

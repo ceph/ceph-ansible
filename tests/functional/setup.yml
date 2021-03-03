@@ -15,14 +15,14 @@
 
     - name: get root mount information
       set_fact:
-        rootmount: "{{ ansible_mounts|json_query('[?mount==`/`]|[0]') }}"
+        rootmount: "{{ ansible_facts['mounts']|json_query('[?mount==`/`]|[0]') }}"
 
     # mount -o remount doesn't work on RHEL 8 for now
     - name: add mount options to /
       mount:
         path: '{{ rootmount.mount }}'
         src: '{{ rootmount.device }}'
-        opts: 'noatime,nodiratime{% if ansible_os_family == "RedHat" and ansible_distribution_major_version | int < 8 %},nobarrier{% endif %}'
+        opts: "noatime,nodiratime{% if ansible_facts['os_family'] == 'RedHat' and ansible_facts['distribution_major_version'] | int < 8 %},nobarrier{% endif %}"
         fstype: '{{ rootmount.fstype }}'
         state: mounted
 
@@ -63,8 +63,8 @@
             option: metalink
             state: absent
       when:
-        - ansible_distribution == 'CentOS'
-        - ansible_distribution_major_version | int == 7
+        - ansible_facts['distribution'] == 'CentOS'
+        - ansible_facts['distribution_major_version'] | int == 7
         - not is_atomic | bool
 
     - name: resize logical volume for root partition to fill remaining free space

@@ -8,7 +8,7 @@
 
   - name: set_fact container_exec_cmd_nfs - internal
     set_fact:
-      exec_cmd_nfs: "{{ container_binary + ' exec ceph-mon-' + hostvars[groups[mon_group_name][0]]['ansible_hostname'] if containerized_deployment | bool else '' }} rados"
+      exec_cmd_nfs: "{{ container_binary + ' exec ceph-mon-' + hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] if containerized_deployment | bool else '' }} rados"
       delegate_node: "{{ groups[mon_group_name][0] }}"
     when: groups.get(mon_group_name, []) | length > 0
 
@@ -72,7 +72,7 @@
 
 - name: systemd start nfs container
   systemd:
-    name: ceph-nfs@{{ ceph_nfs_service_suffix | default(ansible_hostname) }}
+    name: ceph-nfs@{{ ceph_nfs_service_suffix | default(ansible_facts['hostname']) }}
     state: started
     enabled: yes
     masked: no

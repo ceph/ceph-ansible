@@ -3,10 +3,10 @@
   apt:
     name: ceph-mds
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default('') if ceph_origin == 'repository' and ceph_repository == 'uca' else '' }}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports | bool else '' }}"
+    default_release: "{{ ceph_stable_release_uca | default('') if ceph_origin == 'repository' and ceph_repository == 'uca' else '' }}{{ ansible_facts['distribution_release'] ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports | bool else '' }}"
   when:
     - mds_group_name in group_names
-    - ansible_os_family == 'Debian'
+    - ansible_facts['os_family'] == 'Debian'
   register: result
   until: result is succeeded
 
@@ -18,11 +18,11 @@
   until: result is succeeded
   when:
     - mds_group_name in group_names
-    - ansible_os_family in ['Suse', 'RedHat']
+    - ansible_facts['os_family'] in ['Suse', 'RedHat']
 
 - name: create mds keyring
   ceph_key:
-    name: "mds.{{ ansible_hostname }}"
+    name: "mds.{{ ansible_facts['hostname'] }}"
     cluster: "{{ cluster }}"
     user: client.bootstrap-mds
     user_key: "/var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring"
@@ -30,7 +30,7 @@
       mon: "allow profile mds"
       mds: "allow"
       osd: "allow rwx"
-    dest: "/var/lib/ceph/mds/{{ cluster }}-{{ ansible_hostname }}/keyring"
+    dest: "/var/lib/ceph/mds/{{ cluster }}-{{ ansible_facts['hostname'] }}/keyring"
     import_key: false
     owner: ceph
     group: ceph
@@ -43,7 +43,7 @@
     path: "/etc/systemd/system/ceph-mds@.service.d/"
   when:
     - ceph_mds_systemd_overrides is defined
-    - ansible_service_mgr == 'systemd'
+    - ansible_facts['service_mgr'] == 'systemd'
 
 - name: add ceph-mds systemd service overrides
   config_template:
@@ -53,11 +53,11 @@
     config_type: "ini"
   when:
     - ceph_mds_systemd_overrides is defined
-    - ansible_service_mgr == 'systemd'
+    - ansible_facts['service_mgr'] == 'systemd'
 
 - name: start and add that the metadata service to the init sequence
   service:
-    name: ceph-mds@{{ ansible_hostname }}
+    name: ceph-mds@{{ ansible_facts['hostname'] }}
     state: started
     enabled: yes
     masked: no
