@@ -9,7 +9,7 @@
       block:
         - name: add nfs-ganesha stable repository
           apt_repository:
-            repo: "deb {{ nfs_ganesha_stable_deb_repo }} {{ ceph_stable_distro_source | default(ansible_distribution_release) }} main"
+            repo: "deb {{ nfs_ganesha_stable_deb_repo }} {{ ceph_stable_distro_source | default(ansible_facts['distribution_release']) }} main"
             state: present
             update_cache: no
           register: add_ganesha_apt_repo
@@ -30,7 +30,7 @@
       block:
         - name: fetch nfs-ganesha development repository
           uri:
-            url: https://shaman.ceph.com/api/repos/nfs-ganesha/next/latest/{{ ansible_distribution | lower }}/{{ ansible_distribution_release }}/flavors/{{ nfs_ganesha_flavor }}/repo
+            url: https://shaman.ceph.com/api/repos/nfs-ganesha/next/latest/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_release'] }}/flavors/{{ nfs_ganesha_flavor }}/repo
             return_content: yes
           register: nfs_ganesha_dev_apt_repo
 

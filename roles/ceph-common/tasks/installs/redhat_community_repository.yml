@@ -5,7 +5,7 @@
   register: result
   until: result is succeeded
   tags: with_pkg
-  when: ansible_distribution_major_version | int == 7
+  when: ansible_facts['distribution_major_version'] | int == 7
 
 - name: configure red hat ceph community repository stable key
   rpm_key:
@@ -21,7 +21,7 @@
     gpgcheck: yes
     state: present
     gpgkey: "{{ ceph_stable_key }}"
-    baseurl: "{{ ceph_mirror }}/rpm-{{ ceph_stable_release }}/el{{ ansible_distribution_major_version }}/$basearch"
+    baseurl: "{{ ceph_mirror }}/rpm-{{ ceph_stable_release }}/el{{ ansible_facts['distribution_major_version'] }}/$basearch"
     file: ceph_stable
     priority: 2
   register: result
@@ -34,7 +34,7 @@
     gpgcheck: yes
     state: present
     gpgkey: "{{ ceph_stable_key }}"
-    baseurl: "{{ ceph_mirror }}/rpm-{{ ceph_stable_release }}/el{{ ansible_distribution_major_version }}/noarch"
+    baseurl: "{{ ceph_mirror }}/rpm-{{ ceph_stable_release }}/el{{ ansible_facts['distribution_major_version'] }}/noarch"
     file: ceph_stable
     priority: 2
   register: result
