@@ -2,7 +2,7 @@
 # global/common requirement
 - name: stop nfs server service
   systemd:
-    name: "{{ 'nfs-server' if ansible_os_family == 'RedHat' else 'nfsserver' if ansible_os_family == 'Suse' else 'nfs-kernel-server' if ansible_os_family == 'Debian' }}"
+    name: "{{ 'nfs-server' if ansible_facts['os_family'] == 'RedHat' else 'nfsserver' if ansible_facts['os_family'] == 'Suse' else 'nfs-kernel-server' if ansible_facts['os_family'] == 'Debian' }}"
     state: stopped
     enabled: no
   failed_when: false
@@ -24,7 +24,7 @@
   import_tasks: ganesha_selinux_fix.yml
   when:
     - not containerized_deployment | bool
-    - ansible_os_family == 'RedHat'
+    - ansible_facts['os_family'] == 'RedHat'
 
 - name: nfs with external ceph cluster task related
   when:
@@ -40,7 +40,7 @@
         mode: "0755"
       with_items:
         - "{{ ceph_nfs_ceph_user }}"
-        - "{{ ansible_hostname }}"
+        - "{{ ansible_facts['hostname'] }}"
 
     - name: set_fact rgw_client_name
       set_fact:
@@ -55,7 +55,7 @@
         group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
       with_nested:
         - "{{ hostvars[groups['_filtered_clients'][0]]['slurp_client_keys']['results'] | default([]) }}"
-        - ['/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ceph_nfs_ceph_user }}/keyring', '/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring']
+        - ['/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ceph_nfs_ceph_user }}/keyring', "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}/keyring"]
       when:
         - not item.0.get('skipped', False)
         - item.0.item.name == 'client.' + ceph_nfs_ceph_user or item.0.item.name == rgw_client_name

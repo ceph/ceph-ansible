@@ -14,14 +14,14 @@
 
 - name: add docker's gpg key
   apt_key:
-    url: 'https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg'
+    url: "https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}/gpg"
   register: result
   until: result is succeeded
   when: container_package_name == 'docker-ce'
 
 - name: add docker repository
   apt_repository:
-    repo: "deb https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+    repo: "deb https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }} stable"
   when: container_package_name == 'docker-ce'
 
 - name: add podman ppa repository
@@ -29,4 +29,4 @@
     repo: "ppa:projectatomic/ppa"
   when:
     - container_package_name == 'podman'
-    - ansible_distribution == 'Ubuntu'
+    - ansible_facts['distribution'] == 'Ubuntu'

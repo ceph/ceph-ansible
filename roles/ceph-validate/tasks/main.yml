@@ -90,7 +90,7 @@
       with_items: '{{ lvm_volumes }}'
 
 - name: debian based systems tasks
-  when: ansible_os_family == 'Debian'
+  when: ansible_facts['os_family'] == 'Debian'
   block:
     - name: fail if local scenario is enabled on debian
       fail:
@@ -108,7 +108,7 @@
 # - ceph_origin == 'distro'
 # - ceph_origin == 'repository' and ceph_repository == 'obs'
 - name: SUSE/openSUSE Leap based system tasks
-  when: ansible_os_family == 'Suse'
+  when: ansible_facts['os_family'] == 'Suse'
   block:
     - name: Check ceph_origin definition on SUSE/openSUSE Leap
       fail:
@@ -136,7 +136,7 @@
     msg: installation can't happen on Atomic and ntpd needs to be installed
   when:
     - is_atomic | default(False) | bool
-    - ansible_os_family == 'RedHat'
+    - ansible_facts['os_family'] == 'RedHat'
     - ntp_daemon_type == 'ntpd'
 
 - name: make sure journal_size configured

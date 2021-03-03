@@ -83,7 +83,7 @@ dummy:
 
 #centos_package_dependencies:
 #  - epel-release
-#  - "{{ 'python3-libselinux' if ansible_distribution_major_version | int >= 8 else 'libselinux-python' }}"
+#  - "{{ (ansible_facts['distribution_major_version'] is version('8', '>=')) | ternary('python3-libselinux', 'libselinux-python') }}"
 
 #redhat_package_dependencies: []
 
@@ -153,7 +153,7 @@ dummy:
 # Use the option below to specify your applicable package tree, eg. when using non-LTS Ubuntu versions
 # # for a list of available Debian distributions, visit http://download.ceph.com/debian-{{ ceph_stable_release }}/dists/
 # for more info read: https://github.com/ceph/ceph-ansible/issues/305
-#ceph_stable_distro_source: "{{ ansible_distribution_release }}"
+#ceph_stable_distro_source: "{{ ansible_facts['distribution_release'] }}"
 
 
 # REPOSITORY: RHCS VERSION RED HAT STORAGE (from 5.0)
@@ -181,7 +181,7 @@ dummy:
 #
 #ceph_stable_repo_uca: "http://ubuntu-cloud.archive.canonical.com/ubuntu"
 #ceph_stable_openstack_release_uca: queens
-#ceph_stable_release_uca: "{{ ansible_distribution_release }}-updates/{{ ceph_stable_openstack_release_uca }}"
+#ceph_stable_release_uca: "{{ ansible_facts['distribution_release'] }}-updates/{{ ceph_stable_openstack_release_uca }}"
 
 # REPOSITORY: openSUSE OBS
 #
@@ -191,7 +191,7 @@ dummy:
 # usually has newer Ceph releases than the normal distro repository.
 #
 #
-#ceph_obs_repo: "https://download.opensuse.org/repositories/filesystems:/ceph:/{{ ceph_stable_release }}/openSUSE_Leap_{{ ansible_distribution_version }}/"
+#ceph_obs_repo: "https://download.opensuse.org/repositories/filesystems:/ceph:/{{ ceph_stable_release }}/openSUSE_Leap_{{ ansible_facts['distribution_version'] }}/"
 
 # REPOSITORY: DEV
 #
@@ -254,7 +254,7 @@ dummy:
 
 #ceph_conf_key_directory: /etc/ceph
 
-#ceph_uid: "{{ '64045' if not containerized_deployment | bool and ansible_os_family == 'Debian' else '167' }}"
+#ceph_uid: "{{ '64045' if not containerized_deployment | bool and ansible_facts['os_family'] == 'Debian' else '167' }}"
 
 # Permissions for keyring files in /etc/ceph
 #ceph_keyring_permissions: '0600'
@@ -529,7 +529,7 @@ dummy:
 #   global:
 #     foo: 1234
 #     bar: 5678
-#   "client.rgw.{{ hostvars[groups.get(rgw_group_name)[0]]['ansible_hostname'] }}":
+#   "client.rgw.{{ hostvars[groups.get(rgw_group_name)[0]]['ansible_facts']['hostname'] }}":
 #     rgw_zone: zone1
 #
 #ceph_conf_overrides: {}

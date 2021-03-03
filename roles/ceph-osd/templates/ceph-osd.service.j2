@@ -7,7 +7,7 @@ Requires=docker.service
 {% else %}
 After=network.target
 {% endif %}
-{% set cpu_limit = ansible_processor_vcpus|int if ceph_osd_docker_cpu_limit|int > ansible_processor_vcpus|int else ceph_osd_docker_cpu_limit|int %}
+{% set cpu_limit = ansible_facts['processor_vcpus']|int if ceph_osd_docker_cpu_limit|int > ansible_facts['processor_vcpus']|int else ceph_osd_docker_cpu_limit|int %}
 
 [Service]
 EnvironmentFile=-/etc/environment
@@ -48,7 +48,7 @@ numactl \
   -v /var/run/ceph:/var/run/ceph:z \
   -v /var/run/udev/:/var/run/udev/ \
   -v /var/log/ceph:/var/log/ceph:z \
-  {% if ansible_distribution == 'Ubuntu' -%}
+  {% if ansible_facts['distribution'] == 'Ubuntu' -%}
   --security-opt apparmor:unconfined \
   {% endif -%}
   {{ container_env_args }} \

@@ -5,7 +5,7 @@
     path: "/etc/systemd/system/ceph-rbd-mirror@.service.d/"
   when:
     - ceph_rbd_mirror_systemd_overrides is defined
-    - ansible_service_mgr == 'systemd'
+    - ansible_facts['service_mgr'] == 'systemd'
 
 - name: add ceph-rbd-mirror systemd service overrides
   config_template:
@@ -15,7 +15,7 @@
     config_type: "ini"
   when:
     - ceph_rbd_mirror_systemd_overrides is defined
-    - ansible_service_mgr == 'systemd'
+    - ansible_facts['service_mgr'] == 'systemd'
 
 - name: stop and remove the generic rbd-mirror service instance
   service:
@@ -34,7 +34,7 @@
 
 - name: start and add the rbd-mirror service instance
   service:
-    name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
+    name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"
     state: started
     enabled: yes
     masked: no

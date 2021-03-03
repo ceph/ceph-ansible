@@ -26,7 +26,7 @@
 
 - name: set_fact monitor_name ansible_hostname
   set_fact:
-    monitor_name: "{{ hostvars[item]['ansible_hostname'] }}"
+    monitor_name: "{{ hostvars[item]['ansible_facts']['hostname'] }}"
   delegate_to: "{{ item }}"
   delegate_facts: true
   with_items: "{{ groups.get(mon_group_name, []) }}"
@@ -38,12 +38,12 @@
   block:
     - name: set_fact container_exec_cmd
       set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] if not rolling_update | bool else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}"
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] if not rolling_update | bool else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_facts']['hostname'] }}"
       when:
         - containerized_deployment | bool
 
     - name: find a running mon container
-      command: "{{ container_binary }} ps -q --filter name=ceph-mon-{{ hostvars[item]['ansible_hostname'] }}"
+      command: "{{ container_binary }} ps -q --filter name=ceph-mon-{{ hostvars[item]['ansible_facts']['hostname'] }}"
       register: find_running_mon_container
       failed_when: false
       run_once: true
@@ -98,7 +98,7 @@
 
     - name: set_fact _container_exec_cmd
       set_fact:
-        _container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0] if running_mon is undefined else running_mon]['ansible_hostname'] }}"
+        _container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0] if running_mon is undefined else running_mon]['ansible_facts']['hostname'] }}"
       when:
         - containerized_deployment | bool
 
@@ -125,7 +125,7 @@
   when: rolling_update | bool or groups.get(mon_group_name, []) | length == 0
 
 - name: get current fsid
-  command: "{{ timeout_command }} {{ container_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_hostname'] }}.asok config get fsid"
+  command: "{{ timeout_command }} {{ container_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_facts']['hostname'] }}.asok config get fsid"
   register: rolling_update_fsid
   delegate_to: "{{ mon_host | default(groups[mon_group_name][0]) }}"
   until: rolling_update_fsid is succeeded
@@ -249,11 +249,11 @@
 - name: set_fact devices generate device list when osd_auto_discovery
   set_fact:
     devices: "{{ (devices | default([]) + [ item.key | regex_replace('^', '/dev/') ]) | unique }}"
-  with_dict: "{{ ansible_devices }}"
+  with_dict: "{{ ansible_facts['devices'] }}"
   when:
     - osd_auto_discovery | default(False) | bool
     - inventory_hostname in groups.get(osd_group_name, [])
-    - ansible_devices is defined
+    - ansible_facts['devices'] is defined
     - item.value.removable == "0"
     - item.value.sectors != "0"
     - item.value.partitions|count == 0
@@ -282,9 +282,9 @@
 
     - name: set_fact rgw_hostname
       set_fact:
-        rgw_hostname: "{% set _value = ansible_hostname -%}
+        rgw_hostname: "{% set _value = ansible_facts['hostname'] -%}
         {% for key in (ceph_current_status['services']['rgw']['daemons'] | list) -%}
-        {% if key == ansible_fqdn -%}
+        {% if key == ansible_facts['fqdn'] -%}
         {% set _value = key -%}
         {% endif -%}
         {% endfor -%}

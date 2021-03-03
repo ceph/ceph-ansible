@@ -2,23 +2,23 @@
 - name: "fail if {{ radosgw_interface }} does not exist on {{ inventory_hostname }}"
   fail:
     msg: "{{ radosgw_interface }} does not exist on {{ inventory_hostname }}"
-  when: radosgw_interface not in ansible_interfaces
+  when: radosgw_interface not in ansible_facts['interfaces']
 
 - name: "fail if {{ radosgw_interface }} is not active on {{ inventory_hostname }}"
   fail:
     msg: "{{ radosgw_interface }} is not active on {{ inventory_hostname }}"
-  when: hostvars[inventory_hostname]['ansible_' + (radosgw_interface | replace('-', '_'))]['active'] == "false"
+  when: hostvars[inventory_hostname]['ansible_facts'][(radosgw_interface | replace('-', '_'))]['active'] == "false"
 
 - name: "fail if {{ radosgw_interface }} does not have any ip v4 address on {{ inventory_hostname }}"
   fail:
     msg: "{{ radosgw_interface }} does not have any IPv4 address on {{ inventory_hostname }}"
   when:
     - ip_version == "ipv4"
-    - hostvars[inventory_hostname]['ansible_' + (radosgw_interface | replace('-', '_'))]['ipv4'] is not defined
+    - hostvars[inventory_hostname]['ansible_facts'][(radosgw_interface | replace('-', '_'))]['ipv4'] is not defined
 
 - name: "fail if {{ radosgw_interface }} does not have any ip v6 address on {{ inventory_hostname }}"
   fail:
     msg: "{{ radosgw_interface }} does not have any IPv6 address on {{ inventory_hostname }}"
   when:
     - ip_version == "ipv6"
-    - hostvars[inventory_hostname]['ansible_' + (radosgw_interface | replace('-', '_'))]['ipv6'] is not defined
+    - hostvars[inventory_hostname]['ansible_facts'][(radosgw_interface | replace('-', '_'))]['ipv6'] is not defined
