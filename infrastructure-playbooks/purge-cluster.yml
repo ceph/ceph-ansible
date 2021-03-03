@@ -71,7 +71,7 @@
           run_once: true
 
         - name: get all nfs-ganesha mount points
-          command: grep "{{ hostvars[item]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}" /proc/mounts
+          command: grep "{{ hostvars[item]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}" /proc/mounts
           register: nfs_ganesha_mount_points
           failed_when: false
           with_items: "{{ groups[nfs_group_name] }}"
@@ -127,7 +127,7 @@
       name: nfs-ganesha
       state: stopped
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
+    when: ansible_facts['service_mgr'] == 'systemd'
 
 - name: purge node-exporter
   hosts:
@@ -249,7 +249,7 @@
 
   - name: stop ceph mdss with systemd
     service:
-      name: ceph-mds@{{ ansible_hostname }}
+      name: ceph-mds@{{ ansible_facts['hostname'] }}
       state: stopped
       enabled: no
     failed_when: false
@@ -270,11 +270,11 @@
 
   - name: stop ceph mgrs with systemd
     service:
-      name: ceph-mgr@{{ ansible_hostname }}
+      name: ceph-mgr@{{ ansible_facts['hostname'] }}
       state: stopped
       enabled: no
     failed_when: false
-    when: ansible_service_mgr == 'systemd'
+    when: ansible_facts['service_mgr'] == 'systemd'
 
 - name: purge rgwloadbalancer cluster
 
@@ -318,7 +318,7 @@
 
     - name: stop ceph rgws with systemd
       service:
-        name: "ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}"
+        name: "ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
         state: stopped
         enabled: no
       failed_when: false
@@ -340,7 +340,7 @@
 
   - name: stop ceph rbd mirror with systemd
     service:
-      name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
+      name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"
       state: stopped
     failed_when: false
 
@@ -368,7 +368,7 @@
     become: false
     wait_for:
       port: 22
-      host: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+      host: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
       state: started
       delay: 10
       timeout: 500
@@ -398,7 +398,7 @@
       state: stopped
       enabled: no
     with_items: "{{ osd_ids.stdout_lines }}"
-    when: ansible_service_mgr == 'systemd'
+    when: ansible_facts['service_mgr'] == 'systemd'
 
   - name: remove ceph udev rules
     file:
@@ -618,7 +618,7 @@
 
   - name: stop ceph mons with systemd
     service:
-      name: "ceph-{{ item }}@{{ ansible_hostname }}"
+      name: "ceph-{{ item }}@{{ ansible_facts['hostname'] }}"
       state: stopped
       enabled: no
     failed_when: false
@@ -740,27 +740,27 @@
     yum:
       name: "{{ ceph_packages }}"
       state: absent
-    when: ansible_pkg_mgr == 'yum'
+    when: ansible_facts['pkg_mgr'] == 'yum'
 
   - name: purge ceph packages with dnf
     dnf:
       name: "{{ ceph_packages }}"
       state: absent
-    when: ansible_pkg_mgr == 'dnf'
+    when: ansible_facts['pkg_mgr'] == 'dnf'
 
   - name: purge ceph packages with apt
     apt:
       name: "{{ ceph_packages }}"
       state: absent
       purge: true
-    when: ansible_pkg_mgr == 'apt'
+    when: ansible_facts['pkg_mgr'] == 'apt'
 
   - name: purge remaining ceph packages with yum
     yum:
       name: "{{ ceph_remaining_packages }}"
       state: absent
     when:
-      - ansible_pkg_mgr == 'yum'
+      - ansible_facts['pkg_mgr'] == 'yum'
       - purge_all_packages | bool
 
   - name: purge remaining ceph packages with dnf
@@ -768,7 +768,7 @@
       name: "{{ ceph_remaining_packages }}"
       state: absent
     when:
-      - ansible_pkg_mgr == 'dnf'
+      - ansible_facts['pkg_mgr'] == 'dnf'
       - purge_all_packages | bool
 
   - name: purge remaining ceph packages with apt
@@ -776,7 +776,7 @@
       name: "{{ ceph_remaining_packages }}"
       state: absent
     when:
-      - ansible_pkg_mgr == 'apt'
+      - ansible_facts['pkg_mgr'] == 'apt'
       - purge_all_packages | bool
 
   - name: purge extra packages with yum
@@ -784,7 +784,7 @@
       name: "{{ extra_packages }}"
       state: absent
     when:
-      - ansible_pkg_mgr == 'yum'
+      - ansible_facts['pkg_mgr'] == 'yum'
       - purge_all_packages | bool
 
   - name: purge extra packages with dnf
@@ -792,7 +792,7 @@
       name: "{{ extra_packages }}"
       state: absent
     when:
-      - ansible_pkg_mgr == 'dnf'
+      - ansible_facts['pkg_mgr'] == 'dnf'
       - purge_all_packages | bool
 
   - name: purge extra packages with apt
@@ -800,7 +800,7 @@
       name: "{{ extra_packages }}"
       state: absent
     when:
-      - ansible_pkg_mgr == 'apt'
+      - ansible_facts['pkg_mgr'] == 'apt'
       - purge_all_packages | bool
 
   - name: remove config and any ceph socket left
@@ -826,7 +826,7 @@
 
   - name: purge dnf cache
     command: dnf clean all
-    when: ansible_pkg_mgr == 'dnf'
+    when: ansible_facts['pkg_mgr'] == 'dnf'
 
   - name: purge rpm cache in /tmp
     file:
@@ -835,7 +835,7 @@
 
   - name: clean apt
     command: apt-get clean  # noqa 303
-    when: ansible_pkg_mgr == 'apt'
+    when: ansible_facts['pkg_mgr'] == 'apt'
 
   - name: purge ceph repo file in /etc/yum.repos.d
     file:
@@ -845,7 +845,7 @@
       - ceph-dev
       - ceph_stable
       - rh_storage
-    when: ansible_os_family == 'RedHat'
+    when: ansible_facts['os_family'] == 'RedHat'
 
   - name: check for anything running ceph
     command: "ps -u ceph -U ceph"
@@ -866,7 +866,7 @@
       path: "{{ item.path }}"
       state: absent
     with_items: "{{ systemd_files.files }}"
-    when: ansible_service_mgr == 'systemd'
+    when: ansible_facts['service_mgr'] == 'systemd'
 
 
 - name: purge fetch directory

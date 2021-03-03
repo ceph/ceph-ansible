@@ -22,14 +22,14 @@ scrape_configs:
 {% for host in (groups['all'] | difference(groups[monitoring_group_name] | union(groups.get(client_group_name, [])))) %}
       - targets: ['{{ host }}:{{ node_exporter_port }}']
         labels:
-          instance: "{{ hostvars[host]['ansible_nodename'] }}"
+          instance: "{{ hostvars[host]['ansible_facts']['nodename'] }}"
 {% endfor %}
   - job_name: 'grafana'
     static_configs:
 {% for host in groups[monitoring_group_name] %}
       - targets: ['{{ host }}:{{ node_exporter_port }}']
         labels:
-          instance: "{{ hostvars[host]['ansible_nodename'] }}"
+          instance: "{{ hostvars[host]['ansible_facts']['nodename'] }}"
 {% endfor %}
 {% if iscsi_gw_group_name in groups %}
   - job_name: 'iscsi-gws'
@@ -37,7 +37,7 @@ scrape_configs:
 {% for host in groups[iscsi_gw_group_name] %}
       - targets: ['{{ host }}:9287']
         labels:
-          instance: "{{ hostvars[host]['ansible_nodename'] }}"
+          instance: "{{ hostvars[host]['ansible_facts']['nodename'] }}"
 {% endfor %}
 {% endif %}
 alerting:

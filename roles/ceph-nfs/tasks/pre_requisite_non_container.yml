@@ -1,11 +1,11 @@
 ---
 - name: include red hat based system related tasks
   include_tasks: pre_requisite_non_container_red_hat.yml
-  when: ansible_os_family == 'RedHat'
+  when: ansible_facts['os_family'] == 'RedHat'
 
 - name: include debian based system related tasks
   include_tasks: pre_requisite_non_container_debian.yml
-  when: ansible_os_family == 'Debian'
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: install nfs rgw/cephfs gateway - SUSE/openSUSE
   zypper:
@@ -18,7 +18,7 @@
   when:
     - (ceph_origin == 'repository' or ceph_origin == 'distro')
     - ceph_repository != 'rhcs'
-    - ansible_os_family == 'Suse'
+    - ansible_facts['os_family'] == 'Suse'
     - item.install | bool
   register: result
   until: result is succeeded
@@ -35,7 +35,7 @@
   with_items:
     - { name: "/var/lib/ceph/bootstrap-rgw", create: "{{ nfs_obj_gw }}" }
     - { name: "/var/lib/ceph/radosgw", create: "{{ nfs_obj_gw }}" }
-    - { name: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}", create: "{{ nfs_obj_gw }}" }
+    - { name: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}", create: "{{ nfs_obj_gw }}" }
     - { name: "{{ rbd_client_admin_socket_path }}", create: "{{ nfs_obj_gw }}" }
     - { name: "/var/log/ceph", create: true }
     - { name: "/var/log/ganesha", create: true, owner: root, group: root }
@@ -80,14 +80,14 @@
       block:
         - name: create rados gateway keyring
           ceph_key:
-            name: "client.rgw.{{ ansible_hostname }}"
+            name: "client.rgw.{{ ansible_facts['hostname'] }}"
             cluster: "{{ cluster }}"
             user: client.bootstrap-rgw
             user_key: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring"
             caps:
               mon: "allow rw"
               osd: "allow rwx"
-            dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring"
+            dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}/keyring"
             import_key: false
             owner: ceph
             group: ceph
