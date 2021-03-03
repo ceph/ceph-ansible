@@ -15,7 +15,7 @@ ExecStartPre=-/usr/bin/rm -f /%t/%n-pid /%t/%n-cid
 ExecStartPre=-/usr/bin/{{ container_binary }} rm --storage ceph-nfs-%i
 {% endif %}
 ExecStartPre=-/usr/bin/{{ container_binary }} rm ceph-nfs-%i
-ExecStartPre={{ '/bin/mkdir' if ansible_os_family == 'Debian' else '/usr/bin/mkdir' }} -p /etc/ceph /etc/ganesha /var/lib/nfs/ganesha /var/log/ganesha
+ExecStartPre={{ '/bin/mkdir' if ansible_facts['os_family'] == 'Debian' else '/usr/bin/mkdir' }} -p /etc/ceph /etc/ganesha /var/lib/nfs/ganesha /var/log/ganesha
 ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
 {% if container_binary == 'podman' %}
   -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
@@ -36,7 +36,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   -e CEPH_DAEMON=NFS \
   -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
   {{ ceph_nfs_docker_extra_env }} \
-  --name=ceph-nfs-{{ ceph_nfs_service_suffix | default(ansible_hostname) }} \
+  --name=ceph-nfs-{{ ceph_nfs_service_suffix | default(ansible_facts['hostname']) }} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
 {% if container_binary == 'podman' %}
 ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"

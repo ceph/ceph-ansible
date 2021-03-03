@@ -24,7 +24,7 @@
 
 - name: add mgr ip address to trusted list with dashboard - ipv4
   set_fact:
-    trusted_ip_list: '{{ trusted_ip_list }},{{ hostvars[item]["ansible_all_ipv4_addresses"] | ips_in_ranges(public_network.split(",")) | first }}'
+    trusted_ip_list: '{{ trusted_ip_list }},{{ hostvars[item]["ansible_facts"]["all_ipv4_addresses"] | ips_in_ranges(public_network.split(",")) | first }}'
   with_items: '{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}'
   when:
     - dashboard_enabled | bool
@@ -32,7 +32,7 @@
 
 - name: add mgr ip address to trusted list with dashboard - ipv6
   set_fact:
-    trusted_ip_list: '{{ trusted_ip_list }},{{ hostvars[item]["ansible_all_ipv6_addresses"] | ips_in_ranges(public_network.split(",")) | last }}'
+    trusted_ip_list: '{{ trusted_ip_list }},{{ hostvars[item]["ansible_facts"]["all_ipv6_addresses"] | ips_in_ranges(public_network.split(",")) | last }}'
   with_items: '{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}'
   when:
     - dashboard_enabled | bool
@@ -49,7 +49,7 @@
 
 - name: set_fact container_exec_cmd
   set_fact:
-    container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }}"
+    container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when: containerized_deployment | bool
 
@@ -62,5 +62,5 @@
   run_once: true
   delegate_to: "{{ groups[mon_group_name][0] }}"
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"

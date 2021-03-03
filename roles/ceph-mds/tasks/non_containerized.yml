@@ -3,10 +3,10 @@
   apt:
     name: ceph-mds
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default('') if ceph_origin == 'repository' and ceph_repository == 'uca' else '' }}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else '' }}"
+    default_release: "{{ ceph_stable_release_uca | default('') if ceph_origin == 'repository' and ceph_repository == 'uca' else '' }}{{ ansible_facts['distribution_release'] ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports | bool else '' }}"
   when:
     - mds_group_name in group_names
-    - ansible_os_family == 'Debian'
+    - ansible_facts['os_family'] == 'Debian'
   register: result
   until: result is succeeded
 
@@ -18,18 +18,18 @@
   until: result is succeeded
   when:
     - mds_group_name in group_names
-    - ansible_os_family in ['Suse', 'RedHat']
+    - ansible_facts['os_family'] in ['Suse', 'RedHat']
 
 - name: create mds keyring
-  command: ceph --cluster {{ cluster }} --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring auth get-or-create mds.{{ ansible_hostname }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/{{ cluster }}-{{ ansible_hostname }}/keyring
+  command: ceph --cluster {{ cluster }} --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring auth get-or-create mds.{{ ansible_facts['hostname'] }} osd 'allow rwx' mds 'allow' mon 'allow profile mds' -o /var/lib/ceph/mds/{{ cluster }}-{{ ansible_facts['hostname'] }}/keyring
   args:
-    creates: /var/lib/ceph/mds/{{ cluster }}-{{ ansible_hostname }}/keyring
+    creates: /var/lib/ceph/mds/{{ cluster }}-{{ ansible_facts['hostname'] }}/keyring
   changed_when: false
   when: cephx
 
 - name: set mds key permissions
   file:
-    path: /var/lib/ceph/mds/{{ cluster }}-{{ ansible_hostname }}/keyring
+    path: /var/lib/ceph/mds/{{ cluster }}-{{ ansible_facts['hostname'] }}/keyring
     owner: "ceph"
     group: "ceph"
     mode: "0600"
@@ -41,7 +41,7 @@
     path: "/etc/systemd/system/ceph-mds@.service.d/"
   when:
     - ceph_mds_systemd_overrides is defined
-    - ansible_service_mgr == 'systemd'
+    - ansible_facts['service_mgr'] == 'systemd'
 
 - name: add ceph-mds systemd service overrides
   config_template:
@@ -51,11 +51,11 @@
     config_type: "ini"
   when:
     - ceph_mds_systemd_overrides is defined
-    - ansible_service_mgr == 'systemd'
+    - ansible_facts['service_mgr'] == 'systemd'
 
 - name: start and add that the metadata service to the init sequence
   service:
-    name: ceph-mds@{{ ansible_hostname }}
+    name: ceph-mds@{{ ansible_facts['hostname'] }}
     state: started
     enabled: yes
     masked: no

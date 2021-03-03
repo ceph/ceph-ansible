@@ -3,19 +3,19 @@
 RETRIES="{{ handler_health_mon_check_retries }}"
 DELAY="{{ handler_health_mon_check_delay }}"
 MONITOR_NAME="{{ monitor_name }}"
-{% if containerized_deployment %}
-DOCKER_EXEC="{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
+{% if containerized_deployment | bool %}
+DOCKER_EXEC="{{ container_binary }} exec ceph-mon-{{ ansible_facts['hostname'] }}"
 {% endif %}
 
 # if daemon is uninstalled, no restarting is needed; so exit with success
-systemctl status ceph-mon@{{ ansible_hostname }} > /dev/null
+systemctl status ceph-mon@{{ ansible_facts['hostname'] }} > /dev/null
 if [[ $? -ne 0 ]]; then
   exit 0
 fi
 
 # Backward compatibility
-$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-mon.{{ ansible_fqdn }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-mon.{{ ansible_fqdn }}.asok
-$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-mon.{{ ansible_hostname }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-mon.{{ ansible_hostname }}.asok
+$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-mon.{{ ansible_facts['fqdn'] }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-mon.{{ ansible_facts['fqdn'] }}.asok
+$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-mon.{{ ansible_facts['hostname'] }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-mon.{{ ansible_facts['hostname'] }}.asok
 
 check_quorum() {
 while [ $RETRIES -ne 0 ]; do
@@ -34,7 +34,7 @@ exit 1
 }
 
 # First, restart the daemon
-systemctl restart ceph-mon@{{ ansible_hostname }}
+systemctl restart ceph-mon@{{ ansible_facts['hostname'] }}
 
 COUNT=10
 # Wait and ensure the socket exists after restarting the daemon
@@ -45,5 +45,5 @@ while [ $COUNT -ne 0 ]; do
 done
 # If we reach this point, it means the socket is not present.
 echo "Socket file ${SOCKET} could not be found, which means the monitor is not running. Showing ceph-mon unit logs now:"
-journalctl -u ceph-mon@{{ ansible_hostname }}
+journalctl -u ceph-mon@{{ ansible_facts['hostname'] }}
 exit 1

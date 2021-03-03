@@ -35,13 +35,13 @@
     include_vars: "{{ item }}"
     with_first_found:
       - files:
-          - "host_vars/{{ ansible_hostname }}.yml"
+          - "host_vars/{{ ansible_facts['hostname'] }}.yml"
           - "host_vars/default.yml"
         skip: true
 
   - name: exit playbook, if devices not defined
     fail:
-      msg: "devices must be define in host_vars/default.yml or host_vars/{{ ansible_hostname }}.yml"
+      msg: "devices must be define in host_vars/default.yml or host_vars/{{ ansible_facts['hostname'] }}.yml"
     when: devices is not defined
 
   - name: install sgdisk(gdisk)
@@ -67,12 +67,12 @@
   - set_fact:
       owner: 167
       group: 167
-    when: ansible_os_family == "RedHat"
+    when: ansible_facts['os_family'] == "RedHat"
   
   - set_fact:
       owner: 64045
       group: 64045
-    when: ansible_os_family == "Debian"
+    when: ansible_facts['os_family'] == "Debian"
 
   - name: change partitions ownership
     file:

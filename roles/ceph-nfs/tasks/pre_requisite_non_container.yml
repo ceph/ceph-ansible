@@ -1,11 +1,11 @@
 ---
 - name: include red hat based system related tasks
   include_tasks: pre_requisite_non_container_red_hat.yml
-  when: ansible_os_family == 'RedHat'
+  when: ansible_facts['os_family'] == 'RedHat'
 
 - name: include debian based system related tasks
   include_tasks: pre_requisite_non_container_debian.yml
-  when: ansible_os_family == 'Debian'
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: install nfs rgw/cephfs gateway - SUSE/openSUSE
   zypper:
@@ -18,7 +18,7 @@
   when:
     - (ceph_origin == 'repository' or ceph_origin == 'distro')
     - ceph_repository != 'rhcs'
-    - ansible_os_family == 'Suse'
+    - ansible_facts['os_family'] == 'Suse'
     - item.install | bool
   register: result
   until: result is succeeded
@@ -35,7 +35,7 @@
   with_items:
     - { name: "/var/lib/ceph/bootstrap-rgw", create: "{{ nfs_obj_gw }}" }
     - { name: "/var/lib/ceph/radosgw", create: "{{ nfs_obj_gw }}" }
-    - { name: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}", create: "{{ nfs_obj_gw }}" }
+    - { name: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}", create: "{{ nfs_obj_gw }}" }
     - { name: "{{ rbd_client_admin_socket_path }}", create: "{{ nfs_obj_gw }}" }
     - { name: "/var/log/ceph", create: true }
     - { name: "/var/log/ganesha", create: true, owner: root, group: root }
@@ -75,14 +75,14 @@
       when: nfs_obj_gw | bool
       block:
         - name: create rados gateway keyring
-          command: ceph --cluster {{ cluster }} --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring auth get-or-create client.rgw.{{ ansible_hostname }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
+          command: ceph --cluster {{ cluster }} --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring auth get-or-create client.rgw.{{ ansible_facts['hostname'] }} osd 'allow rwx' mon 'allow rw' -o /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}/keyring
           args:
-            creates: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
+            creates: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}/keyring
           changed_when: false
 
         - name: set rados gateway key permissions
           file:
-            path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_hostname }}/keyring
+            path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}/keyring
             owner: "ceph"
             group: "ceph"
             mode: "0600"

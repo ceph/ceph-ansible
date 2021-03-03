@@ -11,37 +11,37 @@
 
 - name: fail on unsupported system
   fail:
-    msg: "System not supported {{ ansible_system }}"
-  when: ansible_system not in ['Linux']
+    msg: "System not supported {{ ansible_facts['system'] }}"
+  when: ansible_facts['system'] not in ['Linux']
 
 - name: fail on unsupported architecture
   fail:
-    msg: "Architecture not supported {{ ansible_architecture }}"
-  when: ansible_architecture not in ['x86_64', 'ppc64le', 'armv7l', 'aarch64']
+    msg: "Architecture not supported {{ ansible_facts['architecture'] }}"
+  when: ansible_facts['architecture'] not in ['x86_64', 'ppc64le', 'armv7l', 'aarch64']
 
 - name: fail on unsupported distribution
   fail:
-    msg: "Distribution not supported {{ ansible_os_family }}"
-  when: ansible_os_family not in ['Debian', 'RedHat', 'ClearLinux', 'Suse']
+    msg: "Distribution not supported {{ ansible_facts['os_family'] }}"
+  when: ansible_facts['os_family'] not in ['Debian', 'RedHat', 'ClearLinux', 'Suse']
 
 - name: fail on unsupported CentOS release
   fail:
-    msg: "CentOS release not supported {{ ansible_distribution_major_version }} with dashboard"
+    msg: "CentOS release not supported {{ ansible_facts['distribution_major_version'] }} with dashboard"
   when:
-    - ansible_distribution == 'CentOS'
-    - ansible_distribution_major_version | int == 7
+    - ansible_facts['distribution'] == 'CentOS'
+    - ansible_facts['distribution_major_version'] | int == 7
     - not containerized_deployment | bool
     - dashboard_enabled | bool
 
 - name: red hat based systems tasks
   when:
     - ceph_repository == 'rhcs'
-    - ansible_distribution == 'RedHat'
+    - ansible_facts['distribution'] == 'RedHat'
   block:
     - name: fail on unsupported distribution for red hat ceph storage
       fail:
-        msg: "Distribution not supported {{ ansible_distribution_version }} by Red Hat Ceph Storage, only RHEL >= 8.2"
-      when: ansible_distribution_version is version('8.2', '<')
+        msg: "Distribution not supported {{ ansible_facts['distribution_version'] }} by Red Hat Ceph Storage, only RHEL >= 8.2"
+      when: ansible_facts['distribution_version'] is version('8.2', '<')
 
     - name: subscription manager related tasks
       when: ceph_repository_type == 'cdn'
@@ -60,19 +60,19 @@
 
 - name: fail on unsupported distribution for ubuntu cloud archive
   fail:
-    msg: "Distribution not supported by Ubuntu Cloud Archive: {{ ansible_distribution }}"
+    msg: "Distribution not supported by Ubuntu Cloud Archive: {{ ansible_facts['distribution'] }}"
   when:
     - ceph_repository == 'uca'
-    - ansible_distribution != 'Ubuntu'
+    - ansible_facts['distribution'] != 'Ubuntu'
 
 - name: "fail on unsupported SUSE/openSUSE distribution (only 15.x supported)"
   fail:
-    msg: "Distribution not supported: {{ ansible_distribution }} {{ ansible_distribution_major_version }}"
+    msg: "Distribution not supported: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_major_version'] }}"
   when:
-    - ansible_distribution == 'openSUSE Leap' or ansible_distribution == 'SUSE'
-    - ansible_distribution_major_version != '15'
+    - ansible_facts['distribution'] == 'openSUSE Leap' or ansible_facts['distribution'] == 'SUSE'
+    - ansible_facts['distribution_major_version'] != '15'
 
 - name: fail if systemd is not present
   fail:
     msg: "Systemd must be present"
-  when: ansible_service_mgr != 'systemd'
+  when: ansible_facts['service_mgr'] != 'systemd'

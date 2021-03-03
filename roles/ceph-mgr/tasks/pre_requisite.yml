@@ -1,10 +1,10 @@
 ---
 - name: set_fact ceph_mgr_packages for sso
   set_fact:
-    ceph_mgr_packages: "{{ ceph_mgr_packages | union(['python3-saml' if ansible_distribution_major_version | int == 8 else 'python-saml']) }}"
+    ceph_mgr_packages: "{{ ceph_mgr_packages | union(['python3-saml' if ansible_facts['distribution_major_version'] | int == 8 else 'python-saml']) }}"
   when:
     - dashboard_enabled | bool
-    - ansible_distribution == 'RedHat'
+    - ansible_facts['distribution'] == 'RedHat'
 
 - name: set_fact ceph_mgr_packages for dashboard
   set_fact:
@@ -15,8 +15,8 @@
   set_fact:
     ceph_mgr_packages: "{{ ceph_mgr_packages | union(['ceph-mgr-diskprediction-local']) }}"
   when:
-    - ansible_os_family != 'RedHat'
-    - ansible_distribution_major_version | int != 7
+    - ansible_facts['os_family'] != 'RedHat'
+    - ansible_facts['distribution_major_version'] | int != 7
 
 - name: install ceph-mgr packages on RedHat or SUSE
   package:
@@ -24,13 +24,13 @@
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
   register: result
   until: result is succeeded
-  when: ansible_os_family in ['RedHat', 'Suse']
+  when: ansible_facts['os_family'] in ['RedHat', 'Suse']
 
 - name: install ceph-mgr packages for debian
   apt:
     name: '{{ ceph_mgr_packages }}'
     state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
-    default_release: "{{ ceph_stable_release_uca | default('') if ceph_origin == 'repository' and ceph_repository == 'uca' else ''}}{{ ansible_distribution_release ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports else '' }}"
+    default_release: "{{ ceph_stable_release_uca | default('') if ceph_origin == 'repository' and ceph_repository == 'uca' else ''}}{{ ansible_facts['distribution_release'] ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports | bool else '' }}"
   register: result
   until: result is succeeded
-  when: ansible_os_family == 'Debian'
+  when: ansible_facts['os_family'] == 'Debian'
