@@ -1,7 +1,7 @@
 ---
 - name: set_fact _radosgw_address to radosgw_address_block ipv4
   set_fact:
-    _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_all_ipv4_addresses'] | ips_in_ranges(hostvars[inventory_hostname]['radosgw_address_block'].split(',')) | first }}"
+    _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(hostvars[inventory_hostname]['radosgw_address_block'].split(',')) | first }}"
   when:
     - radosgw_address_block is defined
     - radosgw_address_block != 'subnet'
@@ -9,7 +9,7 @@
 
 - name: set_fact _radosgw_address to radosgw_address_block ipv6
   set_fact:
-    _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_all_ipv6_addresses'] | ips_in_ranges(hostvars[inventory_hostname]['radosgw_address_block'].split(',')) | last | ipwrap }}"
+    _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(hostvars[inventory_hostname]['radosgw_address_block'].split(',')) | last | ipwrap }}"
   when:
     - radosgw_address_block is defined
     - radosgw_address_block != 'subnet'
@@ -30,16 +30,16 @@
   block:
     - name: set_fact _interface
       set_fact:
-        _interface: "{{ 'ansible_' + (radosgw_interface | replace('-', '_')) }}"
+        _interface: "{{ (radosgw_interface | replace('-', '_')) }}"
 
     - name: set_fact _radosgw_address to radosgw_interface - ipv4
       set_fact:
-        _radosgw_address: "{{ hostvars[inventory_hostname][_interface][ip_version]['address'] }}"
+        _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts'][_interface][ip_version]['address'] }}"
       when: ip_version == 'ipv4'
 
     - name: set_fact _radosgw_address to radosgw_interface - ipv6
       set_fact:
-        _radosgw_address: "{{ hostvars[inventory_hostname][_interface][ip_version][0]['address'] | ipwrap }}"
+        _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts'][_interface][ip_version][0]['address'] | ipwrap }}"
       when: ip_version == 'ipv6'
 
 - name: set_fact rgw_instances without rgw multisite

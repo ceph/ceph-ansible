@@ -1,16 +1,16 @@
 ---
 - name: get current mgr backend - ipv4
   set_fact:
-    mgr_server_addr: "{{ hostvars[dashboard_backend]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}"
+    mgr_server_addr: "{{ hostvars[dashboard_backend]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}"
   when: ip_version == 'ipv4'
 
 - name: get current mgr backend - ipv6
   set_fact:
-    mgr_server_addr: "{{ hostvars[dashboard_backend]['ansible_all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last }}"
+    mgr_server_addr: "{{ hostvars[dashboard_backend]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last }}"
   when: ip_version == 'ipv6'
 
 - name: config the current dashboard backend
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/{{ hostvars[dashboard_backend]['ansible_hostname'] }}/server_addr {{ mgr_server_addr }}"
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/{{ hostvars[dashboard_backend]['ansible_facts']['hostname'] }}/server_addr {{ mgr_server_addr }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
   run_once: true

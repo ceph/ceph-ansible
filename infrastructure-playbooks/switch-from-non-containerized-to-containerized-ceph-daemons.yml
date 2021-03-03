@@ -74,7 +74,7 @@
 
     - name: stop non-containerized ceph mon
       service:
-        name: "ceph-mon@{{ ansible_hostname }}"
+        name: "ceph-mon@{{ ansible_facts['hostname'] }}"
         state: stopped
         enabled: no
 
@@ -114,7 +114,7 @@
       when: ldb_files.rc == 0
 
     - name: copy mon initial keyring in /etc/ceph to satisfy fetch config task in ceph-container-common
-      command: cp /var/lib/ceph/mon/{{ cluster }}-{{ ansible_hostname }}/keyring /etc/ceph/{{ cluster }}.mon.keyring
+      command: cp /var/lib/ceph/mon/{{ cluster }}-{{ ansible_facts['hostname'] }}/keyring /etc/ceph/{{ cluster }}.mon.keyring
       args:
         creates: /etc/ceph/{{ cluster }}.mon.keyring
       changed_when: false
@@ -137,7 +137,7 @@
     - name: waiting for the monitor to join the quorum...
       command: "{{ container_binary }} run --rm  -v /etc/ceph:/etc/ceph:z --entrypoint=ceph {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} --cluster {{ cluster }} quorum_status --format json"
       register: ceph_health_raw
-      until: ansible_hostname in (ceph_health_raw.stdout | trim | from_json)["quorum_names"]
+      until: ansible_facts['hostname'] in (ceph_health_raw.stdout | trim | from_json)["quorum_names"]
       changed_when: false
       retries: "{{ health_mon_check_retries }}"
       delay: "{{ health_mon_check_delay }}"
@@ -158,7 +158,7 @@
     # will not exist
     - name: stop non-containerized ceph mgr(s)
       service:
-        name: "ceph-mgr@{{ ansible_hostname }}"
+        name: "ceph-mgr@{{ ansible_facts['hostname'] }}"
         state: stopped
         enabled: no
       failed_when: false
@@ -339,7 +339,7 @@
   post_tasks:
     - name: container - waiting for clean pgs...
       command: >
-        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} pg stat --format json
+        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] }} ceph --cluster {{ cluster }} pg stat --format json
       register: ceph_health_post
       until: >
         (((ceph_health_post.stdout | from_json).pg_summary.num_pg_by_state | length) > 0)
@@ -387,7 +387,7 @@
 
     - name: stop non-containerized ceph mds(s)
       service:
-        name: "ceph-mds@{{ ansible_hostname }}"
+        name: "ceph-mds@{{ ansible_facts['hostname'] }}"
         state: stopped
         enabled: no
 
@@ -459,7 +459,7 @@
   tasks:
     - name: stop non-containerized ceph rgw(s)
       service:
-        name: "ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}"
+        name: "ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
         state: stopped
         enabled: no
       with_items: "{{ rgw_instances }}"
@@ -500,7 +500,7 @@
   pre_tasks:
     - name: stop non-containerized ceph rbd mirror(s)
       service:
-        name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
+        name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"
         state: stopped
         enabled: no
 

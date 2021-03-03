@@ -1,6 +1,6 @@
 ---
 - name: red hat based systems tasks
-  when: ansible_os_family == 'RedHat'
+  when: ansible_facts['os_family'] == 'RedHat'
   block:
     - name: set_fact common pkgs and repos
       set_fact:
@@ -31,7 +31,7 @@
       block:
         - name: ceph-iscsi dependency repositories
           get_url:
-            url: 'https://shaman.ceph.com/api/repos/{{ item }}/master/latest/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo'
+            url: "https://shaman.ceph.com/api/repos/{{ item }}/master/latest/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_major_version'] }}/repo"
             dest: '/etc/yum.repos.d/{{ item }}-dev.repo'
             force: true
           register: result
@@ -40,7 +40,7 @@
 
         - name: ceph-iscsi development repository
           get_url:
-            url: 'https://shaman.ceph.com/api/repos/{{ item }}/master/latest/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo'
+            url: "https://shaman.ceph.com/api/repos/{{ item }}/master/latest/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_major_version'] }}/repo"
             dest: '/etc/yum.repos.d/{{ item }}-dev.repo'
             force: true
           register: result
@@ -50,7 +50,7 @@
 
         - name: ceph-iscsi stable repository
           get_url:
-            url: 'https://download.ceph.com/ceph-iscsi/{{ "3" if use_new_ceph_iscsi | bool else "2" }}/rpm/el{{ ansible_distribution_major_version }}/ceph-iscsi.repo'
+            url: "https://download.ceph.com/ceph-iscsi/{{ '3' if use_new_ceph_iscsi | bool else '2' }}/rpm/el{{ ansible_facts['distribution_major_version'] }}/ceph-iscsi.repo"
             dest: /etc/yum.repos.d/ceph-iscsi.repo
             force: true
           register: result
