@@ -65,7 +65,7 @@
   post_tasks:
     - name: set_fact container_exec_cmd build docker exec command (containerized)
       set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_facts['hostname'] }}"
       when: containerized_deployment | bool
 
     - name: set_fact container_run_cmd
@@ -97,7 +97,7 @@
       with_nested:
         - "{{ groups.get(osd_group_name) }}"
         - "{{ osd_hosts }}"
-      when: hostvars[item.0]['ansible_hostname'] == item.1
+      when: hostvars[item.0]['ansible_facts']['hostname'] == item.1
 
     - name: get ceph-volume lvm list data
       command: "{{ container_run_cmd }} lvm list --format json"

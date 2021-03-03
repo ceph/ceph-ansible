@@ -55,7 +55,7 @@
           run_once: true
 
         - name: get all nfs-ganesha mount points
-          command: grep "{{ hostvars[item]['ansible_all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}" /proc/mounts
+          command: grep "{{ hostvars[item]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}" /proc/mounts
           register: nfs_ganesha_mount_points
           failed_when: false
           with_items: "{{ groups[nfs_group_name] }}"
@@ -104,7 +104,7 @@
 
   - name: disable ceph nfs service
     service:
-      name: "ceph-nfs@{{ ansible_hostname }}"
+      name: "ceph-nfs@{{ ansible_facts['hostname'] }}"
       state: stopped
       enabled: no
     ignore_errors: true
@@ -114,7 +114,7 @@
       path: /etc/systemd/system/ceph-nfs@.service
       state: absent
 
-  - name: remove ceph nfs directories for "{{ ansible_hostname }}"
+  - name: remove ceph nfs directories for "{{ ansible_facts['hostname'] }}"
     file:
       path: "{{ item }}"
       state: absent
@@ -134,7 +134,7 @@
 
   - name: disable ceph mds service
     service:
-      name: "ceph-mds@{{ ansible_hostname }}"
+      name: "ceph-mds@{{ ansible_facts['hostname'] }}"
       state: stopped
       enabled: no
     ignore_errors: true
@@ -181,7 +181,7 @@
 
   - name: disable ceph mgr service
     service:
-      name: "ceph-mgr@{{ ansible_hostname }}"
+      name: "ceph-mgr@{{ ansible_facts['hostname'] }}"
       state: stopped
       enabled: no
     ignore_errors: true
@@ -208,7 +208,7 @@
 
     - name: disable ceph rgw service
       service:
-        name: "ceph-radosgw@rgw.{{ ansible_hostname }}.{{ item.instance_name }}"
+        name: "ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
         state: stopped
         enabled: no
       failed_when: false
@@ -230,7 +230,7 @@
 
   - name: disable ceph rbd-mirror service
     service:
-      name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_hostname }}"
+      name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"
       state: stopped
       enabled: no
     ignore_errors: true
@@ -351,8 +351,8 @@
       enabled: no
     ignore_errors: true
     with_items:
-      - "ceph-mgr@{{ ansible_hostname }}"
-      - "ceph-mon@{{ ansible_hostname }}"
+      - "ceph-mgr@{{ ansible_facts['hostname'] }}"
+      - "ceph-mon@{{ ansible_facts['hostname'] }}"
 
   - name: remove ceph mon and mgr service
     file:
@@ -485,7 +485,7 @@
   tasks:
     - name: stop ceph-crash container
       service:
-        name: "ceph-crash@{{ ansible_hostname }}"
+        name: "ceph-crash@{{ ansible_facts['hostname'] }}"
         state: stopped
         enabled: no
       failed_when: false
@@ -600,7 +600,7 @@
         state: absent
         update_cache: yes
         autoremove: yes
-      when: ansible_os_family == 'Debian'
+      when: ansible_facts['os_family'] == 'Debian'
 
     - name: red hat based systems tasks
       block:
@@ -621,7 +621,7 @@
               args:
                 warn: no
           when:
-            ansible_pkg_mgr == "yum"
+            ansible_facts['pkg_mgr'] == "yum"
 
         - name: dnf related tasks on red hat
           block:
@@ -640,9 +640,9 @@
               args:
                 warn: no
           when:
-            ansible_pkg_mgr == "dnf"
+            ansible_facts['pkg_mgr'] == "dnf"
       when:
-        ansible_os_family == 'RedHat' and
+        ansible_facts['os_family'] == 'RedHat' and
         not is_atomic
 
     - name: find any service-cid file left
@@ -682,7 +682,7 @@
   become: true
 
   tasks:
-  - name: purge ceph directories for "{{ ansible_hostname }}" and ceph socket
+  - name: purge ceph directories for "{{ ansible_facts['hostname'] }}" and ceph socket
     file:
       path: "{{ item }}"
       state: absent

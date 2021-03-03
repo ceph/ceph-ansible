@@ -24,8 +24,8 @@ osd crush chooseleaf type = 0
 
 {% if nb_mon > 0 and inventory_hostname in groups.get(mon_group_name, []) %}
 mon initial members = {% for host in groups[mon_group_name] %}
-      {% if hostvars[host]['ansible_hostname'] is defined -%}
-        {{ hostvars[host]['ansible_hostname'] }}
+      {% if hostvars[host]['ansible_facts']['hostname'] is defined -%}
+        {{ hostvars[host]['ansible_facts']['hostname'] }}
       {%- endif %}
       {%- if not loop.last %},{% endif %}
     {% endfor %}
@@ -90,13 +90,13 @@ filestore xattr use omap = true
 [osd]
 {% if is_hci | bool and _num_osds > 0 %}
 {# hci_safety_factor is the safety factor for HCI deployments #}
-{% if ansible_memtotal_mb * 1048576 * hci_safety_factor / _num_osds > osd_memory_target %}
-{% set _osd_memory_target = (ansible_memtotal_mb * 1048576 * hci_safety_factor / _num_osds) | int %}
+{% if ansible_facts['memtotal_mb'] * 1048576 * hci_safety_factor / _num_osds > osd_memory_target %}
+{% set _osd_memory_target = (ansible_facts['memtotal_mb'] * 1048576 * hci_safety_factor / _num_osds) | int %}
 {% endif %}
 {% elif _num_osds > 0 %}
 {# non_hci_safety_factor is the safety factor for dedicated nodes #}
-{% if ansible_memtotal_mb * 1048576 * non_hci_safety_factor / _num_osds > osd_memory_target %}
-{% set _osd_memory_target = (ansible_memtotal_mb * 1048576 * non_hci_safety_factor / _num_osds) | int %}
+{% if ansible_facts['memtotal_mb'] * 1048576 * non_hci_safety_factor / _num_osds > osd_memory_target %}
+{% set _osd_memory_target = (ansible_facts['memtotal_mb'] * 1048576 * non_hci_safety_factor / _num_osds) | int %}
 {% endif %}
 {% endif %}
 osd memory target = {{ _osd_memory_target | default(osd_memory_target) }}
@@ -104,14 +104,14 @@ osd memory target = {{ _osd_memory_target | default(osd_memory_target) }}
 {% endif %}
 
 {% if inventory_hostname in groups.get(rgw_group_name, []) %}
-{% set _rgw_hostname = hostvars[inventory_hostname]['rgw_hostname'] | default(hostvars[inventory_hostname]['ansible_hostname']) %}
+{% set _rgw_hostname = hostvars[inventory_hostname]['rgw_hostname'] | default(hostvars[inventory_hostname]['ansible_facts']['hostname']) %}
 {# {{ hostvars[host]['rgw_hostname'] }} for backward compatibility, fqdn issues. See bz1580408 #}
 {% if hostvars[inventory_hostname]['rgw_instances'] is defined %}
 {% for instance in hostvars[inventory_hostname]['rgw_instances'] %}
 [client.rgw.{{ _rgw_hostname + '.' + instance['instance_name'] }}]
 host = {{ _rgw_hostname }}
 keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname + '.' + instance['instance_name'] }}/keyring
-log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[inventory_hostname]['ansible_hostname'] + '.' + instance['instance_name'] }}.log
+log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[inventory_hostname]['ansible_facts']['hostname'] + '.' + instance['instance_name'] }}.log
 {% set _rgw_binding_socket = instance['radosgw_address'] | default(_radosgw_address) | string + ':' + instance['radosgw_frontend_port'] | default(radosgw_frontend_port) | string %}
 {%- macro frontend_line(frontend_type) -%}
 {%- if frontend_type == 'civetweb' -%}
@@ -137,12 +137,12 @@ rgw_zone = {{ instance['rgw_zone'] }}
 
 {% if inventory_hostname in groups.get(nfs_group_name, []) and inventory_hostname not in groups.get(rgw_group_name, []) %}
 {% for host in groups[nfs_group_name] %}
-{% set _rgw_hostname = hostvars[host]['rgw_hostname'] | default(hostvars[host]['ansible_hostname']) %}
-{% if nfs_obj_gw %}
+{% set _rgw_hostname = hostvars[host]['rgw_hostname'] | default(hostvars[host]['ansible_facts']['hostname']) %}
+{% if nfs_obj_gw | bool %}
 [client.rgw.{{ _rgw_hostname }}]
 host = {{ _rgw_hostname }}
 keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname }}/keyring
-log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
+log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_facts']['hostname'] }}.log
 {% endif %}
 {% endfor %}
 {% endif %}

@@ -66,7 +66,7 @@
 
     - name: set_fact container_exec_cmd for mon0
       set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_facts['hostname'] }}"
       when: containerized_deployment | bool
 
     - name: exit playbook, if can not connect to the cluster
@@ -95,7 +95,7 @@
       set_fact:
         rgw_host: '{{ item }}'
       with_items: '{{ groups[rgw_group_name] }}'
-      when: hostvars[item]['ansible_hostname'] == rgw_to_kill.split('.')[0]
+      when: hostvars[item]['ansible_facts']['hostname'] == rgw_to_kill.split('.')[0]
 
     - name: stop rgw service
       service:

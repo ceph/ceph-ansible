@@ -1,7 +1,7 @@
 ---
 - name: create mgr directory
   file:
-    path: /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}
+    path: /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_facts['hostname'] }}
     state: directory
     owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
@@ -9,7 +9,7 @@
 
 - name: fetch ceph mgr keyring
   ceph_key:
-    name: "mgr.{{ ansible_hostname }}"
+    name: "mgr.{{ ansible_facts['hostname'] }}"
     caps:
       mon: allow profile mgr
       osd: allow *
@@ -19,7 +19,7 @@
     owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     mode: "0400"
-    dest: "/var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring"
+    dest: "/var/lib/ceph/mgr/{{ cluster }}-{{ ansible_facts['hostname'] }}/keyring"
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
@@ -30,7 +30,7 @@
   block:
     - name: create ceph mgr keyring(s) on a mon node
       ceph_key:
-        name: "mgr.{{ hostvars[item]['ansible_hostname'] }}"
+        name: "mgr.{{ hostvars[item]['ansible_facts']['hostname'] }}"
         caps:
           mon: allow profile mgr
           osd: allow *
@@ -51,7 +51,7 @@
       set_fact:
         _mgr_keys:
           - { 'name': 'client.admin', 'path': "/etc/ceph/{{ cluster }}.client.admin.keyring", 'copy_key': copy_admin_key }
-          - { 'name': "mgr.{{ ansible_hostname }}", 'path': "/var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring", 'copy_key': true }
+          - { 'name': "mgr.{{ ansible_facts['hostname'] }}", 'path': "/var/lib/ceph/mgr/{{ cluster }}-{{ ansible_facts['hostname'] }}/keyring", 'copy_key': true }
 
     - name: get keys from monitors
       command: "{{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} auth get {{ item.name }}"
@@ -77,7 +77,7 @@
 
 - name: set mgr key permissions
   file:
-    path: /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_hostname }}/keyring
+    path: /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_facts['hostname'] }}/keyring
     owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
     mode: "{{ ceph_keyring_permissions }}"

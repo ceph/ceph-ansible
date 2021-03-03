@@ -64,7 +64,7 @@
     - name: set_fact container_exec_cmd for mon0
       when: containerized_deployment | bool
       set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_hostname }}"
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_facts['hostname'] }}"
 
     - name: exit playbook, if can not connect to the cluster
       command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} service dump -f json"
@@ -76,7 +76,7 @@
 
     - name: set_fact rbdmirror_to_kill_hostname
       set_fact:
-        rbdmirror_to_kill_hostname: "{{ hostvars[rbdmirror_to_kill]['ansible_hostname'] }}"
+        rbdmirror_to_kill_hostname: "{{ hostvars[rbdmirror_to_kill]['ansible_facts']['hostname'] }}"
 
     - name: set_fact rbdmirror_gids
       set_fact:

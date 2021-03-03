@@ -2,7 +2,7 @@
 - name: debian based systems tasks
   when:
     - osd_objectstore == 'filestore'
-    - ansible_os_family == "Debian"
+    - ansible_facts['os_family'] == "Debian"
   block:
     - name: disable osd directory parsing by updatedb
       command: updatedb -e /var/lib/ceph
@@ -45,7 +45,7 @@
 
 - name: set_fact vm_min_free_kbytes
   set_fact:
-    vm_min_free_kbytes: "{{ 4194303 if ansible_memtotal_mb >= 49152 else default_vm_min_free_kbytes.stdout }}"
+    vm_min_free_kbytes: "{{ 4194303 if ansible_facts['memtotal_mb'] >= 49152 else default_vm_min_free_kbytes.stdout }}"
 
 - name: apply operating system tuning
   sysctl:
