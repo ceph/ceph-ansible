@@ -90,7 +90,7 @@ Similar to the initial example, this would end up producing 2 OSDs, but data
 would be placed on the slower spinning drives (``/dev/sda``, and ``/dev/sdb``)
 and journals would be placed on the faster solid state device ``/dev/nvme0n1``.
 The ``ceph-volume`` tool describes this in detail in
-`the "batch" subcommand section <http://docs.ceph.com/docs/master/ceph-volume/lvm/batch/>`_
+`the "batch" subcommand section <https://docs.ceph.com/en/latest/ceph-volume/lvm/batch/>`_
 
 This option can also be used with ``osd_auto_discovery``, meaning that you do not need to populate
 ``devices`` directly and any appropriate devices found by ansible will be used instead.
