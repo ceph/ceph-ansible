@@ -68,7 +68,7 @@ Releases
 ========
 
 The following branches should be used depending on your requirements. The ``stable-*``
-branches have been QE tested and sometimes recieve backport fixes throughout their lifecycle.
+branches have been QE tested and sometimes receive backport fixes throughout their lifecycle.
 The ``master`` branch should be considered experimental and used with caution.
 
 - ``stable-3.0`` Supports Ceph versions ``jewel`` and ``luminous``. This branch requires Ansible version ``2.4``.
@@ -196,7 +196,7 @@ Configuration
 The configuration for your Ceph cluster will be set by the use of ansible variables that ``ceph-ansible`` provides. All of these options and their default
 values are defined in the ``group_vars/`` directory at the root of the ``ceph-ansible`` project. Ansible will use configuration in a ``group_vars/`` directory
 that is relative to your inventory file or your playbook. Inside of the ``group_vars/`` directory there are many sample Ansible configuration files that relate
-to each of the Ceph daemon groups by their filename. For example, the ``osds.yml.sample`` contains all the default configuation for the OSD daemons. The ``all.yml.sample``
+to each of the Ceph daemon groups by their filename. For example, the ``osds.yml.sample`` contains all the default configuration for the OSD daemons. The ``all.yml.sample``
 file is a special ``group_vars`` file that applies to all hosts in your cluster.
 
 .. note::
