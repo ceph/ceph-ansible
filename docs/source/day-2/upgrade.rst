@@ -3,7 +3,7 @@ Upgrading the ceph cluster
 
 ceph-ansible provides a playbook in ``infrastructure-playbooks`` for upgrading a Ceph cluster: ``rolling_update.yml``.
 
-This playbook could be used for both minor upgrade (X.Y to X.Z) or major upgrade (X to Y).
+This playbook could be used for both minor upgrades (X.Y to X.Z) or major upgrades (X to Y).
 
 Before running a major upgrade you need to update the ceph-ansible version first.
 
