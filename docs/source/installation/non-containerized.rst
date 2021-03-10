@@ -1,5 +1,5 @@
-Non containerized deployement
-=============================
+Non containerized deployment
+============================
 
 The following are all of the available options for the installing Ceph through different channels.
 
@@ -54,7 +54,7 @@ Custom repository
 ~~~~~~~~~~~~~~~~~
 
 If ``ceph_repository`` is set to ``custom``, packages you will be by default installed from a desired repository.
-This repository is specifie with ``ceph_custom_repo``, e.g: ``ceph_custom_repo: https://server.domain.com/ceph-custom-repo``.
+This repository is specified with ``ceph_custom_repo``, e.g: ``ceph_custom_repo: https://server.domain.com/ceph-custom-repo``.
 
 
 Origin: Distro
