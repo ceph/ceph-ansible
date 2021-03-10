@@ -17,7 +17,7 @@ At present (starting from stable-4.0), there is only one scenario, which default
 
 So there is no need to configure ``osd_scenario`` anymore, it defaults to ``lvm``.
 
-The ``lvm`` scenario mentionned above support both containerized and non-containerized cluster.
+The ``lvm`` scenario mentioned above support both containerized and non-containerized cluster.
 As a reminder, deploying a containerized cluster can be done by setting ``containerized_deployment``
 to ``True``.
 
