@@ -19,6 +19,16 @@
     discovered_interpreter_python: "{{ ansible_python_interpreter }}"
   when: ansible_python_interpreter is defined
 
+# If ansible_python_interpreter is not defined, this can result in the
+# discovered_interpreter_python fact from being set. This fails later in this
+# playbook and is used elsewhere.
+- name: set_fact discovered_interpreter_python if not previously set
+  set_fact:
+    discovered_interpreter_python: "{{ ansible_facts['discovered_interpreter_python'] }}"
+  when:
+    - discovered_interpreter_python is not defined
+    - ansible_facts['discovered_interpreter_python'] is defined
+
 # Set ceph_release to ceph_stable by default
 - name: set_fact ceph_release ceph_stable_release
   set_fact:
