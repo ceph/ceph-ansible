@@ -47,6 +47,18 @@
     mode: "0644"
   notify: restart ceph nfss
 
+- name: generate ganesha idmap.conf file
+  action: config_template
+  args:
+    src: "idmap.conf.j2"
+    dest: "{{ ceph_nfs_idmap_conf }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    config_overrides: "{{ idmap_conf_overrides }}"
+    config_type: ini
+  notify: restart ceph nfss
+
 - name: create exports directory
   file:
     path: /etc/ganesha/export.d
