@@ -36,6 +36,16 @@
            invoking the playbook"
       when: ireallymeanit != 'yes'
 
+    - name: import_role ceph-defaults
+      import_role:
+        name: ceph-defaults
+
+    - name: check if a legacy grafana-server group exists
+      import_role:
+        name: ceph-facts
+        tasks_from: convert_grafana_server_group_name.yml
+      when: groups.get((grafana_server_group_name | default('grafana-server')), []) | length > 0
+
 
 - name: gather facts and check the init system
 
