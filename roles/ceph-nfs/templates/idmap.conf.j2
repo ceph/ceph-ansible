@@ -1,0 +1,137 @@
+[General]
+#Verbosity = 0
+# The following should be set to the local NFSv4 domain name
+# The default is the host's DNS domain name.
+#Domain = local.domain.edu
+
+# In multi-domain environments, some NFS servers will append the identity
+# management domain to the owner and owner_group in lieu of a true NFSv4
+# domain.  This option can facilitate lookups in such environments.  If
+# set to a value other than "none", the nsswitch  plugin will first pass
+# the name to the password/group lookup function without stripping the
+# domain off.  If that mapping fails then the plugin will try again using
+# the old method (comparing the domain in the string to the Domain value,
+# stripping it if it matches, and passing the resulting short name to the
+# lookup function).  Valid values are "user", "group", "both", and
+# "none".  The default is "none".
+#No-Strip = none
+
+# Winbind has a quirk whereby doing a group lookup in UPN format
+# (e.g. staff@americas.example.com) will cause the group to be
+# displayed prefixed with the full domain in uppercase
+# (e.g. AMERICAS.EXAMPLE.COM\staff) instead of in the familiar netbios
+# name format (e.g. AMERICAS\staff).  Setting this option to true
+# causes the name to be reformatted before passing it to the group
+# lookup function in order to work around this.  This setting is
+# ignored unless No-Strip is set to either "both" or "group".
+# The default is "false".
+#Reformat-Group = false
+
+# The following is a comma-separated list of Kerberos realm
+# names that should be considered to be equivalent to the
+# local realm, such that <user>@REALM.A can be assumed to
+# be the same user as <user>@REALM.B
+# If not specified, the default local realm is the domain name,
+# which defaults to the host's DNS domain name,
+# translated to upper-case.
+# Note that if this value is specified, the local realm name
+# must be included in the list!
+#Local-Realms = 
+
+[Mapping]
+
+#Nobody-User = nobody
+#Nobody-Group = nobody
+
+[Translation]
+
+# Translation Method is an comma-separated, ordered list of
+# translation methods that can be used.  Distributed methods
+# include "nsswitch", "umich_ldap", and "static".  Each method
+# is a dynamically loadable plugin library.
+# New methods may be defined and inserted in the list.
+# The default is "nsswitch".
+#Method = nsswitch
+
+# Optional.  This is a comma-separated, ordered list of
+# translation methods to be used for translating GSS
+# authenticated names to ids.
+# If this option is omitted, the same methods as those
+# specified in "Method" are used.
+#GSS-Methods = <alternate method list for translating GSS names>
+
+#-------------------------------------------------------------------#
+# The following are used only for the "static" Translation Method.
+#-------------------------------------------------------------------#
+[Static]
+
+# A "static" list of GSS-Authenticated names to
+# local user name mappings
+
+#someuser@REALM = localuser
+
+
+#-------------------------------------------------------------------#
+# The following are used only for the "umich_ldap" Translation Method.
+#-------------------------------------------------------------------#
+
+[UMICH_SCHEMA]
+
+# server information (REQUIRED)
+LDAP_server = ldap-server.local.domain.edu
+
+# the default search base (REQUIRED)
+LDAP_base = dc=local,dc=domain,dc=edu
+
+#-----------------------------------------------------------#
+# The remaining options have defaults (as shown)
+# and are therefore not required.
+#-----------------------------------------------------------#
+
+# whether or not to perform canonicalization on the
+# name given as LDAP_server
+#LDAP_canonicalize_name = true
+
+# absolute search base for (people) accounts
+#LDAP_people_base = <LDAP_base>
+
+# absolute search base for groups
+#LDAP_group_base = <LDAP_base>
+
+# Set to true to enable SSL - anything else is not enabled
+#LDAP_use_ssl = false
+
+# You must specify a CA certificate location if you enable SSL
+#LDAP_ca_cert = /etc/ldapca.cert
+
+# Objectclass mapping information
+
+# Mapping for the person (account) object class
+#NFSv4_person_objectclass = NFSv4RemotePerson
+
+# Mapping for the nfsv4name attribute the person object
+#NFSv4_name_attr = NFSv4Name
+
+# Mapping for the UID number
+#NFSv4_uid_attr = UIDNumber
+
+# Mapping for the GSSAPI Principal name
+#GSS_principal_attr = GSSAuthName
+
+# Mapping for the account name attribute (usually uid)
+# The value for this attribute must match the value of 
+# the group member attribute - NFSv4_member_attr
+#NFSv4_acctname_attr = uid
+
+# Mapping for the group object class
+#NFSv4_group_objectclass = NFSv4RemoteGroup
+
+# Mapping for the GID attribute
+#NFSv4_gid_attr = GIDNumber
+
+# Mapping for the Group NFSv4 name
+#NFSv4_group_attr = NFSv4Name
+
+# Mapping for the Group member attribute (usually memberUID)
+# The value of this attribute must match the value of NFSv4_acctname_attr
+#NFSv4_member_attr = memberUID
