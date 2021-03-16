@@ -49,6 +49,19 @@
 
     - import_role:
         name: ceph-defaults
+
+    # dummy container setup is only supported on x86_64
+    # when running with containerized_deployment: true this task
+    # creates a group that contains only x86_64 hosts.
+    # when running with containerized_deployment: false this task
+    # will add all client hosts to the group (and not filter).
+    - name: create filtered clients group
+      add_host:
+        name: "{{ item }}"
+        groups: _filtered_clients
+      with_items: "{{ groups.get(client_group_name, []) | intersect(ansible_play_batch) }}"
+      when: (hostvars[item]['ansible_architecture'] == 'x86_64') or (not containerized_deployment | bool)
+
       tags: [with_pkg, fetch_container_image]
     - import_role:
         name: ceph-facts
@@ -61,11 +74,11 @@
     - import_role:
         name: ceph-container-engine
       tags: with_pkg
-      when: (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
+      when: (group_names != ['clients'] and group_names != ['clients', '_filtered_clients'] and group_names != ['_filtered_clients', 'clients']) or (inventory_hostname == groups.get('_filtered_clients', [''])|first)
     - import_role:
         name: ceph-container-common
       tags: fetch_container_image
-      when: (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
+      when: (group_names != ['clients'] and group_names != ['clients', '_filtered_clients'] and group_names != ['_filtered_clients', 'clients']) or (inventory_hostname == groups.get('_filtered_clients', [''])|first)
 
 - hosts: mons
   gather_facts: false
