@@ -262,8 +262,8 @@
 
 - name: backward compatibility tasks related
   when:
-    - inventory_hostname in groups.get(rgw_group_name, [])
-      or inventory_hostname in groups.get(nfs_group_name, [])
+    - (inventory_hostname in groups.get(rgw_group_name, []) or inventory_hostname in groups.get(nfs_group_name, []))
+    - groups.get(mon_group_name, []) | length > 0
   block:
     - name: get ceph current status
       command: "{{ timeout_command }} {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
