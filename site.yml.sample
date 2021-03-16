@@ -54,6 +54,19 @@
   tasks:
     - import_role:
         name: ceph-defaults
+
+    # dummy container setup is only supported on x86_64
+    # when running with containerized_deployment: true this task
+    # creates a group that contains only x86_64 hosts.
+    # when running with containerized_deployment: false this task
+    # will add all client hosts to the group (and not filter).
+    - name: create filtered clients group
+      add_host:
+        name: "{{ item }}"
+        groups: _filtered_clients
+      with_items: "{{ groups.get(client_group_name, []) | intersect(ansible_play_batch) }}"
+      when: (hostvars[item]['ansible_facts']['architecture'] == 'x86_64') or (not containerized_deployment | bool)
+
     - import_role:
         name: ceph-facts
     - import_role:
