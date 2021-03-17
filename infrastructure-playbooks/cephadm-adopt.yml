@@ -193,6 +193,13 @@
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
+    - name: get a minimal ceph configuration
+      command: "{{ ceph_cmd }} config generate-minimal-conf"
+      register: minimal_config
+      run_once: true
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
     - name: set_fact fsid
       set_fact:
         fsid: "{{ current_fsid.stdout }}"
@@ -880,6 +887,20 @@
     - import_role:
         name: ceph-defaults
 
+    - name: check whether a ceph config file is present
+      stat:
+        path: "/etc/ceph/{{ cluster }}.conf"
+      register: ceph_config
+
+    - name: write a ceph.conf with minimal config
+      copy:
+        dest: "/etc/ceph/{{ cluster }}.conf"
+        content: "{{ minimal_config.stdout }}"
+        owner: "{{ ceph_uid | int if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid | int if containerized_deployment | bool else 'ceph' }}"
+        mode: "{{ ceph_keyring_permissions }}"
+      when: not ceph_config.stat.exists | bool
+
     - name: with dashboard enabled
       when: dashboard_enabled | bool
       block:
@@ -1054,6 +1075,7 @@
           delegate_to: '{{ groups[mon_group_name][0] }}'
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
 
 - name: adjust placement daemons
   hosts: "{{ mon_group_name|default('mons') }}[0]"
