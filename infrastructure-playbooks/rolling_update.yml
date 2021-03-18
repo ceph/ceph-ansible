@@ -128,144 +128,161 @@
   serial: 1
   become: True
   tasks:
-    - name: remove ceph aliases
-      file:
-        path: /etc/profile.d/ceph-aliases.sh
-        state: absent
-      when: containerized_deployment | bool
+    - name: upgrade ceph mon cluster
+      block:
+        - name: remove ceph aliases
+          file:
+            path: /etc/profile.d/ceph-aliases.sh
+            state: absent
+          when: containerized_deployment | bool
 
-    - name: set mon_host_count
-      set_fact:
-        mon_host_count: "{{ groups[mon_group_name] | length }}"
+        - name: set mon_host_count
+          set_fact:
+            mon_host_count: "{{ groups[mon_group_name] | length }}"
 
-    - name: fail when less than three monitors
-      fail:
-        msg: "Upgrade of cluster with less than three monitors is not supported."
-      when: mon_host_count | int < 3
+        - name: fail when less than three monitors
+          fail:
+            msg: "Upgrade of cluster with less than three monitors is not supported."
+          when: mon_host_count | int < 3
 
-    - name: select a running monitor
-      set_fact:
-        mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last }}"
+        - name: select a running monitor
+          set_fact:
+            mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last }}"
 
-    - import_role:
-        name: ceph-defaults
-    - import_role:
-        name: ceph-facts
-
-    - block:
-        - name: get ceph cluster status
-          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} health -f json"
-          register: check_cluster_health
-          delegate_to: "{{ mon_host }}"
+        - import_role:
+            name: ceph-defaults
+        - import_role:
+            name: ceph-facts
 
         - block:
-            - name: display ceph health detail
-              command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} health detail"
+            - name: get ceph cluster status
+              command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} health -f json"
+              register: check_cluster_health
               delegate_to: "{{ mon_host }}"
 
-            - name: fail if cluster isn't in an acceptable state
-              fail:
-                msg: "cluster is not in an acceptable state!"
-          when: (check_cluster_health.stdout | from_json).status == 'HEALTH_ERR'
-      when: inventory_hostname == groups[mon_group_name] | first
+            - block:
+                - name: display ceph health detail
+                  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} health detail"
+                  delegate_to: "{{ mon_host }}"
 
-    - name: ensure /var/lib/ceph/bootstrap-rbd-mirror is present
-      file:
-        path: /var/lib/ceph/bootstrap-rbd-mirror
-        owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
-        group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
-        mode: '755'
-        state: directory
-      delegate_to: "{{ item }}"
-      with_items: "{{ groups[mon_group_name] }}"
-      when:
-        - cephx | bool
-        - inventory_hostname == groups[mon_group_name][0]
+                - name: fail if cluster isn't in an acceptable state
+                  fail:
+                    msg: "cluster is not in an acceptable state!"
+              when: (check_cluster_health.stdout | from_json).status == 'HEALTH_ERR'
+          when: inventory_hostname == groups[mon_group_name] | first
 
-    - name: create potentially missing keys (rbd and rbd-mirror)
-      ceph_key:
-        name: "client.{{ item.0 }}"
-        dest: "/var/lib/ceph/{{ item.0 }}/"
-        caps:
-          mon: "allow profile {{ item.0 }}"
-        cluster: "{{ cluster }}"
-      delegate_to: "{{ item.1 }}"
-      with_nested:
-        - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
-        - "{{ groups[mon_group_name] }}" # so the key goes on all the nodes
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      when:
-        - cephx | bool
-        - inventory_hostname == groups[mon_group_name][0]
+        - name: ensure /var/lib/ceph/bootstrap-rbd-mirror is present
+          file:
+            path: /var/lib/ceph/bootstrap-rbd-mirror
+            owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+            group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+            mode: '755'
+            state: directory
+          delegate_to: "{{ item }}"
+          with_items: "{{ groups[mon_group_name] }}"
+          when:
+            - cephx | bool
+            - inventory_hostname == groups[mon_group_name][0]
 
-    # NOTE: we mask the service so the RPM can't restart it
-    # after the package gets upgraded
-    - name: stop ceph mon
-      systemd:
-        name: ceph-mon@{{ item }}
-        state: stopped
-        enabled: no
-        masked: yes
-      with_items:
-        - "{{ ansible_facts['hostname'] }}"
-        - "{{ ansible_facts['fqdn'] }}"
+        - name: create potentially missing keys (rbd and rbd-mirror)
+          ceph_key:
+            name: "client.{{ item.0 }}"
+            dest: "/var/lib/ceph/{{ item.0 }}/"
+            caps:
+              mon: "allow profile {{ item.0 }}"
+            cluster: "{{ cluster }}"
+          delegate_to: "{{ item.1 }}"
+          with_nested:
+            - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
+            - "{{ groups[mon_group_name] }}" # so the key goes on all the nodes
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+          when:
+            - cephx | bool
+            - inventory_hostname == groups[mon_group_name][0]
 
-    # only mask the service for mgr because it must be upgraded
-    # after ALL monitors, even when collocated
-    - name: mask the mgr service
-      systemd:
-        name: ceph-mgr@{{ ansible_facts['hostname'] }}
-        masked: yes
-      when: inventory_hostname in groups[mgr_group_name] | default([])
-            or groups[mgr_group_name] | default([]) | length == 0
+        # NOTE: we mask the service so the RPM can't restart it
+        # after the package gets upgraded
+        - name: stop ceph mon
+          systemd:
+            name: ceph-mon@{{ item }}
+            state: stopped
+            enabled: no
+            masked: yes
+          with_items:
+            - "{{ ansible_facts['hostname'] }}"
+            - "{{ ansible_facts['fqdn'] }}"
 
-    - import_role:
-        name: ceph-handler
-    - import_role:
-        name: ceph-common
-      when: not containerized_deployment | bool
-    - import_role:
-        name: ceph-container-common
-      when: containerized_deployment | bool
-    - import_role:
-        name: ceph-config
-    - import_role:
-        name: ceph-mon
+        # only mask the service for mgr because it must be upgraded
+        # after ALL monitors, even when collocated
+        - name: mask the mgr service
+          systemd:
+            name: ceph-mgr@{{ ansible_facts['hostname'] }}
+            masked: yes
+          when: inventory_hostname in groups[mgr_group_name] | default([])
+                or groups[mgr_group_name] | default([]) | length == 0
 
-    - name: start ceph mgr
-      systemd:
-        name: ceph-mgr@{{ ansible_facts['hostname'] }}
-        state: started
-        enabled: yes
-        masked: no
-      when: inventory_hostname in groups[mgr_group_name] | default([])
-            or groups[mgr_group_name] | default([]) | length == 0
+        - import_role:
+            name: ceph-handler
+        - import_role:
+            name: ceph-common
+          when: not containerized_deployment | bool
+        - import_role:
+            name: ceph-container-common
+          when: containerized_deployment | bool
+        - import_role:
+            name: ceph-config
+        - import_role:
+            name: ceph-mon
 
-    - name: non container | waiting for the monitor to join the quorum...
-      command: ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" quorum_status --format json
-      register: ceph_health_raw
-      until:
-        - ceph_health_raw.rc == 0
-        - (hostvars[inventory_hostname]['ansible_facts']['hostname'] in (ceph_health_raw.stdout | default('{}') |  from_json)["quorum_names"] or
-          hostvars[inventory_hostname]['ansible_facts']['fqdn'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"])
-      retries: "{{ health_mon_check_retries }}"
-      delay: "{{ health_mon_check_delay }}"
-      when: not containerized_deployment | bool
+        - name: start ceph mgr
+          systemd:
+            name: ceph-mgr@{{ ansible_facts['hostname'] }}
+            state: started
+            enabled: yes
+            masked: no
+          when: inventory_hostname in groups[mgr_group_name] | default([])
+                or groups[mgr_group_name] | default([]) | length == 0
 
-    - name: container | waiting for the containerized monitor to join the quorum...
-      command: >
-        {{ container_binary }} exec ceph-mon-{{ ansible_facts['hostname'] }} ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" quorum_status --format json
-      register: ceph_health_raw
-      until:
-        - ceph_health_raw.rc == 0
-        - (hostvars[inventory_hostname]['ansible_facts']['hostname'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"] or
-          hostvars[inventory_hostname]['ansible_facts']['fqdn'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"])
-      retries: "{{ health_mon_check_retries }}"
-      delay: "{{ health_mon_check_delay }}"
-      when: containerized_deployment | bool
+        - name: non container | waiting for the monitor to join the quorum...
+          command: ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" quorum_status --format json
+          register: ceph_health_raw
+          until:
+            - ceph_health_raw.rc == 0
+            - (hostvars[inventory_hostname]['ansible_facts']['hostname'] in (ceph_health_raw.stdout | default('{}') |  from_json)["quorum_names"] or
+              hostvars[inventory_hostname]['ansible_facts']['fqdn'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"])
+          retries: "{{ health_mon_check_retries }}"
+          delay: "{{ health_mon_check_delay }}"
+          when: not containerized_deployment | bool
 
+        - name: container | waiting for the containerized monitor to join the quorum...
+          command: >
+            {{ container_binary }} exec ceph-mon-{{ ansible_facts['hostname'] }} ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" quorum_status --format json
+          register: ceph_health_raw
+          until:
+            - ceph_health_raw.rc == 0
+            - (hostvars[inventory_hostname]['ansible_facts']['hostname'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"] or
+              hostvars[inventory_hostname]['ansible_facts']['fqdn'] in (ceph_health_raw.stdout | default('{}') | from_json)["quorum_names"])
+          retries: "{{ health_mon_check_retries }}"
+          delay: "{{ health_mon_check_delay }}"
+          when: containerized_deployment | bool
+      rescue:
+        - name: unmask the mon service
+          systemd:
+            name: ceph-mon@{{ item }}
+            enabled: yes
+            masked: no
+          with_items:
+            - "{{ ansible_facts['hostname'] }}"
+            - "{{ ansible_facts['fqdn'] }}"
+
+        - name: unmask the mgr service
+          systemd:
+            name: ceph-mgr@{{ ansible_facts['hostname'] }}
+            masked: no
+          when: inventory_hostname in groups[mgr_group_name] | default([])
+                or groups[mgr_group_name] | default([]) | length == 0
 
 - name: reset mon_host
   hosts: "{{ mon_group_name|default('mons') }}"
