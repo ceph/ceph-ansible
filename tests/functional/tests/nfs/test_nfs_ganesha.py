@@ -38,8 +38,8 @@ class TestNFSs(object):
             cluster=cluster
         )
         output = host.check_output(cmd)
-        keys = [i for i in json.loads(
-            output)["servicemap"]["services"]["rgw-nfs"]["daemons"].keys()]
+        keys = list(json.loads(
+            output)["servicemap"]["services"]["rgw-nfs"]["daemons"].keys())
         keys.remove('summary')
         daemons = json.loads(output)["servicemap"]["services"]["rgw-nfs"]["daemons"]
         hostnames = []
