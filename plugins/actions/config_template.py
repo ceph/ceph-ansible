@@ -179,8 +179,8 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
                 _write_comments(section_name, optname=key)
                 self._write_check(fp, key=key, value=value,
                                   section=section_bool)
-            else:
-                fp.write("\n")
+
+            fp.write("\n")
 
         def _write_comments(section, optname=None):
             comsect = self._comments.get(section, {})
@@ -453,8 +453,8 @@ class ActionModule(ActionBase):
                             'data. Sections are case sensitive.'
                         )
                         raise errors.AnsibleModuleError(error_msg)
-        else:
-            config_object.close()
+
+        config_object.close()
 
         config_dict_new = {}
         config_defaults = config.defaults()
@@ -665,7 +665,7 @@ class ActionModule(ActionBase):
         return True, dict(
             source=source,
             dest=user_dest,
-            config_overrides=self._task.args.get('config_overrides', dict()),
+            config_overrides=self._task.args.get('config_overrides', {}),
             config_type=config_type,
             searchpath=searchpath,
             list_extend=list_extend,

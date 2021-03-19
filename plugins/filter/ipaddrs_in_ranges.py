@@ -14,7 +14,7 @@ class FilterModule(object):
     ''' IP addresses within IP ranges '''
 
     def ips_in_ranges(self, ip_addresses, ip_ranges):
-        ips_in_ranges = list()
+        ips_in_ranges = []
         for ip_addr in ip_addresses:
             for ip_range in ip_ranges:
                 if netaddr.IPAddress(ip_addr) in netaddr.IPNetwork(ip_range):
