@@ -446,11 +446,12 @@ def is_lv(module, vg, lv, container_image):
 
     rc, cmd, out, err = exec_command(module, cmd)
 
-    result = json.loads(out)['report'][0]['lv']
-    if rc == 0 and len(result) > 0:
-        return True
-    else:
-        return False
+    if rc == 0:
+        result = json.loads(out)['report'][0]['lv']
+        if len(result) > 0:
+            return True
+
+    return False
 
 
 def zap_devices(module, container_image):
