@@ -2,13 +2,11 @@
 - name: red hat based systems tasks
   when: ansible_facts['os_family'] == 'RedHat'
   block:
-    - name: set_fact common pkgs and repos
+    - name: set_fact common_pkgs
       set_fact:
         common_pkgs:
           - tcmu-runner
           - targetcli
-        common_repos:
-          - tcmu-runner
 
     - name: set_fact base iscsi pkgs if new style ceph-iscsi
       set_fact:
@@ -29,24 +27,52 @@
         - ceph_repository in ['dev', 'community']
         - ceph_iscsi_config_dev | bool
       block:
-        - name: ceph-iscsi dependency repositories
-          get_url:
-            url: "https://shaman.ceph.com/api/repos/{{ item }}/master/latest/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_major_version'] }}/repo"
-            dest: '/etc/yum.repos.d/{{ item }}-dev.repo'
-            force: true
-          register: result
-          until: result is succeeded
-          with_items: "{{ common_repos }}"
+        - name: get latest available build for tcmu-runner
+          uri:
+            url: "https://shaman.ceph.com/api/search/?status=ready&project=tcmu-runner&flavor=default&distros=centos/{{ ansible_facts['distribution_major_version'] }}/{{ ansible_facts['architecture'] }}&ref={{ ceph_dev_branch }}&sha1={{ ceph_dev_sha1 }}"
+            return_content: yes
+          run_once: true
+          register: latest_build_tcmu_runner
 
-        - name: ceph-iscsi development repository
-          get_url:
-            url: "https://shaman.ceph.com/api/repos/{{ item }}/master/latest/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_major_version'] }}/repo"
-            dest: '/etc/yum.repos.d/{{ item }}-dev.repo'
-            force: true
-          register: result
-          until: result is succeeded
-          with_items: '{{ iscsi_base }}'
-          when: ceph_repository == 'dev'
+        - name: fetch ceph red hat development repository for tcmu-runner
+          uri:
+            # Use the centos repo since we don't currently have a dedicated red hat repo
+            url: "{{ (latest_build_tcmu_runner.content | from_json)[0]['chacra_url'] }}repo"
+            return_content: yes
+          register: ceph_dev_yum_repo_tcmu_runner
+
+        - name: configure ceph red hat development repository for tcmu-runner
+          copy:
+            content: "{{ ceph_dev_yum_repo_tcmu_runner.content }}"
+            dest: '/etc/yum.repos.d/tcmu-runner-dev.repo'
+            owner: root
+            group: root
+            backup: yes
+
+        - name: get latest available build for ceph-iscsi
+          uri:
+            url: "https://shaman.ceph.com/api/search/?status=ready&project={{ item }}&flavor=default&distros=centos/{{ ansible_facts['distribution_major_version'] }}/noarch&ref={{ ceph_dev_branch }}&sha1={{ ceph_dev_sha1 }}"
+            return_content: yes
+          run_once: true
+          register: latest_build_ceph_iscsi
+          with_items: "{{ iscsi_base }}"
+
+        - name: fetch ceph red hat development repository for ceph-iscsi
+          uri:
+            # Use the centos repo since we don't currently have a dedicated red hat repo
+            url: "{{ (item.content | from_json)[0]['chacra_url'] }}repo"
+            return_content: yes
+          register: ceph_dev_yum_repo_ceph_iscsi
+          with_items: "{{ latest_build_ceph_iscsi.results }}"
+
+        - name: configure ceph red hat development repository for tcmu-runner
+          copy:
+            content: "{{ item.content }}"
+            dest: '/etc/yum.repos.d/{{ item.item.item }}-dev.repo'
+            owner: root
+            group: root
+            backup: yes
+          with_items: '{{ ceph_dev_yum_repo_ceph_iscsi.results }}'
 
         - name: ceph-iscsi stable repository
           get_url:
