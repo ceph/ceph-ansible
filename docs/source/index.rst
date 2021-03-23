@@ -233,7 +233,7 @@ The following sections in ``ceph.conf`` are supported:
 * ``[mds]``
 * ``[client.rgw.{instance_name}]``
 
-An example:
+A few examples:
 
 .. code-block:: yaml
 
@@ -243,6 +243,26 @@ An example:
         bar: 5678
       osd:
         osd_mkfs_type: ext4
+
+.. code-block:: yaml
+
+   ceph_conf_overrides:
+      global:
+         mon_max_pg_per_osd: 300
+      "client.rgw.rgw0":
+         rgw_md_log_max_shards: 1
+         rgw_data_log_num_shards: 1
+
+When deploying rgw multi-instances, you must provide the full name:
+
+.. code-block:: yaml
+
+   ceph_conf_overrides:
+      global:
+         mon_max_pg_per_osd: 300
+      "client.rgw.rgw0.rgw123":
+         rgw_md_log_max_shards: 1
+         rgw_data_log_num_shards: 1
 
 .. note::
 
