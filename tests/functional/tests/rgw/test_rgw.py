@@ -36,14 +36,14 @@ class TestRGWs(object):
             cluster=cluster
         )
         output = host.check_output(cmd)
-        daemons = [i for i in json.loads(
-            output)["servicemap"]["services"]["rgw"]["daemons"]]
-        for i in range(int(node["radosgw_num_instances"])):
-            instance_name = "{hostname}.rgw{seq}".format(
-                hostname=hostname,
-                seq=i
-            )
-            assert instance_name in daemons
+        keys = [i for i in json.loads(
+            output)["servicemap"]["services"]["rgw"]["daemons"].keys()]
+        keys.remove('summary')
+        daemons = json.loads(output)["servicemap"]["services"]["rgw"]["daemons"]
+        hostnames = []
+        for key in keys:
+            hostnames.append(daemons[key]['metadata']['hostname'])
+
 
     @pytest.mark.no_docker
     def test_rgw_http_endpoint(self, node, host, setup):
