@@ -44,7 +44,6 @@ class TestRGWs(object):
         for key in keys:
             hostnames.append(daemons[key]['metadata']['hostname'])
 
-
     @pytest.mark.no_docker
     def test_rgw_http_endpoint(self, node, host, setup):
         # rgw frontends ip_addr is configured on public_interface
