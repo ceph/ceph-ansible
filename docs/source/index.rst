@@ -145,22 +145,6 @@ be run early in the deployment as to ensure you've given ``ceph-ansible`` the co
 proper config settings for your cluster, not that the values in them will produce a healthy cluster. For example, if you give an incorrect address for
 ``monitor_address`` then the mon will still fail to join the cluster.
 
-An example of a validation failure might look like:
-
-.. code-block:: console
-
-   TASK [ceph-validate : validate provided configuration] *************************
-   task path: /Users/andrewschoen/dev/ceph-ansible/roles/ceph-validate/tasks/main.yml:3
-   Wednesday 02 May 2018  13:48:16 -0500 (0:00:06.984)       0:00:18.803 *********
-    [ERROR]: [mon0] Validation failed for variable: osd_objectstore
-
-    [ERROR]: [mon0] Given value for osd_objectstore: foo
-
-    [ERROR]: [mon0] Reason: osd_objectstore must be either 'bluestore' or 'filestore'
-
-    fatal: [mon0]: FAILED! => {
-        "changed": false
-        }
 
 Supported Validation
 ^^^^^^^^^^^^^^^^^^^^
