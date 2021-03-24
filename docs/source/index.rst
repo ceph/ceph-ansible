@@ -247,6 +247,17 @@ When deploying RGW instance(s) you are required to set the ``radosgw_interface``
 
 ``radosgw_address`` must be set the same way than ``monitor_address``.
 
+Detailed scenarios examples
+---------------------------
+
+You can find more detailed scenarios in link below.
+
+.. toctree::
+   :maxdepth: 1
+
+   scenarios/index
+
+
 ``ceph.conf`` Configuration File
 ---------------------------------
 
