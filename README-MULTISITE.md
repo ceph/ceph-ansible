@@ -1,7 +1,7 @@
 # RGW Multisite
 
 This document contains directions for configuring the RGW Multisite in ceph-ansible.
-Multisite replication can be configured either over multiple Ceph clusters or in a single Ceph cluster to isolate RGWs from eachother.
+Multisite replication can be configured either over multiple Ceph clusters or in a single Ceph cluster to isolate RGWs from each other.
 
 The first two sections are refreshers on working with ansible inventory and RGW Multisite.
 The next 4 sections are instructions on deploying the following multisite scenarios:
@@ -17,7 +17,7 @@ If you are familiar with basic ansible terminology, working with inventory files
 
 ### The Inventory File
 
-Ceph-ansible starts up all the different daemons in a Ceph cluster.
+ceph-ansible starts up all the different daemons in a Ceph cluster.
 Each daemon (osd.0, mon.1, rgw.a) is given a line in the inventory file. Each line is called a **host** in ansible.
 Each type of daemon (osd, mon, rgw, mgr, etc.) is given a **group** with its respective daemons in the ansible inventory file.
 
@@ -88,9 +88,9 @@ Rados gateways (RGWs) in multisite replication are grouped into zones.
 A group of 1 or more RGWs can be grouped into a **zone**.\
 A group of 1 or more zones can be grouped into a **zonegroup**.\
 A group of 1 or more zonegroups can be grouped into a **realm**.\
-A Ceph **cluster** in multisite has 1 or more rgws that use the same backend OSDs.\
+A Ceph **cluster** in multisite has 1 or more rgws that use the same backend OSDs.
 
-There can be mutliple clusters in one realm, multiple realms in a single cluster, or multiple realms over multiple clusters.
+There can be multiple clusters in one realm, multiple realms in a single cluster, or multiple realms over multiple clusters.
 
 ### RGW Realms
 
@@ -119,7 +119,7 @@ A secondary zone pulls a realm in order to sync data to it.
 Finally, The variable `rgw_zone` is set to "default" to enable compression for clusters configured without rgw multi-site.
 If multisite is configured `rgw_zone` should not be set to "default".
 
-For more defail information on multisite please visit: <https://docs.ceph.com/docs/master/radosgw/multisite/>.
+For more detail information on multisite please visit: <https://docs.ceph.com/docs/master/radosgw/multisite/>.
 
 ## Deployment Scenario #1: Single Realm & Zonegroup with Multiple Ceph Clusters
 
