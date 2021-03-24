@@ -215,8 +215,37 @@ selection or other aspects of your cluster.
 - ``public_network``
 - ``monitor_interface`` or ``monitor_address``
 
+.. note::
+
+   ``monitor_address`` must be defined at the ``hots_vars`` or ``inventory`` level only with the IP address that will be used by the corresponding monitor.
+
+setting at the inventory level should looks like following:
+
+.. code-block:: ini
+
+   [mons]
+   mon0 monitor_address=10.10.10.101
+   mon1 monitor_address=10.10.10.102
+   mon2 monitor_address=10.10.10.103
+
+setting at the host_vars level should looks like following:
+
+.. code-block:: shell
+
+   $ pwd
+   /usr/share/ceph-ansible
+   $ ls host_vars/
+   mon0 mon1 mon2
+   $ cat host_vars/mon0
+   monitor_address: 10.10.10.101
+   $ cat host_vars/mon1
+   monitor_address: 10.10.10.102
+   $ cat host_vars/mon2
+   monitor_address: 10.10.10.103
 
 When deploying RGW instance(s) you are required to set the ``radosgw_interface`` or ``radosgw_address`` config option.
+
+``radosgw_address`` must be set the same way than ``monitor_address``.
 
 ``ceph.conf`` Configuration File
 ---------------------------------
