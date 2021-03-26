@@ -7,3 +7,4 @@ Examples of detailed scenarios
     :maxdepth: 1
  
     basic_cluster
+    igw_network
