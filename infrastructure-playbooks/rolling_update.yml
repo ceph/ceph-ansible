@@ -871,6 +871,18 @@
         tasks_from: container_binary.yml
     - import_role:
         name: ceph-handler
+
+    - import_role:
+        name: ceph-crash
+        tasks_from: systemd.yml
+
+    - name: stop the ceph-crash service
+      systemd:
+        name: "{{ 'ceph-crash@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-crash.service' }}"
+        state: stopped
+        enabled: no
+        masked: yes
+
     - import_role:
         name: ceph-crash
 
