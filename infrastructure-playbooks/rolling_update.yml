@@ -270,12 +270,9 @@
       rescue:
         - name: unmask the mon service
           systemd:
-            name: ceph-mon@{{ item }}
+            name: ceph-mon@{{ ansible_facts['hostname'] }}
             enabled: yes
             masked: no
-          with_items:
-            - "{{ ansible_facts['hostname'] }}"
-            - "{{ ansible_facts['fqdn'] }}"
 
         - name: unmask the mgr service
           systemd:
@@ -283,6 +280,10 @@
             masked: no
           when: inventory_hostname in groups[mgr_group_name] | default([])
                 or groups[mgr_group_name] | default([]) | length == 0
+
+        - name: stop the playbook execution
+          fail:
+            msg: "There was an error during monitor upgrade. Please, check the previous task results."
 
 - name: reset mon_host
   hosts: "{{ mon_group_name|default('mons') }}"
