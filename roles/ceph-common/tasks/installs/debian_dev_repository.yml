@@ -1,14 +1,7 @@
 ---
-- name: get latest available build
-  uri:
-    url: "https://shaman.ceph.com/api/search/?status=ready&project=ceph&flavor=default&distros={{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_release'] }}/{{ ansible_facts['architecture'] }}&ref={{ ceph_dev_branch }}&sha1={{ ceph_dev_sha1 }}"
-    return_content: yes
-  run_once: true
-  register: latest_build
-
 - name: fetch ceph debian development repository
   uri:
-    url: "{{ (latest_build.content | from_json)[0]['chacra_url'] }}repo"
+    url: "https://shaman.ceph.com/api/repos/ceph/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_release'] }}/repo?arch={{ ansible_facts['architecture'] }}"
     return_content: yes
   register: ceph_dev_deb_repo
 
