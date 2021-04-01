@@ -33,3 +33,18 @@
     mode: "0644"
   notify:
     - restart keepalived
+
+- name: selinux related tasks
+  when: ansible_facts['os_family'] == 'RedHat'
+  block:
+    - name: set_fact rgw_ports
+      set_fact:
+        rgw_ports: "{{ rgw_ports | default([]) + [hostvars[item]['rgw_instances']['radosgw_frontend_port']] | unique }}"
+      with_items: "{{ groups.get(rgw_group_name, []) }}"
+
+    - name: add selinux rules
+      seport:
+        ports: "{{ rgw_ports }}"
+        proto: tcp
+        setype: http_port_t
+        state: present
