@@ -19,12 +19,28 @@
   import_tasks: create_rgw_nfs_user.yml
   when: groups.get(mon_group_name, []) | length > 0
 
+- name: install nfs-ganesha-selinux on RHEL 8
+  package:
+    name: nfs-ganesha-selinux
+    state: present
+  register: result
+  until: result is succeeded
+  when:
+    - not containerized_deployment | bool
+    - inventory_hostname in groups.get(nfs_group_name, [])
+    - ansible_facts['os_family'] == 'RedHat'
+    - ansible_facts['distribution_major_version'] == '8'
+
 # NOTE (leseb): workaround for issues with ganesha and librgw
-- name: include ganesha_selinux_fix.yml
-  import_tasks: ganesha_selinux_fix.yml
+- name: add ganesha_t to permissive domain
+  selinux_permissive:
+    name: ganesha_t
+    permissive: true
+  failed_when: false
   when:
     - not containerized_deployment | bool
     - ansible_facts['os_family'] == 'RedHat'
+    - ansible_facts['selinux']['status'] == 'enabled'
 
 - name: nfs with external ceph cluster task related
   when:
