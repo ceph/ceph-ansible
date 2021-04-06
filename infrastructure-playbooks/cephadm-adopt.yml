@@ -670,7 +670,7 @@
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: update the placement of radosgw hosts
-      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rgw {{ rgw_realm | default('default') }} {{ rgw_zone | default('default') }} --placement='{{ groups.get(rgw_group_name, []) | length }} label:{{ rgw_group_name }}' --port={{ radosgw_frontend_port }} {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rgw {{ rgw_realm | default('default') }} {{ rgw_zone | default('default') }} --placement='count-per-host:{{ radosgw_num_instances }} label:{{ rgw_group_name }}' --port={{ radosgw_frontend_port }} {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}"
       run_once: true
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
