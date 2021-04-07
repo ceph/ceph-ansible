@@ -589,6 +589,58 @@
     - import_role:
         name: ceph-nfs
 
+- name: switching from non-containerized to containerized iscsigws
+  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  vars:
+    containerized_deployment: true
+    iscsi_gw_group_name: iscsigws
+  become: true
+  serial: 1
+  pre_tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: stop iscsigw services
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      with_items:
+        - tcmu-runner
+        - rbd-target-gw
+        - rbd-target-api
+
+    - name: remove old systemd unit files
+      file:
+        path: "/usr/lib/systemd/system/{{ item }}.service"
+        state: absent
+      with_items:
+        - tcmu-runner
+        - rbd-target-gw
+        - rbd-target-api
+  tasks:
+    - import_role:
+        name: ceph-facts
+
+    - import_role:
+        name: ceph-handler
+
+    # NOTE: changed from file module to raw find command for performance reasons
+    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
+    # as in this case we know we want all owned by ceph user
+    - name: set proper ownership on ceph directories
+      command: "find /etc/ceph -not -( -user {{ ceph_uid }} -or -group {{ ceph_uid }} -) -execdir chown -h {{ ceph_uid }}:{{ ceph_uid }} {} +"
+      changed_when: false
+
+    - import_role:
+        name: ceph-container-engine
+
+    - import_role:
+        name: ceph-container-common
+
+    - import_role:
+        name: ceph-iscsi-gw
+
 - name: switching from non-containerized to containerized ceph-crash
 
   hosts:
