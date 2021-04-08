@@ -31,33 +31,30 @@
           ls /var/lib/ceph/osd/ | sed 's/.*-//'
         register: activated_osds
 
-      - name: auto discovery specific tasks
-        when: osd_auto_discovery | bool
-        block:
-          - name: get prepared disk list
-            command: >
-              docker run --rm --net=host --privileged=true --pid=host --ipc=host --ulimit nofile=1024:4096 --cpu-quota=100000
-              -v /dev:/dev
-              -v /etc/localtime:/etc/localtime:ro
-              -v /var/lib/ceph:/var/lib/ceph:z,rshared
-              -v /etc/ceph:/etc/ceph:z
-              -v /var/run/ceph:/var/run/ceph:z
-              -v /var/run/udev/:/var/run/udev/
-              --entrypoint=ceph-disk
-              {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
-              list --format json
-            register: ceph_disk_list
+      - name: get prepared disk list
+        command: >
+          docker run --rm --net=host --privileged=true --pid=host --ipc=host --ulimit nofile=1024:4096 --cpu-quota=100000
+          -v /dev:/dev
+          -v /etc/localtime:/etc/localtime:ro
+          -v /var/lib/ceph:/var/lib/ceph:z,rshared
+          -v /etc/ceph:/etc/ceph:z
+          -v /var/run/ceph:/var/run/ceph:z
+          -v /var/run/udev/:/var/run/udev/
+          --entrypoint=ceph-disk
+          {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+          list --format json
+        register: ceph_disk_list
 
-          - name: set_fact prepared_devices
-            set_fact:
-              prepared_devices: "{{ prepared_devices | default([]) | union([item.path]) }}"
-            with_items: "{{ ceph_disk_list.stdout | default('{}') | from_json }}"
-            when:
-              - ceph_disk_list.skipped is undefined
-              - item.path is defined
-              - item.partitions is defined
-              - (item.partitions | selectattr('type', 'match', 'data') | selectattr('state', 'defined') | map(attribute='state') | default([]) | list == ['prepared']) or
-                (item.partitions | selectattr('type', 'match', 'lockbox') | selectattr('state', 'defined') | map(attribute='state') | list == ['prepared'])
+      - name: set_fact prepared_devices
+        set_fact:
+          prepared_devices: "{{ prepared_devices | default([]) | union([item.path]) }}"
+        with_items: "{{ ceph_disk_list.stdout | default('{}') | from_json }}"
+        when:
+          - ceph_disk_list.skipped is undefined
+          - item.path is defined
+          - item.partitions is defined
+          - (item.partitions | selectattr('type', 'match', 'data') | selectattr('state', 'defined') | map(attribute='state') | default([]) | list == ['prepared']) or
+            (item.partitions | selectattr('type', 'match', 'lockbox') | selectattr('state', 'defined') | map(attribute='state') | list == ['prepared'])
 
       - name: activate containerized osd(s)
         shell: |
