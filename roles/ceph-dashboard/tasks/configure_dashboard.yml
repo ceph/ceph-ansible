@@ -188,12 +188,26 @@
   vars:
     grafana_server_addr: '{{ item }}'
 
-- name: config grafana api url vip
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-url {{ dashboard_protocol }}://{{ dashboard_frontend_vip }}:{{ grafana_port }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
+- name: config monitoring api url vip
   run_once: true
-  changed_when: false
-  when: dashboard_frontend_vip is defined and dashboard_frontend_vip |length > 0
+  block:
+    - name: config grafana api url vip
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-url {{ dashboard_protocol }}://{{ dashboard_frontend_vip }}:{{ grafana_port }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: dashboard_frontend_vip is defined and dashboard_frontend_vip | length > 0
+
+    - name: config alertmanager api url
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-alertmanager-api-host {{ dashboard_protocol }}://{{ alertmanager_frontend_vip }}:{{ alertmanager_port }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: alertmanager_frontend_vip is defined and alertmanager_frontend_vip | length > 0
+
+    - name: config prometheus api url
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-prometheus-api-host {{ dashboard_protocol }}://{{ prometheus_frontend_vip }}:{{ prometheus_port }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: prometheus_frontend_vip is defined and prometheus_frontend_vip | length > 0
 
 - name: dashboard object gateway management frontend
   when: groups.get(rgw_group_name, []) | length > 0
