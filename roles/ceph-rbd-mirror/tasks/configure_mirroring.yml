@@ -1,7 +1,11 @@
 ---
 - name: enable mirroring on the pool
   command: "{{ container_exec_cmd | default('') }} rbd --cluster {{ cluster }} --keyring /etc/ceph/{{ cluster }}.client.rbd-mirror.{{ ansible_facts['hostname'] }}.keyring --name client.rbd-mirror.{{ ansible_facts['hostname'] }} mirror pool enable {{ ceph_rbd_mirror_pool }} {{ ceph_rbd_mirror_mode }}"
+  register: result
   changed_when: false
+  retries: 90
+  delay: 1
+  until: result is succeeded
 
 - name: list mirroring peer
   command: "{{ container_exec_cmd | default('') }} rbd --cluster {{ cluster }} --keyring /etc/ceph/{{ cluster }}.client.rbd-mirror.{{ ansible_facts['hostname'] }}.keyring --name client.rbd-mirror.{{ ansible_facts['hostname'] }} mirror pool info {{ ceph_rbd_mirror_pool }}"
