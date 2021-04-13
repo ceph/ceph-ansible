@@ -41,7 +41,7 @@
   block:
     - name: set_fact rgw_ports
       set_fact:
-        rgw_ports: "{{ rgw_ports | default([]) + [hostvars[item]['rgw_instances']['radosgw_frontend_port']] | unique }}"
+        rgw_ports: "{{ rgw_ports | default([]) | union(hostvars[item]['rgw_instances'] | map(attribute='radosgw_frontend_port') | map('string') | list) }}"
       with_items: "{{ groups.get(rgw_group_name, []) }}"
 
     - name: add selinux rules
