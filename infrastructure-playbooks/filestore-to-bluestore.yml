@@ -67,12 +67,6 @@
       set_fact:
         skip_this_node: "{{ ('filestore' in _osd_objectstore and 'bluestore' in _osd_objectstore and not force_filestore_to_bluestore | default(False)) or ('filestore' not in _osd_objectstore) }}"
 
-    - name: add node to skipped node list
-      set_fact:
-        skipped_nodes: "{{ skipped_nodes | default([]) | union([inventory_hostname]) }}"
-      when:
-        - skip_this_node | bool
-
     - name: filestore to bluestore migration workflow
       when: not skip_this_node | bool
       block:
@@ -432,14 +426,19 @@
         - import_role:
             name: ceph-osd
 
+- name: final play
+  hosts: "{{ osd_group_name }}"
+  become: true
+  gather_facts: false
+  tasks:
+
+    - import_role:
+        name: ceph-defaults
     - name: report any skipped node during this playbook
       debug:
         msg: |
           "WARNING:"
-          "The following nodes were skipped because OSDs are either"
-          "all bluestore ones or there's a mix of filestore and bluestore OSDs"
-
-          "{{ ' '.join(skipped_nodes) }}"
+          "This node has been skipped because OSDs are either"
+          "all bluestore or there's a mix of filestore and bluestore OSDs"
       when:
-        - inventory_hostname == ansible_play_hosts_all | last
-        - skipped_nodes is defined
+        - skip_this_node | bool
