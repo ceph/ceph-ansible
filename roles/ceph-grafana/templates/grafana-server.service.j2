@@ -32,6 +32,15 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --name=grafana-server \
   --memory={{ grafana_container_memory }}GB \
   --memory-swap={{ grafana_container_memory * 2 }}GB \
   -e GF_INSTALL_PLUGINS={{ grafana_plugins|join(',') }} \
+{% if ceph_docker_http_proxy is defined %}
+  -e http_proxy={{ ceph_docker_http_proxy }} \
+{% endif %}
+{% if ceph_docker_https_proxy is defined %}
+  -e https_proxy={{ ceph_docker_https_proxy }} \
+{% endif %}
+{% if ceph_docker_no_proxy is defined %}
+  -e no_proxy={{ ceph_docker_no_proxy }} \
+{% endif %}
   {{ grafana_container_image }}
 {% if container_binary == 'podman' %}
 ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
