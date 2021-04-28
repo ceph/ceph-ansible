@@ -1003,11 +1003,10 @@
 
     - name: stop and disable ceph-crash systemd service
       service:
-        name: ceph-crash
+        name: "{{ 'ceph-crash@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-crash.service' }}"
         state: stopped
         enabled: false
       failed_when: false
-      when: not containerized_deployment | bool
 
     - name: update the placement of ceph-crash hosts
       command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply crash --placement='label:ceph'"
