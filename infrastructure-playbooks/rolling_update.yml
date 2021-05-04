@@ -886,8 +886,14 @@
       systemd:
         name: "{{ 'ceph-crash@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-crash.service' }}"
         state: stopped
+
+    # it needs to be done in a separate task otherwise the stop just before doesn't work.
+    - name: mask and disable the ceph-crash service
+      systemd:
+        name: "{{ 'ceph-crash@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-crash.service' }}"
         enabled: no
         masked: yes
+
     - import_role:
         name: ceph-defaults
     - import_role:
