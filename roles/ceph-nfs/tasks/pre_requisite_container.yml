@@ -41,3 +41,22 @@
         - item.item.copy_key | bool
   when: groups.get(mon_group_name, []) | length > 0
 
+- name: dbus related tasks
+  block:
+    - name: get file
+      command: "{{ container_binary }} run --rm --entrypoint=cat {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag }} /etc/dbus-1/system.d/org.ganesha.nfsd.conf"
+      register: dbus_ganesha_file
+      run_once: true
+      changed_when: false
+
+    - name: create dbus service file
+      copy:
+        content: "{{ dbus_ganesha_file.stdout }}"
+        dest: /etc/dbus-1/system.d/org.ganesha.nfsd.conf
+        owner: "root"
+        group: "root"
+        mode: "0644"
+
+    - name: reload dbus configuration
+      command: "killall -SIGHUP dbus-daemon"
+  when: ceph_nfs_dynamic_exports | bool
