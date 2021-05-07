@@ -56,7 +56,11 @@
         owner: "root"
         group: "root"
         mode: "0644"
+      register: dbus_svc_file
 
     - name: reload dbus configuration
-      command: "killall -SIGHUP dbus-daemon"
+      service:
+        name: dbus
+        state: reloaded
+      when: dbus_svc_file.changed | bool
   when: ceph_nfs_dynamic_exports | bool
