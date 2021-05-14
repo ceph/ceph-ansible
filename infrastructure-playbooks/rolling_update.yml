@@ -127,6 +127,7 @@
   hosts: "{{ mon_group_name|default('mons') }}"
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     - name: upgrade ceph mon cluster
       block:
@@ -288,6 +289,7 @@
 - name: reset mon_host
   hosts: "{{ mon_group_name|default('mons') }}"
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -305,6 +307,7 @@
   hosts: "{{ mon_group_name|default('mons') }}"
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     - name: upgrade mgrs when no mgr group explicitly defined in inventory
       when: groups.get(mgr_group_name, []) | length == 0
@@ -339,6 +342,7 @@
   hosts: "{{ mgr_group_name|default('mgrs') }}"
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     # The following task has a failed_when: false
     # to handle the scenario where no mgr existed before the upgrade
@@ -372,6 +376,7 @@
 - name: set osd flags
   hosts: "{{ mon_group_name | default('mons') }}[0]"
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -399,6 +404,7 @@
   hosts: "{{ osd_group_name|default('osds') }}"
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -472,6 +478,7 @@
 - name: complete osd upgrade
   hosts: "{{ mon_group_name|default('mons') }}[0]"
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -494,6 +501,7 @@
 - name: upgrade ceph mdss cluster, deactivate all rank > 0
   hosts: "{{ mon_group_name | default('mons') }}[0]"
   become: true
+  gather_facts: false
   tasks:
     - name: deactivate all mds rank > 0
       when: groups.get(mds_group_name, []) | length > 0
@@ -594,6 +602,7 @@
     upgrade_ceph_packages: True
   hosts: active_mdss
   become: true
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -639,6 +648,7 @@
     upgrade_ceph_packages: True
   hosts: standby_mdss
   become: True
+  gather_facts: false
 
   tasks:
     - import_role:
@@ -687,6 +697,7 @@
   hosts: "{{ rgw_group_name|default('rgws') }}"
   serial: 1
   become: True
+  gather_facts: false
   tasks:
 
     - import_role:
@@ -730,6 +741,7 @@
   hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     - name: stop ceph rbd mirror
       systemd:
@@ -762,6 +774,7 @@
   hosts: "{{ nfs_group_name|default('nfss') }}"
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     # failed_when: false is here so that if we upgrade
     # from a version of ceph that does not have nfs-ganesha
@@ -811,6 +824,7 @@
     - "{{ iscsi_gw_group_name|default('iscsigws') }}"
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     # failed_when: false is here so that if we upgrade
     # from a version of ceph that does not have iscsi gws
@@ -851,6 +865,7 @@
   hosts: "{{ client_group_name|default('clients') }}"
   serial: "{{ client_update_batch | default(20) }}"
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -907,6 +922,7 @@
 - name: complete upgrade
   hosts: "{{ mon_group_name | default('mons') }}"
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -1022,6 +1038,7 @@
 - name: show ceph status
   hosts: "{{ mon_group_name|default('mons') }}"
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
