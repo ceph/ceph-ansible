@@ -1,4 +1,22 @@
 ---
+- name: lvmetad tasks related
+  when:
+    - inventory_hostname in groups.get(osd_group_name, [])
+    - lvmetad_disabled | default(False) | bool
+    - ansible_facts['os_family'] == 'RedHat'
+    - ansible_facts['distribution_major_version'] | int == 7
+  block:
+    - name: stop lvmetad
+      service:
+        name: lvmetad
+        state: stopped
+
+    - name: disable and mask lvmetad service
+      service:
+        name: lvmetad
+        enabled: no
+        masked: yes
+
 - name: remove ceph udev rules
   file:
     path: "{{ item }}"
