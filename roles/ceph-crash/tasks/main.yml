@@ -20,6 +20,21 @@
       delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
       run_once: True
 
+    - name: enforce container_binary on first monitor
+      import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+      delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
+      delegate_facts: true
+
+    - name: set_fact container_exec_cmd
+      set_fact:
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] if not rolling_update | bool else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_facts']['hostname'] }}"
+      delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
+      delegate_facts: true
+      when:
+        - containerized_deployment | bool
+
     - name: get keys from monitors
       command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} auth get client.crash"
       register: _crash_keys
