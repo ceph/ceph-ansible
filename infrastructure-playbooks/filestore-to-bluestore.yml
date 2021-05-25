@@ -48,7 +48,7 @@
       set_fact:
         osd_ids: "{{ osd_ids | default([]) | union(item) }}"
       with_items:
-        - "{{ ((osd_tree.stdout | default('{}') | trim | from_json).nodes | selectattr('name', 'equalto', inventory_hostname) | map(attribute='children') | list) }}"
+        - "{{ ((osd_tree.stdout | default('{}') | trim | from_json).nodes | selectattr('name', 'match', '^' + inventory_hostname + '$') | map(attribute='children') | list) }}"
 
     - name: get osd metadata
       command: "{{ ceph_cmd }} --cluster {{ cluster }} osd metadata osd.{{ item }} -f json"
@@ -355,7 +355,7 @@
           set_fact:
             osd_ids: "{{ osd_ids | default([]) + [item] }}"
           with_items:
-            - "{{ ((osd_tree.stdout | default('{}') | from_json).nodes | selectattr('name', 'equalto', inventory_hostname) | map(attribute='children') | list) }}"
+            - "{{ ((osd_tree.stdout | default('{}') | from_json).nodes | selectattr('name', 'match', '^' + inventory_hostname + '$') | map(attribute='children') | list) }}"
 
         - name: purge osd(s) from the cluster
           ceph_osd:
