@@ -19,7 +19,7 @@ scrape_configs:
 {% endfor %}
   - job_name: 'node'
     static_configs:
-{% for host in (groups['all'] | difference(groups[monitoring_group_name] | union(groups.get(client_group_name, [])))) %}
+{% for host in (groups['all'] | difference(groups[monitoring_group_name] | union(groups.get(client_group_name, []))) | union(groups.get(osd_group_name, []))) %}
       - targets: ['{{ host }}:{{ node_exporter_port }}']
         labels:
           instance: "{{ hostvars[host]['ansible_facts']['nodename'] }}"
