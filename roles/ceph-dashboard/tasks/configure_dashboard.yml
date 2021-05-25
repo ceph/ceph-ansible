@@ -171,16 +171,51 @@
     - dashboard_protocol == "https"
     - dashboard_grafana_api_no_ssl_verify | bool
 
-- include_tasks: configure_grafana_layouts.yml
-  with_items: '{{ monitoring_server_addrs }}'
-  vars:
-    monitoring_server_addr: '{{ item }}'
-
 - name: set_fact prometheus_api_host, alertmanager_api_host, grafana_api_url
   set_fact:
     prometheus_api_host: "http://{{ prometheus_frontend_vip if prometheus_frontend_vip != '' else monitoring_server_addrs | first }}:{{ prometheus_port }}"
     alertmanager_api_host: "http://{{ alertmanager_frontend_vip if alertmanager_frontend_vip != '' else monitoring_server_addrs | first }}:{{ alertmanager_port }}"
     grafana_api_url: "{{ dashboard_protocol }}://{{ dashboard_frontend_vip if dashboard_frontend_vip != '' else monitoring_server_fqdn | default(monitoring_server_addrs | last) }}:{{ grafana_port }}"
+
+- name: get current grafana api password
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard get-grafana-api-password"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  changed_when: false
+  no_log: true
+  register: current_grafana_api_password
+
+- name: set_fact change_grafana_api_password
+  set_fact:
+    change_grafana_api_password: "{{ not current_grafana_api_password.stdout == grafana_admin_password }}"
+
+- name: update grafana admin password
+  when: change_grafana_api_password | bool
+  block:
+    - name: set_fact body
+      set_fact:
+        body:
+          oldPassword: "{{ current_grafana_api_password.stdout }}"
+          newPassword: "{{ grafana_admin_password }}"
+          confirmNew: "{{ grafana_admin_password }}"
+
+    - name: update grafana admin password
+      uri:
+        url: "{{ dashboard_protocol }}://{{ item }}:{{ grafana_port }}/api/user/password"
+        method: PUT
+        force_basic_auth: yes
+        user: "{{ grafana_admin_user }}"
+        password: "{{ current_grafana_api_password.stdout }}"
+        headers:
+          Content-Type: "application/json"
+        validate_certs: no
+        body: "{{ body | to_json }}"
+      with_items: '{{ monitoring_server_addrs }}'
+
+- include_tasks: configure_grafana_layouts.yml
+  with_items: '{{ monitoring_server_addrs }}'
+  vars:
+    monitoring_server_addr: '{{ item }}'
 
 - name: config monitoring api urls
   run_once: true
