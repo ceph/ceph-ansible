@@ -296,7 +296,7 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       when:
-        - not rgw_multisite | bool or rgw_zonemaster | bool
+        - not rgw_multisite | bool or (true in (rgw_instances | selectattr('rgw_zonemaster', 'defined') | map(attribute='rgw_zonemaster') | list) if rgw_instances is defined else rgw_zonemaster | default(false))
         - get_rgw_user.rc == 22
 
     - name: get the rgw access and secret keys
