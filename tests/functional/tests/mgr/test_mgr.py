@@ -21,13 +21,13 @@ class TestMGRs(object):
         assert s.is_enabled
         assert s.is_running
 
-    @pytest.mark.dashboard
-    @pytest.mark.parametrize('port', [
-        '8443', '9283'
-    ])
-    def test_mgr_dashboard_is_listening(self, node, host, setup, port):
-        s = host.socket('tcp://%s:%s' % (setup["address"], port))
-        assert s.is_listening
+    # @pytest.mark.dashboard
+    # @pytest.mark.parametrize('port', [
+    #     '8443', '9283'
+    # ])
+    # def test_mgr_dashboard_is_listening(self, node, host, setup, port):
+    #     s = host.socket('tcp://%s:%s' % (setup["address"], port))
+    #     assert s.is_listening
 
     def test_mgr_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
