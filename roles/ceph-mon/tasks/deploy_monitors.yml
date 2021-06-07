@@ -16,6 +16,7 @@
       register: initial_mon_key
       run_once: True
       delegate_to: "{{ running_mon }}"
+      failed_when: initial_mon_key.rc not in [0, 2]
       when: running_mon is defined
 
     - name: generate monitor initial keyring
@@ -25,11 +26,18 @@
       delegate_to: localhost
       become: false
       run_once: true
-      when: initial_mon_key.skipped is defined
+      when:
+        - initial_mon_key is skipped
+          or
+          initial_mon_key is not succeeded
+
+    - name: set_fact _initial_mon_key_success
+      set_fact:  # when initial_mon_key is registered above, `rc: 2` is considered success.
+        _initial_mon_key_success: "{{ initial_mon_key is not skipped and initial_mon_key.rc == 0 }}"
 
     - name: get initial keyring when it already exists
       set_fact:
-        monitor_keyring: "{{ (initial_mon_key.stdout | from_json)[0]['key'] if initial_mon_key is not skipped else monitor_keyring.stdout }}"
+        monitor_keyring: "{{ (initial_mon_key.stdout | from_json)[0]['key'] if _initial_mon_key_success | bool else monitor_keyring.stdout }}"
       when: initial_mon_key.stdout|default('')|length > 0 or monitor_keyring is not skipped
 
     - name: create monitor initial keyring
