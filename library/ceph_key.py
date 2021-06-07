@@ -619,10 +619,6 @@ def run_module():
     elif state == "info":
         rc, cmd, out, err = exec_commands(
             module, info_key(cluster, name, user, user_key_path, output_format, container_image))  # noqa E501
-        if rc != 0:
-            result["stdout"] = "skipped, since {0} does not exist".format(name)
-            result['rc'] = 0
-            module.exit_json(**result)
 
     elif state == "list":
         rc, cmd, out, err = exec_commands(
