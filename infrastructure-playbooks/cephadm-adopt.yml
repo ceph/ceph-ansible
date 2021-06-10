@@ -389,7 +389,7 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
 - name: adopt ceph mgr daemons
-  hosts: "{{ mgr_group_name|default('mgrs') }}"
+  hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}"
   serial: 1
   become: true
   gather_facts: false
@@ -1229,8 +1229,16 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
+    - name: set_fact mgr_placement
+      set_fact:
+        mgr_placement_count: "{{ groups.get(mgr_group_name, []) | length if groups.get(mgr_group_name, []) | length > 0 else groups.get(mon_group_name, []) | length }}"
+
+    - name: set_fact mgr_placement_label
+      set_fact:
+        mgr_placement_label: "{{ mgr_group_name if groups.get(mgr_group_name, []) | length > 0 else mon_group_name }}"
+
     - name: update the placement of manager hosts
-      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply mgr --placement='{{ groups.get(mgr_group_name, []) | length }} label:{{ mgr_group_name }}'"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply mgr --placement='{{ mgr_placement_count }} label:{{ mgr_placement_label }}'"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
