@@ -103,6 +103,8 @@ def node(host, request):
     group_names = ansible_vars["group_names"]
     docker = ansible_vars.get("docker")
     dashboard = ansible_vars.get("dashboard_enabled", True)
+    nfs_file_gw = ansible_vars.get("nfs_file_gw")
+    nfs_obj_gw = ansible_vars.get("nfs_obj_gw")
     radosgw_num_instances = ansible_vars.get("radosgw_num_instances", 1)
     ceph_release_num = {
         'jewel': 10,
@@ -146,6 +148,12 @@ def node(host, request):
     if request.node.get_closest_marker("dashboard") and group_names == ['clients']:
         pytest.skip('Not a valid test for client node')
 
+    if request.node.get_closest_marker("no_nfs_file_gw") and nfs_file_gw:
+        pytest.skip('Not a valid test for nfs+cephfs node')
+
+    if request.node.get_closest_marker("no_nfs_obj_gw") and nfs_obj_gw:
+        pytest.skip('Not a valid test for nfs+rgw node')
+
     data = dict(
         vars=ansible_vars,
         docker=docker,
@@ -153,6 +161,8 @@ def node(host, request):
         ceph_release_num=ceph_release_num,
         rolling_update=rolling_update,
         radosgw_num_instances=radosgw_num_instances,
+        nfs_file_gw=nfs_file_gw,
+        nfs_obj_gw=nfs_obj_gw,
     )
     return data
 
