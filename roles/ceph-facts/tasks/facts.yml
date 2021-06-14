@@ -11,6 +11,10 @@
 - name: import_tasks container_binary.yml
   import_tasks: container_binary.yml
 
+- name: set_fact ceph_cmd
+  set_fact:
+    ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
+
 # In case ansible_python_interpreter is set by the user,
 # ansible will not discover python and discovered_interpreter_python
 # will not be set
