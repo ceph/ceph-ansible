@@ -383,6 +383,38 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
+    - name: get pool list
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd dump -f json"
+      register: pool_list
+      run_once: true
+      changed_when: false
+
+    - name: get balancer module status
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer status -f json"
+      register: balancer_status
+      run_once: true
+      changed_when: false
+
+    - name: set_fact pools_pgautoscaler_mode
+      set_fact:
+        pools_pgautoscaler_mode: "{{ pools_pgautoscaler_mode | default([]) | union([{'name': item.pool_name, 'mode': item.pg_autoscale_mode}]) }}"
+      run_once: true
+      with_items: "{{ (pool_list.stdout | from_json)['pools'] }}"
+
+    - name: disable balancer
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
+      run_once: true
+      changed_when: false
+      when: (balancer_status.stdout | from_json)['active'] | bool
+
+    - name: disable pg autoscale on pools
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode off"
+      with_items: "{{ pools_pgautoscaler_mode }}"
+      run_once: true
+      when:
+        - pools_pgautoscaler_mode is defined
+        - item.mode == 'on'
+
     - name: set osd flags
       ceph_osd_flag:
         name: "{{ item }}"
@@ -490,6 +522,14 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
+    - name: re-enable pg autoscale on pools
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode on"
+      with_items: "{{ pools_pgautoscaler_mode }}"
+      run_once: true
+      when:
+        - pools_pgautoscaler_mode is defined
+        - item.mode == 'on'
+
     - name: unset osd flags
       ceph_osd_flag:
         name: "{{ item }}"
@@ -501,6 +541,12 @@
       with_items:
         - noout
         - nodeep-scrub
+
+    - name: re-enable balancer
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"
+      run_once: true
+      changed_when: false
+      when: (balancer_status.stdout | from_json)['active'] | bool
 
     - name: set_fact container_exec_cmd_osd
       set_fact:
