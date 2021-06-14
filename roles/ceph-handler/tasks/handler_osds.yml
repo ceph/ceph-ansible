@@ -1,43 +1,117 @@
 ---
-- name: set _osd_handler_called before restart
+- name: set_fact trigger_restart
   set_fact:
-    _osd_handler_called: True
-
-- name: unset noup flag
-  ceph_osd_flag:
-    name: noup
-    cluster: "{{ cluster }}"
-    state: absent
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-  delegate_to: "{{ groups[mon_group_name][0] }}"
+    trigger_restart: true
+  loop: "{{ groups[osd_group_name] }}"
+  when: hostvars[item]['handler_osd_status'] | default(False) | bool
   run_once: true
 
-# This does not just restart OSDs but everything else too. Unfortunately
-# at this time the ansible role does not have an OSD id list to use
-# for restarting them specifically.
-# This does not need to run during a rolling update as the playbook will
-# restart all OSDs using the tasks "start ceph osd" or
-# "restart containerized ceph osd"
-- name: copy osd restart script
-  template:
-    src: restart_osd_daemon.sh.j2
-    dest: "{{ tmpdirpath.path }}/restart_osd_daemon.sh"
-    owner: root
-    group: root
-    mode: 0750
+- name: osd handler
+  when: trigger_restart | default(False) | bool
+  block:
+    - name: set _osd_handler_called before restart
+      set_fact:
+        _osd_handler_called: True
 
-- name: restart ceph osds daemon(s)
-  command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_osd_daemon.sh
-  when:
-    - hostvars[item]['handler_osd_status'] | default(False) | bool
-    - handler_health_osd_check | bool
-    - hostvars[item]['_osd_handler_called'] | default(False) | bool
-  with_items: "{{ groups[osd_group_name] | intersect(ansible_play_batch) }}"
-  delegate_to: "{{ item }}"
-  run_once: True
+    - name: unset noup flag
+      ceph_osd_flag:
+        name: noup
+        cluster: "{{ cluster }}"
+        state: absent
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
 
-- name: set _osd_handler_called after restart
-  set_fact:
-    _osd_handler_called: False
+    # This does not just restart OSDs but everything else too. Unfortunately
+    # at this time the ansible role does not have an OSD id list to use
+    # for restarting them specifically.
+    # This does not need to run during a rolling update as the playbook will
+    # restart all OSDs using the tasks "start ceph osd" or
+    # "restart containerized ceph osd"
+    - name: copy osd restart script
+      template:
+        src: restart_osd_daemon.sh.j2
+        dest: "{{ tmpdirpath.path }}/restart_osd_daemon.sh"
+        owner: root
+        group: root
+        mode: 0750
+
+    - name: get pool list
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd dump -f json"
+      register: pool_list
+      delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
+      run_once: true
+      changed_when: false
+
+    - name: get balancer module status
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer status -f json"
+      register: balancer_status
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+
+    - name: set_fact pools_pgautoscaler_mode
+      set_fact:
+        pools_pgautoscaler_mode: "{{ pools_pgautoscaler_mode | default([]) | union([{'name': item.pool_name, 'mode': item.pg_autoscale_mode}]) }}"
+      run_once: true
+      with_items: "{{ (pool_list.stdout | from_json)['pools'] }}"
+
+    - name: disable balancer
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: (balancer_status.stdout | from_json)['active'] | bool
+
+    - name: disable pg autoscale on pools
+      ceph_pool:
+        name: "{{ item.name }}"
+        cluster: "{{ cluster }}"
+        pg_autoscale_mode: false
+      with_items: "{{ pools_pgautoscaler_mode }}"
+      delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
+      run_once: true
+      when:
+        - pools_pgautoscaler_mode is defined
+        - item.mode == 'on'
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
+    - name: restart ceph osds daemon(s)
+      command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_osd_daemon.sh
+      when:
+        - hostvars[item]['handler_osd_status'] | default(False) | bool
+        - handler_health_osd_check | bool
+        - hostvars[item]['_osd_handler_called'] | default(False) | bool
+      with_items: "{{ groups[osd_group_name] | intersect(ansible_play_batch) }}"
+      delegate_to: "{{ item }}"
+      run_once: True
+
+    - name: set _osd_handler_called after restart
+      set_fact:
+        _osd_handler_called: False
+
+    - name: re-enable pg autoscale on pools
+      ceph_pool:
+        name: "{{ item.name }}"
+        cluster: "{{ cluster }}"
+        pg_autoscale_mode: true
+      with_items: "{{ pools_pgautoscaler_mode }}"
+      run_once: true
+      delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
+      when:
+        - pools_pgautoscaler_mode is defined
+        - item.mode == 'on'
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
+    - name: re-enable balancer
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: (balancer_status.stdout | from_json)['active'] | bool
