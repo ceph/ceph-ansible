@@ -146,6 +146,9 @@ def node(host, request):
     if request.node.get_closest_marker("dashboard") and group_names == ['clients']:
         pytest.skip('Not a valid test for client node')
 
+    if request.node.get_closest_marker("no_rolling_update") and rolling_update:
+        pytest.skip('Not a valid test when testing rolling_update')
+
     data = dict(
         vars=ansible_vars,
         docker=docker,

@@ -4,6 +4,7 @@ import pytest
 
 class TestNFSs(object):
 
+    @pytest.mark.no_rolling_update
     @pytest.mark.no_docker
     @pytest.mark.parametrize('pkg', [
         'nfs-ganesha',
@@ -23,6 +24,7 @@ class TestNFSs(object):
         assert host.file(
             "/etc/ganesha/ganesha.conf").contains("Entries_HWMark")
 
+    @pytest.mark.no_rolling_update
     def test_nfs_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
         cluster = setup['cluster_name']
