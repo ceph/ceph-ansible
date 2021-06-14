@@ -443,6 +443,48 @@
     - import_role:
         name: ceph-defaults
 
+    - name: get pool list
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd dump -f json"
+      register: pool_list
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+
+    - name: get balancer module status
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer status -f json"
+      register: balancer_status
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+
+    - name: set_fact pools_pgautoscaler_mode
+      set_fact:
+        pools_pgautoscaler_mode: "{{ pools_pgautoscaler_mode | default([]) | union([{'name': item.pool_name, 'mode': item.pg_autoscale_mode}]) }}"
+      run_once: true
+      with_items: "{{ (pool_list.stdout | from_json)['pools'] }}"
+
+    - name: disable balancer
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: (balancer_status.stdout | from_json)['active'] | bool
+
+    - name: disable pg autoscale on pools
+      ceph_pool:
+        name: "{{ item.name }}"
+        cluster: "{{ cluster }}"
+        pg_autoscale_mode: false
+      with_items: "{{ pools_pgautoscaler_mode }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      when:
+        - pools_pgautoscaler_mode is defined
+        - item.mode == 'on'
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
     - name: set osd flags
       ceph_osd_flag:
         cluster: "{{ cluster }}"
@@ -555,6 +597,21 @@
     - import_role:
         name: ceph-defaults
 
+    - name: re-enable pg autoscale on pools
+      ceph_pool:
+        name: "{{ item.name }}"
+        cluster: "{{ cluster }}"
+        pg_autoscale_mode: true
+      with_items: "{{ pools_pgautoscaler_mode }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      when:
+        - pools_pgautoscaler_mode is defined
+        - item.mode == 'on'
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
     - name: unset osd flags
       ceph_osd_flag:
         cluster: "{{ cluster }}"
@@ -568,6 +625,13 @@
       environment:
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
+    - name: re-enable balancer
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: (balancer_status.stdout | from_json)['active'] | bool
 
 - name: redeploy mds daemons
   hosts: "{{ mds_group_name|default('mdss') }}"
