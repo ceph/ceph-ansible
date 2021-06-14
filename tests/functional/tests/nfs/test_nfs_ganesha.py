@@ -5,11 +5,21 @@ import pytest
 class TestNFSs(object):
 
     @pytest.mark.no_docker
+    @pytest.mark.no_nfs_file_gw
     @pytest.mark.parametrize('pkg', [
         'nfs-ganesha',
         'nfs-ganesha-rgw'
     ])
-    def test_nfs_ganesha_package_is_installed(self, node, host, pkg):
+    def test_nfs_ganesha_rgw_package_is_installed(self, node, host, pkg):
+        assert host.package(pkg).is_installed
+
+    @pytest.mark.no_docker
+    @pytest.mark.no_nfs_obj_gw
+    @pytest.mark.parametrize('pkg', [
+        'nfs-ganesha-ceph',
+        'nfs-ganesha-rados-grace'
+    ])
+    def test_nfs_ganesha_fs_package_is_installed(self, node, host, pkg):
         assert host.package(pkg).is_installed
 
     @pytest.mark.no_docker
@@ -23,6 +33,7 @@ class TestNFSs(object):
         assert host.file(
             "/etc/ganesha/ganesha.conf").contains("Entries_HWMark")
 
+    @pytest.mark.no_nfs_file_gw
     def test_nfs_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
         cluster = setup['cluster_name']
