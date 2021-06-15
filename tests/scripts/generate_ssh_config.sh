@@ -11,4 +11,22 @@ if [ $# -eq 0 ]
 fi
 
 cd "$path"
-vagrant ssh-config > vagrant_ssh_config
+
+# Let's print vagrant status for debug purposes and to give the VMs a second to
+# settle before asking vagrant for SSH config.
+vagrant status || true
+
+n=0
+until [ "$n" -ge 5 ]
+do
+  vagrant ssh-config > vagrant_ssh_config && break
+  n=$((n+1))
+  echo "\`vagrant ssh-config\` failed.  Retrying."
+  sleep 3
+done
+
+if [ "$n" -eq 5 ]; then
+  echo "\`vagrant ssh-config\` failed 5 times.  This is a fatal error."
+  cat vagrant_ssh_config
+  exit 1
+fi
