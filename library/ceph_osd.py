@@ -17,9 +17,9 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-    from ansible.module_utils.ca_common import exit_module, generate_ceph_cmd, is_containerized
+    from ansible.module_utils.ca_common import exit_module, generate_ceph_cmd, is_containerized  # noqa: E501
 except ImportError:
-    from module_utils.ca_common import exit_module, generate_ceph_cmd, is_containerized
+    from module_utils.ca_common import exit_module, generate_ceph_cmd, is_containerized  # noqa: E501
 import datetime
 
 
@@ -95,7 +95,7 @@ def main():
         argument_spec=dict(
             ids=dict(type='list', required=True),
             cluster=dict(type='str', required=False, default='ceph'),
-            state=dict(type='str', required=True, choices=['destroy', 'down', 'in', 'out', 'purge', 'rm']),
+            state=dict(type='str', required=True, choices=['destroy', 'down', 'in', 'out', 'purge', 'rm']),  # noqa: E501
         ),
         supports_check_mode=True,
     )
@@ -105,13 +105,13 @@ def main():
     state = module.params.get('state')
 
     if state in ['destroy', 'purge'] and len(ids) > 1:
-        module.fail_json(msg='destroy and purge only support one OSD at at time', rc=1)
+        module.fail_json(msg='destroy and purge only support one OSD at at time', rc=1)  # noqa: E501
 
     startd = datetime.datetime.now()
 
     container_image = is_containerized()
 
-    cmd = generate_ceph_cmd(['osd', state], ids, cluster=cluster, container_image=container_image)
+    cmd = generate_ceph_cmd(['osd', state], ids, cluster=cluster, container_image=container_image)  # noqa: E501
 
     if state in ['destroy', 'purge']:
         cmd.append('--yes-i-really-mean-it')

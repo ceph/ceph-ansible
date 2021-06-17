@@ -34,18 +34,18 @@ author:
 
 """
 
-import os  # noqa E402
-import logging  # noqa E402
-import socket  # noqa E402
-import rados  # noqa E402
-import rbd  # noqa E402
+import os  # noqa: E402
+import logging  # noqa: E402
+import socket  # noqa: E402,F401
+import rados  # noqa: E402
+import rbd  # noqa: E402
 
-from logging.handlers import RotatingFileHandler  # noqa E402
-from ansible.module_utils.basic import *  # noqa E402
+from logging.handlers import RotatingFileHandler  # noqa: E402
+from ansible.module_utils.basic import *  # noqa: E402,F403
 
-import ceph_iscsi_config.settings as settings  # noqa E402
-from ceph_iscsi_config.common import Config  # noqa E402
-from ceph_iscsi_config.lun import RBDDev  # noqa E402
+import ceph_iscsi_config.settings as settings  # noqa: E402
+from ceph_iscsi_config.common import Config  # noqa: E402
+from ceph_iscsi_config.lun import RBDDev  # noqa: E402
 
 __author__ = 'pcuzner@redhat.com'
 
@@ -81,7 +81,7 @@ def delete_images(cfg):
 
         if rbd_dev.error:
             if rbd_dev.error_msg:
-                logger.error("Could not remove {}. Error: {}. Manually run the "  # noqa E501
+                logger.error("Could not remove {}. Error: {}. Manually run the "  # noqa: E501
                              "rbd command line tool to delete.".
                              format(image, rbd_dev.error_msg))
             else:
@@ -117,7 +117,7 @@ def ansible_main():
                        }
               }
 
-    module = AnsibleModule(argument_spec=fields,  # noqa F405
+    module = AnsibleModule(argument_spec=fields,  # noqa: F405
                            supports_check_mode=False)
 
     run_mode = module.params['mode']
