@@ -56,17 +56,17 @@ author:
 
 """
 
-import os  # noqa E402
-import logging  # noqa E402
+import os  # noqa: E402
+import logging  # noqa: E402
 
-from logging.handlers import RotatingFileHandler  # noqa E402
-from ansible.module_utils.basic import *  # noqa E402
+from logging.handlers import RotatingFileHandler  # noqa: E402
+from ansible.module_utils.basic import *  # noqa: E402,F403
 
-import ceph_iscsi_config.settings as settings  # noqa E402
-from ceph_iscsi_config.common import Config  # noqa E402
+import ceph_iscsi_config.settings as settings  # noqa: E402
+from ceph_iscsi_config.common import Config  # noqa: E402
 
-from ceph_iscsi_config.gateway import GWTarget  # noqa E402
-from ceph_iscsi_config.utils import valid_ip  # noqa E402
+from ceph_iscsi_config.gateway import GWTarget  # noqa: E402
+from ceph_iscsi_config.utils import valid_ip  # noqa: E402
 
 
 # the main function is called ansible_main to allow the call stack
@@ -83,7 +83,7 @@ def ansible_main():
     }
     }
 
-    module = AnsibleModule(argument_spec=fields,  # noqa F405
+    module = AnsibleModule(argument_spec=fields,  # noqa: F405
                            supports_check_mode=False)
 
     cfg = Config(logger)

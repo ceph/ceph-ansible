@@ -95,7 +95,8 @@ options:
         required: false
     registry_json:
         description:
-            - JSON file with custom registry login info (URL, username, password).
+            - JSON file with custom registry login info (URL,
+              username, password).
         required: false
 author:
     - Dimitri Savineau <dsavinea@redhat.com>
