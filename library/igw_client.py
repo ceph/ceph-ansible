@@ -53,13 +53,13 @@ author:
 
 """
 
-import os  # noqa E402
-import logging  # noqa E402
-from logging.handlers import RotatingFileHandler  # noqa E402
-from ansible.module_utils.basic import *  # noqa E402
+import os  # noqa: E402
+import logging  # noqa: E402
+from logging.handlers import RotatingFileHandler  # noqa: E402
+from ansible.module_utils.basic import *  # noqa: E402,F403
 
-from ceph_iscsi_config.client import GWClient  # noqa E402
-import ceph_iscsi_config.settings as settings  # noqa E402
+from ceph_iscsi_config.client import GWClient  # noqa: E402
+import ceph_iscsi_config.settings as settings  # noqa: E402
 
 
 # the main function is called ansible_main to allow the call stack
@@ -78,7 +78,7 @@ def ansible_main():
         },
     }
 
-    module = AnsibleModule(argument_spec=fields,    # noqa F405
+    module = AnsibleModule(argument_spec=fields,    # noqa: F405
                            supports_check_mode=False)
 
     client_iqn = module.params['client_iqn']

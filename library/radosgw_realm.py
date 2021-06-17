@@ -81,12 +81,12 @@ EXAMPLES = '''
 
 RETURN = '''#  '''
 
-from ansible.module_utils.basic import AnsibleModule  # noqa E402
-import datetime  # noqa E402
-import json  # noqa E402
-import os  # noqa E402
-import stat  # noqa E402
-import time  # noqa E402
+from ansible.module_utils.basic import AnsibleModule  # noqa: E402
+import datetime  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import stat  # noqa: E402
+import time  # noqa: E402
 
 
 def container_exec(binary, container_image):
@@ -173,7 +173,9 @@ def create_realm(module, container_image=None):
     if default:
         args.append('--default')
 
-    cmd = generate_radosgw_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_radosgw_cmd(cluster=cluster,
+                               args=args,
+                               container_image=container_image)
 
     return cmd
 
@@ -188,7 +190,9 @@ def get_realm(module, container_image=None):
 
     args = ['get', '--rgw-realm=' + name, '--format=json']
 
-    cmd = generate_radosgw_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_radosgw_cmd(cluster=cluster,
+                               args=args,
+                               container_image=container_image)
 
     return cmd
 
@@ -203,7 +207,9 @@ def remove_realm(module, container_image=None):
 
     args = ['delete', '--rgw-realm=' + name]
 
-    cmd = generate_radosgw_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_radosgw_cmd(cluster=cluster,
+                               args=args,
+                               container_image=container_image)
 
     return cmd
 
@@ -229,7 +235,7 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         name=dict(type='str', required=True),
-        state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),
+        state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),  # noqa: E501
         default=dict(type='bool', required=False, default=False),
     )
 
@@ -260,24 +266,24 @@ def run_module():
     container_image = is_containerized()
 
     if state == "present":
-        rc, cmd, out, err = exec_commands(module, get_realm(module, container_image=container_image))
+        rc, cmd, out, err = exec_commands(module, get_realm(module, container_image=container_image))  # noqa: E501
         if rc != 0:
-            rc, cmd, out, err = exec_commands(module, create_realm(module, container_image=container_image))
+            rc, cmd, out, err = exec_commands(module, create_realm(module, container_image=container_image))  # noqa: E501
             changed = True
 
     elif state == "absent":
-        rc, cmd, out, err = exec_commands(module, get_realm(module, container_image=container_image))
+        rc, cmd, out, err = exec_commands(module, get_realm(module, container_image=container_image))  # noqa: E501
         if rc == 0:
-            rc, cmd, out, err = exec_commands(module, remove_realm(module, container_image=container_image))
+            rc, cmd, out, err = exec_commands(module, remove_realm(module, container_image=container_image))  # noqa: E501
             changed = True
         else:
             rc = 0
             out = "Realm {} doesn't exist".format(name)
 
     elif state == "info":
-        rc, cmd, out, err = exec_commands(module, get_realm(module, container_image=container_image))
+        rc, cmd, out, err = exec_commands(module, get_realm(module, container_image=container_image))  # noqa: E501
 
-    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)
+    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)  # noqa: E501
 
 
 def main():

@@ -103,12 +103,12 @@ EXAMPLES = '''
 
 RETURN = '''#  '''
 
-from ansible.module_utils.basic import AnsibleModule  # noqa E402
-import datetime  # noqa E402
-import json  # noqa E402
-import os  # noqa E402
-import stat  # noqa E402
-import time  # noqa E402
+from ansible.module_utils.basic import AnsibleModule  # noqa: E402
+import datetime  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import stat  # noqa: E402
+import time  # noqa: E402
 
 
 def container_exec(binary, container_image, interactive=False):
@@ -202,7 +202,10 @@ def create_user(module, container_image=None):
         password = module.params.get('password')
         args = ['ac-user-create', name, password]
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image, interactive=interactive)
+    cmd = generate_ceph_cmd(cluster=cluster,
+                            args=args,
+                            container_image=container_image,
+                            interactive=interactive)
 
     return cmd
 
@@ -220,7 +223,9 @@ def set_roles(module, container_image=None):
 
     args.extend(roles)
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(cluster=cluster,
+                            args=args,
+                            container_image=container_image)
 
     return cmd
 
@@ -240,7 +245,10 @@ def set_password(module, container_image=None):
         password = module.params.get('password')
         args = ['ac-user-set-password', name, password]
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image, interactive=interactive)
+    cmd = generate_ceph_cmd(cluster=cluster,
+                            args=args,
+                            container_image=container_image,
+                            interactive=interactive)
 
     return cmd
 
@@ -255,7 +263,9 @@ def get_user(module, container_image=None):
 
     args = ['ac-user-show', name, '--format=json']
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(cluster=cluster,
+                            args=args,
+                            container_image=container_image)
 
     return cmd
 
@@ -270,7 +280,9 @@ def remove_user(module, container_image=None):
 
     args = ['ac-user-delete', name]
 
-    cmd = generate_ceph_cmd(cluster=cluster, args=args, container_image=container_image)
+    cmd = generate_ceph_cmd(cluster=cluster,
+                            args=args,
+                            container_image=container_image)
 
     return cmd
 
@@ -296,11 +308,11 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         name=dict(type='str', required=True),
-        state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),
+        state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),  # noqa: E501
         password=dict(type='str', required=False, no_log=True),
         roles=dict(type='list',
                    required=False,
-                   choices=['administrator', 'read-only', 'block-manager', 'rgw-manager', 'cluster-manager', 'pool-manager', 'cephfs-manager'],
+                   choices=['administrator', 'read-only', 'block-manager', 'rgw-manager', 'cluster-manager', 'pool-manager', 'cephfs-manager'],  # noqa: E501
                    default=[]),
         interactive=dict(type='bool', required=False, default=True),
     )
@@ -336,7 +348,7 @@ def run_module():
     container_image = is_containerized()
 
     if state == "present":
-        rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))
+        rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))  # noqa: E501
         stdin = password
         if not interactive:
             stdin = None
@@ -345,27 +357,27 @@ def run_module():
             user['roles'].sort()
             roles.sort()
             if user['roles'] != roles:
-                rc, cmd, out, err = exec_commands(module, set_roles(module, container_image=container_image))
+                rc, cmd, out, err = exec_commands(module, set_roles(module, container_image=container_image))  # noqa: E501
                 changed = True
-            rc, cmd, out, err = exec_commands(module, set_password(module, container_image=container_image), stdin=stdin)
+            rc, cmd, out, err = exec_commands(module, set_password(module, container_image=container_image), stdin=stdin)  # noqa: E501
         else:
-            rc, cmd, out, err = exec_commands(module, create_user(module, container_image=container_image), stdin=stdin)
-            rc, cmd, out, err = exec_commands(module, set_roles(module, container_image=container_image))
+            rc, cmd, out, err = exec_commands(module, create_user(module, container_image=container_image), stdin=stdin)  # noqa: E501
+            rc, cmd, out, err = exec_commands(module, set_roles(module, container_image=container_image))  # noqa: E501
             changed = True
 
     elif state == "absent":
-        rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))
+        rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))  # noqa: E501
         if rc == 0:
-            rc, cmd, out, err = exec_commands(module, remove_user(module, container_image=container_image))
+            rc, cmd, out, err = exec_commands(module, remove_user(module, container_image=container_image))  # noqa: E501
             changed = True
         else:
             rc = 0
             out = "Dashboard User {} doesn't exist".format(name)
 
     elif state == "info":
-        rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))
+        rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))  # noqa: E501
 
-    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)
+    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)  # noqa: E501
 
 
 def main():
