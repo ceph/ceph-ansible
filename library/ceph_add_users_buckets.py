@@ -112,7 +112,7 @@ option:
                 default: unlimited
             bucketmaxobjects:
                 description:
-                    - with bucket quota enabled specify maximum number of objects  # noqa E501
+                    - with bucket quota enabled specify maximum number of objects  # noqa: E501
                 required: false
                 default: unlimited
     buckets:
@@ -263,7 +263,7 @@ error_messages:
     returned: always
     type: list
     sample: [
-            "test2: could not modify user: unable to modify user, cannot add duplicate email\n"  # noqa E501
+            "test2: could not modify user: unable to modify user, cannot add duplicate email\n"  # noqa: E501
         ]
 
 failed_users:
@@ -334,36 +334,36 @@ def create_users(rgw, users, result):
             if email:
                 if autogenkey:
                     try:
-                        rgw.create_user(username, fullname, email=email, key_type='s3',  # noqa E501
+                        rgw.create_user(username, fullname, email=email, key_type='s3',  # noqa: E501
                                         generate_key=autogenkey,
-                                        max_buckets=maxbucket, suspended=suspend)  # noqa E501
+                                        max_buckets=maxbucket, suspended=suspend)  # noqa: E501
                     except radosgw.exception.RadosGWAdminError as e:
-                        result['error_messages'].append(username + ' ' + e.get_code())  # noqa E501
+                        result['error_messages'].append(username + ' ' + e.get_code())  # noqa: E501
                         fail_flag = True
                 else:
                     try:
-                        rgw.create_user(username, fullname, email=email, key_type='s3',  # noqa E501
-                                        access_key=accesskey, secret_key=secretkey,  # noqa E501
-                                        max_buckets=maxbucket, suspended=suspend)  # noqa E501
+                        rgw.create_user(username, fullname, email=email, key_type='s3',  # noqa: E501
+                                        access_key=accesskey, secret_key=secretkey,  # noqa: E501
+                                        max_buckets=maxbucket, suspended=suspend)  # noqa: E501
                     except radosgw.exception.RadosGWAdminError as e:
-                        result['error_messages'].append(username + ' ' + e.get_code())  # noqa E501
+                        result['error_messages'].append(username + ' ' + e.get_code())  # noqa: E501
                         fail_flag = True
             else:
                 if autogenkey:
                     try:
                         rgw.create_user(username, fullname, key_type='s3',
                                         generate_key=autogenkey,
-                                        max_buckets=maxbucket, suspended=suspend)  # noqa E501
+                                        max_buckets=maxbucket, suspended=suspend)  # noqa: E501
                     except radosgw.exception.RadosGWAdminError as e:
-                        result['error_messages'].append(username + ' ' + e.get_code())  # noqa E501
+                        result['error_messages'].append(username + ' ' + e.get_code())  # noqa: E501
                         fail_flag = True
                 else:
                     try:
                         rgw.create_user(username, fullname, key_type='s3',
-                                        access_key=accesskey, secret_key=secretkey,  # noqa E501
-                                        max_buckets=maxbucket, suspended=suspend)  # noqa E501
+                                        access_key=accesskey, secret_key=secretkey,  # noqa: E501
+                                        max_buckets=maxbucket, suspended=suspend)  # noqa: E501
                     except radosgw.exception.RadosGWAdminError as e:
-                        result['error_messages'].append(username + ' ' + e.get_code())  # noqa E501
+                        result['error_messages'].append(username + ' ' + e.get_code())  # noqa: E501
                         fail_flag = True
 
             if not fail_flag and userquota:
@@ -371,15 +371,15 @@ def create_users(rgw, users, result):
                     rgw.set_quota(username, 'user', max_objects=usermaxobjects,
                                   max_size_kb=usermaxsize, enabled=True)
                 except radosgw.exception.RadosGWAdminError as e:
-                    result['error_messages'].append(username + ' ' + e.get_code())  # noqa E501
+                    result['error_messages'].append(username + ' ' + e.get_code())  # noqa: E501
                     fail_flag = True
 
             if not fail_flag and bucketquota:
                 try:
-                    rgw.set_quota(username, 'bucket', max_objects=bucketmaxobjects,  # noqa E501
+                    rgw.set_quota(username, 'bucket', max_objects=bucketmaxobjects,  # noqa: E501
                                   max_size_kb=bucketmaxsize, enabled=True)
                 except radosgw.exception.RadosGWAdminError as e:
-                    result['error_messages'].append(username + ' ' + e.get_code())  # noqa E501
+                    result['error_messages'].append(username + ' ' + e.get_code())  # noqa: E501
                     fail_flag = True
 
             if fail_flag:
@@ -450,12 +450,12 @@ def create_buckets(rgw, buckets, result):
                     except radosgw.exception.RadosGWAdminError:
                         pass
                     failed_buckets.append(bucket)
-                    result['error_messages'].append(bucket + ' could not be linked' + ', NoSuchUser ' + user)  # noqa E501
+                    result['error_messages'].append(bucket + ' could not be linked' + ', NoSuchUser ' + user)  # noqa: E501
 
             else:
                 # something went wrong
                 failed_buckets.append(bucket)
-                result['error_messages'].append(bucket + ' could not be created')  # noqa E501
+                result['error_messages'].append(bucket + ' could not be created')  # noqa: E501
 
         result['added_buckets'] = ", ".join(added_buckets)
         result['failed_buckets'] = ", ".join(failed_buckets)
@@ -467,7 +467,7 @@ def create_bucket(rgw, bucket):
                            host=rgw._connection[0],
                            port=rgw.port,
                            is_secure=rgw.is_secure,
-                           calling_format=boto.s3.connection.OrdinaryCallingFormat(),  # noqa E501
+                           calling_format=boto.s3.connection.OrdinaryCallingFormat(),  # noqa: E501
                            )
 
     try:
@@ -489,23 +489,23 @@ def main():
                   admin_access_key=dict(type='str', required=True),
                   admin_secret_key=dict(type='str', required=True),
                   buckets=dict(type='list', required=False, elements='dict',
-                               options=dict(bucket=dict(type='str', required=True),  # noqa E501
-                                            user=dict(type='str', required=True))),  # noqa E501
+                               options=dict(bucket=dict(type='str', required=True),  # noqa: E501
+                                            user=dict(type='str', required=True))),  # noqa: E501
                   users=dict(type='list', required=False, elements='dict',
-                             options=dict(username=dict(type='str', required=True),  # noqa E501
-                                          fullname=dict(type='str', required=True),  # noqa E501
-                                          email=dict(type='str', required=False),  # noqa E501
-                                          maxbucket=dict(type='int', required=False, default=1000),  # noqa E501
-                                          suspend=dict(type='bool', required=False, default=False),  # noqa E501
-                                          autogenkey=dict(type='bool', required=False, default=True),  # noqa E501
-                                          accesskey=dict(type='str', required=False),  # noqa E501
-                                          secretkey=dict(type='str', required=False),  # noqa E501
-                                          userquota=dict(type='bool', required=False, default=False),  # noqa E501
-                                          usermaxsize=dict(type='str', required=False, default='-1'),  # noqa E501
-                                          usermaxobjects=dict(type='int', required=False, default=-1),  # noqa E501
-                                          bucketquota=dict(type='bool', required=False, default=False),  # noqa E501
-                                          bucketmaxsize=dict(type='str', required=False, default='-1'),  # noqa E501
-                                          bucketmaxobjects=dict(type='int', required=False, default=-1))))  # noqa E501
+                             options=dict(username=dict(type='str', required=True),  # noqa: E501
+                                          fullname=dict(type='str', required=True),  # noqa: E501
+                                          email=dict(type='str', required=False),  # noqa: E501
+                                          maxbucket=dict(type='int', required=False, default=1000),  # noqa: E501
+                                          suspend=dict(type='bool', required=False, default=False),  # noqa: E501
+                                          autogenkey=dict(type='bool', required=False, default=True),  # noqa: E501
+                                          accesskey=dict(type='str', required=False),  # noqa: E501
+                                          secretkey=dict(type='str', required=False),  # noqa: E501
+                                          userquota=dict(type='bool', required=False, default=False),  # noqa: E501
+                                          usermaxsize=dict(type='str', required=False, default='-1'),  # noqa: E501
+                                          usermaxobjects=dict(type='int', required=False, default=-1),  # noqa: E501
+                                          bucketquota=dict(type='bool', required=False, default=False),  # noqa: E501
+                                          bucketmaxsize=dict(type='str', required=False, default='-1'),  # noqa: E501
+                                          bucketmaxobjects=dict(type='int', required=False, default=-1))))  # noqa: E501
 
     # the AnsibleModule object
     module = AnsibleModule(argument_spec=fields,
@@ -533,8 +533,8 @@ def main():
     # radosgw connection
     rgw = radosgw.connection.RadosGWAdminConnection(host=rgw_host,
                                                     port=port,
-                                                    access_key=admin_access_key,  # noqa E501
-                                                    secret_key=admin_secret_key,  # noqa E501
+                                                    access_key=admin_access_key,  # noqa: E501
+                                                    secret_key=admin_secret_key,  # noqa: E501
                                                     aws_signature='AWS4',
                                                     is_secure=is_secure)
 
