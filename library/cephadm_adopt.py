@@ -143,7 +143,7 @@ def main():
     if image:
         cmd.extend(['--image', image])
 
-    cmd.extend(['adopt', '--cluster', cluster, '--name', name, '--style', style])
+    cmd.extend(['adopt', '--cluster', cluster, '--name', name, '--style', style])  # noqa: E501
 
     if not pull:
         cmd.append('--skip-pull')

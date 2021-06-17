@@ -135,12 +135,12 @@ pools:
 
 RETURN = '''#  '''
 
-from ansible.module_utils.basic import AnsibleModule  # noqa E402
-import datetime  # noqa E402
-import json  # noqa E402
-import os  # noqa E402
-import stat  # noqa E402
-import time  # noqa E402
+from ansible.module_utils.basic import AnsibleModule  # noqa: E402
+import datetime  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import stat  # noqa: E402
+import time  # noqa: E402
 
 
 def container_exec(binary, container_image):
@@ -356,7 +356,8 @@ def get_pool_details(module,
                                                                            user_key,    # noqa: E501
                                                                            container_image=container_image))  # noqa: E501
 
-    # This is a trick because "target_size_ratio" isn't present at the same level in the dict
+    # This is a trick because "target_size_ratio" isn't present at the same
+    # level in the dict
     # ie:
     # {
     # 'pg_num': 8,
@@ -366,8 +367,8 @@ def get_pool_details(module,
     #          'target_size_ratio': 0.1
     #     }
     # }
-    # If 'target_size_ratio' is present in 'options', we set it, this way we end up
-    # with a dict containing all needed keys at the same level.
+    # If 'target_size_ratio' is present in 'options', we set it, this way we
+    # end up with a dict containing all needed keys at the same level.
     if 'target_size_ratio' in out['options'].keys():
         out['target_size_ratio'] = out['options']['target_size_ratio']
     else:
@@ -392,7 +393,7 @@ def compare_pool_config(user_pool_config, running_pool_details):
     filter_keys = ['pg_num', 'pg_placement_num', 'size',
                    'pg_autoscale_mode', 'target_size_ratio']
     for key in filter_keys:
-        if (str(running_pool_details[key]) != user_pool_config[key]['value'] and
+        if (str(running_pool_details[key]) != user_pool_config[key]['value'] and  # noqa: E501
                 user_pool_config[key]['value']):
             delta[key] = user_pool_config[key]
 
