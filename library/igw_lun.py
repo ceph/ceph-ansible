@@ -8,11 +8,11 @@ module: igw_lun
 short_description: Manage ceph rbd images to present as iscsi LUNs to clients
 description:
   - This module calls the 'lun' configuration management module installed
-    on the iscsi gateway node(s). The lun module handles the creation and resize  # noqa E501
+    on the iscsi gateway node(s). The lun module handles the creation and resize  # noqa: E501
     of rbd images, and then maps these rbd devices to the gateway node(s) to be
     exposed through the kernel's LIO target.
 
-    To support module debugging, this module logs to /var/log/ansible-module-igw_config.log  # noqa E501
+    To support module debugging, this module logs to /var/log/ansible-module-igw_config.log  # noqa: E501
     on the target machine(s).
 
 option:
@@ -70,15 +70,15 @@ author:
 
 """
 
-import os  # noqa E402
-import logging  # noqa E402
-from logging.handlers import RotatingFileHandler  # noqa E402
+import os  # noqa: E402
+import logging  # noqa: E402
+from logging.handlers import RotatingFileHandler  # noqa: E402
 
-from ansible.module_utils.basic import *  # noqa E402
+from ansible.module_utils.basic import *  # noqa: E402,F403
 
-from ceph_iscsi_config.lun import LUN  # noqa E402
-from ceph_iscsi_config.utils import valid_size  # noqa E402
-import ceph_iscsi_config.settings as settings  # noqa E402
+from ceph_iscsi_config.lun import LUN  # noqa: E402
+from ceph_iscsi_config.utils import valid_size  # noqa: E402
+import ceph_iscsi_config.settings as settings  # noqa: E402
 
 
 # the main function is called ansible_main to allow the call stack
@@ -103,7 +103,7 @@ def ansible_main():
     }
 
     # not supporting check mode currently
-    module = AnsibleModule(argument_spec=fields,  # noqa F405
+    module = AnsibleModule(argument_spec=fields,  # noqa: F405
                            supports_check_mode=False)
 
     pool = module.params["pool"]
