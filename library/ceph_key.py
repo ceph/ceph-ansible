@@ -19,9 +19,15 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-    from ansible.module_utils.ca_common import is_containerized, container_exec, fatal
+    from ansible.module_utils.ca_common import generate_ceph_cmd, \
+                                               is_containerized, \
+                                               container_exec, \
+                                               fatal
 except ImportError:
-    from module_utils.ca_common import is_containerized, container_exec, fatal
+    from module_utils.ca_common import generate_ceph_cmd, \
+                                       is_containerized, \
+                                       container_exec, \
+                                       fatal
 import datetime
 import json
 import os
@@ -250,34 +256,6 @@ def generate_caps(_type, caps):
     return caps_cli
 
 
-def generate_ceph_cmd(cluster, args, user, user_key_path, container_image=None):
-    '''
-    Generate 'ceph' command line to execute
-    '''
-
-    if container_image:
-        binary = 'ceph'
-        cmd = container_exec(
-            binary, container_image)
-    else:
-        binary = ['ceph']
-        cmd = binary
-
-    base_cmd = [
-        '-n',
-        user,
-        '-k',
-        user_key_path,
-        '--cluster',
-        cluster,
-        'auth',
-    ]
-
-    cmd.extend(base_cmd + args)
-
-    return cmd
-
-
 def generate_ceph_authtool_cmd(cluster, name, secret, caps, dest, container_image=None):  # noqa E501
     '''
     Generate 'ceph-authtool' command line to execute
@@ -306,7 +284,7 @@ def generate_ceph_authtool_cmd(cluster, name, secret, caps, dest, container_imag
     return cmd
 
 
-def create_key(module, result, cluster, user, user_key_path, name, secret, caps, import_key, dest, container_image=None):  # noqa E501
+def create_key(module, result, cluster, user, user_key, name, secret, caps, import_key, dest, container_image=None):  # noqa E501
     '''
     Create a CephX key
     '''
@@ -326,13 +304,17 @@ def create_key(module, result, cluster, user, user_key_path, name, secret, caps,
         cluster, name, secret, caps, dest, container_image))
 
     if import_key or user != 'client.admin':
-        cmd_list.append(generate_ceph_cmd(
-            cluster, args, user, user_key_path, container_image))
+        cmd_list.append(generate_ceph_cmd(sub_cmd=['auth'],
+                                          args=args,
+                                          cluster=cluster,
+                                          user=user,
+                                          user_key=user_key,
+                                          container_image=container_image))
 
     return cmd_list
 
 
-def delete_key(cluster, user, user_key_path, name, container_image=None):
+def delete_key(cluster, user, user_key, name, container_image=None):
     '''
     Delete a CephX key
     '''
@@ -344,13 +326,17 @@ def delete_key(cluster, user, user_key_path, name, container_image=None):
         name,
     ]
 
-    cmd_list.append(generate_ceph_cmd(
-        cluster, args, user, user_key_path, container_image))
+    cmd_list.append(generate_ceph_cmd(sub_cmd=['auth'],
+                                      args=args,
+                                      cluster=cluster,
+                                      user=user,
+                                      user_key=user_key,
+                                      container_image=container_image))
 
     return cmd_list
 
 
-def get_key(cluster, user, user_key_path, name, dest, container_image=None):
+def get_key(cluster, user, user_key, name, dest, container_image=None):
     '''
     Get a CephX key (write on the filesystem)
     '''
@@ -364,13 +350,17 @@ def get_key(cluster, user, user_key_path, name, dest, container_image=None):
         dest,
     ]
 
-    cmd_list.append(generate_ceph_cmd(
-        cluster, args, user, user_key_path, container_image))
+    cmd_list.append(generate_ceph_cmd(sub_cmd=['auth'],
+                                      args=args,
+                                      cluster=cluster,
+                                      user=user,
+                                      user_key=user_key,
+                                      container_image=container_image))
 
     return cmd_list
 
 
-def info_key(cluster, name, user, user_key_path, output_format, container_image=None):  # noqa E501
+def info_key(cluster, name, user, user_key, output_format, container_image=None):  # noqa E501
     '''
     Get information about a CephX key
     '''
@@ -384,13 +374,17 @@ def info_key(cluster, name, user, user_key_path, output_format, container_image=
         output_format,
     ]
 
-    cmd_list.append(generate_ceph_cmd(
-        cluster, args, user, user_key_path, container_image))
+    cmd_list.append(generate_ceph_cmd(sub_cmd=['auth'],
+                                      args=args,
+                                      cluster=cluster,
+                                      user=user,
+                                      user_key=user_key,
+                                      container_image=container_image))
 
     return cmd_list
 
 
-def list_keys(cluster, user, user_key_path, container_image=None):
+def list_keys(cluster, user, user_key, container_image=None):
     '''
     List all CephX keys
     '''
@@ -403,8 +397,12 @@ def list_keys(cluster, user, user_key_path, container_image=None):
         'json',
     ]
 
-    cmd_list.append(generate_ceph_cmd(
-        cluster, args, user, user_key_path, container_image))
+    cmd_list.append(generate_ceph_cmd(sub_cmd=['auth'],
+                                      args=args,
+                                      cluster=cluster,
+                                      user=user,
+                                      user_key=user_key,
+                                      container_image=container_image))
 
     return cmd_list
 
@@ -481,15 +479,15 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         name=dict(type='str', required=False),
-        state=dict(type='str', required=False, default='present', choices=['present', 'update', 'absent',
-                                                                           'list', 'info', 'fetch_initial_keys', 'generate_secret']),
+        state=dict(type='str', required=False, default='present', choices=['present', 'update', 'absent',  # noqa E501
+                                                                           'list', 'info', 'fetch_initial_keys', 'generate_secret']),  # noqa E501
         caps=dict(type='dict', required=False, default=None),
         secret=dict(type='str', required=False, default=None, no_log=True),
         import_key=dict(type='bool', required=False, default=True),
         dest=dict(type='str', required=False, default='/etc/ceph/'),
         user=dict(type='str', required=False, default='client.admin'),
         user_key=dict(type='str', required=False, default=None),
-        output_format=dict(type='str', required=False, default='json', choices=['json', 'plain', 'xml', 'yaml'])
+        output_format=dict(type='str', required=False, default='json', choices=['json', 'plain', 'xml', 'yaml'])  # noqa E501
     )
 
     module = AnsibleModule(
@@ -610,7 +608,7 @@ def run_module():
     elif state == "absent":
         if key_exist == 0:
             rc, cmd, out, err = exec_commands(
-                module, delete_key(cluster, user, user_key_path, name, container_image))
+                module, delete_key(cluster, user, user_key_path, name, container_image))  # noqa E501
             if rc == 0:
                 changed = True
         else:
