@@ -2,9 +2,13 @@
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-    from ansible.module_utils.ca_common import exec_command, is_containerized, fatal
+    from ansible.module_utils.ca_common import exec_command, \
+                                               is_containerized, \
+                                               fatal
 except ImportError:
-    from module_utils.ca_common import exec_command, is_containerized, fatal
+    from module_utils.ca_common import exec_command, \
+                                       is_containerized, \
+                                       fatal
 import datetime
 import copy
 import json
@@ -75,7 +79,7 @@ options:
         required: false
     db_vg:
         description:
-            - If db is a lv, this must be the name of the volume group it belongs to.  # noqa E501
+            - If db is a lv, this must be the name of the volume group it belongs to.  # noqa: E501
             - Only applicable if objectstore is 'bluestore'.
         required: false
     wal:
@@ -85,7 +89,7 @@ options:
         required: false
     wal_vg:
         description:
-            - If wal is a lv, this must be the name of the volume group it belongs to.  # noqa E501
+            - If wal is a lv, this must be the name of the volume group it belongs to.  # noqa: E501
             - Only applicable if objectstore is 'bluestore'.
         required: false
     crush_device_class:
@@ -175,7 +179,7 @@ EXAMPLES = '''
     action: create
 
 
-- name: set up a bluestore osd with an lv for data and partitions for block.wal and block.db  # noqa e501
+- name: set up a bluestore osd with an lv for data and partitions for block.wal and block.db  # noqa: E501
   ceph_volume:
     objectstore: bluestore
     data: data-lv
@@ -271,7 +275,7 @@ def batch(module, container_image, report=None):
         fatal('osds_per_device must be provided if action is "batch"', module)
 
     if osds_per_device < 1:
-        fatal('osds_per_device must be greater than 0 if action is "batch"', module)  # noqa E501
+        fatal('osds_per_device must be greater than 0 if action is "batch"', module)  # noqa: E501
 
     if not batch_devices:
         fatal('batch_devices must be provided if action is "batch"', module)
@@ -440,7 +444,7 @@ def is_lv(module, vg, lv, container_image):
     Check if an LV exists
     '''
 
-    args = ['--noheadings', '--reportformat', 'json', '--select', 'lv_name={},vg_name={}'.format(lv, vg)]  # noqa E501
+    args = ['--noheadings', '--reportformat', 'json', '--select', 'lv_name={},vg_name={}'.format(lv, vg)]  # noqa: E501
 
     cmd = build_cmd(args, container_image, binary='lvs')
 
@@ -509,7 +513,7 @@ def run_module():
                          'bluestore', 'filestore'], default='bluestore'),
         action=dict(type='str', required=False, choices=[
                     'create', 'zap', 'batch', 'prepare', 'activate', 'list',
-                    'inventory'], default='create'),  # noqa 4502
+                    'inventory'], default='create'),  # noqa: 4502
         data=dict(type='str', required=False),
         data_vg=dict(type='str', required=False),
         journal=dict(type='str', required=False),
@@ -577,11 +581,11 @@ def run_module():
         try:
             out_dict = json.loads(out)
         except ValueError:
-            fatal("Could not decode json output: {} from the command {}".format(out, cmd), module)  # noqa E501
+            fatal("Could not decode json output: {} from the command {}".format(out, cmd), module)  # noqa: E501
 
         if out_dict:
             data = module.params['data']
-            result['stdout'] = 'skipped, since {0} is already used for an osd'.format(data)  # noqa E501
+            result['stdout'] = 'skipped, since {0} is already used for an osd'.format(data)  # noqa: E501
             result['rc'] = 0
             module.exit_json(**result)
 
@@ -592,7 +596,7 @@ def run_module():
     elif action == 'activate':
         if container_image:
             fatal(
-                "This is not how container's activation happens, nothing to activate", module)  # noqa E501
+                "This is not how container's activation happens, nothing to activate", module)  # noqa: E501
 
         # Activate the OSD
         rc, cmd, out, err = exec_command(
@@ -603,16 +607,16 @@ def run_module():
         skip = []
         for device_type in ['journal', 'data', 'db', 'wal']:
             # 1/ if we passed vg/lv
-            if module.params.get('{}_vg'.format(device_type), None) and module.params.get(device_type, None):  # noqa E501
+            if module.params.get('{}_vg'.format(device_type), None) and module.params.get(device_type, None):  # noqa: E501
                 # 2/ check this is an actual lv/vg
-                ret = is_lv(module, module.params['{}_vg'.format(device_type)], module.params[device_type], container_image)  # noqa E501
+                ret = is_lv(module, module.params['{}_vg'.format(device_type)], module.params[device_type], container_image)  # noqa: E501
                 skip.append(ret)
                 # 3/ This isn't a lv/vg device
                 if not ret:
                     module.params['{}_vg'.format(device_type)] = False
                     module.params[device_type] = False
-            # 4/ no journal|data|db|wal|_vg was passed, so it must be a raw device  # noqa E501
-            elif not module.params.get('{}_vg'.format(device_type), None) and module.params.get(device_type, None):  # noqa E501
+            # 4/ no journal|data|db|wal|_vg was passed, so it must be a raw device  # noqa: E501
+            elif not module.params.get('{}_vg'.format(device_type), None) and module.params.get(device_type, None):  # noqa: E501
                 skip.append(True)
 
         cmd = zap_devices(module, container_image)

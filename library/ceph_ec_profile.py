@@ -121,7 +121,7 @@ def get_profile(module, name, cluster='ceph', container_image=None):
     return cmd
 
 
-def create_profile(module, name, k, m, stripe_unit, cluster='ceph', force=False, container_image=None):
+def create_profile(module, name, k, m, stripe_unit, cluster='ceph', force=False, container_image=None):  # noqa: E501
     '''
     Create a profile
     '''
@@ -198,9 +198,10 @@ def run_module():
     container_image = is_containerized()
 
     if state == "present":
-        rc, cmd, out, err = exec_command(module, get_profile(module, name, cluster, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, get_profile(module, name, cluster, container_image=container_image))  # noqa: E501
         if rc == 0:
-            # the profile already exists, let's check whether we have to update it
+            # the profile already exists, let's check whether we have to
+            # update it
             current_profile = json.loads(out)
             if current_profile['k'] != k or \
                current_profile['m'] != m or \
@@ -212,7 +213,7 @@ def run_module():
                                                                 m,
                                                                 stripe_unit,
                                                                 cluster,
-                                                                force=True, container_image=container_image))
+                                                                force=True, container_image=container_image))  # noqa: E501
                 changed = True
         else:
             # the profile doesn't exist, it has to be created
@@ -220,14 +221,14 @@ def run_module():
                                                                     name,
                                                                     k,
                                                                     m,
-                                                                    stripe_unit,
+                                                                    stripe_unit,  # noqa: E501
                                                                     cluster,
-                                                                    container_image=container_image))
+                                                                    container_image=container_image))  # noqa: E501
             if rc == 0:
                 changed = True
 
     elif state == "absent":
-        rc, cmd, out, err = exec_command(module, delete_profile(module, name, cluster, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, delete_profile(module, name, cluster, container_image=container_image))  # noqa: E501
         if not err:
             out = 'Profile {} removed.'.format(name)
             changed = True
@@ -235,7 +236,7 @@ def run_module():
             rc = 0
             out = "Skipping, the profile {} doesn't exist".format(name)
 
-    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)
+    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)  # noqa: E501
 
 
 def main():
