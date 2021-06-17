@@ -17,9 +17,13 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-    from ansible.module_utils.ca_common import exit_module, generate_ceph_cmd, is_containerized
+    from ansible.module_utils.ca_common import exit_module, \
+                                               generate_ceph_cmd, \
+                                               is_containerized
 except ImportError:
-    from module_utils.ca_common import exit_module, generate_ceph_cmd, is_containerized
+    from module_utils.ca_common import exit_module, \
+                                       generate_ceph_cmd, \
+                                       is_containerized
 import datetime
 
 
@@ -41,7 +45,8 @@ options:
         description:
             - name of the ceph OSD flag.
         required: true
-        choices: ['noup', 'nodown', 'noout', 'nobackfill', 'norebalance', 'norecover', 'noscrub', 'nodeep-scrub']
+        choices: ['noup', 'nodown', 'noout', 'nobackfill', 'norebalance',
+                 'norecover', 'noscrub', 'nodeep-scrub']
     cluster:
         description:
             - The ceph cluster name.
@@ -78,9 +83,9 @@ RETURN = '''#  '''
 def main():
     module = AnsibleModule(
         argument_spec=dict(
-            name=dict(type='str', required=True, choices=['noup', 'nodown', 'noout', 'nobackfill', 'norebalance', 'norecover', 'noscrub', 'nodeep-scrub']),
+            name=dict(type='str', required=True, choices=['noup', 'nodown', 'noout', 'nobackfill', 'norebalance', 'norecover', 'noscrub', 'nodeep-scrub']),  # noqa: E501
             cluster=dict(type='str', required=False, default='ceph'),
-            state=dict(type='str', required=False, default='present', choices=['present', 'absent']),
+            state=dict(type='str', required=False, default='present', choices=['present', 'absent']),  # noqa: E501
         ),
         supports_check_mode=True,
     )
@@ -94,9 +99,9 @@ def main():
     container_image = is_containerized()
 
     if state == 'present':
-        cmd = generate_ceph_cmd(['osd', 'set'], [name], cluster=cluster, container_image=container_image)
+        cmd = generate_ceph_cmd(['osd', 'set'], [name], cluster=cluster, container_image=container_image)  # noqa: E501
     else:
-        cmd = generate_ceph_cmd(['osd', 'unset'], [name], cluster=cluster, container_image=container_image)
+        cmd = generate_ceph_cmd(['osd', 'unset'], [name], cluster=cluster, container_image=container_image)  # noqa: E501
 
     if module.check_mode:
         exit_module(

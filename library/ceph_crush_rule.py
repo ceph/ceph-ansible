@@ -17,9 +17,15 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-    from ansible.module_utils.ca_common import exit_module, generate_ceph_cmd, is_containerized, exec_command
+    from ansible.module_utils.ca_common import exit_module, \
+                                               generate_ceph_cmd, \
+                                               is_containerized, \
+                                               exec_command
 except ImportError:
-    from module_utils.ca_common import exit_module, generate_ceph_cmd, is_containerized, exec_command
+    from module_utils.ca_common import exit_module, \
+                                       generate_ceph_cmd, \
+                                       is_containerized, \
+                                       exec_command
 import datetime
 import json
 
@@ -71,7 +77,8 @@ options:
         description:
             - The ceph bucket type for replicated rule.
         required: false
-        choices: ['osd', 'host', 'chassis', 'rack', 'row', 'pdu', 'pod', 'room', 'datacenter', 'zone', 'region', 'root']
+        choices: ['osd', 'host', 'chassis', 'rack', 'row', 'pdu', 'pod',
+                 'room', 'datacenter', 'zone', 'region', 'root']
     device_class:
         description:
             - The ceph device class for replicated rule.
@@ -135,7 +142,10 @@ def create_rule(module, container_image=None):
         if profile:
             args.append(profile)
 
-    cmd = generate_ceph_cmd(['osd', 'crush', 'rule'], args, cluster=cluster, container_image=container_image)
+    cmd = generate_ceph_cmd(['osd', 'crush', 'rule'],
+                            args,
+                            cluster=cluster,
+                            container_image=container_image)
 
     return cmd
 
@@ -150,7 +160,10 @@ def get_rule(module, container_image=None):
 
     args = ['dump', name, '--format=json']
 
-    cmd = generate_ceph_cmd(['osd', 'crush', 'rule'], args, cluster=cluster, container_image=container_image)
+    cmd = generate_ceph_cmd(['osd', 'crush', 'rule'],
+                            args,
+                            cluster=cluster,
+                            container_image=container_image)
 
     return cmd
 
@@ -165,7 +178,10 @@ def remove_rule(module, container_image=None):
 
     args = ['rm', name]
 
-    cmd = generate_ceph_cmd(['osd', 'crush', 'rule'], args, cluster=cluster, container_image=container_image)
+    cmd = generate_ceph_cmd(['osd', 'crush', 'rule'],
+                            args,
+                            cluster=cluster,
+                            container_image=container_image)
 
     return cmd
 
@@ -175,11 +191,11 @@ def main():
         argument_spec=dict(
             name=dict(type='str', required=True),
             cluster=dict(type='str', required=False, default='ceph'),
-            state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),
-            rule_type=dict(type='str', required=False, choices=['replicated', 'erasure']),
+            state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),  # noqa: E501
+            rule_type=dict(type='str', required=False, choices=['replicated', 'erasure']),  # noqa: E501
             bucket_root=dict(type='str', required=False),
-            bucket_type=dict(type='str', required=False, choices=['osd', 'host', 'chassis', 'rack', 'row', 'pdu', 'pod',
-                                                                  'room', 'datacenter', 'zone', 'region', 'root']),
+            bucket_type=dict(type='str', required=False, choices=['osd', 'host', 'chassis', 'rack', 'row', 'pdu', 'pod',  # noqa: E501
+                                                                  'room', 'datacenter', 'zone', 'region', 'root']),  # noqa: E501
             device_class=dict(type='str', required=False),
             profile=dict(type='str', required=False)
         ),
@@ -214,28 +230,28 @@ def main():
     container_image = is_containerized()
 
     if state == "present":
-        rc, cmd, out, err = exec_command(module, get_rule(module, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, get_rule(module, container_image=container_image))  # noqa: E501
         if rc != 0:
-            rc, cmd, out, err = exec_command(module, create_rule(module, container_image=container_image))
+            rc, cmd, out, err = exec_command(module, create_rule(module, container_image=container_image))  # noqa: E501
             changed = True
         else:
             rule = json.loads(out)
-            if (rule['type'] == 1 and rule_type == 'erasure') or (rule['type'] == 3 and rule_type == 'replicated'):
-                module.fail_json(msg="Can not convert crush rule {} to {}".format(name, rule_type), changed=False, rc=1)
+            if (rule['type'] == 1 and rule_type == 'erasure') or (rule['type'] == 3 and rule_type == 'replicated'):  # noqa: E501
+                module.fail_json(msg="Can not convert crush rule {} to {}".format(name, rule_type), changed=False, rc=1)  # noqa: E501
 
     elif state == "absent":
-        rc, cmd, out, err = exec_command(module, get_rule(module, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, get_rule(module, container_image=container_image))  # noqa: E501
         if rc == 0:
-            rc, cmd, out, err = exec_command(module, remove_rule(module, container_image=container_image))
+            rc, cmd, out, err = exec_command(module, remove_rule(module, container_image=container_image))  # noqa: E501
             changed = True
         else:
             rc = 0
             out = "Crush Rule {} doesn't exist".format(name)
 
     elif state == "info":
-        rc, cmd, out, err = exec_command(module, get_rule(module, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, get_rule(module, container_image=container_image))  # noqa: E501
 
-    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)
+    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)  # noqa: E501
 
 
 if __name__ == '__main__':
