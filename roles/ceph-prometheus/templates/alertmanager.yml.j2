@@ -12,4 +12,9 @@ receivers:
   webhook_configs:
 {% for host in groups['mgrs'] | default(groups['mons']) %}
   - url: '{{ dashboard_protocol }}://{{ hostvars[host]['ansible_facts']['fqdn'] }}:{{ dashboard_port }}/api/prometheus_receiver'
+{% if dashboard_protocol == 'https' %}
+    http_config:
+      tls_config:
+        ca_file: /etc/ssl/certs/ceph-dashboard.crt
+{% endif %}
 {% endfor %}

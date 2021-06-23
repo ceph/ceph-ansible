@@ -23,6 +23,9 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --name=alertmanager \
 {% endif %}
   -v "{{ alertmanager_conf_dir }}:/etc/alertmanager:Z" \
   -v "{{ alertmanager_data_dir }}:/alertmanager:Z" \
+{% if dashboard_protocol == 'https' %}
+  -v "/etc/ceph/ceph-dashboard.crt:/etc/ssl/certs/ceph-dashboard.crt:Z" \
+{% endif %}
   --net=host \
   --cpu-period={{ alertmanager_container_cpu_period }} \
   --cpu-quota={{ alertmanager_container_cpu_period * alertmanager_container_cpu_cores }} \

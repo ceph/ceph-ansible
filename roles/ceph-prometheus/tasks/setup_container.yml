@@ -1,4 +1,15 @@
 ---
+- name: copy dashboard SSL certificate file
+  copy:
+    src: "{{ '/etc/ceph/ceph-dashboard.crt' if not dashboard_tls_external | bool else dashboard_crt }}"
+    dest: "/etc/ceph/ceph-dashboard.crt"
+    owner: root
+    group: root
+    mode: 0440
+    remote_src: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when: dashboard_protocol == 'https'
+
 - name: include_tasks systemd.yml
   include_tasks: systemd.yml
 
