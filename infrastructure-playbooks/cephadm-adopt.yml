@@ -626,6 +626,10 @@
     - import_role:
         name: ceph-defaults
 
+    - import_role:
+        name: ceph-facts
+        tasks_from: set_radosgw_address.yml
+
     - name: for non multisite setup
       when: not rgw_multisite | bool
       run_once: true
@@ -669,10 +673,20 @@
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: update the placement of radosgw hosts
-      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rgw {{ cluster }} {{ rgw_realm | default('default') }} {{ rgw_zone | default('default') }} --placement='count-per-host:{{ radosgw_num_instances }} label:{{ rgw_group_name }}' --port={{ radosgw_frontend_port }} {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}"
-      run_once: true
+        - name: update the placement of radosgw hosts
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rgw {{ cluster }} {{ rgw_realm | default('default') }} {{ rgw_zone | default('default') }} --placement='count-per-host:{{ radosgw_num_instances }} label:{{ rgw_group_name }}' --port={{ radosgw_frontend_port }} {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}"
+          run_once: true
+          changed_when: false
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: update the placement of radosgw multisite hosts
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rgw {{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }} --realm={{ item.rgw_realm }} --zone={{ item.rgw_zone }} --port={{ item.radosgw_frontend_port }} --placement={{ item.host }}"
       changed_when: false
+      with_items: "{{ rgw_instances_all }}"
+      when: rgw_multisite | bool
+      run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
