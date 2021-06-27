@@ -103,6 +103,7 @@ def node(host, request):
     group_names = ansible_vars["group_names"]
     docker = ansible_vars.get("docker")
     dashboard = ansible_vars.get("dashboard_enabled", True)
+    monitoring = ansible_vars.get("monitoring_enabled", True)
     radosgw_num_instances = ansible_vars.get("radosgw_num_instances", 1)
     ceph_release_num = {
         'jewel': 10,
@@ -143,6 +144,10 @@ def node(host, request):
     if request.node.get_closest_marker("dashboard") and not dashboard:
         pytest.skip(
             "Not a valid test with dashboard disabled")
+
+    if request.node.get_closest_marker("monitoring") and not monitoring:
+        pytest.skip(
+            "Not a valid test with monitoring disabled")
 
     if request.node.get_closest_marker("dashboard") and group_names == ['clients']:
         pytest.skip('Not a valid test for client node')

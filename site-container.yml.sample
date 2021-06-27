@@ -434,10 +434,14 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
+- import_playbook: monitoring.yml
+  when:
+    - monitoring_enabled | bool
+    - groups.get(monitoring_group_name, []) | length > 0
+
 - import_playbook: dashboard.yml
   when:
     - dashboard_enabled | bool
-    - groups.get(monitoring_group_name, []) | length > 0
 
 - hosts:
   - mons

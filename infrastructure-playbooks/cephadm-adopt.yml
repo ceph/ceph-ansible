@@ -258,8 +258,8 @@
       run_once: true
       delegate_to: '{{ groups[mon_group_name][0] }}'
 
-    - name: set dashboard container image in ceph mgr configuration
-      when: dashboard_enabled | bool
+    - name: set monitoring container image in ceph mgr configuration
+      when: monitoring_enabled | bool
       run_once: true
       block:
         - name: set alertmanager container image in ceph configuration
@@ -1053,8 +1053,8 @@
         mode: "{{ ceph_keyring_permissions }}"
       when: not ceph_config.stat.exists | bool
 
-    - name: with dashboard enabled
-      when: dashboard_enabled | bool
+    - name: with monitoring enabled
+      when: monitoring_enabled | bool
       block:
         - name: ensure alertmanager/prometheus data directories are present
           file:
@@ -1206,7 +1206,7 @@
         name: ceph-defaults
 
     - name: with dashboard enabled
-      when: dashboard_enabled | bool
+      when: monitoring_enabled | bool
       block:
         - name: stop and disable node-exporter systemd service
           service:
@@ -1257,8 +1257,8 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: with dashboard enabled
-      when: dashboard_enabled | bool
+    - name: with monitoring enabled
+      when: monitoring_enabled | bool
       block:
         - name: update the placement of alertmanager hosts
           command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply alertmanager --placement='{{ groups.get(monitoring_group_name, []) | length }} label:{{ monitoring_group_name }}'"

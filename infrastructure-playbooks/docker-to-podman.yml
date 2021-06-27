@@ -123,7 +123,7 @@
             - "{{ grafana_container_image }}"
             - "{{ prometheus_container_image }}"
           when:
-            - dashboard_enabled | bool
+            - monitoring_enabled | bool
             - inventory_hostname in groups.get(monitoring_group_name, [])
 
         - name: "pulling {{ node_exporter_container_image }} image from docker daemon"
@@ -133,7 +133,7 @@
           until: pull_image.rc == 0
           retries: "{{ docker_pull_retry }}"
           delay: 10
-          when: dashboard_enabled | bool
+          when: monitoring_enabled | bool
 
     - import_role:
         name: ceph-mon
@@ -190,8 +190,8 @@
             inventory_hostname in groups.get(mgr_group_name, []) or
             inventory_hostname in groups.get(rbdmirror_group_name, [])
 
-    - name: dashboard configuration
-      when: dashboard_enabled | bool
+    - name: monitoring configuration
+      when: monitoring_enabled | bool
       block:
         - import_role:
             name: ceph-node-exporter

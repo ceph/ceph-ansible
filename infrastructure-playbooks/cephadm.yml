@@ -39,8 +39,8 @@
         - monitor_address_block == 'subnet'
         - monitor_interface == 'interface'
 
-    - name: validate dashboard configuration
-      when: dashboard_enabled | bool
+    - name: validate monitoring configuration
+      when: monitoring_enabled | bool
       run_once: true
       block:
         - name: fail if [monitoring] group doesn't exist or empty
@@ -48,6 +48,10 @@
             msg: "you must add a [monitoring] group and add at least one node."
           when: groups[monitoring_group_name] is undefined or groups[monitoring_group_name] | length == 0
 
+    - name: validate dashboard config
+      when: dashboard_enabled | bool
+      run_once: true
+      block:
         - name: fail when dashboard_admin_password is not set
           fail:
             msg: "you must set dashboard_admin_password."
@@ -166,8 +170,8 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: set dashboard container image in ceph mgr configuration
-      when: dashboard_enabled | bool
+    - name: set monitoring container image in ceph mgr configuration
+      when: monitoring_enabled | bool
       block:
         - name: set alertmanager container image in ceph configuration
           command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_alertmanager {{ alertmanager_container_image }}"
@@ -294,8 +298,8 @@
     - import_role:
         name: ceph-defaults
 
-    - name: with dashboard enabled
-      when: dashboard_enabled | bool
+    - name: with monitoring enabled
+      when: monitoring_enabled | bool
       delegate_to: '{{ groups[mon_group_name][0] }}'
       run_once: true
       block:
