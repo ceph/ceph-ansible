@@ -74,14 +74,6 @@
               manager each time the playbook runs."
       when: mgr_to_kill is not defined
 
-    - name: exit playbook, if the manager is not part of the inventory
-      fail:
-        msg: "It seems that the host given is not part of your inventory,
-              please make sure it is."
-      when:
-        - mgr_to_kill not in active_mgr
-        - mgr_to_kill not in standbys_mgr
-
     - name: exit playbook, if user did not mean to shrink cluster
       fail:
         msg: "Exiting shrink-mgr playbook, no manager was removed.
@@ -93,6 +85,13 @@
     - name: set_fact mgr_to_kill_hostname
       set_fact:
         mgr_to_kill_hostname: "{{ hostvars[mgr_to_kill]['ansible_facts']['hostname'] }}"
+
+    - name: exit playbook, if the selected manager is not present in the cluster
+      fail:
+        msg: "It seems that the host given is not present in the cluster."
+      when:
+        - mgr_to_kill_hostname not in active_mgr
+        - mgr_to_kill_hostname not in standbys_mgr
 
   tasks:
     - name: stop manager services and verify it
