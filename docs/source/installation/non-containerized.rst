@@ -15,7 +15,7 @@ Origin: Repository
 If ``ceph_origin`` is set to ``repository``, you now have the choice between a couple of repositories controlled by the ``ceph_repository`` option:
 
 - ``community``: fetches packages from http://download.ceph.com, the official community Ceph repositories
-- ``rhcs``: means you are a Red Hat customer, additionally you will have to select a repository type through ``ceph_repository_type`` (``cdn`` or ``iso``)
+- ``rhcs``: means you are a Red Hat customer
 - ``dev``: fetches packages from shaman, a gitbuilder based package system
 - ``uca``: fetches packages from Ubuntu Cloud Archive
 - ``custom``: fetches packages from a specific repository
@@ -33,7 +33,6 @@ RHCS repository
 RHCS is the Red Hat Ceph Storage product from Red Hat, the enterprise version of Ceph.
 If ``ceph_repository`` is set to ``rhcs``, packages you will be installed from Red Hat sources.
 
-Additionally you will have to select a repository type through ``ceph_repository_type``, it can be ``cdn`` or ``iso``.
 To choose a specific version of RHCS you can set the ``ceph_rhcs_version`` variable accordingly, e.g: ``ceph_rhcs_version: 2``.
 
 UCA repository
