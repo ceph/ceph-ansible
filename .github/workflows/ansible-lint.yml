@@ -14,5 +14,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
-      - run: pip install -r <(grep ansible tests/requirements.txt) ansible-lint==4.3.7
+      - run: pip install -r <(grep ansible tests/requirements.txt) ansible-lint==4.3.7 netaddr
       - run: ansible-lint -x 106,204,205,208 -v --force-color ./roles/*/ ./infrastructure-playbooks/*.yml site-container.yml.sample site-container.yml.sample
+      - run: ansible-playbook -i ./tests/functional/all_daemons/hosts site.yml.sample --syntax-check --list-tasks -vv
+      - run: ansible-playbook -i ./tests/functional/all_daemons/hosts site-container.yml.sample --syntax-check --list-tasks -vv
+      - run: ansible-playbook -i ./tests/functional/all_daemons/hosts infrastructure-playbooks/*.yml --syntax-check --list-tasks -vv
