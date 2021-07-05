@@ -679,6 +679,55 @@
     - import_role:
         name: ceph-crash
 
+- name: remove all ceph rpms
+  vars:
+    ceph_packages:
+      - ceph
+      - ceph-base
+      - ceph-common
+      - ceph-fuse
+      - ceph-mds
+      - ceph-mgr
+      - ceph-mon
+      - ceph-osd
+      - ceph-release
+      - ceph-radosgw
+      - ceph-grafana-dashboards
+      - rbd-mirror
+      - libcephfs2
+      - librados2
+      - libradosstriper1
+      - librbd1
+      - librgw2
+      - python3-ceph-argparse
+      - python3-cephfs
+      - python3-rados
+      - python3-rbd
+      - python3-rgw
+      - ceph-iscsi
+      - tcmu-runner
+      - nfs-ganesha
+      - nfs-ganesha-selinux
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ client_group_name|default('clients') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ monitoring_group_name|default('monitoring') }}"
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  become: true
+  gather_facts: false
+  tasks:
+    - name: remove ceph packages
+      package:
+        name: "{{ ceph_packages }}"
+        state: absent
+      when: remove_pkg_post_container_migration | bool
+
 - name: final task
   hosts:
     - "{{ mon_group_name|default('mons') }}"
