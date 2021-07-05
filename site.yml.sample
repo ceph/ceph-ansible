@@ -473,6 +473,14 @@
   gather_facts: false
   become: True
   any_errors_fatal: true
+  pre_tasks:
+    - name: set ceph crash install 'In Progress'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_crash:
+            status: "In Progress"
+            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
   tasks:
     - import_role:
@@ -484,6 +492,15 @@
         name: ceph-handler
     - import_role:
         name: ceph-crash
+
+  post_tasks:
+    - name: set ceph crash install 'Complete'
+      run_once: true
+      set_stats:
+        data:
+          installer_phase_ceph_crash:
+            status: "Complete"
+            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: mons
   gather_facts: false
