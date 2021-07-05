@@ -1,0 +1,204 @@
+---
+# This playbook purges the Ceph MGR Dashboard and Monitoring
+# (alertmanager/prometheus/grafana/node-exporter) stack.
+# It removes: packages, configuration files and ALL THE DATA
+#
+# Use it like this:
+# ansible-playbook purge-dashboard.yml
+#     Prompts for confirmation to purge, defaults to no and
+#     doesn't purge anything. yes purges the dashboard and
+#     monitoring stack.
+#
+# ansible-playbook -e ireallymeanit=yes|no purge-dashboard.yml
+#     Overrides the prompt using -e option. Can be used in
+#     automation scripts to avoid interactive prompt.
+
+- name: confirm whether user really meant to purge the dashboard
+  hosts: localhost
+  gather_facts: false
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to purge the dashboard?
+      default: 'no'
+      private: no
+  tasks:
+    - name: exit playbook, if user did not mean to purge dashboard
+      fail:
+        msg: >
+          "Exiting purge-dashboard playbook, dashboard was NOT purged.
+           To purge the dashboard, either say 'yes' on the prompt or
+           or use `-e ireallymeanit=yes` on the command line when
+           invoking the playbook"
+      when: ireallymeanit != 'yes'
+
+- name: gather facts on all hosts
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ client_group_name|default('clients') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ monitoring_group_name | default('monitoring') }}"
+  become: true
+  tasks:
+    - debug: msg="gather facts on all Ceph hosts for following reference"
+
+- name: purge node exporter
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ client_group_name|default('clients') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ monitoring_group_name | default('monitoring') }}"
+  gather_facts: false
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary
+
+    - name: disable node_exporter service
+      service:
+        name: node_exporter
+        state: stopped
+        enabled: no
+      failed_when: false
+
+    - name: remove node_exporter service file
+      file:
+        name: /etc/systemd/system/node_exporter.service
+        state: absent
+
+    - name: remove node-exporter image
+      command: "{{ container_binary }} rmi {{ node_exporter_container_image }}"
+      changed_when: false
+      failed_when: false
+
+- name: purge ceph monitoring
+  hosts: "{{ monitoring_group_name | default('monitoring') }}"
+  gather_facts: false
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary
+
+    - name: stop services
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      failed_when: false
+      loop:
+        - alertmanager
+        - prometheus
+        - grafana-server
+
+    - name: remove systemd service files
+      file:
+        name: "/etc/systemd/system/{{ item }}.service"
+        state: absent
+      loop:
+        - alertmanager
+        - prometheus
+        - grafana-server
+
+    - name: remove ceph dashboard container images
+      command: "{{ container_binary }} rmi {{ item }}"
+      loop:
+        - "{{ alertmanager_container_image }}"
+        - "{{ prometheus_container_image }}"
+        - "{{ grafana_container_image }}"
+      changed_when: false
+      failed_when: false
+
+    - name: remove ceph-grafana-dashboards package on RedHat or SUSE
+      package:
+        name: ceph-grafana-dashboards
+        state: absent
+      when:
+        - not containerized_deployment | bool
+        - ansible_facts['os_family'] in ['RedHat', 'Suse']
+
+    - name: remove data
+      file:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ alertmanager_conf_dir }}"
+        - "{{ prometheus_conf_dir }}"
+        - /etc/grafana
+        - "{{ alertmanager_data_dir }}"
+        - "{{ prometheus_data_dir }}"
+        - /var/lib/grafana
+
+- name: purge ceph dashboard
+  hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) | default(omit) }}"
+  gather_facts: false
+  become: true
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary
+
+    - name: remove the dashboard admin user
+      ceph_dashboard_user:
+        name: "{{ dashboard_admin_user }}"
+        cluster: "{{ cluster }}"
+        state: absent
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: remove radosgw system user
+      radosgw_user:
+        name: "{{ dashboard_rgw_api_user_id }}"
+        cluster: "{{ cluster }}"
+        state: absent
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: groups.get(rgw_group_name, []) | length > 0
+
+    - name: disable mgr dashboard and prometheus modules
+      ceph_mgr_module:
+        name: "{{ item }}"
+        cluster: "{{ cluster }}"
+        state: disable
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      loop:
+        - dashboard
+        - prometheus
+
+    - name: remove TLS certificate and key files
+      file:
+        name: "/etc/ceph/ceph-dashboard.{{ item }}"
+        state: absent
+      loop:
+        - crt
+        - key
+      when: dashboard_protocol == "https"
+
+    - name: remove ceph-mgr-dashboard package
+      package:
+        name: ceph-mgr-dashboard
+        state: absent
+      when: not containerized_deployment | bool
