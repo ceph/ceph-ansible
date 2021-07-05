@@ -10,12 +10,12 @@
 
 - name: get current mgr backend - ipv4
   set_fact:
-    mgr_server_addr: "{{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}"
+    dashboard_server_addr: "{{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(dashboard_network.split(',')) | first }}"
   when: ip_version == 'ipv4'
 
 - name: get current mgr backend - ipv6
   set_fact:
-    mgr_server_addr: "{{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last }}"
+    dashboard_server_addr: "{{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(dashboard_network.split(',')) | last }}"
   when: ip_version == 'ipv6'
 
 - name: disable SSL for dashboard
@@ -61,7 +61,7 @@
           set_fact:
             subj_alt_names: >
               {% for host in groups[mgr_group_name] | default(groups[mon_group_name]) -%}
-              subjectAltName={{ hostvars[host]['ansible_facts']['hostname'] }}/subjectAltName={{ hostvars[host]['mgr_server_addr'] }}/subjectAltName={{ hostvars[host]['ansible_facts']['fqdn'] }}
+              subjectAltName={{ hostvars[host]['ansible_facts']['hostname'] }}/subjectAltName={{ hostvars[host]['dashboard_server_addr'] }}/subjectAltName={{ hostvars[host]['ansible_facts']['fqdn'] }}
               {%- if loop.last %}/{% endif %}
               {%- endfor -%}
           run_once: true
@@ -120,7 +120,7 @@
   failed_when: false # Do not fail if the option does not exist, it only exists post-14.2.0
 
 - name: config the current dashboard backend
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/{{ hostvars[item]['ansible_facts']['hostname'] }}/server_addr {{ hostvars[item]['mgr_server_addr'] }}"
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/{{ hostvars[item]['ansible_facts']['hostname'] }}/server_addr {{ hostvars[item]['dashboard_server_addr'] }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
   run_once: true
