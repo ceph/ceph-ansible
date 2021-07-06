@@ -8,6 +8,16 @@
   set_fact:
     ceph_cmd: "{{ hostvars[groups[mon_group_name][0]]['container_binary'] + ' run --interactive --net=host --rm -v /etc/ceph:/etc/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
 
+- name: get current mgr backend - ipv4
+  set_fact:
+    dashboard_server_addr: "{{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(dashboard_network.split(',')) | first }}"
+  when: ip_version == 'ipv4'
+
+- name: get current mgr backend - ipv6
+  set_fact:
+    dashboard_server_addr: "{{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(dashboard_network.split(',')) | last }}"
+  when: ip_version == 'ipv6'
+
 - name: disable SSL for dashboard
   when: dashboard_protocol == "http"
   delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -55,10 +65,19 @@
     - name: generate and copy self-signed certificate
       when: dashboard_key | length == 0 or dashboard_crt | length == 0
       block:
+        - name: set_fact subj_alt_names
+          set_fact:
+            subj_alt_names: >
+              {% for host in groups[mgr_group_name] | default(groups[mon_group_name]) -%}
+              subjectAltName={{ hostvars[host]['ansible_facts']['hostname'] }}/subjectAltName={{ hostvars[host]['dashboard_server_addr'] }}/subjectAltName={{ hostvars[host]['ansible_facts']['fqdn'] }}
+              {%- if loop.last %}/{% endif %}
+              {%- endfor -%}
+          run_once: true
+
         - name: generate a Self Signed OpenSSL certificate for dashboard
           shell: |
             test -f /etc/ceph/ceph-dashboard.key -a -f /etc/ceph/ceph-dashboard.crt || \
-            openssl req -new -nodes -x509 -subj '/O=IT/CN=ceph-dashboard' -days 3650 -keyout /etc/ceph/ceph-dashboard.key -out /etc/ceph/ceph-dashboard.crt -extensions v3_ca
+            openssl req -new -nodes -x509 -subj '/O=IT/CN={{ dashboard_certificate_cn }}/{{ subj_alt_names | trim }}' -days 3650 -keyout /etc/ceph/ceph-dashboard.key -out /etc/ceph/ceph-dashboard.crt -extensions v3_ca
           run_once: True
 
         - name: slurp self-signed generated certificate for dashboard
@@ -108,10 +127,12 @@
   changed_when: false
   failed_when: false # Do not fail if the option does not exist, it only exists post-14.2.0
 
-- include_tasks: configure_dashboard_backends.yml
+- name: config the current dashboard backend
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/{{ hostvars[item]['ansible_facts']['hostname'] }}/server_addr {{ hostvars[item]['dashboard_server_addr'] }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  changed_when: false
+  run_once: true
   with_items: '{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}'
-  vars:
-    dashboard_backend: '{{ item }}'
 
 - name: disable mgr dashboard module (restart)
   ceph_mgr_module:
