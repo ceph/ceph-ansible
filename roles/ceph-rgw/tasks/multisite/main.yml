@@ -21,7 +21,7 @@
 
 - name: create a list of dicts with each rgw endpoint and it's zone
   set_fact:
-    zone_endpoint_pairs: "{{ zone_endpoint_pairs | default([]) | union([{ 'endpoint': hostvars[item.host]['rgw_multisite_proto'] + '://' + item.radosgw_address + ':' + item.radosgw_frontend_port | string, 'rgw_zone': item.rgw_zone, 'rgw_realm': item.rgw_realm, 'rgw_zonegroup': item.rgw_zonegroup, 'rgw_zonemaster': item.rgw_zonemaster | default(hostvars[item.host]['rgw_zonemaster']) }]) }}"
+    zone_endpoint_pairs: "{{ zone_endpoint_pairs | default([]) | union([{ 'endpoint': hostvars[item.host]['rgw_multisite_proto'] + '://' + (item.radosgw_address if hostvars[item.host]['rgw_multisite_proto'] == 'http' else hostvars[item.host]['ansible_facts']['fqdn']) + ':' + item.radosgw_frontend_port | string, 'rgw_zone': item.rgw_zone, 'rgw_realm': item.rgw_realm, 'rgw_zonegroup': item.rgw_zonegroup, 'rgw_zonemaster': item.rgw_zonemaster | default(hostvars[item.host]['rgw_zonemaster']) }]) }}"
   loop: "{{ rgw_instances_all }}"
   run_once: true
 
