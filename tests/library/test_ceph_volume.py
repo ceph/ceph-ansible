@@ -113,6 +113,21 @@ class TestCephVolumeModule(object):
         result = ceph_volume.zap_devices(fake_module, fake_container_image)
         assert result == expected_command_list
 
+    def test_zap_osd_id(self):
+        fake_module = MagicMock()
+        fake_module.params = {'osd_id': '123'}
+        fake_container_image = None
+        expected_command_list = ['ceph-volume',
+                                 '--cluster',
+                                 'ceph',
+                                 'lvm',
+                                 'zap',
+                                 '--destroy',
+                                 '--osd-id',
+                                 '123']
+        result = ceph_volume.zap_devices(fake_module, fake_container_image)
+        assert result == expected_command_list
+
     def test_activate_osd(self):
         expected_command_list = ['ceph-volume',
                                  '--cluster',
