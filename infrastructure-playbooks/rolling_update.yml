@@ -1063,12 +1063,16 @@
           command: "{{ ceph_cmd }} --cluster {{ cluster }} osd setcrushmap -i /etc/ceph/{{ cluster }}-crushmap"
           changed_when: false
 
-        - name: switching to straw2 buckets failed
-          debug:
+        - name: inform that the switch to straw2 buckets failed
+          fail:
             msg: >
               "An attempt to switch to straw2 bucket was made but failed.
                Check the cluster status."
 
+    - name: remove crushmap backup
+      file:
+        path: /etc/ceph/{{ cluster }}-crushmap
+        state: absent
 
 - name: show ceph status
   hosts: "{{ mon_group_name|default('mons') }}"
