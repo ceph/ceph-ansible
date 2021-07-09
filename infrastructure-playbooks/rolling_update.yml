@@ -168,6 +168,16 @@
                   fail:
                     msg: "cluster is not in an acceptable state!"
               when: (check_cluster_health.stdout | from_json).status == 'HEALTH_ERR'
+
+            - name: get the ceph quorum status
+              command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} quorum_status -f json"
+              register: check_quorum_status
+              delegate_to: "{{ mon_host }}"
+
+            - name: fail if the cluster quorum isn't in an acceptable state
+              fail:
+                msg: "cluster quorum is not in an acceptable state!"
+              when: (check_quorum_status.stdout | from_json).quorum | length != groups[mon_group_name] | length
           when: inventory_hostname == groups[mon_group_name] | first
 
         - name: ensure /var/lib/ceph/bootstrap-rbd-mirror is present
