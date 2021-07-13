@@ -3,11 +3,8 @@
 # It removes: packages, containers, configuration files and ALL THE DATA
 
 - name: confirm whether user really meant to purge the cluster
-
   hosts: localhost
-
   gather_facts: false
-
   vars_prompt:
     - name: ireallymeanit
       prompt: >
@@ -17,27 +14,26 @@
         Do you want to continue?
       default: 'no'
       private: no
-
   tasks:
-  - name: exit playbook, if user did not mean to purge cluster
-    fail:
-      msg: >
-        "Exiting purge-container-cluster playbook, cluster was NOT purged.
-         To purge the cluster, either say 'yes' on the prompt or
-         or use `-e ireallymeanit=yes` on the command line when
-         invoking the playbook"
-    when: ireallymeanit != 'yes'
+    - name: exit playbook, if user did not mean to purge cluster
+      fail:
+        msg: >
+          "Exiting purge-container-cluster playbook, cluster was NOT purged.
+           To purge the cluster, either say 'yes' on the prompt or
+           or use `-e ireallymeanit=yes` on the command line when
+           invoking the playbook"
+      when: ireallymeanit != 'yes'
 
-  - name: set ceph_docker_registry value if not set
-    set_fact:
-      ceph_docker_registry: "docker.io"
-    when: ceph_docker_registry is not defined
+    - name: set ceph_docker_registry value if not set
+      set_fact:
+        ceph_docker_registry: "docker.io"
+      when: ceph_docker_registry is not defined
+
 
 - name: check there's no ceph kernel threads present
   hosts: "{{ client_group_name|default('clients') }}"
   become: true
   any_errors_fatal: true
-
   tasks:
     - import_role:
         name: ceph-defaults
@@ -95,109 +91,94 @@
 
 
 - name: purge ceph nfs cluster
-
-  hosts: "{{ nfs_group_name|default('nfss') }}"
-
+  hosts: "{{ nfs_group_name | default('nfss') }}"
   become: true
-
   tasks:
+    - name: disable ceph nfs service
+      service:
+        name: "ceph-nfs@{{ ansible_facts['hostname'] }}"
+        state: stopped
+        enabled: no
+      ignore_errors: true
 
-  - name: disable ceph nfs service
-    service:
-      name: "ceph-nfs@{{ ansible_facts['hostname'] }}"
-      state: stopped
-      enabled: no
-    ignore_errors: true
+    - name: remove ceph nfs service
+      file:
+        path: /etc/systemd/system/ceph-nfs@.service
+        state: absent
 
-  - name: remove ceph nfs service
-    file:
-      path: /etc/systemd/system/ceph-nfs@.service
-      state: absent
-
-  - name: remove ceph nfs directories for "{{ ansible_facts['hostname'] }}"
-    file:
-      path: "{{ item }}"
-      state: absent
-    with_items:
-      - /etc/ganesha
-      - /var/lib/nfs/ganesha
-      - /var/run/ganesha
+    - name: remove ceph nfs directories for "{{ ansible_facts['hostname'] }}"
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/ganesha
+        - /var/lib/nfs/ganesha
+        - /var/run/ganesha
 
 
 - name: purge ceph mds cluster
-
-  hosts: "{{ mds_group_name|default('mdss') }}"
-
+  hosts: "{{ mds_group_name | default('mdss') }}"
   become: true
-
   tasks:
+    - name: disable ceph mds service
+      service:
+        name: "ceph-mds@{{ ansible_facts['hostname'] }}"
+        state: stopped
+        enabled: no
+      ignore_errors: true
 
-  - name: disable ceph mds service
-    service:
-      name: "ceph-mds@{{ ansible_facts['hostname'] }}"
-      state: stopped
-      enabled: no
-    ignore_errors: true
-
-  - name: remove ceph mds service
-    file:
-      path: /etc/systemd/system/ceph-mds@.service
-      state: absent
+    - name: remove ceph mds service
+      file:
+        path: /etc/systemd/system/ceph-mds@.service
+        state: absent
 
 
 - name: purge ceph iscsigws cluster
-
-  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  hosts: "{{ iscsi_gw_group_name | default('iscsigws') }}"
   become: true
   tasks:
+    - name: disable ceph iscsigw services
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      ignore_errors: true
+      with_items:
+        - rbd-target-api
+        - rbd-target-gw
+        - tcmu-runner
 
-  - name: disable ceph iscsigw services
-    service:
-      name: "{{ item }}"
-      state: stopped
-      enabled: no
-    ignore_errors: true
-    with_items:
-      - rbd-target-api
-      - rbd-target-gw
-      - tcmu-runner
-
-  - name: remove ceph iscsigw systemd unit files
-    file:
-      path: /etc/systemd/system/{{ item }}.service
-      state: absent
-    ignore_errors: true
-    with_items:
-      - rbd-target-api
-      - rbd-target-gw
-      - tcmu-runner
+    - name: remove ceph iscsigw systemd unit files
+      file:
+        path: /etc/systemd/system/{{ item }}.service
+        state: absent
+      ignore_errors: true
+      with_items:
+        - rbd-target-api
+        - rbd-target-gw
+        - tcmu-runner
 
 
 - name: purge ceph mgr cluster
-
-  hosts: "{{ mgr_group_name|default('mgrs') }}"
+  hosts: "{{ mgr_group_name | default('mgrs') }}"
   become: true
   tasks:
+    - name: disable ceph mgr service
+      service:
+        name: "ceph-mgr@{{ ansible_facts['hostname'] }}"
+        state: stopped
+        enabled: no
+      ignore_errors: true
 
-  - name: disable ceph mgr service
-    service:
-      name: "ceph-mgr@{{ ansible_facts['hostname'] }}"
-      state: stopped
-      enabled: no
-    ignore_errors: true
-
-  - name: remove ceph mgr service
-    file:
-      path: /etc/systemd/system/ceph-mgr@.service
-      state: absent
+    - name: remove ceph mgr service
+      file:
+        path: /etc/systemd/system/ceph-mgr@.service
+        state: absent
 
 
 - name: purge ceph rgw cluster
-
-  hosts: "{{ rgw_group_name|default('rgws') }}"
-
+  hosts: "{{ rgw_group_name | default('rgws') }}"
   become: true
-
   tasks:
     - import_role:
         name: ceph-defaults
@@ -221,166 +202,151 @@
 
 
 - name: purge ceph rbd-mirror cluster
-
-  hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-
+  hosts: "{{ rbdmirror_group_name | default('rbdmirrors') }}"
   become: true
-
   tasks:
+    - name: disable ceph rbd-mirror service
+      service:
+        name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"
+        state: stopped
+        enabled: no
+      ignore_errors: true
 
-  - name: disable ceph rbd-mirror service
-    service:
-      name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"
-      state: stopped
-      enabled: no
-    ignore_errors: true
-
-  - name: remove ceph rbd-mirror service
-    file:
-      path: /etc/systemd/system/ceph-rbd-mirror@.service
-      state: absent
+    - name: remove ceph rbd-mirror service
+      file:
+        path: /etc/systemd/system/ceph-rbd-mirror@.service
+        state: absent
 
 
 - name: purge ceph osd cluster
-
   hosts: "{{ osd_group_name | default('osds') }}"
-
   gather_facts: true
   become: true
-
   tasks:
+    - import_role:
+        name: ceph-defaults
 
-  - import_role:
-      name: ceph-defaults
+    - name: gather monitors facts
+      setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
+      delegate_to: "{{ item }}"
+      delegate_facts: True
+      with_items: "{{ groups.get(mon_group_name | default('mons')) }}"
 
-  - name: gather monitors facts
-    setup:
-      gather_subset:
-        - 'all'
-        - '!facter'
-        - '!ohai'
-    delegate_to: "{{ item }}"
-    delegate_facts: True
-    with_items: "{{ groups.get(mon_group_name | default('mons')) }}"
+    - import_role:
+        name: ceph-facts
 
-  - import_role:
-      name: ceph-facts
+    - name: get all the running osds
+      shell: systemctl list-units --all | grep -oE "ceph-osd@([0-9]+).service"  # noqa 303
+      register: osd_units
+      changed_when: false
+      ignore_errors: true
 
-  - name: get all the running osds
-    shell: systemctl list-units --all | grep -oE "ceph-osd@([0-9]+).service"  # noqa 303
-    register: osd_units
-    changed_when: false
-    ignore_errors: true
+    - name: disable ceph osd service
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      with_items: "{{ osd_units.stdout_lines }}"
 
-  - name: disable ceph osd service
-    service:
-      name: "{{ item }}"
-      state: stopped
-      enabled: no
-    with_items: "{{ osd_units.stdout_lines }}"
+    - name: remove osd mountpoint tree
+      file:
+        path: /var/lib/ceph/osd/
+        state: absent
+      ignore_errors: true
 
-  - name: remove osd mountpoint tree
-    file:
-      path: /var/lib/ceph/osd/
-      state: absent
-    ignore_errors: true
+    - name: default lvm_volumes if not defined
+      set_fact:
+        lvm_volumes: []
+      when: lvm_volumes is not defined
 
-  - name: default lvm_volumes if not defined
-    set_fact:
-      lvm_volumes: []
-    when: lvm_volumes is not defined
+    - name: zap and destroy osds created by ceph-volume with lvm_volumes
+      ceph_volume:
+        data: "{{ item.data }}"
+        data_vg: "{{ item.data_vg|default(omit) }}"
+        journal: "{{ item.journal|default(omit) }}"
+        journal_vg: "{{ item.journal_vg|default(omit) }}"
+        db: "{{ item.db|default(omit) }}"
+        db_vg: "{{ item.db_vg|default(omit) }}"
+        wal: "{{ item.wal|default(omit) }}"
+        wal_vg: "{{ item.wal_vg|default(omit) }}"
+        action: "zap"
+      environment:
+        CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      with_items: "{{ lvm_volumes }}"
+      when: lvm_volumes | default([]) | length > 0
 
-  - name: zap and destroy osds created by ceph-volume with lvm_volumes
-    ceph_volume:
-      data: "{{ item.data }}"
-      data_vg: "{{ item.data_vg|default(omit) }}"
-      journal: "{{ item.journal|default(omit) }}"
-      journal_vg: "{{ item.journal_vg|default(omit) }}"
-      db: "{{ item.db|default(omit) }}"
-      db_vg: "{{ item.db_vg|default(omit) }}"
-      wal: "{{ item.wal|default(omit) }}"
-      wal_vg: "{{ item.wal_vg|default(omit) }}"
-      action: "zap"
-    environment:
-      CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-      CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-    with_items: "{{ lvm_volumes }}"
-    when: lvm_volumes | default([]) | length > 0
+    - name: zap and destroy osds created by ceph-volume with devices
+      ceph_volume:
+        data: "{{ item }}"
+        action: "zap"
+      environment:
+        CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      with_items:
+        - "{{ devices | default([]) }}"
+        - "{{ dedicated_devices | default([]) }}"
+        - "{{ bluestore_wal_devices | default([]) }}"
 
-  - name: zap and destroy osds created by ceph-volume with devices
-    ceph_volume:
-      data: "{{ item }}"
-      action: "zap"
-    environment:
-      CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-      CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-    with_items:
-      - "{{ devices | default([]) }}"
-      - "{{ dedicated_devices | default([]) }}"
-      - "{{ bluestore_wal_devices | default([]) }}"
+    - name: remove ceph osd service
+      file:
+        path: /etc/systemd/system/ceph-osd@.service
+        state: absent
 
-  - name: remove ceph osd service
-    file:
-      path: /etc/systemd/system/ceph-osd@.service
-      state: absent
+    - name: include vars from group_vars/osds.yml
+      include_vars:
+        file: "{{ item }}"
+      with_first_found:
+        - files:
+          - "{{ playbook_dir }}/group_vars/osds"
+          - "{{ playbook_dir }}/group_vars/osds.yml"
+          skip: true
 
-  - name: include vars from group_vars/osds.yml
-    include_vars:
-      file: "{{ item }}"
-    with_first_found:
-      - files:
-        - "{{ playbook_dir }}/group_vars/osds"
-        - "{{ playbook_dir }}/group_vars/osds.yml"
-        skip: true
 
 - name: purge ceph mon cluster
-
   hosts: "{{ mon_group_name|default('mons') }}"
-
   become: true
-
   tasks:
+    # since mgr are now collocated with mons by default
+    - name: disable ceph mon and mgr service
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      ignore_errors: true
+      with_items:
+        - "ceph-mgr@{{ ansible_facts['hostname'] }}"
+        - "ceph-mon@{{ ansible_facts['hostname'] }}"
 
-  # since mgr are now collocated with mons by default
-  - name: disable ceph mon and mgr service
-    service:
-      name: "{{ item }}"
-      state: stopped
-      enabled: no
-    ignore_errors: true
-    with_items:
-      - "ceph-mgr@{{ ansible_facts['hostname'] }}"
-      - "ceph-mon@{{ ansible_facts['hostname'] }}"
-
-  - name: remove ceph mon and mgr service
-    file:
-      path: "/etc/systemd/system/ceph-{{ item }}@.service"
-      state: absent
-    with_items:
-      - mon
-      - mgr
+    - name: remove ceph mon and mgr service
+      file:
+        path: "/etc/systemd/system/ceph-{{ item }}@.service"
+        state: absent
+      with_items:
+        - mon
+        - mgr
 
 
 - name: purge node-exporter
-
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
     - "{{ monitoring_group_name | default('monitoring') }}"
     - iscsigws
     - clients
-
   gather_facts: false
-
   become: true
-
   tasks:
     - import_role:
         name: ceph-defaults
@@ -409,20 +375,16 @@
             - remove_img
       when: dashboard_enabled | bool
 
+
 - name: purge ceph-grafana
-
   hosts: monitoring
-
   gather_facts: false
-
   become: true
-
   vars:
     grafana_services:
       - grafana-server
       - prometheus
       - alertmanager
-
   tasks:
     - import_role:
         name: ceph-defaults
@@ -472,6 +434,7 @@
           failed_when: false
       when: dashboard_enabled | bool
 
+
 - name: purge ceph-crash containers
   hosts:
     - "{{ mon_group_name | default('mons') }}"
@@ -501,68 +464,61 @@
         path: /var/lib/ceph/crash
         state: absent
 
+
 - name: check container hosts
-
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
-
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
   gather_facts: true
   become: true
-
   tasks:
+    - import_role:
+        name: ceph-defaults
 
-  - import_role:
-      name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary
 
-  - import_role:
-      name: ceph-facts
-      tasks_from: container_binary
+    - name: remove stopped/exited containers
+      command: >
+        {{ container_binary }} container prune -f
+      changed_when: false
 
-  - name: remove stopped/exited containers
-    command: >
-      {{ container_binary }} container prune -f
-    changed_when: false
+    - name: show container list on all the nodes (should be empty)
+      command: >
+        {{ container_binary }} ps --filter='name=ceph' -a -q
+      register: containers_list
+      changed_when: false
 
-  - name: show container list on all the nodes (should be empty)
-    command: >
-      {{ container_binary }} ps --filter='name=ceph' -a -q
-    register: containers_list
-    changed_when: false
+    - name: show container images on all the nodes (should be empty if tags was passed remove_img)
+      command: >
+        {{ container_binary }} images
+      register: images_list
+      changed_when: false
 
-  - name: show container images on all the nodes (should be empty if tags was passed remove_img)
-    command: >
-      {{ container_binary }} images
-    register: images_list
-    changed_when: false
-
-  - name: fail if container are still present
-    fail:
-      msg: "It looks like container are still present."
-    when: containers_list.stdout_lines|length > 0
+    - name: fail if container are still present
+      fail:
+        msg: "It looks like container are still present."
+      when: containers_list.stdout_lines|length > 0
 
 
 - name: final cleanup
-
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
-    - "{{ monitoring_group_name|default('monitoring') }}"
-
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+    - "{{ monitoring_group_name | default('monitoring') }}"
   become: true
-
   tags: with_pkg
-
   tasks:
     - import_role:
         name: ceph-defaults
@@ -668,55 +624,48 @@
 
 
 - name: purge ceph directories
-
   hosts:
-    - "{{ mon_group_name|default('mons') }}"
-    - "{{ osd_group_name|default('osds') }}"
-    - "{{ mds_group_name|default('mdss') }}"
-    - "{{ rgw_group_name|default('rgws') }}"
-    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ mgr_group_name|default('mgrs') }}"
-
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
   gather_facts: false # Already gathered previously
-
   become: true
-
   tasks:
-  - name: purge ceph directories for "{{ ansible_facts['hostname'] }}" and ceph socket
-    file:
-      path: "{{ item }}"
-      state: absent
-    with_items:
-      - /etc/ceph
-      - /var/log/ceph
-      - /run/ceph
-      - "{{ ceph_osd_docker_run_script_path | default('/usr/share') }}/ceph-osd-run.sh"
+    - name: purge ceph directories for "{{ ansible_facts['hostname'] }}" and ceph socket
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/ceph
+        - /var/log/ceph
+        - /run/ceph
+        - "{{ ceph_osd_docker_run_script_path | default('/usr/share') }}/ceph-osd-run.sh"
 
-  - name: remove ceph data
-    shell: rm -rf /var/lib/ceph/*  # noqa 302
-    changed_when: false
+    - name: remove ceph data
+      shell: rm -rf /var/lib/ceph/*  # noqa 302
+      changed_when: false
 
-  # (todo): remove this when we are able to manage docker
-  # service on atomic host.
-  - name: remove docker data
-    shell: rm -rf /var/lib/docker/*  # noqa 302
-    when: not is_atomic | bool
+    # (todo): remove this when we are able to manage docker
+    # service on atomic host.
+    - name: remove docker data
+      shell: rm -rf /var/lib/docker/*  # noqa 302
+      when: not is_atomic | bool
+
 
 - name: purge fetch directory
-
   hosts: localhost
-
   gather_facts: false
-
   tasks:
+    - name: set fetch_directory value if not set
+      set_fact:
+        fetch_directory: "fetch/"
+      when: fetch_directory is not defined
 
-  - name: set fetch_directory value if not set
-    set_fact:
-      fetch_directory: "fetch/"
-    when: fetch_directory is not defined
-
-  - name: purge fetch directory for localhost
-    file:
-      path: "{{ fetch_directory | default('fetch/') }}/"
-      state: absent
+    - name: purge fetch directory for localhost
+      file:
+        path: "{{ fetch_directory | default('fetch/') }}/"
+        state: absent
