@@ -113,12 +113,24 @@
   gather_facts: false # Already gathered previously
   become: true
   tasks:
+    - import_role:
+        name: ceph-defaults
+
     - name: stop ceph nfss with systemd
       service:
-        name: nfs-ganesha
+        name: "{{ 'ceph-nfs@' + ansible_facts['hostname'] if containerized_deployment | bool else 'nfs-ganesha' }}"
         state: stopped
       failed_when: false
-      when: ansible_facts['service_mgr'] == 'systemd'
+
+    - name: remove ceph nfs directories for "{{ ansible_facts['hostname'] }}"
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/ganesha
+        - /var/lib/nfs/ganesha
+        - /var/run/ganesha
+        - /etc/systemd/system/ceph-nfs@.service
 
 
 - name: purge node-exporter
@@ -234,6 +246,11 @@
         enabled: no
       failed_when: false
 
+    - name: remove ceph mds service
+      file:
+        path: /etc/systemd/system/ceph-mds@.service
+        state: absent
+
 
 - name: purge ceph mgr cluster
   hosts: mgrs
@@ -247,6 +264,11 @@
         enabled: no
       failed_when: false
       when: ansible_facts['service_mgr'] == 'systemd'
+
+    - name: remove ceph mgr service
+      file:
+        path: /etc/systemd/system/ceph-mgr@.service
+        state: absent
 
 
 - name: purge rgwloadbalancer cluster
@@ -292,6 +314,7 @@
       service:
         name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"
         state: stopped
+        enabled: no
       failed_when: false
 
 
@@ -334,13 +357,12 @@
       register: osd_ids
       changed_when: false
 
-    - name: stop ceph-osd with systemd
+    - name: stop ceph-osd
       service:
         name: ceph-osd@{{ item }}
         state: stopped
         enabled: no
       with_items: "{{ osd_ids.stdout_lines }}"
-      when: ansible_facts['service_mgr'] == 'systemd'
 
     - name: remove ceph udev rules
       file:
@@ -349,6 +371,7 @@
       with_items:
         - /usr/lib/udev/rules.d/95-ceph-osd.rules
         - /usr/lib/udev/rules.d/60-ceph-by-parttypeuuid.rules
+      when: not containerized_deployment | bool
 
     # NOTE(leseb): hope someone will find a more elegant way one day...
     - name: see if encrypted partitions are present
@@ -440,6 +463,7 @@
       changed_when: false
       failed_when: false
       register: ceph_volume_present
+      when: not containerized_deployment | bool
 
     - name: zap and destroy osds created by ceph-volume with lvm_volumes
       ceph_volume:
@@ -454,8 +478,12 @@
         action: "zap"
       environment:
         CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_items: "{{ lvm_volumes | default([]) }}"
-      when: ceph_volume_present.rc == 0
+      when:
+        - containerized_deployment | bool
+          or ceph_volume_present.rc == 0
 
     - name: zap and destroy osds created by ceph-volume with devices
       ceph_volume:
@@ -463,11 +491,15 @@
         action: "zap"
       environment:
         CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_items:
         - "{{ devices | default([]) }}"
         - "{{ dedicated_devices | default([]) }}"
         - "{{ bluestore_wal_devices | default([]) }}"
-      when: ceph_volume_present.rc == 0
+      when:
+        - containerized_deployment | bool
+          or ceph_volume_present.rc == 0
 
     - name: get ceph block partitions
       shell: |
@@ -545,6 +577,11 @@
       with_items: "{{ resolved_parent_device }}"
       changed_when: false
 
+    - name: remove ceph osd service
+      file:
+        path: /etc/systemd/system/ceph-osd@.service
+        state: absent
+      when: containerized_deployment | bool
 
 - name: purge ceph mon cluster
   hosts: mons
@@ -574,6 +611,14 @@
         - /var/lib/ceph/bootstrap-mgr
         - /var/lib/ceph/tmp
 
+    - name: remove ceph mon and mgr service
+      file:
+        path: "/etc/systemd/system/ceph-{{ item }}@.service"
+        state: absent
+      with_items:
+        - mon
+        - mgr
+
 
 - name: purge ceph-crash daemons
   hosts:
@@ -586,17 +631,70 @@
   gather_facts: false
   become: true
   tasks:
+    - import_role:
+        name: ceph-defaults
+
     - name: stop ceph-crash service
       service:
-        name: ceph-crash.service
+        name: "{{ 'ceph-crash@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-crash.service' }}"
         state: stopped
         enabled: no
+      failed_when: false
+
+    - name: remove service file
+      file:
+        name: "/etc/systemd/system/ceph-crash.service"
+        state: absent
       failed_when: false
 
     - name: remove /var/lib/ceph/crash
       file:
         path: /var/lib/ceph/crash
         state: absent
+
+
+- name: check container hosts
+  hosts:
+    - mons
+    - osds
+    - mdss
+    - rgws
+    - rbdmirrors
+    - nfss
+    - mgrs
+  become: true
+  tasks:
+    - name: containerized_deployment only
+      when: containerized_deployment | bool
+      block:
+        - import_role:
+            name: ceph-defaults
+
+        - import_role:
+            name: ceph-facts
+            tasks_from: container_binary
+
+        - name: remove stopped/exited containers
+          command: >
+            {{ container_binary }} container prune -f
+          changed_when: false
+
+        - name: show container list on all the nodes (should be empty)
+          command: >
+            {{ container_binary }} ps --filter='name=ceph' -a -q
+          register: containers_list
+          changed_when: false
+
+        - name: show container images on all the nodes (should be empty if tags was passed remove_img)
+          command: >
+            {{ container_binary }} images
+          register: images_list
+          changed_when: false
+
+        - name: fail if container are still present
+          fail:
+            msg: "It looks like container are still present."
+          when: containers_list.stdout_lines|length > 0
 
 
 - name: final cleanup - check any running ceph, purge ceph packages, purge config and remove data
@@ -661,131 +759,281 @@
       shell: rm -rf /var/lib/ceph/*  # noqa 302
       listen: "remove data"
   tasks:
-    - name: purge ceph packages with yum
-      yum:
-        name: "{{ ceph_packages }}"
-        state: absent
-      when: ansible_facts['pkg_mgr'] == 'yum'
+    - import_role:
+        name: ceph-defaults
 
-    - name: purge ceph packages with dnf
-      dnf:
-        name: "{{ ceph_packages }}"
-        state: absent
-      when: ansible_facts['pkg_mgr'] == 'dnf'
+    - name: non containerized related tasks
+      when: not containerized_deployment | bool
+      block:
+        - name: purge ceph packages with yum
+          yum:
+            name: "{{ ceph_packages }}"
+            state: absent
+          when: ansible_facts['pkg_mgr'] == 'yum'
 
-    - name: purge ceph packages with apt
-      apt:
-        name: "{{ ceph_packages }}"
-        state: absent
-        purge: true
-      when: ansible_facts['pkg_mgr'] == 'apt'
+        - name: purge ceph packages with dnf
+          dnf:
+            name: "{{ ceph_packages }}"
+            state: absent
+          when: ansible_facts['pkg_mgr'] == 'dnf'
 
-    - name: purge remaining ceph packages with yum
-      yum:
-        name: "{{ ceph_remaining_packages }}"
-        state: absent
-      when:
-        - ansible_facts['pkg_mgr'] == 'yum'
-        - purge_all_packages | bool
+        - name: purge ceph packages with apt
+          apt:
+            name: "{{ ceph_packages }}"
+            state: absent
+            purge: true
+          when: ansible_facts['pkg_mgr'] == 'apt'
 
-    - name: purge remaining ceph packages with dnf
-      dnf:
-        name: "{{ ceph_remaining_packages }}"
-        state: absent
-      when:
-        - ansible_facts['pkg_mgr'] == 'dnf'
-        - purge_all_packages | bool
+        - name: purge remaining ceph packages with yum
+          yum:
+            name: "{{ ceph_remaining_packages }}"
+            state: absent
+          when:
+            - ansible_facts['pkg_mgr'] == 'yum'
+            - purge_all_packages | bool
 
-    - name: purge remaining ceph packages with apt
-      apt:
-        name: "{{ ceph_remaining_packages }}"
-        state: absent
-      when:
-        - ansible_facts['pkg_mgr'] == 'apt'
-        - purge_all_packages | bool
+        - name: purge remaining ceph packages with dnf
+          dnf:
+            name: "{{ ceph_remaining_packages }}"
+            state: absent
+          when:
+            - ansible_facts['pkg_mgr'] == 'dnf'
+            - purge_all_packages | bool
 
-    - name: purge extra packages with yum
-      yum:
-        name: "{{ extra_packages }}"
-        state: absent
-      when:
-        - ansible_facts['pkg_mgr'] == 'yum'
-        - purge_all_packages | bool
+        - name: purge remaining ceph packages with apt
+          apt:
+            name: "{{ ceph_remaining_packages }}"
+            state: absent
+          when:
+            - ansible_facts['pkg_mgr'] == 'apt'
+            - purge_all_packages | bool
 
-    - name: purge extra packages with dnf
-      dnf:
-        name: "{{ extra_packages }}"
-        state: absent
-      when:
-        - ansible_facts['pkg_mgr'] == 'dnf'
-        - purge_all_packages | bool
+        - name: purge extra packages with yum
+          yum:
+            name: "{{ extra_packages }}"
+            state: absent
+          when:
+            - ansible_facts['pkg_mgr'] == 'yum'
+            - purge_all_packages | bool
 
-    - name: purge extra packages with apt
-      apt:
-        name: "{{ extra_packages }}"
-        state: absent
-      when:
-        - ansible_facts['pkg_mgr'] == 'apt'
-        - purge_all_packages | bool
+        - name: purge extra packages with dnf
+          dnf:
+            name: "{{ extra_packages }}"
+            state: absent
+          when:
+            - ansible_facts['pkg_mgr'] == 'dnf'
+            - purge_all_packages | bool
 
-    - name: remove config and any ceph socket left
-      file:
-        path: "{{ item }}"
-        state: absent
-      with_items:
-        - /etc/ceph
-        - /etc/keepalived
-        - /etc/haproxy
-        - /run/ceph
+        - name: purge extra packages with apt
+          apt:
+            name: "{{ extra_packages }}"
+            state: absent
+          when:
+            - ansible_facts['pkg_mgr'] == 'apt'
+            - purge_all_packages | bool
 
-    - name: remove logs
-      file:
-       path: /var/log/ceph
-       state: absent
+        - name: remove config and any ceph socket left
+          file:
+            path: "{{ item }}"
+            state: absent
+          with_items:
+            - /etc/ceph
+            - /etc/keepalived
+            - /etc/haproxy
+            - /run/ceph
 
-    - name: request data removal
-      command: echo requesting data removal  # noqa 301
-      become: false
-      delegate_to: localhost
-      notify: remove data
+        - name: remove logs
+          file:
+           path: /var/log/ceph
+           state: absent
 
-    - name: purge dnf cache
-      command: dnf clean all
-      when: ansible_facts['pkg_mgr'] == 'dnf'
+        - name: request data removal
+          command: echo requesting data removal  # noqa 301
+          become: false
+          delegate_to: localhost
+          notify: remove data
 
-    - name: clean apt
-      command: apt-get clean  # noqa 303
-      when: ansible_facts['pkg_mgr'] == 'apt'
+        - name: purge dnf cache
+          command: dnf clean all
+          when: ansible_facts['pkg_mgr'] == 'dnf'
 
-    - name: purge ceph repo file in /etc/yum.repos.d
-      file:
-        path: '/etc/yum.repos.d/{{ item }}.repo'
-        state: absent
-      with_items:
-        - ceph-dev
-        - ceph_stable
-      when: ansible_facts['os_family'] == 'RedHat'
+        - name: clean apt
+          command: apt-get clean  # noqa 303
+          when: ansible_facts['pkg_mgr'] == 'apt'
 
-    - name: check for anything running ceph
-      command: "ps -u ceph -U ceph"
-      register: check_for_running_ceph
-      changed_when: false
-      failed_when: check_for_running_ceph.rc == 0
+        - name: purge ceph repo file in /etc/yum.repos.d
+          file:
+            path: '/etc/yum.repos.d/{{ item }}.repo'
+            state: absent
+          with_items:
+            - ceph-dev
+            - ceph_stable
+          when: ansible_facts['os_family'] == 'RedHat'
 
-    - name: find ceph systemd unit files to remove
-      find:
-        paths: "/etc/systemd/system"
-        pattern: "ceph*"
-        recurse: true
-        file_type: any
-      register: systemd_files
+        - name: check for anything running ceph
+          command: "ps -u ceph -U ceph"
+          register: check_for_running_ceph
+          changed_when: false
+          failed_when: check_for_running_ceph.rc == 0
 
-    - name: remove ceph systemd unit files
-      file:
-        path: "{{ item.path }}"
-        state: absent
-      with_items: "{{ systemd_files.files }}"
-      when: ansible_facts['service_mgr'] == 'systemd'
+        - name: find ceph systemd unit files to remove
+          find:
+            paths: "/etc/systemd/system"
+            pattern: "ceph*"
+            recurse: true
+            file_type: any
+          register: systemd_files
+
+        - name: remove ceph systemd unit files
+          file:
+            path: "{{ item.path }}"
+            state: absent
+          with_items: "{{ systemd_files.files }}"
+          when: ansible_facts['service_mgr'] == 'systemd'
+
+    - name: containerized related tasks
+      when: containerized_deployment | bool
+      block:
+        - name: check if it is Atomic host
+          stat: path=/run/ostree-booted
+          register: stat_ostree
+
+        - name: set fact for using Atomic host
+          set_fact:
+            is_atomic: "{{ stat_ostree.stat.exists }}"
+
+        - import_role:
+            name: ceph-facts
+            tasks_from: container_binary
+
+        - name: remove ceph container image
+          command: "{{ container_binary }} rmi {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+          changed_when: false
+          when:
+            - inventory_hostname not in groups.get(client_group_name, [])
+              or inventory_hostname == groups.get(client_group_name, []) | first
+          tags:
+            - remove_img
+
+        - name: stop docker service
+          service:
+            name: docker
+            state: stopped
+            enabled: no
+          when:
+            - not is_atomic
+            - container_binary == 'docker'
+          ignore_errors: true
+
+        - name: remove docker on debian/ubuntu
+          apt:
+            name: ['docker-ce', 'docker-engine', 'docker.io', 'python-docker', 'python3-docker']
+            state: absent
+            update_cache: yes
+            autoremove: yes
+          when: ansible_facts['os_family'] == 'Debian'
+
+        - name: red hat based systems tasks
+          block:
+            - name: yum related tasks on red hat
+              block:
+                - name: remove packages on redhat
+                  yum:
+                    name: ['epel-release', 'docker', 'python-docker-py']
+                    state: absent
+
+                - name: remove package dependencies on redhat
+                  command: yum -y autoremove
+                  args:
+                    warn: no
+
+                - name: remove package dependencies on redhat again
+                  command: yum -y autoremove
+                  args:
+                    warn: no
+              when:
+                ansible_facts['pkg_mgr'] == "yum"
+
+            - name: dnf related tasks on red hat
+              block:
+                - name: remove docker on redhat
+                  dnf:
+                    name: ['docker', 'python3-docker']
+                    state: absent
+
+                - name: remove package dependencies on redhat
+                  command: dnf -y autoremove
+                  args:
+                    warn: no
+
+                - name: remove package dependencies on redhat again
+                  command: dnf -y autoremove
+                  args:
+                    warn: no
+              when:
+                ansible_facts['pkg_mgr'] == "dnf"
+          when:
+            ansible_facts['os_family'] == 'RedHat' and
+            not is_atomic
+
+        - name: find any service-cid file left
+          find:
+            paths: /run
+            patterns:
+              - "ceph-*.service-cid"
+              - "rbd-target-api.service-cid"
+              - "rbd-target-gw.service-cid"
+              - "tcmu-runner.service-cid"
+              - "node_exporter.service-cid"
+              - "prometheus.service-cid"
+              - "grafana-server.service-cid"
+              - "alertmanager.service-cid"
+          register: service_cid_files
+
+        - name: rm any service-cid file
+          file:
+            path: "{{ item.path }}"
+            state: absent
+          with_items: "{{ service_cid_files.files }}"
+
+
+- name: purge ceph directories
+  hosts:
+    - mons
+    - osds
+    - mdss
+    - rgws
+    - rbdmirrors
+    - nfss
+    - mgrs
+  gather_facts: false # Already gathered previously
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: purge ceph directories - containerized deployments
+      when: containerized_deployment | bool
+      block:
+        - name: purge ceph directories for "{{ ansible_facts['hostname'] }}" and ceph socket
+          file:
+            path: "{{ item }}"
+            state: absent
+          with_items:
+            - /etc/ceph
+            - /var/log/ceph
+            - /run/ceph
+            - "{{ ceph_osd_docker_run_script_path | default('/usr/share') }}/ceph-osd-run.sh"
+
+        - name: remove ceph data
+          shell: rm -rf /var/lib/ceph/*  # noqa 302
+          changed_when: false
+
+        # (todo): remove this when we are able to manage docker
+        # service on atomic host.
+        - name: remove docker data
+          shell: rm -rf /var/lib/docker/*  # noqa 302
+          when: not is_atomic | bool
 
 
 - name: purge fetch directory
