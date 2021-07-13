@@ -32,16 +32,15 @@
 
 - name: gather facts on all hosts
   hosts:
-    - "{{ mon_group_name | default('mons') }}"
-    - "{{ osd_group_name | default('osds') }}"
-    - "{{ mds_group_name | default('mdss') }}"
-    - "{{ rgw_group_name | default('rgws') }}"
-    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
-    - "{{ nfs_group_name | default('nfss') }}"
-    - "{{ client_group_name | default('clients') }}"
-    - "{{ mgr_group_name | default('mgrs') }}"
+    - mons
+    - osds
+    - mdss
+    - rgws
+    - rbdmirrors
+    - nfss
+    - clients
+    - mgrs
     - grafana-server
-
   become: true
   tasks:
     - debug:
@@ -49,8 +48,9 @@
 
 
 - name: check there's no ceph kernel threads present
-  hosts: "{{ client_group_name | default('clients') }}"
+  hosts: clients
   become: true
+  gather_facts: false
   any_errors_fatal: true
   tasks:
     - import_role:
@@ -109,9 +109,7 @@
 
 
 - name: purge ceph nfs cluster
-  vars:
-    nfs_group_name: nfss
-  hosts: "{{ nfs_group_name | default('nfss') }}"
+  hosts: nfss
   gather_facts: false # Already gathered previously
   become: true
   tasks:
@@ -125,16 +123,15 @@
 
 - name: purge node-exporter
   hosts:
-    - "{{ mon_group_name | default('mons') }}"
-    - "{{ osd_group_name | default('osds') }}"
-    - "{{ mds_group_name | default('mdss') }}"
-    - "{{ rgw_group_name | default('rgws') }}"
-    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
-    - "{{ nfs_group_name | default('nfss') }}"
-    - "{{ client_group_name | default('clients') }}"
-    - "{{ mgr_group_name | default('mgrs') }}"
-    - grafana-server
+    - mons
+    - osds
+    - mdss
+    - rgws
+    - rbdmirrors
+    - nfss
     - clients
+    - mgrs
+    - grafana-server
     - iscsigws
   become: true
   tasks:
@@ -226,9 +223,7 @@
 
 
 - name: purge ceph mds cluster
-  vars:
-    mds_group_name: mdss
-  hosts: "{{ mds_group_name | default('mdss') }}"
+  hosts: mdss
   gather_facts: false # Already gathered previously
   become: true
   tasks:
@@ -241,9 +236,7 @@
 
 
 - name: purge ceph mgr cluster
-  vars:
-    mgr_group_name: mgrs
-  hosts: "{{ mgr_group_name | default('mgrs') }}"
+  hosts: mgrs
   gather_facts: false # Already gathered previously
   become: true
   tasks:
@@ -257,10 +250,7 @@
 
 
 - name: purge rgwloadbalancer cluster
-  vars:
-    rgwloadbalancer_group_name: rgwloadbalancers
-  hosts:
-    - "{{ rgwloadbalancer_group_name | default('rgwloadbalancers') }}"
+  hosts: rgwloadbalancers
   gather_facts: false # Already gathered previously
   become: true
   tasks:
@@ -273,9 +263,7 @@
 
 
 - name: purge ceph rgw cluster
-  vars:
-    rgw_group_name: rgws
-  hosts: "{{ rgw_group_name | default('rgws') }}"
+  hosts: rgws
   gather_facts: false # Already gathered previously
   become: true
   tasks:
@@ -296,9 +284,7 @@
 
 
 - name: purge ceph rbd-mirror cluster
-  vars:
-    rbdmirror_group_name: rbdmirrors
-  hosts: "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+  hosts: rbdmirrors
   gather_facts: false # Already gathered previously
   become: true
   tasks:
@@ -311,9 +297,8 @@
 
 - name: purge ceph osd cluster
   vars:
-    osd_group_name: osds
     reboot_osd_node: False
-  hosts: "{{ osd_group_name | default('osds') }}"
+  hosts: osds
   gather_facts: false # Already gathered previously
   become: true
   handlers:
@@ -562,9 +547,7 @@
 
 
 - name: purge ceph mon cluster
-  vars:
-    mon_group_name: mons
-  hosts: "{{ mon_group_name|default('mons') }}"
+  hosts: mons
   gather_facts: false # already gathered previously
   become: true
   tasks:
@@ -594,12 +577,12 @@
 
 - name: purge ceph-crash daemons
   hosts:
-    - "{{ mon_group_name | default('mons') }}"
-    - "{{ osd_group_name | default('osds') }}"
-    - "{{ mds_group_name | default('mdss') }}"
-    - "{{ rgw_group_name | default('rgws') }}"
-    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
-    - "{{ mgr_group_name | default('mgrs') }}"
+    - mons
+    - osds
+    - mdss
+    - rgws
+    - rbdmirrors
+    - mgrs
   gather_facts: false
   become: true
   tasks:
@@ -648,14 +631,14 @@
       - keepalived
       - haproxy
   hosts:
-    - "{{ mon_group_name | default('mons') }}"
-    - "{{ osd_group_name | default('osds') }}"
-    - "{{ mds_group_name | default('mdss') }}"
-    - "{{ rgw_group_name | default('rgws') }}"
-    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
-    - "{{ nfs_group_name | default('nfss') }}"
-    - "{{ client_group_name | default('clients') }}"
-    - "{{ mgr_group_name | default('mgrs') }}"
+    - mons
+    - osds
+    - mdss
+    - rgws
+    - rbdmirrors
+    - nfss
+    - clients
+    - mgrs
     - grafana-server
   gather_facts: false # Already gathered previously
   become: true
