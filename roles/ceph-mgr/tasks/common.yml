@@ -90,3 +90,8 @@
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "{{ ceph_keyring_permissions }}"
   when: cephx | bool
+
+- name: append dashboard modules to ceph_mgr_modules
+  set_fact:
+    ceph_mgr_modules: "{{ ceph_mgr_modules | union(['dashboard', 'prometheus']) }}"
+  when: dashboard_enabled | bool
