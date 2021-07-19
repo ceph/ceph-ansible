@@ -1,8 +1,4 @@
 ---
-- name: set _rgw_handler_called before restart
-  set_fact:
-    _rgw_handler_called: True
-
 - name: copy rgw restart script
   template:
     src: restart_rgw_daemon.sh.j2
@@ -13,13 +9,7 @@
 
 - name: restart ceph rgw daemon(s)
   command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_rgw_daemon.sh
-  when:
-    - hostvars[item]['handler_rgw_status'] | default(False) | bool
-    - hostvars[item]['_rgw_handler_called'] | default(False) | bool
+  when: hostvars[item]['handler_rgw_status'] | default(False) | bool
   with_items: "{{ groups[rgw_group_name] }}"
   delegate_to: "{{ item }}"
   run_once: True
-
-- name: set _rgw_handler_called after restart
-  set_fact:
-    _rgw_handler_called: False

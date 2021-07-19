@@ -1,20 +1,11 @@
 ---
-- name: set _tcmu_runner_handler_called before restart
-  set_fact:
-    _tcmu_runner_handler_called: True
-
 - name: restart tcmu-runner
   service:
     name: tcmu-runner
     state: restarted
   when:
     - ceph_tcmu_runner_stat.get('rc') == 0
-    - hostvars[item]['_tcmu_runner_handler_called'] | default(False) | bool
     - ceph_tcmu_runner_stat.get('stdout_lines', [])|length != 0
   with_items: "{{ groups[iscsi_gw_group_name] }}"
   delegate_to: "{{ item }}"
   run_once: True
-
-- name: set _tcmu_runner_handler_called after restart
-  set_fact:
-    _tcmu_runner_handler_called: False
