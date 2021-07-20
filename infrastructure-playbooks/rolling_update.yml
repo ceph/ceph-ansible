@@ -408,7 +408,7 @@
       set_fact:
         pools_pgautoscaler_mode: "{{ pools_pgautoscaler_mode | default([]) | union([{'name': item.pool_name, 'mode': item.pg_autoscale_mode}]) }}"
       run_once: true
-      with_items: "{{ (pool_list.stdout | from_json)['pools'] }}"
+      with_items: "{{ (pool_list.stdout | default('{}') | from_json)['pools'] }}"
 
     - name: disable balancer
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
