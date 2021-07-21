@@ -388,6 +388,26 @@
       shell: "sync && sleep 1 && echo 3 > /proc/sys/vm/drop_caches"
       changed_when: false
 
+    - name: see if ceph-volume is installed # noqa : 305
+      shell: command -v ceph-volume
+      changed_when: false
+      failed_when: false
+      register: ceph_volume_present
+      when: not containerized_deployment | bool
+
+    - name: zap and destroy osds by osd ids
+      ceph_volume:
+        osd_id: "{{ item | int }}"
+        action: "zap"
+      environment:
+        CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      with_items: "{{ osd_ids.stdout_lines }}"
+      when:
+        - osd_auto_discovery | default(False) | bool
+        - (containerized_deployment | bool or ceph_volume_present.rc == 0)
+
     - name: umount osd data partition
       mount:
         path: "{{ item }}"
