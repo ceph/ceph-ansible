@@ -12,4 +12,9 @@ receivers:
   webhook_configs:
 {% for host in groups['mgrs'] | default(groups['mons']) %}
   - url: '{{ dashboard_protocol }}://{{ hostvars[host]['ansible_facts']['fqdn'] }}:{{ dashboard_port }}/api/prometheus_receiver'
+{% if dashboard_protocol == 'https' and alertmanager_dashboard_api_no_ssl_verify | bool %}
+    http_config:
+      tls_config:
+        insecure_skip_verify: true
+{% endif %}
 {% endfor %}
