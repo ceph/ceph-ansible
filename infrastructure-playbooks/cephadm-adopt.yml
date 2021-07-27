@@ -93,14 +93,17 @@
 
     - name: get the ceph version
       command: "{{ container_binary + ' run --rm --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --version"
+      run_once: "{{ containerized_deployment }}"
       changed_when: false
       register: ceph_version_out
 
     - name: set_fact ceph_version
+      run_once: "{{ containerized_deployment }}"
       set_fact:
         ceph_version: "{{ ceph_version_out.stdout.split(' ')[2] }}"
 
     - name: fail on pre octopus ceph releases
+      run_once: "{{ containerized_deployment }}"
       fail:
         msg: >
           Your Ceph version {{ ceph_version }} is not supported for this operation.
