@@ -73,12 +73,39 @@
     - item.value.type is not defined or item.value.type == 'replicated'
     - item.value.rule_name | default(ceph_osd_pool_default_crush_rule_name)
 
+- name: get pool details
+  command: "{{ container_exec_cmd }} ceph --connect-timeout=10 --cluster={{ cluster }} --format=json osd pool ls detail"
+  register: result
+  retries: 60
+  delay: 3
+  until: result is succeeded
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  changed_when: false
+  check_mode: false
+
+- name: set rgw_osd_pool_ls_detail fact
+  set_fact:
+    rgw_osd_pool_ls_detail: "{{ result.stdout | from_json }}"
+
 - name: set the rgw_create_pools pools application to rgw
   command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool application enable {{ item.key }} rgw"
   register: result
   retries: 60
   delay: 3
   until: result is succeeded
-  changed_when: false
   loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
+  when: >
+    'rgw' not in (rgw_osd_pool_ls_detail | selectattr('pool_name', 'eq', item.key) | first).application_metadata
+
+- name: set pool pg_num
+  command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool set {{ item.key }} pg_num {{ item.value.pg_num }}"
+  register: result
+  retries: 60
+  delay: 3
+  until: result is succeeded
+  loop: "{{ rgw_create_pools | dict2items }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - item.value.pg_num is defined
+    - (rgw_osd_pool_ls_detail | selectattr('pool_name', 'eq', item.key) | first).pg_num != item.value.pg_num
