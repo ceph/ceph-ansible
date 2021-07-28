@@ -716,8 +716,8 @@
         path: "/var/lib/ceph/mds/{{ cluster }}-{{ ansible_facts['hostname'] }}"
         state: absent
 
-- name: rgw realm/zonegroup/zone requirements
-  hosts: "{{ rgw_group_name|default('rgws') }}"
+- name: redeploy rgw daemons
+  hosts: "{{ rgw_group_name | default('rgws') }}"
   become: true
   gather_facts: false
   any_errors_fatal: True
@@ -729,53 +729,67 @@
         name: ceph-facts
         tasks_from: set_radosgw_address.yml
 
-    - name: for non multisite setup
-      when: not rgw_multisite | bool
-      run_once: true
-      delegate_to: "{{ groups[mon_group_name][0] }}"
+    - name: import rgw ssl certificate into kv store
+      when: radosgw_frontend_ssl_certificate | length > 0
       block:
-        - name: create a default realm
-          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} realm create --rgw-realm=default --default"
-          run_once: true
-          changed_when: false
-          environment:
-            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+        - name: slurp rgw ssl certificate
+          slurp:
+            src: "{{ radosgw_frontend_ssl_certificate }}"
+          register: rgw_ssl_cert
 
-        - name: modify the default zonegroup
-          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} zonegroup modify --rgw-realm=default --rgw-zonegroup=default"
-          run_once: true
+        - name: store ssl certificate in kv store (not multisite)
+          command: >
+            {{ container_binary }} run --rm -i -v /etc/ceph:/etc/ceph:z --entrypoint=ceph {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} --cluster {{ cluster }}
+            config-key set rgw/cert/rgw.{{ ansible_facts['hostname'] }} -i -
+          args:
+            stdin: "{{ rgw_ssl_cert.content | b64decode }}"
+            stdin_add_newline: no
           changed_when: false
-          environment:
-            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-
-        - name: modify the default zone
-          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} zone modify --rgw-realm=default --rgw-zonegroup=default --rgw-zone=default"
-          run_once: true
-          changed_when: false
-          environment:
-            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-
-        - name: commit the period
-          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} period update --commit"
-          run_once: true
-          changed_when: false
-          environment:
-            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-
-        - name: update the placement of radosgw hosts
-          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rgw {{ rgw_realm | default('default') }} {{ rgw_zone | default('default') }} --placement='{{ groups.get(rgw_group_name, []) | length }} label:{{ rgw_group_name }}' --port={{ radosgw_frontend_port }} {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}"
-          run_once: true
-          changed_when: false
+          when: not rgw_multisite | bool
           delegate_to: "{{ groups[mon_group_name][0] }}"
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: update the placement of radosgw multisite hosts
-      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rgw {{ item.host }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }} --realm={{ item.rgw_realm }} --zone={{ item.rgw_zone }} --port={{ item.radosgw_frontend_port }} --placement={{ item.host }}"
+        - name: store ssl certificate in kv store (multisite)
+          command: >
+            {{ container_binary }} run --rm -i -v /etc/ceph:/etc/ceph:z --entrypoint=ceph {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} --cluster {{ cluster }}
+            config-key set rgw/cert/rgw.{{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }} -i -
+          args:
+            stdin: "{{ rgw_ssl_cert.content | b64decode }}"
+            stdin_add_newline: no
+          changed_when: false
+          loop: "{{ rgw_instances }}"
+          when: rgw_multisite | bool
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: update the placement of radosgw hosts
+      command: >
+        {{ cephadm_cmd }} shell --fsid {{ fsid }} --
+        ceph --cluster {{ cluster }} orch apply rgw
+        {{ rgw_realm | default('default') }}
+        {{ rgw_zone | default('default') }}
+        --placement='{{ groups.get(rgw_group_name, []) | length }} label:{{ rgw_group_name }}'
+        --port={{ radosgw_frontend_port }}
+        {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
       changed_when: false
-      with_items: "{{ rgw_instances_all }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: not rgw_multisite | bool
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: update the placement of radosgw multisite hosts
+      command: >
+        {{ cephadm_cmd }} shell --fsid {{ fsid }} --
+        ceph --cluster {{ cluster }} orch apply rgw {{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }}
+        --placement={{ ansible_facts['hostname'] }}
+        --realm={{ item.rgw_realm }} --zone={{ item.rgw_zone }}
+        --port={{ item.radosgw_frontend_port }}
+        {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
+      changed_when: false
+      loop: "{{ rgw_instances }}"
       when: rgw_multisite | bool
-      run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
