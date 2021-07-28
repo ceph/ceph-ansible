@@ -216,7 +216,7 @@
         tasks_from: container_binary.yml
 
     - name: get pool list
-      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd dump -f json"
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool ls detail -f json"
       register: pool_list
       changed_when: false
       check_mode: false
@@ -230,7 +230,7 @@
     - name: set_fact pools_pgautoscaler_mode
       set_fact:
         pools_pgautoscaler_mode: "{{ pools_pgautoscaler_mode | default([]) | union([{'name': item.pool_name, 'mode': item.pg_autoscale_mode}]) }}"
-      with_items: "{{ (pool_list.stdout | default('{}') | from_json)['pools'] }}"
+      with_items: "{{ pool_list.stdout | default('{}') | from_json }}"
 
     - name: disable balancer
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
