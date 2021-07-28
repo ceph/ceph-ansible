@@ -1,5 +1,7 @@
 from mock.mock import MagicMock, patch
+import pytest
 import os
+import ca_test_common
 import ceph_dashboard_user
 
 fake_container_binary = 'podman'
@@ -143,3 +145,26 @@ class TestCephDashboardUserModule(object):
         ]
 
         assert ceph_dashboard_user.remove_user(self.fake_module) == expected_cmd
+
+    @patch('ansible.module_utils.basic.AnsibleModule.fail_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.run_command')
+    def test_create_user_fail_with_weak_password(self, m_run_command, m_fail_json):
+        ca_test_common.set_module_args(self.fake_module.params)
+        m_fail_json.side_effect = ca_test_common.fail_json
+        get_rc = 2
+        get_stderr = 'Error ENOENT: User {} does not exist.'.format(self.fake_user)
+        get_stdout = ''
+        create_rc = 22
+        create_stderr = 'Error EINVAL: Password is too weak.'
+        create_stdout = ''
+        m_run_command.side_effect = [
+            (get_rc, get_stdout, get_stderr),
+            (create_rc, create_stdout, create_stderr)
+        ]
+
+        with pytest.raises(ca_test_common.AnsibleFailJson) as result:
+            ceph_dashboard_user.main()
+
+        result = result.value.args[0]
+        assert result['msg'] == create_stderr
+        assert result['rc'] == 1
