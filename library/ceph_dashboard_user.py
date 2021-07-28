@@ -20,9 +20,10 @@ try:
     from ansible.module_utils.ca_common import generate_ceph_cmd, \
                                                is_containerized, \
                                                exec_command, \
-                                               exit_module
+                                               exit_module, \
+                                               fatal
 except ImportError:
-    from module_utils.ca_common import generate_ceph_cmd, is_containerized, exec_command, exit_module  # noqa: E501
+    from module_utils.ca_common import generate_ceph_cmd, is_containerized, exec_command, exit_module, fatal  # noqa: E501
 
 import datetime
 import json
@@ -260,6 +261,8 @@ def run_module():
             rc, cmd, out, err = exec_command(module, set_password(module, container_image=container_image), stdin=password)  # noqa: E501
         else:
             rc, cmd, out, err = exec_command(module, create_user(module, container_image=container_image), stdin=password)  # noqa: E501
+            if rc != 0:
+                fatal(err, module)
             rc, cmd, out, err = exec_command(module, set_roles(module, container_image=container_image))  # noqa: E501
             changed = True
 
