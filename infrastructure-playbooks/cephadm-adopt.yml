@@ -444,7 +444,7 @@
         name: ceph-defaults
 
     - name: get pool list
-      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd dump -f json"
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool ls detail -f json"
       register: pool_list
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -463,7 +463,7 @@
       set_fact:
         pools_pgautoscaler_mode: "{{ pools_pgautoscaler_mode | default([]) | union([{'name': item.pool_name, 'mode': item.pg_autoscale_mode}]) }}"
       run_once: true
-      with_items: "{{ (pool_list.stdout | default('{}') | from_json)['pools'] }}"
+      with_items: "{{ pool_list.stdout | default('{}') | from_json }}"
 
     - name: disable balancer
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
