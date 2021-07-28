@@ -109,6 +109,16 @@ EXAMPLES = '''
 RETURN = '''#  '''
 
 
+def fatal(message, module):
+    '''
+    Report a fatal error and exit
+    '''
+    if module:
+        module.fail_json(msg=message, rc=1)
+    else:
+        raise(Exception(message))
+
+
 def container_exec(binary, container_image, interactive=False):
     '''
     Build the docker CLI to run a command inside a container
@@ -360,6 +370,8 @@ def run_module():
             rc, cmd, out, err = exec_commands(module, set_password(module, container_image=container_image), stdin=stdin)  # noqa: E501
         else:
             rc, cmd, out, err = exec_commands(module, create_user(module, container_image=container_image), stdin=stdin)  # noqa: E501
+            if rc != 0:
+                fatal(err, module)
             rc, cmd, out, err = exec_commands(module, set_roles(module, container_image=container_image))  # noqa: E501
             changed = True
 

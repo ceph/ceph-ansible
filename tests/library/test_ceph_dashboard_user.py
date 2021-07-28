@@ -1,10 +1,39 @@
 import os
 from mock.mock import patch, MagicMock
+from ansible.module_utils import basic
+from ansible.module_utils._text import to_bytes
+import json
 import pytest
 import ceph_dashboard_user
 
 fake_container_binary = 'podman'
 fake_container_image = 'docker.io/ceph/daemon:latest'
+
+
+def set_module_args(args):
+    if '_ansible_remote_tmp' not in args:
+        args['_ansible_remote_tmp'] = '/tmp'
+    if '_ansible_keep_remote_files' not in args:
+        args['_ansible_keep_remote_files'] = False
+
+    args = json.dumps({'ANSIBLE_MODULE_ARGS': args})
+    basic._ANSIBLE_ARGS = to_bytes(args)
+
+
+class AnsibleExitJson(Exception):
+    pass
+
+
+class AnsibleFailJson(Exception):
+    pass
+
+
+def exit_json(*args, **kwargs):
+    raise AnsibleExitJson(kwargs)
+
+
+def fail_json(*args, **kwargs):
+    raise AnsibleFailJson(kwargs)
 
 
 class TestCephDashboardUserModule(object):
@@ -255,3 +284,26 @@ class TestCephDashboardUserModule(object):
         assert _cmd == expected_cmd
         assert _err == stderr
         assert _out == stdout
+
+    @patch('ansible.module_utils.basic.AnsibleModule.fail_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.run_command')
+    def test_create_user_fail_with_weak_password(self, m_run_command, m_fail_json):
+        set_module_args(self.fake_params)
+        m_fail_json.side_effect = fail_json
+        get_rc = 2
+        get_stderr = 'Error ENOENT: User {} does not exist.'.format(self.fake_user)
+        get_stdout = ''
+        create_rc = 22
+        create_stderr = 'Error EINVAL: Password is too weak.'
+        create_stdout = ''
+        m_run_command.side_effect = [
+            (get_rc, get_stdout, get_stderr),
+            (create_rc, create_stdout, create_stderr)
+        ]
+
+        with pytest.raises(AnsibleFailJson) as result:
+            ceph_dashboard_user.main()
+
+        result = result.value.args[0]
+        assert result['msg'] == create_stderr
+        assert result['rc'] == 1
