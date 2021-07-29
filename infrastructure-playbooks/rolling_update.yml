@@ -114,7 +114,9 @@
         - ceph_docker_registry_auth | bool
 
     - name: check ceph release in container image
-      when: containerized_deployment | bool
+      when:
+        - groups.get(mon_group_name, []) | length > 0
+        - containerized_deployment | bool
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       block:
