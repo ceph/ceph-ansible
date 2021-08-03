@@ -223,7 +223,7 @@
 
     - name: get balancer module status
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer status -f json"
-      register: balancer_status
+      register: balancer_status_switch
       changed_when: false
       check_mode: false
 
@@ -235,7 +235,7 @@
     - name: disable balancer
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
       changed_when: false
-      when: (balancer_status.stdout | from_json)['active'] | bool
+      when: (balancer_status_switch.stdout | from_json)['active'] | bool
 
     - name: disable pg autoscale on pools
       ceph_pool:
@@ -429,7 +429,7 @@
     - name: re-enable balancer
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"
       changed_when: false
-      when: (balancer_status.stdout | from_json)['active'] | bool
+      when: (balancer_status_switch.stdout | from_json)['active'] | bool
 
 
 - name: switching from non-containerized to containerized ceph mds
