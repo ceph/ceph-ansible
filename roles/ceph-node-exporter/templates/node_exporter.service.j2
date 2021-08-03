@@ -20,6 +20,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --name=node-exporter \
 {% if container_binary == 'podman' %}
   -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
 {% endif %}
+  --pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
   --privileged \
   -v /proc:/host/proc:ro -v /sys:/host/sys:ro \
   --net=host \
