@@ -391,7 +391,7 @@
 
     - name: get balancer module status
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer status -f json"
-      register: balancer_status
+      register: balancer_status_update
       changed_when: false
 
     - name: set_fact pools_pgautoscaler_mode
@@ -402,7 +402,7 @@
     - name: disable balancer
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
       changed_when: false
-      when: (balancer_status.stdout | from_json)['active'] | bool
+      when: (balancer_status_update.stdout | from_json)['active'] | bool
 
     - name: disable pg autoscale on pools
       command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode off"
@@ -540,7 +540,7 @@
     - name: re-enable balancer
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"
       changed_when: false
-      when: (balancer_status.stdout | from_json)['active'] | bool
+      when: (balancer_status_update.stdout | from_json)['active'] | bool
 
     - name: set_fact container_exec_cmd_osd
       set_fact:
