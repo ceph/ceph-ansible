@@ -453,7 +453,7 @@
 
     - name: get balancer module status
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer status -f json"
-      register: balancer_status
+      register: balancer_status_adopt
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
@@ -470,7 +470,7 @@
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
-      when: (balancer_status.stdout | from_json)['active'] | bool
+      when: (balancer_status_adopt.stdout | from_json)['active'] | bool
 
     - name: disable pg autoscale on pools
       ceph_pool:
@@ -633,7 +633,7 @@
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
-      when: (balancer_status.stdout | from_json)['active'] | bool
+      when: (balancer_status_adopt.stdout | from_json)['active'] | bool
 
 - name: redeploy mds daemons
   hosts: "{{ mds_group_name|default('mdss') }}"
