@@ -948,7 +948,7 @@
 
     - name: create nfs exports pool
       ceph_pool:
-        name: "{{ nfs_ganesha_export_pool_name | default('nfs-ganesha') }}"
+        name: .nfs
         cluster: "{{ cluster }}"
         application: nfs
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -958,7 +958,7 @@
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
     - name: push the new exports in a rados object
-      command: "{{ rados_cmd }} -p {{ nfs_ganesha_export_pool_name | default('nfs-ganesha') }} -N {{ nfs_ganesha_export_namespace | default('nfs-ganesha') }} put conf-nfs.{{ nfs_group_name | default('nfss') }} -"
+      command: "{{ rados_cmd }} -p .nfs -N {{ nfs_ganesha_export_namespace | default('nfs-ganesha') }} put conf-nfs.{{ nfs_group_name | default('nfss') }} -"
       args:
         stdin: "{{ new_export }}"
         stdin_add_newline: no
@@ -966,7 +966,7 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: update the placement of nfs hosts
-      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply nfs {{ nfs_group_name | default('nfss') }} {{ nfs_ganesha_export_pool_name | default('nfs-ganesha') }} {{ nfs_ganesha_export_namespace | default('nfs-ganesha') }} --placement='{{ groups.get(nfs_group_name, []) | length }} label:{{ nfs_group_name }}'"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply nfs {{ nfs_group_name | default('nfss') }} --placement='{{ groups.get(nfs_group_name, []) | length }} label:{{ nfs_group_name }}'"
       run_once: true
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
