@@ -96,7 +96,7 @@
   loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when: >
-    'rgw' not in (rgw_osd_pool_ls_detail | selectattr('pool_name', 'eq', item.key) | first).application_metadata
+    'rgw' not in (rgw_osd_pool_ls_detail | selectattr('pool_name', 'match', '^'+item.key+'$') | first).application_metadata
 
 - name: set pool pg_num
   command: "{{ container_exec_cmd }} ceph --connect-timeout 10 --cluster {{ cluster }} osd pool set {{ item.key }} pg_num {{ item.value.pg_num }}"
@@ -108,4 +108,4 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   when:
     - item.value.pg_num is defined
-    - (rgw_osd_pool_ls_detail | selectattr('pool_name', 'eq', item.key) | first).pg_num != item.value.pg_num
+    - (rgw_osd_pool_ls_detail | selectattr('pool_name', 'match', '^'+item.key+'$') | first).pg_num != item.value.pg_num
