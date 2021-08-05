@@ -1,0 +1,19 @@
+- name: validate ceph_origin
+  fail:
+    msg: "ceph_origin must be either 'repository', 'distro' or 'local'"
+  when: ceph_origin not in ['repository', 'distro', 'local']
+
+- name: validate ceph_repository
+  fail:
+    msg: "ceph_repository must be either 'community', 'rhcs', 'dev', 'custom' or 'uca'"
+  when:
+    - ceph_origin == 'repository'
+    - ceph_repository not in ['community', 'rhcs', 'dev', 'custom', 'uca']
+
+- name: validate ceph_repository_community
+  fail:
+    msg: "ceph_stable_release must be 'octopus'"
+  when:
+    - ceph_origin == 'repository'
+    - ceph_repository == 'community'
+    - ceph_stable_release not in ['octopus']
