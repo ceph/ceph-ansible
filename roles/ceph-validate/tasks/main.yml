@@ -222,6 +222,13 @@
     - (ceph_docker_registry_username is not defined or ceph_docker_registry_password is not defined) or
       (ceph_docker_registry_username | length == 0 or ceph_docker_registry_password | length == 0)
 
+- name: validate container service and container package
+  fail:
+    msg: 'both container_package_name and container_service_name should be defined'
+  when:
+    - (container_package_name is undefined and container_service_name is defined) or
+      (container_package_name is defined and container_service_name is undefined)
+
 - name: validate openstack_keys key format
   fail:
     msg: '{{ item.name }} key format invalid'
