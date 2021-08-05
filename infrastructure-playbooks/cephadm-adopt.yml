@@ -145,6 +145,22 @@
           inventory_hostname in groups.get(iscsi_gw_group_name, []) or
           inventory_hostname in groups.get(nfs_group_name, [])
 
+    - name: configure repository for installing cephadm
+      when: containerized_deployment | bool
+      vars:
+        ceph_origin: repository
+        ceph_repository: community
+      block:
+        - name: validate repository variables
+          import_role:
+            name: ceph-validate
+            tasks_from: check_repository.yml
+
+        - name: configure repository
+          import_role:
+            name: ceph-common
+            tasks_from: "configure_repository.yml"
+
     - name: install cephadm requirements
       package:
         name: ['python3', 'lvm2']
@@ -156,7 +172,6 @@
         name: cephadm
       register: result
       until: result is succeeded
-      when: not containerized_deployment | bool
 
     - name: install cephadm mgr module
       package:
@@ -166,22 +181,6 @@
       when:
         - not containerized_deployment | bool
         - mgr_group_name in group_names
-
-    - name: get cephadm from the container image
-      when: containerized_deployment | bool
-      block:
-        - name: create a cephadm container
-          command: "{{ container_binary }} create --name cephadm {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-          changed_when: false
-
-        - name: cp the cephadm cli file
-          command: "{{ container_binary }} cp cephadm:/usr/sbin/cephadm /usr/sbin/cephadm"
-          args:
-            creates: /usr/sbin/cephadm
-
-        - name: remove the cephadm container
-          command: "{{ container_binary }} rm cephadm"
-          changed_when: false
 
     - name: set_fact ceph_cmd
       set_fact:
