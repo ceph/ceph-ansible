@@ -1,11 +1,17 @@
 ---
-- name: include_tasks installs/install_on_redhat.yml
-  include_tasks: installs/install_on_redhat.yml
-  when: ansible_facts['os_family'] == 'RedHat'
+- name: include configure_repository.yml
+  include_tasks: configure_repository.yml
+  tags: package-configure
+
+- name: include installs/install_redhat_packages.yml
+  include_tasks: installs/install_redhat_packages.yml
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
   tags: package-install
 
-- name: include_tasks installs/install_on_suse.yml
-  include_tasks: installs/install_on_suse.yml
+- name: include installs/install_suse_packages.yml
+  include_tasks: installs/install_suse_packages.yml
   when: ansible_facts['os_family'] == 'Suse'
   tags: package-install
 
