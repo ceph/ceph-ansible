@@ -69,15 +69,14 @@
           set_fact:
             subj_alt_names: >
               {% for host in groups[mgr_group_name] | default(groups[mon_group_name]) -%}
-              subjectAltName={{ hostvars[host]['ansible_facts']['hostname'] }}/subjectAltName={{ hostvars[host]['dashboard_server_addr'] }}/subjectAltName={{ hostvars[host]['ansible_facts']['fqdn'] }}
-              {%- if loop.last %}/{% endif %}
+              DNS:{{ hostvars[host]['ansible_facts']['hostname'] }},DNS:{{ hostvars[host]['ansible_facts']['fqdn'] }},IP:{{ hostvars[host]['dashboard_server_addr'] }}{% if not loop.last %},{% endif %}
               {%- endfor -%}
           run_once: true
 
         - name: generate a Self Signed OpenSSL certificate for dashboard
           shell: |
             test -f /etc/ceph/ceph-dashboard.key -a -f /etc/ceph/ceph-dashboard.crt || \
-            openssl req -new -nodes -x509 -subj '/O=IT/CN={{ dashboard_certificate_cn }}/{{ subj_alt_names | trim }}' -days 3650 -keyout /etc/ceph/ceph-dashboard.key -out /etc/ceph/ceph-dashboard.crt -extensions v3_ca
+            openssl req -new -nodes -x509 -subj '/O=IT/CN={{ dashboard_certificate_cn }}/' -addext 'subjectAltName={{ subj_alt_names | trim }}' -days 3650 -keyout /etc/ceph/ceph-dashboard.key -out /etc/ceph/ceph-dashboard.crt -extensions v3_ca
           run_once: True
 
         - name: slurp self-signed generated certificate for dashboard
