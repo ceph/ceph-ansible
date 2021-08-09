@@ -1,7 +1,7 @@
 import pytest
 
 
-class TestGrafanas(object):
+class TestMonitoring(object):
 
     @pytest.mark.dashboard
     @pytest.mark.no_docker
