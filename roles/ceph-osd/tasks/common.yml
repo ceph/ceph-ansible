@@ -26,6 +26,7 @@
     - { name: "client.admin", path: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}" }
   delegate_to: "{{ groups.get(mon_group_name)[0] }}"
   run_once: true
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
   when:
     - cephx | bool
     - item.copy_key | bool
@@ -42,5 +43,5 @@
     - cephx | bool
     - item is not skipped
     - item.item.copy_key | bool
-  no_log: true
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
 
