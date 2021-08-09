@@ -35,6 +35,7 @@
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_items: "{{ openstack_keys }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
 
     - name: get keys from monitors
       ceph_key:
@@ -48,6 +49,7 @@
       register: _osp_keys
       with_items: "{{ openstack_keys }}"
       delegate_to: "{{ groups.get(mon_group_name)[0] }}"
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
 
     - name: copy ceph key(s) if needed
       copy:
@@ -60,7 +62,7 @@
         - "{{ _osp_keys.results }}"
         - "{{ groups[mon_group_name] }}"
       delegate_to: "{{ item.1 }}"
-      no_log: true
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
   when:
     - cephx | bool
     - openstack_config | bool
