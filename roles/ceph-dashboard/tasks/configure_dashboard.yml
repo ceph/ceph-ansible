@@ -64,6 +64,7 @@
 
     - name: generate and copy self-signed certificate
       when: dashboard_key | length == 0 or dashboard_crt | length == 0
+      run_once: true
       block:
         - name: set_fact subj_alt_names
           set_fact:
@@ -71,13 +72,34 @@
               {% for host in groups[mgr_group_name] | default(groups[mon_group_name]) -%}
               DNS:{{ hostvars[host]['ansible_facts']['hostname'] }},DNS:{{ hostvars[host]['ansible_facts']['fqdn'] }},IP:{{ hostvars[host]['dashboard_server_addr'] }}{% if not loop.last %},{% endif %}
               {%- endfor -%}
-          run_once: true
+
+        - name: create tempfile for openssl certificate and key generation
+          tempfile:
+            state: file
+          register: openssl_config_file
+
+        - name: copy the openssl configuration file
+          copy:
+            src: "{{ '/etc/pki/tls/openssl.cnf' if ansible_facts['os_family'] == 'RedHat' else '/etc/ssl/openssl.cnf' }}"
+            dest: '{{ openssl_config_file.path }}'
+            remote_src: true
+
+        - name: add subjectAltName to the openssl configuration
+          ini_file:
+            path: '{{ openssl_config_file.path }}'
+            section: v3_ca
+            option: subjectAltName
+            value: '{{ subj_alt_names | trim }}'
 
         - name: generate a Self Signed OpenSSL certificate for dashboard
           shell: |
             test -f /etc/ceph/ceph-dashboard.key -a -f /etc/ceph/ceph-dashboard.crt || \
-            openssl req -new -nodes -x509 -subj '/O=IT/CN={{ dashboard_certificate_cn }}/' -addext 'subjectAltName={{ subj_alt_names | trim }}' -days 3650 -keyout /etc/ceph/ceph-dashboard.key -out /etc/ceph/ceph-dashboard.crt -extensions v3_ca
-          run_once: True
+            openssl req -new -nodes -x509 -subj '/O=IT/CN={{ dashboard_certificate_cn }}/' -config {{ openssl_config_file.path }} -days 3650 -keyout /etc/ceph/ceph-dashboard.key -out /etc/ceph/ceph-dashboard.crt -extensions v3_ca
+
+        - name: remove the openssl tempfile
+          file:
+            path: '{{ openssl_config_file.path }}'
+            state: absent
 
         - name: slurp self-signed generated certificate for dashboard
           slurp:
@@ -96,7 +118,6 @@
             group: "{{ ceph_uid }}"
             mode: "{{ '0600' if item.0.source.split('.')[-1] == 'key' else '0664' }}"
           delegate_to: "{{ item.1 }}"
-          run_once: True
           with_nested:
             - "{{ slurp_self_signed_crt.results }}"
             - "{{ groups[mon_group_name] }}"
