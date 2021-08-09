@@ -19,6 +19,7 @@
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
       run_once: True
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
 
     - name: enforce container_binary on first monitor
       import_role:
@@ -42,6 +43,7 @@
       check_mode: False
       changed_when: False
       run_once: true
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
 
     - name: copy ceph key(s) if needed
       copy:
@@ -50,7 +52,7 @@
         owner: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
         group: "{{ ceph_uid if containerized_deployment else 'ceph' }}"
         mode: "{{ ceph_keyring_permissions }}"
-      no_log: true
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
 
 - name: start ceph-crash daemon
   when: containerized_deployment | bool
