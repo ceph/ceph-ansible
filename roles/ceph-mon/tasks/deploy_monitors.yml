@@ -17,6 +17,7 @@
       run_once: True
       delegate_to: "{{ running_mon }}"
       failed_when: initial_mon_key.rc not in [0, 2]
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
       when: running_mon is defined
 
     - name: generate monitor initial keyring
@@ -26,6 +27,7 @@
       delegate_to: localhost
       become: false
       run_once: true
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
       when:
         - initial_mon_key is skipped
           or
@@ -52,6 +54,7 @@
         owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
         group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
         mode: "0400"
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
       environment:
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
@@ -98,6 +101,7 @@
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: create_custom_admin_secret
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
   when:
     - cephx | bool
     - admin_secret != 'admin_secret'

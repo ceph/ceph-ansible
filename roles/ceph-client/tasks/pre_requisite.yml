@@ -13,6 +13,7 @@
       register: _admin_key
       delegate_to: "{{ groups.get(mon_group_name)[0] }}"
       run_once: true
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
 
     - name: copy ceph key(s) if needed
       copy:
@@ -21,7 +22,7 @@
         owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
         group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
         mode: "{{ ceph_keyring_permissions }}"
-      no_log: true
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
   when:
     - cephx | bool
     - copy_admin_key | bool

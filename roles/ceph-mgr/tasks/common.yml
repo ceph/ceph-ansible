@@ -24,6 +24,7 @@
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   when: groups.get(mgr_group_name, []) | length == 0 # the key is present already since one of the mons created it in "create ceph mgr keyring(s)"
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
 
 - name: create and copy keyrings
   when: groups.get(mgr_group_name, []) | length > 0
@@ -46,6 +47,7 @@
       with_items: "{{ groups.get(mgr_group_name, []) }}"
       run_once: True
       delegate_to: "{{ groups[mon_group_name][0] }}"
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
 
     - name: set_fact _mgr_keys
       set_fact:
@@ -68,6 +70,7 @@
       when:
         - cephx | bool
         - item.copy_key | bool
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
 
     - name: copy ceph key(s) if needed
       copy:
@@ -81,7 +84,7 @@
         - cephx | bool
         - item is not skipped
         - item.item.copy_key | bool
-      no_log: true
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
 
 - name: set mgr key permissions
   file:
