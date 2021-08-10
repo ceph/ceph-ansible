@@ -21,6 +21,13 @@
   include_tasks: systemd.yml
   when: containerized_deployment | bool
 
+- name: enable ceph-mgr.target
+  service:
+    name: ceph-mgr.target
+    enabled: yes
+    daemon_reload: yes
+  when: containerized_deployment | bool
+
 - name: systemd start mgr
   systemd:
     name: ceph-mgr@{{ ansible_facts['hostname'] }}
