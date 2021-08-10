@@ -4,7 +4,13 @@
 require 'yaml'
 VAGRANTFILE_API_VERSION = '2'
 
-config_file=File.expand_path(File.join(File.dirname(__FILE__), 'vagrant_variables.yml'))
+if File.file?(File.join(File.dirname(__FILE__), 'vagrant_variables.yml')) then
+  vagrant_variables_file = 'vagrant_variables.yml'
+else
+  vagrant_variables_file = 'vagrant_variables.yml.sample'
+end
+
+config_file=File.expand_path(File.join(File.dirname(__FILE__), vagrant_variables_file))
 
 settings=YAML.load_file(config_file)
 
