@@ -248,8 +248,11 @@
 
     - name: remove ceph mds service
       file:
-        path: /etc/systemd/system/ceph-mds@.service
+        path: /etc/systemd/system/ceph-mds{{ item }}
         state: absent
+      loop:
+        - '@.service'
+        - '.target'
 
 
 - name: purge ceph mgr cluster
@@ -267,9 +270,11 @@
 
     - name: remove ceph mgr service
       file:
-        path: /etc/systemd/system/ceph-mgr@.service
+        path: /etc/systemd/system/ceph-mgr{{ item }}
         state: absent
-
+      loop:
+        - '@.service'
+        - '.target'
 
 - name: purge rgwloadbalancer cluster
   hosts: rgwloadbalancers
@@ -304,6 +309,14 @@
       failed_when: false
       with_items: "{{ rgw_instances }}"
 
+    - name: remove ceph rgw service
+      file:
+        path: /etc/systemd/system/ceph-radosgw{{ item }}
+        state: absent
+      loop:
+        - '@.service'
+        - '.target'
+
 
 - name: purge ceph rbd-mirror cluster
   hosts: rbdmirrors
@@ -316,6 +329,14 @@
         state: stopped
         enabled: no
       failed_when: false
+
+    - name: remove ceph rbd-mirror service
+      file:
+        path: /etc/systemd/system/ceph-rbd-mirror{{ item }}
+        state: absent
+      loop:
+        - '@.service'
+        - '.target'
 
 
 - name: purge ceph osd cluster
@@ -599,9 +620,11 @@
 
     - name: remove ceph osd service
       file:
-        path: /etc/systemd/system/ceph-osd@.service
+        path: /etc/systemd/system/ceph-osd{{ item }}
         state: absent
-      when: containerized_deployment | bool
+      loop:
+        - '@.service'
+        - '.target'
 
 - name: purge ceph mon cluster
   hosts: mons
@@ -633,11 +656,9 @@
 
     - name: remove ceph mon and mgr service
       file:
-        path: "/etc/systemd/system/ceph-{{ item }}@.service"
+        path: "/etc/systemd/system/ceph-{{ item.0 }}{{ item.1 }}"
         state: absent
-      with_items:
-        - mon
-        - mgr
+      loop: "{{ ['mon', 'mgr'] | product(['@.service', '.target']) | list }}"
 
 
 - name: purge ceph-crash daemons
