@@ -2,6 +2,13 @@
 - name: include_tasks systemd.yml
   include_tasks: systemd.yml
 
+- name: enable ceph-mds.target
+  service:
+    name: ceph-mds.target
+    enabled: yes
+    daemon_reload: yes
+  when: containerized_deployment | bool
+
 - name: systemd start mds container
   systemd:
     name: ceph-mds@{{ ansible_facts['hostname'] }}

@@ -380,17 +380,14 @@
       failed_when: false
       when: containerized_deployment | bool
 
-    - name: remove ceph-mon systemd unit file
+    - name: remove ceph-mon systemd files
       file:
-        path: /etc/systemd/system/ceph-mon@.service
+        path: "{{ item }}"
         state: absent
-      when: containerized_deployment | bool
-
-    - name: remove ceph-mon systemd override directory
-      file:
-        path: /etc/systemd/system/ceph-mon@.service.d
-        state: absent
-      when: not containerized_deployment | bool
+      loop:
+        - /etc/systemd/system/ceph-mon@.service
+        - /etc/systemd/system/ceph-mon@.service.d
+        - /etc/systemd/system/ceph-mon.target
 
     - name: waiting for the monitor to join the quorum...
       command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} quorum_status --format json"
@@ -428,17 +425,15 @@
       failed_when: false
       when: containerized_deployment | bool
 
-    - name: remove ceph-mgr systemd unit file
+    - name: remove ceph-mgr systemd files
       file:
-        path: /etc/systemd/system/ceph-mgr@.service
+        path: "{{ item }}"
         state: absent
-      when: containerized_deployment | bool
+      loop:
+        - /etc/systemd/system/ceph-mgr@.service
+        - /etc/systemd/system/ceph-mgr@.service.d
+        - /etc/systemd/system/ceph-mgr.target
 
-    - name: remove ceph-mgr systemd override directory
-      file:
-        path: /etc/systemd/system/ceph-mgr@.service.d
-        state: absent
-      when: not containerized_deployment | bool
 
 - name: set osd flags
   hosts: "{{ osd_group_name|default('osds') }}"
@@ -561,20 +556,15 @@
         firewalld: "{{ true if configure_firewall | bool else false }}"
       loop: '{{ (osd_list.stdout | from_json).keys() | list }}'
 
-    - name: remove ceph-osd systemd unit and ceph-osd-run.sh files
+    - name: remove ceph-osd systemd and ceph-osd-run.sh files
       file:
-        path: '{{ item }}'
+        path: "{{ item }}"
         state: absent
       loop:
         - /etc/systemd/system/ceph-osd@.service
+        - /etc/systemd/system/ceph-osd@.service.d
+        - /etc/systemd/system/ceph-osd.target
         - "{{ ceph_osd_docker_run_script_path | default('/usr/share') }}/ceph-osd-run.sh"
-      when: containerized_deployment | bool
-
-    - name: remove ceph-osd systemd override directory
-      file:
-        path: /etc/systemd/system/ceph-osd@.service.d
-        state: absent
-      when: not containerized_deployment | bool
 
     - name: remove osd directory
       file:
@@ -680,7 +670,7 @@
         name: ceph-mds.target
         state: stopped
         enabled: false
-      when: not containerized_deployment | bool
+      failed_when: false
 
     - name: reset failed ceph-mds systemd unit
       command: "systemctl reset-failed ceph-mds@{{ ansible_facts['hostname'] }}"  # noqa 303
@@ -688,17 +678,14 @@
       failed_when: false
       when: containerized_deployment | bool
 
-    - name: remove ceph-mds systemd unit file
+    - name: remove ceph-mds systemd files
       file:
-        path: /etc/systemd/system/ceph-mds@.service
+        path: "{{ item }}"
         state: absent
-      when: containerized_deployment | bool
-
-    - name: remove ceph-mds systemd override directory
-      file:
-        path: /etc/systemd/system/ceph-mds@.service.d
-        state: absent
-      when: not containerized_deployment | bool
+      loop:
+        - /etc/systemd/system/ceph-mds@.service
+        - /etc/systemd/system/ceph-mds@.service.d
+        - /etc/systemd/system/ceph-mds.target
 
     - name: remove legacy ceph mds data
       file:
@@ -805,10 +792,10 @@
 
     - name: stop and disable ceph-radosgw systemd target
       service:
-        name: ceph-rgw.target
+        name: ceph-radosgw.target
         state: stopped
         enabled: false
-      when: not containerized_deployment | bool
+      failed_when: false
 
     - name: reset failed ceph-radosgw systemd unit
       command: "systemctl reset-failed ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"  # noqa 303
@@ -817,17 +804,14 @@
       loop: '{{ rgw_instances }}'
       when: containerized_deployment | bool
 
-    - name: remove ceph-radosgw systemd unit file
+    - name: remove ceph-radosgw systemd files
       file:
-        path: /etc/systemd/system/ceph-radosgw@.service
+        path: "{{ item }}"
         state: absent
-      when: containerized_deployment | bool
-
-    - name: remove ceph-radosgw systemd override directory
-      file:
-        path: /etc/systemd/system/ceph-radosgw@.service.d
-        state: absent
-      when: not containerized_deployment | bool
+      loop:
+        - /etc/systemd/system/ceph-radosgw@.service
+        - /etc/systemd/system/ceph-radosgw@.service.d
+        - /etc/systemd/system/ceph-radosgw.target
 
     - name: remove legacy ceph radosgw data
       file:
@@ -874,17 +858,13 @@
       failed_when: false
       when: containerized_deployment | bool
 
-    - name: remove ceph-nfs systemd unit file
+    - name: remove ceph-nfs systemd unit files
       file:
-        path: /etc/systemd/system/ceph-nfs@.service
+        path: "{{ item }}"
         state: absent
-      when: containerized_deployment | bool
-
-    - name: remove ceph-nfs systemd override directory
-      file:
-        path: /etc/systemd/system/ceph-nfs@.service.d
-        state: absent
-      when: not containerized_deployment | bool
+      loop:
+        - /etc/systemd/system/ceph-nfs@.service
+        - /etc/systemd/system/ceph-nfs@.service.d
 
     - name: remove legacy ceph radosgw directory
       file:
@@ -1020,7 +1000,7 @@
         name: ceph-rbd-mirror.target
         state: stopped
         enabled: false
-      when: not containerized_deployment | bool
+      failed_when: false
 
     - name: reset failed rbd-mirror systemd unit
       command: "systemctl reset-failed ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"  # noqa 303
@@ -1028,17 +1008,15 @@
       failed_when: false
       when: containerized_deployment | bool
 
-    - name: remove rbd-mirror systemd unit file
+    - name: remove rbd-mirror systemd files
       file:
-        path: /etc/systemd/system/ceph-rbd-mirror@.service
+        path: "{{ item }}"
         state: absent
-      when: containerized_deployment | bool
+      loop:
+        - /etc/systemd/system/ceph-rbd-mirror@.service
+        - /etc/systemd/system/ceph-rbd-mirror@.service.d
+        - /etc/systemd/system/ceph-rbd-mirror.target
 
-    - name: remove rbd-mirror systemd override directory
-      file:
-        path: /etc/systemd/system/ceph-rbd-mirror@.service.d
-        state: absent
-      when: not containerized_deployment | bool
 
 - name: redeploy iscsigw daemons
   hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
@@ -1098,6 +1076,7 @@
         - tcmu-runner
       when: containerized_deployment | bool
 
+
 - name: redeploy ceph-crash daemons
   hosts:
     - "{{ mon_group_name|default('mons') }}"
@@ -1120,6 +1099,11 @@
         enabled: false
       failed_when: false
 
+    - name: remove ceph-crash systemd unit file
+      file:
+        path: /etc/systemd/system/ceph-crash@.service
+        state: absent
+
     - name: update the placement of ceph-crash hosts
       command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply crash --placement='label:ceph'"
       run_once: true
@@ -1127,6 +1111,7 @@
       delegate_to: '{{ groups[mon_group_name][0] }}'
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
 
 - name: redeploy alertmanager/grafana/prometheus daemons
   hosts: "{{ monitoring_group_name|default('monitoring') }}"
