@@ -1,0 +1,38 @@
+---
+- hosts: mon0
+  become: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+    - name: set_fact ceph_cmd
+      set_fact:
+        ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
+
+    - name: get osds status
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd dump --format json"
+      changed_when: false
+      register: osds_status
+
+    - name: set_fact list_osds_down
+      set_fact:
+        list_osds_down: "{{ list_osds_down | default([]) | union([item.osd]) }}"
+      with_items: "{{ (osds_status.stdout | from_json)['osds'] }}"
+      when: "'up' not in item.state"
+
+    - name: get osd nodes
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd find {{ item }} --format json"
+      changed_when: false
+      register: osd_nodes
+      with_items: "{{ list_osds_down }}"
+      when: list_osds_down is defined
+
+    - name: restart failed osds
+      service:
+        name: "ceph-osd@{{ item.item }}"
+        state: restarted
+      delegate_to: "{{ (item.stdout | from_json)['host'] }}"
+      with_items: "{{ (osd_nodes.results) }}"
+      when: list_osds_down is defined
