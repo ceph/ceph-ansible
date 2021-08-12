@@ -2,17 +2,18 @@ import sys
 import mock
 import os
 import pytest
+import ca_test_common
 sys.path.append('./library')
 import ceph_volume  # noqa: E402
 
 
 # Python 3
 try:
-    from unittest.mock import MagicMock
+    from unittest.mock import MagicMock, patch
 except ImportError:
     # Python 2
     try:
-        from mock import MagicMock
+        from mock import MagicMock, patch
     except ImportError:
         print('You need the mock library installed on python2.x to run tests')
 
@@ -402,3 +403,85 @@ class TestCephVolumeModule(object):
         result = ceph_volume.batch(
             fake_module, fake_container_image)
         assert result == expected_command_list
+
+    @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.run_command')
+    def test_prepare_no_keyring_in_output(self, m_run_command, m_exit_json):
+        ca_test_common.set_module_args({'data': '/dev/sda',
+                                        'objectstore': 'bluestore',
+                                        'cluster': 'ceph',
+                                        'action': 'prepare'})
+        keyring = 'AQBqkhNhQDlqEhAAXKxu87L3Mh3mHY+agonKZA=='
+        m_exit_json.side_effect = ca_test_common.exit_json
+        list_rc = 0
+        list_stderr = ''
+        list_stdout = '{}'
+        prepare_rc = 0
+        prepare_stderr = """
+    Running command: /usr/bin/ceph-authtool --gen-print-key
+    Running command: /usr/bin/mount -t tmpfs tmpfs /var/lib/ceph/osd/ceph-0
+    Running command: /usr/bin/chown -h ceph:ceph /dev/test_group/data-lv1
+    Running command: /usr/bin/chown -R ceph:ceph /dev/dm-0
+    Running command: /usr/bin/ln -s /dev/test_group/data-lv1 /var/lib/ceph/osd/ceph-1/block
+     stderr: got monmap epoch 1
+    Running command: /usr/bin/ceph-authtool /var/lib/ceph/osd/ceph-1/keyring --create-keyring --name osd.1 --add-key {}
+     stdout: creating /var/lib/ceph/osd/ceph-1/keyring
+    added entity osd.1 auth(key={})
+""".format(keyring, keyring)
+        prepare_stdout = ''
+        m_run_command.side_effect = [
+            (list_rc, list_stdout, list_stderr),
+            (prepare_rc, prepare_stdout, prepare_stderr)
+        ]
+
+        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
+            ceph_volume.main()
+
+        result = result.value.args[0]
+        assert result['changed']
+        assert result['cmd'] == ['ceph-volume', '--cluster', 'ceph', 'lvm', 'prepare', '--bluestore', '--data', '/dev/sda']
+        assert result['rc'] == 0
+        assert keyring not in result['stderr']
+        assert '*' * 8 in result['stderr']
+        assert not result['stdout']
+
+    @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.run_command')
+    def test_batch_no_keyring_in_output(self, m_run_command, m_exit_json):
+        ca_test_common.set_module_args({'batch_devices': ['/dev/sda'],
+                                        'objectstore': 'bluestore',
+                                        'cluster': 'ceph',
+                                        'action': 'batch'})
+        keyring = 'AQBUixJhnDF1NRAAhl2xrnmOHCCI/T+W6FjqmA=='
+        m_exit_json.side_effect = ca_test_common.exit_json
+        report_rc = 0
+        report_stderr = ''
+        report_stdout = '[{"data": "/dev/sda", "data_size": "50.00 GB", "encryption": "None"}]'
+        batch_rc = 0
+        batch_stderr = """
+    Running command: /usr/bin/ceph-authtool --gen-print-key
+    Running command: /usr/bin/mount -t tmpfs tmpfs /var/lib/ceph/osd/ceph-0
+    Running command: /usr/bin/chown -h ceph:ceph /dev/ceph-863337c4-bef9-4b96-aaac-27cde8c42b8f/osd-block-b1d1036f-0d6e-493b-9d1a-6f6b96df64b1
+    Running command: /usr/bin/chown -R ceph:ceph /dev/mapper/ceph--863337c4--bef9--4b96--aaac--27cde8c42b8f-osd--block--b1d1036f--0d6e--493b--9d1a--6f6b96df64b1
+    Running command: /usr/bin/ln -s /dev/ceph-863337c4-bef9-4b96-aaac-27cde8c42b8f/osd-block-b1d1036f-0d6e-493b-9d1a-6f6b96df64b1 /var/lib/ceph/osd/ceph-0/block
+     stderr: got monmap epoch 1
+    Running command: /usr/bin/ceph-authtool /var/lib/ceph/osd/ceph-0/keyring --create-keyring --name osd.0 --add-key {}
+     stdout: creating /var/lib/ceph/osd/ceph-0/keyring
+    added entity osd.0 auth(key={})
+""".format(keyring, keyring)
+        batch_stdout = ''
+        m_run_command.side_effect = [
+            (report_rc, report_stdout, report_stderr),
+            (batch_rc, batch_stdout, batch_stderr)
+        ]
+
+        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
+            ceph_volume.main()
+
+        result = result.value.args[0]
+        assert result['changed']
+        assert result['cmd'] == ['ceph-volume', '--cluster', 'ceph', 'lvm', 'batch', '--bluestore', '--yes', '/dev/sda']
+        assert result['rc'] == 0
+        assert keyring not in result['stderr']
+        assert '*' * 8 in result['stderr']
+        assert not result['stdout']

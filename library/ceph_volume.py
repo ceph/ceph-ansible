@@ -13,6 +13,7 @@ import datetime
 import copy
 import json
 import os
+import re
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
@@ -607,6 +608,7 @@ def run_module():
         # Prepare or create the OSD
         rc, cmd, out, err = exec_command(
             module, prepare_or_create_osd(module, action, container_image))
+        err = re.sub('[a-zA-Z0-9+/]{38}==', '*' * 8, err)
 
     elif action == 'activate':
         if container_image:
@@ -716,11 +718,13 @@ def run_module():
                     # Batch prepare the OSD
                     rc, cmd, out, err = exec_command(
                         module, batch(module, container_image))
+                    err = re.sub('[a-zA-Z0-9+/]{38}==', '*' * 8, err)
             else:
                 # we have the refactored batch, its idempotent so lets just
                 # run it
                 rc, cmd, out, err = exec_command(
                     module, batch(module, container_image))
+                err = re.sub('[a-zA-Z0-9+/]{38}==', '*' * 8, err)
         else:
             cmd = batch_report_cmd
 
