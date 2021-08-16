@@ -969,6 +969,8 @@
             - not is_atomic
             - container_binary == 'docker'
           ignore_errors: true
+          tags:
+            - remove_docker
 
         - name: remove docker on debian/ubuntu
           apt:
@@ -977,6 +979,8 @@
             update_cache: yes
             autoremove: yes
           when: ansible_facts['os_family'] == 'Debian'
+          tags:
+            - remove_docker
 
         - name: red hat based systems tasks
           block:
@@ -1020,6 +1024,8 @@
           when:
             ansible_facts['os_family'] == 'RedHat' and
             not is_atomic
+          tags:
+            - remove_docker
 
         - name: find any service-cid file left
           find:
@@ -1079,6 +1085,8 @@
         - name: remove docker data
           shell: rm -rf /var/lib/docker/*  # noqa 302
           when: not is_atomic | bool
+          tags:
+            - remove_docker
 
 
 - name: purge fetch directory
