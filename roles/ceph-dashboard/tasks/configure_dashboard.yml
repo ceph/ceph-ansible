@@ -253,70 +253,20 @@
 - name: dashboard object gateway management frontend
   when: groups.get(rgw_group_name, []) | length > 0
   run_once: true
+  delegate_to: "{{ groups[mon_group_name][0] }}"
   block:
-    - name: create radosgw system user
-      radosgw_user:
-        name: "{{ dashboard_rgw_api_user_id }}"
-        cluster: "{{ cluster }}"
-        display_name: "Ceph dashboard"
-        system: true
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      register: rgw_dashboard_user
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-
-    - name: get the rgw access and secret keys
-      set_fact:
-        rgw_access_key: "{{ (rgw_dashboard_user.stdout | from_json)['keys'][0]['access_key'] }}"
-        rgw_secret_key: "{{ (rgw_dashboard_user.stdout | from_json)['keys'][0]['secret_key'] }}"
-
-    - name: set the rgw user
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-user-id {{ dashboard_rgw_api_user_id }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
+    - name: set the rgw credentials
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-credentials"
       changed_when: false
-
-    - name: set the rgw access key
-      command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard set-rgw-api-access-key -i -"
-      args:
-        stdin: "{{ rgw_access_key }}"
-        stdin_add_newline: no
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      changed_when: false
-
-    - name: set the rgw secret key
-      command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard set-rgw-api-secret-key -i -"
-      args:
-        stdin: "{{ rgw_secret_key }}"
-        stdin_add_newline: no
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      changed_when: false
-
-    - name: set the rgw host
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-host {{ hostvars[groups[rgw_group_name][0]]['rgw_instances'][0]['radosgw_address'] }}"
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-
-    - name: set the rgw port
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-port {{ hostvars[groups[rgw_group_name][0]]['rgw_instances'][0]['radosgw_frontend_port'] }}"
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-
-    - name: set the rgw scheme
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-scheme {{ 'https' if radosgw_frontend_ssl_certificate else 'http' }}"
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: set the rgw admin resource
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-admin-resource {{ dashboard_rgw_api_admin_resource }}"
       changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       when: dashboard_rgw_api_admin_resource | length > 0
 
     - name: disable ssl verification for rgw
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-ssl-verify False"
       changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       when:
         - dashboard_rgw_api_no_ssl_verify | bool
         - radosgw_frontend_ssl_certificate | length > 0
