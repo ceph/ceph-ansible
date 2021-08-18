@@ -30,7 +30,7 @@
 
 - name: add mgr ip address to trusted list with dashboard - ipv4
   set_fact:
-    trusted_ip_list: '{{ trusted_ip_list }},{{ hostvars[item]["ansible_facts"]["all_ipv4_addresses"] | ips_in_ranges(public_network.split(",")) | first }}'
+    trusted_ip_list: '{{ trusted_ip_list | default("") }}{{ "," if trusted_ip_list is defined else "" }}{{ hostvars[item]["ansible_facts"]["all_ipv4_addresses"] | ips_in_ranges(public_network.split(",")) | first }}'
   with_items: '{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}'
   when:
     - dashboard_enabled | bool
@@ -38,7 +38,7 @@
 
 - name: add mgr ip address to trusted list with dashboard - ipv6
   set_fact:
-    trusted_ip_list: '{{ trusted_ip_list }},{{ hostvars[item]["ansible_facts"]["all_ipv6_addresses"] | ips_in_ranges(public_network.split(",")) | last }}'
+    trusted_ip_list: '{{ trusted_ip_list | default("") }}{{ "," if trusted_ip_list is defined else "" }}{{ hostvars[item]["ansible_facts"]["all_ipv6_addresses"] | ips_in_ranges(public_network.split(",")) | last }}'
   with_items: '{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}'
   when:
     - dashboard_enabled | bool
