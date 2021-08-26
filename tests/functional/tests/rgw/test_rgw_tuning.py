@@ -13,7 +13,7 @@ class TestRGWs(object):
 
     @pytest.mark.no_docker
     def test_rgw_bucket_default_quota_is_applied(self, node, host, setup):
-        radosgw_admin_cmd = "timeout --foreground -s KILL 5 sudo radosgw-admin --cluster={cluster} -n client.rgw.{hostname}.rgw0 --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}.rgw0/keyring user info --uid=test".format(  # noqa E501
+        radosgw_admin_cmd = "timeout --foreground -s KILL 5 sudo radosgw-admin --cluster={cluster} -n client.rgw.{hostname}.rgw0 --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}.rgw0/keyring user info --uid=test --format=json".format(  # noqa E501
             hostname=node["vars"]["inventory_hostname"],
             cluster=setup['cluster_name']
         )
