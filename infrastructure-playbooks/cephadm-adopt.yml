@@ -297,12 +297,12 @@
       when: is_hci | bool
 
     - name: manage nodes with cephadm
-      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['default_ipv4']['address'] }} {{ group_names | join(' ') }}"
+      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['default_ipv4']['address'] }} {{ group_names | join(' ') }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
 
     - name: add ceph label for core component
-      command: "{{ ceph_cmd }} orch host label add {{ ansible_facts['hostname'] }} ceph"
+      command: "{{ ceph_cmd }} orch host label add {{ ansible_facts['nodename'] }} ceph"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       when: inventory_hostname in groups.get(mon_group_name, []) or
@@ -744,7 +744,7 @@
       command: >
         {{ cephadm_cmd }} shell --fsid {{ fsid }} --
         ceph --cluster {{ cluster }} orch apply rgw {{ ansible_facts['hostname'] }}
-        --placement='count-per-host:{{ radosgw_num_instances }} {{ ansible_facts['hostname'] }}'
+        --placement='count-per-host:{{ radosgw_num_instances }} {{ ansible_facts['nodename'] }}'
         --port={{ radosgw_frontend_port }}
         {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
       changed_when: false
@@ -757,7 +757,7 @@
       command: >
         {{ cephadm_cmd }} shell --fsid {{ fsid }} --
         ceph --cluster {{ cluster }} orch apply rgw {{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }}
-        --placement={{ ansible_facts['hostname'] }}
+        --placement={{ ansible_facts['nodename'] }}
         --realm={{ item.rgw_realm }} --zone={{ item.rgw_zone }}
         --port={{ item.radosgw_frontend_port }}
         {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
