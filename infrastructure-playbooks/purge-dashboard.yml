@@ -74,10 +74,13 @@
         enabled: no
       failed_when: false
 
-    - name: remove node_exporter service file
+    - name: remove node_exporter service files
       file:
-        name: /etc/systemd/system/node_exporter.service
+        name: "{{ item }}"
         state: absent
+      loop:
+        - /etc/systemd/system/node_exporter.service
+        - /run/node_exporter.service-cid
 
     - name: remove node-exporter image
       command: "{{ container_binary }} rmi {{ node_exporter_container_image }}"
@@ -109,12 +112,15 @@
 
     - name: remove systemd service files
       file:
-        name: "/etc/systemd/system/{{ item }}.service"
+        name: "{{ item }}"
         state: absent
       loop:
-        - alertmanager
-        - prometheus
-        - grafana-server
+        - /etc/systemd/system/alertmanager.service
+        - /etc/systemd/system/prometheus.service
+        - /etc/systemd/system/grafana-server.service
+        - /run/alertmanager.service-cid
+        - /run/prometheus.service-cid
+        - /run/grafana-server.service-cid
 
     - name: remove ceph dashboard container images
       command: "{{ container_binary }} rmi {{ item }}"
