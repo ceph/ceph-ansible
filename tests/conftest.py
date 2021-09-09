@@ -177,8 +177,8 @@ def pytest_collection_modifyitems(session, config, items):
             item.add_marker(pytest.mark.nfss)
         elif "iscsi" in test_path:
             item.add_marker(pytest.mark.iscsigws)
-        elif "monitoring" in test_path:
-            item.add_marker(pytest.mark.monitoring)
+        elif "grafana" in test_path:
+            item.add_marker(pytest.mark.grafanas)
         else:
             item.add_marker(pytest.mark.all)
 
