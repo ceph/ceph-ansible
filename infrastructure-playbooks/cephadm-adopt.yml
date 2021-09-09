@@ -355,6 +355,13 @@
       set_fact:
         cephadm_cmd: "cephadm {{ '--docker' if container_binary == 'docker' else '' }}"
 
+    - name: set container registry info
+      command: "{{ ceph_cmd }} cephadm registry-login {{ ceph_docker_registry }} {{ ceph_docker_registry_username }} {{ ceph_docker_registry_password }}"
+      changed_when: false
+      run_once: true
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      when: ceph_docker_registry_auth | bool
+
 - name: adopt ceph mon daemons
   hosts: "{{ mon_group_name|default('mons') }}"
   serial: 1
