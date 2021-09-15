@@ -219,10 +219,16 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: allow cephadm key for root account
+    - name: allow cephadm key for {{ cephadm_ssh_user | default('root') }} account
       authorized_key:
-        user: root
+        user: "{{ cephadm_ssh_user | default('root') }}"
         key: '{{ cephadm_pubpkey.stdout }}'
+
+    - name: set cephadm ssh user to {{ cephadm_ssh_user | default('root') }}
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} cephadm set-user {{ cephadm_ssh_user | default('root') }}"
+      changed_when: false
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: run cephadm prepare-host
       command: cephadm prepare-host
