@@ -188,6 +188,13 @@
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
+- name: disable unused dashboard features
+  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard feature disable {{ item }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  changed_when: false
+  with_items: "{{ dashboard_disabled_features }}"
+
 - name: set grafana api user
   command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-username {{ grafana_admin_user }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
