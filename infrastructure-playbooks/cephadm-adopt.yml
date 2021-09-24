@@ -442,6 +442,66 @@
         - /etc/systemd/system/ceph-mgr.target
 
 
+- name: stop and remove legacy iscsigw daemons
+  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  serial: 1
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: stop and disable iscsigw systemd services
+      service:
+        name: '{{ item }}'
+        state: stopped
+        enabled: false
+      failed_when: false
+      with_items:
+        - rbd-target-api
+        - rbd-target-gw
+        - tcmu-runner
+
+    - name: reset failed iscsigw systemd units
+      command: 'systemctl reset-failed {{ item }}'  # noqa 303
+      changed_when: false
+      failed_when: false
+      with_items:
+        - rbd-target-api
+        - rbd-target-gw
+        - tcmu-runner
+      when: containerized_deployment | bool
+
+    - name: remove iscsigw systemd unit files
+      file:
+        path: '/etc/systemd/system/{{ item }}.service'
+        state: absent
+      with_items:
+        - rbd-target-api
+        - rbd-target-gw
+        - tcmu-runner
+      when: containerized_deployment | bool
+
+
+- name: redeploy iscsigw daemons
+  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: update the placement of iscsigw hosts
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply iscsi {{ iscsi_pool_name | default('rbd') }} {{ api_user | default('admin') }} {{ api_password | default('admin') }} {{ trusted_ip_list | default('192.168.122.1') }} --placement='{{ groups.get(iscsi_gw_group_name, []) | length }} label:{{ iscsi_gw_group_name }}'"
+      run_once: true
+      changed_when: false
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+
 - name: set osd flags
   hosts: "{{ osd_group_name|default('osds') }}"
   become: true
@@ -1016,65 +1076,6 @@
         - /etc/systemd/system/ceph-rbd-mirror@.service
         - /etc/systemd/system/ceph-rbd-mirror@.service.d
         - /etc/systemd/system/ceph-rbd-mirror.target
-
-
-- name: redeploy iscsigw daemons
-  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
-  become: true
-  gather_facts: false
-  any_errors_fatal: True
-  tasks:
-    - import_role:
-        name: ceph-defaults
-
-    - name: update the placement of iscsigw hosts
-      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply iscsi {{ iscsi_pool_name | default('rbd') }} {{ api_user | default('admin') }} {{ api_password | default('admin') }} {{ trusted_ip_list | default('192.168.122.1') }} --placement='{{ groups.get(iscsi_gw_group_name, []) | length }} label:{{ iscsi_gw_group_name }}'"
-      run_once: true
-      changed_when: false
-      delegate_to: '{{ groups[mon_group_name][0] }}'
-      environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-
-- name: stop and remove legacy iscsigw daemons
-  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
-  serial: 1
-  become: true
-  gather_facts: false
-  any_errors_fatal: True
-  tasks:
-    - import_role:
-        name: ceph-defaults
-
-    - name: stop and disable iscsigw systemd services
-      service:
-        name: '{{ item }}'
-        state: stopped
-        enabled: false
-      failed_when: false
-      with_items:
-        - rbd-target-api
-        - rbd-target-gw
-        - tcmu-runner
-
-    - name: reset failed iscsigw systemd units
-      command: 'systemctl reset-failed {{ item }}'  # noqa 303
-      changed_when: false
-      failed_when: false
-      with_items:
-        - rbd-target-api
-        - rbd-target-gw
-        - tcmu-runner
-      when: containerized_deployment | bool
-
-    - name: remove iscsigw systemd unit files
-      file:
-        path: '/etc/systemd/system/{{ item }}.service'
-        state: absent
-      with_items:
-        - rbd-target-api
-        - rbd-target-gw
-        - tcmu-runner
-      when: containerized_deployment | bool
 
 
 - name: redeploy ceph-crash daemons
