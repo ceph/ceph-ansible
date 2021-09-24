@@ -82,7 +82,9 @@ class TestCephPoolModule(object):
             # 'target_size_ratio' is a key present in the dict above
             # 'options': {}
             # see comment in get_pool_details() for more details
+            'pg_num_min': 4,
             'target_size_ratio': 0.3,
+            'pg_autoscale_bias': 0.3,
             'application_metadata': {
                 'rbd': {}
             },
@@ -104,9 +106,17 @@ class TestCephPoolModule(object):
                 'value': 'on',
                 'cli_set_opt': 'pg_autoscale_mode'
             },
+            'pg_num_min': {
+                'value': '4',
+                'cli_set_opt': 'pg_num_min'
+            },
             'target_size_ratio': {
                 'value': '0.3',
                 'cli_set_opt': 'target_size_ratio'
+            },
+            'pg_autoscale_bias': {
+                'value': '0.3',
+                'cli_set_opt': 'pg_autoscale_bias'
             },
             'application': {
                 'value': 'rbd'
@@ -430,8 +440,8 @@ class TestCephPoolModule(object):
                 'create',
                 self.fake_user_pool_config['pool_name']['value'],
                 self.fake_user_pool_config['type']['value'],
-                '--target_size_ratio',
-                self.fake_user_pool_config['target_size_ratio']['value'],
+                '--pg_num_min',
+                self.fake_user_pool_config['pg_num_min']['value'],
                 self.fake_user_pool_config['crush_rule']['value'],
                 '--expected_num_objects',
                 self.fake_user_pool_config['expected_num_objects']['value'],
@@ -524,8 +534,8 @@ class TestCephPoolModule(object):
                 'create',
                 self.fake_user_pool_config['pool_name']['value'],
                 self.fake_user_pool_config['type']['value'],
-                '--target_size_ratio',
-                self.fake_user_pool_config['target_size_ratio']['value'],
+                '--pg_num_min',
+                self.fake_user_pool_config['pg_num_min']['value'],
                 self.fake_user_pool_config['erasure_profile']['value'],
                 self.fake_user_pool_config['crush_rule']['value'],
                 '--expected_num_objects',

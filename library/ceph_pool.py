@@ -100,11 +100,21 @@ options:
             - set the pg autoscaler on the pool.
         required: false
         default: 'on'
+    pg_num_min:
+        description:
+            - set the pg_num_min of the pool.
+        required: false
+        default: '8'
     target_size_ratio:
         description:
             - set the target_size_ratio on the pool
         required: false
-        default: None
+        default: '1.0'
+    pg_autoscale_bias:
+        description:
+            - set the pg autoscaler bias of the pool.
+        required: false
+        default: '1.0'
     pool_type:
         description:
             - set the pool type, either 'replicated' or 'erasure'
@@ -311,10 +321,20 @@ def get_pool_details(module,
     # }
     # If 'target_size_ratio' is present in 'options', we set it, this way we
     # end up with a dict containing all needed keys at the same level.
+    if 'pg_num_min' in out['options'].keys():
+        out['pg_num_min'] = out['options']['pg_num_min']
+    else:
+        out['pg_num_min'] = None
+
     if 'target_size_ratio' in out['options'].keys():
         out['target_size_ratio'] = out['options']['target_size_ratio']
     else:
         out['target_size_ratio'] = None
+
+    if 'pg_autoscale_bias' in out['options'].keys():
+        out['pg_autoscale_bias'] = out['options']['pg_autoscale_bias']
+    else:
+        out['pg_autoscale_bias'] = None
 
     application = list(json.loads(application_pool.strip()).keys())
 
@@ -332,8 +352,8 @@ def compare_pool_config(user_pool_config, running_pool_details):
     '''
 
     delta = {}
-    filter_keys = ['pg_num', 'pg_placement_num', 'size',
-                   'pg_autoscale_mode', 'target_size_ratio']
+    filter_keys = ['pg_num', 'pg_placement_num', 'size', 'pg_autoscale_mode',
+                   'pg_num_min', 'target_size_ratio', 'pg_autoscale_bias']
     for key in filter_keys:
         if (str(running_pool_details[key]) != user_pool_config[key]['value'] and  # noqa: E501
                 user_pool_config[key]['value']):
@@ -396,9 +416,11 @@ def create_pool(cluster,
                      user_pool_config['pg_num']['value'],
                      '--pgp_num',
                      user_pool_config['pgp_num']['value']])
-    elif user_pool_config['target_size_ratio']['value']:
-        args.extend(['--target_size_ratio',
-                     user_pool_config['target_size_ratio']['value']])
+
+    else:
+        if user_pool_config['pg_num_min']['value']:
+            args.extend(['--pg_num_min',
+                         user_pool_config['pg_num_min']['value']])
 
     if user_pool_config['type']['value'] == 'replicated':
         args.extend([user_pool_config['crush_rule']['value'],
@@ -502,7 +524,9 @@ def run_module():
         pg_num=dict(type='str', required=False),
         pgp_num=dict(type='str', required=False),
         pg_autoscale_mode=dict(type='str', required=False, default='on'),
-        target_size_ratio=dict(type='str', required=False, default=None),
+        pg_num_min=dict(type='str', required=False, default='8'),
+        target_size_ratio=dict(type='str', required=False, default='1.0'),
+        pg_autoscale_bias=dict(type='str', required=False, default='1.0'),
         pool_type=dict(type='str', required=False, default='replicated',
                        choices=['replicated', 'erasure', '1', '3']),
         erasure_profile=dict(type='str', required=False, default='default'),
@@ -526,7 +550,9 @@ def run_module():
     pg_num = module.params.get('pg_num')
     pgp_num = module.params.get('pgp_num')
     pg_autoscale_mode = module.params.get('pg_autoscale_mode')
+    pg_num_min = module.params.get('pg_num_min')
     target_size_ratio = module.params.get('target_size_ratio')
+    pg_autoscale_bias = module.params.get('pg_autoscale_bias')
     application = module.params.get('application')
 
     if (module.params.get('pg_autoscale_mode').lower() in
@@ -558,8 +584,11 @@ def run_module():
         'pgp_num': {'value': pgp_num, 'cli_set_opt': 'pgp_num'},
         'pg_autoscale_mode': {'value': pg_autoscale_mode,
                               'cli_set_opt': 'pg_autoscale_mode'},
+        'pg_num_min': {'value': pg_num_min, 'cli_set_opt': 'pg_num_min'},
         'target_size_ratio': {'value': target_size_ratio,
                               'cli_set_opt': 'target_size_ratio'},
+        'pg_autoscale_bias': {'value': pg_autoscale_bias,
+                              'cli_set_opt': 'pg_autoscale_bias'},
         'application': {'value': application},
         'type': {'value': pool_type},
         'erasure_profile': {'value': erasure_profile},
@@ -597,40 +626,8 @@ def run_module():
                                                           user,
                                                           user_key,
                                                           container_image=container_image))  # noqa: E501
-        if rc == 0:
-            running_pool_details = get_pool_details(module,
-                                                    cluster,
-                                                    name,
-                                                    user,
-                                                    user_key,
-                                                    container_image=container_image)  # noqa: E501
-            user_pool_config['pg_placement_num'] = {'value': str(running_pool_details[2]['pg_placement_num']), 'cli_set_opt': 'pgp_num'}  # noqa: E501
-            delta = compare_pool_config(user_pool_config,
-                                        running_pool_details[2])
-            if len(delta) > 0:
-                keys = list(delta.keys())
-                details = running_pool_details[2]
-                if details['erasure_code_profile'] and 'size' in keys:
-                    del delta['size']
-                if details['pg_autoscale_mode'] == 'on':
-                    delta.pop('pg_num', None)
-                    delta.pop('pgp_num', None)
 
-                if len(delta) == 0:
-                    out = "Skipping pool {}.\nUpdating either 'size' on an erasure-coded pool or 'pg_num'/'pgp_num' on a pg autoscaled pool is incompatible".format(name)  # noqa: E501
-                else:
-                    rc, cmd, out, err = update_pool(module,
-                                                    cluster,
-                                                    name,
-                                                    user,
-                                                    user_key,
-                                                    delta,
-                                                    container_image=container_image)  # noqa: E501
-                    if rc == 0:
-                        changed = True
-            else:
-                out = "Pool {} already exists and there is nothing to update.".format(name)  # noqa: E501
-        else:
+        if rc != 0:
             rc, cmd, out, err = exec_command(module,
                                              create_pool(cluster,
                                                          name,
@@ -638,18 +635,51 @@ def run_module():
                                                          user_key,
                                                          user_pool_config=user_pool_config,  # noqa: E501
                                                          container_image=container_image))  # noqa: E501
-            if user_pool_config['application']['value']:
-                rc, _, _, _ = exec_command(module,
-                                           enable_application_pool(cluster,
-                                                                   name,
-                                                                   user_pool_config['application']['value'],  # noqa: E501
-                                                                   user,
-                                                                   user_key,
-                                                                   container_image=container_image))  # noqa: E501
-            if user_pool_config['min_size']['value']:
-                # not implemented yet
-                pass
-            changed = True
+            if rc == 0:
+                changed = True
+
+        if user_pool_config['application']['value']:
+            rc, _, _, _ = exec_command(module,
+                                       enable_application_pool(cluster,
+                                                               name,
+                                                               user_pool_config['application']['value'],  # noqa: E501
+                                                               user,
+                                                               user_key,
+                                                               container_image=container_image))  # noqa: E501
+            if rc == 0:
+                changed = True
+
+        running_pool_details = get_pool_details(module,
+                                                cluster,
+                                                name,
+                                                user,
+                                                user_key,
+                                                container_image=container_image)  # noqa: E501
+        user_pool_config['pg_placement_num'] = {'value': str(running_pool_details[2]['pg_placement_num']), 'cli_set_opt': 'pgp_num'}  # noqa: E501
+        delta = compare_pool_config(user_pool_config,
+                                    running_pool_details[2])
+
+        if len(delta) > 0:
+            keys = list(delta.keys())
+            details = running_pool_details[2]
+            if details['erasure_code_profile'] and 'size' in keys:
+                del delta['size']
+            if details['pg_autoscale_mode'] == 'on':
+                delta.pop('pg_num', None)
+                delta.pop('pgp_num', None)
+
+            if len(delta) == 0:
+                out = "Skipping pool {}.\nUpdating either 'size' on an erasure-coded pool or 'pg_num'/'pgp_num' on a pg autoscaled pool is incompatible".format(name)  # noqa: E501
+            else:
+                rc, cmd, out, err = update_pool(module,
+                                                cluster,
+                                                name,
+                                                user,
+                                                user_key,
+                                                delta,
+                                                container_image=container_image)  # noqa: E501
+                if rc == 0:
+                    changed = True
 
     elif state == "list":
         rc, cmd, out, err = exec_command(module,
