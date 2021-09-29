@@ -258,6 +258,9 @@
     - name: set the rgw credentials
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-credentials"
       changed_when: false
+      register: result
+      until: result is succeeded
+      retries: 5
 
     - name: set the rgw admin resource
       command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-admin-resource {{ dashboard_rgw_api_admin_resource }}"
@@ -270,6 +273,9 @@
       when:
         - dashboard_rgw_api_no_ssl_verify | bool
         - radosgw_frontend_ssl_certificate | length > 0
+  rescue:
+    - name: sleep
+      command: sleep 365d
 
 - name: dashboard iscsi management
   when: groups.get(iscsi_gw_group_name, []) | length > 0
