@@ -12,7 +12,7 @@ To deploy ceph in containers, you will need to set the ``containerized_deploymen
 
    containerized_deployment: true
 
-The ``ceph_origin``, ``ceph_repository`` and ``ceph_stable_release`` variables aren't needed anymore in containerized deployment and are ignored.
+The ``ceph_origin`` and ``ceph_repository`` variables aren't needed anymore in containerized deployment and are ignored.
 
 .. code-block:: console
 
