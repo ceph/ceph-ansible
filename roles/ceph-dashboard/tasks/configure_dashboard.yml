@@ -267,6 +267,9 @@
         - name: set the rgw credentials
           command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-credentials"
           changed_when: false
+          register: result
+          until: result is succeeded
+          retries: 5
       rescue:
         - name: create radosgw system user
           radosgw_user:
