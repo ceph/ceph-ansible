@@ -98,7 +98,7 @@ def node(host, request):
     # tox will pass in this environment variable. we need to do it this way
     # because testinfra does not collect and provide ansible config passed in
     # from using --extra-vars
-    ceph_stable_release = os.environ.get("CEPH_STABLE_RELEASE", "luminous")
+    ceph_stable_release = os.environ.get("CEPH_STABLE_RELEASE", "quincy")
     rolling_update = os.environ.get("ROLLING_UPDATE", "False")
     group_names = ansible_vars["group_names"]
     docker = ansible_vars.get("docker")
