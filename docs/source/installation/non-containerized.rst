@@ -24,8 +24,6 @@ Community repository
 ~~~~~~~~~~~~~~~~~~~~
 
 If ``ceph_repository`` is set to ``community``, packages you will be by default installed from http://download.ceph.com, this can be changed by tweaking ``ceph_mirror``.
-Final step is to select which Ceph release you want to install, for this you have to set ``ceph_stable_release`` accordingly.
-For example, ``ceph_stable_release: luminous``.
 
 RHCS repository
 ~~~~~~~~~~~~~~~
