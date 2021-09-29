@@ -213,7 +213,6 @@ An example configuration that deploys the upstream ``octopus`` version of Ceph w
 
    ceph_origin: repository
    ceph_repository: community
-   ceph_stable_release: octopus
    public_network: "192.168.3.0/24"
    cluster_network: "192.168.4.0/24"
    monitor_interface: eth1
@@ -225,7 +224,6 @@ The following config options are required to be changed on all installations but
 selection or other aspects of your cluster.
 
 - ``ceph_origin``
-- ``ceph_stable_release``
 - ``public_network``
 - ``monitor_interface`` or ``monitor_address``
 
