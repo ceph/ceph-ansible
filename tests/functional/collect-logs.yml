@@ -23,11 +23,12 @@
       failed_when: false
       changed_when: false
       with_items:
-        - "-s -f json"
+        - "-s -f json-pretty"
         - "osd tree"
         - "osd dump"
         - "pg dump"
         - "versions"
+        - "health detail -f json-pretty"
 
     - name: save ceph status to file
       copy:
@@ -44,6 +45,12 @@
         - inventory_hostname in groups.get(mgr_group_name, [])
           or
           (groups.get(mgr_group_name, []) | length == 0 and inventory_hostname in groups.get(mon_group_name, []))
+
+    - name: get rgw log
+      shell: journalctl -l -u ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }} > /var/log/ceph/ceph-radosgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}.log
+      changed_when: false
+      with_items: "{{ rgw_instances | default([]) }}"
+      when: inventory_hostname in groups.get(rgw_group_name, [])
 
     - name: find ceph config file and logs
       find:
