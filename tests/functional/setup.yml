@@ -23,6 +23,14 @@
       when:
         - not is_atomic
 
+    - name: ensure ca-certificate is latest version
+      package:
+        name: ca-certificates
+        state: latest
+      register: result
+      until: result is succeeded
+      when: not is_atomic | bool
+
     - name: disable fastest mirror detection
       ini_file:
         path: /etc/yum/pluginconf.d/fastestmirror.conf
