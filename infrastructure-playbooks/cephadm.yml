@@ -231,7 +231,7 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: manage nodes with cephadm
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['default_ipv4']['address'] }} {{ group_names | join(' ') }}"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['default_ipv4']['address'] }} {{ group_names | join(' ') }} {{ '_admin' if mon_group_name | default('mons') in group_names else '' }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       environment:
