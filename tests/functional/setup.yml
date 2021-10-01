@@ -4,6 +4,7 @@
   become: yes
   tasks:
 
+
     - name: check if it is Atomic host
       stat: path=/run/ostree-booted
       register: stat_ostree
@@ -19,6 +20,14 @@
       package:
         name: net-tools
         state: present
+      register: result
+      until: result is succeeded
+      when: not is_atomic | bool
+
+    - name: ensure ca-certificate is latest version
+      package:
+        name: ca-certificates
+        state: latest
       register: result
       until: result is succeeded
       when: not is_atomic | bool
