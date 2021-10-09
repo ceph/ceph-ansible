@@ -161,6 +161,8 @@
         dashboard_password: "{{ dashboard_admin_password if dashboard_enabled | bool else omit }}"
         monitoring: false
         firewalld: "{{ configure_firewall }}"
+        ssh_user: "{{ cephadm_ssh_user | default('root') }}"
+        ssh_config: "{{ cephadm_ssh_config | default(omit) }}"
 
     - name: set default container image in ceph configuration
       command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set global container_image {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
@@ -231,12 +233,6 @@
       authorized_key:
         user: "{{ cephadm_ssh_user | default('root') }}"
         key: '{{ cephadm_pubpkey.stdout }}'
-
-    - name: set cephadm ssh user to {{ cephadm_ssh_user | default('root') }}
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} cephadm set-user {{ cephadm_ssh_user | default('root') }}"
-      changed_when: false
-      run_once: true
-      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: run cephadm prepare-host
       command: cephadm prepare-host
