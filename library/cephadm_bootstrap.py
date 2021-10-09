@@ -98,6 +98,14 @@ options:
             - JSON file with custom registry login info (URL,
               username, password).
         required: false
+    ssh_user:
+        description:
+            - SSH user used for cephadm ssh to the hosts
+        required: false
+    ssh_config:
+        description:
+            - SSH config file path for cephadm ssh client
+        required: false
 author:
     - Dimitri Savineau <dsavinea@redhat.com>
 '''
@@ -143,6 +151,8 @@ def main():
             registry_username=dict(type='str', require=False),
             registry_password=dict(type='str', require=False, no_log=True),
             registry_json=dict(type='path', require=False),
+            ssh_user=dict(type='str', required=False),
+            ssh_config=dict(type='str', required=False),
         ),
         supports_check_mode=True,
         mutually_exclusive=[
@@ -169,6 +179,8 @@ def main():
     registry_username = module.params.get('registry_username')
     registry_password = module.params.get('registry_password')
     registry_json = module.params.get('registry_json')
+    ssh_user = module.params.get('ssh_user')
+    ssh_config = module.params.get('ssh_config')
 
     startd = datetime.datetime.now()
 
@@ -209,6 +221,12 @@ def main():
 
     if registry_json:
         cmd.extend(['--registry-json', registry_json])
+
+    if ssh_user:
+        cmd.extend(['--ssh-user', ssh_user])
+
+    if ssh_config:
+        cmd.extend(['--ssh-config', ssh_config])
 
     if module.check_mode:
         exit_module(
