@@ -77,6 +77,14 @@ options:
             - Manage firewall rules with firewalld.
         required: false
         default: true
+    ssh_user:
+        description:
+            - SSH user used for cephadm ssh to the hosts
+        required: false
+    ssh_config:
+        description:
+            - SSH config file path for cephadm ssh client
+        required: false
 author:
     - Dimitri Savineau <dsavinea@redhat.com>
 '''
@@ -135,6 +143,8 @@ def main():
             dashboard_password=dict(type='str', required=False, no_log=True),
             monitoring=dict(type='bool', required=False, default=True),
             firewalld=dict(type='bool', required=False, default=True),
+            ssh_user=dict(type='str', required=False),
+            ssh_config=dict(type='str', required=False),
         ),
         supports_check_mode=True,
     )
@@ -149,6 +159,8 @@ def main():
     dashboard_password = module.params.get('dashboard_password')
     monitoring = module.params.get('monitoring')
     firewalld = module.params.get('firewalld')
+    ssh_user = module.params.get('ssh_user')
+    ssh_config = module.params.get('ssh_config')
 
     startd = datetime.datetime.now()
 
@@ -181,6 +193,12 @@ def main():
 
     if not firewalld:
         cmd.append('--skip-firewalld')
+
+    if ssh_user:
+        cmd.extend(['--ssh-user', ssh_user])
+
+    if ssh_config:
+        cmd.extend(['--ssh-config', ssh_config])
 
     if module.check_mode:
         exit_module(
