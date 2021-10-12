@@ -362,6 +362,106 @@
       delegate_to: '{{ groups[mon_group_name][0] }}'
       when: ceph_docker_registry_auth | bool
 
+
+- name: store existing rbd mirror peers in monitor config store
+  hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+  become: true
+  any_errors_fatal: true
+  gather_facts: true
+  tasks:
+    - name: store existing rbd mirror peers in monitor config store
+      when: ceph_rbd_mirror_configure | default(False) | bool
+      block:
+        - name: import ceph-defaults
+          import_role:
+            name: ceph-defaults
+
+        - name: import ceph-validate
+          import_role:
+            name: ceph-validate
+            tasks_from: check_rbdmirror.yml
+
+        - name: import container_binary
+          import_role:
+            name: ceph-facts
+            tasks_from: container_binary.yml
+
+        - name: set_fact rbd_cmd
+          set_fact:
+            rbd_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=rbd ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --cluster {{ cluster }} -n client.rbd-mirror.{{ ansible_facts['hostname'] }} -k /etc/ceph/{{ cluster }}.client.rbd-mirror.{{ ansible_facts['hostname'] }}.keyring"
+
+        - name: set_fact admin_rbd_cmd
+          set_fact:
+            admin_rbd_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=rbd ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --cluster {{ cluster }}"
+        - name: get mirror pool info
+          command: "{{ rbd_cmd }} mirror pool info {{ ceph_rbd_mirror_pool }} --format json"
+          register: mirror_pool_info
+          changed_when: false
+
+        - name: set_fact mirror_peer_found
+          set_fact:
+            mirror_peer_uuid: "{{ ((mirror_pool_info.stdout | from_json | default('{}'))['peers'] | selectattr('site_name', 'match', '^'+ceph_rbd_mirror_remote_cluster+'$') | map(attribute='uuid') | list) }}"
+
+        - name: remove current rbd mirror peer, add new peer into mon config store
+          when: mirror_peer_uuid | length > 0
+          block:
+            - name: get remote user keyring
+              slurp:
+                src: "/etc/ceph/{{ ceph_rbd_mirror_remote_cluster }}.{{ ceph_rbd_mirror_remote_user }}.keyring"
+              register: remote_user_keyring
+
+            - name: get quorum_status
+              command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} quorum_status --format json"
+              changed_when: false
+              delegate_to: "{{ groups[mon_group_name][0] }}"
+              register: quorum_status
+              run_once: true
+              environment:
+                CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+            - name: set_fact mon_ip_list
+              set_fact:
+                mon_ip_list: "{{ mon_ip_list | default([]) | union([item['addr'].split(':')[0]]) }}"
+              loop: "{{ (quorum_status.stdout | from_json | default('{}'))['monmap']['mons'] }}"
+              run_once: true
+
+            - name: remove current mirror peer
+              command: "{{ admin_rbd_cmd }} mirror pool peer remove {{ ceph_rbd_mirror_pool }} {{ ((mirror_pool_info.stdout | from_json | default('{}'))['peers'] | selectattr('site_name', 'match', '^'+ceph_rbd_mirror_remote_cluster+'$') | map(attribute='uuid') | list)[0] }}"
+              delegate_to: "{{ groups.get(mon_group_name | default('mons'))[0] }}"
+              changed_when: false
+
+            - name: get remote user keyring secret
+              set_fact:
+                remote_user_keyring_secret: "{{ item.split('=', 1)[1] | trim }}"
+              with_items: "{{ (remote_user_keyring.content | b64decode).split('\n') }}"
+              when: "'key = ' in item"
+
+            - name: create a temporary file
+              tempfile:
+                path: /etc/ceph
+                state: file
+                suffix: _ceph-ansible
+              register: tmp_file
+              delegate_to: "{{ groups.get(mon_group_name | default('mons'))[0] }}"
+
+            - name: write secret to temporary file
+              copy:
+                dest: "{{ tmp_file.path }}"
+                content: "{{ remote_user_keyring_secret }}"
+              delegate_to: "{{ groups.get(mon_group_name | default('mons'))[0] }}"
+
+            - name: re-add mirror peer
+              command: "{{ admin_rbd_cmd }} mirror pool peer add {{ ceph_rbd_mirror_pool }} {{ ceph_rbd_mirror_remote_user }}@{{ ceph_rbd_mirror_remote_cluster }} --remote-mon-host {{ ','.join(mon_ip_list) }} --remote-key-file {{ tmp_file.path }}"
+              delegate_to: "{{ groups.get(mon_group_name | default('mons'))[0] }}"
+              changed_when: false
+
+            - name: rm temporary file
+              file:
+                path: "{{ tmp_file.path }}"
+                state: absent
+              delegate_to: "{{ groups.get(mon_group_name | default('mons'))[0] }}"
+
+
 - name: adopt ceph mon daemons
   hosts: "{{ mon_group_name|default('mons') }}"
   serial: 1
