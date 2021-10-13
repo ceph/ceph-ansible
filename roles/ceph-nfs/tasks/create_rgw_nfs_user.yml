@@ -14,7 +14,7 @@
   when: nfs_obj_gw | bool
 
 - name: create rgw nfs user "{{ ceph_nfs_rgw_user }}"
-  command: "{{ container_exec_cmd_nfs | default('') }} radosgw-admin --cluster {{ cluster }} user create --uid={{ ceph_nfs_rgw_user }} --display-name='RGW NFS User'"
+  command: "{{ container_exec_cmd_nfs | default('') }} radosgw-admin --cluster {{ cluster }} user create --uid={{ ceph_nfs_rgw_user }} --display-name='RGW NFS User' {{ '--access-key=' + ceph_nfs_rgw_access_key if ceph_nfs_rgw_access_key is defined else '' }} {{ '--secret-key=' + ceph_nfs_rgw_secret_key if ceph_nfs_rgw_secret_key is defined else '' }}"
   run_once: true
   register: rgwuser
   changed_when: false
