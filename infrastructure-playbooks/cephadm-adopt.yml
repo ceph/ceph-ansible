@@ -906,6 +906,16 @@
         name: ceph-nfs
         tasks_from: create_rgw_nfs_user.yml
 
+    - name: enable ceph mgr nfs module
+      ceph_mgr_module:
+        name: "nfs"
+        cluster: "{{ cluster }}"
+        state: enable
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
     - name: stop and disable ceph-nfs systemd service
       service:
         name: "ceph-nfs@{{ ansible_facts['hostname'] }}"
@@ -932,95 +942,48 @@
         path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}"
         state: absent
 
-    - name: set_fact rados_cmd
-      set_fact:
-        rados_cmd: "{{ hostvars[groups[mon_group_name][0]]['container_binary'] + ' run --interactive --rm --net=host -v /etc/ceph:/etc/ceph:z --entrypoint=rados ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'rados' }}"
-
-    - name: get legacy nfs export from rados object
-      command: "{{ rados_cmd }} -p {{ cephfs_data_pool.name }} get {{ ceph_nfs_rados_export_index }} /dev/stdout"
-      register: legacy_export
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      when: ceph_nfs_rados_backend | bool
-
-    - name: set_fact nfs_file_gw_export
-      set_fact:
-        nfs_file_gw_export: |
-          EXPORT
-          {
-            Export_id={{ ceph_nfs_ceph_export_id }};
-            Path = "/";
-            Pseudo = {{ ceph_nfs_ceph_pseudo_path }};
-            Access_Type = {{ ceph_nfs_ceph_access_type }};
-            Protocols = {{ ceph_nfs_ceph_protocols }};
-            Transports = TCP;
-            SecType = {{ ceph_nfs_ceph_sectype }};
-            Squash = {{ ceph_nfs_ceph_squash }};
-            Attr_Expiration_Time = 0;
-            FSAL {
-              Name = CEPH;
-              User_Id = "{{ ceph_nfs_ceph_user }}";
-            }
-                  {{ ganesha_ceph_export_overrides | default(None) }}
-          }
-      when: nfs_file_gw | bool
-
-    - name: set_fact nfs_obj_gw_export
-      set_fact:
-        nfs_obj_gw_export: |
-          EXPORT
-          {
-            Export_id={{ ceph_nfs_rgw_export_id }};
-            Path = "/";
-            Pseudo = {{ ceph_nfs_rgw_pseudo_path }};
-            Access_Type = {{ ceph_nfs_rgw_access_type }};
-            Protocols = {{ ceph_nfs_rgw_protocols }};
-            Transports = TCP;
-            SecType = {{ ceph_nfs_rgw_sectype }};
-            Squash = {{ ceph_nfs_rgw_squash }};
-            FSAL {
-              Name = RGW;
-              User_Id = "{{ ceph_nfs_rgw_user }}";
-              Access_Key_Id ="{{ ceph_nfs_rgw_access_key }}";
-              Secret_Access_Key = "{{ ceph_nfs_rgw_secret_key }}";
-            }
-                  {{ ganesha_rgw_export_overrides | default(None) }}
-          }
-      when: nfs_obj_gw | bool
-
-    - name: set_fact new_export
-      set_fact:
-        new_export: |
-          {{ legacy_export.stdout | default('') }}
-          {{ nfs_file_gw_export | default('') }}
-          {{ nfs_obj_gw_export | default('') }}
-
-    - name: create nfs exports pool
-      ceph_pool:
-        name: .nfs
-        cluster: "{{ cluster }}"
-        application: nfs
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      run_once: true
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-
-    - name: push the new exports in a rados object
-      command: "{{ rados_cmd }} -p .nfs -N {{ nfs_ganesha_export_namespace | default('nfs-ganesha') }} put conf-nfs.{{ nfs_group_name | default('nfss') }} -"
-      args:
-        stdin: "{{ new_export }}"
-        stdin_add_newline: no
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-
-    - name: update the placement of nfs hosts
-      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply nfs {{ nfs_group_name | default('nfss') }} --placement='{{ groups.get(nfs_group_name, []) | length }} label:{{ nfs_group_name }}'"
-      run_once: true
+    - name: create nfs ganesha cluster
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} nfs cluster create {{ ansible_facts['hostname'] }} {{ ansible_facts['hostname'] }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: create cephfs export
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} nfs export create cephfs {{ cephfs }} {{ ansible_facts['hostname'] }} {{ ceph_nfs_ceph_pseudo_path }} --squash {{ ceph_nfs_ceph_squash }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+      when: nfs_file_gw | bool
+
+    - name: get a list of existing buckets
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} bucket list --format json"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      register: bucket_list
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+      when:
+        - nfs_obj_gw | bool
+        - bucket_list is undefined
+
+    - name: set_fact bucket_list
+      set_fact:
+        bucket_list: "{{ (bucket_list.stdout | from_json) }}"
+      when: bucket_list.skipped is undefined
+
+    - name: create rgw export
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} nfs export create rgw {{ item }} {{ ansible_facts['hostname'] }} {{ ceph_nfs_rgw_pseudo_path }} --squash {{ ceph_nfs_rgw_squash }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+      loop: "{{ bucket_list }}"
+      when:
+        - nfs_obj_gw | bool
+        - (bucket_list.skipped is undefined or bucket_list | length > 0)
+
 
 - name: redeploy rbd-mirror daemons
   hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
