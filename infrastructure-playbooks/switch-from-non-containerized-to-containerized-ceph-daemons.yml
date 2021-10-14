@@ -11,7 +11,7 @@
     - name: ireallymeanit
       prompt: Are you sure you want to switch from non-containerized to containerized ceph daemons?
       default: 'no'
-      private: no
+      private: false
 
   tasks:
     - name: exit playbook, if user did not mean to switch from non-containerized to containerized daemons?
@@ -39,7 +39,7 @@
   become: true
 
   vars:
-    delegate_facts_host: True
+    delegate_facts_host: true
 
   tasks:
     - import_role:
@@ -52,7 +52,7 @@
           - '!facter'
           - '!ohai'
       delegate_to: "{{ item }}"
-      delegate_facts: True
+      delegate_facts: true
       with_items: "{{ groups['all'] | difference(groups.get(client_group_name, [])) }}"
       run_once: true
       when: delegate_facts_host | bool
@@ -66,8 +66,8 @@
 - name: switching from non-containerized to containerized ceph mon
   vars:
     containerized_deployment: true
-    switch_to_containers: True
-    mon_group_name:       mons
+    switch_to_containers: true
+    mon_group_name: mons
   hosts: "{{ mon_group_name|default('mons') }}"
   serial: 1
   become: true
@@ -81,7 +81,7 @@
       service:
         name: "ceph-mon@{{ ansible_facts['hostname'] }}"
         state: stopped
-        enabled: no
+        enabled: false
 
     - name: remove old systemd unit files
       file:
@@ -165,7 +165,7 @@
       service:
         name: "ceph-mgr@{{ ansible_facts['hostname'] }}"
         state: stopped
-        enabled: no
+        enabled: false
       failed_when: false
 
     - name: remove old systemd unit files
@@ -207,7 +207,7 @@
 
 - name: set osd flags
   hosts: "{{ mon_group_name | default('mons') }}[0]"
-  become: True
+  become: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -267,7 +267,7 @@
   vars:
     containerized_deployment: true
     osd_group_name: osds
-    switch_to_containers: True
+    switch_to_containers: true
 
   hosts: "{{ osd_group_name|default('osds') }}"
 
@@ -298,14 +298,14 @@
       systemd:
         name: "{{ item }}"
         state: stopped
-        enabled: no
+        enabled: false
       with_items: "{{ running_osds.stdout_lines | default([]) }}"
       when: running_osds != []
 
     - name: disable ceph.target
       systemd:
         name: ceph.target
-        enabled: no
+        enabled: false
 
     - name: remove old ceph-osd systemd units
       file:
@@ -393,7 +393,7 @@
 
 - name: unset osd flags
   hosts: "{{ mon_group_name | default('mons') }}[0]"
-  become: True
+  become: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -448,7 +448,7 @@
       service:
         name: "ceph-mds@{{ ansible_facts['hostname'] }}"
         state: stopped
-        enabled: no
+        enabled: false
 
     - name: remove old systemd unit files
       file:
@@ -484,7 +484,7 @@
         name: ceph-container-common
 
     - import_role:
-         name: ceph-mds
+        name: ceph-mds
 
 
 - name: switching from non-containerized to containerized ceph rgw
@@ -520,7 +520,7 @@
       service:
         name: "ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
         state: stopped
-        enabled: no
+        enabled: false
       with_items: "{{ rgw_instances }}"
 
     - name: remove old systemd unit files
@@ -561,7 +561,7 @@
       service:
         name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"
         state: stopped
-        enabled: no
+        enabled: false
 
     - name: remove old systemd unit files
       file:
@@ -619,7 +619,7 @@
       service:
         name: nfs-ganesha
         state: stopped
-        enabled: no
+        enabled: false
       failed_when: false
 
     - import_role:
@@ -663,7 +663,7 @@
       service:
         name: "{{ item }}"
         state: stopped
-        enabled: no
+        enabled: false
       with_items:
         - tcmu-runner
         - rbd-target-gw
@@ -718,7 +718,7 @@
       service:
         name: ceph-crash
         state: stopped
-        enabled: no
+        enabled: false
 
     - import_role:
         name: ceph-defaults

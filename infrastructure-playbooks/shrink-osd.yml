@@ -17,7 +17,7 @@
     - "{{ mon_group_name|default('mons') }}"
     - "{{ osd_group_name|default('osds') }}"
 
-  become: True
+  become: true
   tasks:
     - debug: msg="gather facts on all Ceph hosts for following reference"
 
@@ -31,7 +31,7 @@
     - name: ireallymeanit
       prompt: Are you sure you want to shrink the cluster?
       default: 'no'
-      private: no
+      private: false
 
   vars:
     mon_group_name: mons
@@ -156,7 +156,7 @@
       service:
         name: ceph-osd@{{ item.2 }}
         state: stopped
-        enabled: no
+        enabled: false
       loop: "{{ _osd_hosts }}"
       delegate_to: "{{ item.0 }}"
 
@@ -191,7 +191,7 @@
 
     - name: add pkname information in ceph_osd_data_json
       set_fact:
-        ceph_osd_data_json: "{{ ceph_osd_data_json | default({}) | combine({item.item[2]: {'pkname_data': '/dev/' + item.stdout }}, recursive=True) }}"
+        ceph_osd_data_json: "{{ ceph_osd_data_json | default({}) | combine({item.item[2]: {'pkname_data': '/dev/' + item.stdout }}, recursive=true) }}"
       loop: "{{ parent_device_data_part.results }}"
       when: item.skipped is undefined
 
@@ -199,7 +199,7 @@
       command: "cryptsetup close {{ ceph_osd_data_json[item.2][item.3]['uuid'] }}"
       with_nested:
         - "{{ _osd_hosts }}"
-        - [ 'block_dmcrypt', 'block.db_dmcrypt', 'block.wal_dmcrypt', 'data', 'journal_dmcrypt' ]
+        - ['block_dmcrypt', 'block.db_dmcrypt', 'block.wal_dmcrypt', 'data', 'journal_dmcrypt']
       delegate_to: "{{ item.0 }}"
       failed_when: false
       register: result
@@ -220,7 +220,7 @@
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_nested:
         - "{{ _osd_hosts }}"
-        - [ 'block', 'block.db', 'block.wal', 'journal', 'data' ]
+        - ['block', 'block.db', 'block.wal', 'journal', 'data']
       delegate_to: "{{ item.0 }}"
       failed_when: false
       register: result

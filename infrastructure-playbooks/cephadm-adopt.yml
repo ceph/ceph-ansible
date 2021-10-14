@@ -12,7 +12,7 @@
     - name: ireallymeanit
       prompt: Are you sure you want to adopt the cluster by cephadm ?
       default: 'no'
-      private: no
+      private: false
   tasks:
     - name: exit playbook, if user did not mean to adopt the cluster by cephadm
       fail:
@@ -45,7 +45,7 @@
     - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
   become: true
-  any_errors_fatal: True
+  any_errors_fatal: true
   gather_facts: false
   vars:
     delegate_facts_host: true
@@ -184,6 +184,7 @@
 
     - name: set_fact ceph_cmd
       set_fact:
+        # yamllint disable-line rule:line-length
         ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --cluster {{ cluster }}"
 
     - name: get current fsid
@@ -467,7 +468,7 @@
   serial: 1
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -512,7 +513,7 @@
   serial: 1
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -547,7 +548,7 @@
   serial: 1
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -588,12 +589,13 @@
   hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
 
     - name: update the placement of iscsigw hosts
+      # yamllint disable-line rule:line-length
       command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply iscsi {{ iscsi_pool_name | default('rbd') }} {{ api_user | default('admin') }} {{ api_password | default('admin') }} {{ trusted_ip_list | default('192.168.122.1') }} --placement='{{ groups.get(iscsi_gw_group_name, []) | length }} label:{{ iscsi_gw_group_name }}'"
       run_once: true
       changed_when: false
@@ -606,7 +608,7 @@
   hosts: "{{ osd_group_name|default('osds') }}"
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -674,7 +676,7 @@
   serial: 1
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -757,7 +759,7 @@
   hosts: "{{ osd_group_name|default('osds') }}"
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -802,7 +804,7 @@
   hosts: "{{ mds_group_name|default('mdss') }}"
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -820,7 +822,7 @@
   serial: 1
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -863,7 +865,7 @@
   hosts: "{{ rgw_group_name | default('rgws') }}"
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -886,7 +888,7 @@
             config-key set rgw/cert/rgw.{{ ansible_facts['hostname'] }} -i -
           args:
             stdin: "{{ rgw_ssl_cert.content | b64decode }}"
-            stdin_add_newline: no
+            stdin_add_newline: false
           changed_when: false
           when: not rgw_multisite | bool
           delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -899,7 +901,7 @@
             config-key set rgw/cert/rgw.{{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }} -i -
           args:
             stdin: "{{ rgw_ssl_cert.content | b64decode }}"
-            stdin_add_newline: no
+            stdin_add_newline: false
           changed_when: false
           loop: "{{ rgw_instances }}"
           when: rgw_multisite | bool
@@ -940,7 +942,7 @@
   serial: 1
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -997,7 +999,7 @@
   serial: 1
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -1089,7 +1091,7 @@
   hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -1107,7 +1109,7 @@
   serial: 1
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -1152,7 +1154,7 @@
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -1183,7 +1185,7 @@
   serial: 1
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -1212,8 +1214,8 @@
             owner: "{{ prometheus_user_id }}"
             group: "{{ prometheus_user_id }}"
           with_items:
-           - "{{ alertmanager_data_dir }}"
-           - "{{ prometheus_data_dir }}"
+            - "{{ alertmanager_data_dir }}"
+            - "{{ prometheus_data_dir }}"
 
         # (workaround) cephadm adopt alertmanager only stops prometheus-alertmanager systemd service
         - name: stop and disable alertmanager systemd unit
@@ -1350,7 +1352,7 @@
     - "{{ monitoring_group_name|default('monitoring') }}"
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -1383,7 +1385,7 @@
   hosts: "{{ mon_group_name|default('mons') }}[0]"
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults
@@ -1433,7 +1435,7 @@
   hosts: "{{ mon_group_name|default('mons') }}[0]"
   become: true
   gather_facts: false
-  any_errors_fatal: True
+  any_errors_fatal: true
   tasks:
     - import_role:
         name: ceph-defaults

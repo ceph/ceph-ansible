@@ -1,7 +1,7 @@
 ---
 - hosts: localhost
   gather_facts: false
-  become: yes
+  become: true
   tags: vagrant_setup
   tasks:
 
@@ -45,14 +45,14 @@
 
 - hosts: all
   gather_facts: true
-  become: yes
+  become: true
   tasks:
 
     - name: check if it is Atomic host
       stat:
         path: /run/ostree-booted
       register: stat_ostree
-      check_mode: no
+      check_mode: false
 
     - name: set fact for using Atomic host
       set_fact:
@@ -95,7 +95,7 @@
 
 - hosts: mons:mgrs
   gather_facts: false
-  become: yes
+  become: true
   tasks:
 
     - name: install ceph mon repo
@@ -103,13 +103,13 @@
         name: ceph-mon
         description: repo for rhcs ceph-mon
         baseurl: "{{ repo_url }}/MON/x86_64/os/"
-        gpgcheck: no
-        enabled: yes
+        gpgcheck: false
+        enabled: true
       when: not is_atomic | bool
 
 - hosts: osds
   gather_facts: false
-  become: yes
+  become: true
   tasks:
 
     - name: install ceph osd repo
@@ -117,8 +117,8 @@
         name: ceph-osd
         description: repo for rhcs ceph-osd
         baseurl: "{{ repo_url }}/OSD/x86_64/os/"
-        gpgcheck: no
-        enabled: yes
+        gpgcheck: false
+        enabled: true
       when: not is_atomic | bool
 
     - name: set MTU on eth2
@@ -126,7 +126,7 @@
 
 - hosts: mdss:rgws:clients
   gather_facts: false
-  become: yes
+  become: true
   tasks:
 
     - name: install ceph tools repo
@@ -134,6 +134,6 @@
         name: ceph-osd
         description: repo for rhcs ceph tools
         baseurl: "{{ repo_url }}/Tools/x86_64/os/"
-        gpgcheck: no
-        enabled: yes
+        gpgcheck: false
+        enabled: true
       when: not is_atomic | bool

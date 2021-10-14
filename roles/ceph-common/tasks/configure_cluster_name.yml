@@ -3,7 +3,7 @@
   lineinfile:
     dest: /etc/sysconfig/ceph
     insertafter: EOF
-    create: yes
+    create: true
     line: "CLUSTER={{ cluster }}"
     regexp: "^CLUSTER="
   when: ansible_facts['os_family'] in ["RedHat", "Suse"]
@@ -25,7 +25,7 @@
       stat:
         path: /etc/default/ceph
       register: etc_default_ceph
-      check_mode: no
+      check_mode: false
 
     - name: configure cluster name
       when: etc_default_ceph.stat.exists
@@ -34,7 +34,7 @@
           lineinfile:
             dest: /etc/default/ceph
             insertafter: EOF
-            create: yes
+            create: true
             regexp: "^CLUSTER="
             line: "CLUSTER={{ cluster }}"
           when: not etc_default_ceph.stat.isdir
@@ -43,7 +43,7 @@
           lineinfile:
             dest: /etc/default/ceph/ceph
             insertafter: EOF
-            create: yes
+            create: true
             regexp: "^CLUSTER="
             line: "CLUSTER={{ cluster }}"
           when: etc_default_ceph.stat.isdir

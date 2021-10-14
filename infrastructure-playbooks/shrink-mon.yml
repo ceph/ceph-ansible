@@ -28,7 +28,7 @@
     - name: ireallymeanit
       prompt: Are you sure you want to shrink the cluster?
       default: 'no'
-      private: no
+      private: false
   vars:
     mon_group_name: mons
 
@@ -96,7 +96,7 @@
       service:
         name: ceph-mon@{{ mon_to_kill_hostname }}
         state: stopped
-        enabled: no
+        enabled: false
       delegate_to: "{{ mon_to_kill }}"
       failed_when: false
 
@@ -125,14 +125,14 @@
 
     - name: please remove the monitor from your ceph configuration file
       debug:
-          msg: "The monitor has been successfully removed from the cluster.
+        msg: "The monitor has been successfully removed from the cluster.
           Please remove the monitor entry from the rest of your ceph configuration files, cluster wide."
       run_once: true
       when: mon_to_kill_hostname not in (result.stdout | from_json)['quorum_names']
 
     - name: fail if monitor is still part of the cluster
       fail:
-          msg: "Monitor appears to still be part of the cluster, please check what happened."
+        msg: "Monitor appears to still be part of the cluster, please check what happened."
       run_once: true
       when: mon_to_kill_hostname in (result.stdout | from_json)['quorum_names']
 

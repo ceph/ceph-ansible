@@ -24,7 +24,7 @@
     - name: ireallymeanit
       prompt: Are you sure you want to upgrade the cluster?
       default: 'no'
-      private: no
+      private: false
 
   tasks:
     - name: exit playbook, if user did not mean to upgrade cluster
@@ -60,11 +60,11 @@
     - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
   tags: always
-  any_errors_fatal: True
-  become: True
-  gather_facts: False
+  any_errors_fatal: true
+  become: true
+  gather_facts: false
   vars:
-    delegate_facts_host: True
+    delegate_facts_host: true
   tasks:
     - debug: msg="gather facts on all Ceph hosts for following reference"
 
@@ -86,7 +86,7 @@
           - '!facter'
           - '!ohai'
       delegate_to: "{{ item }}"
-      delegate_facts: True
+      delegate_facts: true
       with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
       run_once: true
       when: delegate_facts_host | bool
@@ -140,10 +140,10 @@
   vars:
     health_mon_check_retries: 5
     health_mon_check_delay: 15
-    upgrade_ceph_packages: True
+    upgrade_ceph_packages: true
   hosts: "{{ mon_group_name|default('mons') }}"
   serial: 1
-  become: True
+  become: true
   gather_facts: false
   tasks:
     - name: upgrade ceph mon cluster
@@ -222,7 +222,7 @@
           delegate_to: "{{ item.1 }}"
           with_nested:
             - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
-            - "{{ groups[mon_group_name] }}" # so the key goes on all the nodes
+            - "{{ groups[mon_group_name] }}"  # so the key goes on all the nodes
           environment:
             CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
             CEPH_CONTAINER_BINARY: "{{ container_binary }}"
@@ -236,8 +236,8 @@
           systemd:
             name: ceph-mon@{{ item }}
             state: stopped
-            enabled: no
-            masked: yes
+            enabled: false
+            masked: true
           with_items:
             - "{{ ansible_facts['hostname'] }}"
             - "{{ ansible_facts['fqdn'] }}"
@@ -247,7 +247,7 @@
         - name: mask the mgr service
           systemd:
             name: ceph-mgr@{{ ansible_facts['hostname'] }}
-            masked: yes
+            masked: true
           when: inventory_hostname in groups[mgr_group_name] | default([])
                 or groups[mgr_group_name] | default([]) | length == 0
 
@@ -268,8 +268,8 @@
           systemd:
             name: ceph-mgr@{{ ansible_facts['hostname'] }}
             state: started
-            enabled: yes
-            masked: no
+            enabled: true
+            masked: false
           when: inventory_hostname in groups[mgr_group_name] | default([])
                 or groups[mgr_group_name] | default([]) | length == 0
 
@@ -299,13 +299,13 @@
         - name: unmask the mon service
           systemd:
             name: ceph-mon@{{ ansible_facts['hostname'] }}
-            enabled: yes
-            masked: no
+            enabled: true
+            masked: false
 
         - name: unmask the mgr service
           systemd:
             name: ceph-mgr@{{ ansible_facts['hostname'] }}
-            masked: no
+            masked: false
           when: inventory_hostname in groups[mgr_group_name] | default([])
                 or groups[mgr_group_name] | default([]) | length == 0
 
@@ -316,7 +316,7 @@
 - name: reset mon_host
   hosts: "{{ mon_group_name|default('mons') }}"
   tags: always
-  become: True
+  become: true
   gather_facts: false
   tasks:
     - import_role:
@@ -331,11 +331,11 @@
   vars:
     health_mon_check_retries: 5
     health_mon_check_delay: 15
-    upgrade_ceph_packages: True
+    upgrade_ceph_packages: true
   hosts: "{{ mon_group_name|default('mons') }}"
   tags: mgrs
   serial: 1
-  become: True
+  become: true
   gather_facts: false
   tasks:
     - name: upgrade mgrs when no mgr group explicitly defined in inventory
@@ -345,7 +345,7 @@
           systemd:
             name: ceph-mgr@{{ ansible_facts['hostname'] }}
             state: stopped
-            masked: yes
+            masked: true
 
         - import_role:
             name: ceph-defaults
@@ -366,12 +366,12 @@
 
 - name: upgrade ceph mgr nodes
   vars:
-    upgrade_ceph_packages: True
+    upgrade_ceph_packages: true
     ceph_release: "{{ ceph_stable_release }}"
   hosts: "{{ mgr_group_name|default('mgrs') }}"
   tags: mgrs
   serial: 1
-  become: True
+  become: true
   gather_facts: false
   tasks:
     # The following task has a failed_when: false
@@ -381,8 +381,8 @@
       systemd:
         name: ceph-mgr@{{ ansible_facts['hostname'] }}
         state: stopped
-        enabled: no
-        masked: yes
+        enabled: false
+        masked: true
       failed_when: false
 
     - import_role:
@@ -406,7 +406,7 @@
 - name: set osd flags
   hosts: "{{ osd_group_name | default('osds') }}"
   tags: osds
-  become: True
+  become: true
   gather_facts: false
   tasks:
     - import_role:
@@ -470,11 +470,11 @@
   vars:
     health_osd_check_retries: 600
     health_osd_check_delay: 2
-    upgrade_ceph_packages: True
+    upgrade_ceph_packages: true
   hosts: "{{ osd_group_name|default('osds') }}"
   tags: osds
   serial: 1
-  become: True
+  become: true
   gather_facts: false
   tasks:
     - import_role:
@@ -500,8 +500,8 @@
       systemd:
         name: ceph-osd@{{ item }}
         state: stopped
-        enabled: no
-        masked: yes
+        enabled: false
+        masked: true
       with_items: "{{ osd_ids.stdout_lines }}"
 
     - import_role:
@@ -549,7 +549,7 @@
 - name: complete osd upgrade
   hosts: "{{ osd_group_name | default('osds') }}"
   tags: osds
-  become: True
+  become: true
   gather_facts: false
   tasks:
     - import_role:
@@ -661,7 +661,7 @@
               systemd:
                 name: "ceph-mds@{{ hostvars[item]['ansible_facts']['hostname'] }}"
                 state: stopped
-                enabled: no
+                enabled: false
               delegate_to: "{{ item }}"
               with_items: "{{ groups['standby_mdss'] }}"
               when: groups['standby_mdss'] | default([]) | length > 0
@@ -671,7 +671,7 @@
             - name: mask systemd units for standby ceph mds
               systemd:
                 name: "ceph-mds@{{ hostvars[item]['ansible_facts']['hostname'] }}"
-                masked: yes
+                masked: true
               delegate_to: "{{ item }}"
               with_items: "{{ groups['standby_mdss'] }}"
               when: groups['standby_mdss'] | default([]) | length > 0
@@ -694,7 +694,7 @@
 
 - name: upgrade active mds
   vars:
-    upgrade_ceph_packages: True
+    upgrade_ceph_packages: true
   hosts: active_mdss
   tags: mdss
   become: true
@@ -709,8 +709,8 @@
     - name: prevent restart from the packaging
       systemd:
         name: ceph-mds@{{ ansible_facts['hostname'] }}
-        enabled: no
-        masked: yes
+        enabled: false
+        masked: true
       when: not containerized_deployment | bool
 
     - import_role:
@@ -730,8 +730,8 @@
       systemd:
         name: ceph-mds@{{ ansible_facts['hostname'] }}
         state: restarted
-        enabled: yes
-        masked: no
+        enabled: true
+        masked: false
       when: not containerized_deployment | bool
 
     - name: restart active mds
@@ -741,10 +741,10 @@
 
 - name: upgrade standbys ceph mdss cluster
   vars:
-    upgrade_ceph_packages: True
+    upgrade_ceph_packages: true
   hosts: standby_mdss
   tags: mdss
-  become: True
+  become: true
   gather_facts: false
 
   tasks:
@@ -757,8 +757,8 @@
     - name: prevent restarts from the packaging
       systemd:
         name: ceph-mds@{{ ansible_facts['hostname'] }}
-        enabled: no
-        masked: yes
+        enabled: false
+        masked: true
       when: not containerized_deployment | bool
 
     - import_role:
@@ -790,11 +790,11 @@
 
 - name: upgrade ceph rgws cluster
   vars:
-    upgrade_ceph_packages: True
+    upgrade_ceph_packages: true
   hosts: "{{ rgw_group_name|default('rgws') }}"
   tags: rgws
   serial: 1
-  become: True
+  become: true
   gather_facts: false
   tasks:
 
@@ -807,16 +807,16 @@
       systemd:
         name: ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}
         state: stopped
-        enabled: no
-        masked: yes
-      ignore_errors: True
+        enabled: false
+        masked: true
+      ignore_errors: true
 
     - name: stop ceph rgw
       systemd:
         name: ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}
         state: stopped
-        enabled: no
-        masked: yes
+        enabled: false
+        masked: true
       with_items: "{{ rgw_instances }}"
 
     - import_role:
@@ -835,19 +835,19 @@
 
 - name: upgrade ceph rbd mirror node
   vars:
-    upgrade_ceph_packages: True
+    upgrade_ceph_packages: true
   hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
   tags: rbdmirrors
   serial: 1
-  become: True
+  become: true
   gather_facts: false
   tasks:
     - name: stop ceph rbd mirror
       systemd:
         name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"
         state: stopped
-        enabled: no
-        masked: yes
+        enabled: false
+        masked: true
 
     - import_role:
         name: ceph-defaults
@@ -869,11 +869,11 @@
 
 - name: upgrade ceph nfs node
   vars:
-    upgrade_ceph_packages: True
+    upgrade_ceph_packages: true
   hosts: "{{ nfs_group_name|default('nfss') }}"
   tags: nfss
   serial: 1
-  become: True
+  become: true
   gather_facts: false
   tasks:
     # failed_when: false is here so that if we upgrade
@@ -883,8 +883,8 @@
       systemd:
         name: nfs-ganesha
         state: stopped
-        enabled: no
-        masked: yes
+        enabled: false
+        masked: true
       failed_when: false
       when: not containerized_deployment | bool
 
@@ -892,8 +892,8 @@
       systemd:
         name: ceph-nfs@{{ ceph_nfs_service_suffix | default(ansible_facts['hostname']) }}
         state: stopped
-        enabled: no
-        masked: yes
+        enabled: false
+        masked: true
       failed_when: false
       when:
         - ceph_nfs_enable_service | bool
@@ -919,11 +919,11 @@
 
 - name: upgrade ceph iscsi gateway node
   vars:
-    upgrade_ceph_packages: True
+    upgrade_ceph_packages: true
   hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
   tags: iscsigws
   serial: 1
-  become: True
+  become: true
   gather_facts: false
   tasks:
     # failed_when: false is here so that if we upgrade
@@ -933,8 +933,8 @@
       systemd:
         name: '{{ item }}'
         state: stopped
-        enabled: no
-        masked: yes
+        enabled: false
+        masked: true
       failed_when: false
       with_items:
         - rbd-target-api
@@ -961,11 +961,11 @@
 
 - name: upgrade ceph client node
   vars:
-    upgrade_ceph_packages: True
+    upgrade_ceph_packages: true
   hosts: "{{ client_group_name|default('clients') }}"
   tags: clients
   serial: "{{ client_update_batch | default(20) }}"
-  become: True
+  become: true
   gather_facts: false
   tasks:
     - import_role:
@@ -1010,8 +1010,8 @@
     - name: mask and disable the ceph-crash service
       systemd:
         name: "{{ 'ceph-crash@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-crash.service' }}"
-        enabled: no
-        masked: yes
+        enabled: false
+        masked: true
 
     - import_role:
         name: ceph-defaults
@@ -1026,7 +1026,7 @@
 - name: complete upgrade
   hosts: "{{ mon_group_name | default('mons') }}"
   tags: post_upgrade
-  become: True
+  become: true
   gather_facts: false
   tasks:
     - import_role:
@@ -1038,7 +1038,7 @@
     - name: container | disallow pre-quincy OSDs and enable all new quincy-only functionality
       command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] }} ceph --cluster {{ cluster }} osd require-osd-release quincy"
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      run_once: True
+      run_once: true
       when:
         - containerized_deployment | bool
         - groups.get(mon_group_name, []) | length > 0
@@ -1046,7 +1046,7 @@
     - name: non container | disallow pre-quincy OSDs and enable all new quincy-only functionality
       command: "ceph --cluster {{ cluster }} osd require-osd-release quincy"
       delegate_to: "{{ groups[mon_group_name][0] }}"
-      run_once: True
+      run_once: true
       when:
         - not containerized_deployment | bool
         - groups.get(mon_group_name, []) | length > 0
@@ -1188,7 +1188,7 @@
 - name: show ceph status
   hosts: "{{ mon_group_name|default('mons') }}"
   tags: always
-  become: True
+  become: true
   gather_facts: false
   tasks:
     - import_role:
@@ -1202,11 +1202,11 @@
     - name: show ceph status
       command: "{{ container_exec_cmd_status|default('') }} ceph --cluster {{ cluster }} -s"
       changed_when: false
-      run_once: True
+      run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: show all daemons version
       command: "{{ container_exec_cmd_status|default('') }} ceph --cluster {{ cluster }} versions"
-      run_once: True
+      run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false

@@ -5,17 +5,17 @@
 - name: enable ceph-mds.target
   service:
     name: ceph-mds.target
-    enabled: yes
-    daemon_reload: yes
+    enabled: true
+    daemon_reload: true
   when: containerized_deployment | bool
 
 - name: systemd start mds container
   systemd:
     name: ceph-mds@{{ ansible_facts['hostname'] }}
     state: started
-    enabled: yes
-    masked: no
-    daemon_reload: yes
+    enabled: true
+    masked: false
+    daemon_reload: true
 
 - name: wait for mds socket to exist
   command: "{{ container_binary }} exec ceph-mds-{{ ansible_facts['hostname'] }} sh -c 'stat /var/run/ceph/{{ cluster }}-mds.{{ ansible_facts['hostname'] }}.asok || stat /var/run/ceph/{{ cluster }}-mds.{{ ansible_facts['fqdn'] }}.asok'"

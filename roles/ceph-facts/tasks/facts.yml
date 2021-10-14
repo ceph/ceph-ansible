@@ -70,7 +70,7 @@
       shell: stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mon*.asok
       changed_when: false
       failed_when: false
-      check_mode: no
+      check_mode: false
       register: mon_socket_stat
       run_once: true
       delegate_to: "{{ item }}"
@@ -82,7 +82,7 @@
       command: grep -q {{ item.stdout }} /proc/net/unix
       changed_when: false
       failed_when: false
-      check_mode: no
+      check_mode: false
       register: mon_socket
       run_once: true
       delegate_to: "{{ hostvars[item.item]['inventory_hostname'] }}"
@@ -123,7 +123,7 @@
       command: "{{ timeout_command }} {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fsid"
       changed_when: false
       failed_when: false
-      check_mode: no
+      check_mode: false
       register: current_fsid
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"
@@ -189,7 +189,7 @@
       command: "{{ timeout_command }} {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
       changed_when: false
       failed_when: false
-      check_mode: no
+      check_mode: false
       register: ceph_current_status
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"
@@ -229,7 +229,7 @@
       command: grep 'osd pool default crush rule' /etc/ceph/{{ cluster }}.conf
       register: crush_rule_variable
       changed_when: false
-      check_mode: no
+      check_mode: false
       failed_when: crush_rule_variable.rc not in (0, 1)
     - &set-osd-pool-default-crush-rule-fact
       name: set osd_pool_default_crush_rule fact
@@ -264,8 +264,8 @@
   set_fact:
     ceph_run_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /var/log/ceph/:/var/log/ceph/:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
   delegate_to: "{{ item }}"
-  delegate_facts: True
-  run_once: True
+  delegate_facts: true
+  run_once: true
   with_items:
     - "{{ groups[mon_group_name] if groups[mon_group_name] | default([]) | length > 0 else [] }}"
     - "{{ groups[mds_group_name] if groups[mds_group_name] | default([]) | length > 0 else [] }}"
@@ -275,8 +275,8 @@
   set_fact:
     ceph_admin_command: "{{ hostvars[item]['ceph_run_cmd'] }} -n client.admin -k /etc/ceph/{{ cluster }}.client.admin.keyring"
   delegate_to: "{{ item }}"
-  delegate_facts: True
-  run_once: True
+  delegate_facts: true
+  run_once: true
   with_items:
     - "{{ groups[mon_group_name] if groups[mon_group_name] | default([]) | length > 0 else [] }}"
     - "{{ groups[mds_group_name] if groups[mds_group_name] | default([]) | length > 0 else [] }}"

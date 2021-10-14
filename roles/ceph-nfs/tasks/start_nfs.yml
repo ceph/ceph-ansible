@@ -2,6 +2,7 @@
 - block:
   - name: set_fact exec_cmd_nfs - external
     set_fact:
+      # yamllint disable-line rule:line-length
       exec_cmd_nfs: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /var/log/ceph/:/var/log/ceph/:z --entrypoint=rados ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'rados' }} -n client.{{ ceph_nfs_ceph_user }} -k /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ceph_nfs_ceph_user }}/keyring"
       delegate_node: "{{ inventory_hostname }}"
     when: groups.get(mon_group_name, []) | length == 0
@@ -17,7 +18,7 @@
     changed_when: false
     failed_when: false
     register: rados_index_exists
-    check_mode: no
+    check_mode: false
     when: ceph_nfs_rados_backend | bool
     delegate_to: "{{ delegate_node }}"
     run_once: true
@@ -71,7 +72,7 @@
 - name: create exports dir index file
   copy:
     content: ""
-    force: no
+    force: false
     dest: /etc/ganesha/export.d/INDEX.conf
     owner: "root"
     group: "root"
@@ -86,9 +87,9 @@
   systemd:
     name: ceph-nfs@{{ ceph_nfs_service_suffix | default(ansible_facts['hostname']) }}
     state: started
-    enabled: yes
-    masked: no
-    daemon_reload: yes
+    enabled: true
+    masked: false
+    daemon_reload: true
   when:
     - containerized_deployment | bool
     - ceph_nfs_enable_service | bool
@@ -97,8 +98,8 @@
   systemd:
     name: nfs-ganesha
     state: started
-    enabled: yes
-    masked: no
+    enabled: true
+    masked: false
   when:
     - not containerized_deployment | bool
     - ceph_nfs_enable_service | bool

@@ -11,12 +11,12 @@
           apt_repository:
             repo: "deb {{ nfs_ganesha_stable_deb_repo }} {{ ceph_stable_distro_source | default(ansible_facts['distribution_release']) }} main"
             state: present
-            update_cache: no
+            update_cache: false
           register: add_ganesha_apt_repo
 
         - name: update apt cache
           apt:
-            update_cache: yes
+            update_cache: true
           register: update_ganesha_apt_cache
           retries: 5
           delay: 2
@@ -31,7 +31,7 @@
         - name: fetch nfs-ganesha development repository
           uri:
             url: "https://shaman.ceph.com/api/repos/nfs-ganesha/next/latest/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_release'] }}/flavors/{{ nfs_ganesha_flavor }}/repo?arch={{ ansible_facts['architecture'] }}"
-            return_content: yes
+            return_content: true
           register: nfs_ganesha_dev_apt_repo
 
         - name: add nfs-ganesha development repository
@@ -40,7 +40,7 @@
             dest: /etc/apt/sources.list.d/nfs-ganesha-dev.list
             owner: root
             group: root
-            backup: yes
+            backup: true
 
 - name: debain based systems - install required packages
   block:
@@ -52,14 +52,14 @@
         - name: install nfs rgw/cephfs gateway - debian
           apt:
             name: ['nfs-ganesha-rgw', 'radosgw']
-            allow_unauthenticated: yes
+            allow_unauthenticated: true
           register: result
           until: result is succeeded
           when: nfs_obj_gw | bool
         - name: install nfs rgw/cephfs gateway - debian
           apt:
             name: nfs-ganesha-ceph
-            allow_unauthenticated: yes
+            allow_unauthenticated: true
           register: result
           until: result is succeeded
           when: nfs_file_gw | bool

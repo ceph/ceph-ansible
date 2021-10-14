@@ -18,11 +18,11 @@
   - monitoring
 
   gather_facts: false
-  become: True
+  become: true
   any_errors_fatal: true
 
   vars:
-    delegate_facts_host: True
+    delegate_facts_host: true
 
   pre_tasks:
     - import_tasks: "{{ playbook_dir }}/../raw_install_python.yml"
@@ -47,7 +47,7 @@
           - '!facter'
           - '!ohai'
       delegate_to: "{{ item }}"
-      delegate_facts: True
+      delegate_facts: true
       with_items: "{{ groups['all'] | difference(groups.get(client_group_name | default('clients'), [])) }}"
       run_once: true
       when: delegate_facts_host | bool
@@ -67,7 +67,7 @@
   tasks:
     - name: set_fact docker2podman and container_binary
       set_fact:
-        docker2podman: True
+        docker2podman: true
         container_binary: podman
 
     - import_role:
@@ -86,7 +86,7 @@
       tags: with_pkg
       when: not is_atomic | bool
 
-    - name: check podman presence # noqa : 305
+    - name: check podman presence  # noqa : 305
       shell: command -v podman
       register: podman_presence
       changed_when: false
@@ -214,4 +214,4 @@
 
     - name: reload systemd daemon
       systemd:
-        daemon_reload: yes
+        daemon_reload: true

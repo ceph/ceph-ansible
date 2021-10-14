@@ -1,13 +1,13 @@
 ---
 - hosts: all
   gather_facts: true
-  become: yes
+  become: true
   tasks:
 
     - name: check if it is Atomic host
       stat: path=/run/ostree-booted
       register: stat_ostree
-      check_mode: no
+      check_mode: false
 
     - name: set fact for using Atomic host
       set_fact:
@@ -26,8 +26,8 @@
         fstype: '{{ rootmount.fstype }}'
         state: mounted
 
-      # we need to install this so the Socket testinfra module
-      # can use netcat for testing
+    # we need to install this so the Socket testinfra module
+    # can use netcat for testing
     - name: install net-tools
       package:
         name: net-tools
@@ -72,5 +72,5 @@
         lv: root
         vg: atomicos
         size: +100%FREE
-        resizefs: yes
+        resizefs: true
       when: is_atomic | bool

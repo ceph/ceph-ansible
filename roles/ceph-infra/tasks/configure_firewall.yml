@@ -2,10 +2,10 @@
 - name: check firewalld installation on redhat or SUSE/openSUSE
   command: rpm -q firewalld
   args:
-    warn: no
+    warn: false
   register: firewalld_pkg_query
   ignore_errors: true
-  check_mode: no
+  check_mode: false
   changed_when: false
   tags: firewall
 
@@ -23,7 +23,7 @@
       service:
         name: firewalld
         state: started
-        enabled: yes
+        enabled: true
       register: result
       retries: 5
       delay: 3
@@ -62,8 +62,8 @@
         immediate: true
         state: enabled
       with_items:
-        - { 'service': 'ceph-mon', 'zone': "{{ ceph_mon_firewall_zone }}" }
-        - { 'service': 'ceph', 'zone': "{{ ceph_mgr_firewall_zone }}" }
+        - {'service': 'ceph-mon', 'zone': "{{ ceph_mon_firewall_zone }}"}
+        - {'service': 'ceph', 'zone': "{{ ceph_mgr_firewall_zone }}"}
       when:
         - mon_group_name is defined
         - mon_group_name in group_names

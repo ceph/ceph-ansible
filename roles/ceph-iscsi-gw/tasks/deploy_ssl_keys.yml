@@ -35,7 +35,7 @@
          -x509 -days 365 -out {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway.crt
          -subj "/C=US/ST=./L=./O=RedHat/OU=Linux/CN={{ ansible_facts['hostname'] }}"
       delegate_to: localhost
-      run_once: True
+      run_once: true
       with_items: "{{ crt_files_exist.results }}"
 
     - name: create pem
@@ -43,7 +43,7 @@
         cat {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway.crt
         {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway.key > {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway.pem
       delegate_to: localhost
-      run_once: True
+      run_once: true
       register: pem
       with_items: "{{ crt_files_exist.results }}"
 
@@ -52,7 +52,7 @@
         openssl x509 -inform pem -in {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway.pem
         -pubkey -noout > {{ iscsi_ssl_tmp_dir.path }}/iscsi-gateway-pub.key
       delegate_to: localhost
-      run_once: True
+      run_once: true
       when: pem.changed
       tags: skip_ansible_lint
 

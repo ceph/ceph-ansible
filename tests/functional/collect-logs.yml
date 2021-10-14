@@ -1,6 +1,6 @@
 ---
 - hosts: all
-  become: yes
+  become: true
   tasks:
     - name: import_role ceph-defaults
       import_role:
@@ -22,7 +22,7 @@
     - name: get some ceph status outputs
       command: "{{ ceph_cmd }} --connect-timeout 10 --cluster {{ cluster }} {{ item }}"
       register: ceph_status
-      run_once: True
+      run_once: true
       delegate_to: mon0
       failed_when: false
       changed_when: false
@@ -39,7 +39,7 @@
         content: "{{ item.stdout }}"
         dest: "{{ archive_path }}/{{ item.item | regex_replace(' ', '_') }}.log"
       delegate_to: localhost
-      run_once: True
+      run_once: true
       with_items: "{{ ceph_status.results }}"
 
     - name: get mgr log
@@ -70,5 +70,5 @@
       fetch:
         src: "{{ item.path }}"
         dest: "{{ archive_path }}/{{ inventory_hostname }}/"
-        flat: yes
+        flat: true
       with_items: "{{ results.files }}"

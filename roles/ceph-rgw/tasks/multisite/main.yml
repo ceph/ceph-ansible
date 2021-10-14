@@ -21,12 +21,14 @@
 
 - name: create a list of dicts with each rgw endpoint and it's zone
   set_fact:
+    # yamllint disable-line rule:line-length
     zone_endpoint_pairs: "{{ zone_endpoint_pairs | default([]) | union([{ 'endpoint': hostvars[item.host]['rgw_multisite_proto'] + '://' + (item.radosgw_address if hostvars[item.host]['rgw_multisite_proto'] == 'http' else hostvars[item.host]['ansible_facts']['fqdn']) + ':' + item.radosgw_frontend_port | string, 'rgw_zone': item.rgw_zone, 'rgw_realm': item.rgw_realm, 'rgw_zonegroup': item.rgw_zonegroup, 'rgw_zonemaster': item.rgw_zonemaster | default(hostvars[item.host]['rgw_zonemaster']) }]) }}"
   loop: "{{ rgw_instances_all }}"
   run_once: true
 
 - name: create a list of zones and all their endpoints
   set_fact:
+    # yamllint disable-line rule:line-length
     zone_endpoints_list: "{{ zone_endpoints_list | default([]) | union([{'zone': item.rgw_zone, 'zonegroup': item.rgw_zonegroup, 'realm': item.rgw_realm, 'is_master': item.rgw_zonemaster, 'endpoints': ','.join(zone_endpoint_pairs | selectattr('rgw_zone','match','^'+item.rgw_zone+'$') | selectattr('rgw_realm','match','^'+item.rgw_realm+'$') | selectattr('rgw_zonegroup', 'match','^'+item.rgw_zonegroup+'$') | map(attribute='endpoint'))}]) }}"
   loop: "{{ zone_endpoint_pairs }}"
   run_once: true

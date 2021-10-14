@@ -32,7 +32,7 @@
     group: "root"
     owner: "root"
     mode: "0644"
-    force: "yes"
+    force: true
     validate: "systemd-tmpfiles --create %s"
   when: disable_transparent_hugepage | bool
 
@@ -51,9 +51,9 @@
     value: "{{ item.value }}"
     state: present
     sysctl_file: /etc/sysctl.d/ceph-tuning.conf
-    sysctl_set: yes
-    ignoreerrors: yes
+    sysctl_set: true
+    ignoreerrors: true
   with_items:
-    - { name: "fs.aio-max-nr", value: "1048576", enable: "{{ osd_objectstore == 'bluestore' }}" }
+    - {name: "fs.aio-max-nr", value: "1048576", enable: "{{ osd_objectstore == 'bluestore' }}"}
     - "{{ os_tuning_params }}"
   when: item.enable | default(true) | bool

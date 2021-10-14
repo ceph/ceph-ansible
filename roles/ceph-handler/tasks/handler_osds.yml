@@ -3,15 +3,15 @@
   set_fact:
     trigger_restart: true
   loop: "{{ groups[osd_group_name] }}"
-  when: hostvars[item]['handler_osd_status'] | default(False) | bool
+  when: hostvars[item]['handler_osd_status'] | default(false) | bool
   run_once: true
 
 - name: osd handler
-  when: trigger_restart | default(False) | bool
+  when: trigger_restart | default(false) | bool
   block:
     - name: set _osd_handler_called before restart
       set_fact:
-        _osd_handler_called: True
+        _osd_handler_called: true
 
     - name: unset noup flag
       ceph_osd_flag:
@@ -85,16 +85,16 @@
     - name: restart ceph osds daemon(s)
       command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_osd_daemon.sh
       when:
-        - hostvars[item]['handler_osd_status'] | default(False) | bool
+        - hostvars[item]['handler_osd_status'] | default(false) | bool
         - handler_health_osd_check | bool
-        - hostvars[item]['_osd_handler_called'] | default(False) | bool
+        - hostvars[item]['_osd_handler_called'] | default(false) | bool
       with_items: "{{ groups[osd_group_name] | intersect(ansible_play_batch) }}"
       delegate_to: "{{ item }}"
-      run_once: True
+      run_once: true
 
     - name: set _osd_handler_called after restart
       set_fact:
-        _osd_handler_called: False
+        _osd_handler_called: false
 
     - name: re-enable pg autoscale on pools
       ceph_pool:

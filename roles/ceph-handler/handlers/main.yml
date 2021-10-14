@@ -2,90 +2,90 @@
 - name: handlers
   when:
      - not rolling_update | bool
-     - not docker2podman | default(False) | bool
+     - not docker2podman | default(false) | bool
   block:
-    - name: make tempdir for scripts
-      tempfile:
-        state: directory
-        prefix: ceph_ansible
-      listen:
-        - "restart ceph mons"
-        - "restart ceph osds"
-        - "restart ceph mdss"
-        - "restart ceph rgws"
-        - "restart ceph nfss"
-        - "restart ceph rbdmirrors"
-        - "restart ceph mgrs"
-      register: tmpdirpath
-      when: tmpdirpath is not defined or tmpdirpath.path is not defined or tmpdirpath.state=="absent"
+     - name: make tempdir for scripts
+       tempfile:
+          state: directory
+          prefix: ceph_ansible
+       listen:
+          - "restart ceph mons"
+          - "restart ceph osds"
+          - "restart ceph mdss"
+          - "restart ceph rgws"
+          - "restart ceph nfss"
+          - "restart ceph rbdmirrors"
+          - "restart ceph mgrs"
+       register: tmpdirpath
+       when: tmpdirpath is not defined or tmpdirpath.path is not defined or tmpdirpath.state=="absent"
 
-    - name: mons handler
-      include_tasks: handler_mons.yml
-      when: mon_group_name in group_names
-      listen: "restart ceph mons"
+     - name: mons handler
+       include_tasks: handler_mons.yml
+       when: mon_group_name in group_names
+       listen: "restart ceph mons"
 
-    - name: osds handler
-      include_tasks: handler_osds.yml
-      when: osd_group_name in group_names
-      listen: "restart ceph osds"
+     - name: osds handler
+       include_tasks: handler_osds.yml
+       when: osd_group_name in group_names
+       listen: "restart ceph osds"
 
-    - name: mdss handler
-      include_tasks: handler_mdss.yml
-      when: mds_group_name in group_names
-      listen: "restart ceph mdss"
+     - name: mdss handler
+       include_tasks: handler_mdss.yml
+       when: mds_group_name in group_names
+       listen: "restart ceph mdss"
 
-    - name: rgws handler
-      include_tasks: handler_rgws.yml
-      when: rgw_group_name in group_names
-      listen: "restart ceph rgws"
+     - name: rgws handler
+       include_tasks: handler_rgws.yml
+       when: rgw_group_name in group_names
+       listen: "restart ceph rgws"
 
-    - name: nfss handler
-      include_tasks: handler_nfss.yml
-      when: nfs_group_name in group_names
-      listen: "restart ceph nfss"
+     - name: nfss handler
+       include_tasks: handler_nfss.yml
+       when: nfs_group_name in group_names
+       listen: "restart ceph nfss"
 
-    - name: rbdmirrors handler
-      include_tasks: handler_rbdmirrors.yml
-      when: rbdmirror_group_name in group_names
-      listen: "restart ceph rbdmirrors"
+     - name: rbdmirrors handler
+       include_tasks: handler_rbdmirrors.yml
+       when: rbdmirror_group_name in group_names
+       listen: "restart ceph rbdmirrors"
 
-    - name: mgrs handler
-      include_tasks: handler_mgrs.yml
-      when: mgr_group_name in group_names
-      listen: "restart ceph mgrs"
+     - name: mgrs handler
+       include_tasks: handler_mgrs.yml
+       when: mgr_group_name in group_names
+       listen: "restart ceph mgrs"
 
-    - name: tcmu-runner handler
-      include_tasks: handler_tcmu_runner.yml
-      when: iscsi_gw_group_name in group_names
-      listen: "restart ceph tcmu-runner"
+     - name: tcmu-runner handler
+       include_tasks: handler_tcmu_runner.yml
+       when: iscsi_gw_group_name in group_names
+       listen: "restart ceph tcmu-runner"
 
-    - name: rbd-target-api and rbd-target-gw handler
-      include_tasks: handler_rbd_target_api_gw.yml
-      when: iscsi_gw_group_name in group_names
-      listen: "restart ceph rbd-target-api-gw"
+     - name: rbd-target-api and rbd-target-gw handler
+       include_tasks: handler_rbd_target_api_gw.yml
+       when: iscsi_gw_group_name in group_names
+       listen: "restart ceph rbd-target-api-gw"
 
-    - name: ceph crash handler
-      include_tasks: handler_crash.yml
-      listen: "restart ceph crash"
-      when:
-        - inventory_hostname in groups.get(mon_group_name, [])
-          or inventory_hostname in groups.get(mgr_group_name, [])
-          or inventory_hostname in groups.get(osd_group_name, [])
-          or inventory_hostname in groups.get(mds_group_name, [])
-          or inventory_hostname in groups.get(rgw_group_name, [])
-          or inventory_hostname in groups.get(rbdmirror_group_name, [])
+     - name: ceph crash handler
+       include_tasks: handler_crash.yml
+       listen: "restart ceph crash"
+       when:
+          - inventory_hostname in groups.get(mon_group_name, [])
+            or inventory_hostname in groups.get(mgr_group_name, [])
+            or inventory_hostname in groups.get(osd_group_name, [])
+            or inventory_hostname in groups.get(mds_group_name, [])
+            or inventory_hostname in groups.get(rgw_group_name, [])
+            or inventory_hostname in groups.get(rbdmirror_group_name, [])
 
-    - name: remove tempdir for scripts
-      file:
-        path: "{{ tmpdirpath.path }}"
-        state: absent
-      listen:
-        - "restart ceph mons"
-        - "restart ceph osds"
-        - "restart ceph mdss"
-        - "restart ceph rgws"
-        - "restart ceph nfss"
-        - "restart ceph rbdmirrors"
-        - "restart ceph mgrs"
-      register: tmpdirpath
-      when: tmpdirpath is defined
+     - name: remove tempdir for scripts
+       file:
+          path: "{{ tmpdirpath.path }}"
+          state: absent
+       listen:
+          - "restart ceph mons"
+          - "restart ceph osds"
+          - "restart ceph mdss"
+          - "restart ceph rgws"
+          - "restart ceph nfss"
+          - "restart ceph rbdmirrors"
+          - "restart ceph mgrs"
+       register: tmpdirpath
+       when: tmpdirpath is defined

@@ -1,11 +1,12 @@
+---
 # This playbook migrates an OSD from filestore to bluestore backend.
 #
 # Use it like this:
 # ansible-playbook infrastructure-playbooks/filestore-to-bluestore.yml --limit <osd-node-to-migrate>
 # If all osds on the node are using filestore backend, then *ALL* of them will be shrinked and redeployed using bluestore backend with ceph-volume.
 #
-# If a mix of filestore and bluestore OSDs is detected on the node, the node will be skipped unless you pass `force_filestore_to_bluestore=True` as an extra var.
-# ie: ansible-playbook infrastructure-playbooks/filestore-to-bluestore.yml --limit <osd-node-to-migrate> -e force_filestore_to_bluestore=True
+# If a mix of filestore and bluestore OSDs is detected on the node, the node will be skipped unless you pass `force_filestore_to_bluestore=true` as an extra var.
+# ie: ansible-playbook infrastructure-playbooks/filestore-to-bluestore.yml --limit <osd-node-to-migrate> -e force_filestore_to_bluestore=true
 
 - hosts: "{{ osd_group_name }}"
   become: true
@@ -20,7 +21,7 @@
           - '!facter'
           - '!ohai'
       delegate_to: "{{ item }}"
-      delegate_facts: True
+      delegate_facts: true
       with_items: "{{ groups[mon_group_name] }}"
       run_once: true
       when: delegate_facts_host | bool
@@ -131,7 +132,7 @@
               service:
                 name: "ceph-osd@{{ (item.0.stdout | from_json).whoami }}"
                 state: stopped
-                enabled: no
+                enabled: false
               with_together:
                 - "{{ simple_scan.results }}"
                 - "{{ partlabel.results }}"
@@ -240,14 +241,14 @@
               service:
                 name: "ceph-osd@{{ item }}"
                 state: stopped
-                enabled: no
+                enabled: false
               with_items: "{{ (ceph_volume_lvm_list.stdout | default('{}') | from_json).keys() | list }}"
 
             - name: stop and disable ceph-volume services
               service:
                 name: "ceph-volume@lvm-{{ item.tags['ceph.osd_id'] }}-{{ item.tags['ceph.osd_fsid'] }}"
                 state: stopped
-                enabled: no
+                enabled: false
               with_items: "{{ _lvm_list }}"
               when:
                 - not containerized_deployment | bool
@@ -338,7 +339,7 @@
               failed_when: false
               when:
                 - item['lv_path'] is defined
-                  # Do not close mappers for non 'lvm batch' devices
+                # Do not close mappers for non 'lvm batch' devices
                 - devices | default([]) | length > 0
 
             - name: ensure all pv are removed

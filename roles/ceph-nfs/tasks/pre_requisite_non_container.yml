@@ -10,11 +10,11 @@
 - name: install nfs rgw/cephfs gateway - SUSE/openSUSE
   zypper:
     name: "{{ item.name }}"
-    disable_gpg_check: yes
+    disable_gpg_check: true
   with_items:
-    - { name: 'nfs-ganesha-rgw', install: "{{ nfs_obj_gw }}" }
-    - { name: 'radosgw', install: "{{ nfs_obj_gw }}" }
-    - { name: 'nfs-ganesha-ceph', install: "{{ nfs_file_gw }}" }
+    - {name: 'nfs-ganesha-rgw', install: "{{ nfs_obj_gw }}"}
+    - {name: 'radosgw', install: "{{ nfs_obj_gw }}"}
+    - {name: 'nfs-ganesha-ceph', install: "{{ nfs_file_gw }}"}
   when:
     - (ceph_origin == 'repository' or ceph_origin == 'distro')
     - ceph_repository != 'rhcs'
@@ -33,13 +33,13 @@
     group: "{{ item.group | default('ceph') }}"
     mode: "{{ ceph_directories_mode }}"
   with_items:
-    - { name: "/var/lib/ceph/bootstrap-rgw", create: "{{ nfs_obj_gw }}" }
-    - { name: "/var/lib/ceph/radosgw", create: "{{ nfs_obj_gw }}" }
-    - { name: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}", create: "{{ nfs_obj_gw }}" }
-    - { name: "{{ rbd_client_admin_socket_path }}", create: "{{ nfs_obj_gw }}" }
-    - { name: "/var/log/ceph", create: true }
-    - { name: "/var/log/ganesha", create: true, owner: root, group: root }
-    - { name: "/var/run/ceph", create: true }
+    - {name: "/var/lib/ceph/bootstrap-rgw", create: "{{ nfs_obj_gw }}"}
+    - {name: "/var/lib/ceph/radosgw", create: "{{ nfs_obj_gw }}"}
+    - {name: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}", create: "{{ nfs_obj_gw }}"}
+    - {name: "{{ rbd_client_admin_socket_path }}", create: "{{ nfs_obj_gw }}"}
+    - {name: "/var/log/ceph", create: true}
+    - {name: "/var/log/ganesha", create: true, owner: root, group: root}
+    - {name: "/var/run/ceph", create: true}
   when: item.create | bool
 
 - name: cephx related tasks
@@ -55,8 +55,8 @@
         state: info
       register: _rgw_keys
       with_items:
-        - { name: "client.bootstrap-rgw", path: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring", copy_key: "{{ nfs_obj_gw }}" }
-        - { name: "client.admin", path: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}" }
+        - {name: "client.bootstrap-rgw", path: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring", copy_key: "{{ nfs_obj_gw }}"}
+        - {name: "client.admin", path: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}"}
       delegate_to: "{{ groups.get(mon_group_name)[0] }}"
       run_once: true
       when:
