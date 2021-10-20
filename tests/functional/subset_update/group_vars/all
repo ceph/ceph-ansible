@@ -1,0 +1,27 @@
+---
+ceph_origin: repository
+ceph_repository: community
+public_network: "192.168.3.0/24"
+cluster_network: "192.168.4.0/24"
+radosgw_interface: "{{ 'eth1' if ansible_facts['distribution'] == 'CentOS' else 'ens6' }}"
+ceph_conf_overrides:
+  global:
+    auth_allow_insecure_global_id_reclaim: false
+    mon_allow_pool_size_one: true
+    mon_warn_on_pool_no_redundancy: false
+    osd_pool_default_size: 1
+    mon_max_pg_per_osd: 300
+openstack_config: false
+handler_health_mon_check_delay: 10
+handler_health_osd_check_delay: 10
+mds_max_mds: 2
+# TODO: add monitoring later
+dashboard_enabled: false
+dashboard_admin_password: $sX!cD$rYU6qR^B!
+grafana_admin_password: +xFRe+RES@7vg24n
+ceph_docker_registry: quay.ceph.io
+node_exporter_container_image: "quay.ceph.io/prometheus/node-exporter:v0.17.0"
+prometheus_container_image: "quay.ceph.io/prometheus/prometheus:v2.7.2"
+alertmanager_container_image: "quay.ceph.io/prometheus/alertmanager:v0.16.2"
+grafana_container_image: "quay.ceph.io/app-sre/grafana:6.7.4"
+grafana_server_group_name: ceph_monitoring
