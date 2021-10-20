@@ -32,6 +32,7 @@
 
 - name: confirm whether user really meant to upgrade the cluster
   hosts: localhost
+  tags: always
   become: false
   gather_facts: false
   vars:
@@ -65,7 +66,6 @@
 
 
 - name: gather facts and check the init system
-
   hosts:
     - "{{ mon_group_name|default('mons') }}"
     - "{{ osd_group_name|default('osds') }}"
@@ -77,7 +77,7 @@
     - "{{ client_group_name|default('clients') }}"
     - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
-
+  tags: always
   any_errors_fatal: True
   become: True
   gather_facts: False
@@ -154,6 +154,7 @@
         rolling_update: true
 
 - name: upgrade ceph mon cluster
+  tags: mons
   vars:
     health_mon_check_retries: 5
     health_mon_check_delay: 15
@@ -333,6 +334,7 @@
 
 - name: reset mon_host
   hosts: "{{ mon_group_name|default('mons') }}"
+  tags: always
   become: True
   gather_facts: false
   tasks:
@@ -350,6 +352,7 @@
     health_mon_check_delay: 15
     upgrade_ceph_packages: True
   hosts: "{{ mon_group_name|default('mons') }}"
+  tags: mgrs
   serial: 1
   become: True
   gather_facts: false
@@ -385,6 +388,7 @@
     upgrade_ceph_packages: True
     ceph_release: "{{ ceph_stable_release }}"
   hosts: "{{ mgr_group_name|default('mgrs') }}"
+  tags: mgrs
   serial: 1
   become: True
   gather_facts: false
@@ -420,6 +424,7 @@
 
 - name: set osd flags
   hosts: "{{ mon_group_name | default('mons') }}[0]"
+  tags: osds
   become: True
   gather_facts: false
   tasks:
@@ -481,8 +486,8 @@
     health_osd_check_retries: 40
     health_osd_check_delay: 30
     upgrade_ceph_packages: True
-
   hosts: "{{ osd_group_name|default('osds') }}"
+  tags: osds
   serial: 1
   become: True
   gather_facts: false
@@ -558,6 +563,7 @@
 
 - name: complete osd upgrade
   hosts: "{{ mon_group_name|default('mons') }}[0]"
+  tags: osds
   become: True
   gather_facts: false
   tasks:
@@ -599,6 +605,7 @@
 
 - name: upgrade ceph mdss cluster, deactivate all rank > 0
   hosts: "{{ mon_group_name | default('mons') }}[0]"
+  tags: mdss
   become: true
   gather_facts: false
   tasks:
@@ -700,6 +707,7 @@
   vars:
     upgrade_ceph_packages: True
   hosts: active_mdss
+  tags: mdss
   become: true
   gather_facts: false
   tasks:
@@ -746,6 +754,7 @@
   vars:
     upgrade_ceph_packages: True
   hosts: standby_mdss
+  tags: mdss
   become: True
   gather_facts: false
 
@@ -794,6 +803,7 @@
   vars:
     upgrade_ceph_packages: True
   hosts: "{{ rgw_group_name|default('rgws') }}"
+  tags: rgws
   serial: 1
   become: True
   gather_facts: false
@@ -838,6 +848,7 @@
   vars:
     upgrade_ceph_packages: True
   hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+  tags: rbdmirrors
   serial: 1
   become: True
   gather_facts: false
@@ -871,6 +882,7 @@
   vars:
     upgrade_ceph_packages: True
   hosts: "{{ nfs_group_name|default('nfss') }}"
+  tags: nfss
   serial: 1
   become: True
   gather_facts: false
@@ -919,8 +931,8 @@
 - name: upgrade ceph iscsi gateway node
   vars:
     upgrade_ceph_packages: True
-  hosts:
-    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  tags: iscsigws
   serial: 1
   become: True
   gather_facts: false
@@ -962,6 +974,7 @@
   vars:
     upgrade_ceph_packages: True
   hosts: "{{ client_group_name|default('clients') }}"
+  tags: clients
   serial: "{{ client_update_batch | default(20) }}"
   become: True
   gather_facts: false
@@ -993,6 +1006,9 @@
     - "{{ rgw_group_name | default('rgws') }}"
     - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
     - "{{ mgr_group_name | default('mgrs') }}"
+  tags:
+    - post_upgrade
+    - crash
   gather_facts: false
   become: true
   tasks:
@@ -1020,6 +1036,7 @@
 
 - name: complete upgrade
   hosts: "{{ mon_group_name | default('mons') }}"
+  tags: post_upgrade
   become: True
   gather_facts: false
   tasks:
@@ -1056,6 +1073,7 @@
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
+  tags: monitoring
   gather_facts: false
   become: true
   tasks:
@@ -1086,6 +1104,7 @@
 
 - name: upgrade monitoring node
   hosts: "{{ monitoring_group_name }}"
+  tags: monitoring
   gather_facts: false
   become: true
   tasks:
@@ -1117,6 +1136,7 @@
 
 - name: upgrade ceph dashboard
   hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) | default(omit) }}"
+  tags: monitoring
   gather_facts: false
   become: true
   tasks:
@@ -1136,6 +1156,7 @@
 
 - name: switch any existing crush buckets to straw2
   hosts: "{{ mon_group_name | default('mons') }}[0]"
+  tags: post_upgrade
   become: true
   any_errors_fatal: true
   gather_facts: false
@@ -1177,6 +1198,7 @@
 
 - name: show ceph status
   hosts: "{{ mon_group_name|default('mons') }}"
+  tags: always
   become: True
   gather_facts: false
   tasks:
