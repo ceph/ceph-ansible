@@ -404,7 +404,7 @@
 
 
 - name: set osd flags
-  hosts: "{{ mon_group_name | default('mons') }}[0]"
+  hosts: "{{ osd_group_name | default('osds') }}"
   tags: osds
   become: True
   gather_facts: false
@@ -415,52 +415,56 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
-    - name: get pool list
-      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool ls detail -f json"
-      register: pool_list
+    - name: set osd flags, disable autoscaler and balancer
       run_once: true
-      changed_when: false
-      check_mode: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      block:
+        - name: get pool list
+          command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool ls detail -f json"
+          register: pool_list
+          changed_when: false
+          check_mode: false
 
-    - name: get balancer module status
-      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer status -f json"
-      register: balancer_status_update
-      changed_when: false
-      check_mode: false
+        - name: get balancer module status
+          command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer status -f json"
+          register: balancer_status_update
+          run_once: true
+          changed_when: false
+          check_mode: false
 
-    - name: set_fact pools_pgautoscaler_mode
-      set_fact:
-        pools_pgautoscaler_mode: "{{ pools_pgautoscaler_mode | default([]) | union([{'name': item.pool_name, 'mode': item.pg_autoscale_mode}]) }}"
-      with_items: "{{ pool_list.stdout | default('{}') | from_json }}"
+        - name: set_fact pools_pgautoscaler_mode
+          set_fact:
+            pools_pgautoscaler_mode: "{{ pools_pgautoscaler_mode | default([]) | union([{'name': item.pool_name, 'mode': item.pg_autoscale_mode}]) }}"
+          with_items: "{{ pool_list.stdout | default('{}') | from_json }}"
 
-    - name: disable balancer
-      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
-      changed_when: false
-      when: (balancer_status_update.stdout | from_json)['active'] | bool
+        - name: disable balancer
+          command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
+          changed_when: false
+          when: (balancer_status_update.stdout | from_json)['active'] | bool
 
-    - name: disable pg autoscale on pools
-      ceph_pool:
-        name: "{{ item.name }}"
-        cluster: "{{ cluster }}"
-        pg_autoscale_mode: false
-      with_items: "{{ pools_pgautoscaler_mode }}"
-      when:
-        - pools_pgautoscaler_mode is defined
-        - item.mode == 'on'
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+        - name: disable pg autoscale on pools
+          ceph_pool:
+            name: "{{ item.name }}"
+            cluster: "{{ cluster }}"
+            pg_autoscale_mode: false
+          with_items: "{{ pools_pgautoscaler_mode }}"
+          when:
+            - pools_pgautoscaler_mode is defined
+            - item.mode == 'on'
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
-    - name: set osd flags
-      ceph_osd_flag:
-        name: "{{ item }}"
-        cluster: "{{ cluster }}"
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      with_items:
-        - noout
-        - nodeep-scrub
+        - name: set osd flags
+          ceph_osd_flag:
+            name: "{{ item }}"
+            cluster: "{{ cluster }}"
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+          with_items:
+            - noout
+            - nodeep-scrub
 
 - name: upgrade ceph osds cluster
   vars:
@@ -543,7 +547,7 @@
 
 
 - name: complete osd upgrade
-  hosts: "{{ mon_group_name|default('mons') }}[0]"
+  hosts: "{{ osd_group_name | default('osds') }}"
   tags: osds
   become: True
   gather_facts: false
@@ -554,35 +558,39 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
-    - name: re-enable pg autoscale on pools
-      ceph_pool:
-        name: "{{ item.name }}"
-        cluster: "{{ cluster }}"
-        pg_autoscale_mode: true
-      with_items: "{{ pools_pgautoscaler_mode }}"
-      when:
-        - pools_pgautoscaler_mode is defined
-        - item.mode == 'on'
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+    - name: unset osd flags, re-enable pg autoscaler and balancer
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      block:
+        - name: re-enable pg autoscale on pools
+          ceph_pool:
+            name: "{{ item.name }}"
+            cluster: "{{ cluster }}"
+            pg_autoscale_mode: true
+          with_items: "{{ pools_pgautoscaler_mode }}"
+          when:
+            - pools_pgautoscaler_mode is defined
+            - item.mode == 'on'
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
-    - name: unset osd flags
-      ceph_osd_flag:
-        name: "{{ item }}"
-        cluster: "{{ cluster }}"
-        state: absent
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      with_items:
-        - noout
-        - nodeep-scrub
+        - name: unset osd flags
+          ceph_osd_flag:
+            name: "{{ item }}"
+            cluster: "{{ cluster }}"
+            state: absent
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+          with_items:
+            - noout
+            - nodeep-scrub
 
-    - name: re-enable balancer
-      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"
-      changed_when: false
-      when: (balancer_status_update.stdout | from_json)['active'] | bool
+        - name: re-enable balancer
+          command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"
+          changed_when: false
+          when: (balancer_status_update.stdout | from_json)['active'] | bool
 
 - name: upgrade ceph mdss cluster, deactivate all rank > 0
   hosts: "{{ mon_group_name | default('mons') }}[0]"
