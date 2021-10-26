@@ -112,6 +112,10 @@
         - not containerized_deployment | bool
         - ceph_docker_registry_auth | bool
 
+    - import_role:
+        name: ceph-facts
+        tasks_from: set_monitor_address.yml
+
     - name: "pulling {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image"
       command: "{{ timeout_command }} {{ container_binary }} pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       changed_when: false
@@ -269,7 +273,11 @@
           delegate_to: '{{ groups[mon_group_name][0] }}'
 
     - name: manage nodes with cephadm
+<<<<<<< HEAD
       command: "{{ ceph_cmd }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['default_ipv4']['address'] }} {{ group_names | join(' ') }}"
+=======
+      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ _current_monitor_address }} {{ group_names | join(' ') }}"
+>>>>>>> 7a12b854 (cephadm: use public_network when adding host)
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
 
