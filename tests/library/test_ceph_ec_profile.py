@@ -28,11 +28,15 @@ class TestCephEcProfile(object):
 
         assert ceph_ec_profile.get_profile(self.fake_module, self.fake_name) == expected_cmd
 
-    @pytest.mark.parametrize("stripe_unit,force", [(False, False),
-                                                   (32, True),
-                                                   (False, True),
-                                                   (32, False)])
-    def test_create_profile(self, stripe_unit, force):
+    @pytest.mark.parametrize("stripe_unit,crush_device_class,force", [(False, None, False),
+                                                                      (32, None, True),
+                                                                      (False, None, True),
+                                                                      (32, None, False),
+                                                                      (False, 'hdd', False),
+                                                                      (32, 'ssd', True),
+                                                                      (False, 'nvme', True),
+                                                                      (32, 'hdd', False)])
+    def test_create_profile(self, stripe_unit, crush_device_class, force):
         expected_cmd = [
             self.fake_binary,
             '-n', 'client.admin',
@@ -44,6 +48,8 @@ class TestCephEcProfile(object):
         ]
         if stripe_unit:
             expected_cmd.append('stripe_unit={}'.format(stripe_unit))
+        if crush_device_class:
+            expected_cmd.append('crush-device-class={}'.format(crush_device_class))
         if force:
             expected_cmd.append('--force')
 
@@ -52,6 +58,7 @@ class TestCephEcProfile(object):
                                               self.fake_k,
                                               self.fake_m,
                                               stripe_unit,
+                                              crush_device_class,
                                               self.fake_cluster,
                                               force) == expected_cmd
 
