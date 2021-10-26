@@ -1,0 +1,1462 @@
+---
+#
+# This playbook does a cephadm adopt for all the Ceph services
+#
+
+- name: confirm whether user really meant to adopt the cluster by cephadm
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: Are you sure you want to adopt the cluster by cephadm ?
+      default: 'no'
+      private: no
+  tasks:
+    - name: exit playbook, if user did not mean to adopt the cluster by cephadm
+      fail:
+        msg: >
+          Exiting cephadm-adopt playbook, cluster was NOT adopted.
+           To adopt the cluster, either say 'yes' on the prompt or
+           use `-e ireallymeanit=yes` on the command line when
+           invoking the playbook
+      when: ireallymeanit != 'yes'
+
+    - name: import_role ceph-defaults
+      import_role:
+        name: ceph-defaults
+
+    - name: check if a legacy grafana-server group exists
+      import_role:
+        name: ceph-facts
+        tasks_from: convert_grafana_server_group_name.yml
+      when: groups.get((grafana_server_group_name | default('grafana-server')), []) | length > 0
+
+- name: gather facts and prepare system for cephadm
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+    - "{{ monitoring_group_name|default('monitoring') }}"
+  become: true
+  any_errors_fatal: True
+  gather_facts: false
+  vars:
+    delegate_facts_host: true
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: gather facts
+      setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
+      when: not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
+
+    - name: gather and delegate facts
+      setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
+      run_once: true
+      when: delegate_facts_host | bool
+
+    - name: fail if one osd node is using filestore
+      fail:
+        msg: >
+          filestore OSDs are not supported with cephadm.
+          Please convert them with the filestore-to-bluestore.yml playbook first.
+      when:
+        - osd_group_name in group_names
+        - osd_objectstore == 'filestore'
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: convert_grafana_server_group_name.yml
+      when: groups.get((grafana_server_group_name|default('grafana-server')), []) | length > 0
+
+    - name: get the ceph version
+      command: "{{ container_binary + ' run --rm --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --version"
+      changed_when: false
+      register: ceph_version_out
+
+    - name: set_fact ceph_version
+      set_fact:
+        ceph_version: "{{ ceph_version_out.stdout.split(' ')[2] }}"
+
+    - name: fail on pre octopus ceph releases
+      fail:
+        msg: >
+          Your Ceph version {{ ceph_version }} is not supported for this operation.
+          Please upgrade your cluster with the rolling_update.yml playbook first.
+      when: ceph_version is version('15.2', '<')
+
+    - name: check if it is atomic host
+      stat:
+        path: /run/ostree-booted
+      register: stat_ostree
+
+    - name: set_fact is_atomic
+      set_fact:
+        is_atomic: "{{ stat_ostree.stat.exists }}"
+
+    - import_role:
+        name: ceph-container-engine
+      when: not containerized_deployment | bool
+
+    - import_role:
+        name: ceph-container-common
+        tasks_from: registry.yml
+      when:
+        - not containerized_deployment | bool
+        - ceph_docker_registry_auth | bool
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: set_monitor_address.yml
+
+    - name: "pulling {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image"
+      command: "{{ timeout_command }} {{ container_binary }} pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      changed_when: false
+      register: docker_image
+      until: docker_image.rc == 0
+      retries: "{{ docker_pull_retry }}"
+      delay: 10
+      when:
+        - not containerized_deployment | bool
+        - inventory_hostname in groups.get(mon_group_name, []) or
+          inventory_hostname in groups.get(osd_group_name, []) or
+          inventory_hostname in groups.get(mds_group_name, []) or
+          inventory_hostname in groups.get(rgw_group_name, []) or
+          inventory_hostname in groups.get(mgr_group_name, []) or
+          inventory_hostname in groups.get(rbdmirror_group_name, []) or
+          inventory_hostname in groups.get(iscsi_gw_group_name, []) or
+          inventory_hostname in groups.get(nfs_group_name, [])
+
+    - name: configure repository for installing cephadm
+      when: containerized_deployment | bool
+      vars:
+        ceph_origin: repository
+        ceph_repository: community
+      block:
+        - name: validate repository variables
+          import_role:
+            name: ceph-validate
+            tasks_from: check_repository.yml
+
+        - name: configure repository
+          import_role:
+            name: ceph-common
+            tasks_from: "configure_repository.yml"
+
+    - name: install cephadm requirements
+      package:
+        name: ['python3', 'lvm2']
+      register: result
+      until: result is succeeded
+
+    - name: install cephadm
+      package:
+        name: cephadm
+      register: result
+      until: result is succeeded
+
+    - name: install cephadm mgr module
+      package:
+        name: ceph-mgr-cephadm
+      register: result
+      until: result is succeeded
+      when:
+        - not containerized_deployment | bool
+        - mgr_group_name in group_names
+
+    - name: set_fact ceph_cmd
+      set_fact:
+        ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --cluster {{ cluster }}"
+
+    - name: get current fsid
+      command: "{{ ceph_cmd }} fsid"
+      register: current_fsid
+      run_once: true
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: get a minimal ceph configuration
+      command: "{{ ceph_cmd }} config generate-minimal-conf"
+      register: minimal_config
+      run_once: true
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: set_fact fsid
+      set_fact:
+        fsid: "{{ current_fsid.stdout }}"
+      run_once: true
+
+    - name: enable cephadm mgr module
+      ceph_mgr_module:
+        name: cephadm
+        cluster: "{{ cluster }}"
+        state: enable
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      run_once: true
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+
+    - name: set cephadm as orchestrator backend
+      command: "{{ ceph_cmd }} orch set backend cephadm"
+      changed_when: false
+      run_once: true
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+
+    - name: generate cephadm ssh key
+      command: "{{ ceph_cmd }} cephadm generate-key"
+      changed_when: false
+      run_once: true
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+
+    - name: get the cephadm ssh pub key
+      command: "{{ ceph_cmd }} cephadm get-pub-key"
+      changed_when: false
+      run_once: true
+      register: cephadm_pubpkey
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+
+    - name: allow cephadm key for {{ cephadm_ssh_user | default('root') }} account
+      authorized_key:
+        user: "{{ cephadm_ssh_user | default('root') }}"
+        key: '{{ cephadm_pubpkey.stdout }}'
+
+    - name: set cephadm ssh user to {{ cephadm_ssh_user | default('root') }}
+      command: "{{ ceph_cmd }} cephadm set-user {{ cephadm_ssh_user | default('root') }}"
+      changed_when: false
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: run cephadm prepare-host
+      command: cephadm prepare-host
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: set default container image in ceph configuration
+      command: "{{ ceph_cmd }} config set global container_image {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+      changed_when: false
+      run_once: true
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+
+    - name: set container image base in ceph configuration
+      command: "{{ ceph_cmd }} config set mgr mgr/cephadm/container_image_base {{ ceph_docker_registry }}/{{ ceph_docker_image }}"
+      changed_when: false
+      run_once: true
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+
+    - name: set dashboard container image in ceph mgr configuration
+      when: dashboard_enabled | bool
+      run_once: true
+      block:
+        - name: set alertmanager container image in ceph configuration
+          command: "{{ ceph_cmd }} config set mgr mgr/cephadm/container_image_alertmanager {{ alertmanager_container_image }}"
+          changed_when: false
+          delegate_to: '{{ groups[mon_group_name][0] }}'
+
+        - name: set grafana container image in ceph configuration
+          command: "{{ ceph_cmd }} config set mgr mgr/cephadm/container_image_grafana {{ grafana_container_image }}"
+          changed_when: false
+          delegate_to: '{{ groups[mon_group_name][0] }}'
+
+        - name: set node-exporter container image in ceph configuration
+          command: "{{ ceph_cmd }} config set mgr mgr/cephadm/container_image_node_exporter {{ node_exporter_container_image }}"
+          changed_when: false
+          delegate_to: '{{ groups[mon_group_name][0] }}'
+
+        - name: set prometheus container image in ceph configuration
+          command: "{{ ceph_cmd }} config set mgr mgr/cephadm/container_image_prometheus {{ prometheus_container_image }}"
+          changed_when: false
+          delegate_to: '{{ groups[mon_group_name][0] }}'
+
+    - name: enable the osd memory autotune for hci environment
+      command: "{{ ceph_cmd }} config set osd osd_memory_target_autotune true"
+      changed_when: false
+      run_once: true
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      when: is_hci | bool
+
+    - name: manage nodes with cephadm
+      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ _current_monitor_address }} {{ group_names | join(' ') }}"
+      changed_when: false
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+
+    - name: add ceph label for core component
+      command: "{{ ceph_cmd }} orch host label add {{ ansible_facts['nodename'] }} ceph"
+      changed_when: false
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      when: inventory_hostname in groups.get(mon_group_name, []) or
+            inventory_hostname in groups.get(osd_group_name, []) or
+            inventory_hostname in groups.get(mds_group_name, []) or
+            inventory_hostname in groups.get(rgw_group_name, []) or
+            inventory_hostname in groups.get(mgr_group_name, []) or
+            inventory_hostname in groups.get(rbdmirror_group_name, [])
+
+    - name: get the client.admin keyring
+      ceph_key:
+        name: client.admin
+        cluster: "{{ cluster }}"
+        output_format: plain
+        state: info
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      run_once: true
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      register: client_admin_keyring
+
+    - name: copy the client.admin keyring
+      copy:
+        dest: "/etc/ceph/{{ cluster }}.client.admin.keyring"
+        content: "{{ client_admin_keyring.stdout + '\n' }}"
+        owner: "{{ ceph_uid | int if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid | int if containerized_deployment | bool else 'ceph' }}"
+        mode: "{{ ceph_keyring_permissions }}"
+      run_once: true
+      delegate_to: "{{ item }}"
+      with_items:
+        - "{{ groups.get(osd_group_name, []) }}"
+        - "{{ groups.get(mds_group_name, []) }}"
+        - "{{ groups.get(rgw_group_name, []) }}"
+        - "{{ groups.get(mgr_group_name, []) }}"
+        - "{{ groups.get(rbdmirror_group_name, []) }}"
+
+    - name: assimilate ceph configuration
+      command: "{{ ceph_cmd }} config assimilate-conf -i /etc/ceph/{{ cluster }}.conf"
+      changed_when: false
+      when: inventory_hostname in groups.get(mon_group_name, []) or
+            inventory_hostname in groups.get(osd_group_name, []) or
+            inventory_hostname in groups.get(mds_group_name, []) or
+            inventory_hostname in groups.get(rgw_group_name, []) or
+            inventory_hostname in groups.get(mgr_group_name, []) or
+            inventory_hostname in groups.get(rbdmirror_group_name, [])
+
+    - name: set_fact cephadm_cmd
+      set_fact:
+        cephadm_cmd: "cephadm {{ '--docker' if container_binary == 'docker' else '' }}"
+
+    - name: set container registry info
+      command: "{{ ceph_cmd }} cephadm registry-login {{ ceph_docker_registry }} {{ ceph_docker_registry_username }} {{ ceph_docker_registry_password }}"
+      changed_when: false
+      no_log: true
+      run_once: true
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      when: ceph_docker_registry_auth | bool
+
+
+- name: store existing rbd mirror peers in monitor config store
+  hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+  become: true
+  any_errors_fatal: true
+  gather_facts: true
+  tasks:
+    - name: store existing rbd mirror peers in monitor config store
+      when: ceph_rbd_mirror_configure | default(False) | bool
+      block:
+        - name: import ceph-defaults
+          import_role:
+            name: ceph-defaults
+
+        - name: import ceph-validate
+          import_role:
+            name: ceph-validate
+            tasks_from: check_rbdmirror.yml
+
+        - name: import container_binary
+          import_role:
+            name: ceph-facts
+            tasks_from: container_binary.yml
+
+        - name: set_fact rbd_cmd
+          set_fact:
+            rbd_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=rbd ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --cluster {{ cluster }} -n client.rbd-mirror.{{ ansible_facts['hostname'] }} -k /etc/ceph/{{ cluster }}.client.rbd-mirror.{{ ansible_facts['hostname'] }}.keyring"
+
+        - name: set_fact admin_rbd_cmd
+          set_fact:
+            admin_rbd_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=rbd ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --cluster {{ cluster }}"
+        - name: get mirror pool info
+          command: "{{ rbd_cmd }} mirror pool info {{ ceph_rbd_mirror_pool }} --format json"
+          register: mirror_pool_info
+          changed_when: false
+
+        - name: set_fact mirror_peer_found
+          set_fact:
+            mirror_peer_uuid: "{{ ((mirror_pool_info.stdout | from_json | default('{}'))['peers'] | selectattr('site_name', 'match', '^'+ceph_rbd_mirror_remote_cluster+'$') | map(attribute='uuid') | list) }}"
+
+        - name: remove current rbd mirror peer, add new peer into mon config store
+          when: mirror_peer_uuid | length > 0
+          block:
+            - name: get remote user keyring
+              slurp:
+                src: "/etc/ceph/{{ ceph_rbd_mirror_remote_cluster }}.{{ ceph_rbd_mirror_remote_user }}.keyring"
+              register: remote_user_keyring
+
+            - name: get quorum_status
+              command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} quorum_status --format json"
+              changed_when: false
+              delegate_to: "{{ groups[mon_group_name][0] }}"
+              register: quorum_status
+              run_once: true
+              environment:
+                CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+            - name: set_fact mon_ip_list
+              set_fact:
+                mon_ip_list: "{{ mon_ip_list | default([]) | union([item['addr'].split(':')[0]]) }}"
+              loop: "{{ (quorum_status.stdout | from_json | default('{}'))['monmap']['mons'] }}"
+              run_once: true
+
+            - name: remove current mirror peer
+              command: "{{ admin_rbd_cmd }} mirror pool peer remove {{ ceph_rbd_mirror_pool }} {{ ((mirror_pool_info.stdout | from_json | default('{}'))['peers'] | selectattr('site_name', 'match', '^'+ceph_rbd_mirror_remote_cluster+'$') | map(attribute='uuid') | list)[0] }}"
+              delegate_to: "{{ groups.get(mon_group_name | default('mons'))[0] }}"
+              changed_when: false
+
+            - name: get remote user keyring secret
+              set_fact:
+                remote_user_keyring_secret: "{{ item.split('=', 1)[1] | trim }}"
+              with_items: "{{ (remote_user_keyring.content | b64decode).split('\n') }}"
+              when: "'key = ' in item"
+
+            - name: create a temporary file
+              tempfile:
+                path: /etc/ceph
+                state: file
+                suffix: _ceph-ansible
+              register: tmp_file
+              delegate_to: "{{ groups.get(mon_group_name | default('mons'))[0] }}"
+
+            - name: write secret to temporary file
+              copy:
+                dest: "{{ tmp_file.path }}"
+                content: "{{ remote_user_keyring_secret }}"
+              delegate_to: "{{ groups.get(mon_group_name | default('mons'))[0] }}"
+
+            - name: re-add mirror peer
+              command: "{{ admin_rbd_cmd }} mirror pool peer add {{ ceph_rbd_mirror_pool }} {{ ceph_rbd_mirror_remote_user }}@{{ ceph_rbd_mirror_remote_cluster }} --remote-mon-host {{ ','.join(mon_ip_list) }} --remote-key-file {{ tmp_file.path }}"
+              delegate_to: "{{ groups.get(mon_group_name | default('mons'))[0] }}"
+              changed_when: false
+
+            - name: rm temporary file
+              file:
+                path: "{{ tmp_file.path }}"
+                state: absent
+              delegate_to: "{{ groups.get(mon_group_name | default('mons'))[0] }}"
+
+
+- name: adopt ceph mon daemons
+  hosts: "{{ mon_group_name|default('mons') }}"
+  serial: 1
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: adopt mon daemon
+      cephadm_adopt:
+        name: "mon.{{ ansible_facts['hostname'] }}"
+        cluster: "{{ cluster }}"
+        image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+        docker: "{{ true if container_binary == 'docker' else false }}"
+        pull: false
+        firewalld: "{{ true if configure_firewall | bool else false }}"
+
+    - name: reset failed ceph-mon systemd unit
+      command: "systemctl reset-failed ceph-mon@{{ ansible_facts['hostname'] }}"  # noqa 303
+      changed_when: false
+      failed_when: false
+      when: containerized_deployment | bool
+
+    - name: remove ceph-mon systemd files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/ceph-mon@.service
+        - /etc/systemd/system/ceph-mon@.service.d
+        - /etc/systemd/system/ceph-mon.target
+
+    - name: waiting for the monitor to join the quorum...
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} quorum_status --format json"
+      changed_when: false
+      register: ceph_health_raw
+      until: >
+        ansible_facts['hostname'] in (ceph_health_raw.stdout | from_json)["quorum_names"]
+      retries: "{{ health_mon_check_retries }}"
+      delay: "{{ health_mon_check_delay }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+- name: adopt ceph mgr daemons
+  hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}"
+  serial: 1
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: adopt mgr daemon
+      cephadm_adopt:
+        name: "mgr.{{ ansible_facts['hostname'] }}"
+        cluster: "{{ cluster }}"
+        image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+        docker: "{{ true if container_binary == 'docker' else false }}"
+        pull: false
+        firewalld: "{{ true if configure_firewall | bool else false }}"
+
+    - name: reset failed ceph-mgr systemd unit
+      command: "systemctl reset-failed ceph-mgr@{{ ansible_facts['hostname'] }}"  # noqa 303
+      changed_when: false
+      failed_when: false
+      when: containerized_deployment | bool
+
+    - name: remove ceph-mgr systemd files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/ceph-mgr@.service
+        - /etc/systemd/system/ceph-mgr@.service.d
+        - /etc/systemd/system/ceph-mgr.target
+
+
+- name: stop and remove legacy iscsigw daemons
+  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  serial: 1
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: stop and disable iscsigw systemd services
+      service:
+        name: '{{ item }}'
+        state: stopped
+        enabled: false
+      failed_when: false
+      with_items:
+        - rbd-target-api
+        - rbd-target-gw
+        - tcmu-runner
+
+    - name: reset failed iscsigw systemd units
+      command: 'systemctl reset-failed {{ item }}'  # noqa 303
+      changed_when: false
+      failed_when: false
+      with_items:
+        - rbd-target-api
+        - rbd-target-gw
+        - tcmu-runner
+      when: containerized_deployment | bool
+
+    - name: remove iscsigw systemd unit files
+      file:
+        path: '/etc/systemd/system/{{ item }}.service'
+        state: absent
+      with_items:
+        - rbd-target-api
+        - rbd-target-gw
+        - tcmu-runner
+      when: containerized_deployment | bool
+
+
+- name: redeploy iscsigw daemons
+  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: update the placement of iscsigw hosts
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply iscsi {{ iscsi_pool_name | default('rbd') }} {{ api_user | default('admin') }} {{ api_password | default('admin') }} {{ trusted_ip_list | default('192.168.122.1') }} --placement='{{ groups.get(iscsi_gw_group_name, []) | length }} label:{{ iscsi_gw_group_name }}'"
+      run_once: true
+      changed_when: false
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+
+- name: set osd flags
+  hosts: "{{ osd_group_name|default('osds') }}"
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: get pool list
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool ls detail -f json"
+      register: pool_list
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      check_mode: false
+
+    - name: get balancer module status
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer status -f json"
+      register: balancer_status_adopt
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      check_mode: false
+
+    - name: set_fact pools_pgautoscaler_mode
+      set_fact:
+        pools_pgautoscaler_mode: "{{ pools_pgautoscaler_mode | default([]) | union([{'name': item.pool_name, 'mode': item.pg_autoscale_mode}]) }}"
+      run_once: true
+      with_items: "{{ pool_list.stdout | default('{}') | from_json }}"
+
+    - name: disable balancer
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: (balancer_status_adopt.stdout | from_json)['active'] | bool
+
+    - name: disable pg autoscale on pools
+      ceph_pool:
+        name: "{{ item.name }}"
+        cluster: "{{ cluster }}"
+        pg_autoscale_mode: false
+      with_items: "{{ pools_pgautoscaler_mode }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      when:
+        - pools_pgautoscaler_mode is defined
+        - item.mode == 'on'
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
+    - name: set osd flags
+      ceph_osd_flag:
+        cluster: "{{ cluster }}"
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - noout
+        - nodeep-scrub
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
+- name: adopt ceph osd daemons
+  hosts: "{{ osd_group_name|default('osd') }}"
+  serial: 1
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+      when: containerized_deployment | bool
+
+    - name: get osd list
+      ceph_volume:
+        cluster: "{{ cluster }}"
+        action: list
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      register: osd_list
+
+    - name: set osd fsid for containerized deployment
+      lineinfile:
+        path: '/var/lib/ceph/osd/{{ cluster }}-{{ item.key }}/fsid'
+        line: "{{ (item.value | selectattr('type', 'equalto', 'block') | map(attribute='tags') | first)['ceph.osd_fsid'] }}"
+        owner: '{{ ceph_uid }}'
+        group: '{{ ceph_uid }}'
+        create: true
+      with_dict: '{{ osd_list.stdout | from_json }}'
+      when: containerized_deployment | bool
+
+    - name: set osd type for containerized deployment
+      lineinfile:
+        path: '/var/lib/ceph/osd/{{ cluster }}-{{ item }}/type'
+        line: 'bluestore'
+        owner: '{{ ceph_uid }}'
+        group: '{{ ceph_uid }}'
+        create: true
+      loop: '{{ (osd_list.stdout | from_json).keys() | list }}'
+      when: containerized_deployment | bool
+
+    - name: adopt osd daemon
+      cephadm_adopt:
+        name: "osd.{{ item }}"
+        cluster: "{{ cluster }}"
+        image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+        docker: "{{ true if container_binary == 'docker' else false }}"
+        pull: false
+        firewalld: "{{ true if configure_firewall | bool else false }}"
+      loop: '{{ (osd_list.stdout | from_json).keys() | list }}'
+
+    - name: remove ceph-osd systemd and ceph-osd-run.sh files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/ceph-osd@.service
+        - /etc/systemd/system/ceph-osd@.service.d
+        - /etc/systemd/system/ceph-osd.target
+        - "{{ ceph_osd_docker_run_script_path | default('/usr/share') }}/ceph-osd-run.sh"
+
+    - name: remove osd directory
+      file:
+        path: "/var/lib/ceph/osd/{{ cluster }}-{{ item }}"
+        state: absent
+      loop: '{{ (osd_list.stdout | from_json).keys() | list }}'
+
+    - name: waiting for clean pgs...
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} pg stat --format json"
+      changed_when: false
+      register: ceph_health_post
+      until: >
+        (((ceph_health_post.stdout | from_json).pg_summary.num_pg_by_state | length) > 0)
+        and
+        (((ceph_health_post.stdout | from_json).pg_summary.num_pg_by_state | selectattr('name', 'search', '^active\\+clean') | map(attribute='num') | list | sum) == (ceph_health_post.stdout | from_json).pg_summary.num_pgs)
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      retries: "{{ health_osd_check_retries }}"
+      delay: "{{ health_osd_check_delay }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+- name: unset osd flags
+  hosts: "{{ osd_group_name|default('osds') }}"
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: re-enable pg autoscale on pools
+      ceph_pool:
+        name: "{{ item.name }}"
+        cluster: "{{ cluster }}"
+        pg_autoscale_mode: true
+      with_items: "{{ pools_pgautoscaler_mode }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      when:
+        - pools_pgautoscaler_mode is defined
+        - item.mode == 'on'
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
+    - name: unset osd flags
+      ceph_osd_flag:
+        cluster: "{{ cluster }}"
+        name: "{{ item }}"
+        state: absent
+      with_items:
+        - noout
+        - nodeep-scrub
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
+    - name: re-enable balancer
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
+      when: (balancer_status_adopt.stdout | from_json)['active'] | bool
+
+- name: redeploy mds daemons
+  hosts: "{{ mds_group_name|default('mdss') }}"
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: update the placement of metadata hosts
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply mds {{ cephfs }} --placement='{{ groups.get(mds_group_name, []) | length }} label:{{ mds_group_name }}'"
+      run_once: true
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+- name: stop and remove legacy ceph mds daemons
+  hosts: "{{ mds_group_name|default('mdss') }}"
+  serial: 1
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: stop and disable ceph-mds systemd service
+      service:
+        name: "ceph-mds@{{ ansible_facts['hostname'] }}"
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: stop and disable ceph-mds systemd target
+      service:
+        name: ceph-mds.target
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: reset failed ceph-mds systemd unit
+      command: "systemctl reset-failed ceph-mds@{{ ansible_facts['hostname'] }}"  # noqa 303
+      changed_when: false
+      failed_when: false
+      when: containerized_deployment | bool
+
+    - name: remove ceph-mds systemd files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/ceph-mds@.service
+        - /etc/systemd/system/ceph-mds@.service.d
+        - /etc/systemd/system/ceph-mds.target
+
+    - name: remove legacy ceph mds data
+      file:
+        path: "/var/lib/ceph/mds/{{ cluster }}-{{ ansible_facts['hostname'] }}"
+        state: absent
+
+- name: redeploy rgw daemons
+  hosts: "{{ rgw_group_name | default('rgws') }}"
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: set_radosgw_address.yml
+
+    - name: import rgw ssl certificate into kv store
+      when: radosgw_frontend_ssl_certificate | length > 0
+      block:
+        - name: slurp rgw ssl certificate
+          slurp:
+            src: "{{ radosgw_frontend_ssl_certificate }}"
+          register: rgw_ssl_cert
+
+        - name: store ssl certificate in kv store (not multisite)
+          command: >
+            {{ container_binary }} run --rm -i -v /etc/ceph:/etc/ceph:z --entrypoint=ceph {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} --cluster {{ cluster }}
+            config-key set rgw/cert/rgw.{{ ansible_facts['hostname'] }} -i -
+          args:
+            stdin: "{{ rgw_ssl_cert.content | b64decode }}"
+            stdin_add_newline: no
+          changed_when: false
+          when: not rgw_multisite | bool
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+        - name: store ssl certificate in kv store (multisite)
+          command: >
+            {{ container_binary }} run --rm -i -v /etc/ceph:/etc/ceph:z --entrypoint=ceph {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} --cluster {{ cluster }}
+            config-key set rgw/cert/rgw.{{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }} -i -
+          args:
+            stdin: "{{ rgw_ssl_cert.content | b64decode }}"
+            stdin_add_newline: no
+          changed_when: false
+          loop: "{{ rgw_instances }}"
+          when: rgw_multisite | bool
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: update the placement of radosgw hosts
+      command: >
+        {{ cephadm_cmd }} shell --fsid {{ fsid }} --
+        ceph --cluster {{ cluster }} orch apply rgw {{ ansible_facts['hostname'] }}
+        --placement='count-per-host:{{ radosgw_num_instances }} {{ ansible_facts['nodename'] }}'
+        --port={{ radosgw_frontend_port }}
+        {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: not rgw_multisite | bool
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: update the placement of radosgw multisite hosts
+      command: >
+        {{ cephadm_cmd }} shell --fsid {{ fsid }} --
+        ceph --cluster {{ cluster }} orch apply rgw {{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }}
+        --placement={{ ansible_facts['nodename'] }}
+        --realm={{ item.rgw_realm }} --zone={{ item.rgw_zone }}
+        --port={{ item.radosgw_frontend_port }}
+        {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
+      changed_when: false
+      loop: "{{ rgw_instances }}"
+      when: rgw_multisite | bool
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+- name: stop and remove legacy ceph rgw daemons
+  hosts: "{{ rgw_group_name|default('rgws') }}"
+  serial: 1
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: set_radosgw_address.yml
+
+    - name: stop and disable ceph-radosgw systemd service
+      service:
+        name: "ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
+        state: stopped
+        enabled: false
+      failed_when: false
+      loop: '{{ rgw_instances }}'
+
+    - name: stop and disable ceph-radosgw systemd target
+      service:
+        name: ceph-radosgw.target
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: reset failed ceph-radosgw systemd unit
+      command: "systemctl reset-failed ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"  # noqa 303
+      changed_when: false
+      failed_when: false
+      loop: '{{ rgw_instances }}'
+      when: containerized_deployment | bool
+
+    - name: remove ceph-radosgw systemd files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/ceph-radosgw@.service
+        - /etc/systemd/system/ceph-radosgw@.service.d
+        - /etc/systemd/system/ceph-radosgw.target
+
+    - name: remove legacy ceph radosgw data
+      file:
+        path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
+        state: absent
+      loop: '{{ rgw_instances }}'
+
+    - name: remove legacy ceph radosgw directory
+      file:
+        path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}"
+        state: absent
+
+- name: stop and remove legacy ceph nfs daemons
+  hosts: "{{ nfs_group_name|default('nfss') }}"
+  tags: 'ceph_nfs_adopt'
+  serial: 1
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-nfs
+        tasks_from: create_rgw_nfs_user.yml
+
+    - name: enable ceph mgr nfs module
+      ceph_mgr_module:
+        name: "nfs"
+        cluster: "{{ cluster }}"
+        state: enable
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: stop and disable ceph-nfs systemd service
+      service:
+        name: "ceph-nfs@{{ ansible_facts['hostname'] }}"
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: reset failed ceph-nfs systemd unit
+      command: "systemctl reset-failed ceph-nfs@{{ ansible_facts['hostname'] }}"  # noqa 303
+      changed_when: false
+      failed_when: false
+      when: containerized_deployment | bool
+
+    - name: remove ceph-nfs systemd unit files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/ceph-nfs@.service
+        - /etc/systemd/system/ceph-nfs@.service.d
+
+    - name: remove legacy ceph radosgw directory
+      file:
+        path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}"
+        state: absent
+
+    - name: create nfs ganesha cluster
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} nfs cluster create {{ ansible_facts['hostname'] }} {{ ansible_facts['hostname'] }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: create cephfs export
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} nfs export create cephfs {{ cephfs }} {{ ansible_facts['hostname'] }} {{ ceph_nfs_ceph_pseudo_path }} --squash {{ ceph_nfs_ceph_squash }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+      when: nfs_file_gw | bool
+
+    - name: get a list of existing buckets
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} bucket list --format json"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      register: bucket_list
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+      when:
+        - nfs_obj_gw | bool
+        - bucket_list is undefined
+
+    - name: set_fact bucket_list
+      set_fact:
+        bucket_list: "{{ (bucket_list.stdout | from_json) }}"
+      when: bucket_list.skipped is undefined
+
+    - name: create rgw export
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} nfs export create rgw {{ item }} {{ ansible_facts['hostname'] }} {{ ceph_nfs_rgw_pseudo_path }} --squash {{ ceph_nfs_rgw_squash }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+      loop: "{{ bucket_list }}"
+      when:
+        - nfs_obj_gw | bool
+        - (bucket_list.skipped is undefined or bucket_list | length > 0)
+
+
+- name: redeploy rbd-mirror daemons
+  hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: update the placement of rbd-mirror hosts
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply rbd-mirror --placement='{{ groups.get(rbdmirror_group_name, []) | length }} label:{{ rbdmirror_group_name }}'"
+      run_once: true
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+- name: stop and remove legacy rbd-mirror daemons
+  hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+  serial: 1
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: stop and disable rbd-mirror systemd service
+      service:
+        name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: stop and disable rbd-mirror systemd target
+      service:
+        name: ceph-rbd-mirror.target
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: reset failed rbd-mirror systemd unit
+      command: "systemctl reset-failed ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"  # noqa 303
+      changed_when: false
+      failed_when: false
+      when: containerized_deployment | bool
+
+    - name: remove rbd-mirror systemd files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/ceph-rbd-mirror@.service
+        - /etc/systemd/system/ceph-rbd-mirror@.service.d
+        - /etc/systemd/system/ceph-rbd-mirror.target
+
+
+- name: redeploy ceph-crash daemons
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: stop and disable ceph-crash systemd service
+      service:
+        name: "{{ 'ceph-crash@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-crash.service' }}"
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: remove ceph-crash systemd unit file
+      file:
+        path: /etc/systemd/system/ceph-crash@.service
+        state: absent
+
+    - name: update the placement of ceph-crash hosts
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply crash --placement='label:ceph'"
+      run_once: true
+      changed_when: false
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+
+- name: redeploy alertmanager/grafana/prometheus daemons
+  hosts: "{{ monitoring_group_name|default('monitoring') }}"
+  serial: 1
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: check whether a ceph config file is present
+      stat:
+        path: "/etc/ceph/{{ cluster }}.conf"
+      register: ceph_config
+
+    - name: write a ceph.conf with minimal config
+      copy:
+        dest: "/etc/ceph/{{ cluster }}.conf"
+        content: "{{ minimal_config.stdout }}"
+        owner: "{{ ceph_uid | int if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid | int if containerized_deployment | bool else 'ceph' }}"
+        mode: "{{ ceph_keyring_permissions }}"
+      when: not ceph_config.stat.exists | bool
+
+    - name: with dashboard enabled
+      when: dashboard_enabled | bool
+      block:
+        - name: ensure alertmanager/prometheus data directories are present
+          file:
+            path: "{{ item }}"
+            state: directory
+            owner: "{{ prometheus_user_id }}"
+            group: "{{ prometheus_user_id }}"
+          with_items:
+           - "{{ alertmanager_data_dir }}"
+           - "{{ prometheus_data_dir }}"
+
+        # (workaround) cephadm adopt alertmanager only stops prometheus-alertmanager systemd service
+        - name: stop and disable alertmanager systemd unit
+          service:
+            name: alertmanager
+            state: stopped
+            enabled: false
+          failed_when: false
+
+        # (workaround) cephadm adopt alertmanager only uses /etc/prometheus/alertmanager.yml
+        - name: create alertmanager config symlink
+          file:
+            path: /etc/prometheus/alertmanager.yml
+            src: '{{ alertmanager_conf_dir }}/alertmanager.yml'
+            state: link
+
+        # (workaround) cephadm adopt alertmanager only uses /var/lib/prometheus/alertmanager/
+        - name: create alertmanager data symlink
+          file:
+            path: '{{ prometheus_data_dir }}/alertmanager'
+            src: '{{ alertmanager_data_dir }}'
+            state: link
+
+        - name: adopt alertmanager daemon
+          cephadm_adopt:
+            name: "alertmanager.{{ ansible_facts['hostname'] }}"
+            cluster: "{{ cluster }}"
+            image: "{{ alertmanager_container_image }}"
+            docker: "{{ true if container_binary == 'docker' else false }}"
+            pull: false
+            firewalld: "{{ true if configure_firewall | bool else false }}"
+
+        - name: remove alertmanager systemd unit file
+          file:
+            path: /etc/systemd/system/alertmanager.service
+            state: absent
+
+        - name: remove the legacy alertmanager data
+          file:
+            path: '{{ alertmanager_data_dir }}'
+            state: absent
+
+        - name: stop and disable prometheus systemd unit
+          service:
+            name: prometheus
+            state: stopped
+            enabled: false
+          failed_when: false
+
+        - name: remove alertmanager data symlink
+          file:
+            path: '{{ prometheus_data_dir }}/alertmanager'
+            state: absent
+
+        # (workaround) cephadm adopt prometheus only uses /var/lib/prometheus/metrics/
+        - name: tmp copy the prometheus data
+          copy:
+            src: '{{ prometheus_data_dir }}/'
+            dest: /var/lib/prom_metrics
+            owner: 65534
+            group: 65534
+            remote_src: true
+
+        # (workaround) cephadm adopt prometheus only uses /var/lib/prometheus/metrics/
+        - name: restore the prometheus data
+          copy:
+            src: /var/lib/prom_metrics/
+            dest: /var/lib/prometheus/metrics
+            owner: 65534
+            group: 65534
+            remote_src: true
+
+        - name: remove the tmp prometheus data copy
+          file:
+            path: /var/lib/prom_metrics
+            state: absent
+
+        - name: adopt prometheus daemon
+          cephadm_adopt:
+            name: "prometheus.{{ ansible_facts['hostname'] }}"
+            cluster: "{{ cluster }}"
+            image: "{{ prometheus_container_image }}"
+            docker: "{{ true if container_binary == 'docker' else false }}"
+            pull: false
+            firewalld: "{{ true if configure_firewall | bool else false }}"
+
+        - name: remove prometheus systemd unit file
+          file:
+            path: /etc/systemd/system/prometheus.service
+            state: absent
+
+        - name: remove the legacy prometheus data
+          file:
+            path: '{{ prometheus_data_dir }}'
+            state: absent
+
+        # (workaround) cephadm adopt grafana only stops grafana systemd service
+        - name: stop and disable grafana systemd unit
+          service:
+            name: grafana-server
+            state: stopped
+            enabled: false
+          failed_when: false
+
+        - name: adopt grafana daemon
+          cephadm_adopt:
+            name: "grafana.{{ ansible_facts['hostname'] }}"
+            cluster: "{{ cluster }}"
+            image: "{{ grafana_container_image }}"
+            docker: "{{ true if container_binary == 'docker' else false }}"
+            pull: false
+            firewalld: "{{ true if configure_firewall | bool else false }}"
+
+        - name: remove grafana systemd unit file
+          file:
+            path: /etc/systemd/system/grafana-server.service
+            state: absent
+
+        - name: remove the legacy grafana data
+          file:
+            path: /var/lib/grafana
+            state: absent
+
+- name: redeploy node-exporter daemons
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
+    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+    - "{{ monitoring_group_name|default('monitoring') }}"
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: with dashboard enabled
+      when: dashboard_enabled | bool
+      block:
+        - name: stop and disable node-exporter systemd service
+          service:
+            name: node_exporter
+            state: stopped
+            enabled: false
+          failed_when: false
+
+        - name: remove node_exporter systemd unit file
+          file:
+            path: /etc/systemd/system/node_exporter.service
+            state: absent
+
+        - name: update the placement of node-exporter hosts
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply node-exporter --placement='*'"
+          run_once: true
+          changed_when: false
+          delegate_to: '{{ groups[mon_group_name][0] }}'
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+
+- name: adjust placement daemons
+  hosts: "{{ mon_group_name|default('mons') }}[0]"
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: update the placement of monitor hosts
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply mon --placement='{{ groups.get(mon_group_name, []) | length }} label:{{ mon_group_name }}'"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: set_fact mgr_placement
+      set_fact:
+        mgr_placement_count: "{{ groups.get(mgr_group_name, []) | length if groups.get(mgr_group_name, []) | length > 0 else groups.get(mon_group_name, []) | length }}"
+
+    - name: set_fact mgr_placement_label
+      set_fact:
+        mgr_placement_label: "{{ mgr_group_name if groups.get(mgr_group_name, []) | length > 0 else mon_group_name }}"
+
+    - name: update the placement of manager hosts
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply mgr --placement='{{ mgr_placement_count }} label:{{ mgr_placement_label }}'"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: with dashboard enabled
+      when: dashboard_enabled | bool
+      block:
+        - name: update the placement of alertmanager hosts
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply alertmanager --placement='{{ groups.get(monitoring_group_name, []) | length }} label:{{ monitoring_group_name }}'"
+          changed_when: false
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+        - name: update the placement of grafana hosts
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply grafana --placement='{{ groups.get(monitoring_group_name, []) | length }} label:{{ monitoring_group_name }}'"
+          changed_when: false
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+        - name: update the placement of prometheus hosts
+          command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply prometheus --placement='{{ groups.get(monitoring_group_name, []) | length }} label:{{ monitoring_group_name }}'"
+          changed_when: false
+          environment:
+            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+- name: show ceph orchestrator status
+  hosts: "{{ mon_group_name|default('mons') }}[0]"
+  become: true
+  gather_facts: false
+  any_errors_fatal: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: show ceph orchestrator services
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch ls --refresh"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: show ceph orchestrator daemons
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch ps --refresh"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+    - name: inform users about cephadm
+      debug:
+        msg: |
+          This Ceph cluster is now managed by cephadm. Any new changes to the
+          cluster need to be achieved by using the cephadm CLI and you don't
+          need to use ceph-ansible playbooks anymore.
