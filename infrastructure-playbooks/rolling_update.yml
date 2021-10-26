@@ -12,24 +12,6 @@
 # If you run Red Hat Ceph Storage and are doing a **major** update (e.g: from 2 to 3), you have to change the ceph_rhcs_version to a newer one
 #
 
-- name: block upgrade if nfs+rgw deployed
-  hosts: "{{ nfs_group_name | default('nfss') }}"
-  serial: 1
-  become: True
-  tasks:
-    - name: import_role ceph-defaults
-      import_role:
-        name: ceph-defaults
-
-    - name: block upgrade if nfs+rgw deployed
-      fail:
-        msg: >
-          Upgrading to Ceph Pacific isn't supported with nfs+rgw.
-          This will be supported soon in a new release of Ceph Pacific.
-      when:
-        - groups.get(nfs_group_name, []) | length > 0
-        - nfs_obj_gw | bool
-
 - name: confirm whether user really meant to upgrade the cluster
   hosts: localhost
   tags: always
