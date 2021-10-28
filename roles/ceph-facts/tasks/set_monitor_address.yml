@@ -54,4 +54,6 @@
   set_fact:
     _current_monitor_address: "{{ item.addr }}"
   with_items: "{{ _monitor_addresses }}"
-  when: inventory_hostname == item.name
+  when:
+    - (inventory_hostname == item.name and not rolling_update | default(False) | bool)
+      or (rolling_update | default(False) | bool and item.name == groups.get(mon_group_name, [])[0])
