@@ -273,6 +273,13 @@
           when: inventory_hostname in groups[mgr_group_name] | default([])
                 or groups[mgr_group_name] | default([]) | length == 0
 
+        - name: import_role ceph-facts
+          import_role:
+            name: ceph-facts
+            tasks_from: set_monitor_address.yml
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          delegate_facts: true
+
         - name: non container | waiting for the monitor to join the quorum...
           command: ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" quorum_status --format json
           register: ceph_health_raw
