@@ -369,6 +369,18 @@
       delegate_to: '{{ groups[mon_group_name][0] }}'
       when: ceph_docker_registry_auth | bool
 
+    - name: remove logrotate configuration
+      file:
+        path: /etc/logrotate.d/ceph
+        state: absent
+      when: inventory_hostname in groups.get(mon_group_name, []) or
+            inventory_hostname in groups.get(osd_group_name, []) or
+            inventory_hostname in groups.get(mds_group_name, []) or
+            inventory_hostname in groups.get(rgw_group_name, []) or
+            inventory_hostname in groups.get(mgr_group_name, []) or
+            inventory_hostname in groups.get(rbdmirror_group_name, []) or
+            inventory_hostname in groups.get(iscsi_gw_group_name, [])
+
 
 - name: store existing rbd mirror peers in monitor config store
   hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
