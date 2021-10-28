@@ -220,10 +220,6 @@
     - import_role:
         name: ceph-defaults
 
-    - import_role:
-        name: ceph-facts
-        tasks_from: set_monitor_address.yml
-
     - name: get the cephadm ssh pub key
       command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} cephadm get-pub-key"
       changed_when: false
@@ -245,7 +241,7 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: manage nodes with cephadm
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ _current_monitor_address }} {{ group_names | join(' ') }} {{ '_admin' if mon_group_name | default('mons') in group_names else '' }}"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['default_ipv4']['address'] }} {{ group_names | join(' ') }} {{ '_admin' if mon_group_name | default('mons') in group_names else '' }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       environment:
