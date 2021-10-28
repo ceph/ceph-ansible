@@ -295,10 +295,17 @@
       delegate_to: '{{ groups[mon_group_name][0] }}'
       when: is_hci | bool
 
-    - name: manage nodes with cephadm
-      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) }} {{ group_names | join(' ') }}"
+    - name: manage nodes with cephadm - ipv4
+      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }} {{ group_names | join(' ') }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
+      when: ip_version == 'ipv4'
+
+    - name: manage nodes with cephadm - ipv6
+      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap }} {{ group_names | join(' ') }}"
+      changed_when: false
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      when: ip_version == 'ipv6'
 
     - name: add ceph label for core component
       command: "{{ ceph_cmd }} orch host label add {{ ansible_facts['nodename'] }} ceph"
