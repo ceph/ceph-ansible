@@ -980,6 +980,8 @@
         name: ceph-defaults
     - import_role:
         name: ceph-facts
+        tasks_from: container_binary.yml
+      when: containerized_deployment | bool
     - import_role:
         name: ceph-handler
     - import_role:
@@ -990,10 +992,7 @@
       when:
         - (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
         - containerized_deployment | bool
-    - import_role:
-        name: ceph-config
-    - import_role:
-        name: ceph-client
+
 
 - name: upgrade ceph-crash daemons
   hosts:
