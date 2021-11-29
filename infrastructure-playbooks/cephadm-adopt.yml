@@ -147,10 +147,17 @@
 
     - name: configure repository for installing cephadm
       when: containerized_deployment | bool
-      vars:
-        ceph_origin: repository
-        ceph_repository: community
       block:
+        - name: set_fact ceph_origin
+          set_fact:
+            ceph_origin: repository
+          when: ceph_origin == 'dummy'
+
+        - name: set_fact ceph_repository
+          set_fact:
+            ceph_repository: community
+          when: ceph_repository == 'dummy'
+
         - name: validate repository variables
           import_role:
             name: ceph-validate
