@@ -186,7 +186,6 @@ EXAMPLES = '''
 '''
 
 
-<<<<<<< HEAD
 def fatal(message, module):
     '''
     Report a fatal error and exit
@@ -198,10 +197,7 @@ def fatal(message, module):
         raise(Exception(message))
 
 
-def container_exec(binary, container_image):
-=======
 def container_exec(binary, container_image, mounts=None):
->>>>>>> b02d71c30 (ceph_volume: support overriding bind-mounts)
     '''
     Build the docker CLI to run a command inside a container
     '''
