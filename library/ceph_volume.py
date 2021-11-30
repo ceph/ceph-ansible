@@ -195,24 +195,40 @@ EXAMPLES = '''
 '''
 
 
-def container_exec(binary, container_image):
+def container_exec(binary, container_image, mounts=None):
     '''
     Build the docker CLI to run a command inside a container
     '''
+    _mounts = {}
+    _mounts['/run/lock/lvm'] = '/run/lock/lvm:z'
+    _mounts['/var/run/udev'] = '/var/run/udev:z'
+    _mounts['/dev'] = '/dev'
+    _mounts['/etc/ceph'] = '/etc/ceph:z'
+    _mounts['/run/lvm'] = '/run/lvm'
+    _mounts['/var/lib/ceph'] = '/var/lib/ceph:z'
+    _mounts['/var/log/ceph'] = '/var/log/ceph:z'
+    if mounts is None:
+        mounts = _mounts
+    else:
+        _mounts.update(mounts)
+
+    volumes = sum(
+        [['-v', '{}:{}'.format(src_dir, dst_dir)]
+            for src_dir, dst_dir in _mounts.items()], [])
+
     container_binary = os.getenv('CEPH_CONTAINER_BINARY')
     command_exec = [container_binary, 'run',
-                    '--rm', '--privileged', '--net=host', '--ipc=host',
-                    '-v', '/run/lock/lvm:/run/lock/lvm:z',
-                    '-v', '/var/run/udev/:/var/run/udev/:z',
-                    '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',
-                    '-v', '/run/lvm/:/run/lvm/',
-                    '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                    '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                    '--entrypoint=' + binary, container_image]
+                    '--rm',
+                    '--privileged',
+                    '--net=host',
+                    '--ipc=host'] + volumes + \
+        ['--entrypoint=' + binary, container_image]
     return command_exec
 
 
-def build_cmd(action, container_image, cluster='ceph', binary='ceph-volume'):
+def build_cmd(action, container_image,
+              cluster='ceph',
+              binary='ceph-volume', mounts=None):
     '''
     Build the ceph-volume command
     '''
@@ -221,7 +237,7 @@ def build_cmd(action, container_image, cluster='ceph', binary='ceph-volume'):
 
     if container_image:
         cmd = container_exec(
-            binary, container_image)
+            binary, container_image, mounts=mounts)
     else:
         binary = [binary]
         cmd = binary
@@ -410,7 +426,10 @@ def list_osd(module, container_image):
 
     # Build the CLI
     action = ['lvm', 'list']
-    cmd = build_cmd(action, container_image, cluster)
+    cmd = build_cmd(action,
+                    container_image,
+                    cluster,
+                    mounts={'/var/lib/ceph': '/var/lib/ceph:ro'})
     if data:
         cmd.append(data)
     cmd.append('--format=json')
