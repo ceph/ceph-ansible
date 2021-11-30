@@ -18,15 +18,26 @@ except ImportError:
         print('You need the mock library installed on python2.x to run tests')
 
 
-container_cmd = ['docker', 'run', '--rm', '--privileged',
-                 '--net=host', '--ipc=host',
-                 '-v', '/run/lock/lvm:/run/lock/lvm:z',
-                 '-v', '/var/run/udev/:/var/run/udev/:z',
-                 '-v', '/dev:/dev', '-v', '/etc/ceph:/etc/ceph:z',
-                 '-v', '/run/lvm/:/run/lvm/',
-                 '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                 '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                 '--entrypoint=ceph-volume']
+def get_mounts(mounts=None):
+    volumes = {}
+    volumes['/run/lock/lvm'] = '/run/lock/lvm:z'
+    volumes['/var/run/udev'] = '/var/run/udev:z'
+    volumes['/dev'] = '/dev'
+    volumes['/etc/ceph'] = '/etc/ceph:z'
+    volumes['/run/lvm'] = '/run/lvm'
+    volumes['/var/lib/ceph'] = '/var/lib/ceph:z'
+    volumes['/var/log/ceph'] = '/var/log/ceph:z'
+    if mounts is not None:
+        volumes.update(mounts)
+
+    return sum([['-v', '{}:{}'.format(src_dir, dst_dir)] for src_dir, dst_dir in volumes.items()], [])
+
+
+def get_container_cmd(mounts=None):
+
+    return ['docker', 'run', '--rm', '--privileged',
+            '--net=host', '--ipc=host'] + \
+            get_mounts(mounts) + ['--entrypoint=ceph-volume']
 
 
 @mock.patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'docker'})
@@ -67,7 +78,7 @@ class TestCephVolumeModule(object):
     def test_container_exec(self):
         fake_binary = "ceph-volume"
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest"
-        expected_command_list = container_cmd + [fake_container_image]
+        expected_command_list = get_container_cmd() + [fake_container_image]
         result = ceph_volume.container_exec(fake_binary, fake_container_image)
         assert result == expected_command_list
 
@@ -75,13 +86,14 @@ class TestCephVolumeModule(object):
         fake_module = MagicMock()
         fake_module.params = {'data': '/dev/sda'}
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest"
-        expected_command_list = container_cmd + [fake_container_image,
-                                                 '--cluster',
-                                                 'ceph',
-                                                 'lvm',
-                                                 'zap',
-                                                 '--destroy',
-                                                 '/dev/sda']
+        expected_command_list = get_container_cmd() + \
+            [fake_container_image,
+                '--cluster',
+                'ceph',
+                'lvm',
+                'zap',
+                '--destroy',
+                '/dev/sda']
         result = ceph_volume.zap_devices(fake_module, fake_container_image)
         assert result == expected_command_list
 
@@ -157,13 +169,17 @@ class TestCephVolumeModule(object):
         fake_module = MagicMock()
         fake_module.params = {'cluster': 'ceph', 'data': '/dev/sda'}
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest"
-        expected_command_list = container_cmd + [fake_container_image,
-                                                 '--cluster',
-                                                 'ceph',
-                                                 'lvm',
-                                                 'list',
-                                                 '/dev/sda',
-                                                 '--format=json']
+        expected_command_list = get_container_cmd(
+                                {
+                                    '/var/lib/ceph': '/var/lib/ceph:ro'
+                                }) + \
+            [fake_container_image,
+                '--cluster',
+                'ceph',
+                'lvm',
+                'list',
+                '/dev/sda',
+                '--format=json']
         result = ceph_volume.list_osd(fake_module, fake_container_image)
         assert result == expected_command_list
 
@@ -182,11 +198,12 @@ class TestCephVolumeModule(object):
     def test_list_storage_inventory_container(self):
         fake_module = MagicMock()
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest"
-        expected_command_list = container_cmd + [fake_container_image,
-                                                 '--cluster',
-                                                 'ceph',
-                                                 'inventory',
-                                                 '--format=json']
+        expected_command_list = get_container_cmd() + \
+            [fake_container_image,
+                '--cluster',
+                'ceph',
+                'inventory',
+                '--format=json']
         result = ceph_volume.list_storage_inventory(fake_module, fake_container_image)
         assert result == expected_command_list
 
@@ -199,14 +216,15 @@ class TestCephVolumeModule(object):
 
         fake_action = "create"
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest"
-        expected_command_list = container_cmd + [fake_container_image,
-                                                 '--cluster',
-                                                 'ceph',
-                                                 'lvm',
-                                                 'create',
-                                                 '--%s' % objectstore,
-                                                 '--data',
-                                                 '/dev/sda']
+        expected_command_list = get_container_cmd() + \
+            [fake_container_image,
+                '--cluster',
+                'ceph',
+                'lvm',
+                'create',
+                '--%s' % objectstore,
+                '--data',
+                '/dev/sda']
         result = ceph_volume.prepare_or_create_osd(
             fake_module, fake_action, fake_container_image)
         assert result == expected_command_list
@@ -241,14 +259,15 @@ class TestCephVolumeModule(object):
 
         fake_action = "prepare"
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest"
-        expected_command_list = container_cmd + [fake_container_image,
-                                                 '--cluster',
-                                                 'ceph',
-                                                 'lvm',
-                                                 'prepare',
-                                                 '--%s' % objectstore,
-                                                 '--data',
-                                                 '/dev/sda']
+        expected_command_list = get_container_cmd() + \
+            [fake_container_image,
+                '--cluster',
+                'ceph',
+                'lvm',
+                'prepare',
+                '--%s' % objectstore,
+                '--data',
+                '/dev/sda']
         result = ceph_volume.prepare_or_create_osd(
             fake_module, fake_action, fake_container_image)
         assert result == expected_command_list
@@ -285,18 +304,19 @@ class TestCephVolumeModule(object):
                               'batch_devices': ["/dev/sda", "/dev/sdb"]}
 
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest"
-        expected_command_list = container_cmd + [fake_container_image,
-                                                 '--cluster',
-                                                 'ceph',
-                                                 'lvm',
-                                                 'batch',
-                                                 '--%s' % objectstore,
-                                                 '--yes',
-                                                 '--prepare',
-                                                 '--journal-size' if objectstore == 'filestore' else '--block-db-size',  # noqa E501
-                                                 '4096',
-                                                 '/dev/sda',
-                                                 '/dev/sdb']
+        expected_command_list = get_container_cmd() + \
+            [fake_container_image,
+                '--cluster',
+                'ceph',
+                'lvm',
+                'batch',
+                '--%s' % objectstore,
+                '--yes',
+                '--prepare',
+                '--journal-size' if objectstore == 'filestore' else '--block-db-size',  # noqa E501
+                '4096',
+                '/dev/sda',
+                '/dev/sdb']
         result = ceph_volume.batch(
             fake_module, fake_container_image)
         assert result == expected_command_list
