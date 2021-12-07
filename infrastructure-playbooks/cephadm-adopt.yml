@@ -1219,6 +1219,14 @@
         path: "/etc/ceph/{{ cluster }}.conf"
       register: ceph_config
 
+    - name: ensure /etc/ceph is present
+      file:
+        path: /etc/ceph
+        state: directory
+        owner: "{{ ceph_uid | int if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid | int if containerized_deployment | bool else 'ceph' }}"
+        mode: "{{ ceph_directories_mode }}"
+
     - name: write a ceph.conf with minimal config
       copy:
         dest: "/etc/ceph/{{ cluster }}.conf"
