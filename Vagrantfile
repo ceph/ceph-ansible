@@ -70,10 +70,12 @@ ansible_provision = proc do |ansible|
   }
 
   ansible.extra_vars = {
-      cluster_network: "#{CLUSTER_SUBNET}.0/24",
       journal_size: 100,
       public_network: "#{PUBLIC_SUBNET}.0/24",
   }
+  if CLUSTER_SUBNET then
+    ansible.extra_vars['cluster_network'] = "#{CLUSTER_SUBNET}.0/24"
+  end
 
   # In a production deployment, these should be secret
   if DOCKER then
@@ -508,8 +510,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       if ASSIGN_STATIC_IP
         osd.vm.network :private_network,
           ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
-        osd.vm.network :private_network,
-          ip: "#{CLUSTER_SUBNET}.#{$last_ip_cluster_digit+=1}"
+        if CLUSTER_SUBNET
+          osd.vm.network :private_network,
+            ip: "#{CLUSTER_SUBNET}.#{$last_ip_cluster_digit+=1}"
+        end
       end
       # Virtualbox
       osd.vm.provider :virtualbox do |vb|
