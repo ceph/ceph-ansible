@@ -23,11 +23,13 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --name=node-exporter \
 {% endif %}
   --pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
   --privileged \
-  -v /proc:/host/proc:ro -v /sys:/host/sys:ro \
+  --security-opt label=disable \
+  -v /:/rootfs:ro \
   --net=host \
   {{ node_exporter_container_image }} \
-  --path.procfs=/host/proc \
-  --path.sysfs=/host/sys \
+  --path.procfs=/rootfs/proc \
+  --path.sysfs=/rootfs/sys \
+  --path.rootfs=/rootfs \
   --no-collector.timex \
   --web.listen-address=:{{ node_exporter_port }}
 {% if container_binary == 'podman' %}
