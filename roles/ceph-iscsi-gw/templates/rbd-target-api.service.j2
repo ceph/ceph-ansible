@@ -1,11 +1,12 @@
 [Unit]
 Description=RBD Target API Service
 {% if container_binary == 'docker' %}
-After=docker.service
+After=docker.service network-online.target local-fs.target time-sync.target
 Requires=docker.service
 {% else %}
-After=network.target
+After=network-online.target local-fs.target time-sync.target
 {% endif %}
+Wants=network-online.target local-fs.target time-sync.target
 
 [Service]
 EnvironmentFile=-/etc/environment
