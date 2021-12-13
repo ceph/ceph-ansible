@@ -31,8 +31,8 @@
 # NOTE(leseb): we should actually fail if multiple rules are set as default
 - name: set_fact info_ceph_default_crush_rule_yaml, ceph_osd_pool_default_crush_rule_name
   set_fact:
-    info_ceph_default_crush_rule_yaml: "{{ item.stdout | from_json() }}"
-    ceph_osd_pool_default_crush_rule_name: "{{ (item.stdout | from_json).rule_name }}"
+    info_ceph_default_crush_rule_yaml: "{{ item.stdout | default('{}', True) | from_json() }}"
+    ceph_osd_pool_default_crush_rule_name: "{{ (item.stdout | default('{}', True) | from_json).get('rule_name') }}"
   with_items: "{{ info_ceph_default_crush_rule.results }}"
   run_once: true
   when: not item.get('skipped', false)
