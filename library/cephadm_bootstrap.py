@@ -77,13 +77,38 @@ options:
             - Manage firewall rules with firewalld.
         required: false
         default: true
+<<<<<<< HEAD
+=======
+    allow_overwrite:
+        description:
+            - allow overwrite of existing –output-* config/keyring/ssh files.
+        required: false
+        default: false
+    registry_url:
+        description:
+            - URL for custom registry.
+        required: false
+    registry_username:
+        description:
+            - Username for custom registry.
+        required: false
+    registry_password:
+        description:
+            - Password for custom registry.
+        required: false
+    registry_json:
+        description:
+            - JSON file with custom registry login info (URL,
+              username, password).
+        required: false
+>>>>>>> 2a2875847 (cephadm: set allow_overwrite at bootstrap step)
     ssh_user:
         description:
-            - SSH user used for cephadm ssh to the hosts
+            - SSH user used for cephadm ssh to the hosts.
         required: false
     ssh_config:
         description:
-            - SSH config file path for cephadm ssh client
+            - SSH config file path for cephadm ssh client.
         required: false
 author:
     - Dimitri Savineau <dsavinea@redhat.com>
@@ -143,6 +168,14 @@ def main():
             dashboard_password=dict(type='str', required=False, no_log=True),
             monitoring=dict(type='bool', required=False, default=True),
             firewalld=dict(type='bool', required=False, default=True),
+<<<<<<< HEAD
+=======
+            allow_overwrite=dict(type='bool', required=False, default=False),
+            registry_url=dict(type='str', require=False),
+            registry_username=dict(type='str', require=False),
+            registry_password=dict(type='str', require=False, no_log=True),
+            registry_json=dict(type='path', require=False),
+>>>>>>> 2a2875847 (cephadm: set allow_overwrite at bootstrap step)
             ssh_user=dict(type='str', required=False),
             ssh_config=dict(type='str', required=False),
         ),
@@ -159,6 +192,14 @@ def main():
     dashboard_password = module.params.get('dashboard_password')
     monitoring = module.params.get('monitoring')
     firewalld = module.params.get('firewalld')
+<<<<<<< HEAD
+=======
+    allow_overwrite = module.params.get('allow_overwrite')
+    registry_url = module.params.get('registry_url')
+    registry_username = module.params.get('registry_username')
+    registry_password = module.params.get('registry_password')
+    registry_json = module.params.get('registry_json')
+>>>>>>> 2a2875847 (cephadm: set allow_overwrite at bootstrap step)
     ssh_user = module.params.get('ssh_user')
     ssh_config = module.params.get('ssh_config')
 
@@ -194,6 +235,20 @@ def main():
     if not firewalld:
         cmd.append('--skip-firewalld')
 
+<<<<<<< HEAD
+=======
+    if allow_overwrite:
+        cmd.append('--allow-overwrite')
+
+    if registry_url and registry_username and registry_password:
+        cmd.extend(['--registry-url', registry_url,
+                    '--registry-username', registry_username,
+                    '--registry-password', registry_password])
+
+    if registry_json:
+        cmd.extend(['--registry-json', registry_json])
+
+>>>>>>> 2a2875847 (cephadm: set allow_overwrite at bootstrap step)
     if ssh_user:
         cmd.extend(['--ssh-user', ssh_user])
 
