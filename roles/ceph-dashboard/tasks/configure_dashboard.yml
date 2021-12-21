@@ -329,6 +329,13 @@
       failed_when: false
       changed_when: false
 
+    - name: set_fact _rgw_zonemaster
+      set_fact:
+        _rgw_zonemaster: "{{ _rgw_zonemaster | default([]) | union(hostvars[item]['rgw_instances'] | selectattr('rgw_zonemaster', 'defined') | map(attribute='rgw_zonemaster') | list) }}"
+      loop: "{{ groups.get(rgw_group_name, []) }}"
+      run_once: true
+      when: hostvars[item]['rgw_instances'] is defined
+
     - name: create radosgw system user
       command: "timeout --foreground -s KILL 20 {{ container_exec_cmd }} radosgw-admin --cluster {{ cluster }} user create --uid={{ dashboard_rgw_api_user_id }} --display-name='Ceph dashboard' --system"
       register: create_rgw_user
@@ -337,7 +344,7 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       when:
-        - not rgw_multisite | bool or (true in (rgw_instances | selectattr('rgw_zonemaster', 'defined') | map(attribute='rgw_zonemaster') | list) if rgw_instances is defined else rgw_zonemaster | default(false))
+        - not rgw_multisite | bool or (true in _rgw_zonemaster if _rgw_zonemaster is defined) or (rgw_zonemaster | default(false) | bool)
         - get_rgw_user.rc == 22
 
     - name: get the rgw access and secret keys
