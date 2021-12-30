@@ -37,6 +37,7 @@
         owner: root
         group: root
         mode: 0750
+      when: tmpdirpath.path is defined
 
     - name: get pool list
       command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool ls detail -f json"
@@ -88,6 +89,7 @@
         - hostvars[item]['handler_osd_status'] | default(False) | bool
         - handler_health_osd_check | bool
         - hostvars[item]['_osd_handler_called'] | default(False) | bool
+        - hostvars[item].tmpdirpath.path is defined
       with_items: "{{ groups[osd_group_name] | intersect(ansible_play_batch) }}"
       delegate_to: "{{ item }}"
       run_once: True
