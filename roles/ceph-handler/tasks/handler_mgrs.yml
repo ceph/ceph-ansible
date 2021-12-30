@@ -10,12 +10,14 @@
     owner: root
     group: root
     mode: 0750
+  when: tmpdirpath.path is defined
 
 - name: restart ceph mgr daemon(s)
   command: /usr/bin/env bash {{ hostvars[item]['tmpdirpath']['path'] }}/restart_mgr_daemon.sh
   when:
     - hostvars[item]['handler_mgr_status'] | default(False) | bool
     - hostvars[item]['_mgr_handler_called'] | default(False) | bool
+    - hostvars[item].tmpdirpath.path is defined
   with_items: "{{ groups[mgr_group_name] }}"
   delegate_to: "{{ item }}"
   run_once: True
