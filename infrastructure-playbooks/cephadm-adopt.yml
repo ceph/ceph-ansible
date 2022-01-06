@@ -1075,6 +1075,7 @@
           }
       when: nfs_obj_gw | bool
 
+<<<<<<< HEAD
     - name: set_fact new_export
       set_fact:
         new_export: |
@@ -1103,6 +1104,10 @@
     - name: update the placement of nfs hosts
       command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply nfs {{ nfs_group_name | default('nfss') }} {{ nfs_ganesha_export_pool_name | default('nfs-ganesha') }} {{ nfs_ganesha_export_namespace | default('nfs-ganesha') }} --placement='{{ groups.get(nfs_group_name, []) | length }} label:{{ nfs_group_name }}'"
       run_once: true
+=======
+    - name: create rgw export
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} nfs export create rgw --cluster-id {{ ansible_facts['hostname'] }} --bucket {{ item.split('/')[-1] }} --pseudo-path {{ ceph_nfs_rgw_pseudo_path }} --squash {{ ceph_nfs_rgw_squash }}"
+>>>>>>> aee1f0649 (cephadm-adopt: use named args in rgw export creation)
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       environment:
