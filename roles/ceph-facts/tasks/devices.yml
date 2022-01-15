@@ -75,8 +75,10 @@
     - not osd_auto_discovery | default(False) | bool
 
 - name: set_fact devices generate device list when osd_auto_discovery
+  vars:
+    device: "{{ item.key | regex_replace('^', '/dev/') }}"
   set_fact:
-    devices: "{{ (devices | default([]) + [ item.key | regex_replace('^', '/dev/') ]) | unique }}"
+    devices: "{{ devices | default([]) | union([device]) }}"
   with_dict: "{{ ansible_facts['devices'] }}"
   when:
     - osd_auto_discovery | default(False) | bool
@@ -85,4 +87,5 @@
     - item.value.sectors != "0"
     - item.value.partitions|count == 0
     - item.value.holders|count == 0
+    - ansible_facts['mounts'] | selectattr('device', 'equalto', device) | length == 0
     - item.key is not match osd_auto_discovery_exclude
