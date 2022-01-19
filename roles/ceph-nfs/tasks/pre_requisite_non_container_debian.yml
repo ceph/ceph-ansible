@@ -14,6 +14,22 @@
             update_cache: no
           register: add_ganesha_apt_repo
 
+        - name: add libntirpc stable repository
+          apt_repository:
+            repo: "deb {{ libntirpc_stable_deb_repo }} {{ ceph_stable_distro_source | default(ansible_facts['distribution_release']) }} main"
+            state: present
+            update_cache: no
+          register: add_libntirpc_apt_repo
+          when: libntirpc_stable_deb_repo is defined
+
+        - name: add nfs-ganesha ppa apt key
+          apt_key:
+            keyserver: "{{ nfs_ganesha_apt_keyserver }}"
+            id: "{{ nfs_ganesha_apt_key_id }}"
+          when:
+            - nfs_ganesha_apt_key_id is defined
+            - nfs_ganesha_apt_keyserver is defined
+
         - name: update apt cache
           apt:
             update_cache: yes
@@ -21,7 +37,7 @@
           retries: 5
           delay: 2
           until: update_ganesha_apt_cache is success
-          when: add_ganesha_apt_repo is changed
+          when: add_ganesha_apt_repo is changed or add_libntirpc_apt_repo is changed
 
     - name: debian based systems - dev repos specific tasks
       when:
