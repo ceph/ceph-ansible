@@ -1,4 +1,22 @@
 ---
+- name: Install selinux modules
+  when:
+    - ansible_facts['distribution'] == 'RedHat'
+    - inventory_hostname in groups.get(mon_group_name, [])
+      or inventory_hostname in groups.get(rgw_group_name, [])
+  block:
+    - import_role:
+        name: ceph-common
+        tasks_from: configure_repository.yml
+
+    - name: install ceph-selinux package
+      package:
+        name: ceph-selinux
+        state: present
+
+    - name: restore certificates selinux context
+      command: /usr/sbin/restorecon -RF /etc/pki/ca-trust/extracted 
+
 - name: lvmetad tasks related
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
