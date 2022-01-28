@@ -1083,33 +1083,13 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
       when: nfs_file_gw | bool
 
-    - name: get a list of existing buckets
-      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- radosgw-admin --cluster {{ cluster }} bucket list --format json"
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      register: bucket_list
-      environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-      when:
-        - nfs_obj_gw | bool
-        - bucket_list is undefined
-
-    - name: set_fact bucket_list
-      set_fact:
-        bucket_list: "{{ (bucket_list.stdout | from_json) }}"
-      when: bucket_list.skipped is undefined
-
     - name: create rgw export
-      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} nfs export create rgw --cluster-id {{ ansible_facts['hostname'] }} --bucket {{ item.split('/')[-1] }} --pseudo-path {{ ceph_nfs_rgw_pseudo_path }} --squash {{ ceph_nfs_rgw_squash }}"
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} nfs export create rgw --cluster-id {{ ansible_facts['hostname'] }} --pseudo-path {{ ceph_nfs_rgw_pseudo_path }} --user-id {{ ceph_nfs_rgw_user }} --squash {{ ceph_nfs_rgw_squash }}"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-      loop: "{{ bucket_list }}"
-      when:
-        - nfs_obj_gw | bool
-        - (bucket_list.skipped is undefined or bucket_list | length > 0)
-
+      when: nfs_obj_gw | bool
 
 - name: redeploy rbd-mirror daemons
   hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
