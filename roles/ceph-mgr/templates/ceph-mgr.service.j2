@@ -1,11 +1,13 @@
 [Unit]
 Description=Ceph Manager
+PartOf=ceph-mgr.target
 {% if container_binary == 'docker' %}
-After=docker.service
+After=docker.service network-online.target local-fs.target time-sync.target
 Requires=docker.service
 {% else %}
-After=network.target
+After=network-online.target local-fs.target time-sync.target
 {% endif %}
+Wants=network-online.target local-fs.target time-sync.target
 
 [Service]
 EnvironmentFile=-/etc/environment
@@ -21,6 +23,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
 {% if container_binary == 'podman' %}
   -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
 {% endif %}
+  --pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
   --memory={{ ceph_mgr_docker_memory_limit }} \
   --cpus={{ ceph_mgr_docker_cpu_limit }} \
   -v /var/lib/ceph:/var/lib/ceph:z,rshared \
@@ -31,6 +34,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   -e CLUSTER={{ cluster }} \
   -e CEPH_DAEMON=MGR \
   -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+  -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
   {{ ceph_mgr_docker_extra_env }} \
   --name=ceph-mgr-{{ ansible_facts['hostname'] }} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
@@ -50,4 +54,4 @@ PIDFile=/%t/%n-pid
 {% endif %}
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=ceph.target

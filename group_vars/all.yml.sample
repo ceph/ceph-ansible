@@ -110,8 +110,6 @@ dummy:
 ###########
 # INSTALL #
 ###########
-#ceph_repository_type: dummy
-
 # ORIGIN SOURCE
 #
 # Choose between:
@@ -142,13 +140,15 @@ dummy:
 #
 #ceph_mirror: https://download.ceph.com
 #ceph_stable_key: https://download.ceph.com/keys/release.asc
-#ceph_stable_release: dummy
+#ceph_stable_release: quincy
 #ceph_stable_repo: "{{ ceph_mirror }}/debian-{{ ceph_stable_release }}"
 
 #nfs_ganesha_stable: true # use stable repos for nfs-ganesha
 #nfs_ganesha_stable_branch: V3.5-stable
-#nfs_ganesha_stable_deb_repo: "{{ ceph_mirror }}/nfs-ganesha/deb-{{ nfs_ganesha_stable_branch }}/{{ ceph_stable_release }}"
-
+#nfs_ganesha_stable_deb_repo: http://ppa.launchpad.net/nfs-ganesha/nfs-ganesha-3.0/ubuntu
+#nfs_ganesha_apt_keyserver: keyserver.ubuntu.com
+#nfs_ganesha_apt_key_id: EA914D611053D07BD332E18010353E8834DC57CA
+#libntirpc_stable_deb_repo: http://ppa.launchpad.net/nfs-ganesha/libntirpc-3.0/ubuntu
 
 # Use the option below to specify your applicable package tree, eg. when using non-LTS Ubuntu versions
 # # for a list of available Debian distributions, visit http://download.ceph.com/debian-{{ ceph_stable_release }}/dists/
@@ -163,12 +163,6 @@ dummy:
 # This version is supported on RHEL 8
 #
 #ceph_rhcs_version: "{{ ceph_stable_rh_storage_version | default(5) }}"
-#valid_ceph_repository_type:
-#  - cdn
-#  - iso
-#ceph_rhcs_iso_path: "{{ ceph_stable_rh_storage_iso_path | default('') }}"
-#ceph_rhcs_mount_path: "{{ ceph_stable_rh_storage_mount_path | default('/tmp/rh-storage-mount') }}"
-#ceph_rhcs_repository_path: "{{ ceph_stable_rh_storage_repository_path | default('/tmp/rh-storage-repo') }}" # where to copy iso's content
 
 
 # REPOSITORY: UBUNTU CLOUD ARCHIVE
@@ -343,6 +337,7 @@ dummy:
 
 ## OSD options
 #
+#lvmetad_disabled: false
 #is_hci: false
 #hci_safety_factor: 0.2
 #non_hci_safety_factor: 0.7
@@ -374,18 +369,11 @@ dummy:
 #
 #radosgw_frontend_type: beast # For additional frontends see: https://docs.ceph.com/en/latest/radosgw/frontends/
 
-#radosgw_civetweb_port: 8080
-#radosgw_civetweb_num_threads: 512
-#radosgw_civetweb_options: "num_threads={{ radosgw_civetweb_num_threads }}"
-# For additional civetweb configuration options available such as logging,
-# keepalive, and timeout settings, please see the civetweb docs at
-# https://github.com/civetweb/civetweb/blob/master/docs/UserManual.md
-
-#radosgw_frontend_port: "{{ radosgw_civetweb_port if radosgw_frontend_type == 'civetweb' else '8080' }}"
+#radosgw_frontend_port: 8080
 # The server private key, public certificate and any other CA or intermediate certificates should be in one file, in PEM format.
 #radosgw_frontend_ssl_certificate: ""
 #radosgw_frontend_ssl_certificate_data: "" # certificate contents to be written to path defined by radosgw_frontend_ssl_certificate
-#radosgw_frontend_options: "{{ radosgw_civetweb_options if radosgw_frontend_type == 'civetweb' else '' }}"
+#radosgw_frontend_options: ""
 #radosgw_thread_pool_size: 512
 
 
@@ -549,7 +537,7 @@ dummy:
 # For Debian & Red Hat/CentOS installs set TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES
 # Set this to a byte value (e.g. 134217728)
 # A value of 0 will leave the package default.
-#ceph_tcmalloc_max_total_thread_cache: 0
+#ceph_tcmalloc_max_total_thread_cache: 134217728
 
 
 ##########
@@ -557,7 +545,7 @@ dummy:
 ##########
 #ceph_docker_image: "ceph/daemon"
 #ceph_docker_image_tag: latest-master
-#ceph_docker_registry: docker.io
+#ceph_docker_registry: quay.io
 #ceph_docker_registry_auth: false
 #ceph_docker_registry_username:
 #ceph_docker_registry_password:
@@ -652,6 +640,8 @@ dummy:
 # then we will autogenerate a cert and keyfile
 #dashboard_protocol: https
 #dashboard_port: 8443
+# set this variable to the network you want the dashboard to listen on. (Default to public_network)
+#dashboard_network: "{{ public_network }}"
 #dashboard_admin_user: admin
 #dashboard_admin_user_ro: false
 # This variable must be set with a strong custom password when dashboard_enabled is True
@@ -659,12 +649,14 @@ dummy:
 # We only need this for SSL (https) connections
 #dashboard_crt: ''
 #dashboard_key: ''
+#dashboard_certificate_cn: ceph-dashboard
 #dashboard_tls_external: false
 #dashboard_grafana_api_no_ssl_verify: "{{ true if dashboard_protocol == 'https' and not grafana_crt and not grafana_key else false }}"
 #dashboard_rgw_api_user_id: ceph-dashboard
 #dashboard_rgw_api_admin_resource: ''
 #dashboard_rgw_api_no_ssl_verify: False
 #dashboard_frontend_vip: ''
+#dashboard_disabled_features: []
 #prometheus_frontend_vip: ''
 #alertmanager_frontend_vip: ''
 #node_exporter_container_image: "docker.io/prom/node-exporter:v0.17.0"
@@ -697,12 +689,15 @@ dummy:
 #  - pool-overview.json
 #  - radosgw-detail.json
 #  - radosgw-overview.json
+#  - radosgw-sync-overview.json
+#  - rbd-details.json
 #  - rbd-overview.json
 #grafana_plugins:
 #  - vonage-status-panel
 #  - grafana-piechart-panel
 #grafana_allow_embedding: True
 #grafana_port: 3000
+#grafana_network: "{{ public_network }}"
 #grafana_conf_overrides: {}
 #prometheus_container_image: "docker.io/prom/prometheus:v2.7.2"
 #prometheus_container_cpu_period: 100000
@@ -727,6 +722,7 @@ dummy:
 #alertmanager_port: 9093
 #alertmanager_cluster_port: 9094
 #alertmanager_conf_overrides: {}
+#alertmanager_dashboard_api_no_ssl_verify: "{{ true if dashboard_protocol == 'https' and not dashboard_crt and not dashboard_key else false }}"
 # igw
 #
 # `igw_network` variable is intended for allowing dashboard deployment with iSCSI node not residing in the same subnet than what is defined in `public_network`.
@@ -797,7 +793,7 @@ dummy:
 
 #client_connections: {}
 
-
+#no_log_on_ceph_key_tasks: True
 
 ###############
 # DEPRECATION #

@@ -1,11 +1,13 @@
 [Unit]
 Description=Ceph RGW
+PartOf=ceph-radosgw.target
 {% if container_binary == 'docker' %}
-After=docker.service
+After=docker.service network-online.target local-fs.target time-sync.target
 Requires=docker.service
 {% else %}
-After=network.target
+After=network-online.target local-fs.target time-sync.target
 {% endif %}
+Wants=network-online.target local-fs.target time-sync.target
 {% set cpu_limit = ansible_facts['processor_vcpus']|int if ceph_rgw_docker_cpu_limit|int > ansible_facts['processor_vcpus']|int else ceph_rgw_docker_cpu_limit|int %}
 
 [Service]
@@ -22,6 +24,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
 {% if container_binary == 'podman' %}
   -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
 {% endif %}
+  --pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
   --memory={{ ceph_rgw_docker_memory_limit }} \
   --cpus={{ cpu_limit }} \
   {% if ceph_rgw_docker_cpuset_cpus is defined -%}
@@ -45,6 +48,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   -e CLUSTER={{ cluster }} \
   -e RGW_NAME={{ ansible_facts['hostname'] }}.${INST_NAME} \
   -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+  -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
   --name=ceph-rgw-{{ ansible_facts['hostname'] }}-${INST_NAME} \
   {{ ceph_rgw_docker_extra_env }} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
@@ -64,4 +68,4 @@ PIDFile=/%t/%n-pid
 {% endif %}
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=ceph.target

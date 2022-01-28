@@ -1,6 +1,5 @@
 ---
 - name: generate systemd unit file
-  become: true
   template:
     src: "{{ role_path }}/templates/ceph-radosgw.service.j2"
     dest: /etc/systemd/system/ceph-radosgw@.service
@@ -8,3 +7,16 @@
     group: "root"
     mode: "0644"
   notify: restart ceph rgws
+
+- name: generate systemd ceph-radosgw target file
+  copy:
+    src: ceph-radosgw.target
+    dest: /etc/systemd/system/ceph-radosgw.target
+  when: containerized_deployment | bool
+
+- name: enable ceph-radosgw.target
+  service:
+    name: ceph-radosgw.target
+    enabled: yes
+    daemon_reload: yes
+  when: containerized_deployment | bool

@@ -35,6 +35,7 @@
     owner: ceph
     group: ceph
     mode: "{{ ceph_keyring_permissions }}"
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
   when: cephx | bool
 
 - name: ensure systemd service override directory exists
@@ -46,7 +47,7 @@
     - ansible_facts['service_mgr'] == 'systemd'
 
 - name: add ceph-mds systemd service overrides
-  config_template:
+  openstack.config_template.config_template:
     src: "ceph-mds.service.d-overrides.j2"
     dest: "/etc/systemd/system/ceph-mds@.service.d/ceph-mds-systemd-overrides.conf"
     config_overrides: "{{ ceph_mds_systemd_overrides | default({}) }}"

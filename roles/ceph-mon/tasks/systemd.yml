@@ -1,6 +1,5 @@
 ---
 - name: generate systemd unit file for mon container
-  become: true
   template:
     src: "{{ role_path }}/templates/ceph-mon.service.j2"
     dest: /etc/systemd/system/ceph-mon@.service
@@ -8,3 +7,16 @@
     group: "root"
     mode: "0644"
   notify: restart ceph mons
+
+- name: generate systemd ceph-mon target file
+  copy:
+    src: ceph-mon.target
+    dest: /etc/systemd/system/ceph-mon.target
+  when: containerized_deployment | bool
+
+- name: enable ceph-mon.target
+  service:
+    name: ceph-mon.target
+    enabled: yes
+    daemon_reload: yes
+  when: containerized_deployment | bool

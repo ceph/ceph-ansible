@@ -54,6 +54,12 @@
            -e osd_to_kill=0,1,2,3 argument."
       when: osd_to_kill is not defined
 
+    - name: check the osd ids passed have the correct format
+      fail:
+        msg: "The id {{ item }} has wrong format, please pass the number only"
+      with_items: "{{ osd_to_kill.split(',') }}"
+      when: not item is regex("^\d+$")
+
   tasks:
     - import_role:
         name: ceph-defaults

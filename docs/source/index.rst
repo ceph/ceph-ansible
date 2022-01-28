@@ -63,6 +63,16 @@ You can acquire Ansible on Ubuntu by using the `Ansible PPA <https://launchpad.n
    $ sudo apt update
    $ sudo apt install ansible
 
+Ansible collections
+-------------------
+
+In order to install third-party collections that are required for ceph-ansible,
+please run:
+
+.. code-block:: console
+
+   $ ansible-galaxy install -r requirements.yml
+
 
 Releases
 ========
@@ -215,7 +225,6 @@ An example configuration that deploys the upstream ``octopus`` version of Ceph w
 
    ceph_origin: repository
    ceph_repository: community
-   ceph_stable_release: octopus
    public_network: "192.168.3.0/24"
    cluster_network: "192.168.4.0/24"
    monitor_interface: eth1
@@ -227,7 +236,6 @@ The following config options are required to be changed on all installations but
 selection or other aspects of your cluster.
 
 - ``ceph_origin``
-- ``ceph_stable_release``
 - ``public_network``
 - ``monitor_interface`` or ``monitor_address``
 

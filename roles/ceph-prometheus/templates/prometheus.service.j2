@@ -3,11 +3,12 @@
 [Unit]
 Description=prometheus
 {% if container_binary == 'docker' %}
-After=docker.service
+After=docker.service network-online.target local-fs.target time-sync.target
 Requires=docker.service
 {% else %}
-After=network.target
+After=network-online.target local-fs.target time-sync.target
 {% endif %}
+Wants=network-online.target local-fs.target time-sync.target
 
 [Service]
 EnvironmentFile=-/etc/environment
@@ -20,6 +21,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --name=prometheus \
 {% if container_binary == 'podman' %}
   -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
 {% endif %}
+  --pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
   -v "{{ prometheus_conf_dir }}:/etc/prometheus:Z" \
   -v "{{ prometheus_data_dir }}:/prometheus:Z" \
   --net=host \

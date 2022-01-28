@@ -28,6 +28,7 @@
     - cephx | bool
     - keys | length > 0
     - inventory_hostname == groups.get('_filtered_clients') | first
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
 
 - name: slurp client cephx key(s)
   slurp:
@@ -39,6 +40,7 @@
     - cephx | bool
     - keys | length > 0
     - inventory_hostname == groups.get('_filtered_clients') | first
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
 
 - name: pool related tasks
   when:
@@ -79,3 +81,5 @@
     group: "{{ ceph_uid }}"
   with_items: "{{ hostvars[groups['_filtered_clients'][0]]['slurp_client_keys']['results'] }}"
   when: not item.get('skipped', False)
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
+

@@ -1,0 +1,31 @@
+---
+- name: config repository for Red Hat based OS
+  when: ansible_facts['os_family'] == 'RedHat'
+  block:
+    - name: include installs/configure_redhat_repository_installation.yml
+      include_tasks: installs/configure_redhat_repository_installation.yml
+      when: ceph_origin == 'repository'
+
+    - name: include installs/configure_redhat_local_installation.yml
+      include_tasks: installs/configure_redhat_local_installation.yml
+      when: ceph_origin == 'local'
+
+- name: config repository for Debian based OS
+  when: ansible_facts['os_family'] == 'Debian'
+  block:
+    - name: include installs/configure_debian_repository_installation.yml
+      include_tasks: installs/configure_debian_repository_installation.yml
+      when: ceph_origin == 'repository'
+
+    - name: update apt cache if cache_valid_time has expired
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      register: result
+      until: result is succeeded
+
+- name: include installs/configure_suse_repository_installation.yml
+  include_tasks: installs/configure_suse_repository_installation.yml
+  when:
+    - ansible_facts['os_family'] == 'Suse'
+    - ceph_origin == 'repository'

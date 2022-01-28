@@ -1,11 +1,12 @@
 [Unit]
 Description=Ceph crash dump collector
 {% if container_binary == 'docker' %}
-After=docker.service
+After=docker.service network-online.target local-fs.target time-sync.target
 Requires=docker.service
 {% else %}
-After=network.target
+After=network-online.target local-fs.target time-sync.target
 {% endif %}
+Wants=network-online.target local-fs.target time-sync.target
 
 [Service]
 {% if container_binary == 'podman' %}
@@ -17,6 +18,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --name ceph-crash-%i \
 {% if container_binary == 'podman' %}
 -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
 {% endif %}
+--pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
 --net=host \
 -v /var/lib/ceph:/var/lib/ceph:z \
 -v /etc/localtime:/etc/localtime:ro \
@@ -40,4 +42,4 @@ TimeoutStartSec=120
 TimeoutStopSec=10
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=ceph.target

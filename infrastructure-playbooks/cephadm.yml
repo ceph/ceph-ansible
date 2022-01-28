@@ -102,24 +102,32 @@
         tasks_from: registry.yml
       when: ceph_docker_registry_auth | bool
 
+    - name: configure repository for installing cephadm
+      vars:
+        ceph_origin: repository
+        ceph_repository: community
+      block:
+        - name: validate repository variables
+          import_role:
+            name: ceph-validate
+            tasks_from: check_repository.yml
+
+        - name: configure repository
+          import_role:
+            name: ceph-common
+            tasks_from: "configure_repository.yml"
+
     - name: install cephadm requirements
       package:
         name: ['python3', 'lvm2']
       register: result
       until: result is succeeded
 
-    - name: create a cephadm container
-      command: "{{ container_binary }} create --name cephadm {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
-      changed_when: false
-
-    - name: cp the cephadm cli file
-      command: "{{ container_binary }} cp cephadm:/usr/sbin/cephadm /usr/sbin/cephadm"
-      args:
-        creates: /usr/sbin/cephadm
-
-    - name: remove the cephadm container
-      command: "{{ container_binary }} rm cephadm"
-      changed_when: false
+    - name: install cephadm
+      package:
+        name: cephadm
+      register: result
+      until: result is succeeded
 
     - name: set_fact cephadm_cmd
       set_fact:
@@ -153,6 +161,8 @@
         dashboard_password: "{{ dashboard_admin_password if dashboard_enabled | bool else omit }}"
         monitoring: false
         firewalld: "{{ configure_firewall }}"
+        ssh_user: "{{ cephadm_ssh_user | default('root') }}"
+        ssh_config: "{{ cephadm_ssh_config | default(omit) }}"
 
     - name: set default container image in ceph configuration
       command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set global container_image {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
@@ -219,9 +229,9 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: allow cephadm key for root account
+    - name: allow cephadm key for {{ cephadm_ssh_user | default('root') }} account
       authorized_key:
-        user: root
+        user: "{{ cephadm_ssh_user | default('root') }}"
         key: '{{ cephadm_pubpkey.stdout }}'
 
     - name: run cephadm prepare-host
@@ -230,12 +240,21 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: manage nodes with cephadm
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['default_ipv4']['address'] }} {{ group_names | join(' ') }}"
+    - name: manage nodes with cephadm - ipv4
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }} {{ group_names | join(' ') }} {{ '_admin' if mon_group_name | default('mons') in group_names else '' }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+      when: ip_version == 'ipv4'
+
+    - name: manage nodes with cephadm - ipv6
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap }} {{ group_names | join(' ') }} {{ '_admin' if mon_group_name | default('mons') in group_names else '' }}"
+      changed_when: false
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+      when: ip_version == 'ipv6'
 
     - name: add ceph label for core component
       command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host label add {{ ansible_facts['hostname'] }} ceph"

@@ -355,7 +355,7 @@
           set_fact:
             osd_ids: "{{ osd_ids | default([]) + [item] }}"
           with_items:
-            - "{{ ((osd_tree.stdout | default('{}') | from_json).nodes | selectattr('name', 'match', inventory_hostname) | map(attribute='children') | list) }}"
+            - "{{ ((osd_tree.stdout | default('{}') | from_json).nodes | selectattr('name', 'match', '^' + inventory_hostname + '$') | map(attribute='children') | list) }}"
 
         - name: purge osd(s) from the cluster
           ceph_osd:

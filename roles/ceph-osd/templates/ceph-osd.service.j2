@@ -1,12 +1,14 @@
 # {{ ansible_managed }}
 [Unit]
 Description=Ceph OSD
+PartOf=ceph-osd.target
 {% if container_binary == 'docker' %}
-After=docker.service
+After=docker.service network-online.target local-fs.target time-sync.target
 Requires=docker.service
 {% else %}
-After=network.target
+After=network-online.target local-fs.target time-sync.target
 {% endif %}
+Wants=network-online.target local-fs.target time-sync.target
 {% set cpu_limit = ansible_facts['processor_vcpus']|int if ceph_osd_docker_cpu_limit|int > ansible_facts['processor_vcpus']|int else ceph_osd_docker_cpu_limit|int %}
 
 [Service]
@@ -27,6 +29,7 @@ numactl \
 {% if container_binary == 'podman' %}
   -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
 {% endif %}
+  --pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
   --rm \
   --net=host \
   --privileged=true \
@@ -54,9 +57,7 @@ numactl \
   {% endif -%}
   {{ container_env_args }} \
   -e CLUSTER={{ cluster }} \
-  {% if (ceph_tcmalloc_max_total_thread_cache | int) > 0 and osd_objectstore == 'filestore' -%}
   -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
-  {% endif -%}
   -v /run/lvm/:/run/lvm/ \
   -e CEPH_DAEMON=OSD_CEPH_VOLUME_ACTIVATE \
   -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
@@ -80,4 +81,4 @@ PIDFile=/%t/%n-pid
 {% endif %}
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=ceph.target

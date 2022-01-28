@@ -2,11 +2,12 @@
 Description=NFS-Ganesha file server
 Documentation=http://github.com/nfs-ganesha/nfs-ganesha/wiki
 {% if container_binary == 'docker' %}
-After=docker.service
+After=docker.service network-online.target local-fs.target time-sync.target
 Requires=docker.service
 {% else %}
-After=network.target
+After=network-online.target local-fs.target time-sync.target
 {% endif %}
+Wants=network-online.target local-fs.target time-sync.target
 
 [Service]
 EnvironmentFile=-/etc/environment
@@ -21,6 +22,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
 {% if container_binary == 'podman' %}
   -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
 {% endif %}
+  --pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
   -v /var/lib/ceph:/var/lib/ceph:z \
   -v /etc/ceph:/etc/ceph:z \
   -v /var/lib/nfs/ganesha:/var/lib/nfs/ganesha:z \

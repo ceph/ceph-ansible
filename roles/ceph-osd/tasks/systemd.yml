@@ -7,3 +7,16 @@
     group: "root"
     mode: "0644"
   notify: restart ceph osds
+
+- name: generate systemd ceph-osd target file
+  copy:
+    src: ceph-osd.target
+    dest: /etc/systemd/system/ceph-osd.target
+  when: containerized_deployment | bool
+
+- name: enable ceph-osd.target
+  service:
+    name: ceph-osd.target
+    enabled: yes
+    daemon_reload: yes
+  when: containerized_deployment | bool

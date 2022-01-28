@@ -50,7 +50,7 @@ class TestCephKeyModule(object):
         fake_cluster = "fake"
         fake_args = ['arg']
         fake_user = "fake-user"
-        fake_key = "/tmp/my-key"
+        fake_user_key = "/tmp/my-key"
         expected_command_list = [
             'ceph',
             '-n',
@@ -63,14 +63,18 @@ class TestCephKeyModule(object):
             'arg'
         ]
         result = ceph_key.generate_ceph_cmd(
-            fake_cluster, fake_args, fake_user, fake_key)
+            sub_cmd=['auth'],
+            args=fake_args,
+            cluster=fake_cluster,
+            user=fake_user,
+            user_key=fake_user_key)
         assert result == expected_command_list
 
     def test_generate_ceph_cmd_list_container(self):
         fake_cluster = "fake"
         fake_args = ['arg']
         fake_user = "fake-user"
-        fake_key = "/tmp/my-key"
+        fake_user_key = "/tmp/my-key"
         fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
         expected_command_list = ['docker',
                                  'run',
@@ -90,7 +94,12 @@ class TestCephKeyModule(object):
                                  'auth',
                                  'arg']
         result = ceph_key.generate_ceph_cmd(
-            fake_cluster, fake_args, fake_user, fake_key, fake_container_image)
+            sub_cmd=['auth'],
+            args=fake_args,
+            cluster=fake_cluster,
+            user=fake_user,
+            user_key=fake_user_key,
+            container_image=fake_container_image)
         assert result == expected_command_list
 
     def test_generate_ceph_authtool_cmd_non_container_no_auid(self):

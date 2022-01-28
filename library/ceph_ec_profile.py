@@ -121,7 +121,7 @@ def get_profile(module, name, cluster='ceph', container_image=None):
     return cmd
 
 
-def create_profile(module, name, k, m, stripe_unit, cluster='ceph', force=False, container_image=None):
+def create_profile(module, name, k, m, stripe_unit, crush_device_class, cluster='ceph', force=False, container_image=None):  # noqa: E501
     '''
     Create a profile
     '''
@@ -129,6 +129,8 @@ def create_profile(module, name, k, m, stripe_unit, cluster='ceph', force=False,
     args = ['set', name, 'k={}'.format(k), 'm={}'.format(m)]
     if stripe_unit:
         args.append('stripe_unit={}'.format(stripe_unit))
+    if crush_device_class:
+        args.append('crush-device-class={}'.format(crush_device_class))
     if force:
         args.append('--force')
 
@@ -164,6 +166,7 @@ def run_module():
         stripe_unit=dict(type='str', required=False),
         k=dict(type='str', required=False),
         m=dict(type='str', required=False),
+        crush_device_class=dict(type='str', required=False, default=''),
     )
 
     module = AnsibleModule(
@@ -179,6 +182,7 @@ def run_module():
     stripe_unit = module.params.get('stripe_unit')
     k = module.params.get('k')
     m = module.params.get('m')
+    crush_device_class = module.params.get('crush_device_class')
 
     if module.check_mode:
         module.exit_json(
@@ -198,21 +202,24 @@ def run_module():
     container_image = is_containerized()
 
     if state == "present":
-        rc, cmd, out, err = exec_command(module, get_profile(module, name, cluster, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, get_profile(module, name, cluster, container_image=container_image))  # noqa: E501
         if rc == 0:
-            # the profile already exists, let's check whether we have to update it
+            # the profile already exists, let's check whether we have to
+            # update it
             current_profile = json.loads(out)
             if current_profile['k'] != k or \
                current_profile['m'] != m or \
-               current_profile.get('stripe_unit', stripe_unit) != stripe_unit:
+               current_profile.get('stripe_unit', stripe_unit) != stripe_unit or \
+               current_profile.get('crush-device-class', crush_device_class) != crush_device_class:
                 rc, cmd, out, err = exec_command(module,
                                                  create_profile(module,
                                                                 name,
                                                                 k,
                                                                 m,
                                                                 stripe_unit,
+                                                                crush_device_class,  # noqa: E501
                                                                 cluster,
-                                                                force=True, container_image=container_image))
+                                                                force=True, container_image=container_image))  # noqa: E501
                 changed = True
         else:
             # the profile doesn't exist, it has to be created
@@ -220,14 +227,15 @@ def run_module():
                                                                     name,
                                                                     k,
                                                                     m,
-                                                                    stripe_unit,
+                                                                    stripe_unit,  # noqa: E501
+                                                                    crush_device_class,  # noqa: E501
                                                                     cluster,
-                                                                    container_image=container_image))
+                                                                    container_image=container_image))  # noqa: E501
             if rc == 0:
                 changed = True
 
     elif state == "absent":
-        rc, cmd, out, err = exec_command(module, delete_profile(module, name, cluster, container_image=container_image))
+        rc, cmd, out, err = exec_command(module, delete_profile(module, name, cluster, container_image=container_image))  # noqa: E501
         if not err:
             out = 'Profile {} removed.'.format(name)
             changed = True
@@ -235,7 +243,7 @@ def run_module():
             rc = 0
             out = "Skipping, the profile {} doesn't exist".format(name)
 
-    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)
+    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)  # noqa: E501
 
 
 def main():

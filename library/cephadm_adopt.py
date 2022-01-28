@@ -139,7 +139,7 @@ def main():
         rc, out, err = module.run_command(cmd)
 
     if rc == 0:
-        if name in [x["name"] for x in json.loads(out) if x["style"] == "cephadm:v1"]:
+        if name in [x["name"] for x in json.loads(out) if x["style"] == "cephadm:v1"]:  # noqa: E501
             exit_module(
                 module=module,
                 out='{} is already adopted'.format(name),
@@ -160,7 +160,7 @@ def main():
     if image:
         cmd.extend(['--image', image])
 
-    cmd.extend(['adopt', '--cluster', cluster, '--name', name, '--style', style])
+    cmd.extend(['adopt', '--cluster', cluster, '--name', name, '--style', style])  # noqa: E501
 
     if not pull:
         cmd.append('--skip-pull')

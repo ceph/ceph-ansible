@@ -9,14 +9,14 @@
 #
 # If you run a Ceph community version, you have to change the variable: ceph_stable_release to the new release
 #
-# If you run Red Hat Ceph Storage and are doing a **major** update (e.g: from 2 to 3), you have two options:
-#   - if you use a CDN, you have to change the ceph_rhcs_version to a newer one
-#   - if you use an ISO, you have to change the ceph_rhcs_iso_path to the directory containing the new Ceph version
+# If you run Red Hat Ceph Storage and are doing a **major** update (e.g: from 2 to 3), you have to change the ceph_rhcs_version to a newer one
 #
 
 - name: confirm whether user really meant to upgrade the cluster
   hosts: localhost
+  tags: always
   become: false
+  gather_facts: false
   vars:
     - mgr_group_name: mgrs
 
@@ -48,7 +48,6 @@
 
 
 - name: gather facts and check the init system
-
   hosts:
     - "{{ mon_group_name|default('mons') }}"
     - "{{ osd_group_name|default('osds') }}"
@@ -60,7 +59,7 @@
     - "{{ client_group_name|default('clients') }}"
     - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
-
+  tags: always
   any_errors_fatal: True
   become: True
   gather_facts: False
@@ -92,6 +91,10 @@
       run_once: true
       when: delegate_facts_host | bool
 
+    - name: set_fact rolling_update
+      set_fact:
+        rolling_update: true
+
     - import_role:
         name: ceph-facts
 
@@ -115,11 +118,26 @@
         - (containerized_deployment | bool) or (dashboard_enabled | bool)
         - ceph_docker_registry_auth | bool
 
-    - name: set_fact rolling_update
-      set_fact:
-        rolling_update: true
+    - name: check ceph release in container image
+      when:
+        - groups.get(mon_group_name, []) | length > 0
+        - containerized_deployment | bool
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      block:
+        - name: get the ceph release being deployed
+          command: "{{ ceph_cmd }} --cluster {{ cluster }} --version"
+          register: ceph_version
+          changed_when: false
+
+        - name: check ceph release being deployed
+          fail:
+            msg: "This version of ceph-ansible is intended for upgrading to Ceph Quincy only."
+          when: "'quincy' not in ceph_version.stdout.split()"
+
 
 - name: upgrade ceph mon cluster
+  tags: mons
   vars:
     health_mon_check_retries: 5
     health_mon_check_delay: 15
@@ -127,6 +145,7 @@
   hosts: "{{ mon_group_name|default('mons') }}"
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     - name: upgrade ceph mon cluster
       block:
@@ -169,6 +188,16 @@
                   fail:
                     msg: "cluster is not in an acceptable state!"
               when: (check_cluster_health.stdout | from_json).status == 'HEALTH_ERR'
+
+            - name: get the ceph quorum status
+              command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} quorum_status -f json"
+              register: check_quorum_status
+              delegate_to: "{{ mon_host }}"
+
+            - name: fail if the cluster quorum isn't in an acceptable state
+              fail:
+                msg: "cluster quorum is not in an acceptable state!"
+              when: (check_quorum_status.stdout | from_json).quorum | length != groups[mon_group_name] | length
           when: inventory_hostname == groups[mon_group_name] | first
 
         - name: ensure /var/lib/ceph/bootstrap-rbd-mirror is present
@@ -245,6 +274,13 @@
           when: inventory_hostname in groups[mgr_group_name] | default([])
                 or groups[mgr_group_name] | default([]) | length == 0
 
+        - name: import_role ceph-facts
+          import_role:
+            name: ceph-facts
+            tasks_from: set_monitor_address.yml
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          delegate_facts: true
+
         - name: non container | waiting for the monitor to join the quorum...
           command: ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" quorum_status --format json
           register: ceph_health_raw
@@ -287,7 +323,9 @@
 
 - name: reset mon_host
   hosts: "{{ mon_group_name|default('mons') }}"
+  tags: always
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -303,8 +341,10 @@
     health_mon_check_delay: 15
     upgrade_ceph_packages: True
   hosts: "{{ mon_group_name|default('mons') }}"
+  tags: mgrs
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     - name: upgrade mgrs when no mgr group explicitly defined in inventory
       when: groups.get(mgr_group_name, []) | length == 0
@@ -337,8 +377,10 @@
     upgrade_ceph_packages: True
     ceph_release: "{{ ceph_stable_release }}"
   hosts: "{{ mgr_group_name|default('mgrs') }}"
+  tags: mgrs
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     # The following task has a failed_when: false
     # to handle the scenario where no mgr existed before the upgrade
@@ -370,8 +412,10 @@
 
 
 - name: set osd flags
-  hosts: "{{ mon_group_name | default('mons') }}[0]"
+  hosts: "{{ osd_group_name | default('osds') }}"
+  tags: osds
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -379,26 +423,67 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
-    - name: set osd flags
-      ceph_osd_flag:
-        name: "{{ item }}"
-        cluster: "{{ cluster }}"
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      with_items:
-        - noout
-        - nodeep-scrub
+    - name: set osd flags, disable autoscaler and balancer
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      block:
+        - name: get pool list
+          command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool ls detail -f json"
+          register: pool_list
+          changed_when: false
+          check_mode: false
+
+        - name: get balancer module status
+          command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer status -f json"
+          register: balancer_status_update
+          run_once: true
+          changed_when: false
+          check_mode: false
+
+        - name: set_fact pools_pgautoscaler_mode
+          set_fact:
+            pools_pgautoscaler_mode: "{{ pools_pgautoscaler_mode | default([]) | union([{'name': item.pool_name, 'mode': item.pg_autoscale_mode}]) }}"
+          with_items: "{{ pool_list.stdout | default('{}') | from_json }}"
+
+        - name: disable balancer
+          command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
+          changed_when: false
+          when: (balancer_status_update.stdout | from_json)['active'] | bool
+
+        - name: disable pg autoscale on pools
+          ceph_pool:
+            name: "{{ item.name }}"
+            cluster: "{{ cluster }}"
+            pg_autoscale_mode: false
+          with_items: "{{ pools_pgautoscaler_mode }}"
+          when:
+            - pools_pgautoscaler_mode is defined
+            - item.mode == 'on'
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
+        - name: set osd flags
+          ceph_osd_flag:
+            name: "{{ item }}"
+            cluster: "{{ cluster }}"
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+          with_items:
+            - noout
+            - nodeep-scrub
 
 - name: upgrade ceph osds cluster
   vars:
-    health_osd_check_retries: 40
-    health_osd_check_delay: 30
+    health_osd_check_retries: 600
+    health_osd_check_delay: 2
     upgrade_ceph_packages: True
-
   hosts: "{{ osd_group_name|default('osds') }}"
+  tags: osds
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -470,8 +555,10 @@
 
 
 - name: complete osd upgrade
-  hosts: "{{ mon_group_name|default('mons') }}[0]"
+  hosts: "{{ osd_group_name | default('osds') }}"
+  tags: osds
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -479,21 +566,45 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
-    - name: unset osd flags
-      ceph_osd_flag:
-        name: "{{ item }}"
-        cluster: "{{ cluster }}"
-        state: absent
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      with_items:
-        - noout
-        - nodeep-scrub
+    - name: unset osd flags, re-enable pg autoscaler and balancer
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      block:
+        - name: re-enable pg autoscale on pools
+          ceph_pool:
+            name: "{{ item.name }}"
+            cluster: "{{ cluster }}"
+            pg_autoscale_mode: true
+          with_items: "{{ pools_pgautoscaler_mode }}"
+          when:
+            - pools_pgautoscaler_mode is defined
+            - item.mode == 'on'
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
+        - name: unset osd flags
+          ceph_osd_flag:
+            name: "{{ item }}"
+            cluster: "{{ cluster }}"
+            state: absent
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+          with_items:
+            - noout
+            - nodeep-scrub
+
+        - name: re-enable balancer
+          command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"
+          changed_when: false
+          when: (balancer_status_update.stdout | from_json)['active'] | bool
 
 - name: upgrade ceph mdss cluster, deactivate all rank > 0
   hosts: "{{ mon_group_name | default('mons') }}[0]"
+  tags: mdss
   become: true
+  gather_facts: false
   tasks:
     - name: deactivate all mds rank > 0
       when: groups.get(mds_group_name, []) | length > 0
@@ -593,7 +704,9 @@
   vars:
     upgrade_ceph_packages: True
   hosts: active_mdss
+  tags: mdss
   become: true
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -638,7 +751,9 @@
   vars:
     upgrade_ceph_packages: True
   hosts: standby_mdss
+  tags: mdss
   become: True
+  gather_facts: false
 
   tasks:
     - import_role:
@@ -685,8 +800,10 @@
   vars:
     upgrade_ceph_packages: True
   hosts: "{{ rgw_group_name|default('rgws') }}"
+  tags: rgws
   serial: 1
   become: True
+  gather_facts: false
   tasks:
 
     - import_role:
@@ -728,8 +845,10 @@
   vars:
     upgrade_ceph_packages: True
   hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+  tags: rbdmirrors
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     - name: stop ceph rbd mirror
       systemd:
@@ -760,8 +879,10 @@
   vars:
     upgrade_ceph_packages: True
   hosts: "{{ nfs_group_name|default('nfss') }}"
+  tags: nfss
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     # failed_when: false is here so that if we upgrade
     # from a version of ceph that does not have nfs-ganesha
@@ -807,10 +928,11 @@
 - name: upgrade ceph iscsi gateway node
   vars:
     upgrade_ceph_packages: True
-  hosts:
-    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
+  tags: iscsigws
   serial: 1
   become: True
+  gather_facts: false
   tasks:
     # failed_when: false is here so that if we upgrade
     # from a version of ceph that does not have iscsi gws
@@ -849,13 +971,17 @@
   vars:
     upgrade_ceph_packages: True
   hosts: "{{ client_group_name|default('clients') }}"
+  tags: clients
   serial: "{{ client_update_batch | default(20) }}"
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
     - import_role:
         name: ceph-facts
+        tasks_from: container_binary.yml
+      when: containerized_deployment | bool
     - import_role:
         name: ceph-handler
     - import_role:
@@ -866,10 +992,7 @@
       when:
         - (group_names != ['clients']) or (inventory_hostname == groups.get('clients', [''])|first)
         - containerized_deployment | bool
-    - import_role:
-        name: ceph-config
-    - import_role:
-        name: ceph-client
+
 
 - name: upgrade ceph-crash daemons
   hosts:
@@ -879,6 +1002,9 @@
     - "{{ rgw_group_name | default('rgws') }}"
     - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
     - "{{ mgr_group_name | default('mgrs') }}"
+  tags:
+    - post_upgrade
+    - crash
   gather_facts: false
   become: true
   tasks:
@@ -886,8 +1012,14 @@
       systemd:
         name: "{{ 'ceph-crash@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-crash.service' }}"
         state: stopped
+
+    # it needs to be done in a separate task otherwise the stop just before doesn't work.
+    - name: mask and disable the ceph-crash service
+      systemd:
+        name: "{{ 'ceph-crash@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-crash.service' }}"
         enabled: no
         masked: yes
+
     - import_role:
         name: ceph-defaults
     - import_role:
@@ -900,7 +1032,9 @@
 
 - name: complete upgrade
   hosts: "{{ mon_group_name | default('mons') }}"
+  tags: post_upgrade
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults
@@ -935,6 +1069,7 @@
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
+  tags: monitoring
   gather_facts: false
   become: true
   tasks:
@@ -965,6 +1100,7 @@
 
 - name: upgrade monitoring node
   hosts: "{{ monitoring_group_name }}"
+  tags: monitoring
   gather_facts: false
   become: true
   tasks:
@@ -996,6 +1132,7 @@
 
 - name: upgrade ceph dashboard
   hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) | default(omit) }}"
+  tags: monitoring
   gather_facts: false
   become: true
   tasks:
@@ -1013,9 +1150,53 @@
         - import_role:
             name: ceph-dashboard
 
+- name: switch any existing crush buckets to straw2
+  hosts: "{{ mon_group_name | default('mons') }}[0]"
+  tags: post_upgrade
+  become: true
+  any_errors_fatal: true
+  gather_facts: false
+  tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: set_fact ceph_cmd
+      set_fact:
+        ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
+
+    - name: backup the crushmap
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} osd getcrushmap -o /etc/ceph/{{ cluster }}-crushmap"
+      changed_when: false
+
+    - block:
+        - name: switch crush buckets to straw2
+          command: "{{ ceph_cmd }} --cluster {{ cluster }} osd crush set-all-straw-buckets-to-straw2"
+          changed_when: false
+      rescue:
+        - name: restore the crushmap
+          command: "{{ ceph_cmd }} --cluster {{ cluster }} osd setcrushmap -i /etc/ceph/{{ cluster }}-crushmap"
+          changed_when: false
+
+        - name: inform that the switch to straw2 buckets failed
+          fail:
+            msg: >
+              "An attempt to switch to straw2 bucket was made but failed.
+               Check the cluster status."
+
+    - name: remove crushmap backup
+      file:
+        path: /etc/ceph/{{ cluster }}-crushmap
+        state: absent
+
 - name: show ceph status
   hosts: "{{ mon_group_name|default('mons') }}"
+  tags: always
   become: True
+  gather_facts: false
   tasks:
     - import_role:
         name: ceph-defaults

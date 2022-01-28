@@ -3,35 +3,8 @@
   include_tasks: check_system.yml
 
 - name: validate repository variables in non-containerized scenario
+  include_tasks: check_repository.yml
   when: not containerized_deployment | bool
-  block:
-    - name: validate ceph_origin
-      fail:
-        msg: "ceph_origin must be either 'repository', 'distro' or 'local'"
-      when: ceph_origin not in ['repository', 'distro', 'local']
-
-    - name: validate ceph_repository
-      fail:
-        msg: "ceph_repository must be either 'community', 'rhcs', 'dev', 'custom' or 'uca'"
-      when:
-        - ceph_origin == 'repository'
-        - ceph_repository not in ['community', 'rhcs', 'dev', 'custom', 'uca']
-
-    - name: validate ceph_repository_community
-      fail:
-        msg: "ceph_stable_release must be 'quincy'"
-      when:
-        - ceph_origin == 'repository'
-        - ceph_repository == 'community'
-        - ceph_stable_release not in ['quincy']
-
-    - name: validate ceph_repository_type
-      fail:
-        msg: "ceph_repository_type must be either 'cdn' or 'iso'"
-      when:
-        - ceph_origin == 'repository'
-        - ceph_repository == 'rhcs'
-        - ceph_repository_type not in ['cdn', 'iso']
 
 - name: validate osd_objectstore
   fail:
@@ -152,7 +125,6 @@
   when:
     - osd_group_name in group_names
     - not osd_auto_discovery | default(False) | bool
-    - devices|default([])|length > 0
 
 - name: include check_eth_mon.yml
   include_tasks: check_eth_mon.yml
@@ -194,13 +166,6 @@
   include_tasks: check_iscsi.yml
   when: iscsi_gw_group_name in group_names
 
-- name: warn about radosgw_civetweb_num_threads option deprecation
-  debug:
-    msg: "WARNING: radosgw_civetweb_num_threads variable is deprecated. Please use radosgw_thread_pool_size instead"
-  when:
-    - radosgw_frontend_type == 'civetweb'
-    - radosgw_civetweb_num_threads is defined
-
 - name: include check_nfs.yml
   include_tasks: check_nfs.yml
   when: inventory_hostname in groups.get(nfs_group_name, [])
@@ -236,7 +201,14 @@
   when:
     - ceph_docker_registry_auth | bool
     - (ceph_docker_registry_username is not defined or ceph_docker_registry_password is not defined) or
-      (ceph_docker_registry_username | length == 0 or ceph_docker_registry_password | length == 0)
+      (ceph_docker_registry_username | string | length == 0 or ceph_docker_registry_password | string | length == 0)
+
+- name: validate container service and container package
+  fail:
+    msg: 'both container_package_name and container_service_name should be defined'
+  when:
+    - (container_package_name is undefined and container_service_name is defined) or
+      (container_package_name is defined and container_service_name is undefined)
 
 - name: validate openstack_keys key format
   fail:

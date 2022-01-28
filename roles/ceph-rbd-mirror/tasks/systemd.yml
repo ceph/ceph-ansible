@@ -1,6 +1,5 @@
 ---
 - name: generate systemd unit file
-  become: true
   template:
     src: "{{ role_path }}/templates/ceph-rbd-mirror.service.j2"
     dest: /etc/systemd/system/ceph-rbd-mirror@.service
@@ -8,3 +7,16 @@
     group: "root"
     mode: "0644"
   notify: restart ceph rbdmirrors
+
+- name: generate systemd ceph-rbd-mirror target file
+  copy:
+    src: ceph-rbd-mirror.target
+    dest: /etc/systemd/system/ceph-rbd-mirror.target
+  when: containerized_deployment | bool
+
+- name: enable ceph-rbd-mirror.target
+  service:
+    name: ceph-rbd-mirror.target
+    enabled: yes
+    daemon_reload: yes
+  when: containerized_deployment | bool

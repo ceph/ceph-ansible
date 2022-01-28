@@ -1,17 +1,7 @@
 ---
-- name: find device used for operating system
-  command: findmnt -v -n -T / -o SOURCE
-  changed_when: false
-  register: root_device
-
-- name: resolve root_device
-  command: "readlink -f {{ root_device.stdout }}"
-  changed_when: false
-  register: _root_device
-
 - name: set_fact root_device
   set_fact:
-    root_device: "{{ _root_device.stdout }}"
+    root_device: "{{ ansible_facts['mounts'] | selectattr('mount', 'match', '^/$') | map(attribute='device') | first }}"
 
 - name: lvm_volumes variable's tasks related
   when:
@@ -23,57 +13,18 @@
       changed_when: false
       register: _lvm_volumes_data_devices
       with_items: "{{ lvm_volumes }}"
-      when:
-        - item.data_vg is undefined
+      when: item.data_vg is undefined
 
     - name: set_fact lvm_volumes_data_devices
       set_fact:
         lvm_volumes_data_devices: "{{ lvm_volumes_data_devices | default([]) + [item.stdout] }}"
       with_items: "{{ _lvm_volumes_data_devices.results }}"
-      when:
-        - item.skipped is undefined
-
-- name: devices variable's tasks related
-  when:
-    - devices is defined
-    - devices | length > 0
-  block:
-    - name: resolve devices in devices
-      command: "readlink -f {{ item }}"
-      changed_when: false
-      register: devices_resolved
-      with_items: "{{ devices }}"
-
-    - name: set_fact devices_resolved
-      set_fact:
-        _devices: "{{ _devices | default([]) + [item.stdout] }}"
-      with_items: "{{ devices_resolved.results }}"
+      when: item.skipped is undefined
 
 - name: fail if root_device is passed in lvm_volumes or devices
   fail:
     msg: "{{ root_device }} found in either lvm_volumes or devices variable"
-  when: root_device in lvm_volumes_data_devices | default([]) or root_device in _devices | default([])
-
-- name: check no gpt header is present when osd scenario is lvm/lvm-batch
-  block:
-    - name: read information about the devices
-      parted:
-        device: "{{ item.data if item.data_vg is undefined and lvm_volumes is defined else item if devices is defined else omit }}"
-        unit: MiB
-      register: parted_results
-      with_items: "{{ lvm_volumes | default(devices) }}"
-      when:
-        - inventory_hostname in groups.get(osd_group_name, [])
-        - (item.data is defined and item.data_vg is undefined) or devices is defined
-
-    - name: fail when gpt header found on osd devices
-      fail:
-        msg: "{{ item.disk.dev }} has gpt header, please remove it."
-      with_items: "{{ parted_results.results }}"
-      when:
-        - item.skipped is undefined
-        - item.disk.table == 'gpt'
-        - item.partitions | length == 0
+  when: root_device in lvm_volumes_data_devices | default([]) or root_device in devices | default([])
 
 - name: check devices are block devices
   block:
@@ -83,10 +34,101 @@
         unit: MiB
       register: devices_parted
       failed_when: False
-      with_items: "{{ devices }}"
+      with_items:
+        - "{{ devices | default([]) }}"
+        - "{{ dedicated_devices | default([]) }}"
+        - "{{ bluestore_wal_devices | default([]) }}"
+        - "{{ lvm_volumes_data_devices | default([]) }}"
 
     - name: fail if one of the devices is not a device
       fail:
         msg: "{{ item.item }} is not a block special file!"
       when: item.rc is defined
       with_items: "{{ devices_parted.results }}"
+
+    - name: fail when gpt header found on osd devices
+      fail:
+        msg: "{{ item.disk.dev }} has gpt header, please remove it."
+      with_items: "{{ devices_parted.results }}"
+      when:
+        - item.skipped is undefined
+        - item.disk.table == 'gpt'
+        - item.partitions | length == 0
+
+- name: check logical volume in lvm_volumes
+  when: lvm_volumes is defined
+  block:
+    - name: check data logical volume
+      stat:
+        path: "/dev/{{ item.data_vg }}/{{ item.data }}"
+        follow: true
+      register: lvm_volumes_data
+      loop: "{{ lvm_volumes }}"
+      when:
+        - item.data is defined
+        - item.data_vg is defined
+
+    - name: fail if one of the data logical volume is not a device or doesn't exist
+      fail:
+        msg: "{{ item.item.data_vg }}/{{ item.item.data }} doesn't exist or isn't a block"
+      loop: "{{ lvm_volumes_data.results }}"
+      when:
+        - item.skipped is undefined
+        - not item.stat.exists | bool or not item.stat.isblk | bool
+
+    - name: check bluestore db logical volume
+      stat:
+        path: "/dev/{{ item.db_vg }}/{{ item.db }}"
+        follow: true
+      register: lvm_volumes_db
+      loop: "{{ lvm_volumes }}"
+      when:
+        - osd_objectstore == 'bluestore'
+        - item.db is defined
+        - item.db_vg is defined
+
+    - name: fail if one of the bluestore db logical volume is not a device or doesn't exist
+      fail:
+        msg: "{{ item.item.db_vg }}/{{ item.item.db }} doesn't exist or isn't a block"
+      loop: "{{ lvm_volumes_db.results }}"
+      when:
+        - item.skipped is undefined
+        - not item.stat.exists | bool or not item.stat.isblk | bool
+
+    - name: check bluestore wal logical volume
+      stat:
+        path: "/dev/{{ item.wal_vg }}/{{ item.wal }}"
+        follow: true
+      register: lvm_volumes_wal
+      loop: "{{ lvm_volumes }}"
+      when:
+        - osd_objectstore == 'bluestore'
+        - item.wal is defined
+        - item.wal_vg is defined
+
+    - name: fail if one of the bluestore wal logical volume is not a device or doesn't exist
+      fail:
+        msg: "{{ item.item.wal_vg }}/{{ item.item.wal }} doesn't exist or isn't a block"
+      loop: "{{ lvm_volumes_wal.results }}"
+      when:
+        - item.skipped is undefined
+        - not item.stat.exists | bool or not item.stat.isblk | bool
+
+    - name: check filestore journal logical volume
+      stat:
+        path: "/dev/{{ item.journal_vg }}/{{ item.journal }}"
+        follow: true
+      register: lvm_volumes_journal
+      loop: "{{ lvm_volumes }}"
+      when:
+        - osd_objectstore == 'filestore'
+        - item.journal is defined
+        - item.journal_vg is defined
+
+    - name: fail if one of the filestore journal logical volume is not a device or doesn't exist
+      fail:
+        msg: "{{ item.item.journal_vg }}/{{ item.item.journal }} doesn't exist or isn't a block"
+      loop: "{{ lvm_volumes_journal.results }}"
+      when:
+        - item.skipped is undefined
+        - not item.stat.exists | bool or not item.stat.isblk | bool
