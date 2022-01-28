@@ -1052,6 +1052,7 @@
           }
       when: nfs_file_gw | bool
 
+<<<<<<< HEAD
     - name: set_fact nfs_obj_gw_export
       set_fact:
         nfs_obj_gw_export: |
@@ -1103,10 +1104,18 @@
     - name: update the placement of nfs hosts
       command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} orch apply nfs {{ nfs_group_name | default('nfss') }} {{ nfs_ganesha_export_pool_name | default('nfs-ganesha') }} {{ nfs_ganesha_export_namespace | default('nfs-ganesha') }} --placement='{{ groups.get(nfs_group_name, []) | length }} label:{{ nfs_group_name }}'"
       run_once: true
+=======
+    - name: create rgw export
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} nfs export create rgw --cluster-id {{ ansible_facts['hostname'] }} --pseudo-path {{ ceph_nfs_rgw_pseudo_path }} --user-id {{ ceph_nfs_rgw_user }} --squash {{ ceph_nfs_rgw_squash }}"
+>>>>>>> 7f517cdd2 (adopt: create nfs exports at the user level)
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+<<<<<<< HEAD
+=======
+      when: nfs_obj_gw | bool
+>>>>>>> 7f517cdd2 (adopt: create nfs exports at the user level)
 
 - name: redeploy rbd-mirror daemons
   hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
