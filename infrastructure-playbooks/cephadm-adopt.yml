@@ -147,6 +147,7 @@
 
     - name: configure repository for installing cephadm
       when: containerized_deployment | bool
+      tags: with_pkg
       block:
         - name: set_fact ceph_origin
           set_fact:
@@ -169,18 +170,21 @@
             tasks_from: "configure_repository.yml"
 
     - name: install cephadm requirements
+      tags: with_pkg
       package:
         name: ['python3', 'lvm2']
       register: result
       until: result is succeeded
 
     - name: install cephadm
+      tags: with_pkg
       package:
         name: cephadm
       register: result
       until: result is succeeded
 
     - name: install cephadm mgr module
+      tags: with_pkg
       package:
         name: ceph-mgr-cephadm
       register: result
