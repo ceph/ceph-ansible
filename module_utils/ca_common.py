@@ -84,7 +84,7 @@ def exec_command(module, cmd, stdin=None):
     return rc, cmd, out, err
 
 
-def exit_module(module, out, rc, cmd, err, startd, changed=False):
+def exit_module(module, out, rc, cmd, err, startd, changed=False, diff=dict(before="", after="")):
     endd = datetime.datetime.now()
     delta = endd - startd
 
@@ -97,6 +97,7 @@ def exit_module(module, out, rc, cmd, err, startd, changed=False):
         stdout=out.rstrip("\r\n"),
         stderr=err.rstrip("\r\n"),
         changed=changed,
+        diff=diff
     )
     module.exit_json(**result)
 
