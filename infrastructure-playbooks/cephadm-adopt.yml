@@ -86,6 +86,26 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
+    - name: set_fact ceph_cmd
+      set_fact:
+        ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:ro -v /var/run/ceph:/var/run/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --cluster {{ cluster }}"
+
+    - name: check pools have an application enabled
+      command: "{{ ceph_cmd }} health detail --format json"
+      register: health_detail
+      run_once: true
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
+    - name: check for POOL_APP_NOT_ENABLED warning
+      fail:
+        msg: "Make sure all your pool have an application enabled."
+      run_once: true
+      delegate_to: localhost
+      when:
+        - (health_detail.stdout | default('{}', True) | from_json)['status'] == "HEALTH_WARN"
+        - "'POOL_APP_NOT_ENABLED' in (health_detail.stdout | default('{}', True) | from_json)['checks']"
+
     - import_role:
         name: ceph-facts
         tasks_from: convert_grafana_server_group_name.yml
@@ -192,10 +212,6 @@
       when:
         - not containerized_deployment | bool
         - mgr_group_name in group_names
-
-    - name: set_fact ceph_cmd
-      set_fact:
-        ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:ro -v /var/run/ceph:/var/run/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --cluster {{ cluster }}"
 
     - name: get current fsid
       command: "{{ ceph_cmd }} fsid"
