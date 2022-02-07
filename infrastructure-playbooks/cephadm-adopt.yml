@@ -249,11 +249,49 @@
       run_once: true
       delegate_to: '{{ groups[mon_group_name][0] }}'
 
-    - name: generate cephadm ssh key
-      command: "{{ ceph_cmd }} cephadm generate-key"
+    - name: check if there is an existing ssh keypair
+      stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ cephadm_ssh_priv_key_path }}"
+        - "{{ cephadm_ssh_pub_key_path }}"
+      register: ssh_keys
       changed_when: false
       run_once: true
       delegate_to: '{{ groups[mon_group_name][0] }}'
+
+    - name: set fact
+      set_fact:
+        stat_ssh_key_pair: "{{ ssh_keys.results | map(attribute='stat.exists') | list }}"
+
+    - name: fail if either ssh public or private key is missing
+      fail:
+        msg: "One part of the ssh keypair of user {{ cephadm_ssh_user }} is missing"
+      when:
+        - false in stat_ssh_key_pair
+        - true in stat_ssh_key_pair
+
+    - name: generate cephadm ssh key if there is none
+      command: "{{ ceph_cmd }} cephadm generate-key"
+      when: not true in stat_ssh_key_pair
+      changed_when: false
+      run_once: true
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+
+    - name: use existing user keypair for remote connections
+      when: not false in stat_ssh_key_pair
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      command: >
+        {{ container_binary + ' run --rm --net=host --security-opt label=disable
+        -v /etc/ceph:/etc/ceph:z
+        -v /var/lib/ceph:/var/lib/ceph:ro
+        -v /var/run/ceph:/var/run/ceph:z
+        -v ' + item.1 + ':/etc/ceph/cephadm.' + item.0 + ':ro --entrypoint=ceph '+ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}
+        --cluster {{ cluster }} config-key set mgr/cephadm/ssh_identity_{{ item.0 }} -i /etc/ceph/cephadm.{{ item.0 }}
+      with_together:
+        - [ 'pub', 'key' ]
+        - [ '{{ cephadm_ssh_pub_key_path }}', '{{ cephadm_ssh_priv_key_path }}' ]
 
     - name: get the cephadm ssh pub key
       command: "{{ ceph_cmd }} cephadm get-pub-key"
@@ -262,13 +300,13 @@
       register: cephadm_pubpkey
       delegate_to: '{{ groups[mon_group_name][0] }}'
 
-    - name: allow cephadm key for {{ cephadm_ssh_user | default('root') }} account
+    - name: allow cephadm key for {{ cephadm_ssh_user }} account
       authorized_key:
-        user: "{{ cephadm_ssh_user | default('root') }}"
+        user: "{{ cephadm_ssh_user }}"
         key: '{{ cephadm_pubpkey.stdout }}'
 
-    - name: set cephadm ssh user to {{ cephadm_ssh_user | default('root') }}
-      command: "{{ ceph_cmd }} cephadm set-user {{ cephadm_ssh_user | default('root') }}"
+    - name: set cephadm ssh user to {{ cephadm_ssh_user }}
+      command: "{{ ceph_cmd }} cephadm set-user {{ cephadm_ssh_user }}"
       changed_when: false
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -323,13 +361,13 @@
       when: is_hci | bool
 
     - name: manage nodes with cephadm - ipv4
-      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }} {{ group_names | join(' ') }}"
+      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(cephadm_mgmt_network.split(',')) | first }} {{ group_names | join(' ') }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       when: ip_version == 'ipv4'
 
     - name: manage nodes with cephadm - ipv6
-      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap }} {{ group_names | join(' ') }}"
+      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(cephadm_mgmt_network.split(',')) | last | ipwrap }} {{ group_names | join(' ') }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       when: ip_version == 'ipv6'
