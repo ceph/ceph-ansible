@@ -446,7 +446,7 @@
 
         - name: set_fact mirror_peer_found
           set_fact:
-            mirror_peer_uuid: "{{ ((mirror_pool_info.stdout | from_json | default('{}'))['peers'] | selectattr('site_name', 'match', '^'+ceph_rbd_mirror_remote_cluster+'$') | map(attribute='uuid') | list) }}"
+            mirror_peer_uuid: "{{ ((mirror_pool_info.stdout | default('{}') | from_json)['peers'] | selectattr('site_name', 'match', '^'+ceph_rbd_mirror_remote_cluster+'$') | map(attribute='uuid') | list) }}"
 
         - name: remove current rbd mirror peer, add new peer into mon config store
           when: mirror_peer_uuid | length > 0
@@ -457,7 +457,7 @@
               register: remote_user_keyring
 
             - name: get quorum_status
-              command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} quorum_status --format json"
+              command: "{{ ceph_cmd }} quorum_status --format json"
               changed_when: false
               delegate_to: "{{ groups[mon_group_name][0] }}"
               register: quorum_status
@@ -472,7 +472,7 @@
               run_once: true
 
             - name: remove current mirror peer
-              command: "{{ admin_rbd_cmd }} mirror pool peer remove {{ ceph_rbd_mirror_pool }} {{ ((mirror_pool_info.stdout | from_json | default('{}'))['peers'] | selectattr('site_name', 'match', '^'+ceph_rbd_mirror_remote_cluster+'$') | map(attribute='uuid') | list)[0] }}"
+              command: "{{ admin_rbd_cmd }} mirror pool peer remove {{ ceph_rbd_mirror_pool }} {{ ((mirror_pool_info.stdout | default('{}') | from_json)['peers'] | selectattr('site_name', 'match', '^'+ceph_rbd_mirror_remote_cluster+'$') | map(attribute='uuid') | list)[0] }}"
               delegate_to: "{{ groups.get(mon_group_name | default('mons'))[0] }}"
               changed_when: false
 
