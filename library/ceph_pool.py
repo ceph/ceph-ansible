@@ -395,7 +395,8 @@ def create_pool(cluster,
         args.extend(['--pg_num',
                      user_pool_config['pg_num']['value'],
                      '--pgp_num',
-                     user_pool_config['pgp_num']['value']])
+                     user_pool_config['pgp_num']['value'] or
+                     user_pool_config['pg_num']['value']])
     elif user_pool_config['target_size_ratio']['value']:
         args.extend(['--target_size_ratio',
                      user_pool_config['target_size_ratio']['value']])
