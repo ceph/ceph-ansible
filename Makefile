@@ -19,7 +19,7 @@ NAME = ceph-ansible
 #  "ceph-ansible-2.2.0-1.el8"
 
 DIST ?= "el8"
-MOCK_CONFIG ?= "centos+epel-8-x86_64"
+MOCK_CONFIG ?= "centos-stream+epel-8-x86_64"
 TAG := $(shell git describe --tags --abbrev=0 --match 'v*')
 VERSION := $(shell echo $(TAG) | sed 's/^v//')
 COMMIT := $(shell git rev-parse HEAD)
