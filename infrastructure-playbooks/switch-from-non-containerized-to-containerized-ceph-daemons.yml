@@ -6,7 +6,7 @@
   hosts: localhost
 
   gather_facts: false
-
+  any_errors_fatal: true
   vars_prompt:
     - name: ireallymeanit
       prompt: Are you sure you want to switch from non-containerized to containerized ceph daemons?
@@ -14,6 +14,14 @@
       private: no
 
   tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - name: fail when less than three monitors
+      fail:
+        msg: "This playbook requires at least three monitors."
+      when: groups[mon_group_name] | length | int < 3
+
     - name: exit playbook, if user did not mean to switch from non-containerized to containerized daemons?
       fail:
         msg: >
