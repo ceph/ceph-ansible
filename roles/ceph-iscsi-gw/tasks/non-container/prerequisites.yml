@@ -2,24 +2,12 @@
 - name: red hat based systems tasks
   when: ansible_facts['os_family'] == 'RedHat'
   block:
-    - name: set_fact common_pkgs
+    - name: set_fact iscsi_pkgs
       set_fact:
-        common_pkgs:
+        iscsi_pkgs:
           - tcmu-runner
           - targetcli
-
-    - name: set_fact base iscsi pkgs if new style ceph-iscsi
-      set_fact:
-        iscsi_base:
           - ceph-iscsi
-      when: use_new_ceph_iscsi | bool
-
-    - name: set_fact base iscsi pkgs if using older ceph-iscsi-config
-      set_fact:
-        iscsi_base:
-          - ceph-iscsi-cli
-          - ceph-iscsi-config
-      when: not use_new_ceph_iscsi | bool
 
     - name: when ceph_iscsi_config_dev is true
       when:
@@ -37,17 +25,16 @@
 
         - name: ceph-iscsi development repository
           get_url:
-            url: "https://shaman.ceph.com/api/repos/{{ item }}/master/latest/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_major_version'] }}/repo"
-            dest: '/etc/yum.repos.d/{{ item }}-dev.repo'
+            url: "https://shaman.ceph.com/api/repos/ceph-iscsi/master/latest/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_major_version'] }}/repo"
+            dest: '/etc/yum.repos.d/ceph-iscsi-dev.repo'
             force: true
           register: result
           until: result is succeeded
-          with_items: '{{ iscsi_base }}'
           when: ceph_repository == 'dev'
 
         - name: ceph-iscsi stable repository
           get_url:
-            url: "https://download.ceph.com/ceph-iscsi/{{ '3' if use_new_ceph_iscsi | bool else '2' }}/rpm/el{{ ansible_facts['distribution_major_version'] }}/ceph-iscsi.repo"
+            url: "https://download.ceph.com/ceph-iscsi/3/rpm/el{{ ansible_facts['distribution_major_version'] }}/ceph-iscsi.repo"
             dest: /etc/yum.repos.d/ceph-iscsi.repo
             force: true
           register: result
@@ -56,7 +43,7 @@
 
     - name: install ceph iscsi package
       package:
-        name: "{{ common_pkgs + iscsi_base }}"
+        name: "{{ iscsi_pkgs }}"
         state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
       register: result
       until: result is succeeded
