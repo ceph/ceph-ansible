@@ -361,13 +361,13 @@
       when: is_hci | bool
 
     - name: manage nodes with cephadm - ipv4
-      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(cephadm_mgmt_network.split(',')) | first }} {{ group_names | join(' ') }}"
+      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(cephadm_mgmt_network.split(',')) | first }} {{ group_names | intersect(adopt_label_group_names) | join(' ') }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       when: ip_version == 'ipv4'
 
     - name: manage nodes with cephadm - ipv6
-      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(cephadm_mgmt_network.split(',')) | last | ipwrap }} {{ group_names | join(' ') }}"
+      command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(cephadm_mgmt_network.split(',')) | last | ipwrap }} {{ group_names | intersect(adopt_label_group_names) | join(' ') }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       when: ip_version == 'ipv6'
