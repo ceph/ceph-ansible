@@ -34,3 +34,11 @@
     mode: 0644
     state: present
     create: yes
+
+- name: restore certificates selinux context
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - inventory_hostname in groups.get(mon_group_name, [])
+      or inventory_hostname in groups.get(rgw_group_name, [])
+  command: /usr/sbin/restorecon -RF /etc/pki/ca-trust/extracted
+  changed_when: false
