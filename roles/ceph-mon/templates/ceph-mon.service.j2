@@ -27,13 +27,14 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --name ceph-mon-%i \
   --pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
   --memory={{ ceph_mon_docker_memory_limit }} \
   --cpus={{ ceph_mon_docker_cpu_limit }} \
-  -v /var/lib/ceph:/var/lib/ceph:z,rshared \
-  -v /etc/ceph:/etc/ceph:z \
-  -v /var/run/ceph:/var/run/ceph:z \
-  -v /etc/localtime:/etc/localtime:ro \
-  -v /var/log/ceph:/var/log/ceph:z \
-{% if ansible_facts['distribution'] == 'RedHat' -%}
-  -v /etc/pki/ca-trust/extracted:/etc/pki/ca-trust/extracted:z \
+  --security-opt label=disable \
+  -v /var/lib/ceph:/var/lib/ceph:rshared \
+  -v /etc/ceph:/etc/ceph \
+  -v /var/run/ceph:/var/run/ceph \
+  -v /etc/localtime:/etc/localtime \
+  -v /var/log/ceph:/var/log/ceph \
+{% if ansible_facts['os_family'] == 'RedHat' -%}
+  -v /etc/pki/ca-trust/extracted:/etc/pki/ca-trust/extracted \
 {% endif -%}
 {% if mon_docker_privileged | bool -%}
   --privileged \
