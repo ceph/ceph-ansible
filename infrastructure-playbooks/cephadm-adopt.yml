@@ -288,9 +288,9 @@
         -v /var/lib/ceph:/var/lib/ceph:ro
         -v /var/run/ceph:/var/run/ceph:z
         -v ' + item.1 + ':/etc/ceph/cephadm.' + item.0 + ':ro --entrypoint=ceph '+ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}
-        --cluster {{ cluster }} config-key set mgr/cephadm/ssh_identity_{{ item.0 }} -i /etc/ceph/cephadm.{{ item.0 }}
+        --cluster {{ cluster }} cephadm set-{{ item.0 }}-key -i /etc/ceph/cephadm.{{ item.0 }}
       with_together:
-        - [ 'pub', 'key' ]
+        - [ 'pub', 'priv' ]
         - [ '{{ cephadm_ssh_pub_key_path }}', '{{ cephadm_ssh_priv_key_path }}' ]
 
     - name: get the cephadm ssh pub key
