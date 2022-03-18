@@ -13,6 +13,11 @@
       set_fact:
         is_atomic: '{{ stat_ostree.stat.exists }}'
 
+    - name: update the system
+      command: dnf update -y
+      changed_when: false
+      when: not is_atomic | bool
+
     - name: get root mount information
       set_fact:
         rootmount: "{{ ansible_facts['mounts']|json_query('[?mount==`/`]|[0]') }}"
