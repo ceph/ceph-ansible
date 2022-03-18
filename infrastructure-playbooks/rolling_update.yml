@@ -98,6 +98,57 @@
     - import_role:
         name: ceph-facts
 
+    - name: block upgrade when rgw-multisite is active
+      when: groups.get(rgw_group_name, []) | length > 0
+      block:
+        - name: set_fact radosgw_cmd
+          set_fact:
+            radosgw_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=radosgw-admin ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'radosgw-admin' }}"
+
+        - name: get list of realms
+          command: "{{ radosgw_cmd }} --cluster {{ cluster }} realm list"
+          register: period_output
+          changed_when: false
+          run_once: true
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+
+        - name: set_fact realms
+          set_fact:
+            realms: "{{ (period_output.stdout | default('{}') | from_json)['realms'] }}"
+          run_once: true
+
+        - name: get the periods
+          command: "{{ radosgw_cmd }} --cluster {{ cluster }} --rgw-realm={{ item }} period get"
+          register: period_list
+          changed_when: false
+          run_once: true
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          loop: "{{ realms }}"
+
+        - name: set_fact periods
+          set_fact:
+            periods: "{{ periods | default([]) | union([(item.stdout | default('{}') | from_json)['period_map']['zonegroups']]) }}"
+          loop: "{{ period_list.results }}"
+          run_once: true
+
+        - name: fail if there is more than 1 zonegroup per realm (rgw multisite)
+          fail:
+            msg: "This release of Ceph doesn't allow upgrading with rgw multisite."
+          when:
+            - periods is defined
+            - periods | map(attribute='name') | length != periods | length
+          run_once: true
+
+        - name: fail if at least 1 zonegroup has more than 1 zone (rgw multisite)
+          fail:
+            msg: "This release of Ceph doesn't allow upgrading with rgw multisite."
+          loop: "{{ periods }}"
+          run_once: true
+          when:
+            - periods is defined
+            - periods | map(attribute='name') | length == periods | length
+            - item[0]['zones'] | length > 1
+
     - import_role:
         name: ceph-infra
 
