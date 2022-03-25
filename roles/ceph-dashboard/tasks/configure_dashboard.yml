@@ -10,13 +10,19 @@
 
 - name: get current mgr backend - ipv4
   set_fact:
-    dashboard_server_addr: "{{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(dashboard_network.split(',')) | first }}"
+    dashboard_server_addr: "{{ hostvars[item]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(dashboard_network.split(',')) | first }}"
   when: ip_version == 'ipv4'
+  loop: "{{ groups.get(mgr_group_name) if groups.get(mgr_group_name, []) | length > 0 else groups.get(mon_group_name) }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: True
 
 - name: get current mgr backend - ipv6
   set_fact:
-    dashboard_server_addr: "{{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(dashboard_network.split(',')) | last }}"
+    dashboard_server_addr: "{{ hostvars[item]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(dashboard_network.split(',')) | last }}"
   when: ip_version == 'ipv6'
+  loop: "{{ groups.get(mgr_group_name) if groups.get(mgr_group_name, []) | length > 0 else groups.get(mon_group_name) }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: True
 
 - name: disable SSL for dashboard
   when: dashboard_protocol == "http"
