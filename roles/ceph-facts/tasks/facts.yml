@@ -161,7 +161,7 @@
   with_items: "{{ devices }}"
   register: devices_prepare_canonicalize
   when:
-    - devices | length > 0
+    - devices is defined
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
 
@@ -170,7 +170,7 @@
     devices: "{{ devices | default([]) + [ item.stdout ] }}"
   with_items: "{{ devices_prepare_canonicalize.results }}"
   when:
-    - devices | length > 0
+    - devices is defined
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
 
@@ -178,7 +178,7 @@
   set_fact:
     devices: "{{ devices | reject('search','/dev/disk') | list | unique }}"
   when:
-    - devices | length > 0
+    - devices is defined
     - inventory_hostname in groups.get(osd_group_name, [])
     - not osd_auto_discovery|default(False)
 
