@@ -36,7 +36,7 @@
   include_tasks: common.yml
 
 - name: set noup flag
-  command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set noup"
+  command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd set noup"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: True
   changed_when: False
@@ -99,7 +99,7 @@
   include_tasks: start_osds.yml
 
 - name: unset noup flag
-  command: "{{ docker_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset noup"
+  command: "{{ hostvars[groups[mon_group_name][0]]['docker_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd unset noup"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: False
   when:
