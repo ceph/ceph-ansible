@@ -30,6 +30,13 @@
   delegate_to: "{{ item }}"
   delegate_facts: True
 
+- include_role:
+    name: ceph-facts
+    tasks_from: set_radosgw_address.yml
+  loop: "{{ groups[rgw_group_name] }}"
+  loop_control:
+    loop_var: ceph_dashboard_call_item
+
 - name: disable SSL for dashboard
   when: dashboard_protocol == "http"
   delegate_to: "{{ groups[mon_group_name][0] }}"
