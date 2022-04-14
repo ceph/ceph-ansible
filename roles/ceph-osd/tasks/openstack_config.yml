@@ -39,7 +39,7 @@
       when: item.target_size_ratio is defined
 
     - name: set pg_autoscale_mode value on pool(s)
-      command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode {{ item.pg_autoscale_mode | default(False) | ternary('on', 'warn') }}"
+      command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode {{ 'on' if item.pg_autoscale_mode | default('off') | lower in ['on', 'yes', 'true'] else 'off' if item.pg_autoscale_mode | default('off') | lower in ['off', 'no', 'false'] else 'warn' }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ openstack_pools | unique }}"
 
