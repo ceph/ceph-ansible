@@ -46,7 +46,7 @@
       when: item.target_size_ratio is defined
 
     - name: set pg_autoscale_mode value on pool(s)
-      command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode {{ item.pg_autoscale_mode | default(False) | ternary('on', 'warn') }}"
+      command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd pool set {{ item.name }} pg_autoscale_mode {{ 'on' if item.pg_autoscale_mode | default('off') | lower in ['on', 'yes', 'true'] else 'off' if item.pg_autoscale_mode | default('off') | lower in ['off', 'no', 'false'] else 'warn' }}"
       with_items: "{{ cephfs_pools | unique }}"
 
     - name: customize pool size
