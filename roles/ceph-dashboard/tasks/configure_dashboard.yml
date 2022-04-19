@@ -27,9 +27,10 @@
 - include_role:
     name: ceph-facts
     tasks_from: set_radosgw_address.yml
-  loop: "{{ groups[rgw_group_name] }}"
+  loop: "{{ groups.get(rgw_group_name, []) }}"
   loop_control:
     loop_var: ceph_dashboard_call_item
+  when: groups.get(rgw_group_name, []) | length > 0
 
 - name: disable SSL for dashboard
   when: dashboard_protocol == "http"
