@@ -1,4 +1,13 @@
 ---
+- name: dashboard related tasks
+  when: ceph_dashboard_call_item is defined
+  block:
+    - name: set current radosgw_address_block, radosgw_address, radosgw_interface  from node "{{ ceph_dashboard_call_item }}"
+      set_fact:
+        radosgw_address_block: "{{ hostvars[ceph_dashboard_call_item]['radosgw_address_block'] | default(radosgw_address_block) }}"
+        radosgw_address: "{{ hostvars[ceph_dashboard_call_item]['radosgw_address'] | default(radosgw_address) }}"
+        radosgw_interface: "{{ hostvars[ceph_dashboard_call_item]['radosgw_interface'] | default(radosgw_interface) }}"
+
 - name: set_fact _radosgw_address to radosgw_address_block ipv4
   set_fact:
     _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(hostvars[inventory_hostname]['radosgw_address_block'].split(',')) | first }}"
