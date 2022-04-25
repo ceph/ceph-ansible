@@ -391,7 +391,7 @@ def create_pool(cluster,
     args = ['create', user_pool_config['pool_name']['value'],
             user_pool_config['type']['value']]
 
-    if user_pool_config['pg_autoscale_mode']['value'] != 'on':
+    if user_pool_config['pg_autoscale_mode']['value'] == 'off':
         args.extend(['--pg_num',
                      user_pool_config['pg_num']['value'],
                      '--pgp_num',
