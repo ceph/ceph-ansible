@@ -1,0 +1,281 @@
+---
+# Copyright 2018, Rackspace US
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Setup the host
+- import_playbook: common/test-prepare-keys.yml
+
+- import_playbook: common/test-prepare-host.yml
+
+# Temporary work around for issue with lxc_host where on second run after
+# all iptables rules have been removed, the lxc_host role is not checking
+# that the rules are defined and adding them back in if they are not.
+- name: Add iptables rules back in
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  become: yes
+
+  vars:
+    do_not_fail_lint: true
+
+  tasks:
+    - name: Ensure lxc iptables rules
+      command: /usr/local/bin/lxc-system-manage iptables-create
+      when: do_not_fail_lint
+
+- import_playbook: common/test-prepare-containers.yml
+
+- name: Test config_template
+  hosts: localhost:container1
+  connection: local
+  gather_facts: yes
+
+  tasks:
+    - name: Read expected test_extend.yml
+      slurp:
+        src: "{{ playbook_dir }}/files/test_extend.yml.expected"
+      register: extend_file_expected
+
+    - name: Read expected test_no_extend.yml
+      slurp:
+        src: "{{ playbook_dir }}/files/test_no_extend.yml.expected"
+      register: no_extend_file_expected
+
+    - name: Read expected test_content_no_overrides.json
+      slurp:
+        src: "{{ playbook_dir }}/files/test_content_no_overrides.json.expected"
+      register: content_no_overrides_file_expected
+
+    - name: Read expected test_multiline_strs.yml
+      slurp:
+        src: "{{ playbook_dir }}/files/test_multiline_strs.yml.expected"
+      register: multiline_strs_file_expected
+
+    - name: Read expected test_list_only.yml
+      slurp:
+        src: "{{ playbook_dir }}/files/test_list_only.yml.expected"
+      register: test_list_only_file_expected
+
+    - name: Read expected test_list_only.yml
+      slurp:
+        src: "{{ playbook_dir }}/files/test_list_only_replace.yml.expected"
+      register: test_list_only_replace_file_expected
+
+    - import_tasks: test-common-tasks.yml
+
+  handlers:
+    - name: test_extend_yml check diff
+      assert:
+        that:
+          - test_extend_yml.diff[0].prepared|from_json == diff_extend_yml
+
+    - name: test_no_extend_yml check diff
+      assert:
+        that:
+          - test_no_extend_yml.diff[0].prepared|from_json == diff_no_extend_yml
+
+    - name: test_hostvars_yml check diff
+      assert:
+        that:
+          - test_hostvars_yml.diff[0].prepared|from_yaml == diff_hostvars_yml
+
+    - name: test_content_no_overrides_json check diff
+      assert:
+        that:
+          - test_content_no_overrides_json.diff[0].prepared|from_json == diff_content_no_overrides_json
+
+    - name: test_diff_ini check diff
+      tags: test
+      assert:
+        that:
+          - test_diff_ini.diff[0].prepared|from_json == diff_diff_ini
+
+    - name: test_diff_remove_ini check diff
+      tags: test
+      assert:
+        that:
+          - test_diff_remove_ini.diff[0].prepared|from_json == diff_diff_remove_ini
+
+  vars:
+    test_config_ini_overrides:
+      DEFAULT:
+        new_key: "new_value"
+      foo:
+        baz: "bar"
+      section1:
+        key1: "String1"
+        key10: 10
+        key11: 11
+        key2: "string2"
+        key3: "string3"
+        key4: "string4"
+        key5: "string5"
+        key6: "string6"
+        key7: 1
+        key8: 2
+        key9: 3
+      section10:
+        key1: 1
+      section11:
+        key1: 1
+      section2:
+        key1: "value1"
+      section3:
+        key1: "value1"
+      section4:
+        key1: "value1"
+      section5:
+        key1: "value1"
+      section6:
+        key1: "value1"
+      section7:
+        key1: "value1"
+      section8:
+        key1: 1
+      section9:
+        key1: 1
+    test_config_yml_overrides:
+      list_one:
+        - four
+        - 4
+    test_config_yml_hostvars_overrides:
+      test_hostvar: "{{ ansible_facts['default_ipv4']['address'] }}"
+    test_multiline_strs_yml_overrides:
+      new_multiline_str: |
+        This should not
+        be a list
+    test_list_only_overrides:
+      - things: stuff
+    test_default_section_overrides:
+      global:
+        test2: 2
+      section1:
+        setting2: 2
+    test_diff_overrides:
+      section1:
+        baz: "hotel"
+      section3:
+        alfa: "bravo"
+    test_enhanced_comments_ini_overrides:
+      DEFAULT:
+        default_availability_zone: zone1
+        instance_usage_audit_period: blah blah blah
+        password_length: 100
+        test:
+          - test1
+          - test2
+      TestSection:
+        things: stuff
+      SubSection:
+        testop2: below 9000
+    diff_ini:
+      added:
+        DEFAULT:
+          new_key: "new_value"
+        foo:
+          baz: "bar"
+        section1:
+          key1: "String1"
+          key10: "10"
+          key11: "11"
+          key2: "string2"
+          key3: "string3"
+          key4: "string4"
+          key5: "string5"
+          key6: "string6"
+          key7: "1"
+          key8: "2"
+          key9: "3"
+        section10:
+          key1: "1"
+        section11:
+          key1: "1"
+        section2:
+          key1: "value1"
+        section3:
+          key1: "value1"
+        section4:
+          key1: "value1"
+        section5:
+          key1: "value1"
+        section6:
+          key1: "value1"
+        section7:
+          key1: "value1"
+        section8:
+          key1: "1"
+        section9:
+          key1: "1"
+      changed: {}
+      removed: {}
+    diff_extend_yml:
+      added:
+        list_one:
+          - "one"
+          - "two"
+          - "three"
+          - "four"
+          - 4
+        list_two:
+          - "one"
+          - "two"
+      changed: {}
+      removed: {}
+    diff_no_extend_yml:
+      added:
+        list_one:
+          - "four"
+          - 4
+        list_two:
+          - "one"
+          - "two"
+      changed: {}
+      removed: {}
+    diff_hostvars_yml:
+      added:
+        list_one:
+          - "one"
+          - "two"
+          - "three"
+        list_two:
+          - "one"
+          - "two"
+        test_hostvar: "{{ ansible_facts['default_ipv4']['address'] }}"
+      changed: {}
+      removed: {}
+    diff_content_no_overrides_json:
+      added:
+        alfa: "bravo"
+        charlie: "echo"
+        foxtrot:
+          golf: "hotel"
+      changed: {}
+      removed: {}
+    diff_diff_ini:
+      added:
+        section3:
+          alfa: "bravo"
+      changed:
+        section1:
+          baz:
+            current_val: "baz"
+            new_val: "hotel"
+      removed: {}
+    diff_diff_remove_ini:
+      added: {}
+      changed: {}
+      removed:
+        section2:
+          foo: "bar"

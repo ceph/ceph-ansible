@@ -1,0 +1,33 @@
+export VIRTUAL_ENV=$(pwd)
+export ANSIBLE_HOST_KEY_CHECKING=False
+export ANSIBLE_SSH_CONTROL_PATH=/tmp/%%h-%%r
+
+# TODO (odyssey4me) These are only here as they are non-standard folder
+# names for Ansible 1.9.x. We are using the standard folder names for
+# Ansible v2.x. We can remove this when we move to Ansible 2.x.
+export ANSIBLE_ACTION_PLUGINS=${HOME}/.ansible/plugins/action
+export ANSIBLE_CALLBACK_PLUGINS=${HOME}/.ansible/plugins/callback
+export ANSIBLE_FILTER_PLUGINS=${HOME}/.ansible/plugins/filter
+export ANSIBLE_LOOKUP_PLUGINS=${HOME}/.ansible/plugins/lookup
+
+# This is required as the default is the current path or a path specified
+# in ansible.cfg
+export ANSIBLE_LIBRARY=${HOME}/.ansible/plugins/library
+
+# This is required as the default is '/etc/ansible/roles' or a path
+# specified in ansible.cfg
+export ANSIBLE_ROLES_PATH=${HOME}/.ansible/roles:$(pwd)/..
+
+export ANSIBLE_SSH_ARGS="-o ControlMaster=no \
+  -o UserKnownHostsFile=/dev/null \
+  -o StrictHostKeyChecking=no \
+  -o ServerAliveInterval=64 \
+  -o ServerAliveCountMax=1024 \
+  -o Compression=no \
+  -o TCPKeepAlive=yes \
+  -o VerifyHostKeyDNS=no \
+  -o ForwardX11=no \
+  -o ForwardAgent=yes"
+
+echo "Run manual functional tests by executing the following:"
+echo "# ./.tox/functional/bin/ansible-playbook -i tests/inventory tests/test.yml"

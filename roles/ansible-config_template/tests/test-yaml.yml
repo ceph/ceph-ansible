@@ -1,0 +1,175 @@
+---
+# Copyright 2018, Rackspace US
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Test basic function of config_template
+
+# Test list additions in config_template
+- name: Template test YML template
+  config_template:
+    src: "{{ playbook_dir }}/templates/test.yml"
+    dest: "/tmp/test_extend.yml"
+    config_overrides: "{{ test_config_yml_overrides }}"
+    config_type: "yaml"
+    list_extend: True
+  register: test_extend_yml
+  notify: test_extend_yml check diff
+
+- name: Read test_extend.yml
+  slurp:
+    src: /tmp/test_extend.yml
+  register: extend_file
+
+- debug:
+    msg: "extend - {{ extend_file.content | b64decode }}"
+
+- debug:
+    msg: "extend.expected - {{ extend_file_expected.content | b64decode }}"
+
+- name: Compare files
+  assert:
+    that:
+      - "(extend_file.content | b64decode) == (extend_file_expected.content | b64decode)"
+
+
+# Test list replacement in config_template
+- name: Template test YML template
+  config_template:
+    src: "{{ playbook_dir }}/templates/test.yml"
+    dest: "/tmp/test_no_extend.yml"
+    config_overrides: "{{ test_config_yml_overrides }}"
+    config_type: "yaml"
+    list_extend: False
+  register: test_no_extend_yml
+  notify: test_no_extend_yml check diff
+
+- name: Read test_no_extend.yml
+  slurp:
+    src: /tmp/test_no_extend.yml
+  register: no_extend_file
+
+- debug:
+    msg: "no_extend - {{ no_extend_file.content | b64decode }}"
+
+- debug:
+    msg: "no_extend.expected - {{ no_extend_file_expected.content | b64decode }}"
+
+- name: Compare files
+  assert:
+    that:
+      - "(no_extend_file.content | b64decode) == (no_extend_file_expected.content | b64decode)"
+
+
+# Test dumping hostvars using config overrides
+- name: Template test YML template with hostvars override
+  config_template:
+    src: "{{ playbook_dir }}/templates/test.yml"
+    dest: "/tmp/test_hostvars.yml"
+    config_overrides: "{{ test_config_yml_hostvars_overrides }}"
+    config_type: "yaml"
+  register: test_hostvars_yml
+  notify: test_hostvars_yml check diff
+
+- name: Read test_hostvars.yml
+  slurp:
+    src: /tmp/test_hostvars.yml
+  register: hostvars_file
+
+- debug:
+    msg: "hostvars - {{ (hostvars_file.content | b64decode | from_yaml).test_hostvar }}"
+
+- debug:
+    msg: "hostvars.expected - {{ test_config_yml_hostvars_overrides.test_hostvar }}"
+
+- name: Compare files
+  assert:
+    that:
+      - "((hostvars_file.content | b64decode | from_yaml).test_hostvar) == (test_config_yml_hostvars_overrides.test_hostvar)"
+
+
+# Values containing newlines should not be chopped into a list
+# when yml_multilines is set to True
+- name: Test multiline strings in yaml
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_multiline_strs.yml"
+    dest: "/tmp/multiline_strs.yml"
+    config_overrides: "{{ test_multiline_strs_yml_overrides }}"
+    config_type: yaml
+    yml_multilines: True
+
+- name: Read multiline_strs.yml
+  slurp:
+    src: /tmp/multiline_strs.yml
+  register: multiline_strs_file
+
+- debug:
+    msg: "Multiline Yaml Strings - {{ multiline_strs_file.content | b64decode }}"
+
+- debug:
+    msg: "Multiline Yaml Strings Expected - {{ multiline_strs_file_expected.content | b64decode }}"
+
+- name: Compare files
+  assert:
+    that:
+      - "(multiline_strs_file_expected.content | b64decode) == (multiline_strs_file.content | b64decode)"
+
+
+# Test yaml list only files
+- name: Test list only files in yaml (extend)
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_list_only.yml"
+    dest: "/tmp/test_list_only.yml"
+    config_overrides: "{{ test_list_only_overrides }}"
+    config_type: yaml
+    list_extend: True
+
+- name: Read test_list_only.yml
+  slurp:
+    src: /tmp/test_list_only.yml
+  register: test_list_only_file
+
+- debug:
+    msg: "List only Yaml Strings - {{ test_list_only_file.content | b64decode }}"
+
+- debug:
+    msg: "List only Yaml Strings Expected - {{ test_list_only_file_expected.content | b64decode }}"
+
+- name: Compare files
+  assert:
+    that:
+      - "(test_list_only_file_expected.content | b64decode) == (test_list_only_file.content | b64decode)"
+
+- name: Test list only files in yaml (replace)
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_list_only.yml"
+    dest: "/tmp/test_list_only.yml"
+    config_overrides: "{{ test_list_only_overrides }}"
+    config_type: yaml
+    list_extend: False
+
+- name: Read test_list_only.yml
+  slurp:
+    src: /tmp/test_list_only.yml
+  register: test_list_only_replace_file
+
+- debug:
+    msg: "List only Yaml Strings - {{ test_list_only_replace_file.content | b64decode }}"
+
+- debug:
+    msg: "List only Yaml Strings Expected - {{ test_list_only_replace_file_expected.content | b64decode }}"
+
+- name: Compare files
+  assert:
+    that:
+      - "(test_list_only_replace_file_expected.content | b64decode) == (test_list_only_replace_file.content | b64decode)"

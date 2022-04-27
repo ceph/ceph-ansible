@@ -1,0 +1,286 @@
+---
+# Copyright 2018, Rackspace US
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Test basic function of config_template
+
+# Test basic ini template
+- name: Template test INI template
+  config_template:
+    src: "{{ playbook_dir }}/templates/test.ini"
+    dest: "/tmp/test.ini"
+    config_overrides: "{{ test_config_ini_overrides }}"
+    config_type: "ini"
+
+- name: Read test.ini
+  slurp:
+    src: /tmp/test.ini
+  register: ini_file
+
+- debug:
+    msg: "ini - {{ ini_file.content | b64decode }}"
+
+- name: Validate output
+  assert:
+    that:
+      - "(lookup('ini', 'new_key section=DEFAULT file=/tmp/test.ini')) == 'new_value'"
+      - "(lookup('ini', 'baz section=foo file=/tmp/test.ini')) == 'bar'"
+
+
+# Test basic function of config_template with content instead of src
+- name: Template test INI template
+  config_template:
+    content: "{{ lookup('file', playbook_dir + '/templates/test.ini') }}"
+    dest: "/tmp/test_with_content.ini"
+    config_overrides: "{{ test_config_ini_overrides }}"
+    config_type: "ini"
+
+- name: Read test.ini
+  slurp:
+    src: /tmp/test_with_content.ini
+  register: ini_file_with_content
+
+- debug:
+    msg: "ini - {{ ini_file_with_content.content | b64decode }}"
+
+- name: Validate output
+  assert:
+    that:
+      - "(lookup('ini', 'new_key section=DEFAULT file=/tmp/test_with_content.ini')) == 'new_value'"
+      - "(lookup('ini', 'baz section=foo file=/tmp/test_with_content.ini')) == 'bar'"
+
+
+# Test multistropt ordering
+- name: Template MultiStrOpts using overrides
+  config_template:
+    src: test_multistropts.ini
+    dest: /tmp/test_multistropts.ini
+    config_overrides:
+      testsection:
+        test: output
+    config_type: ini
+
+- name: Create expected MultiStrOpts file
+  copy:
+    src: files/test_multistropts.ini.expected
+    dest: /tmp/test_multistropts.ini.expected
+
+- name: Read test_multistropts.ini
+  slurp:
+    src: /tmp/test_multistropts.ini
+  register: multistropts_file
+
+- name: Read test_multistropts.ini.expected
+  slurp:
+    src: /tmp/test_multistropts.ini.expected
+  register: multistropts_expected_file
+
+- name: Set content facts
+  set_fact:
+    _multistropts_file: "{{ (multistropts_file.content | b64decode).strip() }}"
+    _multistropts_expected_file: "{{ (multistropts_expected_file.content | b64decode).strip() }}"
+
+- name: Show rendered file
+  debug:
+    msg: "multistropts rendered - {{ _multistropts_file }}"
+
+- name: Show expected file
+  debug:
+    msg: "multistropts expected - {{ _multistropts_expected_file }}"
+
+- name: Compare files
+  assert:
+    that:
+      - _multistropts_file == _multistropts_expected_file
+
+
+# Test remote_src
+- name: Template remote source using overrides
+  config_template:
+    src: /tmp/test_multistropts.ini
+    dest: /tmp/test_remote_src_multistropts.ini
+    remote_src: true
+    config_overrides:
+      remote_src_section:
+        test: output
+    config_type: ini
+
+- name: Create expected MultiStrOpts file
+  copy:
+    src: files/test_remote_src_multistropts.ini.expected
+    dest: /tmp/test_remote_src_multistropts.ini.expected
+
+- name: Read test_remote_src_multistropts.ini
+  slurp:
+    src: /tmp/test_remote_src_multistropts.ini
+  register: multistropts_file
+
+- name: Read test_remote_src_multistropts.ini.expected
+  slurp:
+    src: /tmp/test_remote_src_multistropts.ini.expected
+  register: multistropts_expected_file
+
+- name: Set content facts
+  set_fact:
+    _remote_src_file: "{{ (multistropts_file.content | b64decode).strip() }}"
+    _remote_src_expected_file: "{{ (multistropts_expected_file.content | b64decode).strip() }}"
+
+- name: Show rendered file
+  debug:
+    msg: "multistropts rendered - {{ _remote_src_file }}"
+
+- name: Show expected file
+  debug:
+    msg: "multistropts expected - {{ _remote_src_expected_file }}"
+
+- name: Compare files
+  assert:
+    that:
+      - _remote_src_file == _remote_src_expected_file
+
+
+# Test the ignore_none_type attribute when set to False
+- name: Template test with ignore_none_type set to false
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_ignore_none_type.ini"
+    dest: "/tmp/test_ignore_none_type.ini"
+    config_overrides: "{{ test_config_ini_overrides }}"
+    config_type: "ini"
+    ignore_none_type: False
+
+- name: Read test_ignore_none_type.ini
+  slurp:
+    src: /tmp/test_ignore_none_type.ini
+  register: test_ignore_none_type
+
+- debug:
+    msg: "test_ignore_none_type.ini - {{ test_ignore_none_type.content | b64decode }}"
+
+- name: Validate output has valueless options printed out
+  assert:
+    that:
+      - "{{ test_ignore_none_type.content | b64decode is search('(?m)^india$') }}"
+      - "{{ test_ignore_none_type.content | b64decode is search('(?m)^juliett kilo$') }}"
+
+
+# Test enhanced comments
+- name: Template test INI template
+  config_template:
+    content: "{{ lookup('file', playbook_dir + '/templates/test_comment_configs.ini') }}"
+    dest: "/tmp/test_comment_configs.ini"
+    config_overrides: "{{ test_enhanced_comments_ini_overrides }}"
+    config_type: "ini"
+
+- name: Create expected enhanced comments file
+  copy:
+    src: files/test_comment_configs.ini.expected
+    dest: /tmp/test_comment_configs.ini.expected
+
+- name: Read test_comment_configs.ini
+  slurp:
+    src: /tmp/test_comment_configs.ini
+  register: test_comment_configs
+
+- name: Read test_comment_configs.ini.expected
+  slurp:
+    src: /tmp/test_comment_configs.ini.expected
+  register: test_comment_configs_expected
+
+- name: Set content facts
+  set_fact:
+    _enhanced_comments_file: "{{ (test_comment_configs.content | b64decode).strip() }}"
+    _enhanced_comments_expected_file: "{{ (test_comment_configs_expected.content | b64decode).strip() }}"
+
+- name: Show rendered file
+  debug:
+    msg: "multistropts rendered - {{ _enhanced_comments_file }}"
+
+- name: Show expected file
+  debug:
+    msg: "multistropts expected - {{ _enhanced_comments_expected_file }}"
+
+- name: Compare files
+  assert:
+    that:
+      - _enhanced_comments_file == _enhanced_comments_expected_file
+
+
+# Test setting a default_section
+- name: Template using default_section
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_default_section.ini"
+    dest: "/tmp/test_default_section.ini"
+    config_type: "ini"
+    config_overrides: "{{ test_default_section_overrides }}"
+    default_section: "global"
+
+- name: Put down default_section_expected file
+  copy:
+    src: "{{ playbook_dir }}/files/test_default_section.ini.expected"
+    dest: "/tmp/test_default_section.ini.expected"
+
+- name: Read test_default_section.ini
+  slurp:
+    src: "/tmp/test_default_section.ini"
+  register: test_default_section
+
+- name: Read test_default_section.ini.expected
+  slurp:
+    src: "/tmp/test_default_section.ini.expected"
+  register: test_default_section_expected
+
+- name: Set content facts
+  set_fact:
+    _test_default_section_file: "{{ (test_default_section.content | b64decode).strip() }}"
+    _test_default_section_expected_file: "{{ (test_default_section_expected.content | b64decode).strip() }}"
+
+- name: Show rendered file
+  debug:
+    msg: "default rendered - {{ _test_default_section_file }}"
+
+- name: Show expected file
+  debug:
+    msg: "default expected - {{ _test_default_section_expected_file }}"
+
+- name: Compare files
+  assert:
+    that:
+      - _test_default_section_file == _test_default_section_expected_file
+
+
+# Check output diff
+- name: Write ini for testing diff output
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_diff.ini"
+    dest: "/tmp/test_diff.ini"
+    config_type: "ini"
+    config_overrides: {}
+
+- name: Test ini with additions and changed
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_diff.ini"
+    dest: "/tmp/test_diff.ini"
+    config_type: "ini"
+    config_overrides: "{{ test_diff_overrides }}"
+  register: test_diff_ini
+  notify: test_diff_ini check diff
+
+- name: Test ini with removes
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_diff_remove.ini"
+    dest: "/tmp/test_diff.ini"
+    config_type: "ini"
+    config_overrides: "{{ test_diff_overrides }}"
+  register: test_diff_remove_ini
+  notify: test_diff_remove_ini check diff

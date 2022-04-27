@@ -1,0 +1,45 @@
+---
+# Copyright 2018, Rackspace US
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Test basic function of config_template
+
+# Test content attribute with a dictionary input and config_type equal to 'json'
+- name: Template test JSON template with content attribute
+  config_template:
+    dest: "/tmp/test_content_no_overrides.json"
+    config_overrides: {}
+    config_type: "json"
+    content: "{{ lookup('file', playbook_dir ~ '/templates/test.json') | from_json }}"
+  register: test_content_no_overrides_json
+  notify: test_content_no_overrides_json check diff
+
+- name: Read test_content_no_overrides.json
+  slurp:
+    src: /tmp/test_content_no_overrides.json
+  register: content_no_overrides_file
+
+- debug:
+    msg: "content_no_overrides.json - {{ content_no_overrides_file.content | b64decode | from_json }}"
+
+- debug:
+    msg: "content_no_overrides.json.expected - {{ content_no_overrides_file_expected.content | b64decode | from_json }}"
+
+# NOTE (alextricity25): The config_template module doesn't use ordered dicts when reading and writing json
+# data, so we can't guarantee that the string literal of both file's content will be the same. Instead, we compare
+# the content after transforming it into a dictionary.
+- name: Compare file content
+  assert:
+    that:
+      - "(content_no_overrides_file.content | b64decode | from_json) == (content_no_overrides_file_expected.content | b64decode | from_json)"
