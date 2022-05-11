@@ -823,6 +823,11 @@
         state: absent
       loop: '{{ (osd_list.stdout | from_json).keys() | list }}'
 
+    - name: remove any legacy directories in /var/lib/ceph/mon (workaround)
+      file:
+        path: "/var/lib/ceph/mon/{{ cluster }}-{{ ansible_facts['hostname'] }}"
+        state: absent
+
     - name: waiting for clean pgs...
       command: "{{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} -- ceph pg stat --format json"
       changed_when: false
