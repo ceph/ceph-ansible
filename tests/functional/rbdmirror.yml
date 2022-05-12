@@ -1,0 +1,32 @@
+---
+- hosts: mon0
+  gather_facts: True
+  become: True
+  tasks:
+    - name: import_role ceph-defaults
+      import_role:
+        name: ceph-defaults
+
+    - name: import_role ceph-facts
+      include_role:
+        name: ceph-facts
+        tasks_from: "container_binary.yml"
+
+    - name: set_fact ceph_cmd
+      set_fact:
+        rbd_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=rbd ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'rbd' }}"
+
+    - name: create an image in rbd mirrored pool
+      command: "{{ rbd_cmd }} create foo --size 1024 --pool {{ ceph_rbd_mirror_pool }} --image-feature exclusive-lock,journaling"
+      changed_when: false
+      tags: primary
+
+    - name: check the image is replicated
+      command: "{{ rbd_cmd }} --pool {{ ceph_rbd_mirror_pool }} ls --format json"
+      register: rbd_ls
+      changed_when: false
+      tags: secondary
+      retries: 30
+      delay: 1
+      until: "'foo' in (rbd_ls.stdout | default('{}') | from_json)"
+
