@@ -300,6 +300,16 @@ ceph-ansible provides a set of playbook in ``infrastructure-playbooks`` director
    day-2/purge
    day-2/upgrade
 
+RBD Mirroring
+-------------
+
+Ceph-ansible provides the role ``ceph-rbd-mirror`` that can setup an RBD mirror replication.
+
+.. toctree::
+   :maxdepth: 1
+
+   rbdmirror/index
+
 Contribution
 ============
 
