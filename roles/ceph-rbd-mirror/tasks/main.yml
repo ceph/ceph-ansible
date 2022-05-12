@@ -1,26 +1,52 @@
 ---
-- name: include pre_requisite.yml
-  include_tasks: pre_requisite.yml
-  when: not containerized_deployment | bool
-
-- name: include common.yml
-  include_tasks: common.yml
-  when: cephx | bool
-
-- name: tasks for non-containerized deployment
-  include_tasks: start_rbd_mirror.yml
-  when: not containerized_deployment | bool
-
-- name: tasks for containerized deployment
-  when: containerized_deployment | bool
+- name: non-containerized related tasks
+  when:
+    - not containerized_deployment | bool
+    - ceph_rbd_mirror_remote_user is defined
   block:
-    - name: set_fact container_exec_cmd
-      set_fact:
-        container_exec_cmd: "{{ container_binary }} exec ceph-rbd-mirror-{{ ansible_facts['hostname'] }}"
+    - name: install dependencies
+      package:
+        name: rbd-mirror
+        state: present
+      register: result
+      until: result is succeeded
+      tags: package-install
 
-    - name: include start_container_rbd_mirror.yml
-      include_tasks: start_container_rbd_mirror.yml
+    - name: ensure systemd service override directory exists
+      file:
+        state: directory
+        path: "/etc/systemd/system/ceph-rbd-mirror@.service.d/"
+      when:
+        - ceph_rbd_mirror_systemd_overrides is defined
+        - ansible_facts['service_mgr'] == 'systemd'
+
+    - name: add ceph-rbd-mirror systemd service overrides
+      openstack.config_template.config_template:
+        src: "ceph-rbd-mirror.service.d-overrides.j2"
+        dest: "/etc/systemd/system/ceph-rbd-mirror@.service.d/ceph-rbd-mirror-systemd-overrides.conf"
+        config_overrides: "{{ ceph_rbd_mirror_systemd_overrides | default({}) }}"
+        config_type: "ini"
+      when:
+        - ceph_rbd_mirror_systemd_overrides is defined
+        - ansible_facts['service_mgr'] == 'systemd'
+
+    - name: enable ceph-rbd-mirror.target
+      systemd:
+        name: "ceph-rbd-mirror.target"
+        state: started
+        enabled: yes
+        masked: no
+      changed_when: false
+
+- name: set_fact ceph_cmd
+  set_fact:
+    rbd_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=rbd ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'rbd' }}"
+
+- name: include start_container_rbd_mirror.yml
+  include_tasks: start_container_rbd_mirror.yml
+  when:
+    - containerized_deployment | bool
+    - ceph_rbd_mirror_remote_user is defined
 
 - name: include configure_mirroring.yml
   include_tasks: configure_mirroring.yml
-  when: ceph_rbd_mirror_configure | bool
