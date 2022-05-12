@@ -249,7 +249,7 @@
       when: ip_version == 'ipv4'
 
     - name: manage nodes with cephadm - ipv6
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ipwrap }} {{ group_names | join(' ') }} {{ '_admin' if mon_group_name | default('mons') in group_names else '' }}"
+      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ansible.utils.ipwrap }} {{ group_names | join(' ') }} {{ '_admin' if mon_group_name | default('mons') in group_names else '' }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       environment:
