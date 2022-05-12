@@ -9,7 +9,7 @@
 
 - name: set grafana_server_addr fact - ipv6
   set_fact:
-    grafana_server_addr: "{{ hostvars[inventory_hostname]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(grafana_network.split(',')) | last | ipwrap }}"
+    grafana_server_addr: "{{ hostvars[inventory_hostname]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(grafana_network.split(',')) | last | ansible.utils.ipwrap }}"
   when:
     - groups.get(monitoring_group_name, []) | length > 0
     - ip_version == 'ipv6'
@@ -27,7 +27,7 @@
 
 - name: set grafana_server_addrs fact - ipv6
   set_fact:
-    grafana_server_addrs: "{{ (grafana_server_addrs | default([]) + [hostvars[item]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(grafana_network.split(',')) | last | ipwrap]) | unique }}"
+    grafana_server_addrs: "{{ (grafana_server_addrs | default([]) + [hostvars[item]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(grafana_network.split(',')) | last | ipansible.utils.ipwrapwrap]) | unique }}"
   with_items: "{{ groups.get(monitoring_group_name, []) }}"
   when:
     - groups.get(monitoring_group_name, []) | length > 0

@@ -9,7 +9,7 @@
 
 - name: set_fact _radosgw_address to radosgw_address_block ipv6
   set_fact:
-    _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(hostvars[inventory_hostname]['radosgw_address_block'].split(',')) | last | ipwrap }}"
+    _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(hostvars[inventory_hostname]['radosgw_address_block'].split(',')) | last | ansible.utils.ipwrap }}"
   when:
     - radosgw_address_block is defined
     - radosgw_address_block != 'subnet'
@@ -17,7 +17,7 @@
 
 - name: set_fact _radosgw_address to radosgw_address
   set_fact:
-    _radosgw_address: "{{ radosgw_address | ipwrap }}"
+    _radosgw_address: "{{ radosgw_address | ansible.utils.ipwrap }}"
   when:
     - radosgw_address is defined
     - radosgw_address != 'x.x.x.x'
@@ -39,7 +39,7 @@
 
     - name: set_fact _radosgw_address to radosgw_interface - ipv6
       set_fact:
-        _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts'][_interface][ip_version][0]['address'] | ipwrap }}"
+        _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts'][_interface][ip_version][0]['address'] | ansible.utils.ipwrap }}"
       when: ip_version == 'ipv6'
 
 - name: set_fact rgw_instances without rgw multisite
