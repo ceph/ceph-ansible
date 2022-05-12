@@ -1,0 +1,27 @@
+---
+ceph_origin: repository
+ceph_repository: community
+cluster: ceph
+public_network: "192.168.142.0/24"
+cluster_network: "192.168.143.0/24"
+monitor_interface: "{{ 'eth1' if ansible_facts['distribution'] == 'CentOS' else 'ens6' }}"
+radosgw_interface: "{{ 'eth1' if ansible_facts['distribution'] == 'CentOS' else 'ens6' }}"
+journal_size: 100
+osd_objectstore: "bluestore"
+# test-volume is created by tests/functional/lvm_setup.yml from /dev/sdb
+lvm_volumes:
+  - data: data-lv1
+    data_vg: test_group
+  - data: data-lv2
+    data_vg: test_group
+    db: journal1
+    db_vg: journals
+os_tuning_params:
+  - { name: fs.file-max, value: 26234859 }
+ceph_conf_overrides:
+  global:
+    mon_allow_pool_size_one: true
+    mon_warn_on_pool_no_redundancy: false
+    osd_pool_default_size: 1
+    mon_max_pg_per_osd: 512
+dashboard_enabled: False
