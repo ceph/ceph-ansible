@@ -686,11 +686,10 @@
         enabled: no
       failed_when: false
 
-    - name: systemctl reset-failed ceph-crash@{{ 'ceph-crash@' + ansible_facts['hostname'] }}  # noqa 303
-      command: "systemctl reset-failed ceph-crash@{{ 'ceph-crash@' + ansible_facts['hostname'] }}"
+    - name: systemctl reset-failed ceph-crash  # noqa 303
+      command: "systemctl reset-failed {{ 'ceph-crash@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-crash.service' }}"
       changed_when: false
       failed_when: false
-      when: containerized_deployment | bool
 
     - name: remove service file
       file:
