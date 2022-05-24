@@ -27,13 +27,13 @@ The following environent variables are available for use:
 
 * ``CEPH_DOCKER_IMAGE_TAG``: (default: ``latest``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image_name``.
 
-* ``CEPH_DEV_BRANCH``: (default: ``master``) This would configure the ``ceph-ansible`` variable ``ceph_dev_branch`` which defines which branch we'd
+* ``CEPH_DEV_BRANCH``: (default: ``main``) This would configure the ``ceph-ansible`` variable ``ceph_dev_branch`` which defines which branch we'd
   like to install from shaman.ceph.com.
 
 * ``CEPH_DEV_SHA1``: (default: ``latest``) This would configure the ``ceph-ansible`` variable ``ceph_dev_sha1`` which defines which sha1 we'd like
   to install from shaman.ceph.com.
 
-* ``UPDATE_CEPH_DEV_BRANCH``: (default: ``master``) This would configure the ``ceph-ansible`` variable ``ceph_dev_branch`` which defines which branch we'd
+* ``UPDATE_CEPH_DEV_BRANCH``: (default: ``main``) This would configure the ``ceph-ansible`` variable ``ceph_dev_branch`` which defines which branch we'd
   like to update to from shaman.ceph.com.
 
 * ``UPDATE_CEPH_DEV_SHA1``: (default: ``latest``) This would configure the ``ceph-ansible`` variable ``ceph_dev_sha1`` which defines which sha1 we'd like

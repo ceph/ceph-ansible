@@ -44,7 +44,7 @@ Dev repository
 ~~~~~~~~~~~~~~
 
 If ``ceph_repository`` is set to ``dev``, packages you will be by default installed from https://shaman.ceph.com/, this can not be tweaked.
-You can obviously decide which branch to install with the help of  ``ceph_dev_branch`` (defaults to 'master').
+You can obviously decide which branch to install with the help of  ``ceph_dev_branch`` (defaults to 'main').
 Additionally, you can specify a SHA1 with ``ceph_dev_sha1``, defaults to 'latest' (as in latest built).
 
 Custom repository

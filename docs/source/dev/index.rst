@@ -86,9 +86,9 @@ If a change should be backported to a ``stable-*`` Git branch:
 - Create a new pull request against the ``stable-5.0`` branch.
 - Ensure that your pull request's title has the prefix "backport:", so it's clear
   to reviewers what this is about.
-- Add a comment in your backport pull request linking to the original (master) pull request.
+- Add a comment in your backport pull request linking to the original (main) pull request.
 
-All changes to the stable branches should land in master first, so we avoid
+All changes to the stable branches should land in main first, so we avoid
 regressions.
 
 Once this is done, one of the project maintainers will tag the tip of the

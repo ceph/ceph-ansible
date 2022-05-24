@@ -101,7 +101,7 @@ tag:
 	    echo "$(SHORTCOMMIT) on $(BRANCH) is already tagged as $(TAG)"; \
 	    exit 1; \
 	fi
-	if [[ "$(BRANCH)" != "master" ]] && \
+	if [[ "$(BRANCH)" != "master" || "$(BRANCH)" != "main" ]] && \
 	   ! [[ "$(BRANCH)" =~ ^stable- ]]; then \
 		echo Cannot tag $(BRANCH); \
 		exit 1; \
