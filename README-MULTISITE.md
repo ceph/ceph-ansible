@@ -119,7 +119,7 @@ A secondary zone pulls a realm in order to sync data to it.
 Finally, The variable `rgw_zone` is set to "default" to enable compression for clusters configured without rgw multi-site.
 If multisite is configured `rgw_zone` should not be set to "default".
 
-For more detail information on multisite please visit: <https://docs.ceph.com/docs/master/radosgw/multisite/>.
+For more detail information on multisite please visit: <https://docs.ceph.com/docs/main/radosgw/multisite/>.
 
 ## Deployment Scenario #1: Single Realm & Zonegroup with Multiple Ceph Clusters
 

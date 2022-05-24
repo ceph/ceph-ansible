@@ -27,6 +27,7 @@
         - ceph_repository in ['dev', 'community']
         - ceph_iscsi_config_dev | bool
       block:
+<<<<<<< HEAD
         - name: get latest available build for tcmu-runner
           uri:
             url: "https://shaman.ceph.com/api/search/?status=ready&project=tcmu-runner&flavor=default&distros=centos/{{ ansible_facts['distribution_major_version'] }}/{{ ansible_facts['architecture'] }}&ref={{ ceph_dev_branch }}&sha1={{ ceph_dev_sha1 }}"
@@ -44,11 +45,17 @@
         - name: configure ceph red hat development repository for tcmu-runner
           copy:
             content: "{{ ceph_dev_yum_repo_tcmu_runner.content }}"
+=======
+        - name: ceph-iscsi dependency repositories
+          get_url:
+            url: "https://shaman.ceph.com/api/repos/tcmu-runner/main/latest/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_major_version'] }}/repo?arch={{ ansible_facts['architecture'] }}"
+>>>>>>> bcedff95 (master->main)
             dest: '/etc/yum.repos.d/tcmu-runner-dev.repo'
             owner: root
             group: root
             backup: yes
 
+<<<<<<< HEAD
         - name: get latest available build for ceph-iscsi
           uri:
             url: "https://shaman.ceph.com/api/search/?status=ready&project={{ item }}&flavor=default&distros=centos/{{ ansible_facts['distribution_major_version'] }}/noarch&ref={{ ceph_dev_branch }}&sha1={{ ceph_dev_sha1 }}"
@@ -73,6 +80,17 @@
             group: root
             backup: yes
           with_items: '{{ ceph_dev_yum_repo_ceph_iscsi.results }}'
+=======
+        - name: ceph-iscsi development repository
+          get_url:
+            url: "https://shaman.ceph.com/api/repos/{{ item }}/main/latest/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_major_version'] }}/repo"
+            dest: '/etc/yum.repos.d/{{ item }}-dev.repo'
+            force: true
+          register: result
+          until: result is succeeded
+          with_items: '{{ iscsi_base }}'
+          when: ceph_repository == 'dev'
+>>>>>>> bcedff95 (master->main)
 
         - name: ceph-iscsi stable repository
           get_url:

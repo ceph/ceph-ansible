@@ -22,7 +22,7 @@ function check_existing_remote {
 }
 
 function pull_origin {
-  git pull origin master
+  git pull origin main
 }
 
 function reset_hard_origin {
@@ -30,7 +30,7 @@ function reset_hard_origin {
   git checkout "$LOCAL_BRANCH"
   git fetch origin --prune
   git fetch --tags
-  git reset --hard origin/master
+  git reset --hard origin/main
 }
 
 function check_git_status {
@@ -79,9 +79,9 @@ for ROLE in $ROLES; do
   REMOTE=$ROLE
   check_existing_remote "$REMOTE"
   reset_hard_origin
-  # First we filter branches by rewriting master with the content of roles/$ROLE
+  # First we filter branches by rewriting main with the content of roles/$ROLE
   # this gives us a new commit history
-  for BRANCH in $(git branch --list --remotes "origin/stable-*" "origin/master" "origin/ansible-1.9" | cut -d '/' -f2); do
+  for BRANCH in $(git branch --list --remotes "origin/stable-*" "origin/main" "origin/ansible-1.9" | cut -d '/' -f2); do
     git checkout -B "$BRANCH" origin/"$BRANCH"
     # use || true to avoid exiting in case of 'Found nothing to rewrite'
     git filter-branch -f --prune-empty --subdirectory-filter roles/"$ROLE" || true
