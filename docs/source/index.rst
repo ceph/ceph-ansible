@@ -20,7 +20,7 @@ You can install directly from the source on GitHub by following these steps:
      $ git clone https://github.com/ceph/ceph-ansible.git
 
 - Next, you must decide which branch of ``ceph-ansible`` you wish to use. There
-  are stable branches to choose from or you could use the master branch:
+  are stable branches to choose from or you could use the main branch:
 
   .. code-block:: console
 
@@ -79,7 +79,7 @@ Releases
 
 The following branches should be used depending on your requirements. The ``stable-*``
 branches have been QE tested and sometimes receive backport fixes throughout their lifecycle.
-The ``master`` branch should be considered experimental and used with caution.
+The ``main`` branch should be considered experimental and used with caution.
 
 - ``stable-3.0`` Supports Ceph versions ``jewel`` and ``luminous``. This branch requires Ansible version ``2.4``.
 
@@ -93,7 +93,7 @@ The ``master`` branch should be considered experimental and used with caution.
 
 - ``stable-6.0`` Supports Ceph version ``pacific``. This branch requires Ansible version ``2.9``.
 
-- ``master`` Supports the master branch of Ceph. This branch requires Ansible version ``2.10``.
+- ``main`` Supports the main branch of Ceph. This branch requires Ansible version ``2.10``.
 
 .. NOTE:: ``stable-3.0`` and ``stable-3.1`` branches of ceph-ansible are deprecated and no longer maintained.
 

@@ -124,7 +124,7 @@ EXAMPLES = '''
   cephadm_bootstrap:
     mon_ip: 192.168.42.1
     fsid: 3c9ba63a-c7df-4476-a1e7-317dfc711f82
-    image: quay.ceph.io/ceph/daemon-base:latest-master-devel
+    image: quay.ceph.io/ceph/daemon-base:latest-main-devel
     dashboard: false
     monitoring: false
     firewalld: false
@@ -133,7 +133,7 @@ EXAMPLES = '''
   cephadm_bootstrap:
     mon_ip: 192.168.42.1
   environment:
-    CEPHADM_IMAGE: quay.ceph.io/ceph/daemon-base:latest-master-devel
+    CEPHADM_IMAGE: quay.ceph.io/ceph/daemon-base:latest-main-devel
 '''
 
 RETURN = '''#  '''

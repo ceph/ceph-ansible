@@ -41,11 +41,11 @@ This will prevent the engine merging your pull request.
 
 ### Backports (maintainers only)
 
-If you wish to see your work from 'master' being backported to a stable branch you can ping a maintainer
-so he will set the backport label on your PR. Once the PR from master is merged, a backport PR will be created by mergify,
+If you wish to see your work from 'main' being backported to a stable branch you can ping a maintainer
+so he will set the backport label on your PR. Once the PR from main is merged, a backport PR will be created by mergify,
 if there is a cherry-pick conflict you must resolv it by pulling the branch.
 
-**NEVER** push directly into a stable branch, **unless** the code from master has diverged so much that the files don't exist in the stable branch.
+**NEVER** push directly into a stable branch, **unless** the code from main has diverged so much that the files don't exist in the stable branch.
 If that happens, inform the maintainers of the reasons why you pushed directly into a stable branch, if the reason is invalid, maintainers will immediatly close your pull request.
 
 ## Good to know
@@ -77,8 +77,8 @@ You must run `./generate_group_vars_sample.sh` before you commit your changes so
 
 ### Keep your branch up-to-date
 
-Sometimes, a pull request can be subject to long discussion, reviews and comments, meantime, `master`
-moves forward so let's try to keep your branch rebased on master regularly to avoid huge conflict merge.
+Sometimes, a pull request can be subject to long discussion, reviews and comments, meantime, `main`
+moves forward so let's try to keep your branch rebased on main regularly to avoid huge conflict merge.
 A rebased branch is more likely to be merged easily & shorter.
 
 ### Organize your commits
