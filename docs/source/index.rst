@@ -63,6 +63,16 @@ You can acquire Ansible on Ubuntu by using the `Ansible PPA <https://launchpad.n
    $ sudo apt update
    $ sudo apt install ansible
 
+Ansible collections
+-------------------
+
+In order to install third-party collections that are required for ceph-ansible,
+please run:
+
+.. code-block:: console
+
+   $ ansible-galaxy install -r requirements.yml
+
 
 Releases
 ========
