@@ -91,7 +91,7 @@ The ``main`` branch should be considered experimental and used with caution.
 
 - ``stable-5.0`` Supports Ceph version ``octopus``. This branch requires Ansible version ``2.9``.
 
-- ``stable-6.0`` Supports Ceph version ``pacific``. This branch requires Ansible version ``2.9``.
+- ``stable-6.0`` Supports Ceph version ``pacific``. This branch requires Ansible version ``2.10``.
 
 - ``main`` Supports the main branch of Ceph. This branch requires Ansible version ``2.10``.
 
