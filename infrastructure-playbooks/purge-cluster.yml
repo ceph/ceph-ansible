@@ -75,7 +75,7 @@
           with_items: "{{ groups[nfs_group_name] }}"
 
         - name: ensure nfs-ganesha mountpoint(s) are unmounted
-          mount:
+          ansible.posix.mount:
             path: "{{ item.split(' ')[1] }}"
             state: unmounted
           with_items:
@@ -434,7 +434,7 @@
         - (containerized_deployment | bool or ceph_volume_present.rc == 0)
 
     - name: umount osd data partition
-      mount:
+      ansible.posix.mount:
         path: "{{ item }}"
         state: unmounted
       with_items: "{{ mounted_osd.stdout_lines }}"
@@ -801,7 +801,7 @@
       listen: "remove data"
 
     - name: umount osd data partition
-      mount:
+      ansible.posix.mount:
         path: "{{ item }}"
         state: unmounted
       with_items: "{{ mounted_osd.stdout_lines }}"
