@@ -93,7 +93,9 @@ The ``main`` branch should be considered experimental and used with caution.
 
 - ``stable-6.0`` Supports Ceph version ``pacific``. This branch requires Ansible version ``2.10``.
 
-- ``main`` Supports the main branch of Ceph. This branch requires Ansible version ``2.10``.
+- ``stable-7.0`` Supports Ceph version ``quincy``. This branch requires Ansible version ``2.12``.
+
+- ``main`` Supports the main (devel) branch of Ceph. This branch requires Ansible version ``2.12``.
 
 .. NOTE:: ``stable-3.0`` and ``stable-3.1`` branches of ceph-ansible are deprecated and no longer maintained.
 
