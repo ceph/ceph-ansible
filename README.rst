@@ -1,7 +1,9 @@
-ceph-ansible -- DEPRECATED --
+ceph-ansible
 ============
 
 **NOTE: cephadm is the new official installer, you should consider migrating to cephadm.**
+
+The project is still maintained for the time being but it is encouraged to migrate to ``cephadm``.
 
 Ansible playbooks for Ceph, the distributed filesystem.
 
