@@ -83,14 +83,14 @@
         - name: get a list of files to be restored
           find:
             paths:
-              - "{{ backup_dir }}/{{ hostvars[_node]['ansible_facts']['hostname'] }}"
+              - "{{ backup_dir }}/{{ hostvars[target_node]['ansible_facts']['hostname'] }}"
             recurse: yes
           register: file_to_restore
 
         - name: restore files
           copy:
             src: "{{ item.path }}"
-            dest: "{{ item.path | replace(backup_dir + '/' + hostvars[_node]['ansible_facts']['hostname'], '') }}"
+            dest: "{{ item.path | replace(backup_dir + '/' + hostvars[target_node]['ansible_facts']['hostname'], '') }}"
             mode: preserve
           loop: "{{ file_to_restore.files }}"
           delegate_to: "{{ target_node }}"
