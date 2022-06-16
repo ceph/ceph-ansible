@@ -30,16 +30,26 @@
   block:
     - name: set_fact _interface
       set_fact:
-        _interface: "{{ (radosgw_interface | replace('-', '_')) }}"
+        _interface: "{{ (hostvars[item]['radosgw_interface'] | replace('-', '_')) }}"
+      loop: "{{ groups.get(rgw_group_name, []) }}"
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      run_once: true
 
     - name: set_fact _radosgw_address to radosgw_interface - ipv4
       set_fact:
-        _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts'][_interface][ip_version]['address'] }}"
+        _radosgw_address: "{{ hostvars[item]['ansible_facts'][hostvars[item]['_interface']][ip_version]['address'] }}"
+      loop: "{{ groups.get(rgw_group_name, []) }}"
+      delegate_to: "{{ item }}"
+      delegate_facts: true
       when: ip_version == 'ipv4'
 
     - name: set_fact _radosgw_address to radosgw_interface - ipv6
       set_fact:
-        _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts'][_interface][ip_version][0]['address'] | ansible.utils.ipwrap }}"
+        _radosgw_address: "{{ hostvars[item]['ansible_facts'][hostvars[item]['_interface']][ip_version][0]['address'] | ipwrap }}"
+      loop: "{{ groups.get(rgw_group_name, []) }}"
+      delegate_to: "{{ item }}"
+      delegate_facts: true
       when: ip_version == 'ipv6'
 
 - name: set_fact rgw_instances without rgw multisite
