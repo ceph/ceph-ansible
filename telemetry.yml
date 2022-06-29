@@ -1,0 +1,86 @@
+---
+- name: configure telemetry
+  hosts: localhost
+  gather_facts: false
+  become: true
+  pre_tasks:
+    - import_role:
+        name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary
+
+  tasks: 
+    - name: set_fact container_exec_cmd
+      set_fact:
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] }}"
+      when: containerized_deployment | bool
+
+    - name: get telemetry status
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} telemetry status"
+      register: telemetry_settings
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      changed_when: false
+
+    - name: exit playbook if the user doesn't agree with the license agreement
+      fail:
+        msg: >
+          "Exiting as Community Data License Agreement hasn't been accepted"
+      when: not telemetry_accept_license | bool
+      run_once: true
+      changed_when: false
+
+    - name: enable telemetry
+      block:
+        - name: enable
+          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} telemetry on --license sharing-1-0"
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          run_once: true
+
+        - name: update telemetry_status
+          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} telemetry status"
+          register: telemetry_settings
+          delegate_to: "{{ groups[mon_group_name][0] }}"
+          run_once: true
+          changed_when: false
+      when: not (telemetry_settings.stdout | default('{}', True) | from_json)['enabled'] | bool
+    
+    - name: enable channels
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} telemetry enable channel {{ telemetry_channels | join(' ') }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      when: 
+        - telemetry_channels is defined
+        - (telemetry_settings.stdout | default('{}', True) | from_json)['enabled'] | bool
+    
+    - name: change submission interval
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/telemetry/interval {{ telemetry_submission_interval }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      when: 
+        - telemetry_submission_interval is defined
+        - (telemetry_settings.stdout | default('{}', True) | from_json)['enabled'] | bool
+    
+    - name: save proxy settings
+      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/telemetry/proxy {{ telemetry_proxy }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
+      when: telemetry_proxy is defined
+    
+    - name: set contact details
+      when:
+        - telemetry_contact is defined
+        - telemetry_description is defined
+      block:
+        - name: set contact
+          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/telemetry/contact {{ telemetry_contact }}"
+    
+        - name: set description
+          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/telemetry/description {{ telemetry_description }}"
+    
+        - name: set channel_ident
+          command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/telemetry/channel_ident True"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      run_once: true
