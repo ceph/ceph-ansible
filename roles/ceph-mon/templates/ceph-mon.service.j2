@@ -48,11 +48,13 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --name ceph-mon-%i \
   -e FSID={{ fsid }} \
   -e MON_PORT={{ ceph_mon_container_listen_port }} \
   -e CEPH_PUBLIC_NETWORK={{ public_network | regex_replace(' ', '') }} \
-  -e CEPH_DAEMON=MON \
   -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
   -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
   {{ ceph_mon_docker_extra_env }} \
-  {{ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  --entrypoint=/usr/bin/ceph-mon \
+  {{ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+  -f --default-log-to-file=false --default-log-to-stderr=true \
+  -i {{ monitor_name }} --mon-data /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }} --public-addr {{ _current_monitor_address }}
 {% if container_binary == 'podman' %}
 ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
 {% else %}
