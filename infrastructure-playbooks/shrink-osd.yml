@@ -101,6 +101,11 @@
         - "{{ osd_hosts }}"
       when: hostvars[item.0]['ansible_facts']['hostname'] == item.1
 
+    - name: set_fact host_list
+      set_fact:
+        host_list: "{{ host_list | default([]) | union([item.0]) }}"
+      loop: "{{ _osd_hosts }}"
+
     - name: get ceph-volume lvm list data
       ceph_volume:
         cluster: "{{ cluster }}"
@@ -109,13 +114,28 @@
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       register: _lvm_list_data
-      delegate_to: "{{ item.0 }}"
-      loop: "{{ _osd_hosts }}"
+      delegate_to: "{{ item }}"
+      loop: "{{ host_list }}"
 
     - name: set_fact _lvm_list
       set_fact:
         _lvm_list: "{{ _lvm_list | default({}) | combine(item.stdout | from_json) }}"
       with_items: "{{ _lvm_list_data.results }}"
+
+    - name: refresh /etc/ceph/osd files non containerized_deployment
+      ceph_volume_simple_scan:
+        cluster: "{{ cluster }}"
+        force: true
+      delegate_to: "{{ item }}"
+      loop: "{{ host_list }}"
+      when: not containerized_deployment | bool
+
+    - name: refresh /etc/ceph/osd files containerized_deployment
+      command: "{{ container_binary }} exec ceph-osd-{{ item.2 }} ceph-volume simple scan --force /var/lib/ceph/osd/{{ cluster }}-{{ item.2 }}"
+      changed_when: false
+      delegate_to: "{{ item.0 }}"
+      loop: "{{ _osd_hosts }}"
+      when: containerized_deployment | bool
 
     - name: find /etc/ceph/osd files
       find:
