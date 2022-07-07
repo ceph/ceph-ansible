@@ -54,74 +54,53 @@
     - name: backup mode
       when: mode == 'backup'
       block:
-        - name: find files
-          find:
-            paths:
-              - /etc/ceph
-              - /var/lib/ceph
-            recurse: yes
-          register: file_to_backup
+        - name: create a temp directory
+          ansible.builtin.tempfile:
+            state: directory
+            suffix: ansible-archive-ceph
+          register: tmp_dir
           delegate_to: "{{ target_node }}"
 
-        - name: backup files
-          fetch:
-            src: "{{ item.path }}"
-            dest: "{{ backup_dir }}/{{ hostvars[target_node]['ansible_facts']['hostname'] }}/{{ item.path }}"
-            flat: yes
-          loop: "{{ file_to_backup.files }}"
+        - name: archive files
+          archive:
+            path: "{{ item }}"
+            dest: "{{ tmp_dir.path }}/backup{{ item | replace('/', '-') }}.tar"
+            format: tar
           delegate_to: "{{ target_node }}"
-
-        - name: preserve mode on files
-          file:
-            path: "{{ backup_dir }}/{{ hostvars[target_node]['ansible_facts']['hostname'] }}/{{ item.path }}"
-            mode: "{{ item.mode }}"
-            owner: "{{ item.uid }}"
-            group: "{{ item.gid }}"
-          loop: "{{ file_to_backup.files }}"
-
-    - name: restore mode
-      when: mode == 'restore'
-      block:
-        - name: stat directories
-          stat:
-            path: "{{ backup_dir }}/{{ hostvars[target_node]['ansible_facts']['hostname'] }}{{ item }}"
-          register: dir_stat
           loop:
             - /etc/ceph
             - /var/lib/ceph
 
-        - name: get a list of files to be restored
-          find:
-            paths:
-              - "{{ backup_dir }}/{{ hostvars[target_node]['ansible_facts']['hostname'] }}"
-            recurse: yes
-          register: file_to_restore
-
-        - name: create a list of directories to create
-          set_fact:
-            dir_to_create: "{{ dir_to_create | default([]) | union([{'path': item.item | replace(backup_dir + '/' + hostvars[target_node]['ansible_facts']['hostname'], ''), 'uid': item.stat.uid, 'gid': item.stat.gid, 'mode': item.stat.mode}]) }}"
-          loop: "{{ dir_stat.results }}"
-          delegate_to: "{{ target_node }}"
-
-        - name: create a liste of sub-directories to create
-          set_fact:
-            subdir_to_create: "{{ subdir_to_create | default([]) | union([{'path': item.path | dirname | replace(backup_dir + '/' + hostvars[target_node]['ansible_facts']['hostname'], ''), 'uid': item.uid, 'gid': item.gid, 'mode': item.mode}]) }}"
-          loop: "{{ file_to_restore.files }}"
-
-        - name: ensure directories are created
+        - name: create backup directory
+          become: false
           file:
+            path: "{{ backup_dir }}/{{ hostvars[target_node]['ansible_facts']['hostname'] }}"
             state: directory
-            path: "{{ item.path }}"
-            mode: "{{ item.mode }}"
-            owner: "{{ item.uid }}"
-            group: "{{ item.gid }}"
-          loop: "{{ dir_to_create + subdir_to_create }}"
+
+        - name: backup files
+          fetch:
+            src: "{{ tmp_dir.path }}/backup{{ item | replace('/', '-') }}.tar"
+            dest: "{{ backup_dir }}/{{ hostvars[target_node]['ansible_facts']['hostname'] }}/backup{{ item | replace('/', '-') }}.tar"
+            flat: yes
+          loop:
+            - /etc/ceph
+            - /var/lib/ceph
           delegate_to: "{{ target_node }}"
 
-        - name: restore files
-          copy:
-            src: "{{ item.path }}"
-            dest: "{{ item.path | replace(backup_dir + '/' + hostvars[target_node]['ansible_facts']['hostname'], '') }}"
-            mode: preserve
-          loop: "{{ file_to_restore.files }}"
+        - name: remove temp directory
+          file:
+            path: "{{ tmp_dir.path }}"
+            state: absent
+          delegate_to: "{{ target_node }}"
+
+    - name: restore mode
+      when: mode == 'restore'
+      block:
+        - name: unarchive files
+          ansible.builtin.unarchive:
+            src: "{{ backup_dir }}/{{ hostvars[target_node]['ansible_facts']['hostname'] }}/backup{{ item | replace('/', '-') }}.tar"
+            dest: "{{ item | dirname }}"
+          loop:
+            - /etc/ceph
+            - /var/lib/ceph
           delegate_to: "{{ target_node }}"
