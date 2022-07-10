@@ -56,20 +56,22 @@
         - ceph_docker_http_proxy is not defined
         - ceph_docker_https_proxy is not defined
 
+    #Quinn custom addition is manually changing {{ container_service_name }} to podman
+
     # using xxx.changed here instead of an ansible handler because we need to
     # have an immediate effect and not wait the end of the play.
     # using flush_handlers via the meta action plugin isn't enough too because
     # it flushes all handlers and not only the one notified in this role.
-    - name: restart docker
+    - name: restart podman
       systemd:
-        name: "{{ container_service_name }}"
+        name: "podman"
         state: restarted
         daemon_reload: yes
       when: proxy_created.changed | bool or proxy_removed.changed | bool
 
     - name: start container service
       service:
-        name: '{{ container_service_name }}'
+        name: 'podman'
         state: started
         enabled: yes
       tags:
