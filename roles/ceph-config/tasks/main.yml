@@ -98,6 +98,18 @@
       when:
         - devices | default([]) | length > 0
 
+    - name: set_fact _osd_memory_target
+      set_fact:
+        _osd_memory_target: "{{ ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) | int }}"
+      when:
+        - num_osds | default(0) | int > 0
+        - ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) > osd_memory_target
+
+    - name: set osd_memory_target
+      command: "{{ ceph_cmd }} config set osd/host:{{ inventory_hostname }} osd_memory_target {{ _osd_memory_target | default(osd_memory_target) }}"
+      changed_when: false
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
 - name: create ceph conf directory
   file:
     path: "/etc/ceph"
