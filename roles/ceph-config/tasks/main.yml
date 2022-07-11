@@ -14,89 +14,89 @@
     # running osds
     - not rolling_update | bool
   block:
-  - name: reset num_osds
-    set_fact:
-      num_osds: 0
+    - name: reset num_osds
+      set_fact:
+        num_osds: 0
 
-  - name: count number of osds for lvm scenario
-    set_fact:
-      num_osds: "{{ lvm_volumes | length | int }}"
-    when: lvm_volumes | default([]) | length > 0
+    - name: count number of osds for lvm scenario
+      set_fact:
+        num_osds: "{{ lvm_volumes | length | int }}"
+      when: lvm_volumes | default([]) | length > 0
 
-  - block:
-      - name: look up for ceph-volume rejected devices
-        ceph_volume:
-          cluster: "{{ cluster }}"
-          action: "inventory"
-        register: rejected_devices
-        environment:
-          CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-          CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-          CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-          PYTHONIOENCODING: utf-8
+    - block:
+        - name: look up for ceph-volume rejected devices
+          ceph_volume:
+            cluster: "{{ cluster }}"
+            action: "inventory"
+          register: rejected_devices
+          environment:
+            CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+            PYTHONIOENCODING: utf-8
 
-      - name: set_fact rejected_devices
-        set_fact:
-          _rejected_devices: "{{ _rejected_devices | default([]) + [item.path] }}"
-        with_items: "{{ rejected_devices.stdout | default('{}') | from_json }}"
-        when: "'Used by ceph-disk' in item.rejected_reasons"
+        - name: set_fact rejected_devices
+          set_fact:
+            _rejected_devices: "{{ _rejected_devices | default([]) + [item.path] }}"
+          with_items: "{{ rejected_devices.stdout | default('{}') | from_json }}"
+          when: "'Used by ceph-disk' in item.rejected_reasons"
 
-      - name: set_fact _devices
-        set_fact:
-          _devices: "{{ devices | difference(_rejected_devices | default([])) }}"
+        - name: set_fact _devices
+          set_fact:
+            _devices: "{{ devices | difference(_rejected_devices | default([])) }}"
 
-      - name: run 'ceph-volume lvm batch --report' to see how many osds are to be created
-        ceph_volume:
-          cluster: "{{ cluster }}"
-          objectstore: "{{ osd_objectstore }}"
-          batch_devices: "{{ _devices }}"
-          osds_per_device: "{{ osds_per_device | default(1) | int }}"
-          journal_size: "{{ journal_size }}"
-          block_db_size: "{{ block_db_size }}"
-          report: true
-          action: "batch"
-        register: lvm_batch_report
-        environment:
-          CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-          CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-          CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-          PYTHONIOENCODING: utf-8
-        when: _devices | default([]) | length > 0
+        - name: run 'ceph-volume lvm batch --report' to see how many osds are to be created
+          ceph_volume:
+            cluster: "{{ cluster }}"
+            objectstore: "{{ osd_objectstore }}"
+            batch_devices: "{{ _devices }}"
+            osds_per_device: "{{ osds_per_device | default(1) | int }}"
+            journal_size: "{{ journal_size }}"
+            block_db_size: "{{ block_db_size }}"
+            report: true
+            action: "batch"
+          register: lvm_batch_report
+          environment:
+            CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+            PYTHONIOENCODING: utf-8
+          when: _devices | default([]) | length > 0
 
-      - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report' (legacy report)
-        set_fact:
-          num_osds: "{{ ((lvm_batch_report.stdout | default('{}') | from_json).osds | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
-        when:
-          - (lvm_batch_report.stdout | default('{}') | from_json) is mapping
-          - (lvm_batch_report.stdout | default('{}') | from_json).changed | default(true) | bool
+        - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report' (legacy report)
+          set_fact:
+            num_osds: "{{ ((lvm_batch_report.stdout | default('{}') | from_json).osds | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
+          when:
+            - (lvm_batch_report.stdout | default('{}') | from_json) is mapping
+            - (lvm_batch_report.stdout | default('{}') | from_json).changed | default(true) | bool
 
-      - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report' (new report)
-        set_fact:
-          num_osds: "{{ ((lvm_batch_report.stdout | default('{}') | from_json) | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
-        when:
-          - (lvm_batch_report.stdout | default('{}') | from_json) is not mapping
-          - (lvm_batch_report.stdout | default('{}') | from_json).changed | default(true) | bool
-    when:
-      - devices | default([]) | length > 0
+        - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report' (new report)
+          set_fact:
+            num_osds: "{{ ((lvm_batch_report.stdout | default('{}') | from_json) | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
+          when:
+            - (lvm_batch_report.stdout | default('{}') | from_json) is not mapping
+            - (lvm_batch_report.stdout | default('{}') | from_json).changed | default(true) | bool
+      when:
+        - devices | default([]) | length > 0
 
-  - name: run 'ceph-volume lvm list' to see how many osds have already been created
-    ceph_volume:
-      action: "list"
-    register: lvm_list
-    environment:
-      CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-      CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-      CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      PYTHONIOENCODING: utf-8
-    changed_when: false
-    when:
-      - devices | default([]) | length > 0
+    - name: run 'ceph-volume lvm list' to see how many osds have already been created
+      ceph_volume:
+        action: "list"
+      register: lvm_list
+      environment:
+        CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+        PYTHONIOENCODING: utf-8
+      changed_when: false
+      when:
+        - devices | default([]) | length > 0
 
-  - name: set_fact num_osds (add existing osds)
-    set_fact:
-      num_osds: "{{ lvm_list.stdout | default('{}') | from_json | length | int + num_osds | default(0) | int }}"
-    when:
-      - devices | default([]) | length > 0
+    - name: set_fact num_osds (add existing osds)
+      set_fact:
+        num_osds: "{{ lvm_list.stdout | default('{}') | from_json | length | int + num_osds | default(0) | int }}"
+      when:
+        - devices | default([]) | length > 0
 
 - name: create ceph conf directory
   file:
