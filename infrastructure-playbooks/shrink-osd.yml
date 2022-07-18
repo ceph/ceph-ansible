@@ -123,11 +123,10 @@
       with_items: "{{ _lvm_list_data.results }}"
 
     - name: refresh /etc/ceph/osd files non containerized_deployment
-      ceph_volume_simple_scan:
-        cluster: "{{ cluster }}"
-        force: true
+      command: ceph-volume simple scan --force
       delegate_to: "{{ item }}"
       loop: "{{ host_list }}"
+      changed_when: false
       when: not containerized_deployment | bool
 
     - name: refresh /etc/ceph/osd files containerized_deployment
