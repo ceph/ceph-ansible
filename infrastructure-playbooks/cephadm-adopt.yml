@@ -165,6 +165,12 @@
           inventory_hostname in groups.get(iscsi_gw_group_name, []) or
           inventory_hostname in groups.get(nfs_group_name, [])
 
+    - name: set mgr/cephadm/no_five_one_rgw
+      command: "{{ ceph_cmd }} --cluster {{ cluster }} config set mgr mgr/cephadm/no_five_one_rgw true --force"
+      changed_when: false
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+
     - name: configure repository for installing cephadm
       when: containerized_deployment | bool
       tags: with_pkg
