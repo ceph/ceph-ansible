@@ -23,7 +23,7 @@ osd crush chooseleaf type = 0
 {% endif %}
 
 {% if nb_mon > 0 and inventory_hostname in groups.get(mon_group_name, []) %}
-mon initial members = {% for host in groups[mon_group_name] %}
+mon initial members = {% for host in groups[mon_group_name] | difference([mon_to_kill | default('')]) %}
       {% if hostvars[host]['ansible_facts']['hostname'] is defined -%}
         {{ hostvars[host]['ansible_facts']['hostname'] }}
       {%- endif %}
