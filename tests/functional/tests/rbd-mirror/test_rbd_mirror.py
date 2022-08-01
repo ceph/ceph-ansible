@@ -4,10 +4,12 @@ import json
 
 class TestRbdMirrors(object):
 
+    @pytest.mark.rbdmirror_secondary
     @pytest.mark.no_docker
     def test_rbd_mirror_is_installed(self, node, host):
         assert host.package("rbd-mirror").is_installed
 
+    @pytest.mark.rbdmirror_secondary
     def test_rbd_mirror_service_enabled_and_running(self, node, host):
         service_name = "ceph-rbd-mirror@rbd-mirror.{hostname}".format(
             hostname=node["vars"]["inventory_hostname"]
@@ -16,6 +18,7 @@ class TestRbdMirrors(object):
         assert s.is_enabled
         assert s.is_running
 
+    @pytest.mark.rbdmirror_secondary
     def test_rbd_mirror_is_up(self, node, host, setup):
         hostname = node["vars"]["inventory_hostname"]
         cluster = setup["cluster_name"]
