@@ -565,11 +565,17 @@
   serial: 1
   become: true
   pre_tasks:
+    - name: check for ceph rbd mirror services
+      command: systemctl show --no-pager --property=Id --state=enabled ceph-rbd-mirror@*  # noqa 303
+      changed_when: false
+      register: rbdmirror_services
+
     - name: stop non-containerized ceph rbd mirror(s)
       service:
-        name: "ceph-rbd-mirror@rbd-mirror.{{ ansible_facts['hostname'] }}"
+        name: "{{ item.split('=')[1] }}"
         state: stopped
         enabled: no
+      loop: "{{ rbdmirror_services.stdout_lines }}"
 
     - name: remove old systemd unit files
       file:
