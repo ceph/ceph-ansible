@@ -104,6 +104,7 @@ def node(host, request):
     docker = ansible_vars.get("docker")
     dashboard = ansible_vars.get("dashboard_enabled", True)
     radosgw_num_instances = ansible_vars.get("radosgw_num_instances", 1)
+    ceph_rbd_mirror_remote_user = ansible_vars.get('ceph_rbd_mirror_remote_user', '')
     ceph_release_num = {
         'jewel': 10,
         'kraken': 11,
@@ -128,6 +129,9 @@ def node(host, request):
         reason = "%s: Not a valid test for node type: %s" % (
             request.function, group_names)
         pytest.skip(reason)
+
+    if request.node.get_closest_marker('rbdmirror_secondary') and not ceph_rbd_mirror_remote_user:  # noqa E501
+        pytest.skip('Not a valid test for a non-secondary rbd-mirror node')
 
     if request.node.get_closest_marker('ceph_crash') and group_names in [['nfss'], ['iscsigws'], ['clients'], ['monitoring']]:
         pytest.skip('Not a valid test for nfs, client or iscsigw nodes')
