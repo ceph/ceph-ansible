@@ -17,6 +17,13 @@
       run_once: true
       no_log: "{{ no_log_on_ceph_key_tasks }}"
 
+    - name: ensure /var/lib/ceph/bootstrap-rbd-mirror exists
+      file:
+        path: /var/lib/ceph/bootstrap-rbd-mirror
+        state: directory
+        owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+
     - name: copy ceph key(s)
       copy:
         dest: "/var/lib/ceph/bootstrap-rbd-mirror/{{ cluster }}.keyring"
