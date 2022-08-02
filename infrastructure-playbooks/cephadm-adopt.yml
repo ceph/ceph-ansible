@@ -1007,7 +1007,7 @@
     - name: update the placement of radosgw hosts
       command: >
         {{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} --
-        ceph --cluster {{ cluster }} orch apply rgw {{ ansible_facts['hostname'] }}
+        ceph orch apply rgw {{ ansible_facts['hostname'] }}
         --placement='count-per-host:{{ radosgw_num_instances }} {{ ansible_facts['nodename'] }}'
         --port={{ radosgw_frontend_port }}
         {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
@@ -1020,7 +1020,7 @@
     - name: update the placement of radosgw multisite hosts
       command: >
         {{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} --
-        ceph --cluster {{ cluster }} orch apply rgw {{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }}
+        ceph orch apply rgw {{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }}
         --placement={{ ansible_facts['nodename'] }}
         --realm={{ item.rgw_realm }} --zone={{ item.rgw_zone }}
         --port={{ item.radosgw_frontend_port }}
