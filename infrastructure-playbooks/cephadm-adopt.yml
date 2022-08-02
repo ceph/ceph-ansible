@@ -930,10 +930,15 @@
     - name: update the placement of radosgw hosts
       command: >
         {{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} --
+<<<<<<< HEAD
         ceph --cluster {{ cluster }} orch apply rgw
         {{ rgw_realm | default('default') }}
         {{ rgw_zone | default('default') }}
         --placement='{{ groups.get(rgw_group_name, []) | length }} label:{{ rgw_group_name }}'
+=======
+        ceph orch apply rgw {{ ansible_facts['hostname'] }}
+        --placement='count-per-host:{{ radosgw_num_instances }} {{ ansible_facts['nodename'] }}'
+>>>>>>> 30c7e88d8 (adopt: fix placement update calls for rgw)
         --port={{ radosgw_frontend_port }}
         {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
       changed_when: false
@@ -945,8 +950,13 @@
     - name: update the placement of radosgw multisite hosts
       command: >
         {{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} --
+<<<<<<< HEAD
         ceph --cluster {{ cluster }} orch apply rgw {{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }}
         --placement={{ ansible_facts['hostname'] }}
+=======
+        ceph orch apply rgw {{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }}
+        --placement={{ ansible_facts['nodename'] }}
+>>>>>>> 30c7e88d8 (adopt: fix placement update calls for rgw)
         --realm={{ item.rgw_realm }} --zone={{ item.rgw_zone }}
         --port={{ item.radosgw_frontend_port }}
         {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
