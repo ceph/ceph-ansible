@@ -102,6 +102,8 @@
       set_fact:
         _osd_memory_target: "{{ ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) | int }}"
       when:
+        - not ceph_conf_overrides.get('osd', {}).get('osd_memory_target')
+        - not ceph_conf_overrides.get('osd', {}).get('osd memory target')
         - num_osds | default(0) | int > 0
         - ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) > osd_memory_target
 
