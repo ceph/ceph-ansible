@@ -74,9 +74,12 @@
 
 - name: set_fact is_rgw_instances_defined
   set_fact:
-    is_rgw_instances_defined: "{{ rgw_instances is defined }}"
+    is_rgw_instances_defined: "{{ hostvars[ceph_dashboard_call_item | default(inventory_hostname)]['rgw_instances'] is defined }}"
+    delegate_to: "{{ ceph_dashboard_call_item if ceph_dashboard_call_item is defined else inventory_hostname }}"
+    delegate_facts: "{{ true if ceph_dashboard_call_item is defined else false }}"
   when:
-    - inventory_hostname in groups.get(rgw_group_name, [])
+    - inventory_hostname in groups.get(rgw_group_name, []) or
+      ceph_dashboard_call_item is defined
     - rgw_multisite | bool
 
 - name: set_fact rgw_instances with rgw multisite
