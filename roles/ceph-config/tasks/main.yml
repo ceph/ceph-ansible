@@ -92,11 +92,34 @@
     when:
       - devices | default([]) | length > 0
 
+<<<<<<< HEAD
   - name: set_fact num_osds (add existing osds)
     set_fact:
       num_osds: "{{ lvm_list.stdout | default('{}') | from_json | length | int + num_osds | default(0) | int }}"
     when:
       - devices | default([]) | length > 0
+=======
+    - name: set_fact num_osds (add existing osds)
+      set_fact:
+        num_osds: "{{ lvm_list.stdout | default('{}') | from_json | length | int + num_osds | default(0) | int }}"
+      when:
+        - devices | default([]) | length > 0
+
+    - name: set_fact osd_memory_target, override from ceph_conf_overrides
+      set_fact:
+        osd_memory_target: "{{ item }}"
+      loop:
+        - "{{ ceph_conf_overrides.get('osd', {}).get('osd memory target', '') }}"
+        - "{{ ceph_conf_overrides.get('osd', {}).get('osd_memory_target', '') }}"
+      when: item
+
+    - name: set_fact _osd_memory_target
+      set_fact:
+        _osd_memory_target: "{{ ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) | int }}"
+      when:
+        - num_osds | default(0) | int > 0
+        - ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) > (osd_memory_target | float)
+>>>>>>> b40e4bfe6 (ceph-config: allow overriding osd_memory_target)
 
 - name: create ceph conf directory
   file:
