@@ -54,7 +54,14 @@
             secret: "{{ ceph_rbd_mirror_local_user_secret | default('') }}" }
 
     - name: get "client.rbd-mirror.{{ ansible_facts['hostname'] }}" from ceph monitor
-      command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} auth print-key client.bootstrap-rbd-mirror"
+      ceph_key:
+        name: "client.rbd-mirror.{{ ansible_facts['hostname'] }}"
+        cluster: "{{ cluster }}"
+        output_format: plain
+        state: info
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       register: _rbd_mirror_key
       delegate_to: "{{ groups.get(mon_group_name)[0] }}"
       run_once: true
