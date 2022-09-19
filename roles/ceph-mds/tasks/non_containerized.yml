@@ -20,24 +20,6 @@
     - mds_group_name in group_names
     - ansible_facts['os_family'] in ['Suse', 'RedHat']
 
-- name: create mds keyring
-  ceph_key:
-    name: "mds.{{ ansible_facts['hostname'] }}"
-    cluster: "{{ cluster }}"
-    user: client.bootstrap-mds
-    user_key: "/var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring"
-    caps:
-      mon: "allow profile mds"
-      mds: "allow"
-      osd: "allow rwx"
-    dest: "/var/lib/ceph/mds/{{ cluster }}-{{ ansible_facts['hostname'] }}/keyring"
-    import_key: false
-    owner: ceph
-    group: ceph
-    mode: "{{ ceph_keyring_permissions }}"
-  no_log: "{{ no_log_on_ceph_key_tasks }}"
-  when: cephx | bool
-
 - name: ensure systemd service override directory exists
   file:
     state: directory
