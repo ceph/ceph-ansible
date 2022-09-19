@@ -1,4 +1,15 @@
 ---
+- name: create rados gateway directories
+  file:
+    path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
+    state: directory
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    mode: "{{ ceph_directories_mode }}"
+  delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
+  loop: "{{ rgw_instances }}"
+  when: groups.get(mon_group_name, []) | length > 0
+
 - name: create rgw keyrings
   ceph_key:
     name: "client.rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
@@ -9,13 +20,45 @@
     caps:
       osd: 'allow rwx'
       mon: 'allow rw'
-    import_key: False
-    owner: "ceph"
-    group: "ceph"
+    import_key: "{{ True if groups.get(mon_group_name, []) | length > 0 else False }}"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "0600"
   no_log: "{{ no_log_on_ceph_key_tasks }}"
+  delegate_to: "{{ groups[mon_group_name][0] if groups.get(mon_group_name, []) | length > 0 else 'localhost'}}"
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   with_items: "{{ rgw_instances }}"
   when: cephx | bool
+
+- name: get keys from monitors
+  ceph_key:
+    name: "client.rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
+    cluster: "{{ cluster }}"
+    output_format: plain
+    state: info
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+  register: _rgw_keys
+  loop: "{{ rgw_instances }}"
+  delegate_to: "{{ groups.get(mon_group_name)[0] }}"
+  when:
+    - cephx | bool
+    - groups.get(mon_group_name, []) | length > 0
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
+
+- name: copy ceph key(s) if needed
+  copy:
+    dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.{{ item.item.instance_name }}/keyring"
+    content: "{{ item.stdout + '\n' }}"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    mode: "{{ ceph_keyring_permissions }}"
+  with_items: "{{ _rgw_keys.results }}"
+  when:
+    - cephx | bool
+    - item is not skipped
+    - groups.get(mon_group_name, []) | length > 0
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
