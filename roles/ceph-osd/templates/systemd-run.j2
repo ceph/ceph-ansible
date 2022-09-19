@@ -1,0 +1,71 @@
+#!/bin/sh
+{% set cpu_limit = ansible_facts['processor_vcpus']|int if ceph_osd_docker_cpu_limit|int > ansible_facts['processor_vcpus']|int else ceph_osd_docker_cpu_limit|int %}
+OSD_ID={{ item }}
+T=$1
+N=$2
+CEPH_VOLUME_CMD="/usr/bin/{{ container_binary }} run --rm --net=host --privileged=true --pid=host --ipc=host -v /dev:/dev -v /etc/localtime:/etc/localtime:ro -v /var/lib/ceph/osd/{{ cluster }}-${OSD_ID}:/var/lib/ceph/osd/{{ cluster }}-${OSD_ID}:z -v /etc/ceph:/etc/ceph:z -v /var/run/ceph:/var/run/ceph:z -v /var/run/udev/:/var/run/udev/ -v /var/log/ceph:/var/log/ceph:z -v /run/lvm/:/run/lvm/ --entrypoint=ceph-volume {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+PYTHON=python3
+CEPH_VOLUME_LIST_JSON="$($CEPH_VOLUME_CMD lvm list --format json)"
+
+# Find the OSD FSID from the OSD ID
+OSD_FSID="$(echo "$CEPH_VOLUME_LIST_JSON" | $PYTHON -c "import sys, json; print(json.load(sys.stdin)['$OSD_ID'][0]['tags']['ceph.osd_fsid'])")"
+
+# Find the OSD type
+OSD_TYPE="$(echo "$CEPH_VOLUME_LIST_JSON" | $PYTHON -c "import sys, json; print(json.load(sys.stdin)['$OSD_ID'][0]['type'])")"
+
+# Discover the objectstore
+if [[ "data journal" =~ $OSD_TYPE ]]; then
+    OSD_OBJECTSTORE=(--filestore)
+elif [[ "block wal db" =~ $OSD_TYPE ]]; then
+    OSD_OBJECTSTORE=(--bluestore)
+else
+    log "Unable to discover osd objectstore for OSD type: $OSD_TYPE"
+    exit 1
+fi
+
+# activate
+$CEPH_VOLUME_CMD lvm activate --no-systemd ${OSD_OBJECTSTORE[@]} ${OSD_ID} ${OSD_FSID}
+
+# start ceph-osd
+{% if ceph_osd_numactl_opts != "" %}
+numactl \
+{{ ceph_osd_numactl_opts }} \
+{% endif %}
+/usr/bin/{{ container_binary }} run \
+{% if container_binary == 'podman' %}
+-d --log-driver journald --conmon-pidfile /${T}/${N}-pid --cidfile /${T}/${N}-cid \
+{% endif %}
+--pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
+--rm --net=host --privileged=true --pid=host \
+--ipc=host \
+{% if osd_objectstore == 'filestore' -%}
+--memory={{ ceph_osd_docker_memory_limit }} \
+{% endif -%}
+--cpus={{ cpu_limit }} \
+{% if ceph_osd_docker_cpuset_cpus is defined -%}
+--cpuset-cpus='{{ ceph_osd_docker_cpuset_cpus }}' \
+{% endif -%}
+{% if ceph_osd_docker_cpuset_mems is defined -%}
+--cpuset-mems='{{ ceph_osd_docker_cpuset_mems }}' \
+{% endif -%}
+-v /dev:/dev \
+-v /etc/localtime:/etc/localtime:ro \
+-v /var/lib/ceph/bootstrap-osd/ceph.keyring:/var/lib/ceph/bootstrap-osd/ceph.keyring:z \
+-v /var/lib/ceph/osd/{{ cluster }}-"${OSD_ID}":/var/lib/ceph/osd/{{ cluster }}-"${OSD_ID}":z \
+-v /etc/ceph:/etc/ceph:z \
+-v /var/run/ceph:/var/run/ceph:z \
+-v /var/run/udev/:/var/run/udev/ \
+-v /var/log/ceph:/var/log/ceph:z \
+{% if ansible_facts['distribution'] == 'Ubuntu' -%}
+--security-opt apparmor:unconfined \
+{% endif -%}
+{{ container_env_args }} \
+-e CLUSTER={{ cluster }} \
+-e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
+-v /run/lvm/:/run/lvm/ \
+-e OSD_ID=${OSD_ID} \
+--name=ceph-osd-${OSD_ID} \
+--entrypoint=/usr/bin/ceph-osd \
+{{ ceph_osd_docker_extra_env }} \
+{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+-f -i ${OSD_ID}

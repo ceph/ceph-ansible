@@ -17,53 +17,12 @@ EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/rm -f /%t/%n-pid /%t/%n-cid
 ExecStartPre=-/usr/bin/{{ container_binary }} rm --storage ceph-osd-%i
 ExecStartPre=-/usr/bin/mkdir -p /var/log/ceph
+ExecStartPre=-/usr/bin/mkdir -p /var/lib/ceph/osd/{{ cluster }}-%i
 {% else %}
 ExecStartPre=-/usr/bin/{{ container_binary }} stop ceph-osd-%i
 {% endif %}
 ExecStartPre=-/usr/bin/{{ container_binary }} rm -f ceph-osd-%i
-ExecStart={% if ceph_osd_numactl_opts != "" %}
-numactl \
-{{ ceph_osd_numactl_opts }} \
-{% endif %}
-/usr/bin/{{ container_binary }} run \
-{% if container_binary == 'podman' %}
-  -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
-{% endif %}
-  --pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
-  --security-opt label=disable \
-  --rm \
-  --net=host \
-  --privileged=true \
-  --pid=host \
-  --ipc=host \
-  --cpus={{ cpu_limit }} \
-  {% if ceph_osd_docker_cpuset_cpus is defined -%}
-  --cpuset-cpus='{{ ceph_osd_docker_cpuset_cpus }}' \
-  {% endif -%}
-  {% if ceph_osd_docker_cpuset_mems is defined -%}
-  --cpuset-mems='{{ ceph_osd_docker_cpuset_mems }}' \
-  {% endif -%}
-  -v /dev:/dev \
-  -v /etc/localtime:/etc/localtime:ro \
-  -v /var/lib/ceph/osd:/var/lib/ceph/osd:z \
-  -v /var/lib/ceph/bootstrap-osd:/var/lib/ceph/bootstrap-osd:z \
-  -v /etc/ceph:/etc/ceph:z \
-  -v /var/run/ceph:/var/run/ceph:z \
-  -v /var/run/udev/:/var/run/udev/ \
-  -v /var/log/ceph:/var/log/ceph:z \
-  {% if ansible_facts['distribution'] == 'Ubuntu' -%}
-  --security-opt apparmor:unconfined \
-  {% endif -%}
-  {{ container_env_args }} \
-  -e CLUSTER={{ cluster }} \
-  -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
-  -v /run/lvm/:/run/lvm/ \
-  -e CEPH_DAEMON=OSD_CEPH_VOLUME_ACTIVATE \
-  -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
-  -e OSD_ID=%i \
-  --name=ceph-osd-%i \
-  {{ ceph_osd_docker_extra_env }} \
-  {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+ExecStart=/bin/bash /var/lib/ceph/osd/{{ cluster }}-%i/run %t %n
 {% if container_binary == 'podman' %}
 ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
 {% else %}
