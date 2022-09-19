@@ -48,6 +48,16 @@
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
   with_items: "{{ ((ceph_osd_ids.stdout | default('{}', True) | from_json).keys() | list) | union(osd_ids_non_container.stdout_lines | default([])) }}"
 
+- name: write /var/lib/ceph/osd/{{ cluster }}-{{ osd_id }}/run
+  template:
+    src: systemd-run.j2
+    dest: "/var/lib/ceph/osd/{{ cluster }}-{{ item }}/run"
+    mode: "0700"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+  with_items: "{{ ((ceph_osd_ids.stdout | default('{}', True) | from_json).keys() | list) | union(osd_ids_non_container.stdout_lines | default([])) }}"
+  when: containerized_deployment | bool
+
 - name: systemd start osd
   systemd:
     name: ceph-osd@{{ item }}

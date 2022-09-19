@@ -17,10 +17,12 @@ EnvironmentFile=-/etc/environment
 ExecStartPre=-/usr/bin/rm -f /%t/%n-pid /%t/%n-cid
 ExecStartPre=-/usr/bin/{{ container_binary }} rm --storage ceph-osd-%i
 ExecStartPre=-/usr/bin/mkdir -p /var/log/ceph
+ExecStartPre=-/usr/bin/mkdir -p /var/lib/ceph/osd/{{ cluster }}-%i
 {% else %}
 ExecStartPre=-/usr/bin/{{ container_binary }} stop ceph-osd-%i
 {% endif %}
 ExecStartPre=-/usr/bin/{{ container_binary }} rm -f ceph-osd-%i
+<<<<<<< HEAD
 ExecStart={% if ceph_osd_numactl_opts != "" %}
 numactl \
 {{ ceph_osd_numactl_opts }} \
@@ -67,6 +69,9 @@ numactl \
   --name=ceph-osd-%i \
   {{ ceph_osd_docker_extra_env }} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+=======
+ExecStart=/bin/bash /var/lib/ceph/osd/{{ cluster }}-%i/run %t %n
+>>>>>>> 8df9791bd (osd: do not use ceph/daemon entrypoint)
 {% if container_binary == 'podman' %}
 ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
 {% else %}
