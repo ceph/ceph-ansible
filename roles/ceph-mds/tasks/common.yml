@@ -43,3 +43,23 @@
     - item.item.copy_key | bool
   no_log: "{{ no_log_on_ceph_key_tasks }}"
 
+- name: create mds keyring
+  ceph_key:
+    name: "mds.{{ ansible_facts['hostname'] }}"
+    cluster: "{{ cluster }}"
+    user: client.bootstrap-mds
+    user_key: "/var/lib/ceph/bootstrap-mds/{{ cluster }}.keyring"
+    caps:
+      mon: "allow profile mds"
+      mds: "allow"
+      osd: "allow rwx"
+    dest: "/var/lib/ceph/mds/{{ cluster }}-{{ ansible_facts['hostname'] }}/keyring"
+    import_key: false
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    mode: "{{ ceph_keyring_permissions }}"
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+  when: cephx | bool
