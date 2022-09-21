@@ -188,7 +188,7 @@ If there is one more that one rgw being deployed in this configuration, the rgw(
     rgw_zonemaster: false
     rgw_zonesecondary: true
 
-    rgw_zonegroupmaster: true
+    rgw_zonegroupmaster: false
 
     rgw_multisite_proto: http
     rgw_zone_user: edward.lewis
