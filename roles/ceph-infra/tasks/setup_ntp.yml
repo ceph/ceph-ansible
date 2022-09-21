@@ -52,7 +52,8 @@
         state: stopped
         enabled: no
       when: ntp_daemon_type != "timesyncd"
-      ignore_errors: true
+      register: timesyncd_service_result
+      failed_when: "timesyncd_service_result is failed and 'Could not find the requested service' not in timesyncd_service_result.msg"
 
     - name: enable ntpd
       service:
