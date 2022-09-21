@@ -1,14 +1,16 @@
 ---
-- name: set ntp service and chrony daemon name for Debian family
+- name: set ntp service, chrony and timesyncd daemon name for Debian family
   set_fact:
     chrony_daemon_name: chrony
     ntp_service_name: ntp
+    timesyncd_service_name: systemd-timesyncd
   when: ansible_facts['os_family'] == 'Debian'
 
-- name: set ntp service and chrony daemon name for RedHat and Suse family
+- name: set ntp service, chrony and timesyncd daemon name for RedHat and Suse family
   set_fact:
     chrony_daemon_name: chronyd
     ntp_service_name: ntpd
+    timesyncd_service_name: systemd-timesyncd
   when: ansible_facts['os_family'] in ['RedHat', 'Suse']
 
 # Installation of NTP daemons needs to be a separate task since installations
@@ -35,15 +37,22 @@
 - name: enable the ntp daemon and disable the rest
   block:
     - name: enable timesyncing on timesyncd
-      command: timedatectl set-ntp on
+      service:
+        name: "{{ timesyncd_service_name }}"
+        state: started
+        enabled: yes
       notify:
         - disable ntpd
         - disable chronyd
       when: ntp_daemon_type == "timesyncd"
 
     - name: disable time sync using timesyncd if we are not using it
-      command: timedatectl set-ntp no
+      service:
+        name: "{{ timesyncd_service_name }}"
+        state: stopped
+        enabled: no
       when: ntp_daemon_type != "timesyncd"
+      ignore_errors: true
 
     - name: enable ntpd
       service:
