@@ -76,11 +76,6 @@ options:
             - Compute coding chunks for each object and store them on different
               OSDs.
         required: true
-    crush_root:
-        description:
-            - The name of the crush bucket used for the first step of the CRUSH
-              rule.
-        required: false
     crush_device_class:
         description:
             - Restrict placement to devices of a specific class (hdd/ssd)
