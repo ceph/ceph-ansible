@@ -1,5 +1,6 @@
 ---
 - name: keyring related tasks
+  when: groups.get(mon_group_name, []) | length > 0
   block:
     - name: set_fact container_exec_cmd
       set_fact:
@@ -8,6 +9,47 @@
       delegate_to: "{{ item }}"
       delegate_facts: true
       run_once: true
+
+    - name: "/var/lib/ceph/radosgw/{{ cluster }}-{{ ansible_facts['hostname'] }}"
+      file:
+        path: "{{ item.0 }}"
+        state: "directory"
+        owner: "{{ ceph_uid }}"
+        group: "{{ ceph_uid }}"
+        mode: "0755"
+      delegate_to: "{{ item.1 }}"
+      with_nested:
+        - ["/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}",
+          "/var/lib/ceph/radosgw/{{ cluster }}-nfs.{{ ansible_facts['hostname'] }}" ]
+        - [ "{{ groups.get(mon_group_name)[0] }}", "{{ inventory_hostname }}" ]
+
+    - name: set_fact keyrings_list
+      set_fact:
+        keyrings_list:
+          - { name: "client.bootstrap-rgw", path: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring", copy_key: "{{ nfs_obj_gw }}" }
+          - { name: "client.admin", path: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}" }
+          - { name: "client.rgw.{{ ansible_facts['hostname'] }}", create: True, path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}/keyring", caps: { "mon": "allow r", "osd": "allow rwx tag rgw *=*"}  }
+          - { name: "client.nfs.{{ ansible_facts['hostname'] }}", create: True, path: "/var/lib/ceph/radosgw/{{ cluster }}-nfs.{{ ansible_facts['hostname'] }}/keyring", caps: { "mon": "r", "osd": "allow rw pool=.nfs"} }
+
+    - name: create keyrings from a monitor
+      ceph_key:
+        name: "{{ item.name }}"
+        cluster: "{{ cluster }}"
+        dest: "{{ item.path }}"
+        caps: "{{ item.caps }}"
+        import_key: True
+        owner: "{{ ceph_uid }}"
+        group: "{{ ceph_uid }}"
+        mode: "0600"
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      delegate_to: "{{ groups.get(mon_group_name)[0] }}"
+      loop: "{{ keyrings_list }}"
+      when:
+        - cephx | bool
+        - item.create | default(False) | bool
 
     - name: get keys from monitors
       ceph_key:
@@ -19,15 +61,17 @@
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       register: _rgw_keys
-      with_items:
-        - { name: "client.bootstrap-rgw", path: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring", copy_key: "{{ nfs_obj_gw }}" }
-        - { name: "client.admin", path: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}" }
+      loop: "{{ keyrings_list }}"
       delegate_to: "{{ groups.get(mon_group_name)[0] }}"
       run_once: true
       when:
         - cephx | bool
-        - item.copy_key | bool
+        - item.copy_key | default(True) | bool
       no_log: "{{ no_log_on_ceph_key_tasks }}"
+
+    - name: debug
+      debug:
+        msg: "{{ _rgw_keys }}"
 
     - name: copy ceph key(s) if needed
       copy:
@@ -39,26 +83,25 @@
       with_items: "{{ _rgw_keys.results }}"
       when:
         - cephx | bool
-        - item.item.copy_key | bool
+        - item.item.copy_key | default(True) | bool
       no_log: "{{ no_log_on_ceph_key_tasks }}"
-  when: groups.get(mon_group_name, []) | length > 0
 
-- name: dbus related tasks
-  block:
-    - name: get file
-      command: "{{ container_binary }} run --rm --entrypoint=cat {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag }} /etc/dbus-1/system.d/org.ganesha.nfsd.conf"
-      register: dbus_ganesha_file
-      run_once: true
-      changed_when: false
+    - name: dbus related tasks
+      block:
+        - name: get file
+          command: "{{ container_binary }} run --rm --entrypoint=cat {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag }} /etc/dbus-1/system.d/org.ganesha.nfsd.conf"
+          register: dbus_ganesha_file
+          run_once: true
+          changed_when: false
 
-    - name: create dbus service file
-      copy:
-        content: "{{ dbus_ganesha_file.stdout }}"
-        dest: /etc/dbus-1/system.d/org.ganesha.nfsd.conf
-        owner: "root"
-        group: "root"
-        mode: "0644"
+        - name: create dbus service file
+          copy:
+            content: "{{ dbus_ganesha_file.stdout }}"
+            dest: /etc/dbus-1/system.d/org.ganesha.nfsd.conf
+            owner: "root"
+            group: "root"
+            mode: "0644"
 
-    - name: reload dbus configuration
-      command: "killall -SIGHUP dbus-daemon"
-  when: ceph_nfs_dynamic_exports | bool
+        - name: reload dbus configuration
+          command: "killall -SIGHUP dbus-daemon"
+      when: ceph_nfs_dynamic_exports | bool

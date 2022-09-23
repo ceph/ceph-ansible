@@ -22,26 +22,21 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
 {% if container_binary == 'podman' %}
   -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
 {% endif %}
-  --pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
-  --security-opt label=disable \
-  -v /var/lib/ceph/bootstrap-rgw/:/var/lib/ceph/bootstrap-rgw:z \
-  -v /etc/ceph:/etc/ceph:z \
-  -v /var/lib/nfs/ganesha:/var/lib/nfs/ganesha:z \
-  -v /etc/ganesha:/etc/ganesha:z \
-  -v /var/run/ceph:/var/run/ceph:z \
-  -v /var/log/ceph:/var/log/ceph:z \
-  -v /var/log/ganesha:/var/log/ganesha:z \
-  {% if ceph_nfs_dynamic_exports | bool %}
-  --privileged \
-  -v /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket \
-  {% endif -%}
-  -v /etc/localtime:/etc/localtime:ro \
-  -e CLUSTER={{ cluster }} \
-  -e CEPH_DAEMON=NFS \
-  -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
-  {{ ceph_nfs_docker_extra_env }} \
-  --name=ceph-nfs-{{ ceph_nfs_service_suffix | default(ansible_facts['hostname']) }} \
-  {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+--pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
+-v /etc/ceph:/etc/ceph:z \
+-v /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}/keyring:/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}/keyring:z \
+-v /var/lib/ceph/radosgw/{{ cluster }}-nfs.{{ ansible_facts['hostname'] }}/keyring:/etc/ceph/keyring:z \
+-v /etc/ganesha:/etc/ganesha:z \
+-v /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket \
+-v /var/run/ceph:/var/run/ceph:z \
+-v /var/log/ceph:/var/log/ceph:z \
+-v /var/log/ganesha:/var/log/ganesha:z \
+-v /etc/localtime:/etc/localtime:ro \
+{{ ceph_nfs_docker_extra_env }} \
+--entrypoint=/usr/bin/ganesha.nfsd \
+--name=ceph-nfs-{{ ceph_nfs_service_suffix | default(ansible_facts['hostname']) }} \
+{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+-F -L STDOUT
 {% if container_binary == 'podman' %}
 ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
 {% else %}
