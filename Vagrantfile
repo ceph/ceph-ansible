@@ -133,7 +133,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # "host doesn't support requested feature: CPUID.01H:EDX.ds [bit 21]"
   config.vm.provider :libvirt do |lv|
     lv.cpu_mode = 'host-passthrough'
-    lv.volume_cache = 'unsafe'
+    lv.disk_driver :cache => 'unsafe'
     lv.graphics_type = 'none'
     lv.cpus = 2
   end
