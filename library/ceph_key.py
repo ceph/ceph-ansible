@@ -519,6 +519,10 @@ def run_module():
     user_key = module.params.get('user_key')
     output_format = module.params.get('output_format')
 
+    # Can't use required_if with 'name' for some reason...
+    if state in ['present', 'absent', 'update', 'info'] and not name:
+        fatal(f'"state" is "{state}" but "name" is not defined.', module)
+
     changed = False
 
     result = dict(
