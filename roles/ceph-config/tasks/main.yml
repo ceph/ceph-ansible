@@ -89,14 +89,10 @@
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
         PYTHONIOENCODING: utf-8
       changed_when: false
-      when:
-        - devices | default([]) | length > 0
 
     - name: set_fact num_osds (add existing osds)
       set_fact:
         num_osds: "{{ lvm_list.stdout | default('{}') | from_json | length | int + num_osds | default(0) | int }}"
-      when:
-        - devices | default([]) | length > 0
 
 - name: set osd related config facts
   when: inventory_hostname in groups.get(osd_group_name, [])
