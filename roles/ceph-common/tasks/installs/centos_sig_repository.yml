@@ -1,0 +1,26 @@
+---
+- name: "install CentOS Storage SIG repository for ceph {{ ceph_stable_release }} packages"
+  yum:
+    name: "centos-release-ceph-{{ ceph_stable_release }}"
+    state: present
+    update_cache: true
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+  register: result
+  until: result is succeeded
+
+- name: "alter the ceph centos-stream-8 SIGs broken repository (CentOS-derivative)"
+  replace:
+    path: "/etc/yum.repos.d/CentOS-Ceph-{{ ceph_stable_release | capitalize }}.repo"
+    regexp:  "{{ item.regex }}"
+    replace: "{{ item.replace }}"
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - ansible_facts['distribution_major_version'] == "8"
+    - ansible_facts['distribution'] != 'CentOS' and ansible_facts['distribution_release'] != "Stream"
+  register: result
+  until: result is succeeded
+  with_items:
+    - {  regex:  '\?release\=\$releasever', replace: '?release=8-stream' }
+    - {  regex:  '\$contentdir\/\$releasever', replace: 'centos/8-stream' }
+    - {  regex:  '^\=CentOS', replace: 'name=CentOS' }
