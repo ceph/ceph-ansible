@@ -265,8 +265,6 @@ def modify_user(module, container_image=None):
     cluster = module.params.get('cluster')
     name = module.params.get('name')
     display_name = module.params.get('display_name')
-    if not display_name:
-        display_name = name
     email = module.params.get('email', None)
     access_key = module.params.get('access_key', None)
     secret_key = module.params.get('secret_key', None)
