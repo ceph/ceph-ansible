@@ -18,6 +18,7 @@ ExecStartPre=-/usr/bin/mkdir -p /var/log/tcmu-runner
 ExecStartPre=-/usr/bin/{{ container_binary }} stop tcmu-runner
 {% endif %}
 ExecStartPre=-/usr/bin/{{ container_binary }} rm tcmu-runner
+ExecStartPre=-/usr/bin/sh -c "if ! grep -qs /var/lib/ceph/iscsi.{{ ansible_facts['hostname'] }} /proc/mounts; then mount -t configfs none /var/lib/ceph/iscsi.{{ ansible_facts['hostname'] }}; fi"
 ExecStart=/usr/bin/{{ container_binary }} run --rm \
 {% if container_binary == 'podman' %}
   -d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
@@ -32,16 +33,17 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm \
   -v /lib/modules:/lib/modules \
   -v /etc/ceph:/etc/ceph \
   -v /var/log/tcmu-runner:/var/log/tcmu-runner:z \
-  -e CLUSTER={{ cluster }} \
-  -e CEPH_DAEMON=TCMU_RUNNER \
-  -e CONTAINER_IMAGE={{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+  -v /var/lib/ceph/iscsi.{{ ansible_facts['hostname'] }}:/sys/kernel/config \
   --name=tcmu-runner \
-  {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
+  --entrypoint=tcmu-runner \
+  {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+  --tcmu-log-dir /var/log/tcmu-runner
 {% if container_binary == 'podman' %}
 ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
 {% else %}
 ExecStopPost=-/usr/bin/{{ container_binary }} stop tcmu-runner
 {% endif %}
+ExecStopPost=-/usr/bin/sh -c "if grep -qs /var/lib/ceph/iscsi.{{ ansible_facts['hostname'] }} /proc/mounts; then umount /var/lib/ceph/iscsi.{{ ansible_facts['hostname'] }}; fi"
 KillMode=none
 Restart=always
 RestartSec=10s
