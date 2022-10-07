@@ -188,7 +188,7 @@ If there is one more that one rgw being deployed in this configuration, the rgw(
     rgw_zonemaster: false
     rgw_zonesecondary: true
 
-    rgw_zonegroupmaster: true
+    rgw_zonegroupmaster: false
 
     rgw_multisite_proto: http
     rgw_zone_user: edward.lewis
@@ -202,7 +202,7 @@ If there is one more that one rgw being deployed in this configuration, the rgw(
     rgw_pullhost: rgw-001-hostname
     ```
 
-    **Note:** `rgw_zonemaster` should have the value of `false` and `rgw_zonesecondary` should be `true`
+    **Note:** `rgw_zonemaster` should have the value of `false`, `rgw_zonegroupmaster` should have the value of `false` and `rgw_zonesecondary` should be `true`
 
     **Note:** The variables `rgw_pull_port`, `rgw_pull_proto`, `rgw_pullhost`, are joined together to make an endpoint string needed to create secondary zones. This endpoint is of one of the RGW endpoints in a master zone in the zonegroup and realm you want to create secondary zones in. This endpoint **must be resolvable** from the mons and rgws in the cluster the secondary zone(s)  are being created in.
 
@@ -393,7 +393,7 @@ rgw-004 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192
     ```yaml
     rgw_zonemaster: false
     rgw_zonesecondary: true
-    rgw_zonegroupmaster: true
+    rgw_zonegroupmaster: false
     rgw_multisite_proto: http
     rgw_realm: france
     rgw_zonegroup: idf
@@ -414,7 +414,7 @@ rgw-004 ansible_ssh_host=192.168.215.178 ansible_ssh_port=22 radosgw_address=192
     ```yaml
     rgw_zonemaster: false
     rgw_zonesecondary: true
-    rgw_zonegroupmaster: true
+    rgw_zonegroupmaster: false
     rgw_multisite_proto: http
     rgw_realm: usa
     rgw_zonegroup: alaska
@@ -517,7 +517,7 @@ rgw_instances:
   - instance_name: rgw3
     rgw_zonemaster: false
     rgw_zonesecondary: true
-    rgw_zonegroupmaster: true
+    rgw_zonegroupmaster: false
     rgw_realm: usa
     rgw_zonegroup: alaska
     rgw_zone: fairbanks
@@ -532,7 +532,7 @@ rgw_instances:
   - instance_name: rgw4
     rgw_zonemaster: false
     rgw_zonesecondary: true
-    rgw_zonegroupmaster: true
+    rgw_zonegroupmaster: false
     rgw_realm: france
     rgw_zonegroup: idf
     rgw_zone: versailles
