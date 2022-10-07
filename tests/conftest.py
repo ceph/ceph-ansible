@@ -114,6 +114,7 @@ def node(host, request):
         'octopus': 15,
         'pacific': 16,
         'quincy': 17,
+        'reef': 18,
         'dev': 99
     }
 

@@ -133,8 +133,8 @@
 
         - name: check ceph release being deployed
           fail:
-            msg: "This version of ceph-ansible is intended for upgrading to Ceph Quincy only."
-          when: "'quincy' not in ceph_version.stdout.split()"
+            msg: "This version of ceph-ansible is intended for upgrading to Ceph Reef only."
+          when: "'reef' not in ceph_version.stdout.split()"
 
 
 - name: upgrade ceph mon cluster
@@ -1049,16 +1049,16 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
-    - name: container | disallow pre-quincy OSDs and enable all new quincy-only functionality
-      command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] }} ceph --cluster {{ cluster }} osd require-osd-release quincy"
+    - name: container | disallow pre-reef OSDs and enable all new reef-only functionality
+      command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] }} ceph --cluster {{ cluster }} osd require-osd-release reef"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
       when:
         - containerized_deployment | bool
         - groups.get(mon_group_name, []) | length > 0
 
-    - name: non container | disallow pre-quincy OSDs and enable all new quincy-only functionality
-      command: "ceph --cluster {{ cluster }} osd require-osd-release quincy"
+    - name: non container | disallow pre-reef OSDs and enable all new reef-only functionality
+      command: "ceph --cluster {{ cluster }} osd require-osd-release reef"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: True
       when:
