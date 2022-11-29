@@ -62,7 +62,7 @@ class TestCephKeyModule(object):
             'auth',
             'arg'
         ]
-        result = ceph_key.generate_ceph_cmd(
+        result = ceph_key.generate_cmd(
             sub_cmd=['auth'],
             args=fake_args,
             cluster=fake_cluster,
@@ -75,7 +75,7 @@ class TestCephKeyModule(object):
         fake_args = ['arg']
         fake_user = "fake-user"
         fake_user_key = "/tmp/my-key"
-        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        fake_container_image = "quay.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker',
                                  'run',
                                  '--rm',
@@ -93,7 +93,7 @@ class TestCephKeyModule(object):
                                  fake_cluster,
                                  'auth',
                                  'arg']
-        result = ceph_key.generate_ceph_cmd(
+        result = ceph_key.generate_cmd(
             sub_cmd=['auth'],
             args=fake_args,
             cluster=fake_cluster,
