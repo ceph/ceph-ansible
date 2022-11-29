@@ -18,12 +18,12 @@ __metaclass__ = type
 from ansible.module_utils.basic import AnsibleModule
 try:
     from ansible.module_utils.ca_common import exit_module, \
-                                               generate_ceph_cmd, \
+                                               generate_cmd, \
                                                is_containerized, \
                                                exec_command
 except ImportError:
     from module_utils.ca_common import exit_module, \
-                                       generate_ceph_cmd, \
+                                       generate_cmd, \
                                        is_containerized, \
                                        exec_command
 import datetime
@@ -142,10 +142,10 @@ def create_rule(module, container_image=None):
         if profile:
             args.append(profile)
 
-    cmd = generate_ceph_cmd(['osd', 'crush', 'rule'],
-                            args,
-                            cluster=cluster,
-                            container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['osd', 'crush', 'rule'],
+                       args=args,
+                       cluster=cluster,
+                       container_image=container_image)
 
     return cmd
 
@@ -160,10 +160,10 @@ def get_rule(module, container_image=None):
 
     args = ['dump', name, '--format=json']
 
-    cmd = generate_ceph_cmd(['osd', 'crush', 'rule'],
-                            args,
-                            cluster=cluster,
-                            container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['osd', 'crush', 'rule'],
+                       args=args,
+                       cluster=cluster,
+                       container_image=container_image)
 
     return cmd
 
@@ -178,10 +178,10 @@ def remove_rule(module, container_image=None):
 
     args = ['rm', name]
 
-    cmd = generate_ceph_cmd(['osd', 'crush', 'rule'],
-                            args,
-                            cluster=cluster,
-                            container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['osd', 'crush', 'rule'],
+                       args=args,
+                       cluster=cluster,
+                       container_image=container_image)
 
     return cmd
 

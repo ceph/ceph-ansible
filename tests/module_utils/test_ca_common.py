@@ -38,17 +38,17 @@ class TestCommon(object):
 
     @pytest.mark.parametrize('image', [None, fake_container_image])
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_pre_generate_ceph_cmd(self, image):
+    def test_pre_generate_cmd(self, image):
         if image:
             expected_cmd = self.fake_container_cmd
         else:
             expected_cmd = [self.fake_binary]
 
-        assert ca_common.pre_generate_ceph_cmd(image) == expected_cmd
+        assert ca_common.pre_generate_cmd(self.fake_binary, image) == expected_cmd  # noqa: E501
 
     @pytest.mark.parametrize('image', [None, fake_container_image])
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_generate_ceph_cmd(self, image):
+    def test_generate_cmd(self, image):
         sub_cmd = ['osd', 'pool']
         args = ['create', 'foo']
         if image:
@@ -64,11 +64,11 @@ class TestCommon(object):
             'osd', 'pool',
             'create', 'foo'
         ])
-        assert ca_common.generate_ceph_cmd(sub_cmd, args, cluster=self.fake_cluster, container_image=image) == expected_cmd
+        assert ca_common.generate_cmd(sub_cmd=sub_cmd, args=args, cluster=self.fake_cluster, container_image=image) == expected_cmd  # noqa: E501
 
     @pytest.mark.parametrize('image', [None, fake_container_image])
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_generate_ceph_cmd_different_cluster_name(self, image):
+    def test_generate_cmd_different_cluster_name(self, image):
         sub_cmd = ['osd', 'pool']
         args = ['create', 'foo']
         if image:
@@ -84,12 +84,12 @@ class TestCommon(object):
             'osd', 'pool',
             'create', 'foo'
         ])
-        result = ca_common.generate_ceph_cmd(sub_cmd, args, cluster='foo', container_image=image)
+        result = ca_common.generate_cmd(sub_cmd=sub_cmd, args=args, cluster='foo', container_image=image)  # noqa: E501
         assert result == expected_cmd
 
     @pytest.mark.parametrize('image', [None, fake_container_image])
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_generate_ceph_cmd_different_cluster_name_and_user(self, image):
+    def test_generate_cmd_different_cluster_name_and_user(self, image):
         sub_cmd = ['osd', 'pool']
         args = ['create', 'foo']
         if image:
@@ -105,12 +105,12 @@ class TestCommon(object):
             'osd', 'pool',
             'create', 'foo'
         ])
-        result = ca_common.generate_ceph_cmd(sub_cmd, args, cluster='foo', user='client.foo', container_image=image)
+        result = ca_common.generate_cmd(sub_cmd=sub_cmd, args=args, cluster='foo', user='client.foo', container_image=image)  # noqa: E501
         assert result == expected_cmd
 
     @pytest.mark.parametrize('image', [None, fake_container_image])
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
-    def test_generate_ceph_cmd_different_user(self, image):
+    def test_generate_cmd_different_user(self, image):
         sub_cmd = ['osd', 'pool']
         args = ['create', 'foo']
         if image:
@@ -126,7 +126,7 @@ class TestCommon(object):
             'osd', 'pool',
             'create', 'foo'
         ])
-        result = ca_common.generate_ceph_cmd(sub_cmd, args, user='client.foo', container_image=image)
+        result = ca_common.generate_cmd(sub_cmd=sub_cmd, args=args, user='client.foo', container_image=image)  # noqa: E501
         assert result == expected_cmd
 
     @pytest.mark.parametrize('stdin', [None, 'foo'])
@@ -137,7 +137,7 @@ class TestCommon(object):
         stdout = 'ceph version 1.2.3'
         fake_module.run_command.return_value = 0, stdout, stderr
         expected_cmd = [self.fake_binary, '--version']
-        _rc, _cmd, _out, _err = ca_common.exec_command(fake_module, expected_cmd, stdin=stdin)
+        _rc, _cmd, _out, _err = ca_common.exec_command(fake_module, expected_cmd, stdin=stdin)  # noqa: E501
         assert _rc == rc
         assert _cmd == expected_cmd
         assert _err == stderr
