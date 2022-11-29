@@ -2,6 +2,7 @@ import os
 import sys
 import ceph_pool
 from mock.mock import patch
+import pytest
 
 sys.path.append('./library')
 fake_user = 'client.admin'
@@ -282,6 +283,53 @@ class TestCephPoolModule(object):
 
         assert cmd == expected_command
 
+    @pytest.mark.parametrize("container_image", [None, fake_container_image_name])
+    def test_init_rbd_pool(self, container_image):
+        if container_image:
+            expected_command = [
+                    'podman',
+                    'run',
+                    '--rm',
+                    '--net=host',
+                    '-v',
+                    '/etc/ceph:/etc/ceph:z',
+                    '-v',
+                    '/var/lib/ceph/:/var/lib/ceph/:z',
+                    '-v',
+                    '/var/log/ceph/:/var/log/ceph/:z',
+                    '--entrypoint=rbd',
+                    fake_container_image_name,
+                    '-n',
+                    fake_user,
+                    '-k',
+                    fake_user_key,
+                    '--cluster',
+                    fake_cluster_name,
+                    'pool',
+                    'init',
+                    self.fake_user_pool_config['pool_name']['value']
+            ]
+        else:
+            expected_command = [
+                    'rbd',
+                    '-n',
+                    fake_user,
+                    '-k',
+                    fake_user_key,
+                    '--cluster',
+                    fake_cluster_name,
+                    'pool',
+                    'init',
+                    self.fake_user_pool_config['pool_name']['value']
+            ]
+
+        cmd = ceph_pool.init_rbd_pool(fake_cluster_name,
+                                      self.fake_user_pool_config['pool_name']['value'],
+                                      fake_user, fake_user_key,
+                                      container_image)
+
+        assert cmd == expected_command
+
     def test_disable_application_pool(self):
         expected_command = [
                 'podman',
@@ -442,7 +490,6 @@ class TestCephPoolModule(object):
         ]
 
         cmd = ceph_pool.create_pool(fake_cluster_name,
-                                    self.fake_user_pool_config['pool_name']['value'],
                                     fake_user, fake_user_key, self.fake_user_pool_config,
                                     container_image=fake_container_image_name)
 
@@ -489,7 +536,6 @@ class TestCephPoolModule(object):
         ]
 
         cmd = ceph_pool.create_pool(fake_cluster_name,
-                                    self.fake_user_pool_config['pool_name']['value'],
                                     fake_user, fake_user_key,
                                     self.fake_user_pool_config,
                                     container_image=fake_container_image_name)
@@ -535,7 +581,6 @@ class TestCephPoolModule(object):
         ]
 
         cmd = ceph_pool.create_pool(fake_cluster_name,
-                                    self.fake_user_pool_config['pool_name']['value'],
                                     fake_user, fake_user_key, self.fake_user_pool_config,
                                     container_image=fake_container_image_name)
 
@@ -583,7 +628,6 @@ class TestCephPoolModule(object):
         ]
 
         cmd = ceph_pool.create_pool(fake_cluster_name,
-                                    self.fake_user_pool_config['pool_name']['value'],
                                     fake_user, fake_user_key, self.fake_user_pool_config,
                                     container_image=fake_container_image_name)
 
