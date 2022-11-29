@@ -19,12 +19,12 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-    from ansible.module_utils.ca_common import generate_ceph_cmd, \
+    from ansible.module_utils.ca_common import generate_cmd, \
                                                is_containerized, \
                                                container_exec, \
                                                fatal
 except ImportError:
-    from module_utils.ca_common import generate_ceph_cmd, \
+    from module_utils.ca_common import generate_cmd, \
                                        is_containerized, \
                                        container_exec, \
                                        fatal
@@ -304,12 +304,12 @@ def create_key(module, result, cluster, user, user_key, name, secret, caps, impo
         cluster, name, secret, caps, dest, container_image))
 
     if import_key or user != 'client.admin':
-        cmd_list.append(generate_ceph_cmd(sub_cmd=['auth'],
-                                          args=args,
-                                          cluster=cluster,
-                                          user=user,
-                                          user_key=user_key,
-                                          container_image=container_image))
+        cmd_list.append(generate_cmd(sub_cmd=['auth'],
+                                     args=args,
+                                     cluster=cluster,
+                                     user=user,
+                                     user_key=user_key,
+                                     container_image=container_image))
 
     return cmd_list
 
@@ -326,12 +326,12 @@ def delete_key(cluster, user, user_key, name, container_image=None):
         name,
     ]
 
-    cmd_list.append(generate_ceph_cmd(sub_cmd=['auth'],
-                                      args=args,
-                                      cluster=cluster,
-                                      user=user,
-                                      user_key=user_key,
-                                      container_image=container_image))
+    cmd_list.append(generate_cmd(sub_cmd=['auth'],
+                                 args=args,
+                                 cluster=cluster,
+                                 user=user,
+                                 user_key=user_key,
+                                 container_image=container_image))
 
     return cmd_list
 
@@ -350,12 +350,12 @@ def get_key(cluster, user, user_key, name, dest, container_image=None):
         dest,
     ]
 
-    cmd_list.append(generate_ceph_cmd(sub_cmd=['auth'],
-                                      args=args,
-                                      cluster=cluster,
-                                      user=user,
-                                      user_key=user_key,
-                                      container_image=container_image))
+    cmd_list.append(generate_cmd(sub_cmd=['auth'],
+                                 args=args,
+                                 cluster=cluster,
+                                 user=user,
+                                 user_key=user_key,
+                                 container_image=container_image))
 
     return cmd_list
 
@@ -374,12 +374,12 @@ def info_key(cluster, name, user, user_key, output_format, container_image=None)
         output_format,
     ]
 
-    cmd_list.append(generate_ceph_cmd(sub_cmd=['auth'],
-                                      args=args,
-                                      cluster=cluster,
-                                      user=user,
-                                      user_key=user_key,
-                                      container_image=container_image))
+    cmd_list.append(generate_cmd(sub_cmd=['auth'],
+                                 args=args,
+                                 cluster=cluster,
+                                 user=user,
+                                 user_key=user_key,
+                                 container_image=container_image))
 
     return cmd_list
 
@@ -397,12 +397,12 @@ def list_keys(cluster, user, user_key, container_image=None):
         'json',
     ]
 
-    cmd_list.append(generate_ceph_cmd(sub_cmd=['auth'],
-                                      args=args,
-                                      cluster=cluster,
-                                      user=user,
-                                      user_key=user_key,
-                                      container_image=container_image))
+    cmd_list.append(generate_cmd(sub_cmd=['auth'],
+                                 args=args,
+                                 cluster=cluster,
+                                 user=user,
+                                 user_key=user_key,
+                                 container_image=container_image))
 
     return cmd_list
 
