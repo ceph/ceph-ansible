@@ -2,15 +2,22 @@ import os
 import datetime
 
 
-def generate_ceph_cmd(sub_cmd, args, user_key=None, cluster='ceph', user='client.admin', container_image=None, interactive=False):
+def generate_cmd(cmd='ceph',
+                 sub_cmd=None,
+                 args=None,
+                 user_key=None,
+                 cluster='ceph',
+                 user='client.admin',
+                 container_image=None,
+                 interactive=False):
     '''
     Generate 'ceph' command line to execute
     '''
 
-    if not user_key:
+    if user_key is None:
         user_key = '/etc/ceph/{}.{}.keyring'.format(cluster, user)
 
-    cmd = pre_generate_ceph_cmd(container_image=container_image, interactive=interactive)
+    cmd = pre_generate_cmd(cmd, container_image=container_image, interactive=interactive)  # noqa: E501
 
     base_cmd = [
         '-n',
@@ -20,8 +27,11 @@ def generate_ceph_cmd(sub_cmd, args, user_key=None, cluster='ceph', user='client
         '--cluster',
         cluster
     ]
-    base_cmd.extend(sub_cmd)
-    cmd.extend(base_cmd + args)
+
+    if sub_cmd is not None:
+        base_cmd.extend(sub_cmd)
+
+    cmd.extend(base_cmd) if args is None else cmd.extend(base_cmd + args)
 
     return cmd
 
@@ -59,14 +69,14 @@ def is_containerized():
     return container_image
 
 
-def pre_generate_ceph_cmd(container_image=None, interactive=False):
+def pre_generate_cmd(cmd, container_image=None, interactive=False):
     '''
-    Generate ceph prefix comaand
+    Generate ceph prefix command
     '''
     if container_image:
-        cmd = container_exec('ceph', container_image, interactive=interactive)
+        cmd = container_exec(cmd, container_image, interactive=interactive)
     else:
-        cmd = ['ceph']
+        cmd = [cmd]
 
     return cmd
 
@@ -84,7 +94,7 @@ def exec_command(module, cmd, stdin=None):
     return rc, cmd, out, err
 
 
-def exit_module(module, out, rc, cmd, err, startd, changed=False, diff=dict(before="", after="")):
+def exit_module(module, out, rc, cmd, err, startd, changed=False, diff=dict(before="", after="")):  # noqa: E501
     endd = datetime.datetime.now()
     delta = endd - startd
 

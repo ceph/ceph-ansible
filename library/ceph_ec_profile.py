@@ -18,12 +18,12 @@ __metaclass__ = type
 from ansible.module_utils.basic import AnsibleModule
 try:
     from ansible.module_utils.ca_common import is_containerized, \
-                                               generate_ceph_cmd, \
+                                               generate_cmd, \
                                                exec_command, \
                                                exit_module
 except ImportError:
     from module_utils.ca_common import is_containerized, \
-                                            generate_ceph_cmd, \
+                                            generate_cmd, \
                                             exec_command, \
                                             exit_module
 import datetime
@@ -113,10 +113,10 @@ def get_profile(module, name, cluster='ceph', container_image=None):
 
     args = ['get', name, '--format=json']
 
-    cmd = generate_ceph_cmd(sub_cmd=['osd', 'erasure-code-profile'],
-                            args=args,
-                            cluster=cluster,
-                            container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['osd', 'erasure-code-profile'],
+                       args=args,
+                       cluster=cluster,
+                       container_image=container_image)
 
     return cmd
 
@@ -134,10 +134,10 @@ def create_profile(module, name, k, m, stripe_unit, crush_device_class, cluster=
     if force:
         args.append('--force')
 
-    cmd = generate_ceph_cmd(sub_cmd=['osd', 'erasure-code-profile'],
-                            args=args,
-                            cluster=cluster,
-                            container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['osd', 'erasure-code-profile'],
+                       args=args,
+                       cluster=cluster,
+                       container_image=container_image)
 
     return cmd
 
@@ -149,10 +149,10 @@ def delete_profile(module, name, cluster='ceph', container_image=None):
 
     args = ['rm', name]
 
-    cmd = generate_ceph_cmd(sub_cmd=['osd', 'erasure-code-profile'],
-                            args=args,
-                            cluster=cluster,
-                            container_image=container_image)
+    cmd = generate_cmd(sub_cmd=['osd', 'erasure-code-profile'],
+                       args=args,
+                       cluster=cluster,
+                       container_image=container_image)
 
     return cmd
 
@@ -210,7 +210,7 @@ def run_module():
             if current_profile['k'] != k or \
                current_profile['m'] != m or \
                current_profile.get('stripe_unit', stripe_unit) != stripe_unit or \
-               current_profile.get('crush-device-class', crush_device_class) != crush_device_class:
+               current_profile.get('crush-device-class', crush_device_class) != crush_device_class:  # noqa: E501
                 rc, cmd, out, err = exec_command(module,
                                                  create_profile(module,
                                                                 name,

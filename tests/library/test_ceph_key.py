@@ -62,7 +62,7 @@ class TestCephKeyModule(object):
             'auth',
             'arg'
         ]
-        result = ceph_key.generate_ceph_cmd(
+        result = ceph_key.generate_cmd(
             sub_cmd=['auth'],
             args=fake_args,
             cluster=fake_cluster,
@@ -93,7 +93,7 @@ class TestCephKeyModule(object):
                                  fake_cluster,
                                  'auth',
                                  'arg']
-        result = ceph_key.generate_ceph_cmd(
+        result = ceph_key.generate_cmd(
             sub_cmd=['auth'],
             args=fake_args,
             cluster=fake_cluster,
