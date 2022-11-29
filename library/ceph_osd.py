@@ -17,9 +17,9 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-    from ansible.module_utils.ca_common import exit_module, generate_ceph_cmd, is_containerized  # noqa: E501
+    from ansible.module_utils.ca_common import exit_module, generate_cmd, is_containerized  # noqa: E501
 except ImportError:
-    from module_utils.ca_common import exit_module, generate_ceph_cmd, is_containerized  # noqa: E501
+    from module_utils.ca_common import exit_module, generate_cmd, is_containerized  # noqa: E501
 import datetime
 
 
@@ -111,7 +111,7 @@ def main():
 
     container_image = is_containerized()
 
-    cmd = generate_ceph_cmd(['osd', state], ids, cluster=cluster, container_image=container_image)  # noqa: E501
+    cmd = generate_cmd(sub_cmd=['osd', state], args=ids, cluster=cluster, container_image=container_image)  # noqa: E501
 
     if state in ['destroy', 'purge']:
         cmd.append('--yes-i-really-mean-it')
