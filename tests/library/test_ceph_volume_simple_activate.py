@@ -6,7 +6,7 @@ import ceph_volume_simple_activate
 
 fake_cluster = 'ceph'
 fake_container_binary = 'podman'
-fake_container_image = 'quay.ceph.io/ceph/daemon:latest'
+fake_container_image = 'quay.io/ceph/daemon:latest'
 fake_id = '42'
 fake_uuid = '0c4a7eca-0c2a-4c12-beff-08a80f064c52'
 fake_path = '/etc/ceph/osd/{}-{}.json'.format(fake_id, fake_uuid)

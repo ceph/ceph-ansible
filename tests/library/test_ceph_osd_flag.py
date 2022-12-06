@@ -6,7 +6,7 @@ import ceph_osd_flag
 
 fake_cluster = 'ceph'
 fake_container_binary = 'podman'
-fake_container_image = 'quay.ceph.io/ceph/daemon:latest'
+fake_container_image = 'quay.io/ceph/daemon:latest'
 fake_flag = 'noup'
 fake_user = 'client.admin'
 fake_keyring = '/etc/ceph/{}.{}.keyring'.format(fake_cluster, fake_user)
