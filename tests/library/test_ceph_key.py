@@ -71,7 +71,7 @@ class TestCephKeyModule(object):
         fake_args = ['arg']
         fake_user = "fake-user"
         fake_key = "/tmp/my-key"
-        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        fake_container_image = "quay.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker',
                                  'run',
                                  '--rm',
@@ -80,7 +80,7 @@ class TestCephKeyModule(object):
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph',
-                                 'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                 'quay.io/ceph/daemon:latest-luminous',
                                  '-n',
                                  "fake-user",
                                  '-k',
@@ -134,7 +134,7 @@ class TestCephKeyModule(object):
         fake_dest = "/fake/ceph"
         fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
-        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        fake_container_image = "quay.io/ceph/daemon:latest-luminous"
         expected_command_list = ['docker',
                                  'run',
                                  '--rm',
@@ -143,7 +143,7 @@ class TestCephKeyModule(object):
                                  '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                  '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                  '--entrypoint=ceph-authtool',
-                                 'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                 'quay.io/ceph/daemon:latest-luminous',
                                  '--create-keyring',
                                  fake_file_destination,
                                  '--name',
@@ -202,7 +202,7 @@ class TestCephKeyModule(object):
         fake_import_key = True
         fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
-        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        fake_container_image = "quay.io/ceph/daemon:latest-luminous"
         expected_command_list = [
             ['docker',
              'run',
@@ -212,7 +212,7 @@ class TestCephKeyModule(object):
              '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
              '-v', '/var/log/ceph/:/var/log/ceph/:z',
              '--entrypoint=ceph-authtool',
-             'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+             'quay.io/ceph/daemon:latest-luminous',
              '--create-keyring', fake_file_destination,
              '--name', fake_name,
              '--add-key', fake_secret,
@@ -226,7 +226,7 @@ class TestCephKeyModule(object):
              '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
              '-v', '/var/log/ceph/:/var/log/ceph/:z',
              '--entrypoint=ceph',
-             'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+             'quay.io/ceph/daemon:latest-luminous',
              '-n', 'client.admin',
              '-k', '/etc/ceph/fake.client.admin.keyring',
              '--cluster', fake_cluster,
@@ -289,7 +289,7 @@ class TestCephKeyModule(object):
         fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
         # create_key passes (one for ceph-authtool and one for itself) itw own array so the expected result is an array within an array # noqa E501
-        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        fake_container_image = "quay.io/ceph/daemon:latest-luminous"
         expected_command_list = [['docker',   # noqa E128
                                   'run',
                                   '--rm',
@@ -298,7 +298,7 @@ class TestCephKeyModule(object):
                                   '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                   '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                   '--entrypoint=ceph-authtool',
-                                  'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                  'quay.io/ceph/daemon:latest-luminous',
                                   '--create-keyring',
                                   fake_file_destination,
                                   '--name',
@@ -332,7 +332,7 @@ class TestCephKeyModule(object):
         fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_cluster = "fake"
         fake_name = "client.fake"
-        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        fake_container_image = "quay.io/ceph/daemon:latest-luminous"
         expected_command_list = [['docker',
                                   'run',
                                   '--rm',
@@ -341,7 +341,7 @@ class TestCephKeyModule(object):
                                   '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                   '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                   '--entrypoint=ceph',
-                                  'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                  'quay.io/ceph/daemon:latest-luminous',
                                   '-n', 'client.admin',
                                   '-k', '/etc/ceph/fake.client.admin.keyring',
                                   '--cluster', fake_cluster,
@@ -371,7 +371,7 @@ class TestCephKeyModule(object):
         fake_name = "client.fake"
         fake_user = 'client.admin'
         fake_user_key = '/etc/ceph/fake.client.admin.keyring'
-        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        fake_container_image = "quay.io/ceph/daemon:latest-luminous"
         expected_command_list = [['docker',   # noqa E128
                                   'run',
                                   '--rm',
@@ -380,7 +380,7 @@ class TestCephKeyModule(object):
                                   '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                   '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                   '--entrypoint=ceph',
-                                  'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                  'quay.io/ceph/daemon:latest-luminous',
                                   '-n', fake_user,
                                   '-k', fake_user_key,
                                   '--cluster', fake_cluster,
@@ -406,7 +406,7 @@ class TestCephKeyModule(object):
         fake_user = 'client.admin'
         fake_user_key = '/etc/ceph/fake.client.admin.keyring'
         fake_name = "client.fake"
-        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        fake_container_image = "quay.io/ceph/daemon:latest-luminous"
         fake_dest = "/fake/ceph"
         fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
@@ -418,7 +418,7 @@ class TestCephKeyModule(object):
                                   '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                   '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                   '--entrypoint=ceph',
-                                  'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                  'quay.io/ceph/daemon:latest-luminous',
                                   '-n', fake_user,
                                   '-k', fake_user_key,
                                   '--cluster', fake_cluster,
@@ -463,7 +463,7 @@ class TestCephKeyModule(object):
         fake_user = "mon."
         fake_keyring_dirname = fake_cluster + "-" + fake_hostname
         fake_key = os.path.join("/var/lib/ceph/mon/", fake_keyring_dirname, 'keyring')
-        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        fake_container_image = "quay.io/ceph/daemon:latest-luminous"
         expected_command_list = [['docker',
                                   'run',
                                   '--rm',
@@ -472,7 +472,7 @@ class TestCephKeyModule(object):
                                   '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                   '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                   '--entrypoint=ceph',
-                                  'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                  'quay.io/ceph/daemon:latest-luminous',
                                   '-n', "mon.",
                                   '-k', "/var/lib/ceph/mon/fake-mon01/keyring",
                                   '--cluster', fake_cluster,
@@ -485,7 +485,7 @@ class TestCephKeyModule(object):
         fake_cluster = "fake"
         fake_user = "fake-user"
         fake_key = "/tmp/my-key"
-        fake_container_image = "quay.ceph.io/ceph-ci/daemon:latest-luminous"
+        fake_container_image = "quay.io/ceph/daemon:latest-luminous"
         expected_command_list = [['docker',
                                   'run',
                                   '--rm',
@@ -494,7 +494,7 @@ class TestCephKeyModule(object):
                                   '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
                                   '-v', '/var/log/ceph/:/var/log/ceph/:z',
                                   '--entrypoint=ceph',
-                                  'quay.ceph.io/ceph-ci/daemon:latest-luminous',
+                                  'quay.io/ceph/daemon:latest-luminous',
                                   '-n', "fake-user",
                                   '-k', "/tmp/my-key",
                                   '--cluster', fake_cluster,

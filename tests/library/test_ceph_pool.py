@@ -8,7 +8,7 @@ fake_user = 'client.admin'
 fake_user_key = '/etc/ceph/ceph.client.admin.keyring'
 fake_pool_name = 'foo'
 fake_cluster_name = 'ceph'
-fake_container_image_name = 'quay.ceph.io/ceph-ci/daemon:latest-luminous'
+fake_container_image_name = 'quay.io/ceph/daemon:latest-luminous'
 
 
 @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'podman'})
