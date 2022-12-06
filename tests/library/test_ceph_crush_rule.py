@@ -6,7 +6,7 @@ import ceph_crush_rule
 
 fake_cluster = 'ceph'
 fake_container_binary = 'podman'
-fake_container_image = 'quay.ceph.io/ceph/daemon:latest'
+fake_container_image = 'quay.io/ceph/daemon:latest'
 fake_name = 'foo'
 fake_bucket_root = 'default'
 fake_bucket_type = 'host'
