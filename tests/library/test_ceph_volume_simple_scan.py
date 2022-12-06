@@ -6,7 +6,7 @@ import ceph_volume_simple_scan
 
 fake_cluster = 'ceph'
 fake_container_binary = 'podman'
-fake_container_image = 'quay.ceph.io/ceph/daemon:latest'
+fake_container_image = 'quay.io/ceph/daemon:latest'
 fake_path = '/var/lib/ceph/osd/ceph-0'
 
 
