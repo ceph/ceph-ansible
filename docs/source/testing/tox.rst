@@ -21,9 +21,9 @@ runs of ``ceph-ansible``.
 
 The following environent variables are available for use:
 
-* ``CEPH_DOCKER_REGISTRY``: (default: ``quay.ceph.io``) This would configure the ``ceph-ansible`` variable ``ceph_docker_registry``.
+* ``CEPH_DOCKER_REGISTRY``: (default: ``quay.io``) This would configure the ``ceph-ansible`` variable ``ceph_docker_registry``.
 
-* ``CEPH_DOCKER_IMAGE``: (default: ``ceph-ci/daemon``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image``.
+* ``CEPH_DOCKER_IMAGE``: (default: ``ceph/daemon``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image``.
 
 * ``CEPH_DOCKER_IMAGE_TAG``: (default: ``latest``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image_name``.
 

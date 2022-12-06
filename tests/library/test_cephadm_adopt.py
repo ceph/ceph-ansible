@@ -4,7 +4,7 @@ import ca_test_common
 import cephadm_adopt
 
 fake_cluster = 'ceph'
-fake_image = 'quay.ceph.io/ceph/daemon-base:latest'
+fake_image = 'quay.io/ceph/daemon-base:latest'
 fake_name = 'mon.foo01'
 
 

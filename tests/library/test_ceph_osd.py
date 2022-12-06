@@ -6,7 +6,7 @@ import ceph_osd
 
 fake_cluster = 'ceph'
 fake_container_binary = 'podman'
-fake_container_image = 'quay.ceph.io/ceph/daemon:latest'
+fake_container_image = 'quay.io/ceph/daemon:latest'
 fake_id = '42'
 fake_ids = ['0', '7', '13']
 fake_user = 'client.admin'
