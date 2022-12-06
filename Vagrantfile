@@ -523,9 +523,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         end
 
         (0..2).each do |d|
+          unless File.exist?("disk-#{i}-#{d}.vdi")
           vb.customize ['createhd',
                         '--filename', "disk-#{i}-#{d}",
-                        '--size', '11000'] unless File.exist?("disk-#{i}-#{d}.vdi")
+                        '--size', '11000']
+          end
           vb.customize ['storageattach', :id,
                         '--storagectl', 'OSD Controller',
                         '--port', 3 + d,
