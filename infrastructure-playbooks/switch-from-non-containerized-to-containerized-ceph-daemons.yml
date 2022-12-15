@@ -213,7 +213,7 @@
         name: ceph-mgr
 
 
-- name: set osd flags
+- name: set osd flag nodeep-scrub
   hosts: "{{ mon_group_name | default('mons') }}[0]"
   become: True
   tasks:
@@ -258,16 +258,13 @@
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
-    - name: set osd flags
+    - name: set osd flag nodeep-scrub
       ceph_osd_flag:
-        name: "{{ item }}"
+        name: "nodeep-scrub"
         cluster: "{{ cluster }}"
       environment:
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      with_items:
-        - noout
-        - nodeep-scrub
 
 
 - name: switching from non-containerized to containerized ceph osd
@@ -285,6 +282,21 @@
 
     - import_role:
         name: ceph-defaults
+
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: set osd flag noout
+      ceph_osd_flag:
+        name: noout
+        level: bucket
+        bucket: "{{ inventory_hostname }}"
+        cluster: "{{ cluster }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
     - name: collect running osds
       shell: |
@@ -398,8 +410,19 @@
       delay: "{{ health_osd_check_delay }}"
       changed_when: false
 
+    - name: unset osd flag noout
+      ceph_osd_flag:
+        name: noout
+        state: absent
+        level: bucket
+        bucket: "{{ inventory_hostname }}"
+        cluster: "{{ cluster }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
-- name: unset osd flags
+- name: unset osd flag nodeep-scrub
   hosts: "{{ mon_group_name | default('mons') }}[0]"
   become: True
   tasks:
@@ -422,17 +445,14 @@
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
-    - name: unset osd flags
+    - name: set osd flag nodeep-scrub
       ceph_osd_flag:
-        name: "{{ item }}"
+        name: "nodeep-scrub"
         cluster: "{{ cluster }}"
         state: absent
       environment:
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      with_items:
-        - noout
-        - nodeep-scrub
 
     - name: re-enable balancer
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"

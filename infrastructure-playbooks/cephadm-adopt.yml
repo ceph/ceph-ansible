@@ -696,8 +696,8 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
 
-- name: set osd flags
-  hosts: "{{ osd_group_name|default('osds') }}"
+- name: set osd flag nodeep-scrub
+  hosts: "{{ mon_group_name|default('mons') }}[0]"
   become: true
   gather_facts: false
   any_errors_fatal: True
@@ -709,7 +709,6 @@
       command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool ls detail -f json"
       register: pool_list
       run_once: true
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
       check_mode: false
 
@@ -717,7 +716,6 @@
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer status -f json"
       register: balancer_status_adopt
       run_once: true
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
       check_mode: false
 
@@ -740,7 +738,6 @@
         cluster: "{{ cluster }}"
         pg_autoscale_mode: false
       with_items: "{{ pools_pgautoscaler_mode }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       when:
         - pools_pgautoscaler_mode is defined
@@ -757,7 +754,6 @@
       with_items:
         - noout
         - nodeep-scrub
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       environment:
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
@@ -777,6 +773,12 @@
         name: ceph-facts
         tasks_from: container_binary.yml
       when: containerized_deployment | bool
+
+    - name: set osd flag noout
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} osd set-group noout {{ inventory_hostname }}"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: get osd list
       ceph_volume:
@@ -852,8 +854,14 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-- name: unset osd flags
-  hosts: "{{ osd_group_name|default('osds') }}"
+    - name: unset osd flag noout
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} osd unset-group noout {{ inventory_hostname }}"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+- name: unset osd flag nodeep-scrub
+  hosts: "{{ mon_group_name|default('mons') }}[0]"
   become: true
   gather_facts: false
   any_errors_fatal: True
@@ -867,7 +875,6 @@
         cluster: "{{ cluster }}"
         pg_autoscale_mode: true
       with_items: "{{ pools_pgautoscaler_mode }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       when:
         - pools_pgautoscaler_mode is defined
@@ -884,8 +891,11 @@
       with_items:
         - noout
         - nodeep-scrub
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
+
+    - name: unset osd flag nodeep-scrub
+      command: "{{ cephadm_cmd }} shell --fsid {{ fsid }} -- ceph --cluster {{ cluster }} osd unset nodeep-scrub"
+      changed_when: false
       environment:
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
@@ -893,7 +903,6 @@
     - name: re-enable balancer
       command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"
       run_once: true
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
       when: (balancer_status_adopt.stdout | from_json)['active'] | bool
 
