@@ -80,7 +80,7 @@ EXAMPLES = '''
   cephadm_adopt:
     name: mon.foo
     style: legacy
-    image: quay.ceph.io/ceph/daemon-base:latest-master-devel
+    image: quay.io/ceph/daemon-base:latest-master-devel
     pull: false
     firewalld: false
 
@@ -89,7 +89,7 @@ EXAMPLES = '''
     name: mon.foo
     style: legacy
   environment:
-    CEPHADM_IMAGE: quay.ceph.io/ceph/daemon-base:latest-master-devel
+    CEPHADM_IMAGE: quay.io/ceph/daemon-base:latest-master-devel
 '''
 
 RETURN = '''#  '''
