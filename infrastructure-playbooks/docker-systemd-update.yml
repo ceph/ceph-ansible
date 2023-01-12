@@ -1,0 +1,85 @@
+---
+# Updates docker systemd files and reloads docker daemon
+
+- name: facts
+  hosts:
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+    - "{{ mgr_group_name | default('nfss') }}"
+  any_errors_fatal: True
+  become: True
+  gather_facts: False
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+    - import_role:
+        name: ceph-handler
+
+    - name: set_fact docker_update
+      set_fact:
+        docker_update: true
+
+    - name: Replace systemd docker files with updates
+      when: container_binary == 'docker'
+      block:
+          - import_role:
+              name: ceph-mon
+              tasks_from: systemd.yml
+            when: inventory_hostname in groups.get(mon_group_name, [])
+
+          - import_role:
+              name: ceph-mgr
+              tasks_from: systemd.yml
+            when: inventory_hostname in groups.get(mgr_group_name, [])
+
+          - import_role:
+              name: ceph-osd
+              tasks_from: systemd.yml
+            when: inventory_hostname in groups.get(osd_group_name, [])
+
+          - import_role:
+              name: ceph-rgw
+              tasks_from: systemd.yml
+            when: inventory_hostname in groups.get(rgw_group_name, [])
+
+          - import_role:
+              name: ceph-iscsi-gw
+              tasks_from: systemd.yml
+            when: inventory_hostname in groups.get(iscsi_gw_group_name, [])
+
+          - import_role:
+              name: ceph-mds
+              tasks_from: systemd.yml
+            when: inventory_hostname in groups.get(mds_group_name, [])
+
+          - import_role:
+              name: ceph-nfs
+              tasks_from: systemd.yml
+            when: inventory_hostname in groups.get(nfs_group_name, [])
+
+          - import_role:
+              name: ceph-rbd-mirror
+              tasks_from: systemd.yml
+            when: inventory_hostname in groups.get(rbdmirror_group_name, [])
+
+          - import_role:
+              name: ceph-crash
+              tasks_from: systemd.yml
+            when: inventory_hostname in groups.get(mon_group_name, []) or
+                  inventory_hostname in groups.get(osd_group_name, []) or
+                  inventory_hostname in groups.get(mds_group_name, []) or
+                  inventory_hostname in groups.get(rgw_group_name, []) or
+                  inventory_hostname in groups.get(mgr_group_name, []) or
+                  inventory_hostname in groups.get(rbdmirror_group_name, [])
+
+    - name: reload docker service
+      systemd:
+        name: docker
+        state: reloaded
+        daemon_reload: true
