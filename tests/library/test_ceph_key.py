@@ -62,17 +62,8 @@ class TestCephKeyModule(object):
             'auth',
             'arg'
         ]
-<<<<<<< HEAD
         result = ceph_key.generate_ceph_cmd(
             fake_cluster, fake_args, fake_user, fake_key)
-=======
-        result = ceph_key.generate_cmd(
-            sub_cmd=['auth'],
-            args=fake_args,
-            cluster=fake_cluster,
-            user=fake_user,
-            user_key=fake_user_key)
->>>>>>> c39bbc3de (Initialize rbd pool at pool creation)
         assert result == expected_command_list
 
     def test_generate_ceph_cmd_list_container(self):
@@ -98,18 +89,8 @@ class TestCephKeyModule(object):
                                  fake_cluster,
                                  'auth',
                                  'arg']
-<<<<<<< HEAD
         result = ceph_key.generate_ceph_cmd(
             fake_cluster, fake_args, fake_user, fake_user_key, fake_container_image)
-=======
-        result = ceph_key.generate_cmd(
-            sub_cmd=['auth'],
-            args=fake_args,
-            cluster=fake_cluster,
-            user=fake_user,
-            user_key=fake_user_key,
-            container_image=fake_container_image)
->>>>>>> c39bbc3de (Initialize rbd pool at pool creation)
         assert result == expected_command_list
 
     def test_generate_ceph_authtool_cmd_non_container_no_auid(self):
