@@ -194,6 +194,17 @@
                   when: (check_quorum_status.stdout | from_json).quorum | length != groups[mon_group_name] | length
               when: inventory_hostname == groups[mon_group_name] | first
 
+        - name: Replace ceph-mon systemd unit
+          when: container_binary == 'docker'
+          block:
+            - import_role:
+                name: ceph-mon
+                tasks_from: systemd.yml
+
+            - name: reload systemd config files
+              systemd:
+                daemon_reload: true
+
         - name: ensure /var/lib/ceph/bootstrap-rbd-mirror is present
           file:
             path: /var/lib/ceph/bootstrap-rbd-mirror
@@ -360,6 +371,18 @@
             name: ceph-defaults
         - import_role:
             name: ceph-facts
+            
+        - name: Replace ceph-mgr systemd unit
+          when: container_binary == 'docker'
+          block:
+            - import_role:
+                name: ceph-mgr
+                tasks_from: systemd.yml
+
+            - name: reload systemd config files
+              systemd:
+                daemon_reload: true
+
         - import_role:
             name: ceph-handler
         - import_role:
@@ -398,6 +421,18 @@
         name: ceph-defaults
     - import_role:
         name: ceph-facts
+
+    - name: Replace ceph-mgr systemd unit
+      when: container_binary == 'docker'
+      block:
+        - import_role:
+            name: ceph-mgr
+            tasks_from: systemd.yml
+
+        - name: reload systemd config files
+          systemd:
+            daemon_reload: true
+
     - import_role:
         name: ceph-handler
     - import_role:
@@ -506,6 +541,22 @@
         name: ceph-defaults
     - import_role:
         name: ceph-facts
+        
+    - name: Replace ceph-osd systemd unit
+      when: container_binary == 'docker'
+      block:
+        - import_role:
+            name: ceph-osd
+            tasks_from: container_options_facts.yml
+
+        - import_role:
+            name: ceph-osd
+            tasks_from: systemd.yml
+
+        - name: reload systemd config files
+          systemd:
+            daemon_reload: true
+
     - import_role:
         name: ceph-handler
     - import_role:
@@ -719,6 +770,17 @@
     - import_role:
         name: ceph-facts
 
+    - name: Replace ceph-mds systemd unit
+      when: container_binary == 'docker'
+      block:
+        - import_role:
+            name: ceph-mds
+            tasks_from: systemd.yml
+
+        - name: reload systemd config files
+          systemd:
+            daemon_reload: true
+
     - name: prevent restart from the packaging
       systemd:
         name: ceph-mds@{{ ansible_facts['hostname'] }}
@@ -767,6 +829,17 @@
     - import_role:
         name: ceph-facts
 
+    - name: Replace ceph-mds systemd unit
+      when: container_binary == 'docker'
+      block:
+        - import_role:
+            name: ceph-mds
+            tasks_from: systemd.yml
+
+        - name: reload systemd config files
+          systemd:
+            daemon_reload: true
+
     - name: prevent restarts from the packaging
       systemd:
         name: ceph-mds@{{ ansible_facts['hostname'] }}
@@ -808,6 +881,17 @@
         name: ceph-defaults
     - import_role:
         name: ceph-facts
+
+    - name: Replace ceph-rgw systemd unit
+      when: container_binary == 'docker'
+      block:
+        - import_role:
+            name: ceph-rgw
+            tasks_from: systemd.yml
+
+        - name: reload systemd config files
+          systemd:
+            daemon_reload: true
 
     - name: stop ceph rgw when upgrading from stable-3.2
       systemd:
@@ -859,6 +943,18 @@
         name: ceph-defaults
     - import_role:
         name: ceph-facts
+
+    - name: Replace ceph-rbdmirrors systemd unit
+      when: container_binary == 'docker'
+      block:
+        - import_role:
+            name: ceph-rbd-mirror
+            tasks_from: systemd.yml
+
+        - name: reload systemd config files
+          systemd:
+            daemon_reload: true
+
     - import_role:
         name: ceph-handler
     - import_role:
@@ -909,6 +1005,18 @@
         name: ceph-defaults
     - import_role:
         name: ceph-facts
+
+    - name: Replace ceph-nfs systemd unit
+      when: container_binary == 'docker'
+      block:
+        - import_role:
+            name: ceph-nfs
+            tasks_from: systemd.yml
+
+        - name: reload systemd config files
+          systemd:
+            daemon_reload: true
+
     - import_role:
         name: ceph-handler
     - import_role:
@@ -1011,6 +1119,18 @@
     - import_role:
         name: ceph-facts
         tasks_from: container_binary.yml
+
+    - name: Replace ceph-crash systemd unit
+      when: container_binary == 'docker'
+      block:
+        - import_role:
+            name: ceph-crash
+            tasks_from: systemd.yml
+
+        - name: reload systemd config files
+          systemd:
+            daemon_reload: true
+
     - import_role:
         name: ceph-handler
 
