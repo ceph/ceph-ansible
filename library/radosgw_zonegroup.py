@@ -204,9 +204,7 @@ def create_zonegroup(module, container_image=None):
     if master:
         args.append('--master')
 
-    cmd = generate_radosgw_cmd(cluster=cluster,
-                               args=args,
-                               container_image=container_image)
+    cmd = generate_radosgw_cmd(cluster=cluster, args=args, container_image=container_image)
 
     return cmd
 
@@ -234,9 +232,7 @@ def modify_zonegroup(module, container_image=None):
     if master:
         args.append('--master')
 
-    cmd = generate_radosgw_cmd(cluster=cluster,
-                               args=args,
-                               container_image=container_image)
+    cmd = generate_radosgw_cmd(cluster=cluster, args=args, container_image=container_image)
 
     return cmd
 
@@ -250,12 +246,7 @@ def get_zonegroup(module, container_image=None):
     name = module.params.get('name')
     realm = module.params.get('realm')
 
-    args = [
-        'get',
-        '--rgw-realm=' + realm,
-        '--rgw-zonegroup=' + name,
-        '--format=json'
-    ]
+    args = ['get', '--rgw-realm=' + realm, '--rgw-zonegroup=' + name, '--format=json']
 
     cmd = generate_radosgw_cmd(cluster=cluster,
                                args=args,
@@ -299,9 +290,7 @@ def remove_zonegroup(module, container_image=None):
 
     args = ['delete', '--rgw-realm=' + realm, '--rgw-zonegroup=' + name]
 
-    cmd = generate_radosgw_cmd(cluster=cluster,
-                               args=args,
-                               container_image=container_image)
+    cmd = generate_radosgw_cmd(cluster=cluster, args=args, container_image=container_image)
 
     return cmd
 
@@ -327,7 +316,7 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         name=dict(type='str', required=True),
-        state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),  # noqa: E501
+        state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),
         realm=dict(type='str', require=True),
         endpoints=dict(type='list', require=False, default=[]),
         default=dict(type='bool', required=False, default=False),
@@ -363,10 +352,10 @@ def run_module():
     container_image = is_containerized()
 
     if state == "present":
-        rc, cmd, out, err = exec_commands(module, get_zonegroup(module, container_image=container_image))  # noqa: E501
+        rc, cmd, out, err = exec_commands(module, get_zonegroup(module, container_image=container_image))
         if rc == 0:
             zonegroup = json.loads(out)
-            _rc, _cmd, _out, _err = exec_commands(module, get_realm(module, container_image=container_image))  # noqa: E501
+            _rc, _cmd, _out, _err = exec_commands(module, get_realm(module, container_image=container_image))
             if _rc != 0:
                 fatal(_err, module)
             realm = json.loads(_out)
@@ -381,25 +370,25 @@ def run_module():
                 'realm_id': realm['id']
             }
             if current != asked:
-                rc, cmd, out, err = exec_commands(module, modify_zonegroup(module, container_image=container_image))  # noqa: E501
+                rc, cmd, out, err = exec_commands(module, modify_zonegroup(module, container_image=container_image))
                 changed = True
         else:
-            rc, cmd, out, err = exec_commands(module, create_zonegroup(module, container_image=container_image))  # noqa: E501
+            rc, cmd, out, err = exec_commands(module, create_zonegroup(module, container_image=container_image))
             changed = True
 
     elif state == "absent":
-        rc, cmd, out, err = exec_commands(module, get_zonegroup(module, container_image=container_image))  # noqa: E501
+        rc, cmd, out, err = exec_commands(module, get_zonegroup(module, container_image=container_image))
         if rc == 0:
-            rc, cmd, out, err = exec_commands(module, remove_zonegroup(module, container_image=container_image))  # noqa: E501
+            rc, cmd, out, err = exec_commands(module, remove_zonegroup(module, container_image=container_image))
             changed = True
         else:
             rc = 0
             out = "Zonegroup {} doesn't exist".format(name)
 
     elif state == "info":
-        rc, cmd, out, err = exec_commands(module, get_zonegroup(module, container_image=container_image))  # noqa: E501
+        rc, cmd, out, err = exec_commands(module, get_zonegroup(module, container_image=container_image))
 
-    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)  # noqa: E501
+    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)
 
 
 def main():
