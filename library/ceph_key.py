@@ -19,21 +19,9 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule
 try:
-<<<<<<< HEAD
     from ansible.module_utils.ca_common import is_containerized, container_exec, fatal
 except ImportError:
     from module_utils.ca_common import is_containerized, container_exec, fatal
-=======
-    from ansible.module_utils.ca_common import generate_cmd, \
-                                               is_containerized, \
-                                               container_exec, \
-                                               fatal
-except ImportError:
-    from module_utils.ca_common import generate_cmd, \
-                                       is_containerized, \
-                                       container_exec, \
-                                       fatal
->>>>>>> c39bbc3de (Initialize rbd pool at pool creation)
 import datetime
 import json
 import os
@@ -338,17 +326,8 @@ def create_key(module, result, cluster, user, user_key_path, name, secret, caps,
         cluster, name, secret, caps, dest, container_image))
 
     if import_key or user != 'client.admin':
-<<<<<<< HEAD
         cmd_list.append(generate_ceph_cmd(
             cluster, args, user, user_key_path, container_image))
-=======
-        cmd_list.append(generate_cmd(sub_cmd=['auth'],
-                                     args=args,
-                                     cluster=cluster,
-                                     user=user,
-                                     user_key=user_key,
-                                     container_image=container_image))
->>>>>>> c39bbc3de (Initialize rbd pool at pool creation)
 
     return cmd_list
 
@@ -365,17 +344,8 @@ def delete_key(cluster, user, user_key_path, name, container_image=None):
         name,
     ]
 
-<<<<<<< HEAD
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key_path, container_image))
-=======
-    cmd_list.append(generate_cmd(sub_cmd=['auth'],
-                                 args=args,
-                                 cluster=cluster,
-                                 user=user,
-                                 user_key=user_key,
-                                 container_image=container_image))
->>>>>>> c39bbc3de (Initialize rbd pool at pool creation)
 
     return cmd_list
 
@@ -394,17 +364,8 @@ def get_key(cluster, user, user_key_path, name, dest, container_image=None):
         dest,
     ]
 
-<<<<<<< HEAD
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key_path, container_image))
-=======
-    cmd_list.append(generate_cmd(sub_cmd=['auth'],
-                                 args=args,
-                                 cluster=cluster,
-                                 user=user,
-                                 user_key=user_key,
-                                 container_image=container_image))
->>>>>>> c39bbc3de (Initialize rbd pool at pool creation)
 
     return cmd_list
 
@@ -423,17 +384,8 @@ def info_key(cluster, name, user, user_key_path, output_format, container_image=
         output_format,
     ]
 
-<<<<<<< HEAD
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key_path, container_image))
-=======
-    cmd_list.append(generate_cmd(sub_cmd=['auth'],
-                                 args=args,
-                                 cluster=cluster,
-                                 user=user,
-                                 user_key=user_key,
-                                 container_image=container_image))
->>>>>>> c39bbc3de (Initialize rbd pool at pool creation)
 
     return cmd_list
 
@@ -451,17 +403,8 @@ def list_keys(cluster, user, user_key_path, container_image=None):
         'json',
     ]
 
-<<<<<<< HEAD
     cmd_list.append(generate_ceph_cmd(
         cluster, args, user, user_key_path, container_image))
-=======
-    cmd_list.append(generate_cmd(sub_cmd=['auth'],
-                                 args=args,
-                                 cluster=cluster,
-                                 user=user,
-                                 user_key=user_key,
-                                 container_image=container_image))
->>>>>>> c39bbc3de (Initialize rbd pool at pool creation)
 
     return cmd_list
 

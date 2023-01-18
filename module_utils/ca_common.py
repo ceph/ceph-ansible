@@ -2,22 +2,15 @@ import os
 import datetime
 
 
-def generate_cmd(cmd='ceph',
-                 sub_cmd=None,
-                 args=None,
-                 user_key=None,
-                 cluster='ceph',
-                 user='client.admin',
-                 container_image=None,
-                 interactive=False):
+def generate_ceph_cmd(sub_cmd, args, user_key=None, cluster='ceph', user='client.admin', container_image=None, interactive=False):
     '''
     Generate 'ceph' command line to execute
     '''
 
-    if user_key is None:
+    if not user_key:
         user_key = '/etc/ceph/{}.{}.keyring'.format(cluster, user)
 
-    cmd = pre_generate_cmd(cmd, container_image=container_image, interactive=interactive)  # noqa: E501
+    cmd = pre_generate_ceph_cmd(container_image=container_image, interactive=interactive)
 
     base_cmd = [
         '-n',
@@ -27,11 +20,8 @@ def generate_cmd(cmd='ceph',
         '--cluster',
         cluster
     ]
-
-    if sub_cmd is not None:
-        base_cmd.extend(sub_cmd)
-
-    cmd.extend(base_cmd) if args is None else cmd.extend(base_cmd + args)
+    base_cmd.extend(sub_cmd)
+    cmd.extend(base_cmd + args)
 
     return cmd
 
@@ -69,14 +59,14 @@ def is_containerized():
     return container_image
 
 
-def pre_generate_cmd(cmd, container_image=None, interactive=False):
+def pre_generate_ceph_cmd(container_image=None, interactive=False):
     '''
-    Generate ceph prefix command
+    Generate ceph prefix comaand
     '''
     if container_image:
-        cmd = container_exec(cmd, container_image, interactive=interactive)
+        cmd = container_exec('ceph', container_image, interactive=interactive)
     else:
-        cmd = [cmd]
+        cmd = ['ceph']
 
     return cmd
 
@@ -94,7 +84,7 @@ def exec_command(module, cmd, stdin=None):
     return rc, cmd, out, err
 
 
-def exit_module(module, out, rc, cmd, err, startd, changed=False, diff=dict(before="", after="")):  # noqa: E501
+def exit_module(module, out, rc, cmd, err, startd, changed=False, diff=dict(before="", after="")):
     endd = datetime.datetime.now()
     delta = endd - startd
 
