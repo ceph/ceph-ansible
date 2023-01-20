@@ -21,21 +21,11 @@ class TestRGWs(object):
             assert s.is_enabled
             assert s.is_running
 
-    def test_rgw_is_up(self, node, host, setup):
+    def test_rgw_is_up(self, node, setup, ceph_status):
         hostname = node["vars"]["inventory_hostname"]
         cluster = setup["cluster_name"]
-        container_binary = setup["container_binary"]
-        if node['docker']:
-            container_exec_cmd = '{container_binary} exec ceph-rgw-{hostname}-rgw0'.format(  # noqa E501
-                hostname=hostname, container_binary=container_binary)
-        else:
-            container_exec_cmd = ''
-        cmd = "sudo {container_exec_cmd} ceph --name client.bootstrap-rgw --keyring /var/lib/ceph/bootstrap-rgw/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(  # noqa E501
-            container_exec_cmd=container_exec_cmd,
-            hostname=hostname,
-            cluster=cluster
-        )
-        output = host.check_output(cmd)
+        name = "client.bootstrap-rgw"
+        output = ceph_status(f'/var/lib/ceph/bootstrap-rgw/{cluster}.keyring', name=name)
         keys = list(json.loads(
             output)["servicemap"]["services"]["rgw"]["daemons"].keys())
         keys.remove('summary')
@@ -43,6 +33,7 @@ class TestRGWs(object):
         hostnames = []
         for key in keys:
             hostnames.append(daemons[key]['metadata']['hostname'])
+        assert hostname in hostnames
 
     @pytest.mark.no_docker
     def test_rgw_http_endpoint(self, node, host, setup):

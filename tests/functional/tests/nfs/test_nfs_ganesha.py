@@ -23,21 +23,11 @@ class TestNFSs(object):
         assert host.file(
             "/etc/ganesha/ganesha.conf").contains("Entries_HWMark")
 
-    def test_nfs_is_up(self, node, host, setup):
+    def test_nfs_is_up(self, node, setup, ceph_status):
         hostname = node["vars"]["inventory_hostname"]
-        cluster = setup['cluster_name']
-        container_binary = setup["container_binary"]
-        if node['docker']:
-            container_exec_cmd = '{container_binary} exec ceph-nfs-{hostname}'.format(  # noqa E501
-                hostname=hostname, container_binary=container_binary)
-        else:
-            container_exec_cmd = ''
-        cmd = "sudo {container_exec_cmd} ceph --name client.rgw.{hostname} --keyring /var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(  # noqa E501
-            container_exec_cmd=container_exec_cmd,
-            hostname=hostname,
-            cluster=cluster
-        )
-        output = host.check_output(cmd)
+        cluster = setup["cluster_name"]
+        name = f"client.rgw.{hostname}"
+        output = ceph_status(f'/var/lib/ceph/radosgw/{cluster}-rgw.{hostname}/keyring', name=name)
         keys = list(json.loads(
             output)["servicemap"]["services"]["rgw-nfs"]["daemons"].keys())
         keys.remove('summary')
