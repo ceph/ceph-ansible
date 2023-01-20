@@ -14,9 +14,7 @@ OSD_FSID="$(echo "$CEPH_VOLUME_LIST_JSON" | $PYTHON -c "import sys, json; print(
 OSD_TYPE="$(echo "$CEPH_VOLUME_LIST_JSON" | $PYTHON -c "import sys, json; print(json.load(sys.stdin)['$OSD_ID'][0]['type'])")"
 
 # Discover the objectstore
-if [[ "data journal" =~ $OSD_TYPE ]]; then
-    OSD_OBJECTSTORE=(--filestore)
-elif [[ "block wal db" =~ $OSD_TYPE ]]; then
+if [[ "block wal db" =~ $OSD_TYPE ]]; then
     OSD_OBJECTSTORE=(--bluestore)
 else
     log "Unable to discover osd objectstore for OSD type: $OSD_TYPE"
@@ -38,9 +36,6 @@ numactl \
 --pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
 --rm --net=host --privileged=true --pid=host \
 --ipc=host \
-{% if osd_objectstore == 'filestore' -%}
---memory={{ ceph_osd_docker_memory_limit }} \
-{% endif -%}
 --cpus={{ cpu_limit }} \
 {% if ceph_osd_docker_cpuset_cpus is defined -%}
 --cpuset-cpus='{{ ceph_osd_docker_cpuset_cpus }}' \
@@ -59,7 +54,6 @@ numactl \
 {% if ansible_facts['distribution'] == 'Ubuntu' -%}
 --security-opt apparmor:unconfined \
 {% endif -%}
-{{ container_env_args }} \
 -e CLUSTER={{ cluster }} \
 -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
 -v /run/lvm/:/run/lvm/ \

@@ -40,8 +40,12 @@ options:
         default: ceph
     objectstore:
         description:
+<<<<<<< HEAD
             - The objectstore of the OSD, either filestore or bluestore
             - Required if action is 'create'
+=======
+            - The objectstore of the OSD.
+>>>>>>> 896d82877 (osd: drop filestore support)
         required: false
         choices: ['bluestore', 'filestore']
         default: bluestore
