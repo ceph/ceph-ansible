@@ -16,19 +16,10 @@ class TestMDSs(object):
         assert s.is_enabled
         assert s.is_running
 
-    def test_mds_is_up(self, node, host, setup):
-        hostname = node["vars"]["inventory_hostname"]
-        container_binary = setup['container_binary']
-        if node["docker"]:
-            container_exec_cmd = '{container_binary} exec ceph-mds-{hostname}'.format(  # noqa E501
-                hostname=hostname, container_binary=container_binary)
-        else:
-            container_exec_cmd = ''
-
-        cmd = "sudo {container_exec_cmd} ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/{cluster}.keyring --cluster={cluster} --connect-timeout 5 -f json -s".format(  # noqa E501
-            container_exec_cmd=container_exec_cmd,
-            cluster=setup['cluster_name']
-        )
-        cluster_status = json.loads(host.check_output(cmd))
+    def test_mds_is_up(self, node, setup, ceph_status):
+        cluster = setup["cluster_name"]
+        name = 'client.bootstrap-mds'
+        output = ceph_status(f'/var/lib/ceph/bootstrap-mds/{cluster}.keyring', name=name)
+        cluster_status = json.loads(output)
         assert (cluster_status['fsmap'].get('up', 0) + cluster_status['fsmap'].get(  # noqa E501
             'up:standby', 0)) == len(node["vars"]["groups"]["mdss"])
