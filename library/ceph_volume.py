@@ -40,7 +40,7 @@ options:
         default: ceph
     objectstore:
         description:
-            - The objectstore of the OSD, (bluestore only)
+            - The objectstore of the OSD.
         required: false
         choices: ['bluestore']
         default: bluestore
