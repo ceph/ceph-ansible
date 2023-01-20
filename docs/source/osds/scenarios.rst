@@ -37,10 +37,6 @@ It is automatically enabled.
 
 Other (optional) supported settings:
 
-- ``osd_objectstore``: Set the Ceph *objectstore* for the OSD. Available options
-  are ``filestore`` or ``bluestore``.  You can only select ``bluestore`` with
-  the Ceph release is luminous or greater. Defaults to ``bluestore`` if unset.
-
 - ``dmcrypt``: Enable Ceph's encryption on OSDs using ``dmcrypt``.
     Defaults to ``false`` if unset.
 
@@ -137,12 +133,6 @@ Supported ``lvm_volumes`` configuration settings:
           option as shown above. There is no way to define a specific CRUSH device class
           per OSD when using ``devices`` like there is for ``lvm_volumes``.
 
-
-``filestore`` objectstore variables:
-
-- ``journal``: The logical volume name or full path to a partition.
-
-- ``journal_vg``: The volume group name, **required** if ``journal`` is a logical volume.
 
 .. warning:: Each entry must be unique, duplicate values are not allowed
 
