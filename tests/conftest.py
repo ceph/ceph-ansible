@@ -2,6 +2,28 @@ import pytest
 import os
 
 
+@pytest.fixture
+def ceph_status(host, setup):
+    def _run(keyring,
+             name=None,
+             cluster='ceph',
+             container_binary='podman'):
+        containerized_deployment = setup["containerized_deployment"]
+        container_image = setup["container_image"]
+        client_name = ''
+        if name is not None:
+            client_name = f'-n {name}'
+        ceph_args = f"--connect-timeout 5 {client_name} -k {keyring} --cluster {cluster} -f json -s"
+
+        if containerized_deployment:
+            cmd = f"sudo {container_binary} run --rm -v /etc/ceph:/etc/ceph -v {keyring}:{keyring}:z --entrypoint=ceph {container_image} {ceph_args}"
+        else:
+            cmd = f"ceph {ceph_args}"
+        output = host.check_output(cmd)
+        return output
+    return _run
+
+
 def str_to_bool(val):
     try:
         val = val.lower()
@@ -24,6 +46,11 @@ def setup(host):
     ansible_vars = host.ansible.get_variables()
     ansible_facts = host.ansible("setup")
 
+    containerized_deployment = ansible_vars.get("containerized_deployment", False)
+    ceph_docker_registry = ansible_vars.get("ceph_docker_registry")
+    ceph_docker_image = ansible_vars.get("ceph_docker_image")
+    ceph_docker_image_tag = ansible_vars.get("ceph_docker_image_tag")
+    container_image = f"{ceph_docker_registry}/{ceph_docker_image}:{ceph_docker_image_tag}"
     docker = ansible_vars.get("docker")
     container_binary = ansible_vars.get("container_binary", "")
     osd_auto_discovery = ansible_vars.get("osd_auto_discovery")
@@ -68,6 +95,8 @@ def setup(host):
 
     data = dict(
         cluster_name=cluster_name,
+        containerized_deployment=containerized_deployment,
+        container_image=container_image,
         subnet=subnet,
         osd_ids=osd_ids,
         num_mons=num_mons,
