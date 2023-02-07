@@ -1,7 +1,10 @@
 #!/bin/bash
 
-vagrant box remove --force --provider libvirt --box-version 0 centos/stream8 || true
-vagrant box add --provider libvirt --name centos/stream8 https://cloud.centos.org/centos/8-stream/x86_64/images/CentOS-Stream-Vagrant-8-20220125.1.x86_64.vagrant-libvirt.box || true
+if [[ "${CEPH_ANSIBLE_VAGRANT_BOX}" =~ "centos/stream" ]]; then
+  EL_VERSION="${CEPH_ANSIBLE_VAGRANT_BOX: -1}"
+  LATEST_IMAGE="$(curl -s https://cloud.centos.org/centos/${EL_VERSION}-stream/x86_64/images/CHECKSUM | sed -nE 's/^SHA256.*\((.*-([0-9]+).*vagrant-libvirt.box)\).*$/\1/p' | sort -u | tail -n1)"
+  vagrant box add --force --provider libvirt --name "${CEPH_ANSIBLE_VAGRANT_BOX}" "https://cloud.centos.org/centos/${EL_VERSION}-stream/x86_64/images/${LATEST_IMAGE}" --force
+fi
 
 retries=0
 until [ $retries -ge 5 ]
