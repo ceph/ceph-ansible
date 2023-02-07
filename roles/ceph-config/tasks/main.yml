@@ -122,6 +122,12 @@
     mode: "{{ ceph_directories_mode }}"
   when: not containerized_deployment | bool
 
+- name: import_role ceph-facts
+  import_role:
+    name: ceph-facts
+    tasks_from: set_radosgw_address.yml
+  when: inventory_hostname in groups.get(rgw_group_name, [])
+
 - name: "generate {{ cluster }}.conf configuration file"
   openstack.config_template.config_template:
     src: "ceph.conf.j2"
