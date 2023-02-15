@@ -8,8 +8,8 @@
 
 - name: validate osd_objectstore
   fail:
-    msg: "osd_objectstore must be either 'bluestore' or 'filestore'"
-  when: osd_objectstore not in ['bluestore', 'filestore']
+    msg: "osd_objectstore must be either 'bluestore'"
+  when: osd_objectstore not in ['bluestore']
 
 - name: validate monitor network configuration
   fail:
@@ -39,17 +39,6 @@
         - not osd_auto_discovery | default(false) | bool
         - devices is undefined
         - lvm_volumes is undefined
-
-    - name: validate filestore lvm osd scenario
-      fail:
-        msg: 'data and journal keys must be defined in lvm_volumes'
-      when:
-        - osd_objectstore == 'filestore'
-        - not osd_auto_discovery | default(false) | bool
-        - lvm_volumes is defined
-        - lvm_volumes | length > 0
-        - item.data is undefined or item.journal is undefined
-      with_items: '{{ lvm_volumes }}'
 
     - name: validate bluestore lvm osd scenario
       fail:
@@ -111,14 +100,6 @@
     - is_atomic | default(False) | bool
     - ansible_facts['os_family'] == 'RedHat'
     - ntp_daemon_type == 'ntpd'
-
-- name: make sure journal_size configured
-  debug:
-    msg: "WARNING: journal_size is configured to {{ journal_size }}, which is less than 5GB. This is not recommended and can lead to severe issues."
-  when:
-    - journal_size|int < 5120
-    - osd_objectstore == 'filestore'
-    - osd_group_name in group_names
 
 - name: include check_devices.yml
   include_tasks: check_devices.yml

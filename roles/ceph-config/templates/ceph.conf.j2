@@ -66,19 +66,6 @@ log file = {{ rbd_client_log_file }} # must be writable by QEMU and allowed by S
 {% endif %}
 
 {% if inventory_hostname in groups.get(osd_group_name, []) %}
-{% if osd_objectstore == 'filestore' %}
-[osd]
-osd mkfs type = {{ osd_mkfs_type }}
-osd mkfs options xfs = {{ osd_mkfs_options_xfs }}
-osd mount options xfs = {{ osd_mount_options_xfs }}
-osd journal size = {{ journal_size }}
-{% if filestore_xattr_use_omap != None %}
-filestore xattr use omap = {{ filestore_xattr_use_omap }}
-{% elif osd_mkfs_type == "ext4" %}
-filestore xattr use omap = true
-{# else, default is false #}
-{% endif %}
-{% endif %}
 {% if osd_objectstore == 'bluestore' %}
 [osd]
 osd memory target = {{ _osd_memory_target | default(osd_memory_target) }}
