@@ -40,10 +40,9 @@ options:
         default: ceph
     objectstore:
         description:
-            - The objectstore of the OSD, either filestore or bluestore
-            - Required if action is 'create'
+            - The objectstore of the OSD, (bluestore only)
         required: false
-        choices: ['bluestore', 'filestore']
+        choices: ['bluestore']
         default: bluestore
     action:
         description:
@@ -67,35 +66,21 @@ options:
         description:
             - The OSD ID
         required: false
-    journal:
-        description:
-            - The logical volume name or partition to use as a filestore journal.
-            - Only applicable if objectstore is 'filestore'.
-        required: false
-    journal_vg:
-        description:
-            - If journal is a lv, this must be the name of the volume group it belongs to.
-            - Only applicable if objectstore is 'filestore'.
-        required: false
     db:
         description:
             - A partition or logical volume name to use for block.db.
-            - Only applicable if objectstore is 'bluestore'.
         required: false
     db_vg:
         description:
             - If db is a lv, this must be the name of the volume group it belongs to.  # noqa: E501
-            - Only applicable if objectstore is 'bluestore'.
         required: false
     wal:
         description:
             - A partition or logical volume name to use for block.wal.
-            - Only applicable if objectstore is 'bluestore'.
         required: false
     wal_vg:
         description:
             - If wal is a lv, this must be the name of the volume group it belongs to.  # noqa: E501
-            - Only applicable if objectstore is 'bluestore'.
         required: false
     crush_device_class:
         description:
@@ -116,12 +101,6 @@ options:
             - Only applicable if action is 'batch'.
         required: false
         default: 1
-    journal_size:
-        description:
-            - The size in MB of filestore journals.
-            - Only applicable if action is 'batch'.
-        required: false
-        default: 5120
     block_db_size:
         description:
             - The size in bytes of bluestore block db lvs.
@@ -129,23 +108,15 @@ options:
             - Only applicable if action is 'batch'.
         required: false
         default: -1
-    journal_devices:
-        description:
-            - A list of devices for filestore journal to pass to the 'ceph-volume lvm batch' subcommand.
-            - Only applicable if action is 'batch'.
-            - Only applicable if objectstore is 'filestore'.
-        required: false
     block_db_devices:
         description:
             - A list of devices for bluestore block db to pass to the 'ceph-volume lvm batch' subcommand.
             - Only applicable if action is 'batch'.
-            - Only applicable if objectstore is 'bluestore'.
         required: false
     wal_devices:
         description:
             - A list of devices for bluestore block wal to pass to the 'ceph-volume lvm batch' subcommand.
             - Only applicable if action is 'batch'.
-            - Only applicable if objectstore is 'bluestore'.
         required: false
     report:
         description:
@@ -169,14 +140,6 @@ author:
 '''
 
 EXAMPLES = '''
-- name: set up a filestore osd with an lv data and a journal partition
-  ceph_volume:
-    objectstore: filestore
-    data: data-lv
-    data_vg: data-vg
-    journal: /dev/sdc1
-    action: create
-
 - name: set up a bluestore osd with a raw device for data
   ceph_volume:
     objectstore: bluestore
@@ -284,8 +247,6 @@ def batch(module, container_image, report=None):
     objectstore = module.params['objectstore']
     batch_devices = module.params.get('batch_devices', None)
     crush_device_class = module.params.get('crush_device_class', None)
-    journal_devices = module.params.get('journal_devices', None)
-    journal_size = module.params.get('journal_size', None)
     block_db_size = module.params.get('block_db_size', None)
     block_db_devices = module.params.get('block_db_devices', None)
     wal_devices = module.params.get('wal_devices', None)
@@ -320,17 +281,10 @@ def batch(module, container_image, report=None):
     if osds_per_device > 1:
         cmd.extend(['--osds-per-device', str(osds_per_device)])
 
-    if objectstore == 'filestore':
-        cmd.extend(['--journal-size', journal_size])
-
     if objectstore == 'bluestore' and block_db_size != '-1':
         cmd.extend(['--block-db-size', block_db_size])
 
     cmd.extend(batch_devices)
-
-    if journal_devices and objectstore == 'filestore':
-        cmd.append('--journal-devices')
-        cmd.extend(journal_devices)
 
     if block_db_devices and objectstore == 'bluestore':
         cmd.append('--db-devices')
@@ -376,8 +330,6 @@ def prepare_or_create_osd(module, action, container_image):
     data = module.params['data']
     data_vg = module.params.get('data_vg', None)
     data = get_data(data, data_vg)
-    journal = module.params.get('journal', None)
-    journal_vg = module.params.get('journal_vg', None)
     db = module.params.get('db', None)
     db_vg = module.params.get('db_vg', None)
     wal = module.params.get('wal', None)
@@ -391,10 +343,6 @@ def prepare_or_create_osd(module, action, container_image):
     cmd.extend(['--%s' % objectstore])
     cmd.append('--data')
     cmd.append(data)
-
-    if journal and objectstore == 'filestore':
-        journal = get_journal(journal, journal_vg)
-        cmd.extend(['--journal', journal])
 
     if db and objectstore == 'bluestore':
         db = get_db(db, db_vg)
@@ -493,8 +441,6 @@ def zap_devices(module, container_image):
     # get module variables
     data = module.params.get('data', None)
     data_vg = module.params.get('data_vg', None)
-    journal = module.params.get('journal', None)
-    journal_vg = module.params.get('journal_vg', None)
     db = module.params.get('db', None)
     db_vg = module.params.get('db_vg', None)
     wal = module.params.get('wal', None)
@@ -519,10 +465,6 @@ def zap_devices(module, container_image):
         data = get_data(data, data_vg)
         cmd.append(data)
 
-    if journal:
-        journal = get_journal(journal, journal_vg)
-        cmd.extend([journal])
-
     if db:
         db = get_db(db, db_vg)
         cmd.extend([db])
@@ -538,14 +480,12 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         objectstore=dict(type='str', required=False, choices=[
-                         'bluestore', 'filestore'], default='bluestore'),
+                         'bluestore'], default='bluestore'),
         action=dict(type='str', required=False, choices=[
                     'create', 'zap', 'batch', 'prepare', 'activate', 'list',
                     'inventory'], default='create'),  # noqa: 4502
         data=dict(type='str', required=False),
         data_vg=dict(type='str', required=False),
-        journal=dict(type='str', required=False),
-        journal_vg=dict(type='str', required=False),
         db=dict(type='str', required=False),
         db_vg=dict(type='str', required=False),
         wal=dict(type='str', required=False),
@@ -554,8 +494,6 @@ def run_module():
         dmcrypt=dict(type='bool', required=False, default=False),
         batch_devices=dict(type='list', required=False, default=[]),
         osds_per_device=dict(type='int', required=False, default=1),
-        journal_size=dict(type='str', required=False, default='5120'),
-        journal_devices=dict(type='list', required=False, default=[]),
         block_db_size=dict(type='str', required=False, default='-1'),
         block_db_devices=dict(type='list', required=False, default=[]),
         wal_devices=dict(type='list', required=False, default=[]),
