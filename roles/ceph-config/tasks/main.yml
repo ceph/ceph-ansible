@@ -20,7 +20,7 @@
 
     - name: count number of osds for lvm scenario
       set_fact:
-        num_osds: "{{ lvm_volumes | length | int }}"
+        num_osds: "{{ num_osds | int + (lvm_volumes | length | int) }}"
       when: lvm_volumes | default([]) | length > 0
 
     - block:
@@ -64,14 +64,14 @@
 
         - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report' (legacy report)
           set_fact:
-            num_osds: "{{ ((lvm_batch_report.stdout | default('{}') | from_json).osds | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
+            num_osds: "{{ num_osds | int + ((lvm_batch_report.stdout | default('{}') | from_json).osds | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
           when:
             - (lvm_batch_report.stdout | default('{}') | from_json) is mapping
             - (lvm_batch_report.stdout | default('{}') | from_json).changed | default(true) | bool
 
         - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report' (new report)
           set_fact:
-            num_osds: "{{ ((lvm_batch_report.stdout | default('{}') | from_json) | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
+            num_osds: "{{ num_osds | int + ((lvm_batch_report.stdout | default('{}') | from_json) | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
           when:
             - (lvm_batch_report.stdout | default('{}') | from_json) is not mapping
             - (lvm_batch_report.stdout | default('{}') | from_json).changed | default(true) | bool
