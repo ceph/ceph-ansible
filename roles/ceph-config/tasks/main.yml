@@ -91,7 +91,7 @@
 
     - name: set_fact num_osds (add existing osds)
       set_fact:
-        num_osds: "{{ lvm_list.stdout | default('{}') | from_json | length | int + num_osds | default(0) | int }}"
+        num_osds: "{{ num_osds | int + (lvm_list.stdout | default('{}') | from_json | dict2items | map(attribute='value') | flatten | map(attribute='devices') | sum(start=[]) | difference(lvm_volumes | default([]) | map(attribute='data')) | length | int) }}"
 
 - name: set osd related config facts
   when: inventory_hostname in groups.get(osd_group_name, [])
