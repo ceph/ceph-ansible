@@ -130,12 +130,93 @@
       loop: "{{ host_list }}"
       when: not containerized_deployment | bool
 
+    - name: get osd unit status
+      systemd:
+        name: ceph-osd@{{ item.2 }}
+      register: osd_status
+      delegate_to: "{{ item.0 }}"
+      loop: "{{ _osd_hosts }}"
+      when:
+        - containerized_deployment | bool
+
     - name: refresh /etc/ceph/osd files containerized_deployment
       command: "{{ container_binary }} exec ceph-osd-{{ item.2 }} ceph-volume simple scan --force /var/lib/ceph/osd/{{ cluster }}-{{ item.2 }}"
       changed_when: false
       delegate_to: "{{ item.0 }}"
       loop: "{{ _osd_hosts }}"
-      when: containerized_deployment | bool
+      when:
+        - containerized_deployment | bool
+        - item.2 not in _lvm_list.keys()
+        - osd_status.results[0].status.ActiveState == 'active'
+
+    - name: refresh /etc/ceph/osd files containerized_deployment when OSD container is down
+      block:
+        - name: create tmp osd folder
+          file:
+            path: /var/lib/ceph/tmp/{{ cluster }}-{{ item.2 }}
+            state: directory
+            mode: '0755'
+          delegate_to: "{{ item.0 }}"
+          when: item.2 not in _lvm_list.keys()
+          loop: "{{ _osd_hosts }}"
+
+        - name: activate OSD
+          command: |
+            {{ container_binary }} run -ti --pids-limit=-1 --rm --net=host --privileged=true --pid=host --ipc=host --cpus=1
+            -v /dev:/dev -v /etc/localtime:/etc/localtime:ro
+            -v /var/lib/ceph/tmp/:/var/lib/ceph/osd:z,rshared
+            -v /etc/ceph:/etc/ceph:z -v /var/run/ceph:/var/run/ceph:z
+            -v /var/run/udev/:/var/run/udev/ -v /var/log/ceph:/var/log/ceph:z
+            -e OSD_BLUESTORE=1 -e OSD_FILESTORE=0 -e OSD_DMCRYPT=0 -e CLUSTER=ceph -e DEBUG=verbose
+            -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES=134217728 -v /run/lvm/:/run/lvm/
+            -e CEPH_DAEMON=OSD_CEPH_VOLUME_ACTIVATE -e CONTAINER_IMAGE={{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag }}
+            -e OSD_ID={{ item.2 }}
+            --entrypoint=ceph-volume
+            {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag }}
+            simple activate {{ item.2 }} {{ item.1 }} --no-systemd
+          changed_when: false
+          delegate_to: "{{ item.0 }}"
+          when: item.2 not in _lvm_list.keys()
+          loop: "{{ _osd_hosts }}"
+
+        - name: simple scan
+          command: |
+            {{ container_binary }} run -ti --pids-limit=-1 --rm --net=host --privileged=true --pid=host --ipc=host --cpus=1
+            -v /dev:/dev -v /etc/localtime:/etc/localtime:ro
+            -v /var/lib/ceph/tmp/:/var/lib/ceph/osd:z,rshared
+            -v /etc/ceph:/etc/ceph:z -v /var/run/ceph:/var/run/ceph:z
+            -v /var/run/udev/:/var/run/udev/ -v /var/log/ceph:/var/log/ceph:z
+            -e OSD_BLUESTORE=1 -e OSD_FILESTORE=0 -e OSD_DMCRYPT=0 -e CLUSTER=ceph -e DEBUG=verbose
+            -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES=134217728 -v /run/lvm/:/run/lvm/
+            -e CEPH_DAEMON=OSD_CEPH_VOLUME_ACTIVATE -e CONTAINER_IMAGE={{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag }}
+            -e OSD_ID={{ item.2 }}
+            --entrypoint=ceph-volume
+            {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag }}
+            simple scan --force /var/lib/ceph/osd/{{ cluster }}-{{ item.2 }}
+          changed_when: false
+          delegate_to: "{{ item.0 }}"
+          when: item.2 not in _lvm_list.keys()
+          loop: "{{ _osd_hosts }}"
+
+        - name: umount OSD temp folder
+          mount:
+            path: /var/lib/ceph/tmp/{{ cluster }}-{{ item.2 }}
+            state: unmounted
+          delegate_to: "{{ item.0 }}"
+          when: item.2 not in _lvm_list.keys()
+          loop: "{{ _osd_hosts }}"
+
+        - name: remove OSD temp folder
+          file:
+            path: /var/lib/ceph/tmp/{{ cluster }}-{{ item.2 }}
+            state: absent
+          delegate_to: "{{ item.0 }}"
+          when: item.2 not in _lvm_list.keys()
+          loop: "{{ _osd_hosts }}"
+
+      when:
+        - containerized_deployment | bool
+        - osd_status.results[0].status.ActiveState != 'active'
 
     - name: find /etc/ceph/osd files
       find:
