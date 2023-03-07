@@ -18,10 +18,12 @@ __metaclass__ = type
 from ansible.module_utils.basic import AnsibleModule
 try:
     from ansible.module_utils.ca_common import exit_module, \
+                                               pre_generate_cmd, \
                                                generate_cmd, \
                                                is_containerized
 except ImportError:
     from module_utils.ca_common import exit_module, \
+                                       pre_generate_cmd, \
                                        generate_cmd, \
                                        is_containerized
 import datetime
@@ -114,8 +116,8 @@ def get_mgr_initial_modules(module,
     run_dir = get_run_dir(module, cluster, container_image)
     # /var/run/ceph/ceph-mon.mon0.asok
     socket_path = f"{run_dir}/{cluster}-mon.{node_name}.asok"
-    cmd = ['ceph', '--admin-daemon', socket_path, 'config', 'get', 'mgr_initial_modules', '--format', 'json']
-
+    cmd = pre_generate_cmd('ceph', container_image)
+    cmd.extend(['--admin-daemon', socket_path, 'config', 'get', 'mgr_initial_modules', '--format', 'json'])
     rc, out, err = module.run_command(cmd)
     if not rc and out:
         out = json.loads(out)
