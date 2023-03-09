@@ -84,6 +84,10 @@
     - not switch_to_containers | default(False) | bool
     - inventory_hostname == ansible_play_hosts_all | last
 
+- name: sleep infinity debug
+  command: sleep 365d
+  when: inventory_hostname == ansible_play_hosts_all | last
+
 - name: wait for all osd to be up
   command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd stat -f json"
   register: wait_for_all_osds_up
