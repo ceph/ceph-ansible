@@ -13,50 +13,50 @@
       set_fact:
         is_atomic: '{{ stat_ostree.stat.exists }}'
 
-    - name: List repo files
-      find:
-        paths: /etc/yum.repos.d/
-        file_type: file
-        patterns: 'CentOS-Stream-*.repo'
-      register: pre_stream_repo_files
-      when:
-        - ansible_facts['distribution'] == 'CentOS'
-        - ansible_facts['distribution_major_version'] | int > 7
-        - not is_atomic | bool
-
-    # From ansible docs: 'replace: If not set, matches are removed entirely.'
-    - name: Remove all mirrorlists
-      replace:
-        path: "{{ item.path }}"
-        regexp: '^mirrorlist=.*'
-      with_items: "{{ pre_stream_repo_files.files }}"
-      when:
-        - ansible_facts['distribution'] == 'CentOS'
-        - ansible_facts['distribution_major_version'] | int > 7
-        - not is_atomic | bool
-
-    - name: Uncomment baseurls
-      replace:
-        path: "{{ item.path }}"
-        regexp: '^mirrorlist=.*'
-        regexp: '^\s*#*\s*(baseurl=.*)'
-        replace: '\1'
-      with_items: "{{ pre_stream_repo_files.files }}"
-      when:
-        - ansible_facts['distribution'] == 'CentOS'
-        - ansible_facts['distribution_major_version'] | int > 7
-        - not is_atomic | bool
-
-    - name: Point baseurls to archive server
-      replace:
-        path: "{{ item.path }}"
-        regexp: 'mirror.centos.org/\$contentdir/\$stream'
-        replace: 'apt-mirror.front.sepia.ceph.com/centos/8-stream'
-      with_items: "{{ pre_stream_repo_files.files }}"
-      when:
-        - ansible_facts['distribution'] == 'CentOS'
-        - ansible_facts['distribution_major_version'] | int > 7
-        - not is_atomic | bool
+          #    - name: List repo files
+          #      find:
+          #        paths: /etc/yum.repos.d/
+          #        file_type: file
+          #        patterns: 'CentOS-Stream-*.repo'
+          #      register: pre_stream_repo_files
+          #      when:
+          #        - ansible_facts['distribution'] == 'CentOS'
+          #        - ansible_facts['distribution_major_version'] | int > 7
+          #        - not is_atomic | bool
+          #
+          #    # From ansible docs: 'replace: If not set, matches are removed entirely.'
+          #    - name: Remove all mirrorlists
+          #      replace:
+          #        path: "{{ item.path }}"
+          #        regexp: '^mirrorlist=.*'
+          #      with_items: "{{ pre_stream_repo_files.files }}"
+          #      when:
+          #        - ansible_facts['distribution'] == 'CentOS'
+          #        - ansible_facts['distribution_major_version'] | int > 7
+          #        - not is_atomic | bool
+          #
+          #    - name: Uncomment baseurls
+          #      replace:
+          #        path: "{{ item.path }}"
+          #        regexp: '^mirrorlist=.*'
+          #        regexp: '^\s*#*\s*(baseurl=.*)'
+          #        replace: '\1'
+          #      with_items: "{{ pre_stream_repo_files.files }}"
+          #      when:
+          #        - ansible_facts['distribution'] == 'CentOS'
+          #        - ansible_facts['distribution_major_version'] | int > 7
+          #        - not is_atomic | bool
+          #
+          #    - name: Point baseurls to archive server
+          #      replace:
+          #        path: "{{ item.path }}"
+          #        regexp: 'mirror.centos.org/\$contentdir/\$stream'
+          #        replace: 'apt-mirror.front.sepia.ceph.com/centos/8-stream'
+          #      with_items: "{{ pre_stream_repo_files.files }}"
+          #      when:
+          #        - ansible_facts['distribution'] == 'CentOS'
+          #        - ansible_facts['distribution_major_version'] | int > 7
+          #        - not is_atomic | bool
 
     - name: update the system
       command: dnf update -y
