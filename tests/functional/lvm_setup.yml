@@ -5,6 +5,21 @@
   tasks:
     - import_tasks: ../../raw_install_python.yml
 
+    - name: check if it is Atomic host
+      stat: path=/run/ostree-booted
+      register: stat_ostree
+      check_mode: no
+
+    - name: set fact for using Atomic host
+      set_fact:
+        is_atomic: '{{ stat_ostree.stat.exists }}'
+
+    - name: force rpm pkg upgrade
+      package:
+        name: rpm
+        state: latest
+      when: not is_atomic | bool
+
 - hosts: osds
   gather_facts: false
   become: yes
