@@ -1,0 +1,146 @@
+---
+- hosts:
+    - mons
+  gather_facts: False
+  become: true
+  any_errors_fatal: True
+  vars_prompt:
+    - name: ireallymeanit
+      prompt: You are about to remove an OSD from the cluster. Are you sure?
+      default: 'no'
+      private: no
+
+  pre_tasks:
+    - when: inventory_hostname == groups[mon_group_name][0]
+      block:
+        - name: exit playbook, if user did not mean to replace the OSD
+          fail:
+            msg: "Exiting the playbook, the OSD was *not* removed.
+               To replace the OSD, either say 'yes' on the prompt or
+               or use `-e ireallymeanit=yes` on the command line when
+               invoking this playbook"
+          when: ireallymeanit != 'yes'
+
+        - name: exit playbook, if no osd(s) was/were given
+          fail:
+            msg: "osd_to_replace must be declared
+              Exiting this playbook, the OSD was *not* removed.
+               Use `-e osd_to_replace=<id>` on the command line when
+               invoking this playbook."
+          when: osd_to_replace is not defined
+
+        - name: gather and delegate facts
+          setup:
+            gather_subset:
+              - 'all'
+              - '!facter'
+              - '!ohai'
+          delegate_to: "{{ item }}"
+          delegate_facts: True
+          with_items: "{{ groups[mon_group_name] }}"
+
+        - import_role:
+            name: ceph-defaults
+    
+        - import_role:
+            name: ceph-facts
+            tasks_from: container_binary.yml
+##        - import_role:
+##            name: ceph-validate
+          
+  tasks:
+    - when: inventory_hostname == groups[mon_group_name][0]
+      block:
+        - name: set_fact ceph_run_cmd, cv_run_cmd
+          set_fact:
+            ceph_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment | bool else '' }}'ceph' {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
+            cv_run_cmd: "{{ container_binary + ' run --rm --privileged=true --net=host --pid=host --ipc=host -v /dev:/dev -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /var/run:/var/run --entrypoint=' if containerized_deployment | bool else '' }}'ceph-volume' {{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
+
+        - name: get osd host
+          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd find {{ osd_to_replace }}"
+          register: osd_host
+          changed_when: false
+    
+        - name: set_fact osd_hostname
+          set_fact:
+            osd_hostname: "{{ (osd_host.stdout | default('{}') | trim | from_json).host }}"
+          
+        - name: get ceph-volume lvm metadata
+          command: "{{ cv_run_cmd }} --cluster {{ cluster }} lvm list --format json"
+          register: lvm_metadata
+          delegate_to: "{{ osd_hostname }}"
+          changed_when: false
+
+        - name: set_fact lvm_metadata_osd
+          set_fact:
+            lvm_metadata_osd: "{{ (lvm_metadata.stdout | default('{}') | trim | from_json)[osd_to_replace] }}"
+
+        - name: set_fact osd_fsid
+          set_fact:
+            osd_fsid: "{{ item.tags['ceph.osd_fsid'] }}"
+          loop: "{{ lvm_metadata_osd }}"
+          when: item['tags']['ceph.type'] == 'block'
+
+        - name: set_fact block_lv, block_vg_name, block_lv_name
+          set_fact:
+            block_lv: "{{ item.lv_path }}"
+            block_vg_name: "{{ item.vg_name }}"
+            block_lv_name: "{{ item.lv_name }}"
+          loop: "{{ lvm_metadata_osd }}"
+          when: item['tags']['ceph.type'] == 'block'
+
+        - name: set_fact db_lv, db_vg_name, db_lv_name
+          set_fact:
+            db_lv: "{{ item.lv_path }}"
+            db_vg_name: "{{ item.vg_name }}"
+            db_lv_name: "{{ item.lv_name }}"
+          loop: "{{ lvm_metadata_osd }}"
+          when: item['tags']['ceph.type'] == 'db'
+
+        - name: set_fact wal_lv, wal_vg_name, wal_lv_name
+          set_fact:
+            wal_lv: "{{ item.lv_path }}"
+            wal_vg_name: "{{ item.vg_name }}"
+            wal_lv_name: "{{ item.lv_name }}"
+          loop: "{{ lvm_metadata_osd }}"
+          when: item['tags']['ceph.type'] == 'wal'
+
+        - name: mark osd out
+          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd out {{ osd_to_replace }}"
+          changed_when: false
+
+        - delegate_to: "{{ osd_hostname }}"
+          block:
+            - name: stop and disable osd ceph-osd@{{ osd_to_replace }}service
+              service:
+                name: "ceph-osd@{{ osd_to_replace }}.service"
+                state: stopped
+                enabled: no
+    
+            - name: stop and disable ceph-volume service
+              service:
+                name: "ceph-volume@lvm-{{ osd_to_replace }}-{{ osd_fsid }}"
+                state: stopped
+                enabled: no
+              when: not containerized_deployment | bool
+
+        - name: mark osd down
+          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd down {{ osd_to_replace }}"
+          changed_when: false
+
+        - name: zap ceph-volume prepared OSDs
+          ceph_volume:
+            cluster: "{{ cluster }}"
+            action: "zap"
+            data: "{{ block_lv }}"
+            destroy: false
+          delegate_to: "{{ osd_hostname }}"
+          environment:
+            CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
+        - name: mark osd destroyed
+          command: "{{ ceph_run_cmd }} --cluster {{ cluster }} osd destroy {{ osd_to_replace }}"
+          changed_when: false
+
