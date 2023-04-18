@@ -58,6 +58,10 @@ options:
         description:
             - The OSD ID
         required: false
+    reuse_osd_id:
+        description:
+            - OSD ID to reuse when replacing an OSD.
+        required: false
     journal:
         description:
             - The logical volume name or partition to use as a filestore journal.
@@ -382,6 +386,7 @@ def prepare_or_create_osd(module, action, container_image):
     wal_vg = module.params.get('wal_vg', None)
     crush_device_class = module.params.get('crush_device_class', None)
     dmcrypt = module.params.get('dmcrypt', None)
+    reuse_osd_id = module.params.get('reuse_osd_id', None)
 
     # Build the CLI
     action = ['lvm', action]
@@ -407,6 +412,9 @@ def prepare_or_create_osd(module, action, container_image):
 
     if dmcrypt:
         cmd.append('--dmcrypt')
+
+    if reuse_osd_id:
+        cmd.extend(['--osd-id', reuse_osd_id])
 
     return cmd
 
@@ -556,6 +564,7 @@ def run_module():
         report=dict(type='bool', required=False, default=False),
         osd_fsid=dict(type='str', required=False),
         osd_id=dict(type='str', required=False),
+        reuse_osd_id=dict(type='str', required=False),
         destroy=dict(type='bool', required=False, default=True),
     )
 
