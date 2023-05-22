@@ -104,6 +104,13 @@
         - "{{ ceph_conf_overrides.get('osd', {}).get('osd_memory_target', '') }}"
       when: item
 
+    - name: drop osd_memory_target from conf override
+      set_fact:
+        ceph_conf_overrides: "{{ ceph_conf_overrides | combine({'osd': {item: omit}}, recursive=true) }}"
+      loop:
+        - osd memory target
+        - osd_memory_target
+
     - name: set_fact _osd_memory_target
       set_fact:
         _osd_memory_target: "{{ ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) | int }}"
