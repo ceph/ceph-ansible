@@ -173,7 +173,6 @@ class TestCephKeyModule(object):
         fake_module = "fake"
         fake_user = 'client.admin'
         fake_user_key = '/etc/ceph/fake.client.admin.keyring'
-        fake_result = " fake"
         fake_cluster = "fake"
         fake_name = "client.fake"
         fake_secret = "super-secret"
@@ -191,15 +190,15 @@ class TestCephKeyModule(object):
             ['ceph', '-n', fake_user, '-k', fake_user_key, '--cluster', fake_cluster, 'auth',
                 'import', '-i', fake_file_destination],
         ]
-        result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_user, fake_user_key,
-                                     fake_name, fake_secret, fake_caps, fake_import_key, fake_file_destination)
+        result = ceph_key.create_key(fake_module, fake_cluster, fake_user, fake_user_key,
+                                     fake_name, fake_secret, fake_caps, fake_import_key,
+                                     fake_file_destination)
         assert result == expected_command_list
 
     def test_create_key_container(self):
         fake_module = "fake"
         fake_user = 'client.admin'
         fake_user_key = '/etc/ceph/fake.client.admin.keyring'
-        fake_result = "fake"
         fake_cluster = "fake"
         fake_name = "client.fake"
         fake_secret = "super-secret"
@@ -241,15 +240,15 @@ class TestCephKeyModule(object):
              '--cluster', fake_cluster,
              'auth', 'import',
              '-i', fake_file_destination]]
-        result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_user, fake_user_key, fake_name,
-                                     fake_secret, fake_caps, fake_import_key, fake_file_destination, fake_container_image)
+        result = ceph_key.create_key(fake_module, fake_cluster, fake_user, fake_user_key, fake_name,
+                                     fake_secret, fake_caps, fake_import_key, fake_file_destination,
+                                     fake_container_image)
         assert result == expected_command_list
 
     def test_create_key_non_container_no_import(self):
         fake_module = "fake"
         fake_user = 'client.admin'
         fake_user_key = '/etc/ceph/fake.client.admin.keyring'
-        fake_result = "fake"
         fake_cluster = "fake"
         fake_name = "client.fake"
         fake_secret = "super-secret"
@@ -277,15 +276,15 @@ class TestCephKeyModule(object):
             'osd',
             'allow rwx', ]
         ]
-        result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_user, fake_user_key,
-                                     fake_name, fake_secret, fake_caps, fake_import_key, fake_file_destination)  # noqa E501
+        result = ceph_key.create_key(fake_module, fake_cluster, fake_user, fake_user_key,
+                                     fake_name, fake_secret, fake_caps, fake_import_key,
+                                     fake_file_destination)  # noqa E501
         assert result == expected_command_list
 
     def test_create_key_container_no_import(self):
         fake_module = "fake"
         fake_user = 'client.admin'
         fake_user_key = '/etc/ceph/fake.client.admin.keyring'
-        fake_result = "fake"
         fake_cluster = "fake"
         fake_name = "client.fake"
         fake_secret = "super-secret"
@@ -320,8 +319,9 @@ class TestCephKeyModule(object):
                                   '--cap',
                                   'osd',
                                   'allow rwx']]
-        result = ceph_key.create_key(fake_module, fake_result, fake_cluster, fake_user, fake_user_key, fake_name,
-                                     fake_secret, fake_caps, fake_import_key, fake_file_destination, fake_container_image)
+        result = ceph_key.create_key(fake_module, fake_cluster, fake_user, fake_user_key, fake_name,
+                                     fake_secret, fake_caps, fake_import_key, fake_file_destination,
+                                     fake_container_image)
         assert result == expected_command_list
 
     def test_delete_key_non_container(self):
