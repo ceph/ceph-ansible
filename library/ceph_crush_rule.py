@@ -190,7 +190,7 @@ def remove_rule(module, container_image=None):
 def main():
     module = AnsibleModule(
         argument_spec=dict(
-            name=dict(type='str', required=True),
+            name=dict(type='str', required=False),
             cluster=dict(type='str', required=False, default='ceph'),
             state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),  # noqa: E501
             rule_type=dict(type='str', required=False, choices=['replicated', 'erasure']),  # noqa: E501
@@ -203,6 +203,8 @@ def main():
         supports_check_mode=True,
         required_if=[
             ('state', 'present', ['rule_type']),
+            ('state', 'present', ['name']),
+            ('state', 'absent', ['name']),
             ('rule_type', 'replicated', ['bucket_root', 'bucket_type']),
             ('rule_type', 'erasure', ['profile'])
         ]
@@ -230,8 +232,8 @@ def main():
     # will return either the image name or None
     container_image = is_containerized()
 
+    rc, cmd, out, err = exec_command(module, get_rule(module, container_image=container_image))  # noqa: E501
     if state == "present":
-        rc, cmd, out, err = exec_command(module, get_rule(module, container_image=container_image))  # noqa: E501
         if rc != 0:
             rc, cmd, out, err = exec_command(module, create_rule(module, container_image=container_image))  # noqa: E501
             changed = True
@@ -239,18 +241,15 @@ def main():
             rule = json.loads(out)
             if (rule['type'] == 1 and rule_type == 'erasure') or (rule['type'] == 3 and rule_type == 'replicated'):  # noqa: E501
                 module.fail_json(msg="Can not convert crush rule {} to {}".format(name, rule_type), changed=False, rc=1)  # noqa: E501
-
     elif state == "absent":
-        rc, cmd, out, err = exec_command(module, get_rule(module, container_image=container_image))  # noqa: E501
         if rc == 0:
             rc, cmd, out, err = exec_command(module, remove_rule(module, container_image=container_image))  # noqa: E501
             changed = True
         else:
             rc = 0
             out = "Crush Rule {} doesn't exist".format(name)
-
-    elif state == "info":
-        rc, cmd, out, err = exec_command(module, get_rule(module, container_image=container_image))  # noqa: E501
+    else:
+        pass
 
     exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)  # noqa: E501
 
