@@ -148,6 +148,8 @@
   become: True
   gather_facts: false
   tasks:
+    - import_role:
+        name: ceph-defaults
     - name: upgrade ceph mon cluster
       block:
         - name: remove ceph aliases
@@ -169,8 +171,6 @@
           set_fact:
             mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last }}"
 
-        - import_role:
-            name: ceph-defaults
         - import_role:
             name: ceph-facts
 
@@ -305,6 +305,9 @@
           delay: "{{ health_mon_check_delay }}"
           when: containerized_deployment | bool
       rescue:
+        - import_role:
+            name: ceph-defaults
+
         - name: unmask the mon service
           systemd:
             name: ceph-mon@{{ ansible_facts['hostname'] }}
@@ -1112,7 +1115,7 @@
             name: ceph-node-exporter
 
 - name: upgrade monitoring node
-  hosts: "{{ monitoring_group_name }}"
+  hosts: "{{ monitoring_group_name|default('monitoring') }}"
   tags: monitoring
   gather_facts: false
   become: true
@@ -1144,7 +1147,7 @@
             name: ceph-grafana
 
 - name: upgrade ceph dashboard
-  hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) | default(omit) }}"
+  hosts: "{{ groups[mgr_group_name|default('mgrs')] | default(groups[mon_group_name|default('mons')]) | default(omit) }}"
   tags: monitoring
   gather_facts: false
   become: true
