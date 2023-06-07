@@ -1,0 +1,46 @@
+---
+# this is only here to let the CI tests know
+# that this scenario is using docker
+docker: True
+
+containerized_deployment: True
+monitor_interface: "{{ 'eth1' if ansible_facts['distribution'] == 'CentOS' else 'ens6' }}"
+radosgw_interface: "{{ 'eth1' if ansible_facts['distribution'] == 'CentOS' else 'ens6' }}"
+ceph_mon_docker_subnet: "{{ public_network }}"
+ip_version: ipv6
+public_network: "fdec:f1fb:29cd:6940::/64"
+cluster_network: "fdec:f1fb:29cd:7120::/64"
+rgw_override_bucket_index_max_shards: 16
+rgw_bucket_default_quota_max_objects: 1638400
+ceph_conf_overrides:
+  global:
+    auth_allow_insecure_global_id_reclaim: false
+    mon_allow_pool_size_one: true
+    mon_warn_on_pool_no_redundancy: false
+    osd_pool_default_size: 1
+    mon_max_pg_per_osd: 300
+openstack_config: True
+openstack_glance_pool:
+  name: "images"
+  size: 1
+  target_size_ratio: 0.2
+openstack_cinder_pool:
+  name: "volumes"
+  rule_name: "HDD"
+  size: 1
+openstack_pools:
+  - "{{ openstack_glance_pool }}"
+  - "{{ openstack_cinder_pool }}"
+docker_pull_timeout: 600s
+handler_health_mon_check_delay: 10
+handler_health_osd_check_delay: 10
+mds_max_mds: 2
+dashboard_admin_password: $sX!cD$rYU6qR^B!
+grafana_admin_password: +xFRe+RES@7vg24n
+ceph_docker_registry: quay.io
+ceph_docker_image: ceph/daemon-base
+ceph_docker_image_tag: latest-main
+node_exporter_container_image: "quay.io/prometheus/node-exporter:v0.17.0"
+prometheus_container_image: "quay.io/prometheus/prometheus:v2.7.2"
+alertmanager_container_image: "quay.io/prometheus/alertmanager:v0.16.2"
+grafana_container_image: "quay.io/ceph/ceph-grafana:6.7.4"
