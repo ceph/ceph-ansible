@@ -2,6 +2,7 @@
 # vi: set ft=ruby :
 
 require 'yaml'
+require 'resolv'
 VAGRANTFILE_API_VERSION = '2'
 
 if File.file?(File.join(File.dirname(__FILE__), 'vagrant_variables.yml')) then
@@ -40,6 +41,8 @@ DEBUG           = settings['debug']
 ASSIGN_STATIC_IP = !(BOX == 'openstack' or BOX == 'linode')
 DISABLE_SYNCED_FOLDER = settings.fetch('vagrant_disable_synced_folder', false)
 
+"#{PUBLIC_SUBNET}" =~ Resolv::IPv6::Regex ? IPV6 = true : IPV6 = false
+
 $last_ip_pub_digit   = 9
 $last_ip_cluster_digit = 9
 
@@ -69,18 +72,26 @@ ansible_provision = proc do |ansible|
     'monitoring'   => (0..GRAFANA - 1).map { |j| "#{LABEL_PREFIX}grafana#{j}" }
   }
 
-  ansible.extra_vars = {
-      cluster_network: "#{CLUSTER_SUBNET}.0/24",
-      journal_size: 100,
-      public_network: "#{PUBLIC_SUBNET}.0/24",
-  }
+  if IPV6 then
+    ansible.extra_vars = {
+        cluster_network: "#{CLUSTER_SUBNET}/64",
+        journal_size: 100,
+        public_network: "#{PUBLIC_SUBNET}/64",
+    }
+  else
+    ansible.extra_vars = {
+        cluster_network: "#{CLUSTER_SUBNET}.0/24",
+        journal_size: 100,
+        public_network: "#{PUBLIC_SUBNET}.0/24",
+    }
+  end
 
   # In a production deployment, these should be secret
   if DOCKER then
     ansible.extra_vars = ansible.extra_vars.merge({
       containerized_deployment: 'true',
       monitor_interface: ETH,
-      ceph_mon_docker_subnet: "#{PUBLIC_SUBNET}.0/24",
+      ceph_mon_docker_subnet: ansible.extra_vars[:public_network],
       devices: settings['disks'],
       radosgw_interface: ETH,
       generate_fsid: 'true',
@@ -190,12 +201,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NMONS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}mon#{i}" do |mon|
       mon.vm.hostname = "#{LABEL_PREFIX}mon#{i}"
-      if ASSIGN_STATIC_IP
-        mon.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
+      if ASSIGN_STATIC_IP && !IPV6
+	  mon.vm.network :private_network,
+	  :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
+
       # Virtualbox
-      mon.vm.provider :virtualbox do |vb|
+      mon.vm.provider :virtualbox do |vb,override|
         vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
       end
 
@@ -205,9 +217,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       # Libvirt
-      mon.vm.provider :libvirt do |lv|
+      mon.vm.provider :libvirt do |lv,override|
         lv.memory = MEMORY
         lv.random_hostname = true
+	if IPV6 then
+	  override.vm.network :private_network,
+	  :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
+	  :libvirt__ipv6_prefix => "64",
+	  :libvirt__dhcp_enabled => false,
+	  :libvirt__forward_mode => "veryisolated",
+	  :libvirt__network_name => "ipv6-public-network",
+	  :ip => "#{PUBLIC_SUBNET}#{$last_ip_pub_digit+=1}",
+	  :netmask => "64"
+	end  
       end
 
       # Parallels
@@ -225,9 +247,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..GRAFANA - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}grafana#{i}" do |grf|
       grf.vm.hostname = "#{LABEL_PREFIX}grafana#{i}"
-      if ASSIGN_STATIC_IP
-        grf.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
+      if ASSIGN_STATIC_IP && !IPV6
+	  grf.vm.network :private_network,
+	  :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
       # Virtualbox
       grf.vm.provider :virtualbox do |vb|
@@ -240,9 +262,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       # Libvirt
-      grf.vm.provider :libvirt do |lv|
+      grf.vm.provider :libvirt do |lv,override|
         lv.memory = MEMORY
         lv.random_hostname = true
+	if IPV6 then
+	  override.vm.network :private_network,
+	  :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
+	  :libvirt__ipv6_prefix => "64",
+	  :libvirt__dhcp_enabled => false,
+	  :libvirt__forward_mode => "veryisolated",
+	  :libvirt__network_name => "ipv6-public-network",
+	  :ip => "#{PUBLIC_SUBNET}#{$last_ip_pub_digit+=1}",
+	  :netmask => "64"
+	end
       end
 
       # Parallels
@@ -260,9 +292,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..MGRS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}mgr#{i}" do |mgr|
       mgr.vm.hostname = "#{LABEL_PREFIX}mgr#{i}"
-      if ASSIGN_STATIC_IP
-        mgr.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
+      if ASSIGN_STATIC_IP && !IPV6
+	  mgr.vm.network :private_network,
+	  :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
       # Virtualbox
       mgr.vm.provider :virtualbox do |vb|
@@ -275,9 +307,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       # Libvirt
-      mgr.vm.provider :libvirt do |lv|
+      mgr.vm.provider :libvirt do |lv,override|
         lv.memory = MEMORY
         lv.random_hostname = true
+	if IPV6 then
+	  override.vm.network :private_network,
+	  :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
+	  :libvirt__ipv6_prefix => "64",
+	  :libvirt__dhcp_enabled => false,
+	  :libvirt__forward_mode => "veryisolated",
+	  :libvirt__network_name => "ipv6-public-network",
+	  :ip => "#{PUBLIC_SUBNET}#{$last_ip_pub_digit+=1}",
+	  :netmask => "64"
+	end
       end
 
       # Parallels
@@ -296,9 +338,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "#{LABEL_PREFIX}client#{i}" do |client|
       client.vm.box = CLIENT_BOX
       client.vm.hostname = "#{LABEL_PREFIX}client#{i}"
-      if ASSIGN_STATIC_IP
-        client.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
+      if ASSIGN_STATIC_IP && !IPV6
+	  client.vm.network :private_network,
+	  :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
       # Virtualbox
       client.vm.provider :virtualbox do |vb|
@@ -311,9 +353,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       # Libvirt
-      client.vm.provider :libvirt do |lv|
+      client.vm.provider :libvirt do |lv,override|
         lv.memory = MEMORY
         lv.random_hostname = true
+	if IPV6 then
+	  override.vm.network :private_network,
+	  :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
+	  :libvirt__ipv6_prefix => "64",
+	  :libvirt__dhcp_enabled => false,
+	  :libvirt__forward_mode => "veryisolated",
+	  :libvirt__network_name => "ipv6-public-network",
+	  :ip => "#{PUBLIC_SUBNET}#{$last_ip_pub_digit+=1}",
+	  :netmask => "64"
+	end
       end
 
       # Parallels
@@ -331,9 +383,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NRGWS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}rgw#{i}" do |rgw|
       rgw.vm.hostname = "#{LABEL_PREFIX}rgw#{i}"
-      if ASSIGN_STATIC_IP
-        rgw.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
+      if ASSIGN_STATIC_IP && !IPV6
+	  rgw.vm.network :private_network,
+	  :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
 
       # Virtualbox
@@ -347,9 +399,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       # Libvirt
-      rgw.vm.provider :libvirt do |lv|
+      rgw.vm.provider :libvirt do |lv,override|
         lv.memory = MEMORY
         lv.random_hostname = true
+	if IPV6 then
+	  override.vm.network :private_network,
+	  :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
+	  :libvirt__ipv6_prefix => "64",
+	  :libvirt__dhcp_enabled => false,
+	  :libvirt__forward_mode => "veryisolated",
+	  :libvirt__network_name => "ipv6-public-network",
+	  :ip => "#{PUBLIC_SUBNET}#{$last_ip_pub_digit+=1}",
+	  :netmask => "64"
+	end
       end
 
       # Parallels
@@ -367,9 +429,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NNFSS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}nfs#{i}" do |nfs|
       nfs.vm.hostname = "#{LABEL_PREFIX}nfs#{i}"
-      if ASSIGN_STATIC_IP
-        nfs.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
+      if ASSIGN_STATIC_IP && !IPV6
+          nfs.vm.network :private_network,
+	  :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
 
       # Virtualbox
@@ -383,9 +445,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       # Libvirt
-      nfs.vm.provider :libvirt do |lv|
+      nfs.vm.provider :libvirt do |lv,override|
         lv.memory = MEMORY
         lv.random_hostname = true
+	if IPV6 then
+	  override.vm.network :private_network,
+	  :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
+	  :libvirt__ipv6_prefix => "64",
+	  :libvirt__dhcp_enabled => false,
+	  :libvirt__forward_mode => "veryisolated",
+	  :libvirt__network_name => "ipv6-public-network",
+	  :ip => "#{PUBLIC_SUBNET}#{$last_ip_pub_digit+=1}",
+	  :netmask => "64"
+	end
       end
 
       # Parallels
@@ -403,9 +475,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NMDSS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}mds#{i}" do |mds|
       mds.vm.hostname = "#{LABEL_PREFIX}mds#{i}"
-      if ASSIGN_STATIC_IP
-        mds.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
+      if ASSIGN_STATIC_IP && !IPV6
+	  mds.vm.network :private_network,
+          :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
       # Virtualbox
       mds.vm.provider :virtualbox do |vb|
@@ -418,9 +490,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       # Libvirt
-      mds.vm.provider :libvirt do |lv|
+      mds.vm.provider :libvirt do |lv,override|
         lv.memory = MEMORY
         lv.random_hostname = true
+	if IPV6 then
+	  override.vm.network :private_network,
+	  :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
+	  :libvirt__ipv6_prefix => "64",
+	  :libvirt__dhcp_enabled => false,
+	  :libvirt__forward_mode => "veryisolated",
+	  :libvirt__network_name => "ipv6-public-network",
+	  :ip => "#{PUBLIC_SUBNET}#{$last_ip_pub_digit+=1}",
+	  :netmask => "64"
+	end  
       end
       # Parallels
       mds.vm.provider "parallels" do |prl|
@@ -437,9 +519,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NRBD_MIRRORS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}rbd-mirror#{i}" do |rbd_mirror|
       rbd_mirror.vm.hostname = "#{LABEL_PREFIX}rbd-mirror#{i}"
-      if ASSIGN_STATIC_IP
-        rbd_mirror.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
+      if ASSIGN_STATIC_IP && !IPV6
+	  rbd_mirror.vm.network :private_network,
+          :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
       # Virtualbox
       rbd_mirror.vm.provider :virtualbox do |vb|
@@ -452,9 +534,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       # Libvirt
-      rbd_mirror.vm.provider :libvirt do |lv|
+      rbd_mirror.vm.provider :libvirt do |lv,override|
         lv.memory = MEMORY
         lv.random_hostname = true
+	if IPV6 then
+	  override.vm.network :private_network,
+	  :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
+	  :libvirt__ipv6_prefix => "64",
+	  :libvirt__dhcp_enabled => false,
+	  :libvirt__forward_mode => "veryisolated",
+	  :libvirt__network_name => "ipv6-public-network",
+	  :ip => "#{PUBLIC_SUBNET}#{$last_ip_pub_digit+=1}",
+	  :netmask => "64"
+	end
       end
       # Parallels
       rbd_mirror.vm.provider "parallels" do |prl|
@@ -471,9 +563,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NISCSI_GWS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}iscsi-gw#{i}" do |iscsi_gw|
       iscsi_gw.vm.hostname = "#{LABEL_PREFIX}iscsi-gw#{i}"
-      if ASSIGN_STATIC_IP
-        iscsi_gw.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
+      if ASSIGN_STATIC_IP && !IPV6
+	  iscsi_gw.vm.network :private_network,
+          :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
       end
       # Virtualbox
       iscsi_gw.vm.provider :virtualbox do |vb|
@@ -486,9 +578,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       # Libvirt
-      iscsi_gw.vm.provider :libvirt do |lv|
+      iscsi_gw.vm.provider :libvirt do |lv,override|
         lv.memory = MEMORY
         lv.random_hostname = true
+	if IPV6 then
+          override.vm.network :private_network,
+	  :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
+	  :libvirt__ipv6_prefix => "64",
+	  :libvirt__dhcp_enabled => false,
+	  :libvirt__forward_mode => "veryisolated",
+	  :libvirt__network_name => "ipv6-public-network",
+	  :ip => "#{PUBLIC_SUBNET}#{$last_ip_pub_digit+=1}",
+	  :netmask => "64"
+	end
       end
       # Parallels
       iscsi_gw.vm.provider "parallels" do |prl|
@@ -505,11 +607,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (0..NOSDS - 1).each do |i|
     config.vm.define "#{LABEL_PREFIX}osd#{i}" do |osd|
       osd.vm.hostname = "#{LABEL_PREFIX}osd#{i}"
-      if ASSIGN_STATIC_IP
-        osd.vm.network :private_network,
-          ip: "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
-        osd.vm.network :private_network,
-          ip: "#{CLUSTER_SUBNET}.#{$last_ip_cluster_digit+=1}"
+      if ASSIGN_STATIC_IP && !IPV6
+	  osd.vm.network :private_network,
+          :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
+	  osd.vm.network :private_network,
+          :ip => "#{CLUSTER_SUBNET}.#{$last_ip_cluster_digit+=1}"
       end
       # Virtualbox
       osd.vm.provider :virtualbox do |vb|
@@ -550,7 +652,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       # Libvirt
       driverletters = ('a'..'z').to_a
-      osd.vm.provider :libvirt do |lv|
+      osd.vm.provider :libvirt do |lv,override|
         # always make /dev/sd{a/b/c} so that CI can ensure that
         # virtualbox and libvirt will have the same devices to use for OSDs
         (0..2).each do |d|
@@ -558,6 +660,22 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         end
         lv.memory = MEMORY
         lv.random_hostname = true
+	if IPV6 then
+	  override.vm.network :private_network,
+	    :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
+	    :libvirt__ipv6_prefix => "64",
+	    :libvirt__dhcp_enabled => false,
+	    :libvirt__forward_mode => "veryisolated",
+	    :libvirt__network_name => "ipv6-public-network",
+	    :netmask => "64"
+	  override.vm.network :private_network,
+	    :libvirt__ipv6_address => "#{CLUSTER_SUBNET}",
+	    :libvirt__ipv6_prefix => "64",
+	    :libvirt__dhcp_enabled => false,
+	    :libvirt__forward_mode => "veryisolated",
+	    :libvirt__network_name => "ipv6-cluster-network",
+	    :netmask => "64"
+	end
       end
 
       # Parallels
