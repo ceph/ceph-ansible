@@ -313,6 +313,7 @@ def get_zonegroup(module, container_image=None):
     '''
 
     cluster = module.params.get('cluster')
+    name = module.params.get('name')
     realm = module.params.get('realm')
     zonegroup = module.params.get('zonegroup')
 
@@ -323,6 +324,7 @@ def get_zonegroup(module, container_image=None):
         cluster,
         'zonegroup',
         'get',
+        '--rgw-zone=' + name,
         '--rgw-realm=' + realm,
         '--rgw-zonegroup=' + zonegroup,
         '--format=json'
