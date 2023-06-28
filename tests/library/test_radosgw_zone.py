@@ -129,6 +129,7 @@ class TestRadosgwZoneModule(object):
             fake_binary,
             '--cluster', fake_cluster,
             'zonegroup', 'get',
+            '--rgw-zone=' + fake_zone,
             '--rgw-realm=' + fake_realm,
             '--rgw-zonegroup=' + fake_zonegroup,
             '--format=json'
