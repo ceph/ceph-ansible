@@ -1,4 +1,19 @@
 ---
+- name: set global config
+  ceph_config:
+    action: set
+    who: "client.rgw.{{ _rgw_hostname + '.' + item.0.instance_name }}"
+    option: "{{ item.1 }}"
+    value: "{{ item.0[item.1] }}"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  with_nested:
+    - "{{ rgw_instances }}"
+    - [ 'rgw_realm', 'rgw_zonegroup', 'rgw_zone']
+
 - name: set_fact realms
   set_fact:
     realms: '{{ realms | default([]) | union([item.rgw_realm]) }}'

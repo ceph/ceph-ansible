@@ -2,36 +2,14 @@
 # {{ ansible_managed }}
 
 [global]
-{% if not cephx | bool %}
-auth cluster required = none
-auth service required = none
-auth client required = none
-{% endif %}
-{% if ip_version == 'ipv6'  %}
-ms bind ipv6 = true
-ms bind ipv4 = false
-{% endif %}
-{% if common_single_host_mode is defined and common_single_host_mode %}
-osd crush chooseleaf type = 0
-{% endif %}
+#{% if not cephx | bool %}
+#auth cluster required = none
+#auth service required = none
+#auth client required = none
+#{% endif %}
 {# NOTE (leseb): the blank lines in-between are needed otherwise we won't get any line break #}
 
 {% set nb_mon = groups.get(mon_group_name, []) | length | int %}
-{% set nb_client = groups.get(client_group_name, []) | length | int %}
-{% set nb_osd = groups.get(osd_group_name, []) | length | int %}
-{% if inventory_hostname in groups.get(client_group_name, []) and not inventory_hostname == groups.get(client_group_name, []) | first %}
-{% endif %}
-
-{% if nb_mon > 0 and inventory_hostname in groups.get(mon_group_name, []) %}
-mon initial members = {% for host in groups[mon_group_name] %}
-      {% if hostvars[host]['ansible_facts']['hostname'] is defined -%}
-        {{ hostvars[host]['ansible_facts']['hostname'] }}
-      {%- endif %}
-      {%- if not loop.last %},{% endif %}
-    {% endfor %}
-
-osd pool default crush rule = {{ osd_pool_default_crush_rule }}
-{% endif %}
 
 fsid = {{ fsid }}
 mon host = {% if nb_mon > 0 %}
@@ -46,70 +24,8 @@ mon host = {% if nb_mon > 0 %}
 {{ external_cluster_mon_ips }}
 {% endif %}
 
-{% if public_network is defined %}
-public network = {{ public_network | regex_replace(' ', '') }}
-{% endif %}
-{% if cluster_network is defined %}
-cluster network = {{ cluster_network | regex_replace(' ', '') }}
-{% endif %}
-{% if rgw_override_bucket_index_max_shards is defined %}
-rgw override bucket index max shards = {{ rgw_override_bucket_index_max_shards }}
-{% endif %}
-{% if rgw_bucket_default_quota_max_objects is defined %}
-rgw bucket default quota max objects = {{ rgw_bucket_default_quota_max_objects }}
-{% endif %}
-
 {% if inventory_hostname in groups.get(client_group_name, []) %}
 [client.libvirt]
 admin socket = {{ rbd_client_admin_socket_path }}/$cluster-$type.$id.$pid.$cctid.asok # must be writable by QEMU and allowed by SELinux or AppArmor
 log file = {{ rbd_client_log_file }} # must be writable by QEMU and allowed by SELinux or AppArmor
-{% endif %}
-
-{% if inventory_hostname in groups.get(osd_group_name, []) %}
-[osd]
-osd memory target = {{ _osd_memory_target | default(osd_memory_target) }}
-{% endif %}
-
-{% if inventory_hostname in groups.get(rgw_group_name, []) %}
-{% set _rgw_hostname = hostvars[inventory_hostname]['rgw_hostname'] | default(hostvars[inventory_hostname]['ansible_facts']['hostname']) %}
-{# {{ hostvars[host]['rgw_hostname'] }} for backward compatibility, fqdn issues. See bz1580408 #}
-{% if hostvars[inventory_hostname]['rgw_instances'] is defined %}
-{% for instance in hostvars[inventory_hostname]['rgw_instances'] %}
-[client.rgw.{{ _rgw_hostname + '.' + instance['instance_name'] }}]
-host = {{ _rgw_hostname }}
-keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname + '.' + instance['instance_name'] }}/keyring
-log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[inventory_hostname]['ansible_facts']['hostname'] + '.' + instance['instance_name'] }}.log
-{% set _rgw_binding_socket = instance['radosgw_address'] | default(_radosgw_address) | string + ':' + instance['radosgw_frontend_port'] | default(radosgw_frontend_port) | string %}
-{%- macro frontend_line(frontend_type) -%}
-{%- if frontend_type == 'civetweb' -%}
-{{ radosgw_frontend_type }} port={{ _rgw_binding_socket }}{{ 's ssl_certificate='+radosgw_frontend_ssl_certificate if radosgw_frontend_ssl_certificate else '' }}
-{%- elif frontend_type == 'beast' -%}
-{{ radosgw_frontend_type }} {{ 'ssl_' if radosgw_frontend_ssl_certificate else '' }}endpoint={{ _rgw_binding_socket }}{{ ' ssl_certificate='+radosgw_frontend_ssl_certificate if radosgw_frontend_ssl_certificate else '' }}
-{%- endif -%}
-{%- endmacro -%}
-rgw frontends = {{ frontend_line(radosgw_frontend_type) }} {{ radosgw_frontend_options }}
-{% if 'num_threads' not in radosgw_frontend_options %}
-rgw thread pool size = {{ radosgw_thread_pool_size }}
-{% endif %}
-{% if rgw_multisite | bool %}
-{% if ((instance['rgw_zonemaster'] | default(rgw_zonemaster) | bool) or (deploy_secondary_zones | default(True) | bool)) %}
-rgw_realm = {{ instance['rgw_realm'] }}
-rgw_zonegroup = {{ instance['rgw_zonegroup'] }}
-rgw_zone = {{ instance['rgw_zone'] }}
-{% endif %}
-{% endif %}
-{% endfor %}
-{% endif %}
-{% endif %}
-
-{% if inventory_hostname in groups.get(nfs_group_name, []) and inventory_hostname not in groups.get(rgw_group_name, []) %}
-{% for host in groups[nfs_group_name] %}
-{% set _rgw_hostname = hostvars[host]['rgw_hostname'] | default(hostvars[host]['ansible_facts']['hostname']) %}
-{% if nfs_obj_gw | bool %}
-[client.rgw.{{ _rgw_hostname }}]
-host = {{ _rgw_hostname }}
-keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname }}/keyring
-log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_facts']['hostname'] }}.log
-{% endif %}
-{% endfor %}
 {% endif %}
