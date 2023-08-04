@@ -997,11 +997,19 @@
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
+    - name: set_fact rgw_subnet
+      set_fact:
+        rgw_subnet: "--networks {{ radosgw_address_block }}"
+      when:
+        - radosgw_address_block is defined
+        - radosgw_address_block != 'subnet'
+
     - name: update the placement of radosgw hosts
       command: >
         {{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} --
         ceph orch apply rgw {{ ansible_facts['hostname'] }}
         --placement='count-per-host:{{ radosgw_num_instances }} {{ ansible_facts['nodename'] }}'
+        {{ rgw_subnet if rgw_subnet is defined else '' }}
         --port={{ radosgw_frontend_port }}
         {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
       changed_when: false
@@ -1016,6 +1024,7 @@
         ceph orch apply rgw {{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }}
         --placement={{ ansible_facts['nodename'] }}
         --realm={{ item.rgw_realm }} --zone={{ item.rgw_zone }}
+        {{ rgw_subnet if rgw_subnet is defined else '' }}
         --port={{ item.radosgw_frontend_port }}
         {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
       changed_when: false
