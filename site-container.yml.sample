@@ -542,7 +542,7 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: mons
+- hosts: mons[0]
   gather_facts: false
   become: True
   any_errors_fatal: true
@@ -561,15 +561,11 @@
 
     - name: get ceph status from the first monitor
       command: >
-        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] }} ceph --cluster {{ cluster }} -s
+        {{ container_binary }} exec ceph-mon-{{ hostvars[inventory_hostname]['ansible_facts']['hostname'] }} ceph --cluster {{ cluster }} -s
       register: ceph_status
       changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      run_once: true
 
     - name: "show ceph status for cluster {{ cluster }}"
       debug:
         msg: "{{ ceph_status.stdout_lines }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      run_once: true
       when: not ceph_status.failed
