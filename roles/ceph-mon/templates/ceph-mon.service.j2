@@ -54,7 +54,7 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --name ceph-mon-%i \
   --entrypoint=/usr/bin/ceph-mon \
   {{ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
   -f --default-log-to-file=false --default-log-to-stderr=true \
-  -i {{ monitor_name }} --mon-data /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }} --public-addr {{ _current_monitor_address }}
+  -i {{ monitor_name }} --mon-data /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }} --public-addr {{ _current_monitor_address }} --mon-initial-members {{ groups[mon_group_name][0] }}
 {% if container_binary == 'podman' %}
 ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
 {% else %}
