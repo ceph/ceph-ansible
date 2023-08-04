@@ -12,6 +12,7 @@
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+  delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
   loop: "{{ hostvars[inventory_hostname]['rgw_instances'] }}"
 
 - name: set rgw parameter (rgw_frontends)
@@ -23,6 +24,7 @@
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+  delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
   loop: "{{ hostvars[inventory_hostname]['rgw_instances'] }}"
   notify: restart ceph rgws
 
