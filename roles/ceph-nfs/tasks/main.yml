@@ -15,6 +15,21 @@
   include_tasks: pre_requisite_container.yml
   when: containerized_deployment | bool
 
+- name: set_fact _rgw_hostname
+  set_fact:
+    _rgw_hostname: "{{ hostvars[inventory_hostname]['rgw_hostname'] | default(hostvars[inventory_hostname]['ansible_facts']['hostname']) }}"
+
+- name: set rgw parameter (log file)
+  ceph_config:
+    action: set
+    who: "client.rgw.{{ _rgw_hostname }}"
+    option: "log file"
+    value: "/var/log/ceph/{{ cluster }}-rgw-{{ hostvars[inventory_hostname]['ansible_facts']['hostname'] }}.log"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+  loop: "{{ groups.get('nfss', []) }}"
+
 - name: include create_rgw_nfs_user.yml
   import_tasks: create_rgw_nfs_user.yml
   when: groups.get(mon_group_name, []) | length > 0

@@ -1,4 +1,34 @@
 ---
+- name: set_fact _rgw_hostname
+  set_fact:
+    _rgw_hostname: "{{ hostvars[inventory_hostname]['rgw_hostname'] | default(hostvars[inventory_hostname]['ansible_facts']['hostname']) }}"
+
+- name: set rgw parameter (log file)
+  ceph_config:
+    action: set
+    who: "client.rgw.{{ _rgw_hostname + '.' + item.instance_name }}"
+    option: "log file"
+    value: "/var/log/ceph/{{ cluster }}-rgw-{{ hostvars[inventory_hostname]['ansible_facts']['hostname'] + '.' + item.instance_name }}.log"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+  loop: "{{ hostvars[inventory_hostname]['rgw_instances'] }}"
+
+- name: set rgw parameter (rgw_frontends)
+  ceph_config:
+    action: set
+    who: "client.rgw.{{ _rgw_hostname + '.' + item.instance_name }}"
+    option: "rgw_frontends"
+    value: "beast port={{ item.radosgw_frontend_port | string }}"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+  loop: "{{ hostvars[inventory_hostname]['rgw_instances'] }}"
+  notify: restart ceph rgws
+
+# rgw_frontends
+# {{ 'ssl_' if radosgw_frontend_ssl_certificate else '' }}endpoint={{ _rgw_binding_socket }}{{ ' ssl_certificate='+radosgw_frontend_ssl_certificate if radosgw_frontend_ssl_certificate else '' }}
+
 - name: create rados gateway directories
   file:
     path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
