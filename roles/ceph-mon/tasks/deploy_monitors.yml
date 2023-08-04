@@ -88,41 +88,90 @@
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     recurse: true
 
-- name: create custom admin keyring
-  ceph_key:
+- name: create admin keyring
+  ceph_authtool:
     name: client.admin
-    secret: "{{ admin_secret }}"
-    caps: "{{ client_admin_ceph_authtool_cap }}"
-    import_key: False
-    cluster: "{{ cluster }}"
+    path: /etc/ceph/ceph.client.admin.keyring
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "0400"
+    caps:
+      mon: allow *
+      mgr: allow *
+      osd: allow *
+      mds: allow *
+    create_keyring: True
+    gen_key: "{{ True if admin_secret == 'admin_secret' else omit }}"
+    add_key: "{{ admin_secret if admin_secret != 'admin_secret' else omit }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-  register: create_custom_admin_secret
   no_log: "{{ no_log_on_ceph_key_tasks }}"
   when:
     - cephx | bool
-    - admin_secret != 'admin_secret'
 
-- name: set_fact ceph-authtool container command
-  set_fact:
-    ceph_authtool_cmd: "{{ container_binary + ' run --net=host --rm -v /var/lib/ceph:/var/lib/ceph:z -v /etc/ceph/:/etc/ceph/:z --entrypoint=ceph-authtool ' + ceph_client_docker_registry + '/' + ceph_client_docker_image + ':' + ceph_client_docker_image_tag if containerized_deployment | bool else 'ceph-authtool' }}"
+
+- name: slurp admin keyring
+  slurp:
+    src: "/etc/ceph/{{ cluster }}.client.admin.keyring"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: True
+  register: admin_keyring
+
+- name: copy admin keyring over to mons
+  copy:
+    dest: "{{ admin_keyring.source }}"
+    content: "{{ admin_keyring.content | b64decode }}"
+    owner: "{{ ceph_uid }}"
+    group: "{{ ceph_uid }}"
+    mode: "0600"
+  delegate_to: "{{ item }}"
+  loop: "{{ groups[mon_group_name] }}"
 
 - name: import admin keyring into mon keyring
-  command: >
-    {{ ceph_authtool_cmd }}
-     /var/lib/ceph/tmp/{{ cluster }}.mon..keyring --import-keyring /etc/ceph/{{ cluster }}.client.admin.keyring
+  ceph_authtool:
+    path: "/var/lib/ceph/tmp/{{ cluster }}.mon..keyring"
+    owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+    mode: "0400"
+    import_keyring: /etc/ceph/ceph.client.admin.keyring
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+  no_log: False
+#  no_log: "{{ no_log_on_ceph_key_tasks }}"
   when:
-    - not create_custom_admin_secret.get('skipped')
     - cephx | bool
-    - admin_secret != 'admin_secret'
 
 - name: set_fact ceph-mon container command
   set_fact:
     ceph_mon_cmd: "{{ container_binary + ' run --rm --net=host -v /var/lib/ceph/:/var/lib/ceph:z -v /etc/ceph/:/etc/ceph/:z --entrypoint=ceph-mon ' + ceph_client_docker_registry + '/' + ceph_client_docker_image + ':' +ceph_client_docker_image_tag if containerized_deployment | bool else 'ceph-mon' }}"
+
+- name: set_fact monmaptool container command
+  set_fact:
+    ceph_monmaptool_cmd: "{{ container_binary + ' run --rm --net=host -v /var/lib/ceph/:/var/lib/ceph:z -v /etc/ceph/:/etc/ceph/:z --entrypoint=monmaptool ' + ceph_client_docker_registry + '/' + ceph_client_docker_image + ':' +ceph_client_docker_image_tag if containerized_deployment | bool else 'monmaptool' }}"
+
+- name: generate initial monmap
+  command: >
+    {{ ceph_monmaptool_cmd }}
+    --create
+    {% for host in _monitor_addresses -%}
+    --addv
+    {{ host.name }}
+    {% if mon_host_v1.enabled | bool %}
+    {% set _v1 = ',v1:' + host.addr + mon_host_v1.suffix %}
+    {% endif %}
+    [{{ "v2:" + host.addr + mon_host_v2.suffix }}{{ _v1 | default('') }}]
+    {# {%- if not loop.last -%},{%- endif %} #}
+    {%- endfor %}
+    --enable-all-features
+    --clobber /etc/ceph/monmap
+  args:
+    creates: /etc/ceph/monmap
+
+#[v2:192.168.17.10:3300,v1:192.168.17.10:6789]
 
 - name: ceph monitor mkfs with keyring
   command: >
@@ -134,6 +183,7 @@
     -i {{ monitor_name }}
     --fsid {{ fsid }}
     --keyring /var/lib/ceph/tmp/{{ cluster }}.mon..keyring
+    --monmap /etc/ceph/monmap
   args:
     creates: /var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}/keyring
   when: cephx | bool
