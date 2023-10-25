@@ -396,6 +396,31 @@ class TestCephCrushRuleModule(object):
         assert result['stderr'] == stderr
         assert result['stdout'] == stdout
 
+    @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.run_command')
+    def test_get_all_rules(self, m_run_command, m_exit_json):
+        ca_test_common.set_module_args({
+            'name': str(),
+            'state': 'info'
+        })
+        m_exit_json.side_effect = ca_test_common.exit_json
+        rc = 0
+        stderr = ''
+        stdout = '{{"rule_name":"{}","steps":[{{"item_name":"{}"}},{{"type":"{}"}}]}}'.format(fake_name, fake_bucket_root, fake_bucket_type)
+        m_run_command.return_value = rc, stdout, stderr
+
+        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
+            ceph_crush_rule.main()
+
+        result = result.value.args[0]
+        assert not result['changed']
+        assert result['cmd'] == ['ceph', '-n', fake_user, '-k', fake_keyring,
+                                 '--cluster', fake_cluster, 'osd', 'crush', 'rule',
+                                 'dump', '', '--format=json']
+        assert result['rc'] == rc
+        assert result['stderr'] == stderr
+        assert result['stdout'] == stdout
+
     @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
     @patch.dict(os.environ, {'CEPH_CONTAINER_IMAGE': fake_container_image})
     @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
