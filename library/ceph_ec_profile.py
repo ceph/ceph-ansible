@@ -76,6 +76,10 @@ options:
             - Compute coding chunks for each object and store them on different
               OSDs.
         required: true
+    crush_failure_domain:
+        description:
+            - The domain for data durability (host/rack)
+        required: false
     crush_device_class:
         description:
             - Restrict placement to devices of a specific class (hdd/ssd)
@@ -116,7 +120,7 @@ def get_profile(module, name, cluster='ceph', container_image=None):
     return cmd
 
 
-def create_profile(module, name, k, m, stripe_unit, crush_device_class, cluster='ceph', force=False, container_image=None):  # noqa: E501
+def create_profile(module, name, k, m, stripe_unit, crush_failure_domain, crush_device_class, cluster='ceph', force=False, container_image=None):  # noqa: E501
     '''
     Create a profile
     '''
@@ -124,6 +128,8 @@ def create_profile(module, name, k, m, stripe_unit, crush_device_class, cluster=
     args = ['set', name, 'k={}'.format(k), 'm={}'.format(m)]
     if stripe_unit:
         args.append('stripe_unit={}'.format(stripe_unit))
+    if crush_failure_domain:
+        args.append('crush-failure-domain={}'.format(crush_failure_domain))
     if crush_device_class:
         args.append('crush-device-class={}'.format(crush_device_class))
     if force:
@@ -161,6 +167,7 @@ def run_module():
         stripe_unit=dict(type='str', required=False),
         k=dict(type='str', required=False),
         m=dict(type='str', required=False),
+        crush_failure_domain=dict(type='str', required=False, default=''),
         crush_device_class=dict(type='str', required=False, default=''),
     )
 
@@ -177,6 +184,7 @@ def run_module():
     stripe_unit = module.params.get('stripe_unit')
     k = module.params.get('k')
     m = module.params.get('m')
+    crush_failure_domain = module.params.get('crush_failure_domain')
     crush_device_class = module.params.get('crush_device_class')
 
     if module.check_mode:
@@ -205,6 +213,7 @@ def run_module():
             if current_profile['k'] != k or \
                current_profile['m'] != m or \
                current_profile.get('stripe_unit', stripe_unit) != stripe_unit or \
+               current_profile.get('crush-failure-domain', crush_failure_domain) != crush_failure_domain or \
                current_profile.get('crush-device-class', crush_device_class) != crush_device_class:  # noqa: E501
                 rc, cmd, out, err = exec_command(module,
                                                  create_profile(module,
@@ -212,6 +221,7 @@ def run_module():
                                                                 k,
                                                                 m,
                                                                 stripe_unit,
+                                                                crush_failure_domain,  # noqa: E501
                                                                 crush_device_class,  # noqa: E501
                                                                 cluster,
                                                                 force=True, container_image=container_image))  # noqa: E501
@@ -223,6 +233,7 @@ def run_module():
                                                                     k,
                                                                     m,
                                                                     stripe_unit,  # noqa: E501
+                                                                    crush_failure_domain,  # noqa: E501
                                                                     crush_device_class,  # noqa: E501
                                                                     cluster,
                                                                     container_image=container_image))  # noqa: E501

@@ -28,15 +28,15 @@ class TestCephEcProfile(object):
 
         assert ceph_ec_profile.get_profile(self.fake_module, self.fake_name) == expected_cmd
 
-    @pytest.mark.parametrize("stripe_unit,crush_device_class,force", [(False, None, False),
-                                                                      (32, None, True),
-                                                                      (False, None, True),
-                                                                      (32, None, False),
-                                                                      (False, 'hdd', False),
-                                                                      (32, 'ssd', True),
-                                                                      (False, 'nvme', True),
-                                                                      (32, 'hdd', False)])
-    def test_create_profile(self, stripe_unit, crush_device_class, force):
+    @pytest.mark.parametrize("stripe_unit,crush_failure_domain,crush_device_class,force", [(False, None, None, False),
+                                                                                           (32, None, None, True),
+                                                                                           (False, None, None, True),
+                                                                                           (32, None, None, False),
+                                                                                           (False, 'host', 'hdd', False),
+                                                                                           (32, 'host,', 'ssd', True),
+                                                                                           (False, 'host', 'nvme', True),
+                                                                                           (32, 'host', 'hdd', False)])
+    def test_create_profile(self, stripe_unit, crush_failure_domain, crush_device_class, force):
         expected_cmd = [
             self.fake_binary,
             '-n', 'client.admin',
@@ -48,6 +48,8 @@ class TestCephEcProfile(object):
         ]
         if stripe_unit:
             expected_cmd.append('stripe_unit={}'.format(stripe_unit))
+        if crush_failure_domain:
+            expected_cmd.append('crush-failure-domain={}'.format(crush_failure_domain))
         if crush_device_class:
             expected_cmd.append('crush-device-class={}'.format(crush_device_class))
         if force:
@@ -58,6 +60,7 @@ class TestCephEcProfile(object):
                                               self.fake_k,
                                               self.fake_m,
                                               stripe_unit,
+                                              crush_failure_domain,
                                               crush_device_class,
                                               self.fake_cluster,
                                               force) == expected_cmd
@@ -85,6 +88,7 @@ class TestCephEcProfile(object):
                                         "k": 2,
                                         "m": 4,
                                         "stripe_unit": 32,
+                                        "crush_failure_domain": "host",
                                         })
         m_exit_json.side_effect = ca_test_common.exit_json
         m_fail_json.side_effect = ca_test_common.fail_json
