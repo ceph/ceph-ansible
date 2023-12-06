@@ -46,7 +46,8 @@ description:
 options:
     name:
         description:
-            - name of the Ceph Crush rule.
+            - name of the Ceph Crush rule. If state is 'info' - empty string
+              can be provided as a value to get all crush rules
         required: true
     cluster:
         description:
