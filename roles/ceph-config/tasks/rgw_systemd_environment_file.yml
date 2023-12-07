@@ -7,6 +7,9 @@
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "{{ ceph_directories_mode | default('0755') }}"
   with_items: "{{ rgw_instances }}"
+  when:
+    - containerized_deployment | bool
+    - rgw_instances is defined
 
 - name: generate environment file
   copy:
