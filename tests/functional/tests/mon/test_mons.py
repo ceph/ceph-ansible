@@ -1,5 +1,4 @@
 import pytest
-import re
 
 
 class TestMons(object):
@@ -28,4 +27,3 @@ class TestMons(object):
         cmd = "sudo ceph --cluster={} --connect-timeout 5 -s".format(setup["cluster_name"])  # noqa E501
         output = host.check_output(cmd)
         assert output.strip().startswith("cluster")
-

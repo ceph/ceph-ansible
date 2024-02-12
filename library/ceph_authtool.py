@@ -4,22 +4,17 @@ __metaclass__ = type
 from ansible.module_utils.basic import AnsibleModule
 try:
     from ansible.module_utils.ca_common import container_exec, \
-                                               is_containerized, \
-                                               fatal
+                                               is_containerized
 except ImportError:
     from module_utils.ca_common import container_exec, \
-                                       is_containerized, \
-                                       fatal
+                                       is_containerized
 import datetime
-import json
 import os
-import struct
-import time
-import base64
-import socket
+
 
 class KeyringExists(Exception):
     pass
+
 
 def build_cmd(create_keyring=False,
               gen_key=False,
@@ -38,7 +33,6 @@ def build_cmd(create_keyring=False,
                            container_image)
     else:
         c = [auth_tool_binary]
-
 
     if name:
         c.extend(['-n', name])
@@ -59,6 +53,7 @@ def build_cmd(create_keyring=False,
 
     return c
 
+
 def run_module():
     module_args = dict(
         name=dict(type='str', required=False),
@@ -75,9 +70,6 @@ def run_module():
         supports_check_mode=True,
         add_file_common_args=True,
     )
-
-
-
 
     cmd = []
     changed = False
@@ -126,12 +118,14 @@ def run_module():
     if rc != 0:
         module.fail_json(msg='non-zero return code', **result)
 
-    #file_args = module.load_file_common_arguments(module.params)
-    #module.set_fs_attributes_if_different(file_args, False)
+    # file_args = module.load_file_common_arguments(module.params)
+    # module.set_fs_attributes_if_different(file_args, False)
     module.exit_json(**result)
+
 
 def main():
     run_module()
+
 
 if __name__ == '__main__':
     main()

@@ -3,7 +3,6 @@
 # Author: Guillaume Abrioux <gabrioux@redhat.com>
 
 from __future__ import absolute_import, division, print_function
-from typing import List, Tuple
 __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule  # type: ignore
@@ -167,7 +166,7 @@ def main() -> None:
 
     if action == 'set':
         if value.lower() == current_value:
-            out = 'who={} option={} value={} already set. Skipping.'.format(who, option, value, container_image=container_image)
+            out = 'who={} option={} value={} already set. Skipping.'.format(who, option, value)
         else:
             rc, cmd, out, err = set_option(module, who, option, value, container_image=container_image)
             changed = True

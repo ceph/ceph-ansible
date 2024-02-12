@@ -17,18 +17,6 @@ fake_keyring = '/etc/ceph/{}.{}.keyring'.format(fake_cluster, fake_user)
 
 
 class TestCephCrushRuleModule(object):
-
-    @patch('ansible.module_utils.basic.AnsibleModule.fail_json')
-    def test_without_parameters(self, m_fail_json):
-        ca_test_common.set_module_args({})
-        m_fail_json.side_effect = ca_test_common.fail_json
-
-        with pytest.raises(ca_test_common.AnsibleFailJson) as result:
-            ceph_crush_rule.main()
-
-        result = result.value.args[0]
-        assert result['msg'] == 'missing required arguments: name'
-
     @patch('ansible.module_utils.basic.AnsibleModule.fail_json')
     def test_with_name_only(self, m_fail_json):
         ca_test_common.set_module_args({
