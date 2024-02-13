@@ -180,39 +180,6 @@
   import_tasks: devices.yml
   when: inventory_hostname in groups.get(osd_group_name, [])
 
-- name: backward compatibility tasks related
-  when:
-    - (inventory_hostname in groups.get(rgw_group_name, []) or inventory_hostname in groups.get(nfs_group_name, []))
-    - groups.get(mon_group_name, []) | length > 0
-  block:
-    - name: get ceph current status
-      command: "{{ timeout_command }} {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
-      changed_when: false
-      failed_when: false
-      check_mode: no
-      register: ceph_current_status
-      run_once: true
-      delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"
-
-    - name: set_fact ceph_current_status
-      set_fact:
-        ceph_current_status: "{{ ceph_current_status.stdout | from_json }}"
-      run_once: true
-      when: ceph_current_status.rc == 0
-
-    - name: set_fact rgw_hostname
-      set_fact:
-        rgw_hostname: "{% set _value = ansible_facts['hostname'] -%}
-        {% for key in (ceph_current_status['services']['rgw']['daemons'] | list) -%}
-        {% if key == ansible_facts['fqdn'] -%}
-        {% set _value = key -%}
-        {% endif -%}
-        {% endfor -%}
-        {{ _value }}"
-      when:
-        - ceph_current_status['services'] is defined
-        - ceph_current_status['services']['rgw'] is defined
-
 - name: check if the ceph conf exists
   stat:
     path: '/etc/ceph/{{ cluster }}.conf'
