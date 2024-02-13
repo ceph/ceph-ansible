@@ -18,6 +18,14 @@
     - ansible_facts['os_family'] != 'RedHat'
     - ansible_facts['distribution_major_version'] | int != 7
 
+- name: enable crb repository
+  community.general.dnf_config_manager:
+    name: crb
+    state: enabled
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - ansible_facts['distribution_major_version'] | int == 9
+
 - name: install ceph-mgr packages on RedHat or SUSE
   package:
     name: '{{ ceph_mgr_packages }}'
