@@ -97,26 +97,69 @@
 - name: Set osd related config facts
   when: inventory_hostname in groups.get(osd_group_name, [])
   block:
-    - name: set_fact _osd_memory_target
-      set_fact:
+    - name: Set_fact _osd_memory_target
+      ansible.builtin.set_fact:
         _osd_memory_target: "{{ ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) | int }}"
       when:
         - _osd_memory_target is undefined
         - num_osds | default(0) | int > 0
         - ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) > (osd_memory_target | float)
+        - ceph_conf_overrides.get('osd', {}).get('osd_memory_target', '') == ''
 
     - name: Set osd_memory_target to cluster host config
       ceph_config:
         action: set
-        who: "osd.*/{{ ansible_hostname }}:host"
+        who: "osd.*/{{ ansible_facts['hostname'] }}:host"
         option: "osd_memory_target"
         value: "{{ _osd_memory_target }}"
       when:
         - _osd_memory_target is defined
-        - ceph_conf_overrides.get('osd', {}).get('osd_memory_target', '') == ''
+        - running_mon is defined
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      delegate_to: "{{ running_mon }}"
 
-- name: create ceph conf directory
-  file:
+- name: Set rgw configs
+  when: inventory_hostname in groups.get(rgw_group_name, [])
+  block:
+    - name: Render rgw configs
+      vars:
+        _rgw_binding_socket: "{{ item.radosgw_address | default(_radosgw_address) | string + ':' + item.radosgw_frontend_port | default(radosgw_frontend_port) | string }}"
+        _rgw_beast_endpoint: "{{ 'ssl_' if radosgw_frontend_ssl_certificate else '' }}endpoint={{ _rgw_binding_socket }}"
+        _rgw_beast_ssl_option: "{{ ' ssl_certificate=' + radosgw_frontend_ssl_certificate if radosgw_frontend_ssl_certificate else '' }}"
+      ansible.builtin.set_fact:
+        _ceph_ansible_rgw_conf: >-
+          {{ _ceph_ansible_rgw_conf | default({}) | combine({
+              'client.rgw.' + ansible_facts['hostname'] + '.' + item.instance_name: {
+                'log_file': '/var/log/ceph/' + cluster + '-rgw-' + ansible_facts['hostname'] + '.' + item.instance_name + '.log',
+                'rgw_frontends': 'beast ' + _rgw_beast_endpoint + _rgw_beast_ssl_option,
+              }
+          }, recursive=true) }}
+      loop: "{{ rgw_instances }}"
+
+    - name: Set config to cluster
+      ceph_config:
+        action: set
+        who: "{{ item.0.key }}"
+        option: "{{ item.1.key }}"
+        value: "{{ item.1.value }}"
+      loop: "{{ _ceph_ansible_rgw_conf | dict2dict }}"
+      when:
+        - rgw_conf_to_cluster | default(true) | bool
+        - running_mon is defined
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      delegate_to: "{{ running_mon }}"
+
+    - name: Set rgw configs to file
+      ansible.builtin.set_fact:
+        ceph_conf_overrides: "{{ ceph_conf_overrides | default({}) | combine(_ceph_ansible_rgw_conf, recursive=true) }}"
+      when: not rgw_conf_to_cluster | default(true) | bool
+
+- name: Create ceph conf directory
+  ansible.builtin.file:
     path: "/etc/ceph"
     state: directory
     owner: "ceph"
