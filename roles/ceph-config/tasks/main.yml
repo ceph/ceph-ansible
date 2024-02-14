@@ -97,24 +97,26 @@
 - name: Set osd related config facts
   when: inventory_hostname in groups.get(osd_group_name, [])
   block:
-    - name: Set_fact _osd_memory_target, override from ceph_conf_overrides
-      ansible.builtin.set_fact:
-        _osd_memory_target: "{{ item }}"
-      loop:
-        - "{{ ceph_conf_overrides.get('osd', {}).get('osd memory target', '') }}"
-        - "{{ ceph_conf_overrides.get('osd', {}).get('osd_memory_target', '') }}"
-      when: item
-
-    - name: Set_fact _osd_memory_target
-      ansible.builtin.set_fact:
+    - name: set_fact _osd_memory_target
+      set_fact:
         _osd_memory_target: "{{ ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) | int }}"
       when:
         - _osd_memory_target is undefined
         - num_osds | default(0) | int > 0
         - ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) > (osd_memory_target | float)
 
-- name: Create ceph conf directory
-  ansible.builtin.file:
+    - name: Set osd_memory_target to cluster host config
+      ceph_config:
+        action: set
+        who: "osd.*/{{ ansible_hostname }}:host"
+        option: "osd_memory_target"
+        value: "{{ _osd_memory_target }}"
+      when:
+        - _osd_memory_target is defined
+        - ceph_conf_overrides.get('osd', {}).get('osd_memory_target', '') == ''
+
+- name: create ceph conf directory
+  file:
     path: "/etc/ceph"
     state: directory
     owner: "ceph"
@@ -135,6 +137,7 @@
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "0644"
+    config_overrides: "{{ ceph_conf_overrides }}"
     config_type: ini
   notify:
     - Restart ceph mons
