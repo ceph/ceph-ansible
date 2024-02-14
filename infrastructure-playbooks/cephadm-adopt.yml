@@ -971,7 +971,7 @@
             src: "{{ radosgw_frontend_ssl_certificate }}"
           register: rgw_ssl_cert
 
-        - name: store ssl certificate in kv store (not multisite)
+        - name: store ssl certificate in kv store
           command: >
             {{ container_binary }} run --rm -i -v /etc/ceph:/etc/ceph:z --entrypoint=ceph {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} --cluster {{ cluster }}
             config-key set rgw/cert/rgw.{{ ansible_facts['hostname'] }} -i -
@@ -979,21 +979,6 @@
             stdin: "{{ rgw_ssl_cert.content | b64decode }}"
             stdin_add_newline: no
           changed_when: false
-          when: not rgw_multisite | bool
-          delegate_to: "{{ groups[mon_group_name][0] }}"
-          environment:
-            CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-
-        - name: store ssl certificate in kv store (multisite)
-          command: >
-            {{ container_binary }} run --rm -i -v /etc/ceph:/etc/ceph:z --entrypoint=ceph {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} --cluster {{ cluster }}
-            config-key set rgw/cert/rgw.{{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }} -i -
-          args:
-            stdin: "{{ rgw_ssl_cert.content | b64decode }}"
-            stdin_add_newline: no
-          changed_when: false
-          loop: "{{ rgw_instances }}"
-          when: rgw_multisite | bool
           delegate_to: "{{ groups[mon_group_name][0] }}"
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
@@ -1014,23 +999,6 @@
         --port={{ radosgw_frontend_port }}
         {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
       changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      when: not rgw_multisite | bool
-      environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-
-    - name: update the placement of radosgw multisite hosts
-      command: >
-        {{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} --
-        ceph orch apply rgw {{ ansible_facts['hostname'] }}.{{ item.rgw_realm }}.{{ item.rgw_zone }}.{{ item.radosgw_frontend_port }}
-        --placement={{ ansible_facts['nodename'] }}
-        --realm={{ item.rgw_realm }} --zone={{ item.rgw_zone }}
-        {{ rgw_subnet if rgw_subnet is defined else '' }}
-        --port={{ item.radosgw_frontend_port }}
-        {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
-      changed_when: false
-      loop: "{{ rgw_instances }}"
-      when: rgw_multisite | bool
       delegate_to: "{{ groups[mon_group_name][0] }}"
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
