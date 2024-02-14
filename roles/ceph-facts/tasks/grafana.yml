@@ -1,5 +1,5 @@
-- name: set grafana_server_addr fact - ipv4
-  set_fact:
+- name: Set grafana_server_addr fact - ipv4
+  ansible.builtin.set_fact:
     grafana_server_addr: "{{ hostvars[inventory_hostname]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(grafana_network.split(',')) | first }}"
   when:
     - groups.get(monitoring_group_name, []) | length > 0
@@ -7,8 +7,8 @@
     - dashboard_enabled | bool
     - inventory_hostname in groups[monitoring_group_name]
 
-- name: set grafana_server_addr fact - ipv6
-  set_fact:
+- name: Set grafana_server_addr fact - ipv6
+  ansible.builtin.set_fact:
     grafana_server_addr: "{{ hostvars[inventory_hostname]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(grafana_network.split(',')) | last | ansible.utils.ipwrap }}"
   when:
     - groups.get(monitoring_group_name, []) | length > 0
@@ -16,8 +16,8 @@
     - dashboard_enabled | bool
     - inventory_hostname in groups[monitoring_group_name]
 
-- name: set grafana_server_addrs fact - ipv4
-  set_fact:
+- name: Set grafana_server_addrs fact - ipv4
+  ansible.builtin.set_fact:
     grafana_server_addrs: "{{ (grafana_server_addrs | default([]) + [hostvars[item]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(grafana_network.split(',')) | first]) | unique }}"
   with_items: "{{ groups.get(monitoring_group_name, []) }}"
   when:
@@ -25,8 +25,8 @@
     - ip_version == 'ipv4'
     - dashboard_enabled | bool
 
-- name: set grafana_server_addrs fact - ipv6
-  set_fact:
+- name: Set grafana_server_addrs fact - ipv6
+  ansible.builtin.set_fact:
     grafana_server_addrs: "{{ (grafana_server_addrs | default([]) + [hostvars[item]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(grafana_network.split(',')) | last | ansible.utils.ipwrap]) | unique }}"
   with_items: "{{ groups.get(monitoring_group_name, []) }}"
   when:

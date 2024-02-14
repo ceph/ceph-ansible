@@ -1,7 +1,10 @@
 ---
-- name: copy ceph admin keyring
+- name: Copy ceph admin keyring
+  when:
+    - cephx | bool
+    - copy_admin_key | bool
   block:
-    - name: get keys from monitors
+    - name: Get keys from monitors
       ceph_key:
         name: client.admin
         cluster: "{{ cluster }}"
@@ -15,14 +18,11 @@
       run_once: true
       no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-    - name: copy ceph key(s) if needed
-      copy:
+    - name: Copy ceph key(s) if needed
+      ansible.builtin.copy:
         dest: "/etc/ceph/{{ cluster }}.client.admin.keyring"
         content: "{{ _admin_key.stdout + '\n' }}"
         owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
         group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
         mode: "{{ ceph_keyring_permissions }}"
       no_log: "{{ no_log_on_ceph_key_tasks }}"
-  when:
-    - cephx | bool
-    - copy_admin_key | bool

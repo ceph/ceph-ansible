@@ -1,10 +1,10 @@
 ---
-- name: set _rbd_target_api_handler_called before restart
-  set_fact:
-    _rbd_target_api_handler_called: True
+- name: Set _rbd_target_api_handler_called before restart
+  ansible.builtin.set_fact:
+    _rbd_target_api_handler_called: true
 
-- name: restart rbd-target-api
-  service:
+- name: Restart rbd-target-api
+  ansible.builtin.service:
     name: rbd-target-api
     state: restarted
   when:
@@ -13,18 +13,18 @@
     - ceph_rbd_target_api_stat.get('stdout_lines', [])|length != 0
   with_items: "{{ groups[iscsi_gw_group_name] }}"
   delegate_to: "{{ item }}"
-  run_once: True
+  run_once: true
 
-- name: set _rbd_target_api_handler_called after restart
-  set_fact:
-    _rbd_target_api_handler_called: False
+- name: Set _rbd_target_api_handler_called after restart
+  ansible.builtin.set_fact:
+    _rbd_target_api_handler_called: false
 
-- name: set _rbd_target_gw_handler_called before restart
-  set_fact:
-    _rbd_target_gw_handler_called: True
+- name: Set _rbd_target_gw_handler_called before restart
+  ansible.builtin.set_fact:
+    _rbd_target_gw_handler_called: true
 
-- name: restart rbd-target-gw
-  service:
+- name: Restart rbd-target-gw
+  ansible.builtin.service:
     name: rbd-target-gw
     state: restarted
   when:
@@ -33,8 +33,8 @@
     - ceph_rbd_target_gw_stat.get('stdout_lines', [])|length != 0
   with_items: "{{ groups[iscsi_gw_group_name] }}"
   delegate_to: "{{ item }}"
-  run_once: True
+  run_once: true
 
-- name: set _rbd_target_gw_handler_called after restart
-  set_fact:
-    _rbd_target_gw_handler_called: False
+- name: Set _rbd_target_gw_handler_called after restart
+  ansible.builtin.set_fact:
+    _rbd_target_gw_handler_called: false

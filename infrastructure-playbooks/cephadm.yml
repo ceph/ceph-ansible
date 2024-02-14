@@ -1,5 +1,5 @@
 ---
-- name: gather facts and prepare system for cephadm
+- name: Gather facts and prepare system for cephadm
   hosts:
     - "{{ mon_group_name|default('mons') }}"
     - "{{ osd_group_name|default('osds') }}"
@@ -15,23 +15,24 @@
   vars:
     delegate_facts_host: true
   tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - name: validate if monitor group doesn't exist or empty
-      fail:
+    - name: Validate if monitor group doesn't exist or empty
+      ansible.builtin.fail:
         msg: "you must add a [mons] group and add at least one node."
       run_once: true
       when: groups[mon_group_name] is undefined or groups[mon_group_name] | length == 0
 
-    - name: validate if manager group doesn't exist or empty
-      fail:
+    - name: Validate if manager group doesn't exist or empty
+      ansible.builtin.fail:
         msg: "you must add a [mgrs] group and add at least one node."
       run_once: true
       when: groups[mgr_group_name] is undefined or groups[mgr_group_name] | length == 0
 
-    - name: validate monitor network configuration
-      fail:
+    - name: Validate monitor network configuration
+      ansible.builtin.fail:
         msg: "Either monitor_address, monitor_address_block or monitor_interface must be provided"
       when:
         - mon_group_name in group_names
@@ -39,38 +40,38 @@
         - monitor_address_block == 'subnet'
         - monitor_interface == 'interface'
 
-    - name: validate dashboard configuration
+    - name: Validate dashboard configuration
       when: dashboard_enabled | bool
       run_once: true
       block:
-        - name: fail if [monitoring] group doesn't exist or empty
-          fail:
+        - name: Fail if [monitoring] group doesn't exist or empty
+          ansible.builtin.fail:
             msg: "you must add a [monitoring] group and add at least one node."
           when: groups[monitoring_group_name] is undefined or groups[monitoring_group_name] | length == 0
 
-        - name: fail when dashboard_admin_password is not set
-          fail:
+        - name: Fail when dashboard_admin_password is not set
+          ansible.builtin.fail:
             msg: "you must set dashboard_admin_password."
           when: dashboard_admin_password is undefined
 
-    - name: validate container registry credentials
-      fail:
+    - name: Validate container registry credentials
+      ansible.builtin.fail:
         msg: 'ceph_docker_registry_username and/or ceph_docker_registry_password variables need to be set'
       when:
         - ceph_docker_registry_auth | bool
         - (ceph_docker_registry_username is not defined or ceph_docker_registry_password is not defined) or
           (ceph_docker_registry_username | length == 0 or ceph_docker_registry_password | length == 0)
 
-    - name: gather facts
-      setup:
+    - name: Gather facts
+      ansible.builtin.setup:
         gather_subset:
           - 'all'
           - '!facter'
           - '!ohai'
       when: not delegate_facts_host | bool
 
-    - name: gather and delegate facts
-      setup:
+    - name: Gather and delegate facts
+      ansible.builtin.setup:
         gather_subset:
           - 'all'
           - '!facter'
@@ -81,76 +82,82 @@
       run_once: true
       when: delegate_facts_host | bool
 
-    - import_role:
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
         name: ceph-facts
         tasks_from: container_binary.yml
 
-    - name: check if it is atomic host
-      stat:
+    - name: Check if it is atomic host
+      ansible.builtin.stat:
         path: /run/ostree-booted
       register: stat_ostree
 
-    - name: set_fact is_atomic
-      set_fact:
+    - name: Set_fact is_atomic
+      ansible.builtin.set_fact:
         is_atomic: "{{ stat_ostree.stat.exists }}"
 
-    - import_role:
+    - name: Import ceph-container-engine role
+      ansible.builtin.import_role:
         name: ceph-container-engine
 
-    - import_role:
+    - name: Import ceph-container-common role
+      ansible.builtin.import_role:
         name: ceph-container-common
         tasks_from: registry.yml
       when: ceph_docker_registry_auth | bool
 
-    - name: configure repository for installing cephadm
+    - name: Configure repository for installing cephadm
       vars:
         ceph_origin: repository
         ceph_repository: community
       block:
-        - name: validate repository variables
-          import_role:
+        - name: Validate repository variables
+          ansible.builtin.import_role:
             name: ceph-validate
             tasks_from: check_repository.yml
 
-        - name: configure repository
-          import_role:
+        - name: Configure repository
+          ansible.builtin.import_role:
             name: ceph-common
             tasks_from: "configure_repository.yml"
 
-    - name: install cephadm requirements
-      package:
+    - name: Install cephadm requirements
+      ansible.builtin.package:
         name: ['python3', 'lvm2']
       register: result
       until: result is succeeded
 
-    - name: install cephadm
-      package:
+    - name: Install cephadm
+      ansible.builtin.package:
         name: cephadm
       register: result
       until: result is succeeded
 
-    - name: set_fact cephadm_cmd
-      set_fact:
+    - name: Set_fact cephadm_cmd
+      ansible.builtin.set_fact:
         cephadm_cmd: "cephadm {{ '--docker' if container_binary == 'docker' else '' }}"
 
-- name: bootstrap the cluster
+- name: Bootstrap the cluster
   hosts: "{{ mon_group_name|default('mons') }}[0]"
   become: true
   gather_facts: false
   tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - import_role:
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
         name: ceph-facts
         tasks_from: set_monitor_address.yml
 
-    - name: create /etc/ceph directory
-      file:
+    - name: Create /etc/ceph directory
+      ansible.builtin.file:
         path: /etc/ceph
         state: directory
+        mode: "0755"
 
-    - name: bootstrap the new cluster
+    - name: Bootstrap the new cluster
       cephadm_bootstrap:
         mon_ip: "{{ _current_monitor_address }}"
         image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
@@ -164,46 +171,46 @@
         ssh_user: "{{ cephadm_ssh_user | default('root') }}"
         ssh_config: "{{ cephadm_ssh_config | default(omit) }}"
 
-    - name: set default container image in ceph configuration
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set global container_image {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+    - name: Set default container image in ceph configuration
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set global container_image {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: set container image base in ceph configuration
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_base {{ ceph_docker_registry }}/{{ ceph_docker_image }}"
+    - name: Set container image base in ceph configuration
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_base {{ ceph_docker_registry }}/{{ ceph_docker_image }}"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: set dashboard container image in ceph mgr configuration
+    - name: Set dashboard container image in ceph mgr configuration
       when: dashboard_enabled | bool
       block:
-        - name: set alertmanager container image in ceph configuration
-          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_alertmanager {{ alertmanager_container_image }}"
+        - name: Set alertmanager container image in ceph configuration
+          ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_alertmanager {{ alertmanager_container_image }}"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-        - name: set grafana container image in ceph configuration
-          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_grafana {{ grafana_container_image }}"
+        - name: Set grafana container image in ceph configuration
+          ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_grafana {{ grafana_container_image }}"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-        - name: set node-exporter container image in ceph configuration
-          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_node_exporter {{ node_exporter_container_image }}"
+        - name: Set node-exporter container image in ceph configuration
+          ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_node_exporter {{ node_exporter_container_image }}"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-        - name: set prometheus container image in ceph configuration
-          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_prometheus {{ prometheus_container_image }}"
+        - name: Set prometheus container image in ceph configuration
+          ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} config set mgr mgr/cephadm/container_image_prometheus {{ prometheus_container_image }}"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-- name: add the other nodes
+- name: Add the other nodes
   hosts:
     - "{{ mon_group_name|default('mons') }}"
     - "{{ osd_group_name|default('osds') }}"
@@ -217,11 +224,12 @@
   become: true
   gather_facts: false
   tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - name: get the cephadm ssh pub key
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} cephadm get-pub-key"
+    - name: Get the cephadm ssh pub key
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} cephadm get-pub-key"
       changed_when: false
       run_once: true
       register: cephadm_pubpkey
@@ -229,35 +237,35 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: allow cephadm key for {{ cephadm_ssh_user | default('root') }} account
-      authorized_key:
+    - name: Allow cephadm key
+      ansible.posix.authorized_key:
         user: "{{ cephadm_ssh_user | default('root') }}"
         key: '{{ cephadm_pubpkey.stdout }}'
 
-    - name: run cephadm prepare-host
-      command: cephadm prepare-host
+    - name: Run cephadm prepare-host
+      ansible.builtin.command: cephadm prepare-host
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: manage nodes with cephadm - ipv4
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }} {{ group_names | join(' ') }} {{ '_admin' if mon_group_name | default('mons') in group_names else '' }}"
+    - name: Manage nodes with cephadm - ipv4
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }} {{ group_names | join(' ') }} {{ '_admin' if mon_group_name | default('mons') in group_names else '' }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
       when: ip_version == 'ipv4'
 
-    - name: manage nodes with cephadm - ipv6
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ansible.utils.ipwrap }} {{ group_names | join(' ') }} {{ '_admin' if mon_group_name | default('mons') in group_names else '' }}"
+    - name: Manage nodes with cephadm - ipv6
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host add {{ ansible_facts['hostname'] }} {{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(public_network.split(',')) | last | ansible.utils.ipwrap }} {{ group_names | join(' ') }} {{ '_admin' if mon_group_name | default('mons') in group_names else '' }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
       when: ip_version == 'ipv6'
 
-    - name: add ceph label for core component
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host label add {{ ansible_facts['hostname'] }} ceph"
+    - name: Add ceph label for core component
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch host label add {{ ansible_facts['hostname'] }} ceph"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       when: inventory_hostname in groups.get(mon_group_name, []) or
@@ -269,22 +277,23 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-- name: adjust service placement
+- name: Adjust service placement
   hosts: "{{ mon_group_name|default('mons') }}[0]"
   become: true
   gather_facts: false
   tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - name: update the placement of monitor hosts
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply mon --placement='label:{{ mon_group_name }}'"
+    - name: Update the placement of monitor hosts
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply mon --placement='label:{{ mon_group_name }}'"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: waiting for the monitor to join the quorum...
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} quorum_status --format json"
+    - name: Waiting for the monitor to join the quorum...
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} quorum_status --format json"
       changed_when: false
       register: ceph_health_raw
       until: (ceph_health_raw.stdout | from_json)["quorum_names"] | length == groups.get(mon_group_name, []) | length
@@ -293,83 +302,85 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: update the placement of manager hosts
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply mgr --placement='label:{{ mgr_group_name }}'"
+    - name: Update the placement of manager hosts
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply mgr --placement='label:{{ mgr_group_name }}'"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: update the placement of crash hosts
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply crash --placement='label:ceph'"
+    - name: Update the placement of crash hosts
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply crash --placement='label:ceph'"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-- name: adjust monitoring service placement
+- name: Adjust monitoring service placement
   hosts: "{{ monitoring_group_name|default('monitoring') }}"
   become: true
   gather_facts: false
   tasks:
-    - import_role:
+    - name: Import ceph-defaults
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - name: with dashboard enabled
+    - name: With dashboard enabled
       when: dashboard_enabled | bool
       delegate_to: '{{ groups[mon_group_name][0] }}'
       run_once: true
       block:
-        - name: enable the prometheus module
-          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} mgr module enable prometheus"
+        - name: Enable the prometheus module
+          ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} mgr module enable prometheus"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-        - name: update the placement of alertmanager hosts
-          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply alertmanager --placement='label:{{ monitoring_group_name }}'"
+        - name: Update the placement of alertmanager hosts
+          ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply alertmanager --placement='label:{{ monitoring_group_name }}'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-        - name: update the placement of grafana hosts
-          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply grafana --placement='label:{{ monitoring_group_name }}'"
+        - name: Update the placement of grafana hosts
+          ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply grafana --placement='label:{{ monitoring_group_name }}'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-        - name: update the placement of prometheus hosts
-          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply prometheus --placement='label:{{ monitoring_group_name }}'"
+        - name: Update the placement of prometheus hosts
+          ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply prometheus --placement='label:{{ monitoring_group_name }}'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-        - name: update the placement of node-exporter hosts
-          command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply node-exporter --placement='*'"
+        - name: Update the placement of node-exporter hosts
+          ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply node-exporter --placement='*'"
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-- name: print information
+- name: Print information
   hosts: "{{ mon_group_name|default('mons') }}[0]"
   become: true
   gather_facts: false
   tasks:
-    - import_role:
+    - name: Import ceph-defaults
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - name: show ceph orchestrator services
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch ls --refresh"
+    - name: Show ceph orchestrator services
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch ls --refresh"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: show ceph orchestrator daemons
-      command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch ps --refresh"
+    - name: Show ceph orchestrator daemons
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch ps --refresh"
       changed_when: false
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: inform users about cephadm
-      debug:
+    - name: Inform users about cephadm
+      ansible.builtin.debug:
         msg: |
           This Ceph cluster is now ready to receive more configuration like
           adding OSD, MDS daemons, create pools or keyring.

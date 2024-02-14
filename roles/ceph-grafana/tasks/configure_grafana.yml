@@ -1,8 +1,8 @@
 ---
-- name: install ceph-grafana-dashboards package on RedHat or SUSE
-  package:
+- name: Install ceph-grafana-dashboards package on RedHat or SUSE
+  ansible.builtin.package:
     name: ceph-grafana-dashboards
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    state: "{{ (upgrade_ceph_packages | bool) | ternary('latest', 'present') }}"
   register: result
   until: result is succeeded
   when:
@@ -10,22 +10,22 @@
     - ansible_facts['os_family'] in ['RedHat', 'Suse']
   tags: package-install
 
-- name: make sure grafana is down
-  service:
+- name: Make sure grafana is down
+  ansible.builtin.service:
     name: grafana-server
     state: stopped
 
-- name: wait for grafana to be stopped
-  wait_for:
+- name: Wait for grafana to be stopped
+  ansible.builtin.wait_for:
     host: '{{ grafana_server_addr if ip_version == "ipv4" else grafana_server_addr[1:-1] }}'
     port: '{{ grafana_port }}'
     state: stopped
 
-- name: make sure grafana configuration directories exist
-  file:
+- name: Make sure grafana configuration directories exist
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    recurse: yes
+    recurse: true
     owner: "{{ grafana_uid }}"
     group: "{{ grafana_uid }}"
   with_items:
@@ -34,82 +34,84 @@
     - "/etc/grafana/provisioning/dashboards"
     - "/etc/grafana/provisioning/notifiers"
 
-- name: download ceph grafana dashboards
-  get_url:
+- name: Download ceph grafana dashboards
+  ansible.builtin.get_url:
     url: "https://raw.githubusercontent.com/ceph/ceph/{{ grafana_dashboard_version }}/monitoring/ceph-mixin/dashboards_out/{{ item }}"
     dest: "/etc/grafana/dashboards/ceph-dashboard/{{ item }}"
+    mode: "0644"
   with_items: "{{ grafana_dashboard_files }}"
   when:
     - not containerized_deployment | bool
     - not ansible_facts['os_family'] in ['RedHat', 'Suse']
 
-- name: write grafana.ini
+- name: Write grafana.ini
   openstack.config_template.config_template:
     src: grafana.ini.j2
     dest: /etc/grafana/grafana.ini
     owner: "{{ grafana_uid }}"
     group: "{{ grafana_uid }}"
-    mode: 0640
+    mode: "0640"
     config_type: ini
     config_overrides: "{{ grafana_conf_overrides }}"
 
-- name: write datasources provisioning config file
-  template:
+- name: Write datasources provisioning config file
+  ansible.builtin.template:
     src: datasources-ceph-dashboard.yml.j2
     dest: /etc/grafana/provisioning/datasources/ceph-dashboard.yml
     owner: "{{ grafana_uid }}"
     group: "{{ grafana_uid }}"
-    mode: 0640
+    mode: "0640"
 
 - name: Write dashboards provisioning config file
-  template:
+  ansible.builtin.template:
     src: dashboards-ceph-dashboard.yml.j2
     dest: /etc/grafana/provisioning/dashboards/ceph-dashboard.yml
     owner: "{{ grafana_uid }}"
     group: "{{ grafana_uid }}"
-    mode: 0640
+    mode: "0640"
   when: not containerized_deployment | bool
 
-- name: copy grafana SSL certificate file
-  copy:
+- name: Copy grafana SSL certificate file
+  ansible.builtin.copy:
     src: "{{ grafana_crt }}"
     dest: "/etc/grafana/ceph-dashboard.crt"
     owner: "{{ grafana_uid }}"
     group: "{{ grafana_uid }}"
-    mode: 0640
+    mode: "0640"
     remote_src: "{{ dashboard_tls_external | bool }}"
   when:
     - grafana_crt | length > 0
     - dashboard_protocol == "https"
 
-- name: copy grafana SSL certificate key
-  copy:
+- name: Copy grafana SSL certificate key
+  ansible.builtin.copy:
     src: "{{ grafana_key }}"
     dest: "/etc/grafana/ceph-dashboard.key"
     owner: "{{ grafana_uid }}"
     group: "{{ grafana_uid }}"
-    mode: 0440
+    mode: "0440"
     remote_src: "{{ dashboard_tls_external | bool }}"
   when:
     - grafana_key | length > 0
     - dashboard_protocol == "https"
 
-- name: generate a Self Signed OpenSSL certificate for dashboard
-  shell: |
+- name: Generate a Self Signed OpenSSL certificate for dashboard
+  ansible.builtin.shell: |
     test -f /etc/grafana/ceph-dashboard.key -a -f /etc/grafana/ceph-dashboard.crt || \
     (openssl req -new -nodes -x509 -subj '/O=IT/CN=ceph-grafana' -days 3650 -keyout /etc/grafana/ceph-dashboard.key -out /etc/grafana/ceph-dashboard.crt -extensions v3_ca && \
     chown {{ grafana_uid }}:{{ grafana_uid }} /etc/grafana/ceph-dashboard.key /etc/grafana/ceph-dashboard.crt)
+  changed_when: false
   when:
     - dashboard_protocol == "https"
     - grafana_key | length == 0 or grafana_crt | length == 0
 
-- name: enable and start grafana
-  service:
+- name: Enable and start grafana
+  ansible.builtin.service:
     name: grafana-server
     state: restarted
     enabled: true
 
-- name: wait for grafana to start
-  wait_for:
+- name: Wait for grafana to start
+  ansible.builtin.wait_for:
     host: '{{ grafana_server_addr if ip_version == "ipv4" else grafana_server_addr[1:-1] }}'
     port: '{{ grafana_port }}'

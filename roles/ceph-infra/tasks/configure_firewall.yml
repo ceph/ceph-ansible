@@ -1,34 +1,35 @@
 ---
-- name: check firewalld installation on redhat or SUSE/openSUSE
-  command: rpm -q firewalld  # noqa [303]
+- name: Check firewalld installation on redhat or SUSE/openSUSE
+  ansible.builtin.command: rpm -q firewalld  # noqa command-instead-of-module
   register: firewalld_pkg_query
   ignore_errors: true
-  check_mode: no
+  check_mode: false
   changed_when: false
   tags: firewall
 
-- when: (firewalld_pkg_query.get('rc', 1) == 0
-      or is_atomic | bool)
+- name: Configuring firewalld
+  when: (firewalld_pkg_query.get('rc', 1) == 0
+         or is_atomic | bool)
   tags: firewall
   block:
-    - name: install firewalld python binding
-      package:
+    - name: Install firewalld python binding
+      ansible.builtin.package:
         name: "python{{ ansible_facts['python']['version']['major'] }}-firewall"
       tags: with_pkg
       when: not is_atomic | bool
 
-    - name: start firewalld
-      service:
+    - name: Start firewalld
+      ansible.builtin.service:
         name: firewalld
         state: started
-        enabled: yes
+        enabled: true
       register: result
       retries: 5
       delay: 3
       until: result is succeeded
 
-    - name: open ceph networks on monitor
-      firewalld:
+    - name: Open ceph networks on monitor
+      ansible.posix.firewalld:
         zone: "{{ ceph_mon_firewall_zone }}"
         source: "{{ item }}"
         permanent: true
@@ -39,8 +40,8 @@
         - mon_group_name is defined
         - mon_group_name in group_names
 
-    - name: open ceph networks on manager when collocated
-      firewalld:
+    - name: Open ceph networks on manager when collocated
+      ansible.posix.firewalld:
         zone: "{{ ceph_mgr_firewall_zone }}"
         source: "{{ item }}"
         permanent: true
@@ -52,8 +53,8 @@
         - mon_group_name in group_names
         - mgr_group_name | length == 0
 
-    - name: open monitor and manager ports
-      firewalld:
+    - name: Open monitor and manager ports
+      ansible.posix.firewalld:
         service: "{{ item.service }}"
         zone: "{{ item.zone }}"
         permanent: true
@@ -66,8 +67,8 @@
         - mon_group_name is defined
         - mon_group_name in group_names
 
-    - name: open ceph networks on manager when dedicated
-      firewalld:
+    - name: Open ceph networks on manager when dedicated
+      ansible.posix.firewalld:
         zone: "{{ ceph_mgr_firewall_zone }}"
         source: "{{ item }}"
         permanent: true
@@ -79,8 +80,8 @@
         - mgr_group_name in group_names
         - mgr_group_name | length > 0
 
-    - name: open manager ports
-      firewalld:
+    - name: Open manager ports
+      ansible.posix.firewalld:
         service: ceph
         zone: "{{ ceph_mgr_firewall_zone }}"
         permanent: true
@@ -90,8 +91,8 @@
         - mgr_group_name is defined
         - mgr_group_name in group_names
 
-    - name: open ceph networks on osd
-      firewalld:
+    - name: Open ceph networks on osd
+      ansible.posix.firewalld:
         zone: "{{ ceph_osd_firewall_zone }}"
         source: "{{ item }}"
         permanent: true
@@ -102,8 +103,8 @@
         - osd_group_name is defined
         - osd_group_name in group_names
 
-    - name: open osd ports
-      firewalld:
+    - name: Open osd ports
+      ansible.posix.firewalld:
         service: ceph
         zone: "{{ ceph_osd_firewall_zone }}"
         permanent: true
@@ -113,8 +114,8 @@
         - osd_group_name is defined
         - osd_group_name in group_names
 
-    - name: open ceph networks on rgw
-      firewalld:
+    - name: Open ceph networks on rgw
+      ansible.posix.firewalld:
         zone: "{{ ceph_rgw_firewall_zone }}"
         source: "{{ item }}"
         permanent: true
@@ -125,8 +126,8 @@
         - rgw_group_name is defined
         - rgw_group_name in group_names
 
-    - name: open rgw ports
-      firewalld:
+    - name: Open rgw ports
+      ansible.posix.firewalld:
         port: "{{ item.radosgw_frontend_port }}/tcp"
         zone: "{{ ceph_rgw_firewall_zone }}"
         permanent: true
@@ -137,8 +138,8 @@
         - rgw_group_name is defined
         - rgw_group_name in group_names
 
-    - name: open ceph networks on mds
-      firewalld:
+    - name: Open ceph networks on mds
+      ansible.posix.firewalld:
         zone: "{{ ceph_mds_firewall_zone }}"
         source: "{{ item }}"
         permanent: true
@@ -149,8 +150,8 @@
         - mds_group_name is defined
         - mds_group_name in group_names
 
-    - name: open mds ports
-      firewalld:
+    - name: Open mds ports
+      ansible.posix.firewalld:
         service: ceph
         zone: "{{ ceph_mds_firewall_zone }}"
         permanent: true
@@ -161,8 +162,8 @@
         - mds_group_name is defined
         - mds_group_name in group_names
 
-    - name: open ceph networks on nfs
-      firewalld:
+    - name: Open ceph networks on nfs
+      ansible.posix.firewalld:
         zone: "{{ ceph_nfs_firewall_zone }}"
         source: "{{ item }}"
         permanent: true
@@ -173,8 +174,8 @@
         - nfs_group_name is defined
         - nfs_group_name in group_names
 
-    - name: open nfs ports
-      firewalld:
+    - name: Open nfs ports
+      ansible.posix.firewalld:
         service: nfs
         zone: "{{ ceph_nfs_firewall_zone }}"
         permanent: true
@@ -184,8 +185,8 @@
         - nfs_group_name is defined
         - nfs_group_name in group_names
 
-    - name: open nfs ports (portmapper)
-      firewalld:
+    - name: Open nfs ports (portmapper)
+      ansible.posix.firewalld:
         port: "111/tcp"
         zone: "{{ ceph_nfs_firewall_zone }}"
         permanent: true
@@ -195,8 +196,8 @@
         - nfs_group_name is defined
         - nfs_group_name in group_names
 
-    - name: open ceph networks on rbdmirror
-      firewalld:
+    - name: Open ceph networks on rbdmirror
+      ansible.posix.firewalld:
         zone: "{{ ceph_rbdmirror_firewall_zone }}"
         source: "{{ item }}"
         permanent: true
@@ -207,8 +208,8 @@
         - rbdmirror_group_name is defined
         - rbdmirror_group_name in group_names
 
-    - name: open rbdmirror ports
-      firewalld:
+    - name: Open rbdmirror ports
+      ansible.posix.firewalld:
         service: ceph
         zone: "{{ ceph_rbdmirror_firewall_zone }}"
         permanent: true
@@ -218,8 +219,8 @@
         - rbdmirror_group_name is defined
         - rbdmirror_group_name in group_names
 
-    - name: open ceph networks on iscsi
-      firewalld:
+    - name: Open ceph networks on iscsi
+      ansible.posix.firewalld:
         zone: "{{ ceph_iscsi_firewall_zone }}"
         source: "{{ item }}"
         permanent: true
@@ -230,8 +231,8 @@
         - iscsi_gw_group_name is defined
         - iscsi_gw_group_name in group_names
 
-    - name: open iscsi target ports
-      firewalld:
+    - name: Open iscsi target ports
+      ansible.posix.firewalld:
         port: "3260/tcp"
         zone: "{{ ceph_iscsi_firewall_zone }}"
         permanent: true
@@ -241,8 +242,8 @@
         - iscsi_gw_group_name is defined
         - iscsi_gw_group_name in group_names
 
-    - name: open iscsi api ports
-      firewalld:
+    - name: Open iscsi api ports
+      ansible.posix.firewalld:
         port: "{{ api_port | default(5000) }}/tcp"
         zone: "{{ ceph_iscsi_firewall_zone }}"
         permanent: true
@@ -252,8 +253,8 @@
         - iscsi_gw_group_name is defined
         - iscsi_gw_group_name in group_names
 
-    - name: open iscsi/prometheus port
-      firewalld:
+    - name: Open iscsi/prometheus port
+      ansible.posix.firewalld:
         port: "9287/tcp"
         zone: "{{ ceph_iscsi_firewall_zone }}"
         permanent: true
@@ -263,12 +264,12 @@
         - iscsi_gw_group_name is defined
         - iscsi_gw_group_name in group_names
 
-    - name: open dashboard ports
-      include_tasks: dashboard_firewall.yml
+    - name: Open dashboard ports
+      ansible.builtin.include_tasks: dashboard_firewall.yml
       when: dashboard_enabled | bool
 
-    - name: open ceph networks on haproxy
-      firewalld:
+    - name: Open ceph networks on haproxy
+      ansible.posix.firewalld:
         zone: "{{ ceph_rgwloadbalancer_firewall_zone }}"
         source: "{{ item }}"
         permanent: true
@@ -279,8 +280,8 @@
         - rgwloadbalancer_group_name is defined
         - rgwloadbalancer_group_name in group_names
 
-    - name: open haproxy ports
-      firewalld:
+    - name: Open haproxy ports
+      ansible.posix.firewalld:
         port: "{{ haproxy_frontend_port | default(80) }}/tcp"
         zone: "{{ ceph_rgwloadbalancer_firewall_zone }}"
         permanent: true
@@ -290,8 +291,8 @@
         - rgwloadbalancer_group_name is defined
         - rgwloadbalancer_group_name in group_names
 
-    - name: add rich rule for keepalived vrrp
-      firewalld:
+    - name: Add rich rule for keepalived vrrp
+      ansible.posix.firewalld:
         rich_rule: 'rule protocol value="vrrp" accept'
         permanent: true
         immediate: true

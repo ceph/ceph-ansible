@@ -1,72 +1,72 @@
 ---
-- name: handlers
+- name: Handlers
   when:
-     - not rolling_update | bool
-     - not docker2podman | default(False) | bool
+    - not rolling_update | bool
+    - not docker2podman | default(False) | bool
   block:
-    - name: make tempdir for scripts
-      tempfile:
+    - name: Make tempdir for scripts
+      ansible.builtin.tempfile:
         state: directory
         prefix: ceph_ansible
       listen:
-        - "restart ceph mons"
-        - "restart ceph osds"
-        - "restart ceph mdss"
-        - "restart ceph rgws"
-        - "restart ceph nfss"
-        - "restart ceph rbdmirrors"
-        - "restart ceph mgrs"
+        - "Restart ceph mons"
+        - "Restart ceph osds"
+        - "Restart ceph mdss"
+        - "Restart ceph rgws"
+        - "Restart ceph nfss"
+        - "Restart ceph rbdmirrors"
+        - "Restart ceph mgrs"
       register: tmpdirpath
       when: tmpdirpath is not defined or tmpdirpath.path is not defined or tmpdirpath.state=="absent"
 
-    - name: mons handler
-      include_tasks: handler_mons.yml
+    - name: Mons handler
+      ansible.builtin.include_tasks: handler_mons.yml
       when: mon_group_name in group_names
-      listen: "restart ceph mons"
+      listen: "Restart ceph mons"
 
-    - name: osds handler
-      include_tasks: handler_osds.yml
+    - name: Osds handler
+      ansible.builtin.include_tasks: handler_osds.yml
       when: osd_group_name in group_names
-      listen: "restart ceph osds"
+      listen: "Restart ceph osds"
 
-    - name: mdss handler
-      include_tasks: handler_mdss.yml
+    - name: Mdss handler
+      ansible.builtin.include_tasks: handler_mdss.yml
       when: mds_group_name in group_names
-      listen: "restart ceph mdss"
+      listen: "Restart ceph mdss"
 
-    - name: rgws handler
-      include_tasks: handler_rgws.yml
+    - name: Rgws handler
+      ansible.builtin.include_tasks: handler_rgws.yml
       when: rgw_group_name in group_names
-      listen: "restart ceph rgws"
+      listen: "Restart ceph rgws"
 
-    - name: nfss handler
-      include_tasks: handler_nfss.yml
+    - name: Nfss handler
+      ansible.builtin.include_tasks: handler_nfss.yml
       when: nfs_group_name in group_names
-      listen: "restart ceph nfss"
+      listen: "Restart ceph nfss"
 
-    - name: rbdmirrors handler
-      include_tasks: handler_rbdmirrors.yml
+    - name: Rbdmirrors handler
+      ansible.builtin.include_tasks: handler_rbdmirrors.yml
       when: rbdmirror_group_name in group_names
-      listen: "restart ceph rbdmirrors"
+      listen: "Restart ceph rbdmirrors"
 
-    - name: mgrs handler
-      include_tasks: handler_mgrs.yml
+    - name: Mgrs handler
+      ansible.builtin.include_tasks: handler_mgrs.yml
       when: mgr_group_name in group_names
-      listen: "restart ceph mgrs"
+      listen: "Restart ceph mgrs"
 
-    - name: tcmu-runner handler
-      include_tasks: handler_tcmu_runner.yml
+    - name: Tcmu-runner handler
+      ansible.builtin.include_tasks: handler_tcmu_runner.yml
       when: iscsi_gw_group_name in group_names
-      listen: "restart ceph tcmu-runner"
+      listen: "Restart ceph tcmu-runner"
 
-    - name: rbd-target-api and rbd-target-gw handler
-      include_tasks: handler_rbd_target_api_gw.yml
+    - name: Rbd-target-api and rbd-target-gw handler
+      ansible.builtin.include_tasks: handler_rbd_target_api_gw.yml
       when: iscsi_gw_group_name in group_names
-      listen: "restart ceph rbd-target-api-gw"
+      listen: "Restart ceph rbd-target-api-gw"
 
-    - name: ceph crash handler
-      include_tasks: handler_crash.yml
-      listen: "restart ceph crash"
+    - name: Ceph crash handler
+      ansible.builtin.include_tasks: handler_crash.yml
+      listen: "Restart ceph crash"
       when:
         - inventory_hostname in groups.get(mon_group_name, [])
           or inventory_hostname in groups.get(mgr_group_name, [])
@@ -75,17 +75,17 @@
           or inventory_hostname in groups.get(rgw_group_name, [])
           or inventory_hostname in groups.get(rbdmirror_group_name, [])
 
-    - name: remove tempdir for scripts
-      file:
+    - name: Remove tempdir for scripts
+      ansible.builtin.file:
         path: "{{ tmpdirpath.path }}"
         state: absent
       listen:
-        - "restart ceph mons"
-        - "restart ceph osds"
-        - "restart ceph mdss"
-        - "restart ceph rgws"
-        - "restart ceph nfss"
-        - "restart ceph rbdmirrors"
-        - "restart ceph mgrs"
+        - "Restart ceph mons"
+        - "Restart ceph osds"
+        - "Restart ceph mdss"
+        - "Restart ceph rgws"
+        - "Restart ceph nfss"
+        - "Restart ceph rbdmirrors"
+        - "Restart ceph mgrs"
       register: tmpdirpath
       when: tmpdirpath.path is defined

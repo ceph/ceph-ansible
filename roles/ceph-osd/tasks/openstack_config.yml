@@ -1,7 +1,7 @@
 ---
-- name: pool related tasks
+- name: Pool related tasks
   block:
-    - name: create openstack pool(s)
+    - name: Create openstack pool(s)
       ceph_pool:
         name: "{{ item.name }}"
         cluster: "{{ cluster }}"
@@ -21,9 +21,12 @@
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
-- name: create openstack cephx key(s)
+- name: Create openstack cephx key(s)
+  when:
+    - cephx | bool
+    - openstack_config | bool
   block:
-    - name: generate keys
+    - name: Generate keys
       ceph_key:
         name: "{{ item.name }}"
         caps: "{{ item.caps }}"
@@ -37,7 +40,7 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-    - name: get keys from monitors
+    - name: Get keys from monitors
       ceph_key:
         name: "{{ item.name }}"
         cluster: "{{ cluster }}"
@@ -51,8 +54,8 @@
       delegate_to: "{{ groups.get(mon_group_name)[0] }}"
       no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-    - name: copy ceph key(s) if needed
-      copy:
+    - name: Copy ceph key(s) if needed
+      ansible.builtin.copy:
         dest: "/etc/ceph/{{ cluster }}.{{ item.0.item.name }}.keyring"
         content: "{{ item.0.stdout + '\n' }}"
         owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
@@ -63,6 +66,3 @@
         - "{{ groups[mon_group_name] }}"
       delegate_to: "{{ item.1 }}"
       no_log: "{{ no_log_on_ceph_key_tasks }}"
-  when:
-    - cephx | bool
-    - openstack_config | bool

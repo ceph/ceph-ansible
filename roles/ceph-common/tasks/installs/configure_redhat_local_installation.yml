@@ -1,43 +1,45 @@
 ---
-- name: make sure /tmp exists
-  file:
+- name: Make sure /tmp exists
+  ansible.builtin.file:
     path: /tmp
     state: directory
+    mode: "0755"
   when: use_installer | bool
 
-- name: use mktemp to create name for rundep
-  tempfile:
+- name: Use mktemp to create name for rundep
+  ansible.builtin.tempfile:
     path: /tmp
     prefix: rundep.
   register: rundep_location
   when: use_installer | bool
 
-- name: copy rundep
-  copy:
+- name: Copy rundep
+  ansible.builtin.copy:
     src: "{{ ansible_dir }}/rundep"
     dest: "{{ rundep_location.path }}"
+    mode: preserve
   when: use_installer | bool
 
-- name: install ceph dependencies
-  script: "{{ ansible_dir }}/rundep_installer.sh {{ rundep_location.path }}"
+- name: Install ceph dependencies
+  ansible.builtin.script: "{{ ansible_dir }}/rundep_installer.sh {{ rundep_location.path }}"
   when: use_installer | bool
 
-- name: ensure rsync is installed
-  package:
+- name: Ensure rsync is installed
+  ansible.builtin.package:
     name: rsync
     state: present
   register: result
   until: result is succeeded
 
-- name: synchronize ceph install
-  synchronize:
+- name: Synchronize ceph install
+  ansible.posix.synchronize:
     src: "{{ ceph_installation_dir }}/"
     dest: "/"
 
-- name: create user group ceph
-  group:
+- name: Create user group ceph
+  ansible.builtin.group:
     name: 'ceph'
 
-- name: create user ceph
-  user:
+- name: Create user ceph
+  ansible.builtin.user:
     name: 'ceph'

@@ -1,30 +1,33 @@
 ---
-- name: include create_ceph_initial_dirs.yml
-  include_tasks: create_ceph_initial_dirs.yml
+- name: Include create_ceph_initial_dirs.yml
+  ansible.builtin.include_tasks: create_ceph_initial_dirs.yml
   when: containerized_deployment | bool
 
-- name: include_tasks rgw_systemd_environment_file.yml
-  include_tasks: rgw_systemd_environment_file.yml
+- name: Include_tasks rgw_systemd_environment_file.yml
+  ansible.builtin.include_tasks: rgw_systemd_environment_file.yml
   when: inventory_hostname in groups.get(rgw_group_name, [])
 
-- name: config file operations related to OSDs
+- name: Config file operations related to OSDs
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     # the rolling_update.yml playbook sets num_osds to the number of currently
     # running osds
     - not rolling_update | bool
   block:
-    - name: reset num_osds
-      set_fact:
+    - name: Reset num_osds
+      ansible.builtin.set_fact:
         num_osds: 0
 
-    - name: count number of osds for lvm scenario
-      set_fact:
+    - name: Count number of osds for lvm scenario
+      ansible.builtin.set_fact:
         num_osds: "{{ num_osds | int + (lvm_volumes | length | int) }}"
       when: lvm_volumes | default([]) | length > 0
 
-    - block:
-        - name: look up for ceph-volume rejected devices
+    - name: Ceph-volume pre-requisites tasks
+      when:
+        - devices | default([]) | length > 0
+      block:
+        - name: Look up for ceph-volume rejected devices
           ceph_volume:
             cluster: "{{ cluster }}"
             action: "inventory"
@@ -35,17 +38,17 @@
             CEPH_CONTAINER_BINARY: "{{ container_binary }}"
             PYTHONIOENCODING: utf-8
 
-        - name: set_fact rejected_devices
-          set_fact:
+        - name: Set_fact rejected_devices
+          ansible.builtin.set_fact:
             _rejected_devices: "{{ _rejected_devices | default([]) + [item.path] }}"
           with_items: "{{ rejected_devices.stdout | default('{}') | from_json }}"
           when: "'Used by ceph-disk' in item.rejected_reasons"
 
-        - name: set_fact _devices
-          set_fact:
+        - name: Set_fact _devices
+          ansible.builtin.set_fact:
             _devices: "{{ devices | difference(_rejected_devices | default([])) }}"
 
-        - name: run 'ceph-volume lvm batch --report' to see how many osds are to be created
+        - name: Run 'ceph-volume lvm batch --report' to see how many osds are to be created
           ceph_volume:
             cluster: "{{ cluster }}"
             objectstore: "{{ osd_objectstore }}"
@@ -62,23 +65,21 @@
             PYTHONIOENCODING: utf-8
           when: _devices | default([]) | length > 0
 
-        - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report' (legacy report)
-          set_fact:
+        - name: Set_fact num_osds from the output of 'ceph-volume lvm batch --report' (legacy report)
+          ansible.builtin.set_fact:
             num_osds: "{{ num_osds | int + ((lvm_batch_report.stdout | default('{}') | from_json).osds | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
           when:
             - (lvm_batch_report.stdout | default('{}') | from_json) is mapping
             - (lvm_batch_report.stdout | default('{}') | from_json).changed | default(true) | bool
 
-        - name: set_fact num_osds from the output of 'ceph-volume lvm batch --report' (new report)
-          set_fact:
+        - name: Set_fact num_osds from the output of 'ceph-volume lvm batch --report' (new report)
+          ansible.builtin.set_fact:
             num_osds: "{{ num_osds | int + ((lvm_batch_report.stdout | default('{}') | from_json) | default([]) | length | int) + (_rejected_devices | default([]) | length | int) }}"
           when:
             - (lvm_batch_report.stdout | default('{}') | from_json) is not mapping
             - (lvm_batch_report.stdout | default('{}') | from_json).changed | default(true) | bool
-      when:
-        - devices | default([]) | length > 0
 
-    - name: run 'ceph-volume lvm list' to see how many osds have already been created
+    - name: Run 'ceph-volume lvm list' to see how many osds have already been created
       ceph_volume:
         action: "list"
       register: lvm_list
@@ -89,31 +90,31 @@
         PYTHONIOENCODING: utf-8
       changed_when: false
 
-    - name: set_fact num_osds (add existing osds)
-      set_fact:
+    - name: Set_fact num_osds (add existing osds)
+      ansible.builtin.set_fact:
         num_osds: "{{ num_osds | int + (lvm_list.stdout | default('{}') | from_json | dict2items | map(attribute='value') | flatten | map(attribute='devices') | sum(start=[]) | difference(lvm_volumes | default([]) | map(attribute='data')) | length | int) }}"
 
-- name: set osd related config facts
+- name: Set osd related config facts
   when: inventory_hostname in groups.get(osd_group_name, [])
   block:
-    - name: set_fact _osd_memory_target, override from ceph_conf_overrides
-      set_fact:
+    - name: Set_fact _osd_memory_target, override from ceph_conf_overrides
+      ansible.builtin.set_fact:
         _osd_memory_target: "{{ item }}"
       loop:
         - "{{ ceph_conf_overrides.get('osd', {}).get('osd memory target', '') }}"
         - "{{ ceph_conf_overrides.get('osd', {}).get('osd_memory_target', '') }}"
       when: item
 
-    - name: set_fact _osd_memory_target
-      set_fact:
+    - name: Set_fact _osd_memory_target
+      ansible.builtin.set_fact:
         _osd_memory_target: "{{ ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) | int }}"
       when:
         - _osd_memory_target is undefined
         - num_osds | default(0) | int > 0
         - ((ansible_facts['memtotal_mb'] * 1048576 * safety_factor | float) / num_osds | float) > (osd_memory_target | float)
 
-- name: create ceph conf directory
-  file:
+- name: Create ceph conf directory
+  ansible.builtin.file:
     path: "/etc/ceph"
     state: directory
     owner: "ceph"
@@ -121,13 +122,13 @@
     mode: "{{ ceph_directories_mode }}"
   when: not containerized_deployment | bool
 
-- name: import_role ceph-facts
-  import_role:
+- name: Import_role ceph-facts
+  ansible.builtin.import_role:
     name: ceph-facts
     tasks_from: set_radosgw_address.yml
   when: inventory_hostname in groups.get(rgw_group_name, [])
 
-- name: "generate {{ cluster }}.conf configuration file"
+- name: Generate Ceph file
   openstack.config_template.config_template:
     src: "ceph.conf.j2"
     dest: "{{ ceph_conf_key_directory }}/{{ cluster }}.conf"
@@ -136,10 +137,10 @@
     mode: "0644"
     config_type: ini
   notify:
-    - restart ceph mons
-    - restart ceph osds
-    - restart ceph mdss
-    - restart ceph rgws
-    - restart ceph mgrs
-    - restart ceph rbdmirrors
-    - restart ceph rbd-target-api-gw
+    - Restart ceph mons
+    - Restart ceph osds
+    - Restart ceph mdss
+    - Restart ceph rgws
+    - Restart ceph mgrs
+    - Restart ceph rbdmirrors
+    - Restart ceph rbd-target-api-gw

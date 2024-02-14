@@ -1,14 +1,15 @@
 ---
-- name: ensure systemd service override directory exists
-  file:
+- name: Ensure systemd service override directory exists
+  ansible.builtin.file:
     state: directory
     path: "/etc/systemd/system/ceph-mon@.service.d/"
+    mode: "0755"
   when:
     - not containerized_deployment | bool
     - ceph_mon_systemd_overrides is defined
     - ansible_facts['service_mgr'] == 'systemd'
 
-- name: add ceph-mon systemd service overrides
+- name: Add ceph-mon systemd service overrides
   openstack.config_template.config_template:
     src: "ceph-mon.service.d-overrides.j2"
     dest: "/etc/systemd/system/ceph-mon@.service.d/ceph-mon-systemd-overrides.conf"
@@ -19,14 +20,14 @@
     - ceph_mon_systemd_overrides is defined
     - ansible_facts['service_mgr'] == 'systemd'
 
-- name: include_tasks systemd.yml
-  include_tasks: systemd.yml
+- name: Include_tasks systemd.yml
+  ansible.builtin.include_tasks: systemd.yml
   when: containerized_deployment | bool
 
-- name: start the monitor service
-  systemd:
+- name: Start the monitor service
+  ansible.builtin.systemd:
     name: ceph-mon@{{ monitor_name if not containerized_deployment | bool else ansible_facts['hostname'] }}
     state: started
-    enabled: yes
-    masked: no
-    daemon_reload: yes
+    enabled: true
+    masked: false
+    daemon_reload: true

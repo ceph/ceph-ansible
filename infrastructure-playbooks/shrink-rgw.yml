@@ -11,19 +11,19 @@
 #     automation scripts to avoid interactive prompt.
 
 
-- name: confirm whether user really meant to remove rgw from the ceph cluster
+- name: Confirm whether user really meant to remove rgw from the ceph cluster
   hosts: localhost
   become: false
   gather_facts: false
   vars_prompt:
-    - name: ireallymeanit
+    - name: ireallymeanit  # noqa: name[casing]
       prompt: Are you sure you want to shrink the cluster?
       default: 'no'
-      private: no
+      private: false
   tasks:
-    - name: exit playbook, if no rgw was given
+    - name: Exit playbook, if no rgw was given
       when: rgw_to_kill is not defined or rgw_to_kill | length == 0
-      fail:
+      ansible.builtin.fail:
         msg: >
           rgw_to_kill must be declared.
           Exiting shrink-cluster playbook, no RGW was removed. On the command
@@ -31,82 +31,85 @@
           "-e rgw_to_kill=ceph.rgw0 argument".  You can only remove a single
           RGW each time the playbook runs.
 
-    - name: exit playbook, if user did not mean to shrink cluster
+    - name: Exit playbook, if user did not mean to shrink cluster
       when: ireallymeanit != 'yes'
-      fail:
+      ansible.builtin.fail:
         msg: >
           Exiting shrink-mon playbook, no monitor was removed. To shrink the
           cluster, either say 'yes' on the prompt or use
           '-e ireallymeanit=yes' on the command line when  invoking the playbook
 
-- name: gather facts and mons and rgws
+- name: Gather facts and mons and rgws
   hosts:
     - "{{ mon_group_name | default('mons') }}[0]"
     - "{{ rgw_group_name | default('rgws') }}"
   become: true
   gather_facts: false
   tasks:
-    - name: gather facts
-      setup:
+    - name: Gather facts
+      ansible.builtin.setup:
         gather_subset:
           - 'all'
           - '!facter'
           - '!ohai'
 
-- hosts: mons[0]
+- name: Shrink rgw service
+  hosts: mons[0]
   become: true
   gather_facts: false
   pre_tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - import_role:
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
         name: ceph-facts
         tasks_from: container_binary
 
-    - name: set_fact container_exec_cmd for mon0
-      set_fact:
+    - name: Set_fact container_exec_cmd for mon0
+      ansible.builtin.set_fact:
         container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_facts['hostname'] }}"
       when: containerized_deployment | bool
 
-    - name: exit playbook, if can not connect to the cluster
-      command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} health"
+    - name: Exit playbook, if can not connect to the cluster
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} health"
       register: ceph_health
       changed_when: false
       until: ceph_health is succeeded
       retries: 5
       delay: 2
 
-    - name: get rgw instances
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
+    - name: Get rgw instances
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
       register: rgw_instances
       changed_when: false
 
 
-    - name: exit playbook, if the rgw_to_kill doesn't exist
+    - name: Exit playbook, if the rgw_to_kill doesn't exist
       when: rgw_to_kill not in (rgw_instances.stdout | from_json).services.rgw.daemons.keys() | list
-      fail:
+      ansible.builtin.fail:
         msg: >
           It seems that the rgw instance given is not part of the ceph cluster. Please
           make sure it is.
           The rgw instance format is $(hostname}.rgw$(instance number).
   tasks:
-    - name: get rgw host running the rgw instance to kill
-      set_fact:
+    - name: Get rgw host running the rgw instance to kill
+      ansible.builtin.set_fact:
         rgw_host: '{{ item }}'
       with_items: '{{ groups[rgw_group_name] }}'
       when: hostvars[item]['ansible_facts']['hostname'] == rgw_to_kill.split('.')[0]
 
-    - name: stop rgw service
-      service:
+    - name: Stop rgw service
+      ansible.builtin.service:
         name: ceph-radosgw@rgw.{{ rgw_to_kill }}
         state: stopped
-        enabled: no
+        enabled: false
       delegate_to: "{{ rgw_host }}"
       failed_when: false
 
-    - name: ensure that the rgw is stopped
-      command: "systemctl is-active ceph-radosgw@rgw.{{ rgw_to_kill }}"  # noqa 303
+    - name: Ensure that the rgw is stopped
+      ansible.builtin.command: "systemctl is-active ceph-radosgw@rgw.{{ rgw_to_kill }}"  # noqa command-instead-of-module
       register: rgw_to_kill_status
       failed_when: rgw_to_kill_status.rc == 0
       changed_when: false
@@ -114,8 +117,8 @@
       retries: 5
       delay: 2
 
-    - name: exit if rgw_to_kill is reported in ceph status
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
+    - name: Exit if rgw_to_kill is reported in ceph status
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
       register: ceph_status
       changed_when: false
       failed_when:
@@ -127,12 +130,12 @@
       retries: 3
       delay: 3
 
-    - name: purge directories related to rgw
-      file:
+    - name: Purge directories related to rgw
+      ansible.builtin.file:
         path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_to_kill }}
         state: absent
       delegate_to: "{{ rgw_host }}"
   post_tasks:
-    - name: show ceph health
-      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s"
+    - name: Show ceph health
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} -s"
       changed_when: false

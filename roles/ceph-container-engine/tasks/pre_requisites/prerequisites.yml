@@ -1,54 +1,55 @@
 ---
-- name: include specific variables
-  include_vars: "{{ item }}"
+- name: Include specific variables
+  ansible.builtin.include_vars: "{{ item }}"
   with_first_found:
     - "{{ ansible_facts['distribution'] }}-{{ ansible_facts['distribution_major_version'] }}.yml"
     - "{{ ansible_facts['os_family'] }}.yml"
   when: container_package_name is undefined and container_service_name is undefined
 
-- name: debian based systems tasks
-  include_tasks: debian_prerequisites.yml
+- name: Debian based systems tasks
+  ansible.builtin.include_tasks: debian_prerequisites.yml
   when:
     - ansible_facts['os_family'] == 'Debian'
   tags: with_pkg
 
-- name: install container packages
-  package:
+- name: Install container packages
+  ansible.builtin.package:
     name: '{{ container_package_name }}'
     update_cache: true
   register: result
   until: result is succeeded
   tags: with_pkg
 
-- name: install lvm2 package
-  package:
+- name: Install lvm2 package
+  ansible.builtin.package:
     name: lvm2
   register: result
   until: result is succeeded
   tags: with_pkg
   when: inventory_hostname in groups.get(osd_group_name, [])
 
-- name: extra configuration for docker
+- name: Extra configuration for docker
   when: container_service_name == 'docker'
   block:
-    - name: create the systemd docker override directory
-      file:
+    - name: Create the systemd docker override directory
+      ansible.builtin.file:
         path: /etc/systemd/system/docker.service.d
         state: directory
+        mode: "0755"
       when: ceph_docker_http_proxy is defined or ceph_docker_https_proxy is defined
 
-    - name: create the systemd docker override file
-      template:
+    - name: Create the systemd docker override file
+      ansible.builtin.template:
         src: docker-proxy.conf.j2
         dest: /etc/systemd/system/docker.service.d/proxy.conf
-        mode: 0600
+        mode: "0600"
         owner: root
         group: root
       register: proxy_created
       when: ceph_docker_http_proxy is defined or ceph_docker_https_proxy is defined
 
-    - name: remove docker proxy configuration
-      file:
+    - name: Remove docker proxy configuration
+      ansible.builtin.file:
         path: /etc/systemd/system/docker.service.d/proxy.conf
         state: absent
       register: proxy_removed
@@ -60,17 +61,17 @@
     # have an immediate effect and not wait the end of the play.
     # using flush_handlers via the meta action plugin isn't enough too because
     # it flushes all handlers and not only the one notified in this role.
-    - name: restart docker
-      systemd:
+    - name: Restart docker
+      ansible.builtin.systemd:
         name: "{{ container_service_name }}"
         state: restarted
-        daemon_reload: yes
+        daemon_reload: true
       when: proxy_created.changed | bool or proxy_removed.changed | bool
 
-    - name: start container service
-      service:
+    - name: Start container service
+      ansible.builtin.service:
         name: '{{ container_service_name }}'
         state: started
-        enabled: yes
+        enabled: true
       tags:
         with_pkg

@@ -1,5 +1,5 @@
 ---
-- name: get current default crush rule details
+- name: Get current default crush rule details
   ceph_crush_rule:
     cluster: "{{ cluster }}"
     state: info
@@ -10,9 +10,9 @@
   delegate_to: "{{ delegated_node | default(groups[mon_group_name][0]) }}"
   run_once: true
 
-- name: get current default crush rule name
-  set_fact:
+- name: Get current default crush rule name
+  ansible.builtin.set_fact:
     ceph_osd_pool_default_crush_rule_name: "{{ item.rule_name }}"
   with_items: "{{ default_crush_rule_details.stdout | default('{}', True) | from_json }}"
-  run_once: True
+  run_once: true
   when: item.rule_id | int == osd_pool_default_crush_rule | int

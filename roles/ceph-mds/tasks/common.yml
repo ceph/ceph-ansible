@@ -1,6 +1,6 @@
 ---
-- name: create bootstrap-mds and mds directories
-  file:
+- name: Create bootstrap-mds and mds directories
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
@@ -10,7 +10,7 @@
     - /var/lib/ceph/bootstrap-mds/
     - /var/lib/ceph/mds/{{ cluster }}-{{ ansible_facts['hostname'] }}
 
-- name: get keys from monitors
+- name: Get keys from monitors
   ceph_key:
     name: "{{ item.name }}"
     cluster: "{{ cluster }}"
@@ -30,8 +30,8 @@
     - item.copy_key | bool
   no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-- name: copy ceph key(s) if needed
-  copy:
+- name: Copy ceph key(s) if needed
+  ansible.builtin.copy:
     dest: "{{ item.item.path }}"
     content: "{{ item.stdout + '\n' }}"
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
@@ -43,7 +43,7 @@
     - item.item.copy_key | bool
   no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-- name: create mds keyring
+- name: Create mds keyring
   ceph_key:
     name: "mds.{{ ansible_facts['hostname'] }}"
     cluster: "{{ cluster }}"

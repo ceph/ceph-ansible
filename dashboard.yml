@@ -1,5 +1,6 @@
 ---
-- hosts:
+- name: Deploy node_exporter
+  hosts:
     - "{{ mon_group_name|default('mons') }}"
     - "{{ osd_group_name|default('osds') }}"
     - "{{ mds_group_name|default('mdss') }}"
@@ -12,75 +13,91 @@
   gather_facts: false
   become: true
   pre_tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
       tags: ['ceph_update_config']
 
-    - name: set ceph node exporter install 'In Progress'
+    - name: Set ceph node exporter install 'In Progress'
       run_once: true
-      set_stats:
+      ansible.builtin.set_stats:
         data:
           installer_phase_ceph_node_exporter:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
   tasks:
-    - import_role:
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
         name: ceph-facts
       tags: ['ceph_update_config']
-    - import_role:
+
+    - name: Import ceph-container-engine
+      ansible.builtin.import_role:
         name: ceph-container-engine
-    - import_role:
+
+    - name: Import ceph-container-common role
+      ansible.builtin.import_role:
         name: ceph-container-common
         tasks_from: registry
       when:
         - not containerized_deployment | bool
         - ceph_docker_registry_auth | bool
-    - import_role:
+
+    - name: Import ceph-node-exporter role
+      ansible.builtin.import_role:
         name: ceph-node-exporter
 
   post_tasks:
-    - name: set ceph node exporter install 'Complete'
+    - name: Set ceph node exporter install 'Complete'
       run_once: true
-      set_stats:
+      ansible.builtin.set_stats:
         data:
           installer_phase_ceph_node_exporter:
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: "{{ monitoring_group_name | default('monitoring') }}"
+- name: Deploy grafana and prometheus
+  hosts: "{{ monitoring_group_name | default('monitoring') }}"
   gather_facts: false
   become: true
   pre_tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
       tags: ['ceph_update_config']
 
-    - name: set ceph grafana install 'In Progress'
+    - name: Set ceph grafana install 'In Progress'
       run_once: true
-      set_stats:
+      ansible.builtin.set_stats:
         data:
           installer_phase_ceph_grafana:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
   tasks:
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
+    # - ansible.builtin.import_role:
+    #     name: ceph-facts
+    #   tags: ['ceph_update_config']
+
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
         name: ceph-facts
         tasks_from: grafana
       tags: ['ceph_update_config']
-    - import_role:
+
+    - name: Import ceph-prometheus role
+      ansible.builtin.import_role:
         name: ceph-prometheus
-    - import_role:
+
+    - name: Import ceph-grafana role
+      ansible.builtin.import_role:
         name: ceph-grafana
 
   post_tasks:
-    - name: set ceph grafana install 'Complete'
+    - name: Set ceph grafana install 'Complete'
       run_once: true
-      set_stats:
+      ansible.builtin.set_stats:
         data:
           installer_phase_ceph_grafana:
             status: "Complete"
@@ -88,37 +105,44 @@
 
 # using groups[] here otherwise it can't fallback to the mon if there's no mgr group.
 # adding an additional | default(omit) in case where no monitors are present (external ceph cluster)
-- hosts: "{{ groups[mgr_group_name|default('mgrs')] | default(groups[mon_group_name|default('mons')]) | default(omit) }}"
+- name: Deploy dashboard
+  hosts: "{{ groups['mgrs'] | default(groups['mons']) | default(omit) }}"
   gather_facts: false
   become: true
   pre_tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
       tags: ['ceph_update_config']
 
-    - name: set ceph dashboard install 'In Progress'
+    - name: Set ceph dashboard install 'In Progress'
       run_once: true
-      set_stats:
+      ansible.builtin.set_stats:
         data:
           installer_phase_ceph_dashboard:
             status: "In Progress"
             start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
   tasks:
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
+    # - name: Import ceph-facts role
+    #   ansible.builtin.import_role:
+    #     name: ceph-facts
+    #   tags: ['ceph_update_config']
+
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
         name: ceph-facts
         tasks_from: grafana
       tags: ['ceph_update_config']
-    - import_role:
+
+    - name: Import ceph-dashboard role
+      ansible.builtin.import_role:
         name: ceph-dashboard
 
   post_tasks:
-    - name: set ceph dashboard install 'Complete'
+    - name: Set ceph dashboard install 'Complete'
       run_once: true
-      set_stats:
+      ansible.builtin.set_stats:
         data:
           installer_phase_ceph_dashboard:
             status: "Complete"

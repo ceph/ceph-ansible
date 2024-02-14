@@ -1,20 +1,20 @@
 ---
-- name: install dependencies for apt modules
-  package:
+- name: Install dependencies for apt modules
+  ansible.builtin.package:
     name: ['apt-transport-https', 'ca-certificates', 'gnupg', 'software-properties-common']
-    update_cache: yes
+    update_cache: true
   register: result
   until: result is succeeded
 
-- name: configure debian ceph community repository stable key
-  apt_key:
-    data: "{{ lookup('file', role_path+'/files/cephstable.asc') }}"
+- name: Configure debian ceph community repository stable key
+  ansible.builtin.apt_key:
+    data: "{{ lookup('file', role_path + '/files/cephstable.asc') }}"
     state: present
   register: result
   until: result is succeeded
 
-- name: configure debian ceph stable community repository
-  apt_repository:
+- name: Configure debian ceph stable community repository
+  ansible.builtin.apt_repository:
     repo: "deb {{ ceph_stable_repo }} {{ ceph_stable_distro_source | default(ansible_facts['distribution_release']) }} main"
     state: present
-    update_cache: yes
+    update_cache: true

@@ -13,17 +13,17 @@
 #     Overrides the prompt using -e option. Can be used in
 #     automation scripts to avoid interactive prompt.
 
-- name: confirm whether user really meant to purge the dashboard
+- name: Confirm whether user really meant to purge the dashboard
   hosts: localhost
   gather_facts: false
   vars_prompt:
-    - name: ireallymeanit
+    - name: ireallymeanit  # noqa: name[casing]
       prompt: Are you sure you want to purge the dashboard?
       default: 'no'
-      private: no
+      private: false
   tasks:
-    - name: exit playbook, if user did not mean to purge dashboard
-      fail:
+    - name: Exit playbook, if user did not mean to purge dashboard
+      ansible.builtin.fail:
         msg: >
           "Exiting purge-dashboard playbook, dashboard was NOT purged.
            To purge the dashboard, either say 'yes' on the prompt or
@@ -31,18 +31,18 @@
            invoking the playbook"
       when: ireallymeanit != 'yes'
 
-    - name: import_role ceph-defaults
-      import_role:
+    - name: Import_role ceph-defaults
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - name: check if a legacy grafana-server group exists
-      import_role:
+    - name: Check if a legacy grafana-server group exists
+      ansible.builtin.import_role:
         name: ceph-facts
         tasks_from: convert_grafana_server_group_name.yml
       when: groups.get((grafana_server_group_name | default('grafana-server')), []) | length > 0
 
 
-- name: gather facts on all hosts
+- name: Gather facts on all hosts
   hosts:
     - "{{ mon_group_name|default('mons') }}"
     - "{{ osd_group_name|default('osds') }}"
@@ -55,9 +55,11 @@
     - "{{ monitoring_group_name | default('monitoring') }}"
   become: true
   tasks:
-    - debug: msg="gather facts on all Ceph hosts for following reference"
+    - name: Gather facts on all Ceph hosts for following reference
+      ansible.builtin.debug:
+        msg: "gather facts on all Ceph hosts for following reference"
 
-- name: purge node exporter
+- name: Purge node exporter
   hosts:
     - "{{ mon_group_name|default('mons') }}"
     - "{{ osd_group_name|default('osds') }}"
@@ -71,58 +73,62 @@
   gather_facts: false
   become: true
   tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - import_role:
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
         name: ceph-facts
         tasks_from: container_binary
 
-    - name: disable node_exporter service
-      service:
+    - name: Disable node_exporter service
+      ansible.builtin.service:
         name: node_exporter
         state: stopped
-        enabled: no
+        enabled: false
       failed_when: false
 
-    - name: remove node_exporter service files
-      file:
+    - name: Remove node_exporter service files
+      ansible.builtin.file:
         name: "{{ item }}"
         state: absent
       loop:
         - /etc/systemd/system/node_exporter.service
         - /run/node_exporter.service-cid
 
-    - name: remove node-exporter image
-      command: "{{ container_binary }} rmi {{ node_exporter_container_image }}"
+    - name: Remove node-exporter image
+      ansible.builtin.command: "{{ container_binary }} rmi {{ node_exporter_container_image }}"
       changed_when: false
       failed_when: false
 
-- name: purge ceph monitoring
+- name: Purge ceph monitoring
   hosts: "{{ monitoring_group_name | default('monitoring') }}"
   gather_facts: false
   become: true
   tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - import_role:
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
         name: ceph-facts
         tasks_from: container_binary
 
-    - name: stop services
-      service:
+    - name: Stop services
+      ansible.builtin.service:
         name: "{{ item }}"
         state: stopped
-        enabled: no
+        enabled: false
       failed_when: false
       loop:
         - alertmanager
         - prometheus
         - grafana-server
 
-    - name: remove systemd service files
-      file:
+    - name: Remove systemd service files
+      ansible.builtin.file:
         name: "{{ item }}"
         state: absent
       loop:
@@ -133,8 +139,8 @@
         - /run/prometheus.service-cid
         - /run/grafana-server.service-cid
 
-    - name: remove ceph dashboard container images
-      command: "{{ container_binary }} rmi {{ item }}"
+    - name: Remove ceph dashboard container images
+      ansible.builtin.command: "{{ container_binary }} rmi {{ item }}"
       loop:
         - "{{ alertmanager_container_image }}"
         - "{{ prometheus_container_image }}"
@@ -142,16 +148,16 @@
       changed_when: false
       failed_when: false
 
-    - name: remove ceph-grafana-dashboards package on RedHat or SUSE
-      package:
+    - name: Remove ceph-grafana-dashboards package on RedHat or SUSE
+      ansible.builtin.package:
         name: ceph-grafana-dashboards
         state: absent
       when:
         - not containerized_deployment | bool
         - ansible_facts['os_family'] in ['RedHat', 'Suse']
 
-    - name: remove data
-      file:
+    - name: Remove data
+      ansible.builtin.file:
         name: "{{ item }}"
         state: absent
       loop:
@@ -162,7 +168,7 @@
         - "{{ prometheus_data_dir }}"
         - /var/lib/grafana
 
-- name: purge ceph dashboard
+- name: Purge ceph dashboard
   hosts: "{{ groups[mgr_group_name] | default(groups[mon_group_name]) | default(omit) }}"
   gather_facts: false
   become: true
@@ -170,14 +176,16 @@
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - import_role:
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
         name: ceph-facts
         tasks_from: container_binary
 
-    - name: remove the dashboard admin user
+    - name: Remove the dashboard admin user
       ceph_dashboard_user:
         name: "{{ dashboard_admin_user }}"
         cluster: "{{ cluster }}"
@@ -185,7 +193,7 @@
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
-    - name: remove radosgw system user
+    - name: Remove radosgw system user
       radosgw_user:
         name: "{{ dashboard_rgw_api_user_id }}"
         cluster: "{{ cluster }}"
@@ -194,7 +202,7 @@
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when: groups.get(rgw_group_name, []) | length > 0
 
-    - name: disable mgr dashboard and prometheus modules
+    - name: Disable mgr dashboard and prometheus modules
       ceph_mgr_module:
         name: "{{ item }}"
         cluster: "{{ cluster }}"
@@ -205,8 +213,8 @@
         - dashboard
         - prometheus
 
-    - name: remove TLS certificate and key files
-      file:
+    - name: Remove TLS certificate and key files
+      ansible.builtin.file:
         name: "/etc/ceph/ceph-dashboard.{{ item }}"
         state: absent
       loop:
@@ -214,8 +222,8 @@
         - key
       when: dashboard_protocol == "https"
 
-    - name: remove ceph-mgr-dashboard package
-      package:
+    - name: Remove ceph-mgr-dashboard package
+      ansible.builtin.package:
         name: ceph-mgr-dashboard
         state: absent
       when: not containerized_deployment | bool
