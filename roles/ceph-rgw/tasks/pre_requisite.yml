@@ -16,20 +16,21 @@
   loop: "{{ hostvars[inventory_hostname]['rgw_instances'] }}"
 
 - name: Set rgw parameter (rgw_frontends)
+  vars:
+    _rgw_binding_socket: "{{ item.radosgw_address | default(_radosgw_address) | string + ':' + item.radosgw_frontend_port | default(radosgw_frontend_port) | string }}"
+    _rgw_beast_endpoint: "{{ 'ssl_' if radosgw_frontend_ssl_certificate else '' }}endpoint={{ _rgw_binding_socket }}"
+    _rgw_beast_ssl_option: "{{ ' ssl_certificate='+radosgw_frontend_ssl_certificate if radosgw_frontend_ssl_certificate else '' }}"
   ceph_config:
     action: set
     who: "client.rgw.{{ _rgw_hostname + '.' + item.instance_name }}"
     option: "rgw_frontends"
-    value: "beast port={{ item.radosgw_frontend_port | string }}"
+    value: "beast {{ _rgw_beast_endpoint }}{{ _rgw_beast_ssl_option }}"
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
   loop: "{{ hostvars[inventory_hostname]['rgw_instances'] }}"
   notify: Restart ceph rgws
-
-# rgw_frontends
-# {{ 'ssl_' if radosgw_frontend_ssl_certificate else '' }}endpoint={{ _rgw_binding_socket }}{{ ' ssl_certificate='+radosgw_frontend_ssl_certificate if radosgw_frontend_ssl_certificate else '' }}
 
 - name: Create rados gateway directories
   ansible.builtin.file:
