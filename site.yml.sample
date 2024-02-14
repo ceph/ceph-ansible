@@ -166,49 +166,26 @@
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
 - hosts: mons[0]
-  become: True
+  become: true
   gather_facts: false
   any_errors_fatal: true
   tasks:
-    - import_role:
+    - name: Import default role
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - name: set global config
-      ceph_config:
-        action: set
-        who: "global"
-        option: "{{ item.key }}"
-        value: "{{ item.value }}"
-      with_dict:
-        "{{ {
-           'public_network': public_network | default(False),
-           'cluster_network': cluster_network | default(False),
-           'osd pool default crush rule': osd_pool_default_crush_rule,
-           'ms bind ipv6': 'true' if ip_version == 'ipv6' else 'false',
-           'ms bind ipv4': 'false' if ip_version == 'ipv6' else 'true',
-           'osd crush chooseleaf type': '0' if common_single_host_mode | default(False) | bool else False,
-        } }}"
-      when:
-        - inventory_hostname == ansible_play_hosts_all | last
-        - item.value
+    - name: Import config role
+      ansible.builtin.import_role:
+        name: ceph-config
 
-    - name: set global config overrides
+    - name: Set clsuter configs
       ceph_config:
         action: set
-        who: "global"
-        option: "{{ item.key }}"
-        value: "{{ item.value }}"
-      when: inventory_hostname == ansible_play_hosts_all | last
-      with_dict: "{{ ceph_conf_overrides['global'] }}"
-
-    - name: set osd_memory_target
-      ceph_config:
-        action: set
-        who: "osd.*/{{ item }}:host"
-        option: "osd_memory_target"
-        value: "{{ _osd_memory_target | default(osd_memory_target) }}"
-      when: inventory_hostname == ansible_play_hosts_all | last
-      loop: "{{ groups[osd_group_name] | default([]) }}"
+        who: "{{ item.0.key }}"
+        option: "{{ item.1.key }}"
+        value: "{{ item.1.value }}"
+      when: item.1.value != omit
+      loop: "{{ ceph_cluster_conf | dict2dict }}"
 
 - hosts: osds
   gather_facts: false
