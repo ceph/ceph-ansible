@@ -1,21 +1,22 @@
 ---
-- name: fetch ceph red hat development repository
-  uri:
+- name: Fetch ceph red hat development repository
+  ansible.builtin.uri:
     # Use the centos repo since we don't currently have a dedicated red hat repo
     url: "https://shaman.ceph.com/api/repos/ceph/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/centos/{{ ansible_facts['distribution_major_version'] }}/repo?arch={{ ansible_facts['architecture'] }}"
-    return_content: yes
+    return_content: true
   register: ceph_dev_yum_repo
 
-- name: configure ceph red hat development repository
-  copy:
+- name: Configure ceph red hat development repository
+  ansible.builtin.copy:
     content: "{{ ceph_dev_yum_repo.content }}"
     dest: /etc/yum.repos.d/ceph-dev.repo
     owner: root
     group: root
-    backup: yes
+    mode: "0644"
+    backup: true
 
-- name: remove ceph_stable repositories
-  yum_repository:
+- name: Remove ceph_stable repositories
+  ansible.builtin.yum_repository:
     name: '{{ item }}'
     file: ceph_stable
     state: absent

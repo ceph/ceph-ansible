@@ -1,11 +1,12 @@
 ---
-- name: configure cluster name
-  lineinfile:
+- name: Configure cluster name
+  ansible.builtin.lineinfile:
     dest: /etc/sysconfig/ceph
     insertafter: EOF
-    create: yes
+    create: true
     line: "CLUSTER={{ cluster }}"
     regexp: "^CLUSTER="
+    mode: "0644"
   when: ansible_facts['os_family'] in ["RedHat", "Suse"]
 
 # NOTE(leseb): we are performing the following check
@@ -18,32 +19,34 @@
 # - Jewel from latest Canonical 16.04 distro
 # - All previous versions from Canonical
 # - Infernalis from ceph.com
-- name: debian based systems - configure cluster name
+- name: Debian based systems - configure cluster name
   when: ansible_facts['os_family'] == "Debian"
   block:
-    - name: check /etc/default/ceph exist
-      stat:
+    - name: Check /etc/default/ceph exist
+      ansible.builtin.stat:
         path: /etc/default/ceph
       register: etc_default_ceph
-      check_mode: no
+      check_mode: false
 
-    - name: configure cluster name
+    - name: Configure cluster name
       when: etc_default_ceph.stat.exists
       block:
-        - name: when /etc/default/ceph is not dir
-          lineinfile:
+        - name: When /etc/default/ceph is not dir
+          ansible.builtin.lineinfile:
             dest: /etc/default/ceph
             insertafter: EOF
-            create: yes
+            create: true
             regexp: "^CLUSTER="
             line: "CLUSTER={{ cluster }}"
+            mode: "0644"
           when: not etc_default_ceph.stat.isdir
 
-        - name: when /etc/default/ceph is dir
-          lineinfile:
+        - name: When /etc/default/ceph is dir
+          ansible.builtin.lineinfile:
             dest: /etc/default/ceph/ceph
             insertafter: EOF
-            create: yes
+            create: true
             regexp: "^CLUSTER="
             line: "CLUSTER={{ cluster }}"
+            mode: "0644"
           when: etc_default_ceph.stat.isdir

@@ -1,14 +1,14 @@
 ---
 # this is for ceph-disk, the ceph-disk command is gone so we have to list /var/lib/ceph
-- name: get osd ids
-  shell: ls /var/lib/ceph/osd/ | sed 's/.*-//'  # noqa 306
+- name: Get osd ids
+  ansible.builtin.shell: ls /var/lib/ceph/osd/ | sed 's/.*-//'  # noqa risky-shell-pipe
   args:
     executable: /bin/bash
   changed_when: false
   failed_when: false
   register: osd_ids_non_container
 
-- name: collect osd ids
+- name: Collect osd ids
   ceph_volume:
     cluster: "{{ cluster }}"
     action: list
@@ -17,19 +17,20 @@
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: ceph_osd_ids
 
-- name: include_tasks systemd.yml
-  include_tasks: systemd.yml
+- name: Include_tasks systemd.yml
+  ansible.builtin.include_tasks: systemd.yml
   when: containerized_deployment | bool
 
-- name: ensure systemd service override directory exists
-  file:
+- name: Ensure systemd service override directory exists
+  ansible.builtin.file:
     state: directory
     path: "/etc/systemd/system/ceph-osd@.service.d/"
+    mode: "0755"
   when:
     - ceph_osd_systemd_overrides is defined
     - ansible_facts['service_mgr'] == 'systemd'
 
-- name: add ceph-osd systemd service overrides
+- name: Add ceph-osd systemd service overrides
   openstack.config_template.config_template:
     src: "ceph-osd.service.d-overrides.j2"
     dest: "/etc/systemd/system/ceph-osd@.service.d/ceph-osd-systemd-overrides.conf"
@@ -39,8 +40,8 @@
     - ceph_osd_systemd_overrides is defined
     - ansible_facts['service_mgr'] == 'systemd'
 
-- name: ensure "/var/lib/ceph/osd/{{ cluster }}-{{ item }}" is present
-  file:
+- name: Ensure /var/lib/ceph/osd/<cluster>-<item> is present
+  ansible.builtin.file:
     state: directory
     path: "/var/lib/ceph/osd/{{ cluster }}-{{ item }}"
     mode: "{{ ceph_directories_mode }}"
@@ -48,8 +49,8 @@
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
   with_items: "{{ ((ceph_osd_ids.stdout | default('{}', True) | from_json).keys() | list) | union(osd_ids_non_container.stdout_lines | default([])) }}"
 
-- name: write /var/lib/ceph/osd/{{ cluster }}-{{ osd_id }}/run
-  template:
+- name: Write run file in /var/lib/ceph/osd/xxxx/run
+  ansible.builtin.template:
     src: systemd-run.j2
     dest: "/var/lib/ceph/osd/{{ cluster }}-{{ item }}/run"
     mode: "0700"
@@ -58,11 +59,11 @@
   with_items: "{{ ((ceph_osd_ids.stdout | default('{}', True) | from_json).keys() | list) | union(osd_ids_non_container.stdout_lines | default([])) }}"
   when: containerized_deployment | bool
 
-- name: systemd start osd
-  systemd:
+- name: Systemd start osd
+  ansible.builtin.systemd:
     name: ceph-osd@{{ item }}
     state: started
-    enabled: yes
-    masked: no
-    daemon_reload: yes
+    enabled: true
+    masked: false
+    daemon_reload: true
   with_items: "{{ ((ceph_osd_ids.stdout | default('{}', True) | from_json).keys() | list) | union(osd_ids_non_container.stdout_lines | default([])) }}"

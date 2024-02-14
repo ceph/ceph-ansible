@@ -1,8 +1,8 @@
 ---
-- name: create and copy client.crash keyring
+- name: Create and copy client.crash keyring
   when: cephx | bool
   block:
-    - name: create client.crash keyring
+    - name: Create client.crash keyring
       ceph_key:
         name: "client.crash"
         caps:
@@ -10,7 +10,7 @@
           mgr: 'allow profile crash'
         cluster: "{{ cluster }}"
         dest: "{{ ceph_conf_key_directory }}"
-        import_key: True
+        import_key: true
         mode: "{{ ceph_keyring_permissions }}"
         owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
         group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
@@ -18,10 +18,10 @@
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
-      run_once: True
+      run_once: true
       no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-    - name: get keys from monitors
+    - name: Get keys from monitors
       ceph_key:
         name: client.crash
         cluster: "{{ cluster }}"
@@ -35,8 +35,8 @@
       run_once: true
       no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-    - name: copy ceph key(s) if needed
-      copy:
+    - name: Copy ceph key(s) if needed
+      ansible.builtin.copy:
         dest: "{{ ceph_conf_key_directory }}/{{ cluster }}.client.crash.keyring"
         content: "{{ _crash_keys.stdout + '\n' }}"
         owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
@@ -44,24 +44,24 @@
         mode: "{{ ceph_keyring_permissions }}"
       no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-- name: start ceph-crash daemon
+- name: Start ceph-crash daemon
   when: containerized_deployment | bool
   block:
-    - name: create /var/lib/ceph/crash/posted
-      file:
+    - name: Create /var/lib/ceph/crash/posted
+      ansible.builtin.file:
         path: /var/lib/ceph/crash/posted
         state: directory
         mode: '0755'
         owner: "{{ ceph_uid }}"
         group: "{{ ceph_uid }}"
 
-    - name: include_tasks systemd.yml
-      include_tasks: systemd.yml
+    - name: Include_tasks systemd.yml
+      ansible.builtin.include_tasks: systemd.yml
 
-- name: start the ceph-crash service
-  systemd:
+- name: Start the ceph-crash service
+  ansible.builtin.systemd:
     name: "{{ 'ceph-crash@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-crash.service' }}"
     state: started
-    enabled: yes
-    masked: no
-    daemon_reload: yes
+    enabled: true
+    masked: false
+    daemon_reload: true

@@ -1,24 +1,24 @@
 ---
-- name: install yum plugin priorities
-  package:
+- name: Install yum plugin priorities
+  ansible.builtin.package:
     name: yum-plugin-priorities
   register: result
   until: result is succeeded
   tags: with_pkg
   when: ansible_facts['distribution_major_version'] | int == 7
 
-- name: configure red hat ceph community repository stable key
-  rpm_key:
+- name: Configure red hat ceph community repository stable key
+  ansible.builtin.rpm_key:
     key: "{{ ceph_stable_key }}"
     state: present
   register: result
   until: result is succeeded
 
-- name: configure red hat ceph stable community repository
-  yum_repository:
+- name: Configure red hat ceph stable community repository
+  ansible.builtin.yum_repository:
     name: ceph_stable
     description: Ceph Stable $basearch repo
-    gpgcheck: yes
+    gpgcheck: true
     state: present
     gpgkey: "{{ ceph_stable_key }}"
     baseurl: "{{ ceph_mirror }}/rpm-{{ ceph_stable_release }}/el{{ ansible_facts['distribution_major_version'] }}/$basearch"
@@ -27,11 +27,11 @@
   register: result
   until: result is succeeded
 
-- name: configure red hat ceph stable noarch community repository
-  yum_repository:
+- name: Configure red hat ceph stable noarch community repository
+  ansible.builtin.yum_repository:
     name: ceph_stable_noarch
     description: Ceph Stable noarch repo
-    gpgcheck: yes
+    gpgcheck: true
     state: present
     gpgkey: "{{ ceph_stable_key }}"
     baseurl: "{{ ceph_mirror }}/rpm-{{ ceph_stable_release }}/el{{ ansible_facts['distribution_major_version'] }}/noarch"

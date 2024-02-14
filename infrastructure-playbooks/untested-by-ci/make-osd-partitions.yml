@@ -31,7 +31,7 @@
 
   tasks:
 
-  - name: load a variable file for devices partition
+  - name: Load a variable file for devices partition
     include_vars: "{{ item }}"
     with_first_found:
       - files:
@@ -39,24 +39,24 @@
           - "host_vars/default.yml"
         skip: true
 
-  - name: exit playbook, if devices not defined
-    fail:
+  - name: Exit playbook, if devices not defined
+    ansible.builtin.fail:
       msg: "devices must be define in host_vars/default.yml or host_vars/{{ ansible_facts['hostname'] }}.yml"
     when: devices is not defined
 
-  - name: install sgdisk(gdisk)
-    package:
+  - name: Install sgdisk(gdisk)
+    ansible.builtin.package:
       name: gdisk
       state: present
     register: result
     until: result is succeeded
 
-  - name: erase all previous partitions(dangerous!!!)
-    shell: sgdisk --zap-all -- /dev/{{item.device_name}}
+  - name: Erase all previous partitions(dangerous!!!)
+    ansible.builtin.shell: sgdisk --zap-all -- /dev/{{item.device_name}}
     with_items: "{{ devices }}"
 
-  - name: make osd partitions
-    shell: >
+  - name: Make osd partitions
+    ansible.builtin.shell: >
            sgdisk --new={{item.1.index}}:0:+{{item.1.size}} "--change-name={{item.1.index}}:ceph {{item.1.type}}"
            "--typecode={{item.1.index}}:{% if item.1.type=='data' %}{{data_typecode}}{% else %}{{journal_typecode}}{% endif %}"
            --mbrtogpt -- /dev/{{item.0.device_name}}
@@ -74,8 +74,8 @@
       group: 64045
     when: ansible_facts['os_family'] == "Debian"
 
-  - name: change partitions ownership
-    file:
+  - name: Change partitions ownership
+    ansible.builtin.file:
       path: "/dev/{{item.0.device_name}}{{item.1.index}}"
       owner: "{{ owner | default('root')}}"
       group: "{{ group | default('disk')}}"
@@ -85,8 +85,8 @@
     when:
       item.0.device_name | match('/dev/([hsv]d[a-z]{1,2}){1,2}$')
 
-  - name: change partitions ownership
-    file:
+  - name: Change partitions ownership
+    ansible.builtin.file:
       path: "/dev/{{item.0.device_name}}p{{item.1.index}}"
       owner: "{{ owner | default('root')}}"
       group: "{{ group | default('disk')}}"

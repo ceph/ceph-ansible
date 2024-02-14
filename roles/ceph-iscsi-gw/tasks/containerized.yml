@@ -1,31 +1,32 @@
 ---
-- name: create /var/lib/ceph/iscsi.{{ ansible_facts['hostname'] }}
-  file:
+- name: Create /var/lib/ceph/iscsi.{{ ansible_facts['hostname'] }}
+  ansible.builtin.file:
     path: "/var/lib/ceph/iscsi.{{ ansible_facts['hostname'] }}"
     state: directory
     owner: "{{ ceph_uid }}"
     group: "{{ ceph_uid }}"
     mode: "{{ ceph_directories_mode }}"
 
-- name: create rbd target log directories
-  file:
+- name: Create rbd target log directories
+  ansible.builtin.file:
     path: '/var/log/{{ item }}'
     state: directory
+    mode: "0755"
   with_items:
     - rbd-target-api
     - rbd-target-gw
     - tcmu-runner
 
-- name: include_tasks systemd.yml
-  include_tasks: systemd.yml
+- name: Include_tasks systemd.yml
+  ansible.builtin.include_tasks: systemd.yml
 
-- name: systemd start tcmu-runner, rbd-target-api and rbd-target-gw containers
-  systemd:
+- name: Systemd start tcmu-runner, rbd-target-api and rbd-target-gw containers
+  ansible.builtin.systemd:
     name: "{{ item }}"
     state: started
-    enabled: yes
-    masked: no
-    daemon_reload: yes
+    enabled: true
+    masked: false
+    daemon_reload: true
   with_items:
     - tcmu-runner
     - rbd-target-gw

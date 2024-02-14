@@ -1,107 +1,110 @@
 ---
-- name: debian based systems - repo handling
+- name: Debian based systems - repo handling
   when: ceph_origin == 'repository'
   block:
-    - name: stable repos specific tasks
+    - name: Stable repos specific tasks
       when:
         - nfs_ganesha_stable | bool
         - ceph_repository == 'community'
       block:
-        - name: add nfs-ganesha stable repository
-          apt_repository:
+        - name: Add nfs-ganesha stable repository
+          ansible.builtin.apt_repository:
             repo: "deb {{ nfs_ganesha_stable_deb_repo }} {{ ceph_stable_distro_source | default(ansible_facts['distribution_release']) }} main"
             state: present
-            update_cache: no
+            update_cache: false
           register: add_ganesha_apt_repo
 
-        - name: add libntirpc stable repository
-          apt_repository:
+        - name: Add libntirpc stable repository
+          ansible.builtin.apt_repository:
             repo: "deb {{ libntirpc_stable_deb_repo }} {{ ceph_stable_distro_source | default(ansible_facts['distribution_release']) }} main"
             state: present
-            update_cache: no
+            update_cache: false
           register: add_libntirpc_apt_repo
           when: libntirpc_stable_deb_repo is defined
 
-        - name: add nfs-ganesha ppa apt key
-          apt_key:
+        - name: Add nfs-ganesha ppa apt key
+          ansible.builtin.apt_key:
             keyserver: "{{ nfs_ganesha_apt_keyserver }}"
             id: "{{ nfs_ganesha_apt_key_id }}"
           when:
             - nfs_ganesha_apt_key_id is defined
             - nfs_ganesha_apt_keyserver is defined
 
-        - name: update apt cache
-          apt:
-            update_cache: yes
+        - name: Update apt cache
+          ansible.builtin.apt:
+            update_cache: true
           register: update_ganesha_apt_cache
           retries: 5
           delay: 2
           until: update_ganesha_apt_cache is success
           when: add_ganesha_apt_repo is changed or add_libntirpc_apt_repo is changed
 
-    - name: debian based systems - dev repos specific tasks
+    - name: Debian based systems - dev repos specific tasks
       when:
         - nfs_ganesha_dev | bool
         - ceph_repository == 'dev'
       block:
-        - name: fetch nfs-ganesha development repository
-          uri:
+        - name: Fetch nfs-ganesha development repository
+          ansible.builtin.uri:
             url: "https://shaman.ceph.com/api/repos/nfs-ganesha/next/latest/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_release'] }}/flavors/{{ nfs_ganesha_flavor }}/repo?arch={{ ansible_facts['architecture'] }}"
-            return_content: yes
+            return_content: true
           register: nfs_ganesha_dev_apt_repo
 
-        - name: add nfs-ganesha development repository
-          copy:
+        - name: Add nfs-ganesha development repository
+          ansible.builtin.copy:
             content: "{{ nfs_ganesha_dev_apt_repo.content }}"
             dest: /etc/apt/sources.list.d/nfs-ganesha-dev.list
             owner: root
             group: root
-            backup: yes
+            backup: true
+            mode: "0644"
 
-- name: debain based systems - install required packages
+- name: Debain based systems - install required packages
   block:
-    - name: debian based systems- non-rhcs installation
+    - name: Debian based systems- non-rhcs installation
       when:
         - (ceph_origin == 'repository' or ceph_origin == 'distro')
         - ceph_repository != 'rhcs'
       block:
-        - name: install nfs rgw/cephfs gateway - debian
-          apt:
+        - name: Install nfs rgw/cephfs gateway - debian
+          ansible.builtin.apt:
             name: ['nfs-ganesha-rgw', 'radosgw']
-            allow_unauthenticated: yes
+            allow_unauthenticated: true
           register: result
           until: result is succeeded
           when: nfs_obj_gw | bool
-        - name: install nfs rgw/cephfs gateway - debian
-          apt:
+        - name: Install nfs rgw/cephfs gateway - debian
+          ansible.builtin.apt:
             name: nfs-ganesha-ceph
-            allow_unauthenticated: yes
+            allow_unauthenticated: true
           register: result
           until: result is succeeded
           when: nfs_file_gw | bool
 
-    - name: debian based systems - rhcs installation
+    - name: Debian based systems - rhcs installation
       when:
         - (ceph_origin == 'repository' or ceph_origin == 'distro')
         - ceph_repository == 'rhcs'
       block:
-        - name: install red hat storage nfs gateway for debian
-          apt:
+        - name: Install red hat storage nfs gateway for debian
+          ansible.builtin.apt:
             name: nfs-ganesha
-            state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+            state: "{{ (upgrade_ceph_packages | bool) | ternary('latest', 'present') }}"
           register: result
           until: result is succeeded
-        - name: install red hat storage nfs file gateway
-          apt:
+
+        - name: Install red hat storage nfs file gateway
+          ansible.builtin.apt:
             name: nfs-ganesha-ceph
-            state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+            state: "{{ (upgrade_ceph_packages | bool) | ternary('latest', 'present') }}"
           register: result
           until: result is succeeded
           when: nfs_file_gw | bool
-        - name: install red hat storage nfs obj gateway
-          apt:
+
+        - name: Install red hat storage nfs obj gateway
+          ansible.builtin.apt:
             name: nfs-ganesha-rgw
-            state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+            state: "{{ (upgrade_ceph_packages | bool) | ternary('latest', 'present') }}"
           register: result
           until: result is succeeded
           when: nfs_obj_gw | bool

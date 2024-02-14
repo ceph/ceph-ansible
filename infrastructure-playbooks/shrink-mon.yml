@@ -12,75 +12,79 @@
 #     automation scripts to avoid interactive prompt.
 
 
-- name: gather facts and check the init system
+- name: Gather facts and check the init system
 
   hosts: "{{ mon_group_name|default('mons') }}"
 
   become: true
 
   tasks:
-    - debug: msg="gather facts on all Ceph hosts for following reference"
+    - name: Gather facts on all Ceph hosts for following reference
+      ansible.builtin.debug:
+        msg: "gather facts on all Ceph hosts for following reference"
 
-- name: confirm whether user really meant to remove monitor from the ceph cluster
+- name: Confirm whether user really meant to remove monitor from the ceph cluster
   hosts: mons[0]
   become: true
   vars_prompt:
-    - name: ireallymeanit
+    - name: ireallymeanit  # noqa: name[casing]
       prompt: Are you sure you want to shrink the cluster?
       default: 'no'
-      private: no
+      private: false
   vars:
     mon_group_name: mons
 
   pre_tasks:
-    - name: exit playbook, if only one monitor is present in cluster
-      fail:
+    - name: Exit playbook, if only one monitor is present in cluster
+      ansible.builtin.fail:
         msg: "You are about to shrink the only monitor present in the cluster.
               If you really want to do that, please use the purge-cluster playbook."
       when: groups[mon_group_name] | length | int == 1
 
-    - name: exit playbook, if no monitor was given
-      fail:
+    - name: Exit playbook, if no monitor was given
+      ansible.builtin.fail:
         msg: "mon_to_kill must be declared
           Exiting shrink-cluster playbook, no monitor was removed.
            On the command line when invoking the playbook, you can use
            -e mon_to_kill=ceph-mon01 argument. You can only remove a single monitor each time the playbook runs."
       when: mon_to_kill is not defined
 
-    - name: exit playbook, if the monitor is not part of the inventory
-      fail:
+    - name: Exit playbook, if the monitor is not part of the inventory
+      ansible.builtin.fail:
         msg: "It seems that the host given is not part of your inventory, please make sure it is."
       when: mon_to_kill not in groups[mon_group_name]
 
-    - name: exit playbook, if user did not mean to shrink cluster
-      fail:
+    - name: Exit playbook, if user did not mean to shrink cluster
+      ansible.builtin.fail:
         msg: "Exiting shrink-mon playbook, no monitor was removed.
            To shrink the cluster, either say 'yes' on the prompt or
            or use `-e ireallymeanit=yes` on the command line when
            invoking the playbook"
       when: ireallymeanit != 'yes'
 
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - import_role:
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
         name: ceph-facts
         tasks_from: container_binary
 
   tasks:
-    - name: pick a monitor different than the one we want to remove
-      set_fact:
+    - name: Pick a monitor different than the one we want to remove
+      ansible.builtin.set_fact:
         mon_host: "{{ item }}"
       with_items: "{{ groups[mon_group_name] }}"
       when: item != mon_to_kill
 
-    - name: "set_fact container_exec_cmd build {{ container_binary }} exec command (containerized)"
-      set_fact:
+    - name: Set container_exec_cmd fact
+      ansible.builtin.set_fact:
         container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[mon_host]['ansible_facts']['hostname'] }}"
       when: containerized_deployment | bool
 
-    - name: exit playbook, if can not connect to the cluster
-      command: "{{ container_exec_cmd }} timeout 5 ceph --cluster {{ cluster }} health"
+    - name: Exit playbook, if can not connect to the cluster
+      ansible.builtin.command: "{{ container_exec_cmd }} timeout 5 ceph --cluster {{ cluster }} health"
       register: ceph_health
       changed_when: false
       until: ceph_health.stdout.find("HEALTH") > -1
@@ -88,33 +92,33 @@
       retries: 5
       delay: 2
 
-    - name: set_fact mon_to_kill_hostname
-      set_fact:
+    - name: Set_fact mon_to_kill_hostname
+      ansible.builtin.set_fact:
         mon_to_kill_hostname: "{{ hostvars[mon_to_kill]['ansible_facts']['hostname'] }}"
 
-    - name: stop monitor service(s)
-      service:
+    - name: Stop monitor service(s)
+      ansible.builtin.service:
         name: ceph-mon@{{ mon_to_kill_hostname }}
         state: stopped
-        enabled: no
+        enabled: false
       delegate_to: "{{ mon_to_kill }}"
       failed_when: false
 
-    - name: purge monitor store
-      file:
+    - name: Purge monitor store
+      ansible.builtin.file:
         path: /var/lib/ceph/mon/{{ cluster }}-{{ mon_to_kill_hostname }}
         state: absent
       delegate_to: "{{ mon_to_kill }}"
 
-    - name: remove monitor from the quorum
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mon remove {{ mon_to_kill_hostname }}"
+    - name: Remove monitor from the quorum
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mon remove {{ mon_to_kill_hostname }}"
       changed_when: false
       failed_when: false
       delegate_to: "{{ mon_host }}"
 
   post_tasks:
-    - name: verify the monitor is out of the cluster
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} quorum_status -f json"
+    - name: Verify the monitor is out of the cluster
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} quorum_status -f json"
       delegate_to: "{{ mon_host }}"
       changed_when: false
       failed_when: false
@@ -123,25 +127,25 @@
       retries: 2
       delay: 10
 
-    - name: please remove the monitor from your ceph configuration file
-      debug:
-          msg: "The monitor has been successfully removed from the cluster.
-          Please remove the monitor entry from the rest of your ceph configuration files, cluster wide."
+    - name: Please remove the monitor from your ceph configuration file
+      ansible.builtin.debug:
+        msg: "The monitor has been successfully removed from the cluster.
+              Please remove the monitor entry from the rest of your ceph configuration files, cluster wide."
       run_once: true
       when: mon_to_kill_hostname not in (result.stdout | from_json)['quorum_names']
 
-    - name: fail if monitor is still part of the cluster
-      fail:
-          msg: "Monitor appears to still be part of the cluster, please check what happened."
+    - name: Fail if monitor is still part of the cluster
+      ansible.builtin.fail:
+        msg: "Monitor appears to still be part of the cluster, please check what happened."
       run_once: true
       when: mon_to_kill_hostname in (result.stdout | from_json)['quorum_names']
 
-    - name: show ceph health
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} -s"
+    - name: Show ceph health
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} -s"
       delegate_to: "{{ mon_host }}"
       changed_when: false
 
-    - name: show ceph mon status
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mon stat"
+    - name: Show ceph mon status
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mon stat"
       delegate_to: "{{ mon_host }}"
       changed_when: false

@@ -1,12 +1,12 @@
 ---
-- name: fetch ceph debian development repository
-  uri:
+- name: Fetch ceph debian development repository
+  ansible.builtin.uri:
     url: "https://shaman.ceph.com/api/repos/ceph/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_release'] }}/repo?arch={{ ansible_facts['architecture'] }}"
-    return_content: yes
+    return_content: true
   register: ceph_dev_deb_repo
 
-- name: configure ceph debian development repository
-  apt_repository:
+- name: Configure ceph debian development repository
+  ansible.builtin.apt_repository:
     repo: "{{ ceph_dev_deb_repo.content }}"
     state: present
-    update_cache: yes
+    update_cache: true

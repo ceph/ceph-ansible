@@ -37,69 +37,69 @@
   serial: 1
   tasks:
 
-  - name: get osd(s) if directory stat
-    stat:
+  - name: Get osd(s) if directory stat
+    ansible.builtin.stat:
       path: "/var/lib/ceph/osd/{{ cluster }}-{{ item.1.osd_id }}/journal_uuid"
     register: osds_dir_stat
     with_subelements:
       - "{{ osds_journal_devices }}"
       - partitions
 
-  - name: exit playbook osd(s) is not on this host
-    fail:
+  - name: Exit playbook osd(s) is not on this host
+    ansible.builtin.fail:
         msg: exit playbook osd(s) is not on this host
     with_items: 
         osds_dir_stat.results
     when: osds_dir_stat is defined and item.stat.exists == false
 
-  - name: install sgdisk(gdisk)
-    package:
+  - name: Install sgdisk(gdisk)
+    ansible.builtin.package:
       name: gdisk
       state: present
     register: result
     until: result is succeeded
     when: osds_journal_devices is defined
 
-  - name: generate uuid for osds journal
-    command: uuidgen
+  - name: Generate uuid for osds journal
+    ansible.builtin.command: uuidgen
     register: osds
     with_subelements:
       - "{{ osds_journal_devices }}"
       - partitions
 
-  - name: make osd partitions on ssd
-    shell: >
+  - name: Make osd partitions on ssd
+    ansible.builtin.shell: >
       sgdisk --new={{item.item[1].index}}:0:+{{item.item[1].size}} "--change-name={{ item.item[1].index }}:ceph journal" 
       --typecode={{ item.item[1].index }}:{{ journal_typecode }} 
       --partition-guid={{ item.item[1].index }}:{{ item.stdout }} 
       --mbrtogpt -- {{ item.item[0].device_name }}
     with_items:  "{{ osds.results }}"
 
-  - name: stop osd(s) service
-    service:
+  - name: Stop osd(s) service
+    ansible.builtin.service:
       name: "ceph-osd@{{ item.item[1].osd_id }}"
       state: stopped
     with_items: "{{ osds.results }}"
 
-  - name: flush osd(s) journal
-    command: ceph-osd -i {{ item.item[1].osd_id }} --flush-journal --cluster {{ cluster }} 
+  - name: Flush osd(s) journal
+    ansible.builtin.command: ceph-osd -i {{ item.item[1].osd_id }} --flush-journal --cluster {{ cluster }} 
     with_items: "{{ osds.results }}"
     when: osds_journal_devices is defined
 
-  - name: update osd(s) journal soft link
-    command: ln -sf /dev/disk/by-partuuid/{{ item.stdout }} /var/lib/ceph/osd/{{ cluster }}-{{ item.item[1].osd_id }}/journal
+  - name: Update osd(s) journal soft link
+    ansible.builtin.command: ln -sf /dev/disk/by-partuuid/{{ item.stdout }} /var/lib/ceph/osd/{{ cluster }}-{{ item.item[1].osd_id }}/journal
     with_items: "{{ osds.results }}"
 
-  - name: update osd(s) journal uuid
-    command: echo {{ item.stdout }} > /var/lib/ceph/osd/{{ cluster }}-{{ item.item[1].osd_id }}/journal_uuid
+  - name: Update osd(s) journal uuid
+    ansible.builtin.command: echo {{ item.stdout }} > /var/lib/ceph/osd/{{ cluster }}-{{ item.item[1].osd_id }}/journal_uuid
     with_items: "{{ osds.results }}"
 
-  - name: initialize osd(s) new journal 
-    command: ceph-osd -i {{ item.item[1].osd_id }} --mkjournal --cluster {{ cluster }}
+  - name: Initialize osd(s) new journal 
+    ansible.builtin.command: ceph-osd -i {{ item.item[1].osd_id }} --mkjournal --cluster {{ cluster }}
     with_items: "{{ osds.results }}"
 
-  - name: start osd(s) service
-    service:
+  - name: Start osd(s) service
+    ansible.builtin.service:
       name: "ceph-osd@{{ item.item[1].osd_id }}"
       state: started
     with_items: "{{ osds.results }}"

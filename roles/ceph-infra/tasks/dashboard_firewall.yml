@@ -1,60 +1,65 @@
 ---
-- name: open node_exporter port
-  firewalld:
+- name: Open node_exporter port
+  ansible.posix.firewalld:
     port: "{{ node_exporter_port }}/tcp"
     zone: "{{ ceph_dashboard_firewall_zone }}"
     permanent: true
     immediate: true
     state: enabled
 
-- block:
-    - name: open dashboard port
-      firewalld:
+- name: Open dashboard port in firewalld
+  when:
+    - mgr_group_name is defined
+    - (groups.get(mgr_group_name,[]) | length > 0 and mgr_group_name in group_names) or
+      (groups.get(mgr_group_name,[]) | length == 0 and mon_group_name in group_names)
+  block:
+    - name: Open dashboard port
+      ansible.posix.firewalld:
         port: "{{ dashboard_port }}/tcp"
         zone: "{{ ceph_dashboard_firewall_zone }}"
         permanent: true
         immediate: true
         state: enabled
 
-    - name: open mgr/prometheus port
-      firewalld:
+    - name: Open mgr/prometheus port
+      ansible.posix.firewalld:
         port: "9283/tcp"
         zone: "{{ ceph_dashboard_firewall_zone }}"
         permanent: true
         immediate: true
         state: enabled
-  when:
-    - mgr_group_name is defined
-    - (groups.get(mgr_group_name,[]) | length > 0 and mgr_group_name in group_names) or
-      (groups.get(mgr_group_name,[]) | length == 0 and mon_group_name in group_names)
 
-- block:
-    - name: open grafana port
-      firewalld:
+- name: Open monitoring stack tcp ports in firewalld
+  when:
+    - monitoring_group_name is defined
+    - monitoring_group_name in group_names
+  block:
+    - name: Open grafana port
+      ansible.posix.firewalld:
         port: "{{ grafana_port }}/tcp"
         zone: "{{ ceph_dashboard_firewall_zone }}"
         permanent: true
         immediate: true
         state: enabled
 
-    - name: open prometheus port
-      firewalld:
+    - name: Open prometheus port
+      ansible.posix.firewalld:
         port: "{{ prometheus_port }}/tcp"
         zone: "{{ ceph_dashboard_firewall_zone }}"
         permanent: true
         immediate: true
         state: enabled
 
-    - name: open alertmanager port
-      firewalld:
+    - name: Open alertmanager port
+      ansible.posix.firewalld:
         port: "{{ alertmanager_port }}/tcp"
         zone: "{{ ceph_dashboard_firewall_zone }}"
         permanent: true
         immediate: true
         state: enabled
 
-    - name: open alertmanager cluster port
-      firewalld:
+    - name: Open alertmanager cluster port
+      ansible.posix.firewalld:
         port: "{{ alertmanager_cluster_port }}/{{ item }}"
         zone: "{{ ceph_dashboard_firewall_zone }}"
         permanent: true
@@ -63,6 +68,3 @@
       with_items:
         - "tcp"
         - "udp"
-  when:
-    - monitoring_group_name is defined
-    - monitoring_group_name in group_names

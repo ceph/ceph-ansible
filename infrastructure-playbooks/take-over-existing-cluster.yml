@@ -11,45 +11,51 @@
 # 4. Run the playbook called: `take-over-existing-cluster.yml` like this `ansible-playbook take-over-existing-cluster.yml`.
 # 5. Eventually run Ceph Ansible to validate everything by doing: `ansible-playbook site.yml`.
 
-- hosts: mons
-  become: True
-  tasks:
-    - import_role:
-        name: ceph-defaults
-    - import_role:
-        name: ceph-fetch-keys
-
-- hosts:
-  - mons
-  - osds
-  - mdss
-  - rgws
-  - nfss
-  - rbdmirrors
-  - clients
-  - mgrs
-  - iscsi-gw
+- name: Fetch keys
+  hosts: mons
   become: true
   tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
+        name: ceph-defaults
+
+    - name: Import ceph-fetch-keys role
+      ansible.builtin.import_role:
+        name: ceph-fetch-keys
+
+- name: Take over existing cluster
+  hosts:
+    - mons
+    - osds
+    - mdss
+    - rgws
+    - nfss
+    - rbdmirrors
+    - clients
+    - mgrs
+    - iscsi-gw
+  become: true
+  tasks:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
 
   post_tasks:
-    - name: get the name of the existing ceph cluster
-      shell: |
+    - name: Get the name of the existing ceph cluster
+      ansible.builtin.shell: |
           set -o pipefail;
           basename $(grep --exclude '*.bak' -R fsid /etc/ceph/ | egrep -o '^[^.]*' | head -n 1)
       changed_when: false
       register: cluster_name
 
-    - name: "stat {{ cluster_name.stdout }}.conf"
-      stat:
+    - name: Run stat module on Ceph configuration file
+      ansible.builtin.stat:
         path: "/etc/ceph/{{ cluster_name.stdout }}.conf"
       register: ceph_conf_stat
 
       # Creates a backup of original ceph conf file in 'cluster_name-YYYYMMDDTHHMMSS.conf.bak' format
-    - name: "make a backup of original {{ cluster_name.stdout }}.conf"
-      copy:
+    - name: Make a backup of original Ceph configuration file
+      ansible.builtin.copy:
         src: "/etc/ceph/{{ cluster_name.stdout }}.conf"
         dest: "/etc/ceph/{{ cluster_name.stdout }}-{{ ansible_date_time.iso8601_basic_short }}.conf.bak"
         remote_src: true
@@ -57,7 +63,7 @@
         group: "{{ ceph_conf_stat.stat.gr_name }}"
         mode: "{{ ceph_conf_stat.stat.mode }}"
 
-    - name: generate ceph configuration file
+    - name: Generate ceph configuration file
       openstack.config_template.config_template:
         src: "roles/ceph-config/templates/ceph.conf.j2"
         dest: "/etc/ceph/{{ cluster_name.stdout }}.conf"

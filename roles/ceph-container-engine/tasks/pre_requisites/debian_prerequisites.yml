@@ -1,31 +1,31 @@
 ---
-- name: uninstall old docker versions
-  package:
+- name: Uninstall old docker versions
+  ansible.builtin.package:
     name: ['docker', 'docker-engine', 'docker.io', 'containerd', 'runc']
     state: absent
   when: container_package_name == 'docker-ce'
 
-- name: allow apt to use a repository over https (debian)
-  package:
+- name: Allow apt to use a repository over https (debian)
+  ansible.builtin.package:
     name: ['apt-transport-https', 'ca-certificates', 'gnupg', 'software-properties-common']
-    update_cache: yes
+    update_cache: true
   register: result
   until: result is succeeded
 
-- name: add docker's gpg key
-  apt_key:
+- name: Add docker's gpg key
+  ansible.builtin.apt_key:
     url: "https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}/gpg"
   register: result
   until: result is succeeded
   when: container_package_name == 'docker-ce'
 
-- name: add docker repository
-  apt_repository:
+- name: Add docker repository
+  ansible.builtin.apt_repository:
     repo: "deb https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }} stable"
   when: container_package_name == 'docker-ce'
 
-- name: add podman ppa repository
-  apt_repository:
+- name: Add podman ppa repository
+  ansible.builtin.apt_repository:
     repo: "ppa:projectatomic/ppa"
   when:
     - container_package_name == 'podman'
