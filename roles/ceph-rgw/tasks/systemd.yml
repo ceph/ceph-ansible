@@ -1,22 +1,23 @@
 ---
-- name: generate systemd unit file
-  template:
+- name: Generate systemd unit file
+  ansible.builtin.template:
     src: "{{ role_path }}/templates/ceph-radosgw.service.j2"
     dest: /etc/systemd/system/ceph-radosgw@.service
     owner: "root"
     group: "root"
     mode: "0644"
-  notify: restart ceph rgws
+  notify: Restart ceph rgws
 
-- name: generate systemd ceph-radosgw target file
-  copy:
+- name: Generate systemd ceph-radosgw target file
+  ansible.builtin.copy:
     src: ceph-radosgw.target
     dest: /etc/systemd/system/ceph-radosgw.target
+    mode: "0644"
   when: containerized_deployment | bool
 
-- name: enable ceph-radosgw.target
-  service:
+- name: Enable ceph-radosgw.target
+  ansible.builtin.service:
     name: ceph-radosgw.target
-    enabled: yes
-    daemon_reload: yes
+    enabled: true
+    daemon_reload: true
   when: containerized_deployment | bool

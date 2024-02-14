@@ -1,20 +1,22 @@
-- hosts:
-  - mons
-  - osds
-  - mdss
-  - rgws
-  - nfss
-  - rbdmirrors
-  - clients
-  - mgrs
-  - iscsigws
+---
+- name: Gather ceph logs
+  hosts:
+    - mons
+    - osds
+    - mdss
+    - rgws
+    - nfss
+    - rbdmirrors
+    - clients
+    - mgrs
+    - iscsigws
 
   gather_facts: false
-  become: yes
+  become: true
 
   tasks:
-    - name: create a temp directory
-      tempfile:
+    - name: Create a temp directory
+      ansible.builtin.tempfile:
         state: directory
         prefix: ceph_ansible
       run_once: true
@@ -22,17 +24,17 @@
       become: false
       delegate_to: localhost
 
-    - name: set_fact lookup_ceph_config - lookup keys, conf and logs
-      find:
+    - name: Set_fact lookup_ceph_config - lookup keys, conf and logs
+      ansible.builtin.find:
         paths:
           - /etc/ceph
           - /var/log/ceph
       register: ceph_collect
 
-    - name: collect ceph logs, config and keys in "{{ localtempfile.path }}" on the machine running ansible
-      fetch:
+    - name: Collect ceph logs, config and keys on the machine running ansible
+      ansible.builtin.fetch:
         src: "{{ item.path }}"
         dest: "{{ localtempfile.path }}"
-        fail_on_missing: no
-        flat: no
+        fail_on_missing: false
+        flat: false
       with_items: "{{ ceph_collect.files }}"

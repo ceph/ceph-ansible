@@ -1,50 +1,50 @@
 ---
-- name: lvmetad tasks related
+- name: Lvmetad tasks related
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     - lvmetad_disabled | default(False) | bool
     - ansible_facts['os_family'] == 'RedHat'
     - ansible_facts['distribution_major_version'] | int == 7
   block:
-    - name: stop lvmetad
-      service:
+    - name: Stop lvmetad
+      ansible.builtin.service:
         name: lvm2-lvmetad
         state: stopped
 
-    - name: disable and mask lvmetad service
-      service:
+    - name: Disable and mask lvmetad service
+      ansible.builtin.systemd:
         name: lvm2-lvmetad
-        enabled: no
-        masked: yes
+        enabled: false
+        masked: true
 
-- name: remove ceph udev rules
-  file:
+- name: Remove ceph udev rules
+  ansible.builtin.file:
     path: "{{ item }}"
     state: absent
   with_items:
     - /usr/lib/udev/rules.d/95-ceph-osd.rules
     - /usr/lib/udev/rules.d/60-ceph-by-parttypeuuid.rules
 
-- name: ensure tmpfiles.d is present
-  lineinfile:
+- name: Ensure tmpfiles.d is present
+  ansible.builtin.lineinfile:
     path: /etc/tmpfiles.d/ceph-common.conf
     line: "d /run/ceph 0770 root root -"
     owner: root
     group: root
-    mode: 0644
+    mode: "0644"
     state: present
-    create: yes
+    create: true
 
-- name: restore certificates selinux context
+- name: Restore certificates selinux context
   when:
     - ansible_facts['os_family'] == 'RedHat'
     - inventory_hostname in groups.get(mon_group_name, [])
       or inventory_hostname in groups.get(rgw_group_name, [])
-  command: /usr/sbin/restorecon -RF /etc/pki/ca-trust/extracted
+  ansible.builtin.command: /usr/sbin/restorecon -RF /etc/pki/ca-trust/extracted
   changed_when: false
 
-- name: install python3 on osd nodes
-  package:
+- name: Install python3 on osd nodes
+  ansible.builtin.package:
     name: python3
     state: present
   when:

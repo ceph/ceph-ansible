@@ -1,51 +1,49 @@
 ---
-- name: install haproxy and keepalived
-  package:
+- name: Install haproxy and keepalived
+  ansible.builtin.package:
     name: ['haproxy', 'keepalived']
     state: present
   register: result
   until: result is succeeded
 
-- name: "generate haproxy configuration file: haproxy.cfg"
-  template:
+- name: Generate haproxy configuration file haproxy.cfg
+  ansible.builtin.template:
     src: haproxy.cfg.j2
     dest: /etc/haproxy/haproxy.cfg
     owner: "root"
     group: "root"
     mode: "0644"
     validate: "haproxy -f %s -c"
-  notify:
-    - restart haproxy
+  notify: Restart haproxy
 
-- name: set_fact vip to vrrp_instance
-  set_fact:
-    vrrp_instances: "{{ vrrp_instances | default([]) | union([{ 'name': 'VI_' + index|string , 'vip': item, 'master': groups[rgwloadbalancer_group_name][index] }]) }}"
+- name: Set_fact vip to vrrp_instance
+  ansible.builtin.set_fact:
+    vrrp_instances: "{{ vrrp_instances | default([]) | union([{'name': 'VI_' + index | string, 'vip': item, 'master': groups[rgwloadbalancer_group_name][index]}]) }}"
   loop: "{{ virtual_ips | flatten(levels=1) }}"
   loop_control:
     index_var: index
 
-- name: "generate keepalived: configuration file: keepalived.conf"
-  template:
+- name: Generate keepalived configuration file keepalived.conf
+  ansible.builtin.template:
     src: keepalived.conf.j2
     dest: /etc/keepalived/keepalived.conf
     owner: "root"
     group: "root"
     mode: "0644"
-  notify:
-    - restart keepalived
+  notify: Restart keepalived
 
-- name: selinux related tasks
+- name: Selinux related tasks
   when:
     - ansible_facts['os_family'] == 'RedHat'
     - ansible_facts['selinux']['status'] == 'enabled'
   block:
-    - name: set_fact rgw_ports
-      set_fact:
+    - name: Set_fact rgw_ports
+      ansible.builtin.set_fact:
         rgw_ports: "{{ rgw_ports | default([]) | union(hostvars[item]['rgw_instances'] | map(attribute='radosgw_frontend_port') | map('string') | list) }}"
       with_items: "{{ groups.get(rgw_group_name, []) }}"
 
-    - name: add selinux rules
-      seport:
+    - name: Add selinux rules
+      community.general.seport:
         ports: "{{ rgw_ports }}"
         proto: tcp
         setype: http_port_t

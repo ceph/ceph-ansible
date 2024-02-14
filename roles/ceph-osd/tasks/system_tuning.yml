@@ -1,6 +1,6 @@
 ---
-- name: create tmpfiles.d directory
-  file:
+- name: Create tmpfiles.d directory
+  ansible.builtin.file:
     path: "/etc/tmpfiles.d"
     state: "directory"
     owner: "root"
@@ -9,8 +9,8 @@
   register: "tmpfiles_d"
   when: disable_transparent_hugepage | bool
 
-- name: disable transparent hugepage
-  template:
+- name: Disable transparent hugepage
+  ansible.builtin.template:
     src: "tmpfiles_hugepage.j2"
     dest: "/etc/tmpfiles.d/ceph_transparent_hugepage.conf"
     group: "root"
@@ -20,23 +20,23 @@
     validate: "systemd-tmpfiles --create %s"
   when: disable_transparent_hugepage | bool
 
-- name: get default vm.min_free_kbytes
-  slurp:
+- name: Get default vm.min_free_kbytes
+  ansible.builtin.slurp:
     src: /proc/sys/vm/min_free_kbytes
   register: default_vm_min_free_kbytes
 
-- name: set_fact vm_min_free_kbytes
-  set_fact:
+- name: Set_fact vm_min_free_kbytes
+  ansible.builtin.set_fact:
     vm_min_free_kbytes: "{{ 4194303 if ansible_facts['memtotal_mb'] >= 49152 else default_vm_min_free_kbytes.content | b64decode | trim }}"
 
-- name: apply operating system tuning
-  sysctl:
+- name: Apply operating system tuning
+  ansible.posix.sysctl:
     name: "{{ item.name }}"
     value: "{{ item.value }}"
     state: present
     sysctl_file: /etc/sysctl.d/ceph-tuning.conf
-    sysctl_set: yes
-    ignoreerrors: yes
+    sysctl_set: true
+    ignoreerrors: true
   with_items:
     - { name: "fs.aio-max-nr", value: "1048576", enable: "{{ osd_objectstore == 'bluestore' }}" }
     - "{{ os_tuning_params }}"

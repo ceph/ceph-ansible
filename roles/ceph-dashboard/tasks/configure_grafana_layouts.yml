@@ -1,12 +1,12 @@
 ---
-- name: set grafana url
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-url {{ dashboard_protocol }}://{{ grafana_server_fqdn | default(grafana_server_addr, true) }}:{{ grafana_port }}"
+- name: Set grafana url
+  ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-url {{ dashboard_protocol }}://{{ grafana_server_fqdn | default(grafana_server_addr, true) }}:{{ grafana_port }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false
 
-- name: inject grafana dashboard layouts
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard grafana dashboards update"
+- name: Inject grafana dashboard layouts
+  ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard grafana dashboards update"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false

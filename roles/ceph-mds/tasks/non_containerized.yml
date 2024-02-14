@@ -1,8 +1,8 @@
 ---
-- name: install ceph mds for debian
-  apt:
+- name: Install ceph mds for debian
+  ansible.builtin.apt:
     name: ceph-mds
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    state: "{{ (upgrade_ceph_packages | bool) | ternary('latest', 'present') }}"
     default_release: "{{ ceph_stable_release_uca | default('') if ceph_origin == 'repository' and ceph_repository == 'uca' else '' }}{{ ansible_facts['distribution_release'] ~ '-backports' if ceph_origin == 'distro' and ceph_use_distro_backports | bool else '' }}"
   when:
     - mds_group_name in group_names
@@ -10,25 +10,26 @@
   register: result
   until: result is succeeded
 
-- name: install ceph-mds package on redhat or SUSE/openSUSE
-  package:
+- name: Install ceph-mds package on redhat or SUSE/openSUSE
+  ansible.builtin.package:
     name: "ceph-mds"
-    state: "{{ (upgrade_ceph_packages|bool) | ternary('latest','present') }}"
+    state: "{{ (upgrade_ceph_packages | bool) | ternary('latest', 'present') }}"
   register: result
   until: result is succeeded
   when:
     - mds_group_name in group_names
     - ansible_facts['os_family'] in ['Suse', 'RedHat']
 
-- name: ensure systemd service override directory exists
-  file:
+- name: Ensure systemd service override directory exists
+  ansible.builtin.file:
     state: directory
     path: "/etc/systemd/system/ceph-mds@.service.d/"
+    mode: "0755"
   when:
     - ceph_mds_systemd_overrides is defined
     - ansible_facts['service_mgr'] == 'systemd'
 
-- name: add ceph-mds systemd service overrides
+- name: Add ceph-mds systemd service overrides
   openstack.config_template.config_template:
     src: "ceph-mds.service.d-overrides.j2"
     dest: "/etc/systemd/system/ceph-mds@.service.d/ceph-mds-systemd-overrides.conf"
@@ -38,10 +39,10 @@
     - ceph_mds_systemd_overrides is defined
     - ansible_facts['service_mgr'] == 'systemd'
 
-- name: start and add that the metadata service to the init sequence
-  service:
+- name: Start and add that the metadata service to the init sequence
+  ansible.builtin.systemd:
     name: ceph-mds@{{ ansible_facts['hostname'] }}
     state: started
-    enabled: yes
-    masked: no
+    enabled: true
+    masked: false
   changed_when: false

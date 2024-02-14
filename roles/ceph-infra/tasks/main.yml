@@ -1,26 +1,26 @@
 ---
-- name: update cache for Debian based OSs
-  apt:
-    update_cache: yes
+- name: Update cache for Debian based OSs
+  ansible.builtin.apt:
+    update_cache: true
   when: ansible_facts['os_family'] == "Debian"
   register: result
   until: result is succeeded
   tags: package-install
 
-- name: include_tasks configure_firewall.yml
-  include_tasks: configure_firewall.yml
+- name: Include_tasks configure_firewall.yml
+  ansible.builtin.include_tasks: configure_firewall.yml
   when:
     - configure_firewall | bool
     - ansible_facts['os_family'] in ['RedHat', 'Suse']
   tags: configure_firewall
 
-- name: include_tasks setup_ntp.yml
-  include_tasks: setup_ntp.yml
+- name: Include_tasks setup_ntp.yml
+  ansible.builtin.include_tasks: setup_ntp.yml
   when: ntp_service_enabled | bool
   tags: configure_ntp
 
-- name: ensure logrotate is installed
-  package:
+- name: Ensure logrotate is installed
+  ansible.builtin.package:
     name: logrotate
     state: present
   register: result
@@ -37,8 +37,8 @@
       inventory_hostname in groups.get(rbdmirror_group_name, []) or
       inventory_hostname in groups.get(iscsi_gw_group_name, [])
 
-- name: add logrotate configuration
-  template:
+- name: Add logrotate configuration
+  ansible.builtin.template:
     src: logrotate.conf.j2
     dest: /etc/logrotate.d/ceph
     mode: "0644"

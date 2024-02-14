@@ -1,18 +1,18 @@
 ---
-- name: include check_system.yml
-  include_tasks: check_system.yml
+- name: Include check_system.yml
+  ansible.builtin.include_tasks: check_system.yml
 
-- name: validate repository variables in non-containerized scenario
-  include_tasks: check_repository.yml
+- name: Validate repository variables in non-containerized scenario
+  ansible.builtin.include_tasks: check_repository.yml
   when: not containerized_deployment | bool
 
-- name: validate osd_objectstore
-  fail:
+- name: Validate osd_objectstore
+  ansible.builtin.fail:
     msg: "osd_objectstore must be 'bluestore''"
   when: osd_objectstore not in ['bluestore']
 
-- name: validate monitor network configuration
-  fail:
+- name: Validate monitor network configuration
+  ansible.builtin.fail:
     msg: "Either monitor_address, monitor_address_block or monitor_interface must be provided"
   when:
     - mon_group_name in group_names
@@ -20,8 +20,8 @@
     - monitor_address_block == 'subnet'
     - monitor_interface == 'interface'
 
-- name: validate radosgw network configuration
-  fail:
+- name: Validate radosgw network configuration
+  ansible.builtin.fail:
     msg: "Either radosgw_address, radosgw_address_block or radosgw_interface must be provided"
   when:
     - rgw_group_name in group_names
@@ -29,19 +29,19 @@
     - radosgw_address_block == 'subnet'
     - radosgw_interface == 'interface'
 
-- name: validate osd nodes
+- name: Validate osd nodes
   when: osd_group_name in group_names
   block:
-    - name: validate lvm osd scenario
-      fail:
+    - name: Validate lvm osd scenario
+      ansible.builtin.fail:
         msg: 'devices or lvm_volumes must be defined for lvm osd scenario'
       when:
         - not osd_auto_discovery | default(false) | bool
         - devices is undefined
         - lvm_volumes is undefined
 
-    - name: validate bluestore lvm osd scenario
-      fail:
+    - name: Validate bluestore lvm osd scenario
+      ansible.builtin.fail:
         msg: 'data key must be defined in lvm_volumes'
       when:
         - osd_objectstore == 'bluestore'
@@ -51,16 +51,16 @@
         - item.data is undefined
       with_items: '{{ lvm_volumes }}'
 
-- name: debian based systems tasks
+- name: Debian based systems tasks
   when: ansible_facts['os_family'] == 'Debian'
   block:
-    - name: fail if local scenario is enabled on debian
-      fail:
+    - name: Fail if local scenario is enabled on debian
+      ansible.builtin.fail:
         msg: "'local' installation scenario not supported on Debian systems"
       when: ceph_origin == 'local'
 
-    - name: fail if rhcs repository is enabled on debian
-      fail:
+    - name: Fail if rhcs repository is enabled on debian
+      ansible.builtin.fail:
         msg: "RHCS isn't supported anymore on Debian distribution"
       when:
         - ceph_origin == 'repository'
@@ -73,120 +73,121 @@
   when: ansible_facts['os_family'] == 'Suse'
   block:
     - name: Check ceph_origin definition on SUSE/openSUSE Leap
-      fail:
+      ansible.builtin.fail:
         msg: "Unsupported installation method origin:{{ ceph_origin }}"
       when: ceph_origin not in ['distro', 'repository']
 
     - name: Check ceph_repository definition on SUSE/openSUSE Leap
-      fail:
+      ansible.builtin.fail:
         msg: "Unsupported installation method origin:{{ ceph_origin }} repo:{{ ceph_repository }}'
                   only valid combination is ceph_origin == 'repository' and ceph_repository == 'obs'"
       when:
         - ceph_origin == 'repository'
         - ceph_repository != 'obs'
 
-- name: validate ntp daemon type
-  fail:
+- name: Validate ntp daemon type
+  ansible.builtin.fail:
     msg: "ntp_daemon_type must be one of chronyd, ntpd, or timesyncd"
   when:
     - ntp_service_enabled | bool
     - ntp_daemon_type not in ['chronyd', 'ntpd', 'timesyncd']
 
 # Since NTPd can not be installed on Atomic...
-- name: abort if ntp_daemon_type is ntpd on Atomic
-  fail:
+- name: Abort if ntp_daemon_type is ntpd on Atomic
+  ansible.builtin.fail:
     msg: installation can't happen on Atomic and ntpd needs to be installed
   when:
     - is_atomic | default(False) | bool
     - ansible_facts['os_family'] == 'RedHat'
     - ntp_daemon_type == 'ntpd'
 
-- name: include check_devices.yml
-  include_tasks: check_devices.yml
+- name: Include check_devices.yml
+  ansible.builtin.include_tasks: check_devices.yml
   when:
     - osd_group_name in group_names
     - not osd_auto_discovery | default(False) | bool
 
-- name: include check_eth_mon.yml
-  include_tasks: check_eth_mon.yml
+- name: Include check_eth_mon.yml
+  ansible.builtin.include_tasks: check_eth_mon.yml
   when:
     - mon_group_name in group_names
     - monitor_interface != "dummy"
     - monitor_address == "x.x.x.x"
     - monitor_address_block == "subnet"
 
-- name: include check_ipaddr_mon.yml
-  include_tasks: check_ipaddr_mon.yml
+- name: Include check_ipaddr_mon.yml
+  ansible.builtin.include_tasks: check_ipaddr_mon.yml
   when:
     - mon_group_name in group_names
     - monitor_interface == "interface"
     - monitor_address == "x.x.x.x"
     - monitor_address_block != "subnet"
 
-- name: include check_eth_rgw.yml
-  include_tasks: check_eth_rgw.yml
+- name: Include check_eth_rgw.yml
+  ansible.builtin.include_tasks: check_eth_rgw.yml
   when:
     - rgw_group_name in group_names
     - radosgw_interface != "dummy"
     - radosgw_address == "x.x.x.x"
     - radosgw_address_block == "subnet"
 
-- name: include check_rgw_pools.yml
-  include_tasks: check_rgw_pools.yml
+- name: Include check_rgw_pools.yml
+  ansible.builtin.include_tasks: check_rgw_pools.yml
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
     - rgw_create_pools is defined
 
-- name: include check_iscsi.yml
-  include_tasks: check_iscsi.yml
+- name: Include check_iscsi.yml
+  ansible.builtin.include_tasks: check_iscsi.yml
   when: iscsi_gw_group_name in group_names
 
-- name: include check_nfs.yml
-  include_tasks: check_nfs.yml
+- name: Include check_nfs.yml
+  ansible.builtin.include_tasks: check_nfs.yml
   when: inventory_hostname in groups.get(nfs_group_name, [])
 
-- name: include check_rbdmirror.yml
-  include_tasks: check_rbdmirror.yml
+- name: Include check_rbdmirror.yml
+  ansible.builtin.include_tasks: check_rbdmirror.yml
   when:
     - rbdmirror_group_name in group_names
     - ceph_rbd_mirror_configure | default(false) | bool
 
-- block:
-    - name: fail if monitoring group doesn't exist
-      fail:
+- name: Monitoring related tasks
+  when: dashboard_enabled | bool
+  block:
+    - name: Fail if monitoring group doesn't exist
+      ansible.builtin.fail:
         msg: "you must add a monitoring group and add at least one node."
       when: groups[monitoring_group_name] is undefined
 
-    - name: fail when monitoring doesn't contain at least one node.
-      fail:
+    - name: Fail when monitoring doesn't contain at least one node.
+      ansible.builtin.fail:
         msg: "you must add at least one node in the monitoring hosts group"
       when: groups[monitoring_group_name] | length < 1
 
-    - name: fail when dashboard_admin_password and/or grafana_admin_password are not set
-      fail:
+    - name: Fail when dashboard_admin_password and/or grafana_admin_password are not set
+      ansible.builtin.fail:
         msg: "you must set dashboard_admin_password and grafana_admin_password."
       when:
         - dashboard_admin_password is undefined
           or grafana_admin_password is undefined
-  when: dashboard_enabled | bool
 
-- name: validate container registry credentials
-  fail:
+- name: Validate container registry credentials
+  ansible.builtin.fail:
     msg: 'ceph_docker_registry_username and/or ceph_docker_registry_password variables need to be set'
   when:
     - ceph_docker_registry_auth | bool
     - (ceph_docker_registry_username is not defined or ceph_docker_registry_password is not defined) or
       (ceph_docker_registry_username | string | length == 0 or ceph_docker_registry_password | string | length == 0)
 
-- name: validate container service and container package
-  fail:
+- name: Validate container service and container package
+  ansible.builtin.fail:
     msg: 'both container_package_name and container_service_name should be defined'
   when:
     - (container_package_name is undefined and container_service_name is defined) or
       (container_package_name is defined and container_service_name is undefined)
 
-- name: validate openstack_keys key format
-  fail:
+- name: Validate openstack_keys key format
+  ansible.builtin.fail:
     msg: '{{ item.name }} key format invalid'
   with_items: '{{ openstack_keys }}'
   when:
@@ -196,8 +197,8 @@
     - item.key is defined
     - item.key is not match("^[a-zA-Z0-9+/]{38}==$")
 
-- name: validate clients keys key format
-  fail:
+- name: Validate clients keys key format
+  ansible.builtin.fail:
     msg: '{{ item.name }} key format invalid'
   with_items: '{{ keys }}'
   when:
@@ -207,8 +208,8 @@
     - item.key is defined
     - item.key is not match("^[a-zA-Z0-9+/]{38}==$")
 
-- name: validate openstack_keys caps
-  fail:
+- name: Validate openstack_keys caps
+  ansible.builtin.fail:
     msg: '{{ item.name }} key has no caps defined'
   with_items: '{{ openstack_keys }}'
   when:
@@ -217,8 +218,8 @@
     - openstack_keys | length > 0
     - item.caps is not defined
 
-- name: validate clients keys caps
-  fail:
+- name: Validate clients keys caps
+  ansible.builtin.fail:
     msg: '{{ item.name }} key has no caps defined'
   with_items: '{{ keys }}'
   when:
@@ -227,16 +228,16 @@
     - keys | length > 0
     - item.caps is not defined
 
-- name: check virtual_ips is defined
-  fail:
+- name: Check virtual_ips is defined
+  ansible.builtin.fail:
     msg: "virtual_ips is not defined."
   when:
     - rgwloadbalancer_group_name in group_names
     - groups[rgwloadbalancer_group_name] | length > 0
     - virtual_ips is not defined
 
-- name: validate virtual_ips length
-  fail:
+- name: Validate virtual_ips length
+  ansible.builtin.fail:
     msg: "There are more virual_ips defined than rgwloadbalancer nodes"
   when:
     - rgwloadbalancer_group_name in group_names

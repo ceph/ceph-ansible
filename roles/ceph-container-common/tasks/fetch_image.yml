@@ -1,6 +1,6 @@
 ---
-- name: "pulling {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} image"
-  command: "{{ timeout_command }} {{ container_binary }} pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+- name: Pulling Ceph container image
+  ansible.builtin.command: "{{ timeout_command }} {{ container_binary }} pull {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
   changed_when: false
   register: docker_image
   until: docker_image.rc == 0
@@ -12,8 +12,8 @@
     HTTPS_PROXY: "{{ ceph_docker_https_proxy | default('') }}"
     NO_PROXY: "{{ ceph_docker_no_proxy }}"
 
-- name: "pulling alertmanager/prometheus/grafana container images"
-  command: "{{ timeout_command }} {{ container_binary }} pull {{ item }}"
+- name: Pulling alertmanager/prometheus/grafana container images
+  ansible.builtin.command: "{{ timeout_command }} {{ container_binary }} pull {{ item }}"
   changed_when: false
   register: monitoring_images
   until: monitoring_images.rc == 0
@@ -31,8 +31,8 @@
     HTTPS_PROXY: "{{ ceph_docker_https_proxy | default('') }}"
     NO_PROXY: "{{ ceph_docker_no_proxy }}"
 
-- name: "pulling node-exporter container image"
-  command: "{{ timeout_command }} {{ container_binary }} pull {{ node_exporter_container_image }}"
+- name: Pulling node-exporter container image
+  ansible.builtin.command: "{{ timeout_command }} {{ container_binary }} pull {{ node_exporter_container_image }}"
   changed_when: false
   register: node_exporter_image
   until: node_exporter_image.rc == 0
@@ -54,27 +54,29 @@
     HTTPS_PROXY: "{{ ceph_docker_https_proxy | default('') }}"
     NO_PROXY: "{{ ceph_docker_no_proxy }}"
 
-- name: export local ceph dev image
-  command: >
+- name: Export local ceph dev image
+  ansible.builtin.command: >
     {{ container_binary }} save -o "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
     "{{ ceph_docker_username }}/{{ ceph_docker_imagename }}:{{ ceph_docker_image_tag }}"
   delegate_to: localhost
+  changed_when: false
   when: (ceph_docker_dev_image is defined and ceph_docker_dev_image)
   run_once: true
 
-- name: copy ceph dev image file
-  copy:
+- name: Copy ceph dev image file
+  ansible.builtin.copy:
     src: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
     dest: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+    mode: "0644"
   when: (ceph_docker_dev_image is defined and ceph_docker_dev_image | bool)
 
-- name: load ceph dev image
-  command: "{{ container_binary }} load -i /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+- name: Load ceph dev image
+  ansible.builtin.command: "{{ container_binary }} load -i /tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
+  changed_when: false
   when: (ceph_docker_dev_image is defined and ceph_docker_dev_image | bool)
 
-- name: remove tmp ceph dev image file
-  file:
+- name: Remove tmp ceph dev image file
+  ansible.builtin.file:
     name: "/tmp/{{ ceph_docker_username }}-{{ ceph_docker_imagename }}-{{ ceph_docker_image_tag }}.tar"
     state: absent
   when: (ceph_docker_dev_image is defined and ceph_docker_dev_image | bool)
-

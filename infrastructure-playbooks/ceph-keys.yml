@@ -4,7 +4,8 @@
 #
 # It currently runs on localhost
 
-- hosts: localhost
+- name: CephX key management examples
+  hosts: localhost
   gather_facts: false
   vars:
     cluster: ceph
@@ -17,12 +18,12 @@
       - client.leseb1
       - client.pythonnnn
     keys_to_create:
-      - { name: client.pythonnnn, caps: { mon: "allow rwx", mds: "allow *" } , mode: "0600" }
-      - { name: client.existpassss, caps: { mon: "allow r", osd: "allow *" } , mode: "0600" }
-      - { name: client.path, caps: { mon: "allow r", osd: "allow *" } , mode: "0600" }
+      - { name: client.pythonnnn, caps: { mon: "allow rwx", mds: "allow *" }, mode: "0600" }
+      - { name: client.existpassss, caps: { mon: "allow r", osd: "allow *" }, mode: "0600" }
+      - { name: client.path, caps: { mon: "allow r", osd: "allow *" }, mode: "0600" }
 
   tasks:
-    - name: create ceph key(s) module
+    - name: Create ceph key(s) module
       ceph_key:
         name: "{{ item.name }}"
         caps: "{{ item.caps }}"
@@ -31,7 +32,7 @@
         containerized: "{{ container_exec_cmd | default(False) }}"
       with_items: "{{ keys_to_create }}"
 
-    - name: update ceph key(s)
+    - name: Update ceph key(s)
       ceph_key:
         name: "{{ item.name }}"
         state: update
@@ -40,7 +41,7 @@
         containerized: "{{ container_exec_cmd | default(False) }}"
       with_items: "{{ keys_to_create }}"
 
-    - name: delete ceph key(s)
+    - name: Delete ceph key(s)
       ceph_key:
         name: "{{ item }}"
         state: absent
@@ -48,7 +49,7 @@
         containerized: "{{ container_exec_cmd | default(False) }}"
       with_items: "{{ keys_to_delete }}"
 
-    - name: info ceph key(s)
+    - name: Info ceph key(s)
       ceph_key:
         name: "{{ item }}"
         state: info
@@ -58,7 +59,7 @@
       ignore_errors: true
       with_items: "{{ keys_to_info }}"
 
-    - name: list ceph key(s)
+    - name: List ceph key(s)
       ceph_key:
         state: list
         cluster: "{{ cluster }}"
@@ -66,7 +67,7 @@
       register: list_keys
       ignore_errors: true
 
-    - name: fetch_initial_keys
+    - name: Fetch_initial_keys  # noqa: ignore-errors
       ceph_key:
         state: fetch_initial_keys
         cluster: "{{ cluster }}"

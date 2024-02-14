@@ -1,52 +1,52 @@
 ---
-- name: dashboard related tasks
+- name: Dashboard related tasks
   when: ceph_dashboard_call_item is defined
   block:
-    - name: set current radosgw_address_block, radosgw_address, radosgw_interface  from node "{{ ceph_dashboard_call_item }}"
-      set_fact:
+    - name: Set current radosgw_address_block, radosgw_address, radosgw_interface  from node "{{ ceph_dashboard_call_item }}"
+      ansible.builtin.set_fact:
         radosgw_address_block: "{{ hostvars[ceph_dashboard_call_item]['radosgw_address_block'] | default(radosgw_address_block) }}"
         radosgw_address: "{{ hostvars[ceph_dashboard_call_item]['radosgw_address'] | default(radosgw_address) }}"
         radosgw_interface: "{{ hostvars[ceph_dashboard_call_item]['radosgw_interface'] | default(radosgw_interface) }}"
 
-- name: set_fact _radosgw_address to radosgw_address_block ipv4
-  set_fact:
+- name: Set_fact _radosgw_address to radosgw_address_block ipv4
+  ansible.builtin.set_fact:
     _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(hostvars[inventory_hostname]['radosgw_address_block'].split(',')) | first }}"
   when:
     - radosgw_address_block is defined
     - radosgw_address_block != 'subnet'
     - ip_version == 'ipv4'
 
-- name: set_fact _radosgw_address to radosgw_address_block ipv6
-  set_fact:
+- name: Set_fact _radosgw_address to radosgw_address_block ipv6
+  ansible.builtin.set_fact:
     _radosgw_address: "{{ hostvars[inventory_hostname]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(hostvars[inventory_hostname]['radosgw_address_block'].split(',')) | last | ansible.utils.ipwrap }}"
   when:
     - radosgw_address_block is defined
     - radosgw_address_block != 'subnet'
     - ip_version == 'ipv6'
 
-- name: set_fact _radosgw_address to radosgw_address
-  set_fact:
+- name: Set_fact _radosgw_address to radosgw_address
+  ansible.builtin.set_fact:
     _radosgw_address: "{{ radosgw_address | ansible.utils.ipwrap }}"
   when:
     - radosgw_address is defined
     - radosgw_address != 'x.x.x.x'
 
-- name: tasks for radosgw interface
+- name: Tasks for radosgw interface
   when:
     - radosgw_address_block == 'subnet'
     - radosgw_address == 'x.x.x.x'
     - radosgw_interface != 'interface'
   block:
-    - name: set_fact _interface
-      set_fact:
+    - name: Set_fact _interface
+      ansible.builtin.set_fact:
         _interface: "{{ (hostvars[item]['radosgw_interface'] | replace('-', '_')) }}"
       loop: "{{ groups.get(rgw_group_name, []) }}"
       delegate_to: "{{ item }}"
       delegate_facts: true
       run_once: true
 
-    - name: set_fact _radosgw_address to radosgw_interface - ipv4
-      set_fact:
+    - name: Set_fact _radosgw_address to radosgw_interface - ipv4
+      ansible.builtin.set_fact:
         _radosgw_address: "{{ hostvars[item]['ansible_facts'][hostvars[item]['_interface']][ip_version]['address'] }}"
       loop: "{{ groups.get(rgw_group_name, []) }}"
       delegate_to: "{{ item }}"
@@ -54,8 +54,8 @@
       run_once: true
       when: ip_version == 'ipv4'
 
-    - name: set_fact _radosgw_address to radosgw_interface - ipv6
-      set_fact:
+    - name: Set_fact _radosgw_address to radosgw_interface - ipv6
+      ansible.builtin.set_fact:
         _radosgw_address: "{{ hostvars[item]['ansible_facts'][hostvars[item]['_interface']][ip_version][0]['address'] | ansible.utils.ipwrap }}"
       loop: "{{ groups.get(rgw_group_name, []) }}"
       delegate_to: "{{ item }}"
@@ -63,18 +63,18 @@
       run_once: true
       when: ip_version == 'ipv6'
 
-- name: rgw_instances
+- name: Rgw_instances
   when:
     - ceph_dashboard_call_item is defined or
       inventory_hostname in groups.get(rgw_group_name, [])
   block:
-    - name: reset rgw_instances (workaround)
-      set_fact:
+    - name: Reset rgw_instances (workaround)
+      ansible.builtin.set_fact:
         rgw_instances: []
 
-    - name: set_fact rgw_instances
-      set_fact:
-        rgw_instances: "{{ rgw_instances|default([]) | union([{'instance_name': 'rgw' + item|string, 'radosgw_address': hostvars[ceph_dashboard_call_item | default(inventory_hostname)]['_radosgw_address'], 'radosgw_frontend_port': radosgw_frontend_port|int + item|int }]) }}"
-      with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
+    - name: Set_fact rgw_instances
+      ansible.builtin.set_fact:
+        rgw_instances: "{{ rgw_instances | default([]) | union([{'instance_name': 'rgw' + item | string, 'radosgw_address': hostvars[ceph_dashboard_call_item | default(inventory_hostname)]['_radosgw_address'], 'radosgw_frontend_port': radosgw_frontend_port | int + item | int}]) }}"
+      with_sequence: start=0 end={{ radosgw_num_instances | int - 1 }}
       delegate_to: "{{ ceph_dashboard_call_item if ceph_dashboard_call_item is defined else inventory_hostname }}"
-      delegate_facts: "{{ true if ceph_dashboard_call_item is defined else false }}"
+      delegate_facts: true

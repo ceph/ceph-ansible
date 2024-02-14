@@ -1,9 +1,9 @@
 ---
-- name: set_fact _rgw_hostname
-  set_fact:
+- name: Set_fact _rgw_hostname
+  ansible.builtin.set_fact:
     _rgw_hostname: "{{ hostvars[inventory_hostname]['ansible_facts']['hostname'] }}"
 
-- name: set rgw parameter (log file)
+- name: Set rgw parameter (log file)
   ceph_config:
     action: set
     who: "client.rgw.{{ _rgw_hostname + '.' + item.instance_name }}"
@@ -15,7 +15,7 @@
   delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
   loop: "{{ hostvars[inventory_hostname]['rgw_instances'] }}"
 
-- name: set rgw parameter (rgw_frontends)
+- name: Set rgw parameter (rgw_frontends)
   ceph_config:
     action: set
     who: "client.rgw.{{ _rgw_hostname + '.' + item.instance_name }}"
@@ -26,13 +26,13 @@
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
   loop: "{{ hostvars[inventory_hostname]['rgw_instances'] }}"
-  notify: restart ceph rgws
+  notify: Restart ceph rgws
 
 # rgw_frontends
 # {{ 'ssl_' if radosgw_frontend_ssl_certificate else '' }}endpoint={{ _rgw_binding_socket }}{{ ' ssl_certificate='+radosgw_frontend_ssl_certificate if radosgw_frontend_ssl_certificate else '' }}
 
-- name: create rados gateway directories
-  file:
+- name: Create rados gateway directories
+  ansible.builtin.file:
     path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
     state: directory
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
@@ -42,7 +42,7 @@
   loop: "{{ rgw_instances }}"
   when: groups.get(mon_group_name, []) | length > 0
 
-- name: create rgw keyrings
+- name: Create rgw keyrings
   ceph_key:
     name: "client.rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
     cluster: "{{ cluster }}"
@@ -57,14 +57,14 @@
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "0600"
   no_log: "{{ no_log_on_ceph_key_tasks }}"
-  delegate_to: "{{ groups[mon_group_name][0] if groups.get(mon_group_name, []) | length > 0 else 'localhost'}}"
+  delegate_to: "{{ groups[mon_group_name][0] if groups.get(mon_group_name, []) | length > 0 else 'localhost' }}"
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   with_items: "{{ rgw_instances }}"
   when: cephx | bool
 
-- name: get keys from monitors
+- name: Get keys from monitors
   ceph_key:
     name: "client.rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
     cluster: "{{ cluster }}"
@@ -81,8 +81,8 @@
     - groups.get(mon_group_name, []) | length > 0
   no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-- name: copy ceph key(s) if needed
-  copy:
+- name: Copy ceph key(s) if needed
+  ansible.builtin.copy:
     dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.{{ item.item.instance_name }}/keyring"
     content: "{{ item.stdout + '\n' }}"
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"

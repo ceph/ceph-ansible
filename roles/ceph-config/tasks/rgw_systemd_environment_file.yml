@@ -1,6 +1,6 @@
 ---
-- name: create rados gateway instance directories
-  file:
+- name: Create rados gateway instance directories
+  ansible.builtin.file:
     path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
     state: directory
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
@@ -8,8 +8,8 @@
     mode: "{{ ceph_directories_mode | default('0755') }}"
   with_items: "{{ rgw_instances }}"
 
-- name: generate environment file
-  copy:
+- name: Generate environment file
+  ansible.builtin.copy:
     dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}/EnvironmentFile"
     owner: "root"
     group: "root"

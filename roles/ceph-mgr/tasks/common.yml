@@ -1,13 +1,13 @@
 ---
-- name: create mgr directory
-  file:
+- name: Create mgr directory
+  ansible.builtin.file:
     path: /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_facts['hostname'] }}
     state: directory
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "{{ ceph_directories_mode }}"
 
-- name: fetch ceph mgr keyring
+- name: Fetch ceph mgr keyring
   ceph_key:
     name: "mgr.{{ ansible_facts['hostname'] }}"
     caps:
@@ -26,10 +26,10 @@
   when: groups.get(mgr_group_name, []) | length == 0 # the key is present already since one of the mons created it in "create ceph mgr keyring(s)"
   no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-- name: create and copy keyrings
+- name: Create and copy keyrings
   when: groups.get(mgr_group_name, []) | length > 0
   block:
-    - name: create ceph mgr keyring(s) on a mon node
+    - name: Create ceph mgr keyring(s) on a mon node
       ceph_key:
         name: "mgr.{{ hostvars[item]['ansible_facts']['hostname'] }}"
         caps:
@@ -45,17 +45,17 @@
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_items: "{{ groups.get(mgr_group_name, []) }}"
-      run_once: True
+      run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-    - name: set_fact _mgr_keys
-      set_fact:
+    - name: Set_fact _mgr_keys
+      ansible.builtin.set_fact:
         _mgr_keys:
           - { 'name': 'client.admin', 'path': "/etc/ceph/{{ cluster }}.client.admin.keyring", 'copy_key': "{{ copy_admin_key }}" }
           - { 'name': "mgr.{{ ansible_facts['hostname'] }}", 'path': "/var/lib/ceph/mgr/{{ cluster }}-{{ ansible_facts['hostname'] }}/keyring", 'copy_key': true }
 
-    - name: get keys from monitors
+    - name: Get keys from monitors
       ceph_key:
         name: "{{ item.name }}"
         cluster: "{{ cluster }}"
@@ -72,8 +72,8 @@
         - item.copy_key | bool
       no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-    - name: copy ceph key(s) if needed
-      copy:
+    - name: Copy ceph key(s) if needed
+      ansible.builtin.copy:
         dest: "{{ item.item.path }}"
         content: "{{ item.stdout + '\n' }}"
         owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
@@ -86,15 +86,15 @@
         - item.item.copy_key | bool
       no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-- name: set mgr key permissions
-  file:
+- name: Set mgr key permissions
+  ansible.builtin.file:
     path: /var/lib/ceph/mgr/{{ cluster }}-{{ ansible_facts['hostname'] }}/keyring
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     mode: "{{ ceph_keyring_permissions }}"
   when: cephx | bool
 
-- name: append dashboard modules to ceph_mgr_modules
-  set_fact:
+- name: Append dashboard modules to ceph_mgr_modules
+  ansible.builtin.set_fact:
     ceph_mgr_modules: "{{ ceph_mgr_modules | union(['dashboard', 'prometheus']) }}"
   when: dashboard_enabled | bool

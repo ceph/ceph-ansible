@@ -1,21 +1,22 @@
 ---
-- name: lookup keys in /etc/ceph
-  shell: ls -1 /etc/ceph/*.keyring
+- name: Lookup keys in /etc/ceph
+  ansible.builtin.shell: ls -1 /etc/ceph/*.keyring
   changed_when: false
   register: ceph_keys
 
-- name: create a local fetch directory if it does not exist
-  file:
+- name: Create a local fetch directory if it does not exist
+  ansible.builtin.file:
     path: "{{ fetch_directory }}"
     state: directory
+    mode: "0755"
   delegate_to: localhost
   become: false
 
-- name: "copy ceph user and bootstrap keys to the ansible server in {{ fetch_directory }}/{{ fsid }}/"
-  fetch:
+- name: Copy ceph user and bootstrap keys to the ansible server
+  ansible.builtin.fetch:
     src: "{{ item }}"
     dest: "{{ fetch_directory }}/{{ fsid }}/{{ item }}"
-    flat: yes
+    flat: true
     fail_on_missing: false
   run_once: true
   with_items:

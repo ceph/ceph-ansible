@@ -1,9 +1,10 @@
 ---
-- import_role:
+- name: Import ceph-facts role
+  ansible.builtin.import_role:
     name: ceph-facts
     tasks_from: get_def_crush_rule_name.yml
 
-- name: create filesystem pools
+- name: Create filesystem pools
   ceph_pool:
     name: "{{ item.name }}"
     cluster: "{{ cluster }}"
@@ -22,7 +23,7 @@
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
-- name: create ceph filesystem
+- name: Create ceph filesystem
   ceph_fs:
     name: "{{ cephfs }}"
     cluster: "{{ cluster }}"
