@@ -1,27 +1,27 @@
 ---
-- name: find ceph mon socket
-  find:
+- name: Find ceph mon socket
+  ansible.builtin.find:
     paths: ["{{ rbd_client_admin_socket_path }}"]
-    recurse: yes
+    recurse: true
     file_type: any
     patterns: "{{ cluster }}-mon*.asok"
-    use_regex: no
+    use_regex: false
   register: mon_socket_stat
   when: inventory_hostname in groups.get(mon_group_name, [])
 
-- name: check if the ceph mon socket is in-use
-  command: grep -q {{ item.path }} /proc/net/unix
+- name: Check if the ceph mon socket is in-use
+  ansible.builtin.command: grep -q {{ item.path }} /proc/net/unix
   changed_when: false
   failed_when: false
-  check_mode: no
+  check_mode: false
   register: mon_socket
   with_items: "{{ mon_socket_stat.files }}"
   when:
     - inventory_hostname in groups.get(mon_group_name, [])
     - mon_socket_stat.files | length > 0
 
-- name: remove ceph mon socket if exists and not used by a process
-  file:
+- name: Remove ceph mon socket if exists and not used by a process
+  ansible.builtin.file:
     name: "{{ item.0.path }}"
     state: absent
   with_together:
@@ -32,29 +32,29 @@
     - mon_socket_stat.files | length > 0
     - item.1.rc == 1
 
-- name: find ceph osd socket
-  find:
+- name: Find ceph osd socket
+  ansible.builtin.find:
     paths: ["{{ rbd_client_admin_socket_path }}"]
-    recurse: yes
+    recurse: true
     file_type: any
     patterns: "{{ cluster }}-osd.*.asok"
-    use_regex: no
+    use_regex: false
   register: osd_socket_stat
   when: inventory_hostname in groups.get(osd_group_name, [])
 
-- name: check if the ceph osd socket is in-use
-  command: grep -q {{ item.path }} /proc/net/unix
+- name: Check if the ceph osd socket is in-use
+  ansible.builtin.command: grep -q {{ item.path }} /proc/net/unix
   changed_when: false
   failed_when: false
-  check_mode: no
+  check_mode: false
   register: osd_socket
   with_items: "{{ osd_socket_stat.files }}"
   when:
     - inventory_hostname in groups.get(osd_group_name, [])
     - osd_socket_stat.files | length > 0
 
-- name: remove ceph osd socket if exists and not used by a process
-  file:
+- name: Remove ceph osd socket if exists and not used by a process
+  ansible.builtin.file:
     name: "{{ item.0.path }}"
     state: absent
   with_together:
@@ -65,29 +65,29 @@
     - osd_socket_stat.files | length > 0
     - item.1.rc == 1
 
-- name: find ceph osd socket
-  find:
+- name: Find ceph osd socket
+  ansible.builtin.find:
     paths: ["{{ rbd_client_admin_socket_path }}"]
-    recurse: yes
+    recurse: true
     file_type: any
     patterns: "{{ cluster }}-mds*.asok"
-    use_regex: no
+    use_regex: false
   register: mds_socket_stat
   when: inventory_hostname in groups.get(mds_group_name, [])
 
-- name: check if the ceph mds socket is in-use
-  command: grep -q {{ item.path }} /proc/net/unix
+- name: Check if the ceph mds socket is in-use
+  ansible.builtin.command: grep -q {{ item.path }} /proc/net/unix
   changed_when: false
   failed_when: false
-  check_mode: no
+  check_mode: false
   register: mds_socket
   with_items: "{{ mds_socket_stat.files }}"
   when:
     - inventory_hostname in groups.get(mds_group_name, [])
     - mds_socket_stat.files | length > 0
 
-- name: remove ceph mds socket if exists and not used by a process
-  file:
+- name: Remove ceph mds socket if exists and not used by a process
+  ansible.builtin.file:
     name: "{{ item.0.path }}"
     state: absent
   with_together:
@@ -98,29 +98,29 @@
     - mds_socket_stat.files | length > 0
     - item.1.rc == 1
 
-- name: find ceph rgw socket
-  find:
+- name: Find ceph rgw socket
+  ansible.builtin.find:
     paths: ["{{ rbd_client_admin_socket_path }}"]
-    recurse: yes
+    recurse: true
     file_type: any
     patterns: "{{ cluster }}-client.rgw*.asok"
-    use_regex: no
+    use_regex: false
   register: rgw_socket_stat
   when: inventory_hostname in groups.get(rgw_group_name, [])
 
-- name: check if the ceph rgw socket is in-use
-  command: grep -q {{ item.path }} /proc/net/unix
+- name: Check if the ceph rgw socket is in-use
+  ansible.builtin.command: grep -q {{ item.path }} /proc/net/unix
   changed_when: false
   failed_when: false
-  check_mode: no
+  check_mode: false
   register: rgw_socket
   with_items: "{{ rgw_socket_stat.files }}"
   when:
     - inventory_hostname in groups.get(rgw_group_name, [])
     - rgw_socket_stat.files | length > 0
 
-- name: remove ceph rgw socket if exists and not used by a process
-  file:
+- name: Remove ceph rgw socket if exists and not used by a process
+  ansible.builtin.file:
     name: "{{ item.0.path }}"
     state: absent
   with_together:
@@ -131,29 +131,29 @@
     - rgw_socket_stat.files | length > 0
     - item.1.rc == 1
 
-- name: find ceph mgr socket
-  find:
+- name: Find ceph mgr socket
+  ansible.builtin.find:
     paths: ["{{ rbd_client_admin_socket_path }}"]
-    recurse: yes
+    recurse: true
     file_type: any
     patterns: "{{ cluster }}-mgr*.asok"
-    use_regex: no
+    use_regex: false
   register: mgr_socket_stat
   when: inventory_hostname in groups.get(mgr_group_name, [])
 
-- name: check if the ceph mgr socket is in-use
-  command: grep -q {{ item.path }} /proc/net/unix
+- name: Check if the ceph mgr socket is in-use
+  ansible.builtin.command: grep -q {{ item.path }} /proc/net/unix
   changed_when: false
   failed_when: false
-  check_mode: no
+  check_mode: false
   register: mgr_socket
   with_items: "{{ mgr_socket_stat.files }}"
   when:
     - inventory_hostname in groups.get(mgr_group_name, [])
     - mgr_socket_stat.files | length > 0
 
-- name: remove ceph mgr socket if exists and not used by a process
-  file:
+- name: Remove ceph mgr socket if exists and not used by a process
+  ansible.builtin.file:
     name: "{{ item.0.path }}"
     state: absent
   with_together:
@@ -164,29 +164,29 @@
     - mgr_socket_stat.files | length > 0
     - item.1.rc == 1
 
-- name: find ceph rbd mirror socket
-  find:
+- name: Find ceph rbd mirror socket
+  ansible.builtin.find:
     paths: ["{{ rbd_client_admin_socket_path }}"]
-    recurse: yes
+    recurse: true
     file_type: any
     patterns: "{{ cluster }}-client.rbd-mirror*.asok"
-    use_regex: no
+    use_regex: false
   register: rbd_mirror_socket_stat
   when: inventory_hostname in groups.get(rbdmirror_group_name, [])
 
-- name: check if the ceph rbd mirror socket is in-use
-  command: grep -q {{ item.path }} /proc/net/unix
+- name: Check if the ceph rbd mirror socket is in-use
+  ansible.builtin.command: grep -q {{ item.path }} /proc/net/unix
   changed_when: false
   failed_when: false
-  check_mode: no
+  check_mode: false
   register: rbd_mirror_socket
   with_items: "{{ rbd_mirror_socket_stat.files }}"
   when:
     - inventory_hostname in groups.get(rbdmirror_group_name, [])
     - rbd_mirror_socket_stat.files | length > 0
 
-- name: remove ceph rbd mirror socket if exists and not used by a process
-  file:
+- name: Remove ceph rbd mirror socket if exists and not used by a process
+  ansible.builtin.file:
     name: "{{ item.0.path }}"
     state: absent
   with_together:
@@ -197,43 +197,43 @@
     - rbd_mirror_socket_stat.files | length > 0
     - item.1.rc == 1
 
-- name: check for a nfs ganesha pid
-  command: "pgrep ganesha.nfsd"
+- name: Check for a nfs ganesha pid
+  ansible.builtin.command: "pgrep ganesha.nfsd"
   register: nfs_process
   changed_when: false
   failed_when: false
-  check_mode: no
+  check_mode: false
   when: inventory_hostname in groups.get(nfs_group_name, [])
 
-- name: check for a tcmu-runner
-  command: "pgrep tcmu-runner"
+- name: Check for a tcmu-runner
+  ansible.builtin.command: "pgrep tcmu-runner"
   register: ceph_tcmu_runner_stat
   changed_when: false
   failed_when: false
-  check_mode: no
+  check_mode: false
   when: inventory_hostname in groups.get(iscsi_gw_group_name, [])
 
-- name: check for a rbd-target-api
-  command: "pgrep rbd-target-api"
+- name: Check for a rbd-target-api
+  ansible.builtin.command: "pgrep rbd-target-api"
   register: ceph_rbd_target_api_stat
   changed_when: false
   failed_when: false
-  check_mode: no
+  check_mode: false
   when: inventory_hostname in groups.get(iscsi_gw_group_name, [])
 
-- name: check for a rbd-target-gw
-  command: "pgrep name=rbd-target-gw"
+- name: Check for a rbd-target-gw
+  ansible.builtin.command: "pgrep name=rbd-target-gw"
   register: ceph_rbd_target_gw_stat
   changed_when: false
   failed_when: false
-  check_mode: no
+  check_mode: false
   when: inventory_hostname in groups.get(iscsi_gw_group_name, [])
 
-- name: check for a ceph-crash process
-  command: pgrep ceph-crash
+- name: Check for a ceph-crash process
+  ansible.builtin.command: pgrep ceph-crash
   changed_when: false
   failed_when: false
-  check_mode: no
+  check_mode: false
   register: crash_process
   when:
     - inventory_hostname in groups.get(mon_group_name, [])

@@ -1,36 +1,38 @@
 ---
-- import_role:
+- name: Import ceph-facts role
+  ansible.builtin.import_role:
     name: ceph-facts
     tasks_from: container_binary.yml
   delegate_to: "{{ groups[mon_group_name][0] }}"
   delegate_facts: true
 
-- name: set_fact container_exec_cmd
-  set_fact:
+- name: Set_fact container_exec_cmd
+  ansible.builtin.set_fact:
     container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] }}"
   when: containerized_deployment | bool
 
-- name: set_fact container_run_cmd
-  set_fact:
+- name: Set_fact container_run_cmd
+  ansible.builtin.set_fact:
     ceph_cmd: "{{ hostvars[groups[mon_group_name][0]]['container_binary'] + ' run --interactive --net=host --rm -v /etc/ceph:/etc/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
 
-- name: get current mgr backend - ipv4
-  set_fact:
+- name: Get current mgr backend - ipv4
+  ansible.builtin.set_fact:
     dashboard_server_addr: "{{ hostvars[item]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(dashboard_network.split(',')) | first }}"
   when: ip_version == 'ipv4'
   loop: "{{ groups.get(mgr_group_name) if groups.get(mgr_group_name, []) | length > 0 else groups.get(mon_group_name) }}"
   delegate_to: "{{ item }}"
-  delegate_facts: True
+  delegate_facts: true
 
-- name: get current mgr backend - ipv6
-  set_fact:
+- name: Get current mgr backend - ipv6
+  ansible.builtin.set_fact:
     dashboard_server_addr: "{{ hostvars[item]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(dashboard_network.split(',')) | last }}"
   when: ip_version == 'ipv6'
   loop: "{{ groups.get(mgr_group_name) if groups.get(mgr_group_name, []) | length > 0 else groups.get(mon_group_name) }}"
   delegate_to: "{{ item }}"
-  delegate_facts: True
+  delegate_facts: true
 
-- include_role:
+- name: Include ceph-facts role
+  ansible.builtin.include_role:
     name: ceph-facts
     tasks_from: set_radosgw_address.yml
   loop: "{{ groups.get(rgw_group_name, []) }}"
@@ -39,100 +41,103 @@
     loop_var: ceph_dashboard_call_item
   when: inventory_hostname in groups.get(rgw_group_name, [])
 
-- name: disable SSL for dashboard
+- name: Disable SSL for dashboard
   when: dashboard_protocol == "http"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   block:
-   - name: get SSL status for dashboard
-     command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config get mgr mgr/dashboard/ssl"
-     changed_when: false
-     register: current_ssl_for_dashboard
+    - name: Get SSL status for dashboard
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config get mgr mgr/dashboard/ssl"
+      changed_when: false
+      register: current_ssl_for_dashboard
 
-   - name: disable SSL for dashboard
-     command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/ssl false"
-     when: current_ssl_for_dashboard.stdout == "true"
+    - name: Disable SSL for dashboard
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/ssl false"
+      changed_when: false
+      when: current_ssl_for_dashboard.stdout == "true"
 
-- name: with SSL for dashboard
+- name: With SSL for dashboard
   when: dashboard_protocol == "https"
   block:
-    - name: enable SSL for dashboard
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/ssl true"
+    - name: Enable SSL for dashboard
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/ssl true"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
+      changed_when: false
 
-    - name: copy dashboard SSL certificate file
-      copy:
+    - name: Copy dashboard SSL certificate file
+      ansible.builtin.copy:
         src: "{{ dashboard_crt }}"
         dest: "/etc/ceph/ceph-dashboard.crt"
         owner: root
         group: root
-        mode: 0440
+        mode: "0440"
         remote_src: "{{ dashboard_tls_external | bool }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when: dashboard_crt | length > 0
 
-    - name: copy dashboard SSL certificate key
-      copy:
+    - name: Copy dashboard SSL certificate key
+      ansible.builtin.copy:
         src: "{{ dashboard_key }}"
         dest: "/etc/ceph/ceph-dashboard.key"
         owner: root
         group: root
-        mode: 0440
+        mode: "0440"
         remote_src: "{{ dashboard_tls_external | bool }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when: dashboard_key | length > 0
 
-    - name: generate and copy self-signed certificate
+    - name: Generate and copy self-signed certificate
       when: dashboard_key | length == 0 or dashboard_crt | length == 0
       run_once: true
       block:
-        - name: set_fact subj_alt_names
-          set_fact:
+        - name: Set_fact subj_alt_names
+          ansible.builtin.set_fact:
             subj_alt_names: >
-              {% for host in groups[mgr_group_name] | default(groups[mon_group_name]) -%}
-              DNS:{{ hostvars[host]['ansible_facts']['hostname'] }},DNS:{{ hostvars[host]['ansible_facts']['fqdn'] }},IP:{{ hostvars[host]['dashboard_server_addr'] }}{% if not loop.last %},{% endif %}
-              {%- endfor -%}
+              {% for host in groups[mgr_group_name] | default(groups[mon_group_name]) -%} DNS:{{ hostvars[host]['ansible_facts']['hostname'] }},DNS:{{ hostvars[host]['ansible_facts']['fqdn'] }},IP:{{ hostvars[host]['dashboard_server_addr'] }}{% if not loop.last %},{% endif %}{%- endfor -%}
 
-        - name: create tempfile for openssl certificate and key generation
-          tempfile:
+        - name: Create tempfile for openssl certificate and key generation
+          ansible.builtin.tempfile:
             state: file
           register: openssl_config_file
 
-        - name: copy the openssl configuration file
-          copy:
+        - name: Copy the openssl configuration file
+          ansible.builtin.copy:
             src: "{{ '/etc/pki/tls/openssl.cnf' if ansible_facts['os_family'] == 'RedHat' else '/etc/ssl/openssl.cnf' }}"
             dest: '{{ openssl_config_file.path }}'
             remote_src: true
+            mode: "0644"
 
-        - name: add subjectAltName to the openssl configuration
-          ini_file:
+        - name: Add subjectAltName to the openssl configuration
+          community.general.ini_file:
             path: '{{ openssl_config_file.path }}'
             section: v3_ca
             option: subjectAltName
             value: '{{ subj_alt_names | trim }}'
+            mode: "0644"
 
-        - name: generate a Self Signed OpenSSL certificate for dashboard
-          shell: |
+        - name: Generate a Self Signed OpenSSL certificate for dashboard
+          ansible.builtin.shell: |
             test -f /etc/ceph/ceph-dashboard.key -a -f /etc/ceph/ceph-dashboard.crt || \
             openssl req -new -nodes -x509 -subj '/O=IT/CN={{ dashboard_certificate_cn }}/' -config {{ openssl_config_file.path }} -days 3650 -keyout /etc/ceph/ceph-dashboard.key -out /etc/ceph/ceph-dashboard.crt -extensions v3_ca
+          changed_when: false
 
-        - name: remove the openssl tempfile
-          file:
+        - name: Remove the openssl tempfile
+          ansible.builtin.file:
             path: '{{ openssl_config_file.path }}'
             state: absent
 
-        - name: slurp self-signed generated certificate for dashboard
-          slurp:
+        - name: Slurp self-signed generated certificate for dashboard
+          ansible.builtin.slurp:
             src: "/etc/ceph/{{ item }}"
-          run_once: True
+          run_once: true
           with_items:
             - 'ceph-dashboard.key'
             - 'ceph-dashboard.crt'
           register: slurp_self_signed_crt
 
-        - name: copy self-signed generated certificate on mons
-          copy:
+        - name: Copy self-signed generated certificate on mons
+          ansible.builtin.copy:
             dest: "{{ item.0.source }}"
             content: "{{ item.0.content | b64decode }}"
             owner: "{{ ceph_uid }}"
@@ -143,39 +148,39 @@
             - "{{ slurp_self_signed_crt.results }}"
             - "{{ groups[mon_group_name] }}"
 
-    - name: import dashboard certificate file
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config-key set mgr/dashboard/crt -i /etc/ceph/ceph-dashboard.crt"
+    - name: Import dashboard certificate file
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config-key set mgr/dashboard/crt -i /etc/ceph/ceph-dashboard.crt"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
 
-    - name: import dashboard certificate key
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config-key set mgr/dashboard/key -i /etc/ceph/ceph-dashboard.key"
+    - name: Import dashboard certificate key
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config-key set mgr/dashboard/key -i /etc/ceph/ceph-dashboard.key"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
 
-- name: "set the dashboard port ({{ dashboard_port }})"
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/server_port {{ dashboard_port }}"
+- name: Set the dashboard port
+  ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/server_port {{ dashboard_port }}"
   changed_when: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
 
-- name: "set the dashboard SSL port ({{ dashboard_port }})"
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/ssl_server_port {{ dashboard_port }}"
+- name: Set the dashboard SSL port
+  ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/ssl_server_port {{ dashboard_port }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false
   failed_when: false # Do not fail if the option does not exist, it only exists post-14.2.0
 
-- name: config the current dashboard backend
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/{{ hostvars[item]['ansible_facts']['hostname'] }}/server_addr {{ hostvars[item]['dashboard_server_addr'] }}"
+- name: Config the current dashboard backend
+  ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} config set mgr mgr/dashboard/{{ hostvars[item]['ansible_facts']['hostname'] }}/server_addr {{ hostvars[item]['dashboard_server_addr'] }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   changed_when: false
   run_once: true
   with_items: '{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}'
 
-- name: disable mgr dashboard module (restart)
+- name: Disable mgr dashboard module (restart)
   ceph_mgr_module:
     name: dashboard
     cluster: "{{ cluster }}"
@@ -186,7 +191,7 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
 
-- name: enable mgr dashboard module (restart)
+- name: Enable mgr dashboard module (restart)
   ceph_mgr_module:
     name: dashboard
     cluster: "{{ cluster }}"
@@ -197,7 +202,7 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
 
-- name: create dashboard admin user
+- name: Create dashboard admin user
   ceph_dashboard_user:
     name: "{{ dashboard_admin_user }}"
     cluster: "{{ cluster }}"
@@ -209,30 +214,30 @@
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
-- name: disable unused dashboard features
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard feature disable {{ item }}"
+- name: Disable unused dashboard features
+  ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard feature disable {{ item }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false
   with_items: "{{ dashboard_disabled_features }}"
 
-- name: set grafana api user
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-username {{ grafana_admin_user }}"
+- name: Set grafana api user
+  ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-username {{ grafana_admin_user }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false
 
-- name: set grafana api password
-  command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard set-grafana-api-password -i -"
+- name: Set grafana api password
+  ansible.builtin.command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard set-grafana-api-password -i -"
   args:
     stdin: "{{ grafana_admin_password }}"
-    stdin_add_newline: no
+    stdin_add_newline: false
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false
 
-- name: disable ssl verification for grafana
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-ssl-verify False"
+- name: Disable ssl verification for grafana
+  ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-ssl-verify False"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false
@@ -240,101 +245,102 @@
     - dashboard_protocol == "https"
     - dashboard_grafana_api_no_ssl_verify | bool
 
-- name: set alertmanager host
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-alertmanager-api-host http://{{ grafana_server_addrs | first }}:{{ alertmanager_port }}"
+- name: Set alertmanager host
+  ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-alertmanager-api-host http://{{ grafana_server_addrs | first }}:{{ alertmanager_port }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false
 
-- name: set prometheus host
-  command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-prometheus-api-host http://{{ grafana_server_addrs | first }}:{{ prometheus_port }}"
+- name: Set prometheus host
+  ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-prometheus-api-host http://{{ grafana_server_addrs | first }}:{{ prometheus_port }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   changed_when: false
 
-- include_tasks: configure_grafana_layouts.yml
+- name: Include grafana layout tasks
+  ansible.builtin.include_tasks: configure_grafana_layouts.yml
   with_items: '{{ grafana_server_addrs }}'
   vars:
     grafana_server_addr: '{{ item }}'
 
-- name: config monitoring api url vip
+- name: Config monitoring api url vip
   run_once: true
   block:
-    - name: config grafana api url vip
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-url {{ dashboard_protocol }}://{{ dashboard_frontend_vip }}:{{ grafana_port }}"
+    - name: Config grafana api url vip
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-grafana-api-url {{ dashboard_protocol }}://{{ dashboard_frontend_vip }}:{{ grafana_port }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
       when: dashboard_frontend_vip is defined and dashboard_frontend_vip | length > 0
 
-    - name: config alertmanager api url
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-alertmanager-api-host {{ dashboard_protocol }}://{{ alertmanager_frontend_vip }}:{{ alertmanager_port }}"
+    - name: Config alertmanager api url
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-alertmanager-api-host {{ dashboard_protocol }}://{{ alertmanager_frontend_vip }}:{{ alertmanager_port }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
       when: alertmanager_frontend_vip is defined and alertmanager_frontend_vip | length > 0
 
-    - name: config prometheus api url
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-prometheus-api-host {{ dashboard_protocol }}://{{ prometheus_frontend_vip }}:{{ prometheus_port }}"
+    - name: Config prometheus api url
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-prometheus-api-host {{ dashboard_protocol }}://{{ prometheus_frontend_vip }}:{{ prometheus_port }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
       when: prometheus_frontend_vip is defined and prometheus_frontend_vip | length > 0
 
-- name: dashboard object gateway management frontend
+- name: Dashboard object gateway management frontend
   when: groups.get(rgw_group_name, []) | length > 0
   run_once: true
   delegate_to: "{{ groups[mon_group_name][0] }}"
   block:
-    - name: set the rgw credentials
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-credentials"
+    - name: Set the rgw credentials
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-credentials"
       changed_when: false
       register: result
       until: result is succeeded
       retries: 5
 
-    - name: set the rgw admin resource
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-admin-resource {{ dashboard_rgw_api_admin_resource }}"
+    - name: Set the rgw admin resource
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-admin-resource {{ dashboard_rgw_api_admin_resource }}"
       changed_when: false
       when: dashboard_rgw_api_admin_resource | length > 0
 
-    - name: disable ssl verification for rgw
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-ssl-verify False"
+    - name: Disable ssl verification for rgw
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-rgw-api-ssl-verify False"
       changed_when: false
       when:
         - dashboard_rgw_api_no_ssl_verify | bool
         - radosgw_frontend_ssl_certificate | length > 0
 
-- name: dashboard iscsi management
+- name: Dashboard iscsi management
   when: groups.get(iscsi_gw_group_name, []) | length > 0
   run_once: true
   block:
-    - name: disable iscsi api ssl verification
-      command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-iscsi-api-ssl-verification false"
+    - name: Disable iscsi api ssl verification
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-iscsi-api-ssl-verification false"
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when:
         - api_secure | default(false) | bool
         - generate_crt | default(false) | bool
 
-    - name: add iscsi gateways - ipv4
-      command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard iscsi-gateway-add -i -"
+    - name: Add iscsi gateways - ipv4
+      ansible.builtin.command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard iscsi-gateway-add -i -"
       args:
         stdin: "{{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(igw_network.split(',')) | first }}:{{ hostvars[item]['api_port'] | default(5000) }}"
-        stdin_add_newline: no
+        stdin_add_newline: false
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ groups[iscsi_gw_group_name] }}"
       when: ip_version == 'ipv4'
 
-    - name: add iscsi gateways - ipv6
-      command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard iscsi-gateway-add -i -"
+    - name: Add iscsi gateways - ipv6
+      ansible.builtin.command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard iscsi-gateway-add -i -"
       args:
         stdin: "{{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(igw_network.split(',')) | last | ansible.utils.ipwrap }}:{{ hostvars[item]['api_port'] | default(5000) }}"
-        stdin_add_newline: no
+        stdin_add_newline: false
       changed_when: false
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ groups[iscsi_gw_group_name] }}"
       when: ip_version == 'ipv6'
 
-- name: disable mgr dashboard module (restart)
+- name: Disable mgr dashboard module (restart)
   ceph_mgr_module:
     name: dashboard
     cluster: "{{ cluster }}"
@@ -345,7 +351,7 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
 
-- name: enable mgr dashboard module (restart)
+- name: Enable mgr dashboard module (restart)
   ceph_mgr_module:
     name: dashboard
     cluster: "{{ cluster }}"

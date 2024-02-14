@@ -1,25 +1,25 @@
 ---
 # global/common requirement
-- name: stop nfs server service
-  systemd:
+- name: Stop nfs server service
+  ansible.builtin.systemd:
     name: "{{ 'nfs-server' if ansible_facts['os_family'] == 'RedHat' else 'nfsserver' if ansible_facts['os_family'] == 'Suse' else 'nfs-kernel-server' if ansible_facts['os_family'] == 'Debian' }}"
     state: stopped
-    enabled: no
+    enabled: false
   failed_when: false
 
-- name: include pre_requisite_non_container.yml
-  include_tasks: pre_requisite_non_container.yml
+- name: Include pre_requisite_non_container.yml
+  ansible.builtin.include_tasks: pre_requisite_non_container.yml
   when: not containerized_deployment | bool
 
-- name: include pre_requisite_container.yml
-  include_tasks: pre_requisite_container.yml
+- name: Include pre_requisite_container.yml
+  ansible.builtin.include_tasks: pre_requisite_container.yml
   when: containerized_deployment | bool
 
-- name: set_fact _rgw_hostname
-  set_fact:
+- name: Set_fact _rgw_hostname
+  ansible.builtin.set_fact:
     _rgw_hostname: "{{ hostvars[inventory_hostname]['ansible_facts']['hostname'] }}"
 
-- name: set rgw parameter (log file)
+- name: Set rgw parameter (log file)
   ceph_config:
     action: set
     who: "client.rgw.{{ _rgw_hostname }}"
@@ -30,12 +30,12 @@
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   loop: "{{ groups.get('nfss', []) }}"
 
-- name: include create_rgw_nfs_user.yml
-  import_tasks: create_rgw_nfs_user.yml
+- name: Include create_rgw_nfs_user.yml
+  ansible.builtin.import_tasks: create_rgw_nfs_user.yml
   when: groups.get(mon_group_name, []) | length > 0
 
-- name: install nfs-ganesha-selinux on RHEL 8
-  package:
+- name: Install nfs-ganesha-selinux on RHEL 8
+  ansible.builtin.package:
     name: nfs-ganesha-selinux
     state: present
   register: result
@@ -47,8 +47,8 @@
     - ansible_facts['distribution_major_version'] == '8'
 
 # NOTE (leseb): workaround for issues with ganesha and librgw
-- name: add ganesha_t to permissive domain
-  selinux_permissive:
+- name: Add ganesha_t to permissive domain
+  community.general.selinux_permissive:
     name: ganesha_t
     permissive: true
   failed_when: false
@@ -57,13 +57,13 @@
     - ansible_facts['os_family'] == 'RedHat'
     - ansible_facts['selinux']['status'] == 'enabled'
 
-- name: nfs with external ceph cluster task related
+- name: Nfs with external ceph cluster task related
   when:
     - groups.get(mon_group_name, []) | length == 0
     - ceph_nfs_ceph_user is defined
   block:
-    - name: create keyring directory
-      file:
+    - name: Create keyring directory
+      ansible.builtin.file:
         path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ item }}"
         state: directory
         owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
@@ -73,12 +73,12 @@
         - "{{ ceph_nfs_ceph_user }}"
         - "{{ ansible_facts['hostname'] }}"
 
-    - name: set_fact rgw_client_name
-      set_fact:
+    - name: Set_fact rgw_client_name
+      ansible.builtin.set_fact:
         rgw_client_name: "client.rgw.{{ ceph_nfs_ceph_user }}"
 
-    - name: get client cephx keys
-      copy:
+    - name: Get client cephx keys
+      ansible.builtin.copy:
         dest: "{{ item.1 }}"
         content: "{{ item.0.content | b64decode }}"
         mode: "{{ item.0.item.get('mode', '0600') }}"
@@ -92,5 +92,5 @@
         - item.0.item.name == 'client.' + ceph_nfs_ceph_user or item.0.item.name == rgw_client_name
       no_log: "{{ no_log_on_ceph_key_tasks }}"
 
-- name: include start_nfs.yml
-  import_tasks: start_nfs.yml
+- name: Include start_nfs.yml
+  ansible.builtin.import_tasks: start_nfs.yml

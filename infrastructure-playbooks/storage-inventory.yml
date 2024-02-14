@@ -5,26 +5,23 @@
 # Usage:
 #   ansible-playbook storage-inventory.yml
 
-- name: gather facts and check the init system
-
-  hosts: "{{ osd_group_name|default('osds') }}"
-
+- name: Gather facts and check the init system
+  hosts: osds
   become: true
-
   tasks:
-    - debug: msg="gather facts on all Ceph hosts for following reference"
+    - name: Gather facts on all Ceph hosts
+      ansible.builtin.debug:
+        msg: "gather facts on all Ceph hosts for following reference"
 
-- name: query each host for storage device inventory
-
-  hosts: "{{ osd_group_name|default('osds') }}"
-
+- name: Query each host for storage device inventory
+  hosts: osds
   become: true
-
   tasks:
-    - import_role:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - name: list storage inventory
+    - name: List storage inventory
       ceph_volume:
         action: "inventory"
       environment:

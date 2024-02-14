@@ -1,25 +1,25 @@
 ---
-- name: set_fact container_exec_cmd
-  set_fact:
+- name: Set_fact container_exec_cmd
+  ansible.builtin.set_fact:
     container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_facts['hostname'] }}"
   when: containerized_deployment | bool
 
-- name: include deploy_monitors.yml
-  include_tasks: deploy_monitors.yml
+- name: Include deploy_monitors.yml
+  ansible.builtin.include_tasks: deploy_monitors.yml
   when:
     # we test for both container and non-container
     - (mon_socket is defined and mon_socket.get('rc') != 0) or (ceph_mon_container_stat is defined and ceph_mon_container_stat.get('stdout_lines', [])|length == 0)
     - not switch_to_containers | default(False) | bool
 
-- name: include start_monitor.yml
-  include_tasks: start_monitor.yml
+- name: Include start_monitor.yml
+  ansible.builtin.include_tasks: start_monitor.yml
 
-- name: include_tasks ceph_keys.yml
-  include_tasks: ceph_keys.yml
+- name: Include_tasks ceph_keys.yml
+  ansible.builtin.include_tasks: ceph_keys.yml
   when: not switch_to_containers | default(False) | bool
 
-- name: include secure_cluster.yml
-  include_tasks: secure_cluster.yml
+- name: Include secure_cluster.yml
+  ansible.builtin.include_tasks: secure_cluster.yml
   when:
     - secure_cluster | bool
     - inventory_hostname == groups[mon_group_name] | first

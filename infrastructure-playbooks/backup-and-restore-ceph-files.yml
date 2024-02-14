@@ -19,12 +19,13 @@
 # ansible-playbook -i hosts, backup-and-restore-ceph-files.yml -e backup_dir=/usr/share/ceph-ansible/backup-ceph-files -e mode=backup -e target_node=mon01
 # ansible-playbook -i hosts, backup-and-restore-ceph-files.yml -e backup_dir=/usr/share/ceph-ansible/backup-ceph-files -e mode=restore -e target_node=mon01
 
-- hosts: localhost
+- name: Backup and restore Ceph files
+  hosts: localhost
   become: true
   gather_facts: true
   tasks:
-    - name: exit playbook, if user did not set the source node
-      fail:
+    - name: Exit playbook, if user did not set the source node
+      ansible.builtin.fail:
         msg: >
           "You must pass the node name: -e target_node=<inventory_name>.
           The name must match what is set in your inventory."
@@ -32,71 +33,73 @@
         - target_node is not defined
           or target_node not in groups.get('all', [])
 
-    - name: exit playbook, if user did not set the backup directory
-      fail:
+    - name: Exit playbook, if user did not set the backup directory
+      ansible.builtin.fail:
         msg: >
           "you must pass the backup directory path: -e backup_dir=<backup directory path>"
       when: backup_dir is not defined
 
-    - name: exit playbook, if user did not set the playbook mode (backup|restore)
-      fail:
+    - name: Exit playbook, if user did not set the playbook mode (backup|restore)
+      ansible.builtin.fail:
         msg: >
           "you must pass the mode: -e mode=<backup|restore>"
       when:
         - mode is not defined
           or mode not in ['backup', 'restore']
 
-    - name: gather facts on source node
-      setup:
+    - name: Gather facts on source node
+      ansible.builtin.setup:
       delegate_to: "{{ target_node }}"
       delegate_facts: true
 
-    - name: backup mode
+    - name: Backup mode
       when: mode == 'backup'
       block:
-        - name: create a temp directory
+        - name: Create a temp directory
           ansible.builtin.tempfile:
             state: directory
             suffix: ansible-archive-ceph
           register: tmp_dir
           delegate_to: "{{ target_node }}"
 
-        - name: archive files
-          archive:
+        - name: Archive files
+          community.general.archive:
             path: "{{ item }}"
             dest: "{{ tmp_dir.path }}/backup{{ item | replace('/', '-') }}.tar"
             format: tar
+            mode: "0644"
           delegate_to: "{{ target_node }}"
           loop:
             - /etc/ceph
             - /var/lib/ceph
 
-        - name: create backup directory
+        - name: Create backup directory
           become: false
-          file:
+          ansible.builtin.file:
             path: "{{ backup_dir }}/{{ hostvars[target_node]['ansible_facts']['hostname'] }}"
             state: directory
+            mode: "0755"
 
-        - name: backup files
-          fetch:
+        - name: Backup files
+          ansible.builtin.fetch:
             src: "{{ tmp_dir.path }}/backup{{ item | replace('/', '-') }}.tar"
             dest: "{{ backup_dir }}/{{ hostvars[target_node]['ansible_facts']['hostname'] }}/backup{{ item | replace('/', '-') }}.tar"
-            flat: yes
+            flat: true
           loop:
             - /etc/ceph
             - /var/lib/ceph
           delegate_to: "{{ target_node }}"
 
-        - name: remove temp directory
-          file:
+        - name: Remove temp directory
+          ansible.builtin.file:
             path: "{{ tmp_dir.path }}"
             state: absent
           delegate_to: "{{ target_node }}"
 
-    - name: restore mode
+    - name: Restore mode
       when: mode == 'restore'
       block:
-        - name: unarchive files
+        - name: Unarchive files
           ansible.builtin.unarchive:
             src: "{{ backup_dir }}/{{ hostvars[target_node]['ansible_facts']['hostname'] }}/backup{{ item | replace('/', '-') }}.tar"
             dest: "{{ item | dirname }}"

@@ -1,11 +1,12 @@
 ---
-- name: ensure systemd service override directory exists
-  file:
+- name: Ensure systemd service override directory exists
+  ansible.builtin.file:
     state: directory
     path: "/etc/systemd/system/ceph-radosgw@.service.d/"
+    mode: "0750"
   when: ceph_rgw_systemd_overrides is defined
 
-- name: add ceph-rgw systemd service overrides
+- name: Add ceph-rgw systemd service overrides
   openstack.config_template.config_template:
     src: "ceph-rgw.service.d-overrides.j2"
     dest: "/etc/systemd/system/ceph-radosgw@.service.d/ceph-radosgw-systemd-overrides.conf"
@@ -13,16 +14,16 @@
     config_type: "ini"
   when: ceph_rgw_systemd_overrides is defined
 
-- name: start rgw instance
-  service:
+- name: Start rgw instance
+  ansible.builtin.systemd:
     name: ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}
     state: started
-    enabled: yes
-    masked: no
+    enabled: true
+    masked: false
   with_items: "{{ rgw_instances }}"
 
-- name: enable the ceph-radosgw.target service
-  systemd:
+- name: Enable the ceph-radosgw.target service
+  ansible.builtin.systemd:
     name: ceph-radosgw.target
-    enabled: yes
-    masked: no
+    enabled: true
+    masked: false

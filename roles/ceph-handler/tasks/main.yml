@@ -1,45 +1,45 @@
 ---
-- name: include check_running_cluster.yml
-  include: check_running_cluster.yml
+- name: Include check_running_cluster.yml
+  ansible.builtin.include_tasks: check_running_cluster.yml
 
 # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-- name: set_fact handler_mon_status
-  set_fact:
+- name: Set_fact handler_mon_status
+  ansible.builtin.set_fact:
     handler_mon_status: "{{ 0 in (mon_socket.results | map(attribute='rc') | list) if not containerized_deployment | bool else (ceph_mon_container_stat.get('rc') == 0 and ceph_mon_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(mon_group_name, [])
 
-- name: set_fact handler_osd_status
-  set_fact:
+- name: Set_fact handler_osd_status
+  ansible.builtin.set_fact:
     handler_osd_status: "{{ 0 in (osd_socket.results | map(attribute='rc') | list) if not containerized_deployment | bool else (ceph_osd_container_stat.get('rc') == 0 and ceph_osd_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(osd_group_name, [])
 
-- name: set_fact handler_mds_status
-  set_fact:
+- name: Set_fact handler_mds_status
+  ansible.builtin.set_fact:
     handler_mds_status: "{{ 0 in (mds_socket.results | map(attribute='rc') | list) if not containerized_deployment | bool else (ceph_mds_container_stat.get('rc') == 0 and ceph_mds_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(mds_group_name, [])
 
-- name: set_fact handler_rgw_status
-  set_fact:
+- name: Set_fact handler_rgw_status
+  ansible.builtin.set_fact:
     handler_rgw_status: "{{ 0 in (rgw_socket.results | map(attribute='rc') | list) if not containerized_deployment | bool else (ceph_rgw_container_stat.get('rc') == 0 and ceph_rgw_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(rgw_group_name, [])
 
-- name: set_fact handler_nfs_status
-  set_fact:
+- name: Set_fact handler_nfs_status
+  ansible.builtin.set_fact:
     handler_nfs_status: "{{ (nfs_process.get('rc') == 0) if not containerized_deployment | bool else (ceph_nfs_container_stat.get('rc') == 0 and ceph_nfs_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(nfs_group_name, [])
 
-- name: set_fact handler_rbd_status
-  set_fact:
+- name: Set_fact handler_rbd_status
+  ansible.builtin.set_fact:
     handler_rbd_mirror_status: "{{ 0 in (rbd_mirror_socket.results | map(attribute='rc') | list) if not containerized_deployment | bool else (ceph_rbd_mirror_container_stat.get('rc') == 0 and ceph_rbd_mirror_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(rbdmirror_group_name, [])
 
-- name: set_fact handler_mgr_status
-  set_fact:
+- name: Set_fact handler_mgr_status
+  ansible.builtin.set_fact:
     handler_mgr_status: "{{ 0 in (mgr_socket.results | map(attribute='rc') | list) if not containerized_deployment | bool else (ceph_mgr_container_stat.get('rc') == 0 and ceph_mgr_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(mgr_group_name, [])
 
-- name: set_fact handler_crash_status
-  set_fact:
+- name: Set_fact handler_crash_status
+  ansible.builtin.set_fact:
     handler_crash_status: "{{ crash_process.get('rc') == 0 if not containerized_deployment | bool else (ceph_crash_container_stat.get('rc') == 0 and ceph_crash_container_stat.get('stdout_lines', []) | length != 0) }}"
   when:
     - inventory_hostname in groups.get(mon_group_name, [])

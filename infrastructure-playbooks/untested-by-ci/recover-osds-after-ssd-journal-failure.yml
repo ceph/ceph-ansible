@@ -30,7 +30,7 @@
 # @param osd_id: Which osds's journal this partition for.
 #
 # ansible-playbook recover-osds-after-ssd-journal-failure.yml
-#     Prompts for select which host to recover, defaults to null,  
+#     Prompts for select which host to recover, defaults to null,
 #     doesn't select host the recover ssd. Input the hostname
 #     which to recover osds after ssd journal failure
 #
@@ -40,11 +40,11 @@
 #     automation scripts to avoid interactive prompt.
 
 - hosts: localhost
-  gather_facts: no
+  gather_facts: false
   vars_prompt:
-  - name: target_host
+  - name: target_host  # noqa: name[casing]
     prompt: please enter the target hostname which to recover osds after ssd journal failure
-    private: no
+    private: false
   tasks:
     - add_host:
         name: "{{ target_host }}"
@@ -59,16 +59,16 @@
   - fail: msg="please define dev_ssds variable"
     when: dev_ssds|length <= 0
  
-  - name: get osd(s) if directory stat
-    stat:
+  - name: Get osd(s) if directory stat
+    ansible.builtin.stat:
       path: "/var/lib/ceph/osd/{{ cluster }}-{{ item.1.osd_id }}/journal_uuid"
     register: osds_dir_stat
     with_subelements:
       - "{{ dev_ssds }}"
       - partitions
  
-  - name: exit playbook osd(s) is not on this host
-    fail:
+  - name: Exit playbook osd(s) is not on this host
+    ansible.builtin.fail:
         msg: exit playbook osds is not no this host
     with_items:
         osds_dir_stat.results
@@ -76,40 +76,40 @@
       - osds_dir_stat is defined | bool
       - item.stat.exists == false
 
-  - name: install sgdisk(gdisk)
-    package:
+  - name: Install sgdisk(gdisk)
+    ansible.builtin.package:
       name: gdisk
       state: present
     register: result
     until: result is succeeded
     
-  - name: get osd(s) journal uuid
-    command: cat "/var/lib/ceph/osd/{{ cluster }}-{{ item.1.osd_id }}/journal_uuid"
+  - name: Get osd(s) journal uuid
+    ansible.builtin.command: cat "/var/lib/ceph/osd/{{ cluster }}-{{ item.1.osd_id }}/journal_uuid"
     register: osds_uuid
     with_subelements:
       - "{{ dev_ssds }}"
       - partitions
 
-  - name: make partitions on new ssd
-    shell: >
+  - name: Make partitions on new ssd
+    ansible.builtin.shell: >
       sgdisk --new={{item.item[1].index}}:0:+{{item.item[1].size}} "--change-name={{ item.item[1].index }}:ceph journal" 
       --typecode={{ item.item[1].index }}:{{ journal_typecode }} 
       --partition-guid={{ item.item[1].index }}:{{ item.stdout }} 
       --mbrtogpt -- {{ item.item[0].device_name }}
     with_items: "{{ osds_uuid.results }}"
 
-  - name: stop osd(s) service
-    service:
+  - name: Stop osd(s) service
+    ansible.builtin.service:
       name: "ceph-osd@{{ item.item[1].osd_id }}"
       state: stopped
     with_items: "{{ osds_uuid.results }}"
 
-  - name: reinitialize osd(s) journal in new ssd
-    command: ceph-osd -i {{ item.item[1].osd_id }} --mkjournal --cluster {{ cluster }}
+  - name: Reinitialize osd(s) journal in new ssd
+    ansible.builtin.command: ceph-osd -i {{ item.item[1].osd_id }} --mkjournal --cluster {{ cluster }}
     with_items: "{{ osds_uuid.results }}"
  
-  - name: start osd(s) service
-    service:
+  - name: Start osd(s) service
+    ansible.builtin.service:
       name: "ceph-osd@{{ item.item[1].osd_id }}"
       state: started
     with_items: "{{ osds_uuid.results }}"

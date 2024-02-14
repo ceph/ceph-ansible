@@ -1,10 +1,10 @@
 ---
-- name: set_fact add_osd
-  set_fact:
+- name: Set_fact add_osd
+  ansible.builtin.set_fact:
     add_osd: "{{ groups[osd_group_name] | length != ansible_play_hosts_all | length }}"
 
-- name: set_fact container_exec_cmd
-  set_fact:
+- name: Set_fact container_exec_cmd
+  ansible.builtin.set_fact:
     container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[item]['ansible_facts']['hostname'] }}"
   with_items: "{{ groups.get(mon_group_name, []) }}"
   delegate_to: "{{ item }}"
@@ -12,11 +12,11 @@
   run_once: true
   when: containerized_deployment | bool
 
-- name: include_tasks system_tuning.yml
-  include_tasks: system_tuning.yml
+- name: Include_tasks system_tuning.yml
+  ansible.builtin.include_tasks: system_tuning.yml
 
-- name: install dependencies
-  package:
+- name: Install dependencies
+  ansible.builtin.package:
     name: parted
     state: present
   register: result
@@ -25,8 +25,8 @@
     - not containerized_deployment | bool
     - ansible_facts['os_family'] != 'ClearLinux'
 
-- name: install numactl when needed
-  package:
+- name: Install numactl when needed
+  ansible.builtin.package:
     name: numactl
   register: result
   until: result is succeeded
@@ -35,10 +35,10 @@
     - ceph_osd_numactl_opts | length > 0
   tags: with_pkg
 
-- name: include_tasks common.yml
-  include_tasks: common.yml
+- name: Include_tasks common.yml
+  ansible.builtin.include_tasks: common.yml
 
-- name: set noup flag
+- name: Set noup flag
   ceph_osd_flag:
     name: noup
     cluster: "{{ cluster }}"
@@ -46,27 +46,27 @@
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
-  run_once: True
+  run_once: true
   when:
     - not rolling_update | default(False) | bool
     - not switch_to_containers | default(False) | bool
 
-- name: include_tasks scenarios/lvm.yml
-  include_tasks: scenarios/lvm.yml
+- name: Include_tasks scenarios/lvm.yml
+  ansible.builtin.include_tasks: scenarios/lvm.yml
   when:
     - lvm_volumes|length > 0
     - not rolling_update|default(False) | bool
 
-- name: include_tasks scenarios/lvm-batch.yml
-  include_tasks: scenarios/lvm-batch.yml
+- name: Include_tasks scenarios/lvm-batch.yml
+  ansible.builtin.include_tasks: scenarios/lvm-batch.yml
   when:
     - devices|length > 0
     - not rolling_update|default(False) | bool
 
-- name: include_tasks start_osds.yml
-  include_tasks: start_osds.yml
+- name: Include_tasks start_osds.yml
+  ansible.builtin.include_tasks: start_osds.yml
 
-- name: unset noup flag
+- name: Unset noup flag
   ceph_osd_flag:
     name: noup
     cluster: "{{ cluster }}"
@@ -80,8 +80,8 @@
     - not switch_to_containers | default(False) | bool
     - inventory_hostname == ansible_play_hosts_all | last
 
-- name: wait for all osd to be up
-  command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd stat -f json"
+- name: Wait for all osd to be up
+  ansible.builtin.command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} osd stat -f json"
   register: wait_for_all_osds_up
   retries: "{{ nb_retry_wait_osd_up }}"
   delay: "{{ delay_wait_osd_up }}"
@@ -95,14 +95,14 @@
     - inventory_hostname == ansible_play_hosts_all | last
   tags: wait_all_osds_up
 
-- name: include crush_rules.yml
-  include_tasks: crush_rules.yml
+- name: Include crush_rules.yml
+  ansible.builtin.include_tasks: crush_rules.yml
   when: hostvars[groups[mon_group_name][0]]['crush_rule_config'] | default(crush_rule_config) | bool
   tags: wait_all_osds_up
 
 # Create the pools listed in openstack_pools
-- name: include openstack_config.yml
-  include_tasks: openstack_config.yml
+- name: Include openstack_config.yml
+  ansible.builtin.include_tasks: openstack_config.yml
   when:
     - not add_osd | bool
     - not rolling_update | default(False) | bool

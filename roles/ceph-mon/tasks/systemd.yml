@@ -1,22 +1,23 @@
 ---
-- name: generate systemd unit file for mon container
-  template:
+- name: Generate systemd unit file for mon container
+  ansible.builtin.template:
     src: "{{ role_path }}/templates/ceph-mon.service.j2"
     dest: /etc/systemd/system/ceph-mon@.service
     owner: "root"
     group: "root"
     mode: "0644"
-  notify: restart ceph mons
+  notify: Restart ceph mons
 
-- name: generate systemd ceph-mon target file
-  copy:
+- name: Generate systemd ceph-mon target file
+  ansible.builtin.copy:
     src: ceph-mon.target
     dest: /etc/systemd/system/ceph-mon.target
+    mode: "0644"
   when: containerized_deployment | bool
 
-- name: enable ceph-mon.target
-  service:
+- name: Enable ceph-mon.target
+  ansible.builtin.service:
     name: ceph-mon.target
-    enabled: yes
-    daemon_reload: yes
+    enabled: true
+    daemon_reload: true
   when: containerized_deployment | bool

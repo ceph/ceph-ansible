@@ -1,45 +1,45 @@
 ---
-- name: check if it is atomic host
-  stat:
+- name: Check if it is atomic host
+  ansible.builtin.stat:
     path: /run/ostree-booted
   register: stat_ostree
 
-- name: set_fact is_atomic
-  set_fact:
+- name: Set_fact is_atomic
+  ansible.builtin.set_fact:
     is_atomic: "{{ stat_ostree.stat.exists }}"
 
-- name: import_tasks container_binary.yml
-  import_tasks: container_binary.yml
+- name: Import_tasks container_binary.yml
+  ansible.builtin.import_tasks: container_binary.yml
 
-- name: set_fact ceph_cmd
-  set_fact:
+- name: Set_fact ceph_cmd
+  ansible.builtin.set_fact:
     ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
 
 # In case ansible_python_interpreter is set by the user,
 # ansible will not discover python and discovered_interpreter_python
 # will not be set
-- name: set_fact discovered_interpreter_python
-  set_fact:
+- name: Set_fact discovered_interpreter_python
+  ansible.builtin.set_fact:
     discovered_interpreter_python: "{{ ansible_python_interpreter }}"
   when: ansible_python_interpreter is defined
 
 # If ansible_python_interpreter is not defined, this can result in the
 # discovered_interpreter_python fact from being set. This fails later in this
 # playbook and is used elsewhere.
-- name: set_fact discovered_interpreter_python if not previously set
-  set_fact:
+- name: Set_fact discovered_interpreter_python if not previously set
+  ansible.builtin.set_fact:
     discovered_interpreter_python: "{{ ansible_facts['discovered_interpreter_python'] }}"
   when:
     - discovered_interpreter_python is not defined
     - ansible_facts['discovered_interpreter_python'] is defined
 
 # Set ceph_release to ceph_stable by default
-- name: set_fact ceph_release ceph_stable_release
-  set_fact:
+- name: Set_fact ceph_release ceph_stable_release
+  ansible.builtin.set_fact:
     ceph_release: "{{ ceph_stable_release }}"
 
-- name: set_fact monitor_name ansible_facts['hostname']
-  set_fact:
+- name: Set_fact monitor_name ansible_facts['hostname']
+  ansible.builtin.set_fact:
     monitor_name: "{{ hostvars[item]['ansible_facts']['hostname'] }}"
   delegate_to: "{{ item }}"
   delegate_facts: true
@@ -47,30 +47,31 @@
   run_once: true
   when: groups.get(mon_group_name, []) | length > 0
 
-- name: find a running monitor
+- name: Find a running monitor
   when: groups.get(mon_group_name, []) | length > 0
   block:
-    - name: set_fact container_exec_cmd
-      set_fact:
+    - name: Set_fact container_exec_cmd
+      ansible.builtin.set_fact:
         container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] if not rolling_update | bool else hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_facts']['hostname'] }}"
       when:
         - containerized_deployment | bool
 
-    - name: find a running mon container
-      command: "{{ container_binary }} ps -q --filter name=ceph-mon-{{ hostvars[item]['ansible_facts']['hostname'] }}"
+    - name: Find a running mon container
+      ansible.builtin.command: "{{ container_binary }} ps -q --filter name=ceph-mon-{{ hostvars[item]['ansible_facts']['hostname'] }}"
       register: find_running_mon_container
       failed_when: false
       run_once: true
       delegate_to: "{{ item }}"
       with_items: "{{ groups.get(mon_group_name, []) }}"
+      changed_when: false
       when:
         - containerized_deployment | bool
 
-    - name: check for a ceph mon socket
-      shell: stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mon*.asok
+    - name: Check for a ceph mon socket
+      ansible.builtin.shell: stat --printf=%n {{ rbd_client_admin_socket_path }}/{{ cluster }}-mon*.asok
       changed_when: false
       failed_when: false
-      check_mode: no
+      check_mode: false
       register: mon_socket_stat
       run_once: true
       delegate_to: "{{ item }}"
@@ -78,11 +79,11 @@
       when:
         - not containerized_deployment | bool
 
-    - name: check if the ceph mon socket is in-use
-      command: grep -q {{ item.stdout }} /proc/net/unix
+    - name: Check if the ceph mon socket is in-use
+      ansible.builtin.command: grep -q {{ item.stdout }} /proc/net/unix
       changed_when: false
       failed_when: false
-      check_mode: no
+      check_mode: false
       register: mon_socket
       run_once: true
       delegate_to: "{{ hostvars[item.item]['inventory_hostname'] }}"
@@ -91,8 +92,8 @@
         - not containerized_deployment | bool
         - item.rc == 0
 
-    - name: set_fact running_mon - non_container
-      set_fact:
+    - name: Set_fact running_mon - non_container
+      ansible.builtin.set_fact:
         running_mon: "{{ hostvars[item.item.item]['inventory_hostname'] }}"
       with_items: "{{ mon_socket.results }}"
       run_once: true
@@ -101,8 +102,8 @@
         - item.rc is defined
         - item.rc == 0
 
-    - name: set_fact running_mon - container
-      set_fact:
+    - name: Set_fact running_mon - container
+      ansible.builtin.set_fact:
         running_mon: "{{ item.item }}"
       run_once: true
       with_items: "{{ find_running_mon_container.results }}"
@@ -110,8 +111,8 @@
         - containerized_deployment | bool
         - item.stdout_lines | default([]) | length > 0
 
-    - name: set_fact _container_exec_cmd
-      set_fact:
+    - name: Set_fact _container_exec_cmd
+      ansible.builtin.set_fact:
         _container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0] if running_mon is undefined else running_mon]['ansible_facts']['hostname'] }}"
       when:
         - containerized_deployment | bool
@@ -119,11 +120,11 @@
     # this task shouldn't run in a rolling_update situation
     # because it blindly picks a mon, which may be down because
     # of the rolling update
-    - name: get current fsid if cluster is already running
-      command: "{{ timeout_command }} {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fsid"
+    - name: Get current fsid if cluster is already running
+      ansible.builtin.command: "{{ timeout_command }} {{ _container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fsid"
       changed_when: false
       failed_when: false
-      check_mode: no
+      check_mode: false
       register: current_fsid
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] if running_mon is undefined else running_mon }}"
@@ -132,118 +133,120 @@
 
 # set this as a default when performing a rolling_update
 # so the rest of the tasks here will succeed
-- name: set_fact current_fsid rc 1
-  set_fact:
+- name: Set_fact current_fsid rc 1
+  ansible.builtin.set_fact:
     current_fsid:
       rc: 1
   when: rolling_update | bool or groups.get(mon_group_name, []) | length == 0
 
-- name: get current fsid
-  command: "{{ timeout_command }} {{ container_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_facts']['hostname'] }}.asok config get fsid"
+- name: Get current fsid
+  ansible.builtin.command: "{{ timeout_command }} {{ container_exec_cmd }} ceph --admin-daemon /var/run/ceph/{{ cluster }}-mon.{{ hostvars[mon_host | default(groups[mon_group_name][0])]['ansible_facts']['hostname'] }}.asok config get fsid"
   register: rolling_update_fsid
   delegate_to: "{{ mon_host | default(groups[mon_group_name][0]) }}"
   until: rolling_update_fsid is succeeded
+  changed_when: false
   when:
     - rolling_update | bool
     - groups.get(mon_group_name, []) | length > 0
 
-- name: set_fact fsid
-  set_fact:
+- name: Set_fact fsid
+  ansible.builtin.set_fact:
     fsid: "{{ (rolling_update_fsid.stdout | from_json).fsid }}"
   when:
     - rolling_update | bool
     - groups.get(mon_group_name, []) | length > 0
 
-- name: set_fact fsid from current_fsid
-  set_fact:
+- name: Set_fact fsid from current_fsid
+  ansible.builtin.set_fact:
     fsid: "{{ current_fsid.stdout }}"
   run_once: true
   when: current_fsid.rc == 0
 
-- name: fsid related tasks
+- name: Fsid related tasks
   when:
     - generate_fsid | bool
     - current_fsid.rc != 0
     - not rolling_update | bool
   block:
-    - name: generate cluster fsid
-      command: "{{ hostvars[groups[mon_group_name][0]]['discovered_interpreter_python'] }} -c 'import uuid; print(str(uuid.uuid4()))'"
+    - name: Generate cluster fsid
+      ansible.builtin.command: "{{ hostvars[groups[mon_group_name][0]]['discovered_interpreter_python'] }} -c 'import uuid; print(str(uuid.uuid4()))'"
       register: cluster_uuid
       delegate_to: "{{ groups[mon_group_name][0] }}"
+      changed_when: false
       run_once: true
 
-    - name: set_fact fsid
-      set_fact:
+    - name: Set_fact fsid
+      ansible.builtin.set_fact:
         fsid: "{{ cluster_uuid.stdout }}"
 
-- name: import_tasks devices.yml
-  import_tasks: devices.yml
+- name: Import_tasks devices.yml
+  ansible.builtin.import_tasks: devices.yml
   when: inventory_hostname in groups.get(osd_group_name, [])
 
-- name: check if the ceph conf exists
-  stat:
+- name: Check if the ceph conf exists
+  ansible.builtin.stat:
     path: '/etc/ceph/{{ cluster }}.conf'
   register: ceph_conf
 
-- name: set default osd_pool_default_crush_rule fact
-  set_fact:
+- name: Set default osd_pool_default_crush_rule fact
+  ansible.builtin.set_fact:
     osd_pool_default_crush_rule: "{{ ceph_osd_pool_default_crush_rule }}"
 
-- name: get default crush rule value from ceph configuration
+- name: Get default crush rule value from ceph configuration
+  when: ceph_conf.stat.exists | bool
   block:
     - &read-osd-pool-default-crush-rule
-      name: read osd pool default crush rule
-      command: grep 'osd pool default crush rule' /etc/ceph/{{ cluster }}.conf
+      name: Read osd pool default crush rule
+      ansible.builtin.command: grep 'osd pool default crush rule' /etc/ceph/{{ cluster }}.conf
       register: crush_rule_variable
       changed_when: false
-      check_mode: no
+      check_mode: false
       failed_when: crush_rule_variable.rc not in (0, 1)
     - &set-osd-pool-default-crush-rule-fact
-      name: set osd_pool_default_crush_rule fact
-      set_fact:
+      name: Set osd_pool_default_crush_rule fact
+      ansible.builtin.set_fact:
         osd_pool_default_crush_rule: "{{ crush_rule_variable.stdout.split(' = ')[1] }}"
       when: crush_rule_variable.rc == 0
-  when: ceph_conf.stat.exists | bool
 
-- name: get default crush rule value from running monitor ceph configuration
-  block:
-    - <<: *read-osd-pool-default-crush-rule
-      delegate_to: "{{ running_mon }}"
-    - *set-osd-pool-default-crush-rule-fact
+- name: Get default crush rule value from running monitor ceph configuration
   when:
     - running_mon is defined
     - not ceph_conf.stat.exists | bool
+  block:
+    - <<: *read-osd-pool-default-crush-rule  # noqa: name[casing]
+      delegate_to: "{{ running_mon }}"
+    - *set-osd-pool-default-crush-rule-fact
 
-- name: import_tasks set_monitor_address.yml
-  import_tasks: set_monitor_address.yml
+- name: Import_tasks set_monitor_address.yml
+  ansible.builtin.import_tasks: set_monitor_address.yml
   when: groups.get(mon_group_name, []) | length > 0
 
-- name: import_tasks set_radosgw_address.yml
-  include_tasks: set_radosgw_address.yml
+- name: Import_tasks set_radosgw_address.yml
+  ansible.builtin.include_tasks: set_radosgw_address.yml
   when: inventory_hostname in groups.get(rgw_group_name, [])
 
-- name: set_fact use_new_ceph_iscsi package or old ceph-iscsi-config/cli
-  set_fact:
-    use_new_ceph_iscsi: "{{ (gateway_ip_list  == '0.0.0.0' and gateway_iqn | length == 0 and client_connections | length == 0 and rbd_devices | length == 0) | bool | ternary(true, false) }}"
+- name: Set_fact use_new_ceph_iscsi package or old ceph-iscsi-config/cli
+  ansible.builtin.set_fact:
+    use_new_ceph_iscsi: "{{ (gateway_ip_list == '0.0.0.0' and gateway_iqn | length == 0 and client_connections | length == 0 and rbd_devices | length == 0) | bool | ternary(true, false) }}"
   when: iscsi_gw_group_name in group_names
 
-- name: set_fact ceph_run_cmd
-  set_fact:
+- name: Set_fact ceph_run_cmd
+  ansible.builtin.set_fact:
     ceph_run_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /var/log/ceph/:/var/log/ceph/:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
   delegate_to: "{{ item }}"
-  delegate_facts: True
-  run_once: True
+  delegate_facts: true
+  run_once: true
   with_items:
     - "{{ groups[mon_group_name] if groups[mon_group_name] | default([]) | length > 0 else [] }}"
     - "{{ groups[mds_group_name] if groups[mds_group_name] | default([]) | length > 0 else [] }}"
     - "{{ groups[client_group_name] if groups[client_group_name] | default([]) | length > 0 else [] }}"
 
-- name: set_fact ceph_admin_command
-  set_fact:
+- name: Set_fact ceph_admin_command
+  ansible.builtin.set_fact:
     ceph_admin_command: "{{ hostvars[item]['ceph_run_cmd'] }} -n client.admin -k /etc/ceph/{{ cluster }}.client.admin.keyring"
   delegate_to: "{{ item }}"
-  delegate_facts: True
-  run_once: True
+  delegate_facts: true
+  run_once: true
   with_items:
     - "{{ groups[mon_group_name] if groups[mon_group_name] | default([]) | length > 0 else [] }}"
     - "{{ groups[mds_group_name] if groups[mds_group_name] | default([]) | length > 0 else [] }}"

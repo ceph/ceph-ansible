@@ -1,38 +1,39 @@
 ---
-- name: generate systemd ceph-mon target file
-  copy:
+- name: Generate systemd ceph-mon target file
+  ansible.builtin.copy:
     src: ceph.target
     dest: /etc/systemd/system/ceph.target
+    mode: "0644"
 
-- name: enable ceph.target
-  service:
+- name: Enable ceph.target
+  ansible.builtin.service:
     name: ceph.target
-    enabled: yes
-    daemon_reload: yes
+    enabled: true
+    daemon_reload: true
 
-- name: include prerequisites.yml
-  include_tasks: prerequisites.yml
+- name: Include prerequisites.yml
+  ansible.builtin.include_tasks: prerequisites.yml
 
-- name: include registry.yml
-  include_tasks: registry.yml
+- name: Include registry.yml
+  ansible.builtin.include_tasks: registry.yml
   when: ceph_docker_registry_auth | bool
 
-- name: include fetch_image.yml
-  include_tasks: fetch_image.yml
+- name: Include fetch_image.yml
+  ansible.builtin.include_tasks: fetch_image.yml
   tags: fetch_container_image
 
-- name: get ceph version
-  command: >
+- name: Get ceph version
+  ansible.builtin.command: >
     {{ container_binary }} run --rm --net=host --entrypoint /usr/bin/ceph
     {{ ceph_client_docker_registry }}/{{ ceph_client_docker_image }}:{{ ceph_client_docker_image_tag }}
     --version
   changed_when: false
-  check_mode: no
+  check_mode: false
   register: ceph_version
 
-- name: set_fact ceph_version ceph_version.stdout.split
-  set_fact:
+- name: Set_fact ceph_version ceph_version.stdout.split
+  ansible.builtin.set_fact:
     ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
 
-- name: include release.yml
-  include_tasks: release.yml
+- name: Include release.yml
+  ansible.builtin.include_tasks: release.yml
