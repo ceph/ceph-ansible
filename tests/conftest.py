@@ -167,8 +167,8 @@ def node(host, request):
     if request.node.get_closest_marker('rbdmirror_secondary') and not ceph_rbd_mirror_remote_user:  # noqa E501
         pytest.skip('Not a valid test for a non-secondary rbd-mirror node')
 
-    if request.node.get_closest_marker('ceph_crash') and sanitized_group_names in [['nfss'], ['iscsigws'], ['clients'], ['monitoring']]:
-        pytest.skip('Not a valid test for nfs, client or iscsigw nodes')
+    if request.node.get_closest_marker('ceph_crash') and sanitized_group_names in [['nfss'], ['clients'], ['monitoring']]:
+        pytest.skip('Not a valid test for nfs or client nodes')
 
     if request.node.get_closest_marker("no_docker") and docker:
         pytest.skip(
@@ -213,8 +213,6 @@ def pytest_collection_modifyitems(session, config, items):
             item.add_marker(pytest.mark.rgws)
         elif "nfs" in test_path:
             item.add_marker(pytest.mark.nfss)
-        elif "iscsi" in test_path:
-            item.add_marker(pytest.mark.iscsigws)
         elif "grafana" in test_path:
             item.add_marker(pytest.mark.grafanas)
         else:

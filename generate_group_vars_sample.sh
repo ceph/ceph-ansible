@@ -66,8 +66,6 @@ for role in "$basedir"/roles/ceph-*; do
     output="ceph-fetch-keys.yml.sample"
   elif [[ $rolename == "ceph-rbd-mirror" ]]; then
     output="rbdmirrors.yml.sample"
-  elif [[ $rolename == "ceph-iscsi-gw" ]]; then
-    output="iscsigws.yml.sample"
   elif [[ $rolename == "ceph-rgw-loadbalancer" ]]; then
     output="rgwloadbalancers.yml.sample"
   else
