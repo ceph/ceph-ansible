@@ -308,38 +308,6 @@
         - dashboard_rgw_api_no_ssl_verify | bool
         - radosgw_frontend_ssl_certificate | length > 0
 
-- name: Dashboard iscsi management
-  when: groups.get(iscsi_gw_group_name, []) | length > 0
-  run_once: true
-  block:
-    - name: Disable iscsi api ssl verification
-      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} dashboard set-iscsi-api-ssl-verification false"
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      when:
-        - api_secure | default(false) | bool
-        - generate_crt | default(false) | bool
-
-    - name: Add iscsi gateways - ipv4
-      ansible.builtin.command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard iscsi-gateway-add -i -"
-      args:
-        stdin: "{{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(igw_network.split(',')) | first }}:{{ hostvars[item]['api_port'] | default(5000) }}"
-        stdin_add_newline: false
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      with_items: "{{ groups[iscsi_gw_group_name] }}"
-      when: ip_version == 'ipv4'
-
-    - name: Add iscsi gateways - ipv6
-      ansible.builtin.command: "{{ ceph_cmd }} --cluster {{ cluster }} dashboard iscsi-gateway-add -i -"
-      args:
-        stdin: "{{ 'https' if hostvars[item]['api_secure'] | default(false) | bool else 'http' }}://{{ hostvars[item]['api_user'] | default('admin') }}:{{ hostvars[item]['api_password'] | default('admin') }}@{{ hostvars[item]['ansible_facts']['all_ipv6_addresses'] | ips_in_ranges(igw_network.split(',')) | last | ansible.utils.ipwrap }}:{{ hostvars[item]['api_port'] | default(5000) }}"
-        stdin_add_newline: false
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      with_items: "{{ groups[iscsi_gw_group_name] }}"
-      when: ip_version == 'ipv6'
-
 - name: Disable mgr dashboard module (restart)
   ceph_mgr_module:
     name: dashboard

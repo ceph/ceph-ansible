@@ -18,7 +18,6 @@
   - nfss
   - rbdmirrors
   - clients
-  - iscsigws
   - mgrs
   - monitoring
 
@@ -454,46 +453,6 @@
       set_stats:
         data:
           installer_phase_ceph_rbdmirror:
-            status: "Complete"
-            end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-
-- hosts:
-    - iscsigws
-  gather_facts: false
-  any_errors_fatal: true
-  become: True
-  tasks:
-    # pre-tasks for following imports -
-    - name: set ceph iscsi gateway install 'In Progress'
-      run_once: true
-      set_stats:
-        data:
-          installer_phase_ceph_iscsi_gw:
-            status: "In Progress"
-            start: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
-
-    - import_role:
-        name: ceph-defaults
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-facts
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-handler
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-config
-      tags: ['ceph_update_config']
-    - import_role:
-        name: ceph-iscsi-gw
-
-    # post-tasks for preceding imports -
-  post_tasks:
-    - name: set ceph iscsi gw install 'Complete'
-      run_once: true
-      set_stats:
-        data:
-          installer_phase_ceph_iscsi_gw:
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 

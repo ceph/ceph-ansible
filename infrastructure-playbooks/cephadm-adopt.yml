@@ -42,7 +42,6 @@
     - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
   become: true
   any_errors_fatal: true
@@ -158,7 +157,6 @@
           inventory_hostname in groups.get(rgw_group_name, []) or
           inventory_hostname in groups.get(mgr_group_name, []) or
           inventory_hostname in groups.get(rbdmirror_group_name, []) or
-          inventory_hostname in groups.get(iscsi_gw_group_name, []) or
           inventory_hostname in groups.get(nfs_group_name, [])
 
     - name: Configure repository for installing cephadm
@@ -448,9 +446,7 @@
             inventory_hostname in groups.get(mds_group_name, []) or
             inventory_hostname in groups.get(rgw_group_name, []) or
             inventory_hostname in groups.get(mgr_group_name, []) or
-            inventory_hostname in groups.get(rbdmirror_group_name, []) or
-            inventory_hostname in groups.get(iscsi_gw_group_name, [])
-
+            inventory_hostname in groups.get(rbdmirror_group_name, [])
 
 - name: Store existing rbd mirror peers in monitor config store
   hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
@@ -635,69 +631,6 @@
         - /etc/systemd/system/ceph-mgr@.service
         - /etc/systemd/system/ceph-mgr@.service.d
         - /etc/systemd/system/ceph-mgr.target
-
-
-- name: Stop and remove legacy iscsigw daemons
-  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
-  serial: 1
-  become: true
-  gather_facts: false
-  any_errors_fatal: true
-  tasks:
-    - name: Import ceph-defaults role
-      ansible.builtin.import_role:
-        name: ceph-defaults
-
-    - name: Stop and disable iscsigw systemd services
-      ansible.builtin.service:
-        name: '{{ item }}'
-        state: stopped
-        enabled: false
-      failed_when: false
-      with_items:
-        - rbd-target-api
-        - rbd-target-gw
-        - tcmu-runner
-
-    - name: Reset failed iscsigw systemd units
-      ansible.builtin.command: 'systemctl reset-failed {{ item }}'  # noqa command-instead-of-module
-      changed_when: false
-      failed_when: false
-      with_items:
-        - rbd-target-api
-        - rbd-target-gw
-        - tcmu-runner
-      when: containerized_deployment | bool
-
-    - name: Remove iscsigw systemd unit files
-      ansible.builtin.file:
-        path: '/etc/systemd/system/{{ item }}.service'
-        state: absent
-      with_items:
-        - rbd-target-api
-        - rbd-target-gw
-        - tcmu-runner
-      when: containerized_deployment | bool
-
-
-- name: Redeploy iscsigw daemons
-  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
-  become: true
-  gather_facts: false
-  any_errors_fatal: true
-  tasks:
-    - name: Import ceph-defaults role
-      ansible.builtin.import_role:
-        name: ceph-defaults
-
-    - name: Update the placement of iscsigw hosts
-      ansible.builtin.command: "{{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} -- ceph orch apply iscsi {{ iscsi_pool_name | default('rbd') }} {{ api_user | default('admin') }} {{ api_password | default('admin') }} {{ trusted_ip_list | default('192.168.122.1') }} --placement='{{ groups.get(iscsi_gw_group_name, []) | length }} label:{{ iscsi_gw_group_name }}'"
-      run_once: true
-      changed_when: false
-      delegate_to: '{{ groups[mon_group_name][0] }}'
-      environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-
 
 - name: Set osd flags
   hosts: "{{ osd_group_name|default('osds') }}"
@@ -1434,7 +1367,6 @@
     - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
   become: true
   gather_facts: false
