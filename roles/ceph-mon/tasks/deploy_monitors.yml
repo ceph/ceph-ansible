@@ -158,13 +158,13 @@
   ansible.builtin.command: >
     {{ ceph_monmaptool_cmd }}
     --create
-    {% for host in _monitor_addresses -%}
+    {% for name, addr in _monitor_addresses.items() -%}
     --addv
-    {{ host.name }}
+    {{ hostvars[name]['ansible_facts']['hostname'] }}
     {% if mon_host_v1.enabled | bool %}
-    {% set _v1 = ',v1:' + host.addr + mon_host_v1.suffix %}
+    {% set _v1 = ',v1:' + addr + mon_host_v1.suffix %}
     {% endif %}
-    [{{ "v2:" + host.addr + mon_host_v2.suffix }}{{ _v1 | default('') }}]
+    [{{ "v2:" + addr + mon_host_v2.suffix }}{{ _v1 | default('') }}]
     {# {%- if not loop.last -%},{%- endif %} #}
     {%- endfor %}
     --enable-all-features

@@ -228,7 +228,6 @@ An example configuration that deploys the upstream ``octopus`` version of Ceph w
    ceph_repository: community
    public_network: "192.168.3.0/24"
    cluster_network: "192.168.4.0/24"
-   monitor_interface: eth1
    devices:
      - '/dev/sda'
      - '/dev/sdb'
@@ -238,7 +237,6 @@ selection or other aspects of your cluster.
 
 - ``ceph_origin``
 - ``public_network``
-- ``monitor_interface`` or ``monitor_address``
 
 
 When deploying RGW instance(s) you are required to set the ``radosgw_interface`` or ``radosgw_address`` config option.

@@ -88,7 +88,6 @@ ansible_provision = proc do |ansible|
   if DOCKER then
     ansible.extra_vars = ansible.extra_vars.merge({
       containerized_deployment: 'true',
-      monitor_interface: ETH,
       ceph_mon_docker_subnet: ansible.extra_vars[:public_network],
       devices: settings['disks'],
       radosgw_interface: ETH,
@@ -97,7 +96,6 @@ ansible_provision = proc do |ansible|
   else
     ansible.extra_vars = ansible.extra_vars.merge({
       devices: settings['disks'],
-      monitor_interface: ETH,
       radosgw_interface: ETH,
       os_tuning_params: settings['os_tuning_params'],
     })
@@ -105,8 +103,6 @@ ansible_provision = proc do |ansible|
 
   if BOX == 'linode' then
     ansible.sudo = true
-    # Use monitor_address_block instead of monitor_interface:
-    ansible.extra_vars.delete(:monitor_interface)
     # Use radosgw_address_block instead of radosgw_interface:
     ansible.extra_vars.delete(:radosgw_interface)
     ansible.extra_vars = ansible.extra_vars.merge({
