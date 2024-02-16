@@ -29,7 +29,6 @@ class CallbackModule(CallbackBase):
             'installer_phase_ceph_nfs',
             'installer_phase_ceph_rbdmirror',
             'installer_phase_ceph_client',
-            'installer_phase_ceph_iscsi_gw',
             'installer_phase_ceph_rgw_loadbalancer',
             'installer_phase_ceph_dashboard',
             'installer_phase_ceph_grafana',
@@ -70,10 +69,6 @@ class CallbackModule(CallbackBase):
             'installer_phase_ceph_client': {
                 'title': 'Install Ceph Client',
                 'playbook': 'roles/ceph-client/tasks/main.yml'
-            },
-            'installer_phase_ceph_iscsi_gw': {
-                'title': 'Install Ceph iSCSI Gateway',
-                'playbook': 'roles/ceph-iscsi-gw/tasks/main.yml'
             },
             'installer_phase_ceph_rgw_loadbalancer': {
                 'title': 'Install Ceph RGW LoadBalancer',
