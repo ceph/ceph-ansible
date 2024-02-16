@@ -11,15 +11,6 @@
     msg: "osd_objectstore must be 'bluestore''"
   when: osd_objectstore not in ['bluestore']
 
-- name: Validate monitor network configuration
-  ansible.builtin.fail:
-    msg: "Either monitor_address, monitor_address_block or monitor_interface must be provided"
-  when:
-    - mon_group_name in group_names
-    - monitor_address == 'x.x.x.x'
-    - monitor_address_block == 'subnet'
-    - monitor_interface == 'interface'
-
 - name: Validate radosgw network configuration
   ansible.builtin.fail:
     msg: "Either radosgw_address, radosgw_address_block or radosgw_interface must be provided"
@@ -106,22 +97,6 @@
   when:
     - osd_group_name in group_names
     - not osd_auto_discovery | default(False) | bool
-
-- name: Include check_eth_mon.yml
-  ansible.builtin.include_tasks: check_eth_mon.yml
-  when:
-    - mon_group_name in group_names
-    - monitor_interface != "dummy"
-    - monitor_address == "x.x.x.x"
-    - monitor_address_block == "subnet"
-
-- name: Include check_ipaddr_mon.yml
-  ansible.builtin.include_tasks: check_ipaddr_mon.yml
-  when:
-    - mon_group_name in group_names
-    - monitor_interface == "interface"
-    - monitor_address == "x.x.x.x"
-    - monitor_address_block != "subnet"
 
 - name: Include check_eth_rgw.yml
   ansible.builtin.include_tasks: check_eth_rgw.yml
