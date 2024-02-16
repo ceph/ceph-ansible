@@ -130,15 +130,15 @@ way so that a vagrant environment can be isolated to the given scenario.
 The ``hosts`` file should contain the hosts needed for the scenario. This might
 seem a bit repetitive since machines are already defined in
 :ref:`vagrant_variables` but it allows granular changes to hosts (for example
-defining an interface vs. an IP on a monitor) which can help catch issues in
+defining different public_network values between monitors) which can help catch issues in
 ``ceph-ansible`` configuration. For example:
 
 .. code-block:: ini
 
    [mons]
-   mon0 monitor_address=192.168.5.10
-   mon1 monitor_address=192.168.5.11
-   mon2 monitor_interface=eth1
+   mon0 public_network=192.168.1.0/24
+   mon1 public_network=192.168.2.0/24
+   mon2 public_network=192.168.3.0/24
 
 .. _group_vars:
 

@@ -304,7 +304,7 @@
           delegate_facts: true
 
         - name: Non container | waiting for the monitor to join the quorum...
-          ansible.builtin.command: ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" quorum_status --format json
+          ansible.builtin.command: ceph --cluster "{{ cluster }}" -m "{{ _monitor_addresses[groups['mons'][0]] }}" quorum_status --format json
           register: ceph_health_raw
           until:
             - ceph_health_raw.rc == 0
@@ -317,7 +317,7 @@
 
         - name: Container | waiting for the containerized monitor to join the quorum...
           ansible.builtin.command: >
-            {{ container_binary }} exec ceph-mon-{{ ansible_facts['hostname'] }} ceph --cluster "{{ cluster }}" -m "{{ hostvars[groups[mon_group_name][0]]['_current_monitor_address'] }}" quorum_status --format json
+            {{ container_binary }} exec ceph-mon-{{ ansible_facts['hostname'] }} ceph --cluster "{{ cluster }}" -m "{{ _monitor_addresses[groups['mons'][0]] }}" quorum_status --format json
           register: ceph_health_raw
           until:
             - ceph_health_raw.rc == 0
