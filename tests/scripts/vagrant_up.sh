@@ -1,4 +1,12 @@
 #!/bin/bash
+set -x
+if [[ -n $1 ]]; then
+  DIRECTORY=$1
+  shift
+else
+  DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+fi
+pushd "${DIRECTORY}"
 
 if [[ "${CEPH_ANSIBLE_VAGRANT_BOX}" =~ "centos/stream" ]]; then
   EL_VERSION="${CEPH_ANSIBLE_VAGRANT_BOX: -1}"
@@ -17,3 +25,4 @@ do
 done
 
 sleep 10
+popd
