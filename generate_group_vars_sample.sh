@@ -47,12 +47,6 @@ generate_group_vars_file () {
   done
 }
 
-rhcs_edits () {
-  tail -n +1 rhcs_edits.txt | while IFS= read -r option; do
-    sed -i "s|#${option% *} .*|${option}|" group_vars/rhcs.yml.sample
-  done
-}
-
 ########
 # MAIN #
 ########
@@ -61,7 +55,7 @@ for role in "$basedir"/roles/ceph-*; do
   rolename=$(basename "$role")
 
   if [[ $rolename == "ceph-defaults" ]]; then
-    output="all.yml.sample rhcs.yml.sample"
+    output="all.yml.sample"
   elif [[ $rolename == "ceph-fetch-keys" ]]; then
     output="ceph-fetch-keys.yml.sample"
   elif [[ $rolename == "ceph-rbd-mirror" ]]; then
@@ -82,5 +76,3 @@ for role in "$basedir"/roles/ceph-*; do
     generate_group_vars_file
   fi
 done
-
-rhcs_edits

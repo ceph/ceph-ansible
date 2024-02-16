@@ -61,10 +61,8 @@
 
 - name: Debain based systems - install required packages
   block:
-    - name: Debian based systems- non-rhcs installation
-      when:
-        - (ceph_origin == 'repository' or ceph_origin == 'distro')
-        - ceph_repository != 'rhcs'
+    - name: Debian based systems
+      when: ceph_origin == 'repository' or ceph_origin == 'distro'
       block:
         - name: Install nfs rgw/cephfs gateway - debian
           ansible.builtin.apt:
@@ -80,31 +78,3 @@
           register: result
           until: result is succeeded
           when: nfs_file_gw | bool
-
-    - name: Debian based systems - rhcs installation
-      when:
-        - (ceph_origin == 'repository' or ceph_origin == 'distro')
-        - ceph_repository == 'rhcs'
-      block:
-        - name: Install red hat storage nfs gateway for debian
-          ansible.builtin.apt:
-            name: nfs-ganesha
-            state: "{{ (upgrade_ceph_packages | bool) | ternary('latest', 'present') }}"
-          register: result
-          until: result is succeeded
-
-        - name: Install red hat storage nfs file gateway
-          ansible.builtin.apt:
-            name: nfs-ganesha-ceph
-            state: "{{ (upgrade_ceph_packages | bool) | ternary('latest', 'present') }}"
-          register: result
-          until: result is succeeded
-          when: nfs_file_gw | bool
-
-        - name: Install red hat storage nfs obj gateway
-          ansible.builtin.apt:
-            name: nfs-ganesha-rgw
-            state: "{{ (upgrade_ceph_packages | bool) | ternary('latest', 'present') }}"
-          register: result
-          until: result is succeeded
-          when: nfs_obj_gw | bool

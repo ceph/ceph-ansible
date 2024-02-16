@@ -5,7 +5,7 @@ The following are all of the available options for the installing Ceph through d
 
 We support 3 main installation methods, all managed by the ``ceph_origin`` variable:
 
-- ``repository``: means that you will get Ceph installed through a new repository. Later below choose between ``community``, ``rhcs`` or ``dev``. These options will be exposed through the ``ceph_repository`` variable.
+- ``repository``: means that you will get Ceph installed through a new repository. Later below choose between ``community`` or ``dev``. These options will be exposed through the ``ceph_repository`` variable.
 - ``distro``: means that no separate repo file will be added and you will get whatever version of Ceph is included in your Linux distro.
 - ``local``: means that the Ceph binaries will be copied over from the local machine (not well tested, use at your own risk)
 
@@ -15,7 +15,6 @@ Origin: Repository
 If ``ceph_origin`` is set to ``repository``, you now have the choice between a couple of repositories controlled by the ``ceph_repository`` option:
 
 - ``community``: fetches packages from http://download.ceph.com, the official community Ceph repositories
-- ``rhcs``: means you are a Red Hat customer
 - ``dev``: fetches packages from shaman, a gitbuilder based package system
 - ``uca``: fetches packages from Ubuntu Cloud Archive
 - ``custom``: fetches packages from a specific repository
@@ -25,13 +24,6 @@ Community repository
 
 If ``ceph_repository`` is set to ``community``, packages you will be by default installed from http://download.ceph.com, this can be changed by tweaking ``ceph_mirror``.
 
-RHCS repository
-~~~~~~~~~~~~~~~
-
-RHCS is the Red Hat Ceph Storage product from Red Hat, the enterprise version of Ceph.
-If ``ceph_repository`` is set to ``rhcs``, packages you will be installed from Red Hat sources.
-
-To choose a specific version of RHCS you can set the ``ceph_rhcs_version`` variable accordingly, e.g: ``ceph_rhcs_version: 2``.
 
 UCA repository
 ~~~~~~~~~~~~~~

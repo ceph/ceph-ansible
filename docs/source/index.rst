@@ -189,7 +189,6 @@ The following install options are also validated by the ``ceph-validate`` role:
 - ``ceph_origin`` set to ``distro``
 - ``ceph_origin`` set to ``repository``
 - ``ceph_origin`` set to ``local``
-- ``ceph_repository`` set to ``rhcs``
 - ``ceph_repository`` set to ``dev``
 - ``ceph_repository`` set to ``community``
 
