@@ -74,7 +74,16 @@ check_rest() {
 
 for ((i=0; i<${RGW_NUMS}; i++)); do
   # First, restart the daemon
-  systemctl restart ceph-radosgw@rgw.${HOST_NAME}.${INSTANCES_NAME[i]}
+
+  # Check if systemd unit exists
+  # This is needed for new instances are the restart might trigger before the deployment
+  if systemctl list-units --full --all | grep -q "ceph-radosgw@rgw.${HOST_NAME}.${INSTANCES_NAME[i]}"; then
+    systemctl restart ceph-radosgw@rgw.${HOST_NAME}.${INSTANCES_NAME[i]}
+  else
+    echo "Systemd unit ceph-radosgw@rgw.${HOST_NAME}.${INSTANCES_NAME[i]} does not exist."
+    continue
+  fi
+
   # Check socket files
   check_socket ${i}
   # Check rest
