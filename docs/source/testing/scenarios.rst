@@ -50,7 +50,6 @@ to follow (most of them are 1 line settings).
      nfs_vms: 0
      rbd_mirror_vms: 0
      client_vms: 0
-     iscsi_gw_vms: 0
      mgr_vms: 0
 
   For a deployment that needs 1 MON and 1 OSD, the list would look like:

@@ -24,7 +24,6 @@ NNFSS           = settings['nfs_vms']
 GRAFANA         = settings['grafana_server_vms']
 NRBD_MIRRORS    = settings['rbd_mirror_vms']
 CLIENTS         = settings['client_vms']
-NISCSI_GWS      = settings['iscsi_gw_vms']
 MGRS            = settings['mgr_vms']
 PUBLIC_SUBNET   = settings['public_subnet']
 CLUSTER_SUBNET  = settings['cluster_subnet']
@@ -67,7 +66,6 @@ ansible_provision = proc do |ansible|
     'nfss'             => (0..NNFSS - 1).map { |j| "#{LABEL_PREFIX}nfs#{j}" },
     'rbd_mirrors'      => (0..NRBD_MIRRORS - 1).map { |j| "#{LABEL_PREFIX}rbd_mirror#{j}" },
     'clients'          => (0..CLIENTS - 1).map { |j| "#{LABEL_PREFIX}client#{j}" },
-    'iscsigws'         => (0..NISCSI_GWS - 1).map { |j| "#{LABEL_PREFIX}iscsi_gw#{j}" },
     'mgrs'             => (0..MGRS - 1).map { |j| "#{LABEL_PREFIX}mgr#{j}" },
     'monitoring'   => (0..GRAFANA - 1).map { |j| "#{LABEL_PREFIX}grafana#{j}" }
   }
@@ -556,50 +554,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       rbd_mirror.vm.provider :linode do |provider|
         provider.label = rbd_mirror.vm.hostname
-      end
-    end
-  end
-
-  (0..NISCSI_GWS - 1).each do |i|
-    config.vm.define "#{LABEL_PREFIX}iscsi-gw#{i}" do |iscsi_gw|
-      iscsi_gw.vm.hostname = "#{LABEL_PREFIX}iscsi-gw#{i}"
-      if ASSIGN_STATIC_IP && !IPV6
-	  iscsi_gw.vm.network :private_network,
-          :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
-      end
-      # Virtualbox
-      iscsi_gw.vm.provider :virtualbox do |vb|
-        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
-      end
-
-      # VMware
-      iscsi_gw.vm.provider :vmware_fusion do |v|
-        v.vmx['memsize'] = "#{MEMORY}"
-      end
-
-      # Libvirt
-      iscsi_gw.vm.provider :libvirt do |lv,override|
-        lv.memory = MEMORY
-        lv.random_hostname = true
-	if IPV6 then
-          override.vm.network :private_network,
-	  :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
-	  :libvirt__ipv6_prefix => "64",
-	  :libvirt__dhcp_enabled => false,
-	  :libvirt__forward_mode => "veryisolated",
-	  :libvirt__network_name => "ipv6-public-network",
-	  :ip => "#{PUBLIC_SUBNET}#{$last_ip_pub_digit+=1}",
-	  :netmask => "64"
-	end
-      end
-      # Parallels
-      iscsi_gw.vm.provider "parallels" do |prl|
-        prl.name = "iscsi-gw#{i}"
-        prl.memory = "#{MEMORY}"
-      end
-
-      iscsi_gw.vm.provider :linode do |provider|
-        provider.label = iscsi_gw.vm.hostname
       end
     end
   end

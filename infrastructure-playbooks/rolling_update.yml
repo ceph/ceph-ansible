@@ -57,7 +57,6 @@
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
-    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
   tags: always
   any_errors_fatal: true
@@ -1075,62 +1074,6 @@
       ansible.builtin.import_role:
         name: ceph-nfs
 
-
-- name: Upgrade ceph iscsi gateway node
-  vars:
-    upgrade_ceph_packages: true
-  hosts: "{{ iscsi_gw_group_name|default('iscsigws') }}"
-  tags: iscsigws
-  serial: 1
-  become: true
-  gather_facts: false
-  tasks:
-    # failed_when: false is here so that if we upgrade
-    # from a version of ceph that does not have iscsi gws
-    # then this task will not fail
-    - name: Stop ceph iscsi services
-      ansible.builtin.systemd:
-        name: '{{ item }}'
-        state: stopped
-        enabled: false
-        masked: true
-      failed_when: false
-      with_items:
-        - rbd-target-api
-        - rbd-target-gw
-        - tcmu-runner
-
-    - name: Import ceph-defaults role
-      ansible.builtin.import_role:
-        name: ceph-defaults
-
-    - name: Import ceph-facts role
-      ansible.builtin.import_role:
-        name: ceph-facts
-
-    - name: Import ceph-handler role
-      ansible.builtin.import_role:
-        name: ceph-handler
-
-    - name: Import ceph-common role
-      ansible.builtin.import_role:
-        name: ceph-common
-      when: not containerized_deployment | bool
-
-    - name: Import ceph-container-common role
-      ansible.builtin.import_role:
-        name: ceph-container-common
-      when: containerized_deployment | bool
-
-    - name: Import ceph-config role
-      ansible.builtin.import_role:
-        name: ceph-config
-
-    - name: Import ceph-iscsi-gw role
-      ansible.builtin.import_role:
-        name: ceph-iscsi-gw
-
-
 - name: Upgrade ceph client node
   vars:
     upgrade_ceph_packages: true
@@ -1245,7 +1188,6 @@
     - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
-    - "{{ iscsi_gw_group_name|default('iscsigws') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
   tags: monitoring
   gather_facts: false
