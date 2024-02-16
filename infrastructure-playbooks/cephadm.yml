@@ -30,15 +30,6 @@
       run_once: true
       when: groups[mgr_group_name] is undefined or groups[mgr_group_name] | length == 0
 
-    - name: Validate monitor network configuration
-      ansible.builtin.fail:
-        msg: "Either monitor_address, monitor_address_block or monitor_interface must be provided"
-      when:
-        - mon_group_name in group_names
-        - monitor_address == 'x.x.x.x'
-        - monitor_address_block == 'subnet'
-        - monitor_interface == 'interface'
-
     - name: Validate dashboard configuration
       when: dashboard_enabled | bool
       run_once: true
@@ -158,7 +149,7 @@
 
     - name: Bootstrap the new cluster
       cephadm_bootstrap:
-        mon_ip: "{{ _current_monitor_address }}"
+        mon_ip: "{{ _monitor_addresses[inventory_hostname] }}"
         image: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
         docker: "{{ true if container_binary == 'docker' else false }}"
         pull: false
