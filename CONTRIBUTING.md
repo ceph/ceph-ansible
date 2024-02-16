@@ -14,7 +14,6 @@
   or the name of a logical grouping of code. Examples:
   - library: add a placeholder module for the validate action plugin
   - site.yml: combine validate play with fact gathering play
-  - rhcs: bump version to 3.0 for stable 3.1
 - Commits linked with an issue should trace them with :
   - Fixes: #2653
 

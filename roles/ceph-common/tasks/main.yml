@@ -35,20 +35,12 @@
   ansible.builtin.set_fact:
     ceph_version: "{{ ceph_version.stdout.split(' ')[2] }}"
 
-# override ceph_stable_release for ceph_dev and rhcs installations since ceph_stable_release is not mandatory
-- name: Include release-rhcs.yml
-  ansible.builtin.include_tasks: release-rhcs.yml
-  when: ceph_repository in ['rhcs', 'dev']
-      or
-      ceph_origin == 'distro'
-  tags: always
-
 - name: Set_fact ceph_release - override ceph_release with ceph_stable_release
   ansible.builtin.set_fact:
     ceph_release: "{{ ceph_stable_release }}"
   when:
     - ceph_origin == 'repository'
-    - ceph_repository not in ['dev', 'rhcs', 'custom']
+    - ceph_repository not in ['dev', 'custom']
   tags: always
 
 - name: Include create_rbd_client_dir.yml

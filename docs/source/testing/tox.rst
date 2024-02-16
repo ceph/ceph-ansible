@@ -71,5 +71,5 @@ in the dynamic matrix that tox creates. Inside of ``{}`` you can include a comma
 of the *factor* name as those are used by tox as the separator between different factor sets.
 
 For example, if wanted to add a new test *factor* for the next Ceph release of luminious this is how you'd accomplish that. Currently, the first factor set in our ``envlist``
-is used to define the Ceph release (``{jewel,kraken,rhcs}-...``). To add luminous you'd change that to look like ``{luminous,kraken,rhcs}-...``. In the ``testenv`` section
+is used to define the Ceph release (``{jewel,kraken}-...``). To add luminous you'd change that to look like ``{luminous,kraken}-...``. In the ``testenv`` section
 this is a subsection called ``setenv`` which allows you to provide environment variables to the tox environment and we support an environment variable called ``CEPH_STABLE_RELEASE``. To ensure that all the new tests that are created by adding the luminous *factor* you'd do this in that section: ``luminous: CEPH_STABLE_RELEASE=luminous``.
