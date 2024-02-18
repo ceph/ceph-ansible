@@ -43,23 +43,26 @@ numactl \
 {% if ceph_osd_docker_cpuset_mems is defined -%}
 --cpuset-mems='{{ ceph_osd_docker_cpuset_mems }}' \
 {% endif -%}
+{% for v in ceph_common_container_params['volumes'] %}
+  -v {{ v }} \
+{% endfor %}
 -v /dev:/dev \
--v /etc/localtime:/etc/localtime:ro \
 -v /var/lib/ceph/bootstrap-osd/ceph.keyring:/var/lib/ceph/bootstrap-osd/ceph.keyring:z \
 -v /var/lib/ceph/osd/{{ cluster }}-"${OSD_ID}":/var/lib/ceph/osd/{{ cluster }}-"${OSD_ID}":z \
--v /etc/ceph:/etc/ceph:z \
--v /var/run/ceph:/var/run/ceph:z \
 -v /var/run/udev/:/var/run/udev/ \
--v /var/log/ceph:/var/log/ceph:z \
 {% if ansible_facts['distribution'] == 'Ubuntu' -%}
 --security-opt apparmor:unconfined \
 {% endif -%}
--e CLUSTER={{ cluster }} \
--e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
+{% for k, v in ceph_common_container_params['envs'].items() %}
+-e {{ k }}={{ v }} \
+{% endfor %}
 -v /run/lvm/:/run/lvm/ \
 -e OSD_ID=${OSD_ID} \
 --name=ceph-osd-${OSD_ID} \
 --entrypoint=/usr/bin/ceph-osd \
 {{ ceph_osd_docker_extra_env }} \
 {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+{% for arg in ceph_common_container_params['args'] %}
+  {{ arg }} \
+{% endfor %}
 -f -i ${OSD_ID}
