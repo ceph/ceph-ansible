@@ -526,7 +526,22 @@ ceph_client_docker_registry: "{{ ceph_docker_registry }}"
 containerized_deployment: false
 container_binary:
 timeout_command: "{{ 'timeout --foreground -s KILL ' ~ docker_pull_timeout if (docker_pull_timeout != '0') and (ceph_docker_dev_image is undefined or not ceph_docker_dev_image) else '' }}"
-
+ceph_common_container_params:
+  envs:
+    NODE_NAME: "{{ ansible_facts['hostname'] }}"
+    CEPH_USE_RANDOM_NONCE: "1"
+    CONTAINER_IMAGE: "{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+    TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES: "{{ ceph_tcmalloc_max_total_thread_cache }}"
+  args:
+    - --default-log-to-file=false
+    - --default-log-to-stderr=true
+    - --default-log-stderr-prefix="debug "
+  volumes:
+    - /var/lib/ceph/crash:/var/lib/ceph/crash:z
+    - /var/run/ceph:/var/run/ceph:z
+    - /var/log/ceph:/var/log/ceph:z
+    - /etc/ceph:/etc/ceph:z
+    - /etc/localtime:/etc/localtime:ro
 
 # this is only here for usage with the rolling_update.yml playbook
 # do not ever change this here
