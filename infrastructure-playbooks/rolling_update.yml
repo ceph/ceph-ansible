@@ -1173,6 +1173,7 @@
       ansible.builtin.systemd:
         name: "{{ 'ceph-exporter@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-exporter.service' }}"
         state: stopped
+      ignore_errors: true
 
     # it needs to be done in a separate task otherwise the stop just before doesn't work.
     - name: Mask and disable the ceph-exporter service
@@ -1180,6 +1181,7 @@
         name: "{{ 'ceph-exporter@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-exporter.service' }}"
         enabled: false
         masked: true
+      ignore_errors: true
 
     - name: Import ceph-defaults role
       ansible.builtin.import_role:
