@@ -223,7 +223,9 @@
 
 - name: Import_tasks set_radosgw_address.yml
   ansible.builtin.include_tasks: set_radosgw_address.yml
-  when: inventory_hostname in groups.get(rgw_group_name, [])
+  when:
+    - set_radosgw_address | default(true)
+    - inventory_hostname in groups.get(rgw_group_name, [])
 
 - name: Set_fact ceph_run_cmd
   ansible.builtin.set_fact:
