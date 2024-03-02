@@ -34,28 +34,22 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
   {% if ceph_rgw_docker_cpuset_mems is defined -%}
   --cpuset-mems="{{ ceph_rgw_docker_cpuset_mems }}" \
   {% endif -%}
-{% for v in ceph_common_container_params['volumes'] %}
+{% for v in ceph_common_container_params['volumes'] + ceph_rgw_container_params['volumes'] | default([]) %}
   -v {{ v }} \
 {% endfor %}
-  -v /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.${INST_NAME}:/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.${INST_NAME}:z \
-{% for k, v in ceph_common_container_params['envs'].items() %}
+{% for k, v in (ceph_common_container_params['envs'] | combine(ceph_rgw_container_params['envs'] | default({}))).items() %}
   -e {{ k }}={{ v }} \
 {% endfor %}
-  {% if ansible_facts['os_family'] == 'RedHat' -%}
+{% if ansible_facts['os_family'] == 'RedHat' -%}
   -v /etc/pki/ca-trust/extracted:/etc/pki/ca-trust/extracted \
-  {% endif -%}
-  {% if radosgw_frontend_ssl_certificate -%}
+{% endif -%}
+{% if radosgw_frontend_ssl_certificate -%}
   -v {{ radosgw_frontend_ssl_certificate }}:{{ radosgw_frontend_ssl_certificate }} \
-  {% endif -%}
-  -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \
+{% endif -%}
   --name=ceph-rgw-{{ ansible_facts['hostname'] }}-${INST_NAME} \
   --entrypoint=/usr/bin/radosgw \
-  {{ ceph_rgw_docker_extra_env }} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
-{% for arg in ceph_common_container_params['args'] %}
-  {{ arg }} \
-{% endfor %}
-  -f -n client.rgw.{{ ansible_facts['hostname'] }}.${INST_NAME} -k /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.${INST_NAME}/keyring
+  {{ (ceph_common_container_params['args'] + ceph_rgw_container_params['args'] | default([])) | join(' ') }}
 {% if container_binary == 'podman' %}
 ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
 {% else %}
