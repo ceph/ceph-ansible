@@ -32,12 +32,18 @@ ceph_mgr_packages:
 # Resource limitation
 # For the whole list of limits you can apply see: docs.docker.com/engine/admin/resource_constraints
 # Default values are based from: https://access.redhat.com/documentation/en-us/red_hat_ceph_storage/2/html/red_hat_ceph_storage_hardware_guide/minimum_recommendations
-# These options can be passed using the 'ceph_mgr_docker_extra_env' variable.
 ceph_mgr_docker_memory_limit: "{{ ansible_facts['memtotal_mb'] }}m"
 ceph_mgr_docker_cpu_limit: 1
 
-ceph_mgr_docker_extra_env:
 ceph_config_keys: [] # DON'T TOUCH ME
+# If you want to add parameters, you should retain the existing ones and include the new ones.
+ceph_mgr_container_params:
+  volumes:
+    - /var/lib/ceph/mgr:/var/lib/ceph/mgr:z,rshared
+    - /var/lib/ceph/bootstrap-mgr:/var/lib/ceph/bootstrap-mgr:z
+  args:
+    - -f
+    - -i={{ ansible_facts['hostname'] }}
 
 
 ###########

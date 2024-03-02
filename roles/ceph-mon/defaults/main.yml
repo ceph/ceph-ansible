@@ -36,18 +36,26 @@ client_admin_ceph_authtool_cap:
 # Resource limitation
 # For the whole list of limits you can apply see: docs.docker.com/engine/admin/resource_constraints
 # Default values are based from: https://access.redhat.com/documentation/en-us/red_hat_ceph_storage/2/html/red_hat_ceph_storage_hardware_guide/minimum_recommendations
-# These options can be passed using the 'ceph_mon_docker_extra_env' variable.
 ceph_mon_docker_memory_limit: "{{ ansible_facts['memtotal_mb'] }}m"
 ceph_mon_docker_cpu_limit: 1
 ceph_mon_container_listen_port: 3300
 
-# Use this variable to add extra env configuration to run your mon container.
-# If you want to set a custom admin keyring you can set this variable like following:
-# ceph_mon_docker_extra_env: -e ADMIN_SECRET={{ admin_secret }}
-ceph_mon_docker_extra_env:
+# Use this variable to modify the configuration to run your mon container.
 mon_docker_privileged: false
 mon_docker_net_host: true
 ceph_config_keys: [] # DON'T TOUCH ME
+# If you want to add parameters, you should retain the existing ones and include the new ones.
+ceph_mon_container_params:
+  volumes:
+    - /var/lib/ceph/mon:/var/lib/ceph/mon:z,rshared
+  args:
+    - -f
+    - --default-mon-cluster-log-to-file=false
+    - --default-mon-cluster-log-to-stderr=true
+    - -i={{ monitor_name }}
+    - --mon-data=/var/lib/ceph/mon/{{ cluster }}-{{ monitor_name }}
+    - --public-addr={{ _current_monitor_address }}
+    - --mon-initial-members={{ groups[mon_group_name] | join(',') }}
 
 
 ###########
