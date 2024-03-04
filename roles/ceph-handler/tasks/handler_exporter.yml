@@ -1,0 +1,18 @@
+---
+- name: Set _exporter_handler_called before restart
+  ansible.builtin.set_fact:
+    _exporter_handler_called: true
+
+- name: Restart the ceph-exporter service  # noqa: ignore-errors
+  ansible.builtin.systemd:
+    name: ceph-exporter@{{ ansible_facts['hostname'] }}
+    state: restarted
+    enabled: true
+    masked: false
+    daemon_reload: true
+  ignore_errors: true
+  when: hostvars[inventory_hostname]['_exporter_handler_called'] | default(False) | bool
+
+- name: Set _exporter_handler_called after restart
+  ansible.builtin.set_fact:
+    _exporter_handler_called: false

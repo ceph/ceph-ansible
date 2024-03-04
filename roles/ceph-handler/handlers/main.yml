@@ -65,6 +65,17 @@
           or inventory_hostname in groups.get(rgw_group_name, [])
           or inventory_hostname in groups.get(rbdmirror_group_name, [])
 
+    - name: Ceph exporter handler
+      ansible.builtin.include_tasks: handler_exporter.yml
+      listen: "Restart ceph exporter"
+      when:
+        - inventory_hostname in groups.get(mon_group_name, [])
+          or inventory_hostname in groups.get(mgr_group_name, [])
+          or inventory_hostname in groups.get(osd_group_name, [])
+          or inventory_hostname in groups.get(mds_group_name, [])
+          or inventory_hostname in groups.get(rgw_group_name, [])
+          or inventory_hostname in groups.get(rbdmirror_group_name, [])
+
     - name: Remove tempdir for scripts
       ansible.builtin.file:
         path: "{{ tmpdirpath.path }}"
@@ -80,6 +91,7 @@
       register: tmpdirpath
       when:
         - tmpdirpath.path is defined
+        - not _exporter_handler_called | default(false) | bool
         - not _crash_handler_called | default(false) | bool
         - not _mds_handler_called | default(false) | bool
         - not _mgr_handler_called | default(false) | bool

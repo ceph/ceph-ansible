@@ -194,6 +194,17 @@
             inventory_hostname in groups.get(mgr_group_name, []) or
             inventory_hostname in groups.get(rbdmirror_group_name, [])
 
+    - name: Import ceph-exporter role
+      ansible.builtin.import_role:
+        name: ceph-exporter
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(mon_group_name, []) or
+            inventory_hostname in groups.get(osd_group_name, []) or
+            inventory_hostname in groups.get(mds_group_name, []) or
+            inventory_hostname in groups.get(rgw_group_name, []) or
+            inventory_hostname in groups.get(mgr_group_name, []) or
+            inventory_hostname in groups.get(rbdmirror_group_name, [])
+
     - name: Dashboard configuration
       when: dashboard_enabled | bool
       block:
