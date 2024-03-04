@@ -1187,6 +1187,43 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
 
+- name: Redeploy ceph-exporter daemons
+  hosts:
+    - "{{ mon_group_name|default('mons') }}"
+    - "{{ osd_group_name|default('osds') }}"
+    - "{{ mds_group_name|default('mdss') }}"
+    - "{{ rgw_group_name|default('rgws') }}"
+    - "{{ mgr_group_name|default('mgrs') }}"
+    - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
+        name: ceph-defaults
+
+    - name: Stop and disable ceph-exporter systemd service
+      ansible.builtin.service:
+        name: "{{ 'ceph-exporter@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-exporter.service' }}"
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Remove ceph-exporter systemd unit file
+      ansible.builtin.file:
+        path: /etc/systemd/system/ceph-exporter@.service
+        state: absent
+
+    - name: Update the placement of ceph-exporter hosts
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} -- ceph orch apply ceph-exporter --placement='label:ceph'"
+      run_once: true
+      changed_when: false
+      delegate_to: '{{ groups[mon_group_name][0] }}'
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
+
 - name: Redeploy alertmanager/grafana/prometheus daemons
   hosts: "{{ monitoring_group_name|default('monitoring') }}"
   serial: 1

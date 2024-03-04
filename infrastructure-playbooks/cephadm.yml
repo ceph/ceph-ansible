@@ -312,6 +312,12 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
+    - name: Update the placement of ceph-exporter hosts
+      ansible.builtin.command: "{{ cephadm_cmd }} shell -- ceph --cluster {{ cluster }} orch apply ceph-exporter --placement='label:ceph'"
+      changed_when: false
+      environment:
+        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
+
 - name: Adjust monitoring service placement
   hosts: "{{ monitoring_group_name|default('monitoring') }}"
   become: true

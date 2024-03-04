@@ -45,3 +45,12 @@ class TestCephCrash(object):
         s = host.service("ceph-crash@{hostname}".format(hostname=node["vars"]["inventory_hostname"]))
         assert s.is_enabled
         assert s.is_running
+
+
+class TestCephExporter(object):
+    @pytest.mark.docker
+    @pytest.mark.ceph_exporter
+    def test_ceph_exporter_service_enabled_and_running_container(self, node, host):
+        s = host.service("ceph-exporter@{hostname}".format(hostname=node["vars"]["inventory_hostname"]))
+        assert s.is_enabled
+        assert s.is_running

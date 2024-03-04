@@ -34,6 +34,7 @@ class CallbackModule(CallbackBase):
             'installer_phase_ceph_grafana',
             'installer_phase_ceph_node_exporter',
             'installer_phase_ceph_crash',
+            'installer_phase_ceph_exporter',
         ]
 
         # Define the attributes of the installer phases
@@ -89,6 +90,10 @@ class CallbackModule(CallbackBase):
             'installer_phase_ceph_crash': {
                 'title': 'Install Ceph Crash',
                 'playbook': 'roles/ceph-crash/tasks/main.yml'
+            },
+            'installer_phase_ceph_exporter': {
+                'title': 'Install Ceph Exporter',
+                'playbook': 'roles/ceph-exporter/tasks/main.yml'
             },
         }
 
