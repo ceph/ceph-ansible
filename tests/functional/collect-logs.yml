@@ -1,28 +1,30 @@
 ---
-- hosts: all
-  become: yes
+- name: Collect logs
+  hosts: all
+  become: true
   tasks:
-    - name: import_role ceph-defaults
-      import_role:
+    - name: Import_role ceph-defaults
+      ansible.builtin.import_role:
         name: ceph-defaults
 
-    - name: import_role ceph-facts
-      import_role:
+    - name: Import_role ceph-facts
+      ansible.builtin.import_role:
         name: ceph-facts
         tasks_from: container_binary.yml
 
-    - import_role:
+    - name: Import set_radosgw_address.yml
+      ansible.builtin.import_role:
         name: ceph-facts
         tasks_from: set_radosgw_address.yml
 
-    - name: set_fact ceph_cmd
-      set_fact:
+    - name: Set_fact ceph_cmd
+      ansible.builtin.set_fact:
         ceph_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }}"
 
-    - name: get some ceph status outputs
-      command: "{{ ceph_cmd }} --connect-timeout 10 --cluster {{ cluster }} {{ item }}"
+    - name: Get some ceph status outputs
+      ansible.builtin.command: "{{ ceph_cmd }} --connect-timeout 10 --cluster {{ cluster }} {{ item }}"
       register: ceph_status
-      run_once: True
+      run_once: true
       delegate_to: mon0
       failed_when: false
       changed_when: false
@@ -34,30 +36,35 @@
         - "versions"
         - "health detail -f json-pretty"
 
-    - name: save ceph status to file
-      copy:
+    - name: Save ceph status to file
+      ansible.builtin.copy:
         content: "{{ item.stdout }}"
         dest: "{{ archive_path }}/{{ item.item | regex_replace(' ', '_') }}.log"
       delegate_to: localhost
-      run_once: True
+      run_once: true
       with_items: "{{ ceph_status.results }}"
 
-    - name: get mgr log
-      shell: journalctl -l -u ceph-mgr@{{ ansible_facts['hostname'] }} > /var/log/ceph/ceph-mgr.{{ ansible_facts['hostname'] }}.log
+    - name: Get ceph-exporter logs  # noqa: ignore-errors
+      ansible.builtin.shell: journalctl -l -u ceph-exporter@{{ ansible_facts['hostname'] }} | tee -a /var/log/ceph/ceph-exporter.{{ ansible_facts['hostname'] }}.log
+      changed_when: false
+      ignore_errors: true
+
+    - name: Get mgr log
+      ansible.builtin.shell: journalctl -l -u ceph-mgr@{{ ansible_facts['hostname'] }} > /var/log/ceph/ceph-mgr.{{ ansible_facts['hostname'] }}.log
       changed_when: false
       when:
         - inventory_hostname in groups.get(mgr_group_name, [])
           or
           (groups.get(mgr_group_name, []) | length == 0 and inventory_hostname in groups.get(mon_group_name, []))
 
-    - name: get rgw log
-      shell: journalctl -l -u ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }} > /var/log/ceph/ceph-radosgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}.log
+    - name: Get rgw log
+      ansible.builtin.shell: journalctl -l -u ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }} > /var/log/ceph/ceph-radosgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}.log
       changed_when: false
       with_items: "{{ rgw_instances | default([]) }}"
       when: inventory_hostname in groups.get(rgw_group_name, [])
 
-    - name: find ceph config file and logs
-      find:
+    - name: Find ceph config file and logs
+      ansible.builtin.find:
         paths:
           - /etc/ceph
           - /var/log/ceph
@@ -66,9 +73,9 @@
           - "*.log"
       register: results
 
-    - name: collect ceph config file and logs
-      fetch:
+    - name: Collect ceph config file and logs
+      ansible.builtin.fetch:
         src: "{{ item.path }}"
         dest: "{{ archive_path }}/{{ inventory_hostname }}/"
-        flat: yes
+        flat: true
       with_items: "{{ results.files }}"
