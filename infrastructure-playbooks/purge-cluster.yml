@@ -726,6 +726,40 @@
         state: absent
 
 
+- name: Purge ceph-exporter daemons
+  hosts:
+    - mons
+    - osds
+    - mdss
+    - rgws
+    - rbdmirrors
+    - mgrs
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
+        name: ceph-defaults
+
+    - name: Stop ceph-exporter service
+      ansible.builtin.service:
+        name: "{{ 'ceph-exporter@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-exporter.service' }}"
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Systemctl reset-failed ceph-exporter  # noqa command-instead-of-module
+      ansible.builtin.command: "systemctl reset-failed {{ 'ceph-exporter@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-exporter.service' }}"
+      changed_when: false
+      failed_when: false
+
+    - name: Remove service file
+      ansible.builtin.file:
+        name: "/etc/systemd/system/ceph-exporter{{ '@' if containerized_deployment | bool else '' }}.service"
+        state: absent
+      failed_when: false
+
+
 - name: Check container hosts
   hosts:
     - mons

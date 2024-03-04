@@ -1143,6 +1143,50 @@
       ansible.builtin.import_role:
         name: ceph-crash
 
+- name: Upgrade ceph-exporter daemons
+  hosts:
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+  tags:
+    - post_upgrade
+    - ceph-exporter
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Exit ceph-exporter upgrade if non containerized deployment
+      ansible.builtin.meta: end_play
+      when: not containerized_deployment | bool
+
+    - name: Stop the ceph-exporter service
+      ansible.builtin.systemd:
+        name: "{{ 'ceph-exporter@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-exporter.service' }}"
+        state: stopped
+
+    # it needs to be done in a separate task otherwise the stop just before doesn't work.
+    - name: Mask and disable the ceph-exporter service
+      ansible.builtin.systemd:
+        name: "{{ 'ceph-exporter@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-exporter.service' }}"
+        enabled: false
+        masked: true
+
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
+        name: ceph-defaults
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+    - name: Import ceph-handler role
+      ansible.builtin.import_role:
+        name: ceph-handler
+    - name: Import ceph-exporter role
+      ansible.builtin.import_role:
+        name: ceph-exporter
+
 - name: Complete upgrade
   hosts: "{{ mon_group_name | default('mons') }}"
   tags: post_upgrade

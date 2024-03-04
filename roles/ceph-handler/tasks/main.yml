@@ -48,3 +48,14 @@
       or inventory_hostname in groups.get(mds_group_name, [])
       or inventory_hostname in groups.get(rgw_group_name, [])
       or inventory_hostname in groups.get(rbdmirror_group_name, [])
+
+- name: Set_fact handler_exporter_status
+  ansible.builtin.set_fact:
+    handler_exporter_status: "{{ exporter_process.get('rc') == 0 if not containerized_deployment | bool else (ceph_exporter_container_stat.get('rc') == 0 and ceph_exporter_container_stat.get('stdout_lines', []) | length != 0) }}"
+  when:
+    - inventory_hostname in groups.get(mon_group_name, [])
+      or inventory_hostname in groups.get(mgr_group_name, [])
+      or inventory_hostname in groups.get(osd_group_name, [])
+      or inventory_hostname in groups.get(mds_group_name, [])
+      or inventory_hostname in groups.get(rgw_group_name, [])
+      or inventory_hostname in groups.get(rbdmirror_group_name, [])

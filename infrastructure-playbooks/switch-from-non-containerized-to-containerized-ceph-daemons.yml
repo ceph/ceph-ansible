@@ -755,6 +755,37 @@
       ansible.builtin.import_role:
         name: ceph-crash
 
+- name: Switching from non-containerized to containerized ceph-exporter
+
+  hosts:
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
+    - "{{ mds_group_name | default('mdss') }}"
+    - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ mgr_group_name | default('mgrs') }}"
+
+  vars:
+    containerized_deployment: true
+  become: true
+  tasks:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
+        name: ceph-defaults
+
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: Import ceph-handler role
+      ansible.builtin.import_role:
+        name: ceph-handler
+
+    - name: Import ceph-exporter role
+      ansible.builtin.import_role:
+        name: ceph-exporter
+
 - name: Final task
   hosts:
     - "{{ mon_group_name|default('mons') }}"

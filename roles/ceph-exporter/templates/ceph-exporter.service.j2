@@ -1,0 +1,50 @@
+[Unit]
+Description=Ceph exporter
+{% if container_binary == 'docker' %}
+After=docker.service network-online.target local-fs.target time-sync.target
+Requires=docker.service
+{% else %}
+After=network-online.target local-fs.target time-sync.target
+{% endif %}
+Wants=network-online.target local-fs.target time-sync.target
+
+[Service]
+{% if container_binary == 'podman' %}
+ExecStartPre=-/usr/bin/rm -f /%t/%n-pid /%t/%n-cid
+ExecStartPre=-/usr/bin/{{ container_binary }} rm --storage ceph-exporter-%i
+{% endif %}
+ExecStartPre=-/usr/bin/{{ container_binary }} rm -f ceph-exporter-%i
+ExecStart=/usr/bin/{{ container_binary }} run --rm --name ceph-exporter-%i \
+{% if container_binary == 'podman' %}
+-d --log-driver journald --conmon-pidfile /%t/%n-pid --cidfile /%t/%n-cid \
+{% endif %}
+--pids-limit={{ 0 if container_binary == 'podman' else -1 }} \
+--security-opt label=disable \
+--net=host \
+{% for v in ceph_common_container_params['volumes'] + ceph_exporter_container_params['volumes'] | default([]) %}
+  -v {{ v }} \
+{% endfor %}
+{% for k, v in (ceph_common_container_params['envs'] | combine(ceph_exporter_container_params['envs'] | default({}))).items() %}
+  -e {{ k }}={{ v }} \
+{% endfor %}
+--entrypoint=/usr/bin/ceph-exporter {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} \
+  {{ (ceph_common_container_params['args'] + ceph_exporter_container_params['args'] | default([])) | join(' ') }}
+{% if container_binary == 'podman' %}
+ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
+{% else %}
+ExecStop=-/usr/bin/{{ container_binary }} stop ceph-exporter-%i
+{% endif %}
+StartLimitInterval=10min
+StartLimitBurst=30
+{% if container_binary == 'podman' %}
+Type=forking
+PIDFile=/%t/%n-pid
+{% endif %}
+KillMode=none
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120
+TimeoutStopSec=10
+
+[Install]
+WantedBy=ceph.target

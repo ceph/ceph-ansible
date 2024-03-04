@@ -1,0 +1,58 @@
+---
+- name: Create and copy client.ceph-exporter keyring
+  when: cephx | bool
+  block:
+    - name: Create client.ceph-exporter keyring
+      ceph_key:
+        name: "client.ceph-exporter"
+        caps:
+          mon: 'allow r'
+          mgr: 'allow r'
+          osd: 'allow r'
+        cluster: "{{ cluster }}"
+        dest: "{{ ceph_conf_key_directory }}"
+        import_key: true
+        mode: "{{ ceph_keyring_permissions }}"
+        owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      delegate_to: "{{ groups.get(mon_group_name, [])[0] }}"
+      run_once: true
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
+
+    - name: Get keys from monitors
+      ceph_key:
+        name: client.ceph-exporter
+        cluster: "{{ cluster }}"
+        output_format: plain
+        state: info
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      register: _exporter_keys
+      delegate_to: "{{ groups.get(mon_group_name)[0] }}"
+      run_once: true
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
+
+    - name: Copy ceph key(s) if needed
+      ansible.builtin.copy:
+        dest: "{{ ceph_conf_key_directory }}/{{ cluster }}.client.ceph-exporter.keyring"
+        content: "{{ _exporter_keys.stdout + '\n' }}"
+        owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        mode: "{{ ceph_keyring_permissions }}"
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
+
+- name: Include_tasks systemd.yml
+  ansible.builtin.include_tasks: systemd.yml
+  when: containerized_deployment | bool
+
+- name: Start the ceph-exporter service
+  ansible.builtin.systemd:
+    name: "{{ 'ceph-exporter@' + ansible_facts['hostname'] if containerized_deployment | bool else 'ceph-exporter.service' }}"
+    state: started
+    enabled: true
+    masked: false
+    daemon_reload: true

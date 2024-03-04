@@ -170,6 +170,9 @@ def node(host, request):
     if request.node.get_closest_marker('ceph_crash') and sanitized_group_names in [['nfss'], ['clients'], ['monitoring']]:
         pytest.skip('Not a valid test for nfs or client nodes')
 
+    if request.node.get_closest_marker('ceph_exporter') and sanitized_group_names in [['nfss'], ['clients'], ['monitoring']]:
+        pytest.skip('Not a valid test for nfs or client nodes')
+
     if request.node.get_closest_marker("no_docker") and docker:
         pytest.skip(
             "Not a valid test for containerized deployments or atomic hosts")
