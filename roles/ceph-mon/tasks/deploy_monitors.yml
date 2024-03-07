@@ -130,6 +130,7 @@
     mode: "0600"
   delegate_to: "{{ item }}"
   loop: "{{ groups[mon_group_name] }}"
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
 
 - name: Import admin keyring into mon keyring
   ceph_authtool:
@@ -141,8 +142,7 @@
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-  no_log: false
-#  no_log: "{{ no_log_on_ceph_key_tasks }}"
+  no_log: "{{ no_log_on_ceph_key_tasks }}"
   when:
     - cephx | bool
 
