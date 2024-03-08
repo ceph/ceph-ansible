@@ -143,7 +143,7 @@
           register: ceph_version
           changed_when: false
 
-        - name: check ceph release being deployed
+        - name: Check ceph release being deployed
           ansible.builtin.fail:
             msg: "This version of ceph-ansible is intended for upgrading to Ceph Reef only."
           when: "'reef' not in ceph_version.stdout.split()"
@@ -1210,7 +1210,7 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
-    - name: container | disallow pre-reef OSDs and enable all new reef-only functionality
+    - name: Container | disallow pre-reef OSDs and enable all new reef-only functionality
       ansible.builtin.command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] }} ceph --cluster {{ cluster }} osd require-osd-release reef"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
@@ -1219,7 +1219,7 @@
         - containerized_deployment | bool
         - groups.get(mon_group_name, []) | length > 0
 
-    - name: non container | disallow pre-reef OSDs and enable all new reef-only functionality
+    - name: Non container | disallow pre-reef OSDs and enable all new reef-only functionality
       ansible.builtin.command: "ceph --cluster {{ cluster }} osd require-osd-release reef"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
