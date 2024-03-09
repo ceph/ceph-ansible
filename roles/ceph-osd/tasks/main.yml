@@ -99,13 +99,3 @@
   ansible.builtin.include_tasks: crush_rules.yml
   when: hostvars[groups[mon_group_name][0]]['crush_rule_config'] | default(crush_rule_config) | bool
   tags: wait_all_osds_up
-
-# Create the pools listed in openstack_pools
-- name: Include openstack_config.yml
-  ansible.builtin.include_tasks: openstack_config.yml
-  when:
-    - not add_osd | bool
-    - not rolling_update | default(False) | bool
-    - openstack_config | bool
-    - inventory_hostname == groups[osd_group_name] | last
-  tags: wait_all_osds_up
