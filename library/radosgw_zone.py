@@ -124,20 +124,23 @@ EXAMPLES = '''
 RETURN = '''#  '''
 
 
-def container_exec(binary, container_image):
+def container_exec(binary, container_image, container_args=[]):
     '''
     Build the docker CLI to run a command inside a container
     '''
 
     container_binary = os.getenv('CEPH_CONTAINER_BINARY')
-    command_exec = [container_binary,
-                    'run',
-                    '--rm',
-                    '--net=host',
-                    '-v', '/etc/ceph:/etc/ceph:z',
-                    '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
-                    '-v', '/var/log/ceph/:/var/log/ceph/:z',
-                    '--entrypoint=' + binary, container_image]
+
+    command_exec = [container_binary, 'run', '--rm', '--net=host']
+    command_exec.extend(container_args)
+    command_exec.extend([
+        '-v', '/etc/ceph:/etc/ceph:z',
+        '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+        '-v', '/var/log/ceph/:/var/log/ceph/:z',
+        '--entrypoint=' + binary,
+        container_image,
+    ])
+
     return command_exec
 
 
@@ -154,24 +157,24 @@ def is_containerized():
     return container_image
 
 
-def pre_generate_radosgw_cmd(container_image=None):
+def pre_generate_radosgw_cmd(container_image=None, container_args=[]):
     '''
     Generate radosgw-admin prefix comaand
     '''
     if container_image:
-        cmd = container_exec('radosgw-admin', container_image)
+        cmd = container_exec('radosgw-admin', container_image, container_args)
     else:
         cmd = ['radosgw-admin']
 
     return cmd
 
 
-def generate_radosgw_cmd(cluster, args, container_image=None):
+def generate_radosgw_cmd(cluster, args, container_image=None, container_args=[]):
     '''
     Generate 'radosgw' command line to execute
     '''
 
-    cmd = pre_generate_radosgw_cmd(container_image=container_image)
+    cmd = pre_generate_radosgw_cmd(container_image=container_image, container_args=container_args)  # noqa: E501
 
     base_cmd = [
         '--cluster',
@@ -383,6 +386,37 @@ def remove_zone(module, container_image=None):
     return cmd
 
 
+def set_zone(module, container_image=None):
+    '''
+    Set a zone
+    '''
+
+    cluster = module.params.get('cluster')
+    realm = module.params.get('realm')
+    zone_doc = module.params.get('zone_doc')
+
+    # store the zone_doc in a file
+    filename = module.tmpdir + 'zone_doc.json'
+    with open(filename, 'w') as f:
+        json.dump(zone_doc, f)
+
+    container_args = [
+        '-v', filename + ':' + filename + ':ro'
+    ]
+    args = [
+        'set',
+        '--rgw-realm=' + realm,
+        '--infile=' + filename,
+    ]
+
+    cmd = generate_radosgw_cmd(cluster=cluster,
+                               args=args,
+                               container_image=container_image,
+                               container_args=container_args)
+
+    return cmd
+
+
 def exit_module(module, out, rc, cmd, err, startd, changed=False):
     endd = datetime.datetime.now()
     delta = endd - startd
@@ -404,7 +438,7 @@ def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         name=dict(type='str', required=True),
-        state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),  # noqa: E501
+        state=dict(type='str', required=False, choices=['present', 'absent', 'info', 'set'], default='present'),  # noqa: E501
         realm=dict(type='str', require=True),
         zonegroup=dict(type='str', require=True),
         endpoints=dict(type='list', require=False, default=[]),
@@ -412,6 +446,7 @@ def run_module():
         secret_key=dict(type='str', required=False, no_log=True),
         default=dict(type='bool', required=False, default=False),
         master=dict(type='bool', required=False, default=False),
+        zone_doc=dict(type='dict', required=False, default={})
     )
 
     module = AnsibleModule(
@@ -443,8 +478,19 @@ def run_module():
     # will return either the image name or None
     container_image = is_containerized()
 
+    rc, cmd, out, err = exec_commands(module, get_zone(module, container_image=container_image))  # noqa: E501
+
+    if state == "set":
+        zone = json.loads(out) if rc == 0 else {}
+        zone_doc = module.params.get('zone_doc')
+        if not zone_doc:
+            fatal("zone_doc is required when state is set", module)
+
+        changed = zone_doc != zone
+        if changed:
+            rc, cmd, out, err = exec_commands(module, set_zone(module, container_image=container_image))
+
     if state == "present":
-        rc, cmd, out, err = exec_commands(module, get_zone(module, container_image=container_image))  # noqa: E501
         if rc == 0:
             zone = json.loads(out)
             _rc, _cmd, _out, _err = exec_commands(module, get_realm(module, container_image=container_image))  # noqa: E501
@@ -479,16 +525,12 @@ def run_module():
             changed = True
 
     elif state == "absent":
-        rc, cmd, out, err = exec_commands(module, get_zone(module, container_image=container_image))  # noqa: E501
         if rc == 0:
             rc, cmd, out, err = exec_commands(module, remove_zone(module, container_image=container_image))  # noqa: E501
             changed = True
         else:
             rc = 0
             out = "Zone {} doesn't exist".format(name)
-
-    elif state == "info":
-        rc, cmd, out, err = exec_commands(module, get_zone(module, container_image=container_image))  # noqa: E501
 
     exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)  # noqa: E501
 
