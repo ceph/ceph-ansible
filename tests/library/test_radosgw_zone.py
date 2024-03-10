@@ -73,6 +73,32 @@ class TestRadosgwZoneModule(object):
         ])
         assert radosgw_zone.generate_radosgw_cmd(fake_cluster, [], image) == expected_cmd
 
+    @pytest.mark.parametrize('image', fake_container_image)
+    @patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': fake_container_binary})
+    def test_generate_radosgw_cmd_container_args(self, image):
+        container_args = [
+            '-v', '/test:/test:ro',
+        ]
+        expected_cmd = [
+            fake_container_binary,
+            'run',
+            '--rm',
+            '--net=host',
+            '-v', '/test:/test:ro',
+            '-v', '/etc/ceph:/etc/ceph:z',
+            '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+            '-v', '/var/log/ceph/:/var/log/ceph/:z',
+            '--entrypoint=' + fake_binary,
+            fake_container_image
+        ]
+
+        expected_cmd.extend([
+            '--cluster',
+            fake_cluster,
+            'zone'
+        ])
+        assert radosgw_zone.generate_radosgw_cmd(fake_cluster, [], image, container_args) == expected_cmd
+
     def test_create_zone(self):
         fake_module = MagicMock()
         fake_module.params = fake_params
@@ -163,3 +189,25 @@ class TestRadosgwZoneModule(object):
         ]
 
         assert radosgw_zone.remove_zone(fake_module) == expected_cmd
+
+    def test_set_zone(self):
+        fake_module = MagicMock()
+        fake_module.params = {
+            'cluster': fake_cluster,
+            'name': fake_zone,
+            'realm': fake_realm,
+            'zonegroup': fake_zonegroup,
+            'zone_doc': {'id': 'fake_id'},
+        }
+
+        zonefile = fake_module.tmpdir + '/zone.json'
+
+        expected_cmd = [
+            fake_binary,
+            '--cluster', fake_cluster,
+            'zone', 'set',
+            '--rgw-realm=' + fake_realm,
+            '--infile=' + zonefile,
+        ]
+
+        assert radosgw_zone.set_zone(fake_module) == expected_cmd
