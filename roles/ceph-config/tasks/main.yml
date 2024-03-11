@@ -171,7 +171,9 @@
   ansible.builtin.import_role:
     name: ceph-facts
     tasks_from: set_radosgw_address.yml
-  when: inventory_hostname in groups.get(rgw_group_name, [])
+  when:
+    - set_radosgw_address | default(true)
+    - inventory_hostname in groups.get(rgw_group_name, [])
 
 - name: Generate Ceph file
   openstack.config_template.config_template:
