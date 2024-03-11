@@ -4,7 +4,7 @@ import ca_test_common
 import cephadm_bootstrap
 
 fake_fsid = '0f1e0605-db0b-485c-b366-bd8abaa83f3b'
-fake_image = 'quay.io/ceph/daemon-base:latest-main-devel'
+fake_image = 'quay.io/ceph/daemon-base:latest-reef-devel'
 fake_ip = '192.168.42.1'
 fake_registry = 'quay.io'
 fake_registry_user = 'foo'
