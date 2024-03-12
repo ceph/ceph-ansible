@@ -45,23 +45,27 @@ check_socket() {
 
 check_for_curl_or_wget() {
   local i=$1
+  url="$RGW_PROTOCOL://${RGW_IPS[i]}:${RGW_PORTS[i]}"
   if ${DOCKER_EXECS[i]} command -v wget &>/dev/null; then
-    rgw_test_command="wget --no-check-certificate --tries 1 --quiet -O /dev/null"
+    rgw_test_result=$(${DOCKER_EXECS[i]} wget --no-check-certificate --tries 1 --quiet --server-response --spider -O /dev/null 2>&1 $url | awk 'NR==1{print $2}')
   elif ${DOCKER_EXECS[i]} command -v curl &>/dev/null; then
-    rgw_test_command="curl {{ '-g' if ip_version == 'ipv6' else '' }} -k --fail --silent --output /dev/null"
+    rgw_test_result=$(${DOCKER_EXECS[i]} curl {{ '-g' if ip_version == 'ipv6' else '' }} -k -w "%{http_code}" --silent --output /dev/null $url)
   else
     echo "It seems that neither curl nor wget are available on your system."
     echo "Cannot test rgw connection."
-    exit 0
+    rgw_test_result=0
   fi
 }
 
 check_rest() {
   local i=$1
-  check_for_curl_or_wget ${i}
   local succ=0
   while [ $RETRIES -ne 0 ]; do
-    ${DOCKER_EXECS[i]} $rgw_test_command $RGW_PROTOCOL://${RGW_IPS[i]}:${RGW_PORTS[i]} && succ=$((succ+1)) && break
+    check_for_curl_or_wget ${i}
+    if [ $rgw_test_result -eq 200 ] || [ $rgw_test_result -eq 404 ]; then
+      succ=$((succ+1))
+      break
+    fi
     sleep $DELAY
     let RETRIES=RETRIES-1
   done
