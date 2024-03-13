@@ -149,6 +149,34 @@
           when: "'reef' not in ceph_version.stdout.split()"
 
 
+- name: Ensure cluster config is applied
+  hosts: mons[0]
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Import default role
+      ansible.builtin.import_role:
+        name: ceph-defaults
+
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: Set cluster configs
+      ceph_config:
+        action: set
+        who: "{{ item.0.key }}"
+        option: "{{ item.1.key }}"
+        value: "{{ item.1.value }}"
+      when: item.1.value != omit
+      loop: "{{ ceph_cluster_conf | dict2dict }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
+
 - name: Upgrade ceph mon cluster
   tags: mons
   vars:
