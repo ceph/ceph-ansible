@@ -47,7 +47,6 @@ to follow (most of them are 1 line settings).
      osd_vms: 0
      mds_vms: 0
      rgw_vms: 0
-     nfs_vms: 0
      rbd_mirror_vms: 0
      client_vms: 0
      mgr_vms: 0
