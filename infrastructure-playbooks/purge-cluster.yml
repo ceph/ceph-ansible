@@ -37,7 +37,6 @@
     - mdss
     - rgws
     - rbdmirrors
-    - nfss
     - clients
     - mgrs
     - monitoring
@@ -57,35 +56,6 @@
     - name: Import ceph-defaults
       ansible.builtin.import_role:
         name: ceph-defaults
-
-    - name: Nfs related tasks
-      when: groups[nfs_group_name] | default([]) | length > 0
-      block:
-        - name: Get nfs nodes ansible facts
-          ansible.builtin.setup:
-            gather_subset:
-              - 'all'
-              - '!facter'
-              - '!ohai'
-          delegate_to: "{{ item }}"
-          delegate_facts: true
-          with_items: "{{ groups[nfs_group_name] }}"
-          run_once: true
-
-        - name: Get all nfs-ganesha mount points
-          ansible.builtin.command: grep "{{ hostvars[item]['ansible_facts']['all_ipv4_addresses'] | ips_in_ranges(public_network.split(',')) | first }}" /proc/mounts
-          register: nfs_ganesha_mount_points
-          failed_when: false
-          changed_when: false
-          with_items: "{{ groups[nfs_group_name] }}"
-
-        - name: Ensure nfs-ganesha mountpoint(s) are unmounted
-          ansible.posix.mount:
-            path: "{{ item.split(' ')[1] }}"
-            state: unmounted
-          with_items:
-            - "{{ nfs_ganesha_mount_points.results | map(attribute='stdout_lines') | list }}"
-          when: item | length > 0
 
     - name: Ensure cephfs mountpoint(s) are unmounted
       ansible.builtin.command: umount -a -t ceph
@@ -111,33 +81,6 @@
         - ceph
         - libceph
 
-
-- name: Purge ceph nfs cluster
-  hosts: nfss
-  gather_facts: false # Already gathered previously
-  become: true
-  tasks:
-    - name: Import ceph-defaults role
-      ansible.builtin.import_role:
-        name: ceph-defaults
-
-    - name: Stop ceph nfss with systemd
-      ansible.builtin.service:
-        name: "{{ 'ceph-nfs@' + ansible_facts['hostname'] if containerized_deployment | bool else 'nfs-ganesha' }}"
-        state: stopped
-      failed_when: false
-
-    - name: Remove ceph nfs directories for "{{ ansible_facts['hostname'] }}"
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: absent
-      with_items:
-        - /etc/ganesha
-        - /var/lib/nfs/ganesha
-        - /var/run/ganesha
-        - /etc/systemd/system/ceph-nfs@.service
-
-
 - name: Purge node-exporter
   hosts:
     - mons
@@ -145,7 +88,6 @@
     - mdss
     - rgws
     - rbdmirrors
-    - nfss
     - clients
     - mgrs
     - monitoring
@@ -767,7 +709,6 @@
     - mdss
     - rgws
     - rbdmirrors
-    - nfss
     - mgrs
   become: true
   tasks:
@@ -846,7 +787,6 @@
     - mdss
     - rgws
     - rbdmirrors
-    - nfss
     - clients
     - mgrs
     - monitoring
@@ -1118,7 +1058,6 @@
     - mdss
     - rgws
     - rbdmirrors
-    - nfss
     - mgrs
     - clients
   gather_facts: false # Already gathered previously
