@@ -469,6 +469,35 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
+- hosts:
+  - mons
+  - osds
+  - mdss
+  - rgws
+  - rbdmirrors
+  - clients
+  - mgrs
+  - monitoring
+  gather_facts: false
+  become: True
+  any_errors_fatal: true
+  tasks:
+    - name: Remove tempdir for scripts
+      ansible.builtin.file:
+        path: "{{ tmpdirpath.path }}"
+        state: absent
+      when:
+        - tmpdirpath.path is defined
+        - not _exporter_handler_called | default(false) | bool
+        - not _crash_handler_called | default(false) | bool
+        - not _mds_handler_called | default(false) | bool
+        - not _mgr_handler_called | default(false) | bool
+        - not _mon_handler_called | default(false) | bool
+        - not _osd_handler_called | default(false) | bool
+        - not _rbdmirror_handler_called | default(false) | bool
+        - not _rgw_handler_called | default(false) | bool
+
+
 - hosts: mons[0]
   gather_facts: false
   become: True
