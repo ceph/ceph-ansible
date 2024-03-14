@@ -10,13 +10,39 @@
     - hostvars[groups[mon_group_name][0]]['create_crush_tree'] | default(create_crush_tree) | bool
     - osd_crush_location is defined
 
+- name: Create configured ec profiles
+  ceph_ec_profile:
+    name: "{{ item.key }}"
+    cluster: "{{ cluster }}"
+    state: "{{ item.value.state | default('present') }}"
+    stripe_unit: "{{ item.value.stripe_unit | default(omit) }}"
+    plugin: "{{ item.value.plugin | default(omit) }}"
+    k: "{{ item.value.k }}"
+    m: "{{ item.value.m }}"
+    d: "{{ item.value.d | default(omit) }}"
+    l: "{{ item.value.l | default(omit) }}"
+    c: "{{ item.value.c | default(omit) }}"
+    scalar_mds: "{{ item.value.scalar_mds | default(omit) }}"
+    technique: "{{ item.value.technique | default(omit) }}"
+    crush_root: "{{ item.value.crush_root | default(omit) }}"
+    crush_failure_domain: "{{ item.value.crush_failure_domain | default(omit) }}"
+    crush_device_class: "{{ item.value.crush_device_class | default(omit) }}"
+    force: "{{ item.value.force | default(false) }}"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+  loop: "{{ ceph_ec_profiles | dict2items }}"
+  delegate_to: '{{ groups[mon_group_name][0] }}'
+  run_once: true
+
 - name: Create configured crush rules
   ceph_crush_rule:
     name: "{{ item.name }}"
     cluster: "{{ cluster }}"
-    rule_type: replicated
-    bucket_root: "{{ item.root }}"
-    bucket_type: "{{ item.type }}"
+    rule_type: "{{ item.rule_type | default('replicated') }}"
+    profile: "{{ item.ec_profile | default(omit) }}"
+    bucket_root: "{{ item.root | default(omit) }}"
+    bucket_type: "{{ item.type | default(omit) }}"
     device_class: "{{ item.class | default(omit) }}"
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
