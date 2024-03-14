@@ -188,6 +188,12 @@ def node(host, request):
     if request.node.get_closest_marker("dashboard") and sanitized_group_names == ['clients']:
         pytest.skip('Not a valid test for client node')
 
+    if request.node.get_closest_marker("ceph_crash") and sanitized_group_names == ['iscsigws']:
+        pytest.skip('Not a valid test for iscsigws node')
+
+    if request.node.get_closest_marker("ceph_exporter") and sanitized_group_names == ['iscsigws']:
+        pytest.skip('Not a valid test for iscsigws node')
+
     data = dict(
         vars=ansible_vars,
         docker=docker,
