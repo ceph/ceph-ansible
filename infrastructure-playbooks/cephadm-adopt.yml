@@ -35,7 +35,6 @@
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
   become: true
   any_errors_fatal: true
@@ -144,8 +143,7 @@
           inventory_hostname in groups.get(mds_group_name, []) or
           inventory_hostname in groups.get(rgw_group_name, []) or
           inventory_hostname in groups.get(mgr_group_name, []) or
-          inventory_hostname in groups.get(rbdmirror_group_name, []) or
-          inventory_hostname in groups.get(nfs_group_name, [])
+          inventory_hostname in groups.get(rbdmirror_group_name, [])
 
     - name: Configure repository for installing cephadm
       when: containerized_deployment | bool
@@ -1003,82 +1001,6 @@
         path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}"
         state: absent
 
-- name: Stop and remove legacy ceph nfs daemons
-  hosts: "{{ nfs_group_name|default('nfss') }}"
-  tags: 'ceph_nfs_adopt'
-  serial: 1
-  become: true
-  gather_facts: false
-  any_errors_fatal: true
-  tasks:
-    - name: Import ceph-defaults role
-      ansible.builtin.import_role:
-        name: ceph-defaults
-
-    - name: Import ceph-nfs role
-      ansible.builtin.import_role:
-        name: ceph-nfs
-        tasks_from: create_rgw_nfs_user.yml
-
-    - name: Enable ceph mgr nfs module
-      ceph_mgr_module:
-        name: "nfs"
-        cluster: "{{ cluster }}"
-        state: enable
-      environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-
-    - name: Stop and disable ceph-nfs systemd service
-      ansible.builtin.service:
-        name: "ceph-nfs@{{ ansible_facts['hostname'] }}"
-        state: stopped
-        enabled: false
-      failed_when: false
-
-    - name: Reset failed ceph-nfs systemd unit
-      ansible.builtin.command: "systemctl reset-failed ceph-nfs@{{ ansible_facts['hostname'] }}"  # noqa command-instead-of-module
-      changed_when: false
-      failed_when: false
-      when: containerized_deployment | bool
-
-    - name: Remove ceph-nfs systemd unit files
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: absent
-      loop:
-        - /etc/systemd/system/ceph-nfs@.service
-        - /etc/systemd/system/ceph-nfs@.service.d
-
-    - name: Remove legacy ceph radosgw directory
-      ansible.builtin.file:
-        path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}"
-        state: absent
-
-    - name: Create nfs ganesha cluster
-      ansible.builtin.command: "{{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} -- ceph nfs cluster create {{ ansible_facts['hostname'] }} {{ ansible_facts['hostname'] }}"
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-
-    - name: Create cephfs export
-      ansible.builtin.command: "{{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} -- ceph nfs export create cephfs {{ cephfs }} {{ ansible_facts['hostname'] }} {{ ceph_nfs_ceph_pseudo_path }} --squash {{ ceph_nfs_ceph_squash }}"
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-      when: nfs_file_gw | bool
-
-    - name: Create rgw export
-      ansible.builtin.command: "{{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} -- ceph nfs export create rgw --cluster-id {{ ansible_facts['hostname'] }} --pseudo-path {{ ceph_nfs_rgw_pseudo_path }} --user-id {{ ceph_nfs_rgw_user }} --squash {{ ceph_nfs_rgw_squash }}"
-      changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-      environment:
-        CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-      when: nfs_obj_gw | bool
-
 - name: Redeploy rbd-mirror daemons
   hosts: "{{ rbdmirror_group_name|default('rbdmirrors') }}"
   become: true
@@ -1391,7 +1313,6 @@
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
-    - "{{ nfs_group_name|default('nfss') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
   become: true
   gather_facts: false
