@@ -81,7 +81,7 @@ def pre_generate_cmd(cmd, container_image=None, interactive=False):
     return cmd
 
 
-def exec_command(module, cmd, stdin=None):
+def exec_command(module, cmd, stdin=None, check_rc=False):
     '''
     Execute command(s)
     '''
@@ -89,7 +89,7 @@ def exec_command(module, cmd, stdin=None):
     binary_data = False
     if stdin:
         binary_data = True
-    rc, out, err = module.run_command(cmd, data=stdin, binary_data=binary_data)
+    rc, out, err = module.run_command(cmd, data=stdin, binary_data=binary_data, check_rc=check_rc)  # noqa: E501
 
     return rc, cmd, out, err
 
