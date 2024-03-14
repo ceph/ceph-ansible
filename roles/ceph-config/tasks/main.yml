@@ -91,8 +91,21 @@
       changed_when: false
 
     - name: Set_fact num_osds (add existing osds)
+      vars:
+        lvm_volumes_devices: "{{ lvm_volumes | default([]) | rejectattr('data_vg', 'defined') | map(attribute='data') | list }}"
+        lvm_volumes_lv_paths: "{{
+          ['/dev']
+          | product(
+            lvm_volumes | default([]) | selectattr('data_vg', 'defined') | map(attribute='data_vg')
+            | zip(
+              lvm_volumes | default([]) | selectattr('data_vg', 'defined') | map(attribute='data')
+            )
+            | map('join', '/')
+          )
+          | map('join', '/')
+        }}"
       ansible.builtin.set_fact:
-        num_osds: "{{ num_osds | int + (lvm_list.stdout | default('{}') | from_json | dict2items | map(attribute='value') | flatten | map(attribute='devices') | sum(start=[]) | difference(lvm_volumes | default([]) | map(attribute='data')) | length | int) }}"
+        num_osds: "{{ num_osds | int + (lvm_list.stdout | default('{}') | from_json | dict2items | map(attribute='value') | flatten | selectattr('type', 'equalto', 'block') | rejectattr('lv_path', 'in', lvm_volumes_lv_paths) | map(attribute='devices') | flatten | reject('in', lvm_volumes_devices) | length | int) }}"
 
 - name: Set osd related config facts
   when: inventory_hostname in groups.get(osd_group_name, [])
