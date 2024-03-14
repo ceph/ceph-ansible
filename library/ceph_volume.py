@@ -476,6 +476,23 @@ def zap_devices(module, container_image):
     return cmd
 
 
+def allowed_in_check_mode(module):
+    '''
+    Check if the action is allowed in check mode
+    '''
+
+    action = module.params['action']
+    report = module.params.get('report', False)
+
+    # batch is allowed in check mode if report is set
+    if action == 'batch' and report:
+        return True
+
+    allowed_actions = ['list', 'inventory']
+
+    return action in allowed_actions
+
+
 def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
@@ -524,7 +541,7 @@ def run_module():
         delta='',
     )
 
-    if module.check_mode:
+    if module.check_mode and not allowed_in_check_mode(module):
         module.exit_json(**result)
 
     # start execution
