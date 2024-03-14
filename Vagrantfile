@@ -21,7 +21,6 @@ NOSDS           = settings['osd_vms']
 NMDSS           = settings['mds_vms']
 NRGWS           = settings['rgw_vms']
 NNFSS           = settings['nfs_vms']
-GRAFANA         = settings['grafana_server_vms']
 NRBD_MIRRORS    = settings['rbd_mirror_vms']
 CLIENTS         = settings['client_vms']
 MGRS            = settings['mgr_vms']
@@ -67,7 +66,6 @@ ansible_provision = proc do |ansible|
     'rbd_mirrors'      => (0..NRBD_MIRRORS - 1).map { |j| "#{LABEL_PREFIX}rbd_mirror#{j}" },
     'clients'          => (0..CLIENTS - 1).map { |j| "#{LABEL_PREFIX}client#{j}" },
     'mgrs'             => (0..MGRS - 1).map { |j| "#{LABEL_PREFIX}mgr#{j}" },
-    'monitoring'   => (0..GRAFANA - 1).map { |j| "#{LABEL_PREFIX}grafana#{j}" }
   }
 
   if IPV6 then
@@ -234,51 +232,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       mon.vm.provider :linode do |provider|
         provider.label = mon.vm.hostname
-      end
-    end
-  end
-
-  (0..GRAFANA - 1).each do |i|
-    config.vm.define "#{LABEL_PREFIX}grafana#{i}" do |grf|
-      grf.vm.hostname = "#{LABEL_PREFIX}grafana#{i}"
-      if ASSIGN_STATIC_IP && !IPV6
-	  grf.vm.network :private_network,
-	  :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
-      end
-      # Virtualbox
-      grf.vm.provider :virtualbox do |vb|
-        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
-      end
-
-      # VMware
-      grf.vm.provider :vmware_fusion do |v|
-        v.vmx['memsize'] = "#{MEMORY}"
-      end
-
-      # Libvirt
-      grf.vm.provider :libvirt do |lv,override|
-        lv.memory = MEMORY
-        lv.random_hostname = true
-	if IPV6 then
-	  override.vm.network :private_network,
-	  :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
-	  :libvirt__ipv6_prefix => "64",
-	  :libvirt__dhcp_enabled => false,
-	  :libvirt__forward_mode => "veryisolated",
-	  :libvirt__network_name => "ipv6-public-network",
-	  :ip => "#{PUBLIC_SUBNET}#{$last_ip_pub_digit+=1}",
-	  :netmask => "64"
-	end
-      end
-
-      # Parallels
-      grf.vm.provider "parallels" do |prl|
-        prl.name = "ceph-grafana#{i}"
-        prl.memory = "#{MEMORY}"
-      end
-
-      grf.vm.provider :linode do |provider|
-        provider.label = grf.vm.hostname
       end
     end
   end
