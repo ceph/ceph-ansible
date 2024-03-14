@@ -69,26 +69,3 @@
           or inventory_hostname in groups.get(mds_group_name, [])
           or inventory_hostname in groups.get(rgw_group_name, [])
           or inventory_hostname in groups.get(rbdmirror_group_name, [])
-
-    - name: Remove tempdir for scripts
-      ansible.builtin.file:
-        path: "{{ tmpdirpath.path }}"
-        state: absent
-      listen:
-        - "Restart ceph mons"
-        - "Restart ceph osds"
-        - "Restart ceph mdss"
-        - "Restart ceph rgws"
-        - "Restart ceph rbdmirrors"
-        - "Restart ceph mgrs"
-      register: tmpdirpath
-      when:
-        - tmpdirpath.path is defined
-        - not _exporter_handler_called | default(false) | bool
-        - not _crash_handler_called | default(false) | bool
-        - not _mds_handler_called | default(false) | bool
-        - not _mgr_handler_called | default(false) | bool
-        - not _mon_handler_called | default(false) | bool
-        - not _osd_handler_called | default(false) | bool
-        - not _rbdmirror_handler_called | default(false) | bool
-        - not _rgw_handler_called | default(false) | bool
