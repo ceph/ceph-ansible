@@ -103,6 +103,24 @@ def set_option(module,
     return rc, cmd, out.strip(), err
 
 
+def rm_option(module,
+              who,
+              option,
+              container_image=None):
+
+    args = []
+    args.extend([who, option])
+
+    cmd = generate_cmd(sub_cmd=['config', 'rm'],
+                       args=args,
+                       cluster=module.params.get('cluster'),
+                       container_image=container_image)
+
+    rc, out, err = module.run_command(cmd)
+
+    return rc, cmd, out.strip(), err
+
+
 def get_config_dump(module, container_image=None):
     cmd = generate_cmd(sub_cmd=['config', 'dump', '--format', 'json'],
                        args=[],
@@ -126,7 +144,7 @@ def main() -> None:
     module = AnsibleModule(
         argument_spec=dict(
             who=dict(type='str', required=True),
-            action=dict(type='str', required=False, choices=['get', 'set'], default='set'),
+            action=dict(type='str', required=False, choices=['get', 'set', 'rm'], default='set'),
             option=dict(type='str', required=True),
             value=dict(type='str', required=False),
             fsid=dict(type='str', required=False),
@@ -170,12 +188,16 @@ def main() -> None:
         else:
             rc, cmd, out, err = set_option(module, who, option, value, container_image=container_image)
             changed = True
-    else:
+    elif action == 'get':
         if current_value is None:
             out = ''
             err = 'No value found for who={} option={}'.format(who, option)
         else:
             out = current_value
+    elif action == 'rm':
+        if current_value:
+            rc, cmd, out, err = rm_option(module, who, option, container_image=container_image)
+            changed = True
 
     exit_module(module=module, out=out, rc=rc,
                 cmd=cmd, err=err, startd=startd,
