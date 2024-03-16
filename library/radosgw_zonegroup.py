@@ -345,25 +345,14 @@ def run_module():
     endpoints = module.params.get('endpoints')
     master = module.params.get('master')
 
-    if module.check_mode:
-        module.exit_json(
-            changed=False,
-            stdout='',
-            stderr='',
-            rc=0,
-            start='',
-            end='',
-            delta='',
-        )
-
     startd = datetime.datetime.now()
     changed = False
 
     # will return either the image name or None
     container_image = is_containerized()
 
+    rc, cmd, out, err = exec_commands(module, get_zonegroup(module, container_image=container_image))  # noqa: E501
     if state == "present":
-        rc, cmd, out, err = exec_commands(module, get_zonegroup(module, container_image=container_image))  # noqa: E501
         if rc == 0:
             zonegroup = json.loads(out)
             _rc, _cmd, _out, _err = exec_commands(module, get_realm(module, container_image=container_image))  # noqa: E501
@@ -380,24 +369,22 @@ def run_module():
                 'master': master,
                 'realm_id': realm['id']
             }
-            if current != asked:
+            changed = current != asked
+            if changed and not module.check_mode:
                 rc, cmd, out, err = exec_commands(module, modify_zonegroup(module, container_image=container_image))  # noqa: E501
-                changed = True
         else:
-            rc, cmd, out, err = exec_commands(module, create_zonegroup(module, container_image=container_image))  # noqa: E501
+            if not module.check_mode:
+                rc, cmd, out, err = exec_commands(module, create_zonegroup(module, container_image=container_image))  # noqa: E501
             changed = True
 
     elif state == "absent":
-        rc, cmd, out, err = exec_commands(module, get_zonegroup(module, container_image=container_image))  # noqa: E501
         if rc == 0:
-            rc, cmd, out, err = exec_commands(module, remove_zonegroup(module, container_image=container_image))  # noqa: E501
+            if not module.check_mode:
+                rc, cmd, out, err = exec_commands(module, remove_zonegroup(module, container_image=container_image))  # noqa: E501
             changed = True
         else:
             rc = 0
             out = "Zonegroup {} doesn't exist".format(name)
-
-    elif state == "info":
-        rc, cmd, out, err = exec_commands(module, get_zonegroup(module, container_image=container_image))  # noqa: E501
 
     exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)  # noqa: E501
 
