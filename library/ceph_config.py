@@ -183,7 +183,7 @@ def main() -> None:
     current_value = get_current_value(who, option, config_dump)
 
     if action == 'set':
-        if value.lower() == current_value:
+        if current_value and value.lower() == current_value.lower():
             out = 'who={} option={} value={} already set. Skipping.'.format(who, option, value)
         else:
             rc, cmd, out, err = set_option(module, who, option, value, container_image=container_image)
