@@ -343,7 +343,7 @@ def run_module():
     name = module.params.get('name')
     state = module.params.get('state')
     endpoints = module.params.get('endpoints')
-    master = str(module.params.get('master')).lower()
+    master = module.params.get('master')
 
     if module.check_mode:
         module.exit_json(
@@ -372,7 +372,7 @@ def run_module():
             realm = json.loads(_out)
             current = {
                 'endpoints': zonegroup['endpoints'],
-                'master': zonegroup.get('is_master', 'false'),
+                'master': zonegroup.get('is_master', False),
                 'realm_id': zonegroup['realm_id']
             }
             asked = {
