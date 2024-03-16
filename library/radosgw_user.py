@@ -415,8 +415,8 @@ def run_module():
     email = module.params.get('email')
     access_key = module.params.get('access_key')
     secret_key = module.params.get('secret_key')
-    system = str(module.params.get('system')).lower()
-    admin = str(module.params.get('admin')).lower()
+    system = module.params.get('system')
+    admin = module.params.get('admin')
 
     if module.check_mode:
         module.exit_json(
@@ -441,8 +441,8 @@ def run_module():
             user = json.loads(out)
             current = {
                 'display_name': user['display_name'],
-                'system': user.get('system', 'false'),
-                'admin': user.get('admin', 'false')
+                'system': user.get('system', False),
+                'admin': user.get('admin', False)
             }
             asked = {
                 'display_name': display_name,
