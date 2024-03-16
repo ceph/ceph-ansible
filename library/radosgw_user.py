@@ -418,25 +418,14 @@ def run_module():
     system = module.params.get('system')
     admin = module.params.get('admin')
 
-    if module.check_mode:
-        module.exit_json(
-            changed=False,
-            stdout='',
-            stderr='',
-            rc=0,
-            start='',
-            end='',
-            delta='',
-        )
-
     startd = datetime.datetime.now()
     changed = False
 
     # will return either the image name or None
     container_image = is_containerized()
 
+    rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))  # noqa: E501
     if state == "present":
-        rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))  # noqa: E501
         if rc == 0:
             user = json.loads(out)
             current = {
@@ -452,31 +441,32 @@ def run_module():
             if email:
                 current['email'] = user['email']
                 asked['email'] = email
-            if access_key:
-                current['access_key'] = user['keys'][0]['access_key']
-                asked['access_key'] = access_key
-            if secret_key:
-                current['secret_key'] = user['keys'][0]['secret_key']
-                asked['secret_key'] = secret_key
 
-            if current != asked:
+            if access_key and secret_key:
+                asked['access_key'] = access_key
+                asked['secret_key'] = secret_key
+                for key in user['keys']:
+                    if key['access_key'] == access_key and key['secret_key'] == secret_key:  # noqa: E501
+                        del asked['access_key']
+                        del asked['secret_key']
+                        break
+
+            changed = current != asked
+            if changed and not module.check_mode:
                 rc, cmd, out, err = exec_commands(module, modify_user(module, container_image=container_image))  # noqa: E501
-                changed = True
         else:
-            rc, cmd, out, err = exec_commands(module, create_user(module, container_image=container_image))  # noqa: E501
+            if not module.check_mode:
+                rc, cmd, out, err = exec_commands(module, create_user(module, container_image=container_image))  # noqa: E501
             changed = True
 
     elif state == "absent":
-        rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))  # noqa: E501
         if rc == 0:
-            rc, cmd, out, err = exec_commands(module, remove_user(module, container_image=container_image))  # noqa: E501
+            if not module.check_mode:
+                rc, cmd, out, err = exec_commands(module, remove_user(module, container_image=container_image))  # noqa: E501
             changed = True
         else:
             rc = 0
             out = "User {} doesn't exist".format(name)
-
-    elif state == "info":
-        rc, cmd, out, err = exec_commands(module, get_user(module, container_image=container_image))  # noqa: E501
 
     exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)  # noqa: E501
 
