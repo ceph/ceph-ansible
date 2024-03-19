@@ -1,6 +1,15 @@
 ---
-- name: include redhat_community_repository.yml
-  include_tasks: redhat_community_repository.yml
+- name: Configure epel repository
+  ansible.builtin.package:
+    name: epel-release
+  register: result
+  until: result is succeeded
+  tags: with_pkg
+  when:
+    - ansible_facts['distribution'] == 'Rocky'
+
+- name: Include redhat_community_repository.yml
+  ansible.builtin.include_tasks: redhat_community_repository.yml
   when: ceph_repository == 'community'
 
 - name: include redhat_rhcs_repository.yml
