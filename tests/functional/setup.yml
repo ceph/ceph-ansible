@@ -58,10 +58,19 @@
           #        - ansible_facts['distribution_major_version'] | int > 7
           #        - not is_atomic | bool
 
-    - name: update the system
-      command: dnf update -y
-      changed_when: false
-      when: not is_atomic | bool
+    - name: update the system on RHEL-based OS  # noqa: package-latest
+      ansible.builtin.yum:
+        name: '*'
+        state: latest
+      register: yum_upgrade
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: update the system on Debian-based OS  # noqa: package-latest
+      ansible.builtin.apt:
+        name: '*'
+        state: latest
+        update_cache: true
+      when: ansible_facts['os_family'] == 'Debian'
 
     - name: get root mount information
       set_fact:
@@ -72,7 +81,7 @@
       ansible.posix.mount:
         path: '{{ rootmount.mount }}'
         src: '{{ rootmount.device }}'
-        opts: "noatime,nodiratime{% if ansible_facts['os_family'] == 'RedHat' and ansible_facts['distribution_major_version'] | int < 8 %},nobarrier{% endif %}"
+        opts: "noatime,nodiratime,nobarrier"
         fstype: '{{ rootmount.fstype }}'
         state: mounted
 
@@ -86,38 +95,7 @@
       until: result is succeeded
       when: not is_atomic | bool
 
-    - name: centos based systems - configure repos
-      block:
-        - name: disable fastest mirror detection
-          ini_file:
-            path: /etc/yum/pluginconf.d/fastestmirror.conf
-            section: main
-            option: enabled
-            value: 0
-        - name: install epel
-          package:
-            name: epel-release
-            state: present
-          register: result
-          until: result is succeeded
-        - name: enable local epel repository
-          ini_file:
-            path: /etc/yum.repos.d/epel.repo
-            section: epel
-            option: baseurl
-            value: http://apt-mirror.front.sepia.ceph.com/epel7/
-        - name: disable remote epel repository
-          ini_file:
-            path: /etc/yum.repos.d/epel.repo
-            section: epel
-            option: metalink
-            state: absent
-      when:
-        - ansible_facts['distribution'] == 'CentOS'
-        - ansible_facts['distribution_major_version'] | int == 7
-        - not is_atomic | bool
-
-    - name: resize logical volume for root partition to fill remaining free space
+    - name: Resize logical volume for root partition to fill remaining free space
       lvol:
         lv: root
         vg: atomicos
