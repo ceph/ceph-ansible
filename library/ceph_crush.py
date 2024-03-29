@@ -113,19 +113,62 @@ def sort_osd_crush_location(location, module):
         fatal("{} is not a valid CRUSH bucket, valid bucket types are {}".format(error.args[0].split()[0], crush_bucket_types), module)  # noqa: E501
 
 
-def create_and_move_buckets_list(cluster, location, containerized=None):
+def get_crush_tree(module, cluster, containerized=None):
+    '''
+    Get the CRUSH map
+    '''
+    cmd = [
+        'ceph',
+        '--cluster',
+        cluster,
+        'osd',
+        'crush',
+        'tree',
+        '--format',
+        'json',
+    ]
+    if containerized:
+        cmd = containerized.split() + cmd
+
+    rc, out, err = module.run_command(cmd)
+    return rc, cmd, out, err
+
+
+def create_and_move_buckets_list(cluster, location, crush_map, containerized=None):  # noqa: E501
     '''
     Creates Ceph CRUSH buckets and arrange the hierarchy
     '''
+    def bucket_exists(bucket_name, bucket_type):
+        for item in crush_map['nodes']:
+            if item['name'] == bucket_name and item['type'] == bucket_type:
+                return True
+        return False
+
+    def bucket_in_place(bucket_name, target_bucket_name, target_bucket_type):  # noqa: E501
+        bucket_id = None
+        target_bucket = None
+        for item in crush_map['nodes']:
+            if item['name'] == bucket_name:
+                bucket_id = item['id']
+            if item['name'] == target_bucket_name and item['type'] == target_bucket_type:  # noqa: E501
+                target_bucket = item
+
+        if not bucket_id or not target_bucket:
+            return False
+
+        return bucket_id in target_bucket['children']
+
     previous_bucket = None
     cmd_list = []
     for item in location:
         bucket_type, bucket_name = item
         # ceph osd crush add-bucket maroot root
-        cmd_list.append(generate_cmd(cluster, "add-bucket", bucket_name, bucket_type, containerized))  # noqa: E501
+        if not bucket_exists(bucket_name, bucket_type):
+            cmd_list.append(generate_cmd(cluster, "add-bucket", bucket_name, bucket_type, containerized))  # noqa: E501
         if previous_bucket:
             # ceph osd crush move monrack root=maroot
-            cmd_list.append(generate_cmd(cluster, "move", previous_bucket, "%s=%s" % (bucket_type, bucket_name), containerized))  # noqa: E501
+            if not bucket_in_place(previous_bucket, bucket_name, bucket_type):  # noqa: E501
+                cmd_list.append(generate_cmd(cluster, "move", previous_bucket, "%s=%s" % (bucket_type, bucket_name), containerized))  # noqa: E501
         previous_bucket = item[1]
     return cmd_list
 
@@ -154,23 +197,28 @@ def main():
     location = sort_osd_crush_location(tuple(location_dict.items()), module)
     containerized = module.params['containerized']
 
-    result = dict(
-        changed=False,
-        stdout='',
-        stderr='',
-        rc=0,
-        start='',
-        end='',
-        delta='',
-    )
-
-    if module.check_mode:
-        module.exit_json(**result)
-
+    diff = dict(before="", after="")
     startd = datetime.datetime.now()
 
+    # get the CRUSH map
+    rc, cmd, out, err = get_crush_tree(module, cluster, containerized)
+    if rc != 0 and not module.check_mode:
+        module.fail_json(msg='non-zero return code', rc=rc, stdout=out, stderr=err)  # noqa: E501
+
+    # parse the JSON output
+    if rc == 0:
+        crush_map = module.from_json(out)
+    else:
+        crush_map = {"nodes": []}
+
     # run the Ceph command to add buckets
-    rc, cmd, out, err = exec_commands(module, create_and_move_buckets_list(cluster, location, containerized))  # noqa: E501
+    cmd_list = create_and_move_buckets_list(cluster, location, crush_map, containerized)  # noqa: E501
+
+    changed = len(cmd_list) > 0
+    if changed:
+        diff['after'] = module.jsonify(cmd_list)
+        if not module.check_mode:
+            rc, cmd, out, err = exec_commands(module, cmd_list)  # noqa: E501
 
     endd = datetime.datetime.now()
     delta = endd - startd
@@ -183,7 +231,8 @@ def main():
         rc=rc,
         stdout=out.rstrip("\r\n"),
         stderr=err.rstrip("\r\n"),
-        changed=True,
+        changed=changed,
+        diff=diff
     )
 
     if rc != 0:
