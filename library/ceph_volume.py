@@ -626,11 +626,13 @@ def run_module():
 
     elif action == 'list':
         # List Ceph LVM Metadata on a device
+        changed = False
         rc, cmd, out, err = exec_command(
             module, list_osd(module, container_image))
 
     elif action == 'inventory':
         # List storage device inventory.
+        changed = False
         rc, cmd, out, err = exec_command(
             module, list_storage_inventory(module, container_image))
 
