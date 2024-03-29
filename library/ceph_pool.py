@@ -589,17 +589,6 @@ def run_module():
         'min_size': {'value': min_size}
     }
 
-    if module.check_mode:
-        module.exit_json(
-            changed=False,
-            stdout='',
-            stderr='',
-            rc=0,
-            start='',
-            end='',
-            delta='',
-        )
-
     startd = datetime.datetime.now()
     changed = False
 
@@ -617,7 +606,8 @@ def run_module():
                                                           user,
                                                           user_key,
                                                           container_image=container_image))  # noqa: E501
-        if rc == 0:
+        changed = rc != 0
+        if not changed:
             running_pool_details = get_pool_details(module,
                                                     cluster,
                                                     name,
@@ -636,9 +626,8 @@ def run_module():
                     delta.pop('pg_num', None)
                     delta.pop('pgp_num', None)
 
-                if len(delta) == 0:
-                    out = "Skipping pool {}.\nUpdating either 'size' on an erasure-coded pool or 'pg_num'/'pgp_num' on a pg autoscaled pool is incompatible".format(name)  # noqa: E501
-                else:
+                changed = len(delta) > 0
+                if changed and not module.check_mode:
                     rc, cmd, out, err = update_pool(module,
                                                     cluster,
                                                     name,
@@ -646,11 +635,7 @@ def run_module():
                                                     user_key,
                                                     delta,
                                                     container_image=container_image)  # noqa: E501
-                    if rc == 0:
-                        changed = True
-            else:
-                out = "Pool {} already exists and there is nothing to update.".format(name)  # noqa: E501
-        else:
+        elif not module.check_mode:
             rc, cmd, out, err = exec_command(module,
                                              create_pool(cluster,
                                                          user,
@@ -675,7 +660,6 @@ def run_module():
             if user_pool_config['min_size']['value']:
                 # not implemented yet
                 pass
-            changed = True
 
     elif state == "list":
         rc, cmd, out, err = exec_command(module,
@@ -693,17 +677,14 @@ def run_module():
                                                           name, user,
                                                           user_key,
                                                           container_image=container_image))  # noqa: E501
-        if rc == 0:
+        changed = rc == 0
+        if changed and not module.check_mode:
             rc, cmd, out, err = exec_command(module,
                                              remove_pool(cluster,
                                                          name,
                                                          user,
                                                          user_key,
                                                          container_image=container_image))  # noqa: E501
-            changed = True
-        else:
-            rc = 0
-            out = "Skipped, since pool {} doesn't exist".format(name)
 
     exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd,
                 changed=changed)
