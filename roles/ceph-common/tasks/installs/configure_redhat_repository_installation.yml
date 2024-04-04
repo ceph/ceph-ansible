@@ -8,6 +8,13 @@
   when:
     - ansible_facts['distribution'] == 'Rocky'
 
+- name: Install python3-packaging
+  ansible.builtin.yum:
+    name: python3-packaging
+    enablerepo: powertools
+    state: present
+  when: ansible_facts['distribution_major_version'] | int < 9
+
 - name: Include redhat_community_repository.yml
   ansible.builtin.include_tasks: redhat_community_repository.yml
   when: ceph_repository == 'community'
