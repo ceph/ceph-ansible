@@ -164,24 +164,6 @@
             status: "Complete"
             end: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
 
-- hosts: mons[0]
-  become: true
-  gather_facts: false
-  any_errors_fatal: true
-  tasks:
-    - name: Import default role
-      ansible.builtin.import_role:
-        name: ceph-defaults
-
-    - name: Set cluster configs
-      ceph_config:
-        action: set
-        who: "{{ item.0.key }}"
-        option: "{{ item.1.key }}"
-        value: "{{ item.1.value }}"
-      when: item.1.value != omit
-      loop: "{{ ceph_cluster_conf | dict2dict }}"
-
 - hosts: osds
   gather_facts: false
   become: True
