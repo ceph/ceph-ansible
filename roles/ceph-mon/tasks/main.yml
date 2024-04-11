@@ -23,3 +23,17 @@
   when:
     - secure_cluster | bool
     - inventory_hostname == groups[mon_group_name] | first
+
+- name: Set cluster configs
+  ceph_config:
+    action: set
+    who: "{{ item.0.key }}"
+    option: "{{ item.1.key }}"
+    value: "{{ item.1.value }}"
+  run_once: true
+  when:
+    - item.1.value != omit
+  loop: "{{ ceph_cluster_conf | dict2dict }}"
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
