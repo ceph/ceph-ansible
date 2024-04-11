@@ -94,22 +94,6 @@
       ansible.builtin.set_fact:
         num_osds: "{{ num_osds | int + (lvm_list.stdout | default('{}') | from_json | dict2items | map(attribute='value') | flatten | map(attribute='devices') | sum(start=[]) | difference(lvm_volumes | default([]) | map(attribute='data')) | length | int) }}"
 
-- name: Set cluster configs
-  ceph_config:
-    action: set
-    who: "{{ item.0.key }}"
-    option: "{{ item.1.key }}"
-    value: "{{ item.1.value }}"
-  run_once: true
-  delegate_to: "{{ running_mon }}"
-  when:
-    - item.1.value != omit
-    - running_mon is defined
-  loop: "{{ ceph_cluster_conf | dict2dict }}"
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-
 - name: Set osd related config facts
   when: inventory_hostname in groups.get(osd_group_name, [])
   block:
