@@ -455,9 +455,11 @@ def run_module():
             if changed and not module.check_mode:
                 rc, cmd, out, err = exec_commands(module, modify_user(module, container_image=container_image))  # noqa: E501
         else:
+            changed = True
             if not module.check_mode:
                 rc, cmd, out, err = exec_commands(module, create_user(module, container_image=container_image))  # noqa: E501
-            changed = True
+            else:
+                rc = 0
 
     elif state == "absent":
         if rc == 0:
