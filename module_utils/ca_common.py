@@ -1,5 +1,7 @@
 import os
 import datetime
+from typing import List
+from ansible.module_utils.basic import AnsibleModule
 
 
 def generate_cmd(cmd='ceph',
@@ -92,6 +94,32 @@ def exec_command(module, cmd, stdin=None):
     rc, out, err = module.run_command(cmd, data=stdin, binary_data=binary_data)
 
     return rc, cmd, out, err
+
+
+def build_base_cmd(module: "AnsibleModule") -> List[str]:
+    cmd = ['cephadm']
+    docker = module.params.get('docker')
+    image = module.params.get('image')
+    fsid = module.params.get('fsid')
+
+    if docker:
+        cmd.append('--docker')
+    if image:
+        cmd.extend(['--image', image])
+
+    cmd.append('shell')
+
+    if fsid:
+        cmd.extend(['--fsid', fsid])
+
+    return cmd
+
+
+def build_base_cmd_orch(module: "AnsibleModule") -> List[str]:
+    cmd = build_base_cmd(module)
+    cmd.extend(['ceph', 'orch'])
+
+    return cmd
 
 
 def exit_module(module, out, rc, cmd, err, startd, changed=False, diff=dict(before="", after="")):  # noqa: E501

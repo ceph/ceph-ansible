@@ -1014,15 +1014,23 @@
         - radosgw_address_block is defined
         - radosgw_address_block != 'subnet'
 
-    - name: update the placement of radosgw hosts
-      command: >
-        {{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} --
-        ceph orch apply rgw {{ ansible_facts['hostname'] }}
-        --placement='count-per-host:{{ radosgw_num_instances }} {{ ansible_facts['nodename'] }}'
-        {{ rgw_subnet if rgw_subnet is defined else '' }}
-        --port={{ radosgw_frontend_port }}
-        {{ '--ssl' if radosgw_frontend_ssl_certificate else '' }}
-      changed_when: false
+    - name: Update the placement of radosgw hosts
+      ceph_orch_apply:
+        fsid: "{{ fsid }}"
+        spec: |
+          service_type: rgw
+          service_id: {{ ansible_facts['hostname'] }}
+          placement:
+            count_per_host: {{ radosgw_num_instances }}
+            hosts:
+              - {{ ansible_facts['nodename'] }}
+          {{ "networks: rgw_subnet" if rgw_subnet is defined }}
+          spec:
+            rgw_frontend_port: {{ radosgw_frontend_port }}
+            {{ "ssl: true" if radosgw_frontend_ssl_certificate }}
+          extra_container_args:
+            - -v
+            - /etc/pki/ca-trust:/etc/pki/ca-trust:ro
       delegate_to: "{{ groups[mon_group_name][0] }}"
       when: not rgw_multisite | bool
       environment:
