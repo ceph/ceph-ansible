@@ -1,7 +1,7 @@
 ---
 - name: Create rados gateway directories
   ansible.builtin.file:
-    path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
+    path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_zone }}.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
     state: directory
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
@@ -12,11 +12,11 @@
 
 - name: Create rgw keyrings
   ceph_key:
-    name: "client.rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
+    name: "client.rgw.{{ rgw_zone }}.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
     cluster: "{{ cluster }}"
     user: "client.bootstrap-rgw"
     user_key: /var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring
-    dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}/keyring"
+    dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_zone }}.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}/keyring"
     caps:
       osd: 'allow rwx'
       mon: 'allow rw'
@@ -34,7 +34,7 @@
 
 - name: Get keys from monitors
   ceph_key:
-    name: "client.rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
+    name: "client.rgw.{{ rgw_zone }}.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
     cluster: "{{ cluster }}"
     output_format: plain
     state: info
@@ -51,7 +51,7 @@
 
 - name: Copy ceph key(s) if needed
   ansible.builtin.copy:
-    dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.{{ item.item.instance_name }}/keyring"
+    dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_zone }}.{{ ansible_facts['hostname'] }}.{{ item.item.instance_name }}/keyring"
     content: "{{ item.stdout + '\n' }}"
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
