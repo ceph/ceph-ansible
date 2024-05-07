@@ -961,7 +961,7 @@
 
     - name: Stop and disable ceph-radosgw systemd service
       ansible.builtin.service:
-        name: "ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
+        name: "ceph-radosgw@rgw.{{ rgw_zone }}.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
         state: stopped
         enabled: false
       failed_when: false
@@ -975,7 +975,7 @@
       failed_when: false
 
     - name: Reset failed ceph-radosgw systemd unit
-      ansible.builtin.command: "systemctl reset-failed ceph-radosgw@rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"  # noqa command-instead-of-module
+      ansible.builtin.command: "systemctl reset-failed ceph-radosgw@rgw.{{ rgw_zone }}.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"  # noqa command-instead-of-module
       changed_when: false
       failed_when: false
       loop: '{{ rgw_instances }}'
@@ -992,13 +992,13 @@
 
     - name: Remove legacy ceph radosgw data
       ansible.builtin.file:
-        path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
+        path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_zone }}.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"
         state: absent
       loop: '{{ rgw_instances }}'
 
     - name: Remove legacy ceph radosgw directory
       ansible.builtin.file:
-        path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}"
+        path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_zone }}.{{ ansible_facts['hostname'] }}"
         state: absent
 
 - name: Redeploy rbd-mirror daemons

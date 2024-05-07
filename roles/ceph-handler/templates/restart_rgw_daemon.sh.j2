@@ -13,13 +13,14 @@ fi
 INSTANCES_NAME=({% for i in rgw_instances %}{{ i.instance_name }} {% endfor %})
 RGW_IPS=({% for i in rgw_instances %}{{ i.radosgw_address }} {% endfor %})
 RGW_PORTS=({% for i in rgw_instances %}{{ i.radosgw_frontend_port }} {% endfor %})
+RGW_ZONE="{{ rgw_zone }}"
 declare -a DOCKER_EXECS
 declare -a SOCKET_PREFIX
 for ((i=0; i<${RGW_NUMS}; i++)); do
-  SOCKET_PREFIX[i]="/var/run/ceph/{{ cluster }}-client.rgw.${HOST_NAME}.${INSTANCES_NAME[i]}"
+  SOCKET_PREFIX[i]="/var/run/ceph/{{ cluster }}-client.rgw.${RGW_ZONE}.${HOST_NAME}.${INSTANCES_NAME[i]}"
   DOCKER_EXECS[i]=""
 {% if containerized_deployment | bool %}
-  DOCKER_EXECS[i]="{{ container_binary }} exec ceph-rgw-${HOST_NAME}-${INSTANCES_NAME[i]}"
+  DOCKER_EXECS[i]="{{ container_binary }} exec ceph-rgw-${RGW_ZONE}-${HOST_NAME}-${INSTANCES_NAME[i]}"
 {% endif %}
 done
 
@@ -38,7 +39,7 @@ check_socket() {
   done
   if [ $succ -ne 1 ]; then
     echo "Socket file ${SOCKET} could not be found, which means Rados Gateway is not running. Showing ceph-rgw unit logs now:"
-    journalctl -u ceph-radosgw@rgw.${HOST_NAME}.${INSTANCES_NAME[i]}
+    journalctl -u ceph-radosgw@rgw.${RGW_ZONE}.${HOST_NAME}.${INSTANCES_NAME[i]}
     exit 1
   fi
 }
@@ -81,10 +82,10 @@ for ((i=0; i<${RGW_NUMS}; i++)); do
 
   # Check if systemd unit exists
   # This is needed for new instances as the restart might trigger before the deployment
-  if systemctl list-units --full --all | grep -q "ceph-radosgw@rgw.${HOST_NAME}.${INSTANCES_NAME[i]}"; then
-    systemctl restart ceph-radosgw@rgw.${HOST_NAME}.${INSTANCES_NAME[i]}
+  if systemctl list-units --full --all | grep -q "ceph-radosgw@rgw.${RGW_ZONE}.${HOST_NAME}.${INSTANCES_NAME[i]}"; then
+    systemctl restart ceph-radosgw@rgw.${RGW_ZONE}.${HOST_NAME}.${INSTANCES_NAME[i]}
   else
-    echo "Systemd unit ceph-radosgw@rgw.${HOST_NAME}.${INSTANCES_NAME[i]} does not exist."
+    echo "Systemd unit ceph-radosgw@rgw.${RGW_ZONE}.${HOST_NAME}.${INSTANCES_NAME[i]} does not exist."
     continue
   fi
 

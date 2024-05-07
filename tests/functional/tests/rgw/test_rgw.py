@@ -13,9 +13,10 @@ class TestRGWs(object):
 
     def test_rgw_service_enabled_and_running(self, node, host):
         for i in range(int(node["radosgw_num_instances"])):
-            service_name = "ceph-radosgw@rgw.{hostname}.rgw{seq}".format(
+            service_name = "ceph-radosgw@rgw.{rgw_zone}.{hostname}.rgw{seq}".format(
                 hostname=node["vars"]["inventory_hostname"],
-                seq=i
+                seq=i,
+                rgw_zone=node["vars"].get("rgw_zone", "default"),
             )
             s = host.service(service_name)
             assert s.is_enabled
