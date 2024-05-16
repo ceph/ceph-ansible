@@ -49,6 +49,16 @@
       changed_when: false
       ignore_errors: true
 
+    - name: Get mon log
+      ansible.builtin.shell: journalctl -l -u ceph-mon@{{ ansible_facts['hostname'] }} > /var/log/ceph/ceph-mon.{{ ansible_facts['hostname'] }}.log
+      changed_when: false
+      when: inventory_hostname in groups.get(mon_group_name, [])
+
+    - name: Get mds log
+      ansible.builtin.shell: journalctl -l -u ceph-mds@{{ ansible_facts['hostname'] }} > /var/log/ceph/ceph-mon.{{ ansible_facts['hostname'] }}.log
+      changed_when: false
+      when: inventory_hostname in groups.get(mds_group_name, [])
+
     - name: Get mgr log
       ansible.builtin.shell: journalctl -l -u ceph-mgr@{{ ansible_facts['hostname'] }} > /var/log/ceph/ceph-mgr.{{ ansible_facts['hostname'] }}.log
       changed_when: false
