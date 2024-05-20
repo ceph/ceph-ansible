@@ -617,11 +617,12 @@ def run_module():
             changed = True
 
     elif state == "absent":
-        if key_exist == 0:
+        rc, cmd, out, err = exec_commands(
+            module, info_key(cluster, name, user, user_key_path, output_format, container_image))  # noqa: E501
+        if rc == 0:
             rc, cmd, out, err = exec_commands(
                 module, delete_key(cluster, user, user_key_path, name, container_image))  # noqa: E501
-            if rc == 0:
-                changed = True
+            changed = True
         else:
             rc = 0
 
