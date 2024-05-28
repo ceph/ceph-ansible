@@ -103,6 +103,21 @@ def apply_spec(module: "AnsibleModule",
     return rc, cmd, out, err
 
 
+def change_required(current: Dict, expected: Dict) -> bool:
+    """ checks if the current config differs from what is expected """
+    if not current:
+        return True
+
+    for key, value in expected.items():
+        if key in current:
+            if current[key] != value:
+                return True
+            continue
+        else:
+            return True
+    return False
+
+
 def run_module() -> None:
 
     module_args = dict(
@@ -137,7 +152,7 @@ def run_module() -> None:
     expected = parse_spec(module.params.get('spec'))
     current_spec = retrieve_current_spec(module, expected)
 
-    if not current_spec or current_spec != expected:
+    if change_required(current_spec, expected):
         rc, cmd, out, err = apply_spec(module, spec)
         changed = True
     else:
