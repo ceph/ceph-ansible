@@ -11,6 +11,7 @@ else
     RGW_PROTOCOL=http
 fi
 INSTANCES_NAME=({% for i in rgw_instances %}{{ i.instance_name }} {% endfor %})
+HAPROXY_BACKEND=({% for i in rgw_instances %}{{ i.haproxy_backend | default('rgw-backend') }} {% endfor %})
 RGW_IPS=({% for i in rgw_instances %}{{ i.radosgw_address }} {% endfor %})
 RGW_PORTS=({% for i in rgw_instances %}{{ i.radosgw_frontend_port }} {% endfor %})
 RGW_ZONE="{{ rgw_zone }}"
@@ -78,19 +79,38 @@ check_rest() {
 }
 
 for ((i=0; i<${RGW_NUMS}; i++)); do
-  # First, restart the daemon
-
   # Check if systemd unit exists
   # This is needed for new instances as the restart might trigger before the deployment
-  if systemctl list-units --full --all | grep -q "ceph-radosgw@rgw.${RGW_ZONE}.${HOST_NAME}.${INSTANCES_NAME[i]}"; then
-    systemctl restart ceph-radosgw@rgw.${RGW_ZONE}.${HOST_NAME}.${INSTANCES_NAME[i]}
-  else
+  if ! systemctl list-units --full --all | grep -q "ceph-radosgw@rgw.${RGW_ZONE}.${HOST_NAME}.${INSTANCES_NAME[i]}"; then
     echo "Systemd unit ceph-radosgw@rgw.${RGW_ZONE}.${HOST_NAME}.${INSTANCES_NAME[i]} does not exist."
     continue
   fi
+
+{% if handler_rgw_use_haproxy_maintenance %}
+  # set server weight to 0 on haproxy
+  echo "set weight ${HAPROXY_BACKEND[i]}/${INSTANCES_NAME[i]} 0" | socat stdio {{ haproxy_socket_path }}
+
+  # wait for the connections to drop
+  retries={{ handler_rgw_haproxy_maintenance_retries | default(60) }}
+  while [ $retries -gt 0 ]; do
+    if [ "$(echo "show servers conn ${HAPROXY_BACKEND[i]}" | socat stdio {{ haproxy_socket_path }} | grep "${HAPROXY_BACKEND[i]}/${INSTANCES_NAME[i]} " | awk '{ print $7 }')" -eq 0 ]; then
+      break
+    fi
+    sleep 1
+    let retries=retries-1
+  done
+{% endif %}
+
+  # Restart the daemon
+  systemctl restart ceph-radosgw@rgw.${RGW_ZONE}.${HOST_NAME}.${INSTANCES_NAME[i]}
 
   # Check socket files
   check_socket ${i}
   # Check rest
   check_rest ${i}
+
+{% if handler_rgw_use_haproxy_maintenance %}
+  # set server weight to 100 on haproxy
+  echo "set weight ${HAPROXY_BACKEND[i]}/${INSTANCES_NAME[i]} 100" | socat stdio {{ haproxy_socket_path }}
+{% endif %}
 done
