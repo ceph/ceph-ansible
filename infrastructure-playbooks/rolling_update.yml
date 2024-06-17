@@ -46,6 +46,7 @@
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
   tags: always
@@ -1002,6 +1003,68 @@
         name: ceph-rbd-mirror
 
 
+- name: Upgrade ceph nfs node
+  vars:
+    upgrade_ceph_packages: true
+  hosts: "{{ nfs_group_name|default('nfss') }}"
+  tags: nfss
+  serial: 1
+  become: true
+  gather_facts: false
+  tasks:
+    # failed_when: false is here so that if we upgrade
+    # from a version of ceph that does not have nfs-ganesha
+    # then this task will not fail
+    - name: Stop ceph nfs
+      ansible.builtin.systemd:
+        name: nfs-ganesha
+        state: stopped
+        enabled: false
+        masked: true
+      failed_when: false
+      when: not containerized_deployment | bool
+
+    - name: Systemd stop nfs container
+      ansible.builtin.systemd:
+        name: ceph-nfs@{{ ceph_nfs_service_suffix | default(ansible_facts['hostname']) }}
+        state: stopped
+        enabled: false
+        masked: true
+      failed_when: false
+      when:
+        - ceph_nfs_enable_service | bool
+        - containerized_deployment | bool
+
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
+        name: ceph-defaults
+
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
+        name: ceph-facts
+
+    - name: Import ceph-handler role
+      ansible.builtin.import_role:
+        name: ceph-handler
+
+    - name: Import ceph-common role
+      ansible.builtin.import_role:
+        name: ceph-common
+      when: not containerized_deployment | bool
+
+    - name: Import ceph-container-common role
+      ansible.builtin.import_role:
+        name: ceph-container-common
+      when: containerized_deployment | bool
+
+    - name: Import ceph-config role
+      ansible.builtin.import_role:
+        name: ceph-config
+
+    - name: Import ceph-nfs role
+      ansible.builtin.import_role:
+        name: ceph-nfs
+
 - name: Upgrade ceph client node
   vars:
     upgrade_ceph_packages: true
@@ -1159,6 +1222,7 @@
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
   tags: monitoring
   gather_facts: false

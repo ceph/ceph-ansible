@@ -1,0 +1,105 @@
+---
+- name: Nfs various pre-requisites tasks
+  block:
+    - name: Set_fact exec_cmd_nfs - external
+      ansible.builtin.set_fact:
+        exec_cmd_nfs: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /var/log/ceph/:/var/log/ceph/:z --entrypoint=rados ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'rados' }} -n client.{{ ceph_nfs_ceph_user }} -k /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ceph_nfs_ceph_user }}/keyring"
+        delegate_node: "{{ inventory_hostname }}"
+      when: groups.get(mon_group_name, []) | length == 0
+
+    - name: Set_fact exec_cmd_nfs - internal
+      ansible.builtin.set_fact:
+        exec_cmd_nfs: "{{ container_binary + ' exec ceph-mon-' + hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] if containerized_deployment | bool else '' }} rados"
+        delegate_node: "{{ groups[mon_group_name][0] }}"
+      when: groups.get(mon_group_name, []) | length > 0
+
+    - name: Check if rados index object exists
+      ansible.builtin.shell: "set -o pipefail && {{ exec_cmd_nfs | default('') }} -p {{ cephfs_data_pool.name }} --cluster {{ cluster }} ls | grep {{ ceph_nfs_rados_export_index }}"
+      changed_when: false
+      failed_when: false
+      register: rados_index_exists
+      check_mode: false
+      when: ceph_nfs_rados_backend | bool
+      delegate_to: "{{ delegate_node }}"
+      run_once: true
+
+    - name: Create an empty rados index object
+      ansible.builtin.command: "{{ exec_cmd_nfs | default('') }} -p {{ cephfs_data_pool.name }} --cluster {{ cluster }} put {{ ceph_nfs_rados_export_index }} /dev/null"
+      when:
+        - ceph_nfs_rados_backend | bool
+        - rados_index_exists.rc != 0
+      delegate_to: "{{ delegate_node }}"
+      changed_when: false
+      run_once: true
+
+- name: Create /etc/ganesha
+  ansible.builtin.file:
+    path: /etc/ganesha
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Generate ganesha configuration file
+  ansible.builtin.template:
+    src: "ganesha.conf.j2"
+    dest: /etc/ganesha/ganesha.conf
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: Restart ceph nfss
+
+- name: Generate ganesha idmap.conf file
+  openstack.config_template.config_template:
+    src: "idmap.conf.j2"
+    dest: "{{ ceph_nfs_idmap_conf }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    config_overrides: "{{ idmap_conf_overrides }}"
+    config_type: ini
+  notify: Restart ceph nfss
+
+- name: Create exports directory
+  ansible.builtin.file:
+    path: /etc/ganesha/export.d
+    state: directory
+    owner: "root"
+    group: "root"
+    mode: "0755"
+  when: ceph_nfs_dynamic_exports | bool
+
+- name: Create exports dir index file
+  ansible.builtin.copy:
+    content: ""
+    force: false
+    dest: /etc/ganesha/export.d/INDEX.conf
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  when: ceph_nfs_dynamic_exports | bool
+
+- name: Include_tasks systemd.yml
+  ansible.builtin.include_tasks: systemd.yml
+  when: containerized_deployment | bool
+
+- name: Systemd start nfs container
+  ansible.builtin.systemd:
+    name: ceph-nfs@{{ ceph_nfs_service_suffix | default(ansible_facts['hostname']) }}
+    state: started
+    enabled: true
+    masked: false
+    daemon_reload: true
+  when:
+    - containerized_deployment | bool
+    - ceph_nfs_enable_service | bool
+
+- name: Start nfs gateway service
+  ansible.builtin.systemd:
+    name: nfs-ganesha
+    state: started
+    enabled: true
+    masked: false
+  when:
+    - not containerized_deployment | bool
+    - ceph_nfs_enable_service | bool

@@ -11,6 +11,7 @@
     - osds
     - mdss
     - rgws
+    - nfss
     - rbdmirrors
     - clients
     - mgrs
@@ -59,6 +60,7 @@
     - "{{ osd_group_name | default('osds') }}"
     - "{{ mds_group_name | default('mdss') }}"
     - "{{ rgw_group_name | default('rgws') }}"
+    - "{{ nfs_group_name | default('nfss') }}"
     - "{{ mgr_group_name | default('mgrs') }}"
     - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
     - "{{ monitoring_group_name | default('monitoring') }}"
@@ -112,7 +114,8 @@
                 inventory_hostname in groups.get(mds_group_name, []) or
                 inventory_hostname in groups.get(rgw_group_name, []) or
                 inventory_hostname in groups.get(mgr_group_name, []) or
-                inventory_hostname in groups.get(rbdmirror_group_name, [])
+                inventory_hostname in groups.get(rbdmirror_group_name, []) or
+                inventory_hostname in groups.get(nfs_group_name, [])
 
         - name: Pulling alertmanager/grafana/prometheus images from docker daemon
           ansible.builtin.command: "{{ timeout_command }} {{ container_binary }} pull docker-daemon:{{ item }}"
@@ -155,6 +158,12 @@
         name: ceph-mgr
         tasks_from: systemd.yml
       when: inventory_hostname in groups.get(mgr_group_name, [])
+
+    - name: Import ceph-nfs role
+      ansible.builtin.import_role:
+        name: ceph-nfs
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(nfs_group_name, [])
 
     - name: Import ceph-osd role
       ansible.builtin.import_role:

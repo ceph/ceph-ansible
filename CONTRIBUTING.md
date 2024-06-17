@@ -62,6 +62,7 @@ It means if you are pushing a patch modifying one of these files:
 - `./roles/ceph-rbd-mirror/defaults/main.yml`
 - `./roles/ceph-defaults/defaults/main.yml`
 - `./roles/ceph-osd/defaults/main.yml`
+- `./roles/ceph-nfs/defaults/main.yml`
 - `./roles/ceph-client/defaults/main.yml`
 - `./roles/ceph-common/defaults/main.yml`
 - `./roles/ceph-mon/defaults/main.yml`
