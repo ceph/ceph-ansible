@@ -1,0 +1,96 @@
+---
+- name: Include red hat based system related tasks
+  ansible.builtin.include_tasks: pre_requisite_non_container_red_hat.yml
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Include debian based system related tasks
+  ansible.builtin.include_tasks: pre_requisite_non_container_debian.yml
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Install nfs rgw/cephfs gateway - SUSE/openSUSE
+  community.general.zypper:
+    name: "{{ item.name }}"
+    disable_gpg_check: true
+  with_items:
+    - { name: 'nfs-ganesha-rgw', install: "{{ nfs_obj_gw }}" }
+    - { name: 'radosgw', install: "{{ nfs_obj_gw }}" }
+    - { name: 'nfs-ganesha-ceph', install: "{{ nfs_file_gw }}" }
+  when:
+    - (ceph_origin == 'repository' or ceph_origin == 'distro')
+    - ansible_facts['os_family'] == 'Suse'
+    - item.install | bool
+  register: result
+  until: result is succeeded
+
+# NOTE (leseb): we use root:ceph for permissions since ganesha
+# does not have the right selinux context to read ceph directories.
+- name: Create rados gateway and ganesha directories
+  ansible.builtin.file:
+    path: "{{ item.name }}"
+    state: directory
+    owner: "{{ item.owner | default('ceph') }}"
+    group: "{{ item.group | default('ceph') }}"
+    mode: "{{ ceph_directories_mode }}"
+  with_items:
+    - { name: "/var/lib/ceph/bootstrap-rgw", create: "{{ nfs_obj_gw }}" }
+    - { name: "/var/lib/ceph/radosgw", create: "{{ nfs_obj_gw }}" }
+    - { name: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}", create: "{{ nfs_obj_gw }}" }
+    - { name: "{{ rbd_client_admin_socket_path }}", create: "{{ nfs_obj_gw }}" }
+    - { name: "/var/log/ceph", create: true }
+    - { name: "/var/log/ganesha", create: true, owner: root, group: root }
+    - { name: "/var/run/ceph", create: true }
+  when: item.create | bool
+
+- name: Cephx related tasks
+  when:
+    - cephx | bool
+    - groups.get(mon_group_name, []) | length > 0
+  block:
+    - name: Get keys from monitors
+      ceph_key:
+        name: "{{ item.name }}"
+        cluster: "{{ cluster }}"
+        output_format: plain
+        state: info
+      register: _rgw_keys
+      with_items:
+        - { name: "client.bootstrap-rgw", path: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring", copy_key: "{{ nfs_obj_gw }}" }
+        - { name: "client.admin", path: "/etc/ceph/{{ cluster }}.client.admin.keyring", copy_key: "{{ copy_admin_key }}" }
+      delegate_to: "{{ groups.get(mon_group_name)[0] }}"
+      run_once: true
+      when:
+        - cephx | bool
+        - item.copy_key | bool
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
+
+    - name: Copy ceph key(s) if needed
+      ansible.builtin.copy:
+        dest: "{{ item.item.path }}"
+        content: "{{ item.stdout + '\n' }}"
+        owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        mode: "{{ ceph_keyring_permissions }}"
+      with_items: "{{ _rgw_keys.results }}"
+      when:
+        - cephx | bool
+        - item.item.copy_key | bool
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
+
+    - name: Nfs object gateway related tasks
+      when: nfs_obj_gw | bool
+      block:
+        - name: Create rados gateway keyring
+          ceph_key:
+            name: "client.rgw.{{ ansible_facts['hostname'] }}"
+            cluster: "{{ cluster }}"
+            user: client.bootstrap-rgw
+            user_key: "/var/lib/ceph/bootstrap-rgw/{{ cluster }}.keyring"
+            caps:
+              mon: "allow rw"
+              osd: "allow rwx"
+            dest: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ ansible_facts['hostname'] }}/keyring"
+            import_key: false
+            owner: ceph
+            group: ceph
+            mode: "{{ ceph_keyring_permissions }}"
+          no_log: "{{ no_log_on_ceph_key_tasks }}"
