@@ -1,0 +1,122 @@
+---
+# You can override vars by using host or group vars
+
+###########
+# GENERAL #
+###########
+
+# Even though NFS nodes should not have the admin key
+# at their disposal, some people might want to have it
+# distributed on RGW nodes. Setting 'copy_admin_key' to 'true'
+# will copy the admin key to the /etc/ceph/ directory
+copy_admin_key: false
+
+# Whether docker container or systemd service should be enabled
+# and started, it's useful to set it to false if nfs-ganesha
+# service is managed by pacemaker
+ceph_nfs_enable_service: true
+
+# ceph-nfs systemd service uses ansible's hostname as an instance id,
+# so service name is ceph-nfs@{{ ansible_facts['hostname'] }}, this is not
+# ideal when ceph-nfs is managed by pacemaker across multiple hosts - in
+# such case it's better to have constant instance id instead which
+# can be set by 'ceph_nfs_service_suffix'
+# ceph_nfs_service_suffix: "{{ ansible_facts['hostname'] }}"
+
+######################
+# NFS Ganesha Config #
+######################
+ceph_nfs_log_file: "/var/log/ganesha/ganesha.log"
+ceph_nfs_dynamic_exports: false
+# If set to true then rados is used to store ganesha exports
+# and client sessions information, this is useful if you
+# run multiple nfs-ganesha servers in active/passive mode and
+# want to do failover
+ceph_nfs_rados_backend: false
+# Name of the rados object used to store a list of the export rados
+# object URLS
+ceph_nfs_rados_export_index: "ganesha-export-index"
+# Address ganesha service should listen on, by default ganesha listens on all
+# addresses. (Note: ganesha ignores this parameter in current version due to
+# this bug: https://github.com/nfs-ganesha/nfs-ganesha/issues/217)
+# ceph_nfs_bind_addr: 0.0.0.0
+
+# If set to true, then ganesha's attribute and directory caching is disabled
+# as much as possible. Currently, ganesha caches by default.
+# When using ganesha as CephFS's gateway, it is recommended to turn off
+# ganesha's caching as the libcephfs clients also cache the same information.
+# Note: Irrespective of this option's setting, ganesha's caching is disabled
+# when setting 'nfs_file_gw' option as true.
+ceph_nfs_disable_caching: false
+
+# This is the file ganesha will use to control NFSv4 ID mapping
+ceph_nfs_idmap_conf: "/etc/ganesha/idmap.conf"
+
+# idmap configuration file override.
+# This allows you to specify more configuration options
+# using an INI style format.
+# Example:
+# idmap_conf_overrides:
+#   General:
+#     Domain: foo.domain.net
+idmap_conf_overrides: {}
+
+####################
+# FSAL Ceph Config #
+####################
+ceph_nfs_ceph_export_id: 20133
+ceph_nfs_ceph_pseudo_path: "/cephfile"
+ceph_nfs_ceph_protocols: "3,4"
+ceph_nfs_ceph_access_type: "RW"
+ceph_nfs_ceph_user: "admin"
+ceph_nfs_ceph_squash: "Root_Squash"
+ceph_nfs_ceph_sectype: "sys,krb5,krb5i,krb5p"
+
+###################
+# FSAL RGW Config #
+###################
+ceph_nfs_rgw_export_id: 20134
+ceph_nfs_rgw_pseudo_path: "/cephobject"
+ceph_nfs_rgw_protocols: "3,4"
+ceph_nfs_rgw_access_type: "RW"
+ceph_nfs_rgw_user: "cephnfs"
+ceph_nfs_rgw_squash: "Root_Squash"
+ceph_nfs_rgw_sectype: "sys,krb5,krb5i,krb5p"
+# Note: keys are optional and can be generated, but not on containerized, where
+# they must be configered.
+# ceph_nfs_rgw_access_key: "QFAMEDSJP5DEKJO0DDXY"
+# ceph_nfs_rgw_secret_key: "iaSFLDVvDdQt6lkNzHyW4fPLZugBAI1g17LO0+87[MAC[M#C"
+rgw_client_name: client.rgw.{{ ansible_facts['hostname'] }}
+
+###################
+# CONFIG OVERRIDE #
+###################
+
+# Ganesha configuration file override.
+# These multiline strings will be appended to the contents of the blocks in ganesha.conf and
+# must be in the correct ganesha.conf format seen here:
+# https://github.com/nfs-ganesha/nfs-ganesha/blob/next/src/config_samples/ganesha.conf.example
+#
+# Example:
+# CACHEINODE {
+         # Entries_HWMark = 100000;
+# }
+#
+# ganesha_core_param_overrides:
+# ganesha_ceph_export_overrides:
+# ganesha_rgw_export_overrides:
+# ganesha_rgw_section_overrides:
+# ganesha_log_overrides:
+# ganesha_conf_overrides: |
+#     CACHEINODE {
+             # Entries_HWMark = 100000;
+#     }
+
+##########
+# DOCKER #
+##########
+
+ceph_docker_image: "ceph/daemon"
+ceph_docker_image_tag: latest
+ceph_nfs_docker_extra_env:
+ceph_config_keys: [] # DON'T TOUCH ME
