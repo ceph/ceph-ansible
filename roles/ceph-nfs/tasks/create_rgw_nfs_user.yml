@@ -1,0 +1,23 @@
+---
+- name: Create rgw nfs user "{{ ceph_nfs_rgw_user }}"
+  radosgw_user:
+    name: "{{ ceph_nfs_rgw_user }}"
+    cluster: "{{ cluster }}"
+    display_name: "RGW NFS User"
+    access_key: "{{ ceph_nfs_rgw_access_key | default(omit) }}"
+    secret_key: "{{ ceph_nfs_rgw_secret_key | default(omit) }}"
+  run_once: true
+  register: rgw_nfs_user
+  changed_when: false
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when: nfs_obj_gw | bool
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+
+- name: Set_fact ceph_nfs_rgw_access_key and ceph_nfs_rgw_secret_key
+  ansible.builtin.set_fact:
+    ceph_nfs_rgw_access_key: "{{ (rgw_nfs_user.stdout | from_json)['keys'][0]['access_key'] }}"
+    ceph_nfs_rgw_secret_key: "{{ (rgw_nfs_user.stdout | from_json)['keys'][0]['secret_key'] }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when: nfs_obj_gw | bool

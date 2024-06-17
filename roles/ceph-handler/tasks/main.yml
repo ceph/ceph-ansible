@@ -23,6 +23,11 @@
     handler_rgw_status: "{{ 0 in (rgw_socket.results | map(attribute='rc') | list) if not containerized_deployment | bool else (ceph_rgw_container_stat.get('rc') == 0 and ceph_rgw_container_stat.get('stdout_lines', []) | length != 0) }}"
   when: inventory_hostname in groups.get(rgw_group_name, [])
 
+- name: Set_fact handler_nfs_status
+  ansible.builtin.set_fact:
+    handler_nfs_status: "{{ (nfs_process.get('rc') == 0) if not containerized_deployment | bool else (ceph_nfs_container_stat.get('rc') == 0 and ceph_nfs_container_stat.get('stdout_lines', []) | length != 0) }}"
+  when: inventory_hostname in groups.get(nfs_group_name, [])
+
 - name: Set_fact handler_rbd_status
   ansible.builtin.set_fact:
     handler_rbd_mirror_status: "{{ 0 in (rbd_mirror_socket.results | map(attribute='rc') | list) if not containerized_deployment | bool else (ceph_rbd_mirror_container_stat.get('rc') == 0 and ceph_rbd_mirror_container_stat.get('stdout_lines', []) | length != 0) }}"

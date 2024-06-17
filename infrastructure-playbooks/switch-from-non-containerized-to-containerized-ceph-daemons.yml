@@ -43,6 +43,7 @@
     - "{{ mds_group_name|default('mdss') }}"
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ nfs_group_name|default('nfss') }}"
 
   become: true
 
@@ -662,6 +663,60 @@
       ansible.builtin.import_role:
         name: ceph-rbd-mirror
 
+
+- name: Switching from non-containerized to containerized ceph nfs
+
+  hosts: "{{ nfs_group_name|default('nfss') }}"
+
+  vars:
+    containerized_deployment: true
+    nfs_group_name: nfss
+
+  serial: 1
+  become: true
+  pre_tasks:
+
+    # failed_when: false is here because if we're
+    # working with a jewel cluster then ceph nfs
+    # will not exist
+    - name: Stop non-containerized ceph nfs(s)
+      ansible.builtin.service:
+        name: nfs-ganesha
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
+        name: ceph-defaults
+
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
+        name: ceph-facts
+
+    # NOTE: changed from file module to raw find command for performance reasons
+    # The file module has to run checks on current ownership of all directories and files. This is unnecessary
+    # as in this case we know we want all owned by ceph user
+    - name: Set proper ownership on ceph directories
+      ansible.builtin.command: "find /var/lib/ceph /etc/ceph -not -( -user {{ ceph_uid }} -or -group {{ ceph_uid }} -) -execdir chown {{ ceph_uid }}:{{ ceph_uid }} {} +"
+      changed_when: false
+
+  tasks:
+    - name: Import ceph-handler role
+      ansible.builtin.import_role:
+        name: ceph-handler
+
+    - name: Import ceph-container-engine role
+      ansible.builtin.import_role:
+        name: ceph-container-engine
+
+    - name: Import ceph-container-common role
+      ansible.builtin.import_role:
+        name: ceph-container-common
+
+    - name: Import ceph-nfs role
+      ansible.builtin.import_role:
+        name: ceph-nfs
 
 - name: Switching from non-containerized to containerized ceph-crash
 

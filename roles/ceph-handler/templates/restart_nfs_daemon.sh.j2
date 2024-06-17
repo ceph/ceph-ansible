@@ -1,0 +1,26 @@
+#!/bin/bash
+
+RETRIES="{{ handler_health_nfs_check_retries }}"
+DELAY="{{ handler_health_nfs_check_delay }}"
+NFS_NAME="ceph-nfs@{{ ceph_nfs_service_suffix | default(ansible_facts['hostname']) }}"
+PID=/var/run/ganesha/ganesha.pid
+{% if containerized_deployment | bool %}
+DOCKER_EXEC="{{ container_binary }} exec ceph-nfs-{{ ceph_nfs_service_suffix | default(ansible_facts['hostname']) }}"
+{% endif %}
+
+# First, restart the daemon
+{% if containerized_deployment | bool -%}
+systemctl restart $NFS_NAME
+# Wait and ensure the pid exists after restarting the daemon
+while [ $RETRIES -ne 0 ]; do
+  $DOCKER_EXEC test -f $PID && exit 0
+  sleep $DELAY
+  let RETRIES=RETRIES-1
+done
+# If we reach this point, it means the pid is not present.
+echo "PID file ${PID} could not be found, which means Ganesha is not running. Showing $NFS_NAME unit logs now:"
+journalctl -u $NFS_NAME
+exit 1
+{% else %}
+systemctl restart nfs-ganesha
+{% endif %}

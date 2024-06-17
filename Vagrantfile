@@ -20,6 +20,7 @@ NMONS           = settings['mon_vms']
 NOSDS           = settings['osd_vms']
 NMDSS           = settings['mds_vms']
 NRGWS           = settings['rgw_vms']
+NNFSS           = settings['nfs_vms']
 NRBD_MIRRORS    = settings['rbd_mirror_vms']
 CLIENTS         = settings['client_vms']
 MGRS            = settings['mgr_vms']
@@ -61,6 +62,7 @@ ansible_provision = proc do |ansible|
     'osds'             => (0..NOSDS - 1).map { |j| "#{LABEL_PREFIX}osd#{j}" },
     'mdss'             => (0..NMDSS - 1).map { |j| "#{LABEL_PREFIX}mds#{j}" },
     'rgws'             => (0..NRGWS - 1).map { |j| "#{LABEL_PREFIX}rgw#{j}" },
+    'nfss'             => (0..NNFSS - 1).map { |j| "#{LABEL_PREFIX}nfs#{j}" },
     'rbd_mirrors'      => (0..NRBD_MIRRORS - 1).map { |j| "#{LABEL_PREFIX}rbd_mirror#{j}" },
     'clients'          => (0..CLIENTS - 1).map { |j| "#{LABEL_PREFIX}client#{j}" },
     'mgrs'             => (0..MGRS - 1).map { |j| "#{LABEL_PREFIX}mgr#{j}" },
@@ -367,6 +369,52 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       rgw.vm.provider :linode do |provider|
         provider.label = rgw.vm.hostname
+      end
+    end
+  end
+
+  (0..NNFSS - 1).each do |i|
+    config.vm.define "#{LABEL_PREFIX}nfs#{i}" do |nfs|
+      nfs.vm.hostname = "#{LABEL_PREFIX}nfs#{i}"
+      if ASSIGN_STATIC_IP && !IPV6
+          nfs.vm.network :private_network,
+	  :ip => "#{PUBLIC_SUBNET}.#{$last_ip_pub_digit+=1}"
+      end
+
+      # Virtualbox
+      nfs.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--memory', "#{MEMORY}"]
+      end
+
+      # VMware
+      nfs.vm.provider :vmware_fusion do |v|
+        v.vmx['memsize'] = "#{MEMORY}"
+      end
+
+      # Libvirt
+      nfs.vm.provider :libvirt do |lv,override|
+        lv.memory = MEMORY
+        lv.random_hostname = true
+	if IPV6 then
+	  override.vm.network :private_network,
+	  :libvirt__ipv6_address => "#{PUBLIC_SUBNET}",
+	  :libvirt__ipv6_prefix => "64",
+	  :libvirt__dhcp_enabled => false,
+	  :libvirt__forward_mode => "veryisolated",
+	  :libvirt__network_name => "ipv6-public-network",
+	  :ip => "#{PUBLIC_SUBNET}#{$last_ip_pub_digit+=1}",
+	  :netmask => "64"
+	end
+      end
+
+      # Parallels
+      nfs.vm.provider "parallels" do |prl|
+        prl.name = "ceph-nfs#{i}"
+        prl.memory = "#{MEMORY}"
+      end
+
+      nfs.vm.provider :linode do |provider|
+        provider.label = nfs.vm.hostname
       end
     end
   end
