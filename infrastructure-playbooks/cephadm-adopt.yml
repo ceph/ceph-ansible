@@ -1024,10 +1024,14 @@
             count_per_host: {{ radosgw_num_instances }}
             hosts:
               - {{ ansible_facts['nodename'] }}
-          {{ "networks: rgw_subnet" if rgw_subnet is defined }}
+          {% if rgw_subnet is defined %}
+            networks: "{{ rgw_subnet }}"
+          {% endif %}
           spec:
             rgw_frontend_port: {{ radosgw_frontend_port }}
-            {{ "ssl: true" if radosgw_frontend_ssl_certificate }}
+          {% if radosgw_frontend_ssl_certificate is defined %}
+            {{ "ssl: true" }}
+          {% endif %}
           extra_container_args:
             - -v
             - /etc/pki/ca-trust:/etc/pki/ca-trust:ro
