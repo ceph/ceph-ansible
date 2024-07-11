@@ -1516,9 +1516,19 @@
     - name: with dashboard enabled
       when: dashboard_enabled | bool
       block:
-        - name: update the placement of alertmanager hosts
-          command: "{{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} -- ceph orch apply alertmanager --placement='{{ groups.get(monitoring_group_name, []) | length }} label:{{ monitoring_group_name }}'"
-          changed_when: false
+        - name: Update the placement of alertmanager hosts
+          ceph_orch_apply:
+            fsid: "{{ fsid }}"
+            spec: |
+              service_type: alertmanager
+              service_id: "{{ ansible_facts['hostname'] }}"
+              placement:
+                label: "{{ monitoring_group_name }}"
+              {% if grafana_server_addr is defined %}
+              networks:
+              - {{ grafana_server_addr }}
+              {% endif %}
+          delegate_to: "{{ groups[mon_group_name][0] }}"
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
