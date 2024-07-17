@@ -294,6 +294,13 @@
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
+    - name: Set cephadm ssh config
+      ansible.builtin.command: "{{ ceph_cmd }} cephadm set-ssh-config -i {{ cephadm_ssh_config_path }}"
+      changed_when: false
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      when: cephadm_ssh_config_path is defined
+
     - name: Run cephadm prepare-host
       ansible.builtin.command: cephadm prepare-host
       changed_when: false
