@@ -47,12 +47,13 @@
       ansible.builtin.set_fact:
         bluestore_wal_devices: "{{ bluestore_wal_devices_prepare_canonicalize.results | map(attribute='stdout') | reject('search', '/dev/disk') | list | unique }}"
 
-- name: Set_fact devices generate device list when osd_auto_discovery
+- name: Collect existed devices
   vars:
     device: "{{ item.key | regex_replace('^', '/dev/') }}"
-  ansible.builtin.set_fact:
-    devices: "{{ devices | default([]) | union([device]) }}"
-  with_dict: "{{ ansible_facts['devices'] }}"
+  ansible.builtin.command: test -b {{ device }}
+  changed_when: false
+  ignore_errors: true
+  loop: "{{ ansible_facts['devices'] | dict2items }}"
   when:
     - osd_auto_discovery | default(False) | bool
     - ansible_facts['devices'] is defined
@@ -65,3 +66,15 @@
     - device not in dedicated_devices | default([])
     - device not in bluestore_wal_devices | default([])
     - device not in (lvm_volumes | default([]) | map(attribute='data') | list)
+  register: devices_check
+
+- name: Set_fact devices generate device list when osd_auto_discovery
+  vars:
+    device: "{{ item.item.key | regex_replace('^', '/dev/') }}"
+  ansible.builtin.set_fact:
+    devices: "{{ devices | default([]) | union([device]) }}"
+  loop: "{{ devices_check.results }}"
+  when:
+    - devices_check is defined
+    - not item.skipped | default(false)
+    - not item.failed | default(false)
