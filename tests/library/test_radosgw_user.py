@@ -149,3 +149,57 @@ class TestRadosgwUserModule(object):
         ]
 
         assert radosgw_user.remove_user(fake_module) == expected_cmd
+
+    def test_caps_add(self):
+        fake_module = MagicMock()
+        fake_module.params = fake_params
+        expected_cmd = [
+            fake_binary,
+            '--cluster', fake_cluster,
+            'caps', 'add',
+            '--uid=' + fake_user,
+            '--rgw-realm=' + fake_realm,
+            '--rgw-zonegroup=' + fake_zonegroup,
+            '--rgw-zone=' + fake_zone,
+            '--caps=metadata=read;buckets=read'
+        ]
+
+        caps = [
+            {
+                'type': 'metadata',
+                'perm': 'read',
+            },
+            {
+                'type': 'buckets',
+                'perm': 'read',
+            },
+        ]
+
+        assert radosgw_user.caps_add(fake_module, caps) == expected_cmd
+
+    def test_caps_rm(self):
+        fake_module = MagicMock()
+        fake_module.params = fake_params
+        expected_cmd = [
+            fake_binary,
+            '--cluster', fake_cluster,
+            'caps', 'rm',
+            '--uid=' + fake_user,
+            '--rgw-realm=' + fake_realm,
+            '--rgw-zonegroup=' + fake_zonegroup,
+            '--rgw-zone=' + fake_zone,
+            '--caps=metadata=read;buckets=read'
+        ]
+
+        caps = [
+            {
+                'type': 'metadata',
+                'perm': 'read',
+            },
+            {
+                'type': 'buckets',
+                'perm': 'read',
+            },
+        ]
+
+        assert radosgw_user.caps_rm(fake_module, caps) == expected_cmd
