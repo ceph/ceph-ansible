@@ -248,6 +248,42 @@ class TestCephPoolModule(object):
 
         assert cmd == expected_command
 
+    def test_get_crush_rule_pool(self):
+        expected_command = [
+                'podman',
+                'run',
+                '--rm',
+                '--net=host',
+                '-v',
+                '/etc/ceph:/etc/ceph:z',
+                '-v',
+                '/var/lib/ceph/:/var/lib/ceph/:z',
+                '-v',
+                '/var/log/ceph/:/var/log/ceph/:z',
+                '--entrypoint=ceph',
+                fake_container_image_name,
+                '-n',
+                'client.admin',
+                '-k',
+                '/etc/ceph/ceph.client.admin.keyring',
+                '--cluster',
+                'ceph',
+                'osd',
+                'pool',
+                'get',
+                self.fake_user_pool_config['pool_name']['value'],
+                'crush_rule',
+                '-f',
+                'json'
+        ]
+
+        cmd = ceph_pool.get_crush_rule_pool(fake_cluster_name,
+                                            self.fake_user_pool_config['pool_name']['value'],
+                                            fake_user, fake_user_key, 'json',
+                                            container_image=fake_container_image_name)
+
+        assert cmd == expected_command
+
     def test_enable_application_pool(self):
         expected_command = [
                 'podman',
