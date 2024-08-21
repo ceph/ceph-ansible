@@ -82,7 +82,12 @@ def retrieve_current_spec(module: AnsibleModule, expected_spec: Dict) -> Dict:
     """ retrieve current config of the service """
     service: str = expected_spec["service_type"]
     cmd = build_base_cmd_orch(module)
-    cmd.extend(['ls', service, '--format=yaml'])
+    cmd.extend(['ls', service])
+    if 'service_name' in expected_spec:
+        cmd.extend([expected_spec["service_name"]])
+    else:
+        cmd.extend([expected_spec["service_type"] + "." + expected_spec["service_id"]])
+    cmd.extend(['--format=yaml'])
     out = module.run_command(cmd)
     if isinstance(out, str):
         # if there is no existing service, cephadm returns the string 'No services reported'
