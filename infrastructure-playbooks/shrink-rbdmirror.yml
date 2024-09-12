@@ -13,8 +13,8 @@
 
 - name: Gather facts and check the init system
   hosts:
-    - mons
-    - rbdmirrors
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ rbd_mirror_group_name | default('rbdmirrors') }}"
   become: true
   tasks:
     - name: Gather facts on MONs and RBD mirrors
@@ -23,7 +23,7 @@
 
 - name: Confirm whether user really meant to remove rbd mirror from the ceph
         cluster
-  hosts: mons[0]
+  hosts: "{{ mon_group_name | default('mons') }}[0]"
   become: true
   vars_prompt:
     - name: ireallymeanit  # noqa: name[casing]

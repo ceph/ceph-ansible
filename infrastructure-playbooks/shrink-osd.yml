@@ -13,8 +13,8 @@
 
 - name: Gather facts and check the init system
   hosts:
-    - mons
-    - osds
+    - "{{ mon_group_name | default('mons') }}"
+    - "{{ osd_group_name | default('osds') }}"
 
   become: true
   tasks:
@@ -23,7 +23,7 @@
         msg: "gather facts on all Ceph hosts for following reference"
 
 - name: Confirm whether user really meant to remove osd(s) from the cluster
-  hosts: mons[0]
+  hosts: "{{ mon_group_name | default('mons') }}[0]"
   become: true
   vars_prompt:
     - name: ireallymeanit  # noqa: name[casing]
