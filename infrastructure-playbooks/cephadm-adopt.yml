@@ -1500,7 +1500,18 @@
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
         - name: Update the placement of prometheus hosts
-          ansible.builtin.command: "{{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} -- ceph orch apply prometheus --placement='{{ groups.get(monitoring_group_name, []) | length }} label:{{ monitoring_group_name }}'"
+          ceph_orch_apply:
+            fsid: "{{ fsid }}"
+            spec: |
+              service_name: prometheus
+              service_id: "{{ ansible_facts['hostname'] }}"
+              placement:
+                label: {{ monitoring_group_name }}
+                count: {{ groups.get(monitoring_group_name, []) | length }}
+              {% if prometheus_port is defined and prometheus_port != 9095 %}
+              spec:
+                port: {{ prometheus_port }}
+              {% endif %}
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
