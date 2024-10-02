@@ -1517,8 +1517,8 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-    - name: with dashboard enabled
-      when: dashboard_enabled | bool
+    - name: With dashboard enabled
+      when: dashboard_enabled | bool and groups.get(monitoring_group_name, []) | length > 0
       block:
         - name: Update the placement of alertmanager hosts
           ceph_orch_apply:
@@ -1528,6 +1528,7 @@
               service_id: "{{ ansible_facts['hostname'] }}"
               placement:
                 label: "{{ monitoring_group_name }}"
+                count: "{{ groups.get(monitoring_group_name, []) | length }}"
               {% if grafana_server_addr is defined %}
               networks:
               - {{ grafana_server_addr }}
@@ -1542,10 +1543,6 @@
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-<<<<<<< HEAD
-        - name: update the placement of prometheus hosts
-          command: "{{ cephadm_cmd }} shell -k /etc/ceph/{{ cluster }}.client.admin.keyring --fsid {{ fsid }} -- ceph orch apply prometheus --placement='{{ groups.get(monitoring_group_name, []) | length }} label:{{ monitoring_group_name }}'"
-=======
         - name: Update the placement of prometheus hosts
           ceph_orch_apply:
             fsid: "{{ fsid }}"
@@ -1559,7 +1556,6 @@
               spec:
                 port: {{ prometheus_port }}
               {% endif %}
->>>>>>> b41b7bf86 (cephadm-adopt: custom prometheus port lost after adoption)
           changed_when: false
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
