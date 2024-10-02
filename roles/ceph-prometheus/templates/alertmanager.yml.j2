@@ -10,7 +10,7 @@ route:
 receivers:
 - name: 'ceph-dashboard'
   webhook_configs:
-{% for host in groups['mgrs'] | default(groups['mons']) %}
+{% for host in groups[mgr_group_name] | default(groups[mon_group_name]) %}
   - url: '{{ dashboard_protocol }}://{{ hostvars[host]['ansible_facts']['fqdn'] }}:{{ dashboard_port }}/api/prometheus_receiver'
 {% if dashboard_protocol == 'https' and alertmanager_dashboard_api_no_ssl_verify | bool %}
     http_config:
