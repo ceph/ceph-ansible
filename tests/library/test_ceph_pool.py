@@ -24,7 +24,7 @@ class TestCephPoolModule(object):
             'type': 1,
             'size': 2,
             'min_size': 1,
-            'crush_rule': 0,
+            'crush_rule': 'replicated_rule',
             'object_hash': 2,
             'pg_autoscale_mode': 'on',
             'pg_num': 32,
