@@ -3,6 +3,7 @@ import os
 import pytest
 import ca_test_common
 import ceph_crush_rule
+import ceph_crush_rule_info
 
 fake_cluster = 'ceph'
 fake_container_binary = 'podman'
@@ -339,7 +340,6 @@ class TestCephCrushRuleModule(object):
     def test_get_non_existing_rule(self, m_run_command, m_exit_json):
         ca_test_common.set_module_args({
             'name': fake_name,
-            'state': 'info'
         })
         m_exit_json.side_effect = ca_test_common.exit_json
         rc = 2
@@ -348,7 +348,7 @@ class TestCephCrushRuleModule(object):
         m_run_command.return_value = rc, stdout, stderr
 
         with pytest.raises(ca_test_common.AnsibleExitJson) as result:
-            ceph_crush_rule.main()
+            ceph_crush_rule_info.main()
 
         result = result.value.args[0]
         assert not result['changed']
@@ -364,7 +364,6 @@ class TestCephCrushRuleModule(object):
     def test_get_existing_rule(self, m_run_command, m_exit_json):
         ca_test_common.set_module_args({
             'name': fake_name,
-            'state': 'info'
         })
         m_exit_json.side_effect = ca_test_common.exit_json
         rc = 0
@@ -373,7 +372,7 @@ class TestCephCrushRuleModule(object):
         m_run_command.return_value = rc, stdout, stderr
 
         with pytest.raises(ca_test_common.AnsibleExitJson) as result:
-            ceph_crush_rule.main()
+            ceph_crush_rule_info.main()
 
         result = result.value.args[0]
         assert not result['changed']
@@ -389,7 +388,6 @@ class TestCephCrushRuleModule(object):
     def test_get_all_rules(self, m_run_command, m_exit_json):
         ca_test_common.set_module_args({
             'name': str(),
-            'state': 'info'
         })
         m_exit_json.side_effect = ca_test_common.exit_json
         rc = 0
@@ -398,7 +396,7 @@ class TestCephCrushRuleModule(object):
         m_run_command.return_value = rc, stdout, stderr
 
         with pytest.raises(ca_test_common.AnsibleExitJson) as result:
-            ceph_crush_rule.main()
+            ceph_crush_rule_info.main()
 
         result = result.value.args[0]
         assert not result['changed']
@@ -416,7 +414,6 @@ class TestCephCrushRuleModule(object):
     def test_with_container(self, m_run_command, m_exit_json):
         ca_test_common.set_module_args({
             'name': fake_name,
-            'state': 'info'
         })
         m_exit_json.side_effect = ca_test_common.exit_json
         rc = 0
@@ -425,7 +422,7 @@ class TestCephCrushRuleModule(object):
         m_run_command.return_value = rc, stdout, stderr
 
         with pytest.raises(ca_test_common.AnsibleExitJson) as result:
-            ceph_crush_rule.main()
+            ceph_crush_rule_info.main()
 
         result = result.value.args[0]
         assert not result['changed']

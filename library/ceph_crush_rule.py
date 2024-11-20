@@ -59,10 +59,8 @@ options:
             If 'present' is used, the module creates a rule if it doesn't
             exist or update it if it already exists.
             If 'absent' is used, the module will simply delete the rule.
-            If 'info' is used, the module will return all details about the
-            existing rule (json formatted).
         required: false
-        choices: ['present', 'absent', 'info']
+        choices: ['present', 'absent']
         default: present
     rule_type:
         description:
@@ -192,7 +190,7 @@ def main():
         argument_spec=dict(
             name=dict(type='str', required=False),
             cluster=dict(type='str', required=False, default='ceph'),
-            state=dict(type='str', required=False, choices=['present', 'absent', 'info'], default='present'),  # noqa: E501
+            state=dict(type='str', required=False, choices=['present', 'absent'], default='present'),  # noqa: E501
             rule_type=dict(type='str', required=False, choices=['replicated', 'erasure']),  # noqa: E501
             bucket_root=dict(type='str', required=False),
             bucket_type=dict(type='str', required=False, choices=['osd', 'host', 'chassis', 'rack', 'row', 'pdu', 'pod',  # noqa: E501

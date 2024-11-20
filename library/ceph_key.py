@@ -18,14 +18,14 @@ __metaclass__ = type
 from ansible.module_utils.basic import AnsibleModule
 try:
     from ansible.module_utils.ca_common import generate_cmd, \
-                                               is_containerized, \
-                                               container_exec, \
-                                               fatal
+        is_containerized, \
+        container_exec, \
+        fatal
 except ImportError:
     from module_utils.ca_common import generate_cmd, \
-                                       is_containerized, \
-                                       container_exec, \
-                                       fatal
+        is_containerized, \
+        container_exec, \
+        fatal
 import datetime
 import json
 import os
@@ -85,11 +85,9 @@ options:
             If 'absent' is used, the module will simply delete the keyring.
             If 'list' is used, the module will list all the keys and will
             return a json output.
-            If 'info' is used, the module will return in a json format the
-            description of a given keyring.
             If 'generate_secret' is used, the module will simply output a cephx keyring.
         required: false
-        choices: ['present', 'update', 'absent', 'list', 'info', 'fetch_initial_keys', 'generate_secret']
+        choices: ['present', 'update', 'absent', 'fetch_initial_keys', 'generate_secret']
         default: present
     caps:
         description:
@@ -181,22 +179,6 @@ caps:
   ceph_key:
     name: "my_key"
     state: absent
-
-- name: info cephx key
-  ceph_key:
-    name: "my_key""
-    state: info
-
-- name: info cephx admin key (plain)
-  ceph_key:
-    name: client.admin
-    output_format: plain
-    state: info
-  register: client_admin_key
-
-- name: list cephx keys
-  ceph_key:
-    state: list
 
 - name: fetch cephx keys
   ceph_key:
@@ -487,7 +469,7 @@ def run_module():
         cluster=dict(type='str', required=False, default='ceph'),
         name=dict(type='str', required=False),
         state=dict(type='str', required=False, default='present', choices=['present', 'update', 'absent',  # noqa: E501
-                                                                           'list', 'info', 'fetch_initial_keys', 'generate_secret']),  # noqa: E501
+                                                                           'fetch_initial_keys', 'generate_secret']),  # noqa: E501
         caps=dict(type='dict', required=False, default=None),
         secret=dict(type='str', required=False, default=None, no_log=True),
         import_key=dict(type='bool', required=False, default=True),
@@ -518,7 +500,7 @@ def run_module():
     output_format = module.params.get('output_format')
 
     # Can't use required_if with 'name' for some reason...
-    if state in ['present', 'absent', 'update', 'info'] and not name:
+    if state in ['present', 'absent', 'update'] and not name:
         fatal(f'"state" is "{state}" but "name" is not defined.', module)
 
     changed = False
@@ -625,14 +607,6 @@ def run_module():
             changed = True
         else:
             rc = 0
-
-    elif state == "info":
-        rc, cmd, out, err = exec_commands(
-            module, info_key(cluster, name, user, user_key_path, output_format, container_image))  # noqa: E501
-
-    elif state == "list":
-        rc, cmd, out, err = exec_commands(
-            module, list_keys(cluster, user, user_key_path, container_image))
 
     elif state == "fetch_initial_keys":
         hostname = socket.gethostname().split('.', 1)[0]
