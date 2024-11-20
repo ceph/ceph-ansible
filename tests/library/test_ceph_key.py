@@ -4,6 +4,7 @@ import mock
 import pytest
 import ca_test_common
 import ceph_key
+import ceph_key_info
 
 
 @mock.patch.dict(os.environ, {'CEPH_CONTAINER_BINARY': 'docker'})
@@ -537,7 +538,7 @@ class TestCephKeyModule(object):
         assert result == expected_result
 
     @mock.patch('ansible.module_utils.basic.AnsibleModule.exit_json')
-    @mock.patch('ceph_key.exec_commands')
+    @mock.patch('ceph_key_info.exec_commands')
     @pytest.mark.parametrize('output_format', ['json', 'plain', 'xml', 'yaml'])
     def test_state_info(self, m_exec_commands, m_exit_json, output_format):
         ca_test_common.set_module_args({"state": "info",
@@ -551,7 +552,7 @@ class TestCephKeyModule(object):
                                         'exported keyring for client.admin')
 
         with pytest.raises(ca_test_common.AnsibleExitJson) as result:
-            ceph_key.run_module()
+            ceph_key_info.run_module()
 
         result = result.value.args[0]
         assert not result['changed']
@@ -570,7 +571,7 @@ class TestCephKeyModule(object):
         m_fail_json.side_effect = ca_test_common.fail_json
 
         with pytest.raises(ca_test_common.AnsibleFailJson) as result:
-            ceph_key.run_module()
+            ceph_key_info.run_module()
 
         result = result.value.args[0]
         assert result['msg'] == 'value of output_format must be one of: json, plain, xml, yaml, got: {}'.format(invalid_format)
