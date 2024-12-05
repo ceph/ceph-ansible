@@ -26,7 +26,7 @@ class TestCephEcProfile(object):
             '--format=json'
         ]
 
-        assert ceph_ec_profile.get_profile(self.fake_module, self.fake_name) == expected_cmd
+        assert ceph_ec_profile.get_profile(self.fake_name) == expected_cmd
 
     @pytest.mark.parametrize("stripe_unit,crush_device_class,force", [(False, None, False),
                                                                       (32, None, True),
@@ -53,13 +53,18 @@ class TestCephEcProfile(object):
         if force:
             expected_cmd.append('--force')
 
-        assert ceph_ec_profile.create_profile(self.fake_module,
-                                              self.fake_name,
-                                              self.fake_k,
-                                              self.fake_m,
-                                              stripe_unit,
-                                              crush_device_class,
-                                              self.fake_cluster,
+        user_profile = {
+            "k": self.fake_k,
+            "m": self.fake_m
+        }
+
+        if stripe_unit:
+            user_profile["stripe_unit"] = stripe_unit
+        if crush_device_class:
+            user_profile["crush-device-class"] = crush_device_class
+
+        assert ceph_ec_profile.create_profile(self.fake_name,
+                                              user_profile,
                                               force) == expected_cmd
 
     def test_delete_profile(self):
@@ -72,8 +77,7 @@ class TestCephEcProfile(object):
             'rm', self.fake_name
             ]
 
-        assert ceph_ec_profile.delete_profile(self.fake_module,
-                                              self.fake_name,
+        assert ceph_ec_profile.delete_profile(self.fake_name,
                                               self.fake_cluster) == expected_cmd
 
     @patch('ansible.module_utils.basic.AnsibleModule.fail_json')
@@ -97,7 +101,7 @@ class TestCephEcProfile(object):
             ceph_ec_profile.run_module()
 
         result = r.value.args[0]
-        assert not result['changed']
+        assert result['changed']
         assert result['cmd'] == ['ceph', 'osd', 'erasure-code-profile', 'get', 'foo', '--format', 'json']
         assert result['stdout'] == '{"crush-device-class":"","crush-failure-domain":"host","crush-root":"default","jerasure-per-chunk-alignment":"false","k":"2","m":"4","plugin":"jerasure","stripe_unit":"32","technique":"reed_sol_van","w":"8"}'  # noqa: E501
         assert not result['stderr']

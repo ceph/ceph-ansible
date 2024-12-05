@@ -271,7 +271,7 @@ def create_user(module, container_image=None):
 
     if caps:
         caps_args = [f"{cap['type']}={cap['perm']}" for cap in caps]
-        args.extend(['--caps', ';'.join(caps_args)])
+        args.extend(['--caps=' + ';'.join(caps_args)])
 
     cmd = generate_radosgw_cmd(cluster=cluster,
                                args=args,
@@ -303,7 +303,7 @@ def caps_add(module, caps, container_image=None):
         args.extend(['--rgw-zone=' + zone])
 
     caps_args = [f"{cap['type']}={cap['perm']}" for cap in caps]
-    args.extend(['--caps', ';'.join(caps_args)])
+    args.extend(['--caps=' + ';'.join(caps_args)])
 
     cmd = generate_caps_cmd(cluster=cluster,
                             args=args,
@@ -335,7 +335,7 @@ def caps_rm(module, caps, container_image=None):
         args.extend(['--rgw-zone=' + zone])
 
     caps_args = [f"{cap['type']}={cap['perm']}" for cap in caps]
-    args.extend(['--caps', ';'.join(caps_args)])
+    args.extend(['--caps=' + ';'.join(caps_args)])
 
     cmd = generate_caps_cmd(cluster=cluster,
                             args=args,

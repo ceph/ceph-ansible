@@ -52,17 +52,23 @@ class TestCephCrushModule(object):
             ("root", "maroute"),
         ]
         expected_result_reverse = expected_result[::-1]
-        result = ceph_crush.sort_osd_crush_location(expected_result_reverse, None)
+        result = ceph_crush.sort_osd_crush_location(
+            expected_result_reverse, None)
         assert expected_result == result
 
     def test_generate_commands(self):
         cluster = "test"
         expected_command_list = [
-            ['ceph', '--cluster', cluster, 'osd', 'crush', "add-bucket", "monhost", "host"],
-            ['ceph', '--cluster', cluster, 'osd', 'crush', "add-bucket", "monchassis", "chassis"],
-            ['ceph', '--cluster', cluster, 'osd', 'crush', "move", "monhost", "chassis=monchassis"],
-            ['ceph', '--cluster', cluster, 'osd', 'crush', "add-bucket", "monrack", "rack"],
-            ['ceph', '--cluster', cluster, 'osd', 'crush', "move", "monchassis", "rack=monrack"],
+            ['ceph', '--cluster', cluster, 'osd',
+                'crush', "add-bucket", "monhost", "host"],
+            ['ceph', '--cluster', cluster, 'osd', 'crush',
+                "add-bucket", "monchassis", "chassis"],
+            ['ceph', '--cluster', cluster, 'osd', 'crush',
+                "move", "monhost", "chassis=monchassis"],
+            ['ceph', '--cluster', cluster, 'osd',
+                'crush', "add-bucket", "monrack", "rack"],
+            ['ceph', '--cluster', cluster, 'osd', 'crush',
+                "move", "monchassis", "rack=monrack"],
         ]
 
         location = [
@@ -70,18 +76,27 @@ class TestCephCrushModule(object):
             ("chassis", "monchassis"),
             ("rack", "monrack"),
         ]
-        result = ceph_crush.create_and_move_buckets_list(cluster, location)
+
+        crush_map = {"nodes": []}
+
+        result = ceph_crush.create_and_move_buckets_list(
+            cluster, location, crush_map)
         assert result == expected_command_list
 
     def test_generate_commands_container(self):
         cluster = "test"
         containerized = "docker exec -ti ceph-mon"
         expected_command_list = [
-            ['docker', 'exec', '-ti', 'ceph-mon', 'ceph', '--cluster', cluster, 'osd', 'crush', "add-bucket", "monhost", "host"],
-            ['docker', 'exec', '-ti', 'ceph-mon', 'ceph', '--cluster', cluster, 'osd', 'crush', "add-bucket", "monchassis", "chassis"],
-            ['docker', 'exec', '-ti', 'ceph-mon', 'ceph', '--cluster', cluster, 'osd', 'crush', "move", "monhost", "chassis=monchassis"],
-            ['docker', 'exec', '-ti', 'ceph-mon', 'ceph', '--cluster', cluster, 'osd', 'crush', "add-bucket", "monrack", "rack"],
-            ['docker', 'exec', '-ti', 'ceph-mon', 'ceph', '--cluster', cluster, 'osd', 'crush', "move", "monchassis", "rack=monrack"],
+            ['docker', 'exec', '-ti', 'ceph-mon', 'ceph', '--cluster',
+                cluster, 'osd', 'crush', "add-bucket", "monhost", "host"],
+            ['docker', 'exec', '-ti', 'ceph-mon', 'ceph', '--cluster',
+                cluster, 'osd', 'crush', "add-bucket", "monchassis", "chassis"],
+            ['docker', 'exec', '-ti', 'ceph-mon', 'ceph', '--cluster', cluster,
+                'osd', 'crush', "move", "monhost", "chassis=monchassis"],
+            ['docker', 'exec', '-ti', 'ceph-mon', 'ceph', '--cluster',
+                cluster, 'osd', 'crush', "add-bucket", "monrack", "rack"],
+            ['docker', 'exec', '-ti', 'ceph-mon', 'ceph', '--cluster',
+                cluster, 'osd', 'crush', "move", "monchassis", "rack=monrack"],
         ]
 
         location = [
@@ -89,5 +104,9 @@ class TestCephCrushModule(object):
             ("chassis", "monchassis"),
             ("rack", "monrack"),
         ]
-        result = ceph_crush.create_and_move_buckets_list(cluster, location, containerized)
+
+        crush_map = {"nodes": []}
+
+        result = ceph_crush.create_and_move_buckets_list(
+            cluster, location, crush_map, containerized)
         assert result == expected_command_list
