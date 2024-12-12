@@ -148,6 +148,15 @@
   become: True
   gather_facts: false
   tasks:
+    # workaround to prevent mon crash https://access.redhat.com/solutions/7020523
+    - name: Disable FSMap sanity checks before starting the upgrade
+      run_once: true
+      ceph_config:
+        action: set
+        who: mon
+        option: mon_mds_skip_sanity
+        value: true
+
     - name: upgrade ceph mon cluster
       block:
         - name: remove ceph aliases
@@ -1193,6 +1202,19 @@
       file:
         path: /etc/ceph/{{ cluster }}-crushmap
         state: absent
+
+- name: Remove FSMap sanity checks after the upgrade
+  hosts: "{{ mon_group_name|default('mons') }}"
+  become: True
+  gather_facts: false
+  tasks:
+    # workaround to prevent mon crash https://access.redhat.com/solutions/7020523
+    - name: Remove FSMap sanity checks
+      run_once: true
+      ceph_config:
+        action: rm
+        who: mon
+        option: mon_mds_skip_sanity
 
 - name: show ceph status
   hosts: "{{ mon_group_name|default('mons') }}"
