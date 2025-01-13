@@ -7,9 +7,9 @@ __metaclass__ = type
 
 from ansible.module_utils.basic import AnsibleModule  # type: ignore
 try:
-    from ansible.module_utils.ca_common import exit_module, generate_cmd, fatal, is_containerized  # type: ignore
+    from ansible.module_utils.ca_common import exit_module, generate_ceph_cmd, fatal, is_containerized  # type: ignore
 except ImportError:
-    from module_utils.ca_common import exit_module, generate_cmd, fatal, is_containerized  # type: ignore
+    from module_utils.ca_common import exit_module, generate_ceph_cmd, fatal, is_containerized  # type: ignore
 
 import datetime
 import json
@@ -93,7 +93,7 @@ def set_option(module,
     args = []
     args.extend([who, option, value])
 
-    cmd = generate_cmd(sub_cmd=['config', 'set'],
+    cmd = generate_ceph_cmd(sub_cmd=['config', 'set'],
                        args=args,
                        cluster=module.params.get('cluster'),
                        container_image=container_image)
@@ -111,7 +111,7 @@ def rm_option(module,
     args = []
     args.extend([who, option])
 
-    cmd = generate_cmd(sub_cmd=['config', 'rm'],
+    cmd = generate_ceph_cmd(sub_cmd=['config', 'rm'],
                        args=args,
                        cluster=module.params.get('cluster'),
                        container_image=container_image)
@@ -122,7 +122,7 @@ def rm_option(module,
 
 
 def get_config_dump(module, container_image=None):
-    cmd = generate_cmd(sub_cmd=['config', 'dump', '--format', 'json'],
+    cmd = generate_ceph_cmd(sub_cmd=['config', 'dump', '--format', 'json'],
                        args=[],
                        cluster=module.params.get('cluster'),
                        container_image=container_image)
