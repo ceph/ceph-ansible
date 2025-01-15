@@ -156,6 +156,9 @@
         who: mon
         option: mon_mds_skip_sanity
         value: true
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}" 
 
     - name: upgrade ceph mon cluster
       block:
@@ -1215,6 +1218,9 @@
         action: rm
         who: mon
         option: mon_mds_skip_sanity
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}" 
 
 - name: show ceph status
   hosts: "{{ mon_group_name|default('mons') }}"
