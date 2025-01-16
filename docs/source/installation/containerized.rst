@@ -31,7 +31,7 @@ You can configure your own container register, image and tag by using the ``ceph
 
    ceph_docker_registry: quay.io
    ceph_docker_image: ceph/daemon
-   ceph_docker_image_tag: latest
+   ceph_docker_image_tag: latest-squid
 
 .. note::
 
