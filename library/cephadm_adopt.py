@@ -84,7 +84,7 @@ EXAMPLES = '''
   cephadm_adopt:
     name: mon.foo
     style: legacy
-    image: quay.io/ceph/daemon-base:latest-squid-devel
+    image: quay.io/ceph/ceph:v19
     pull: false
     firewalld: false
 
@@ -93,7 +93,7 @@ EXAMPLES = '''
     name: mon.foo
     style: legacy
   environment:
-    CEPHADM_IMAGE: quay.io/ceph/daemon-base:latest-squid-devel
+    CEPHADM_IMAGE: quay.io/ceph/ceph:v19
 '''
 
 RETURN = '''#  '''
