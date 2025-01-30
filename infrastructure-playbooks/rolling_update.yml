@@ -174,9 +174,24 @@
   become: true
   gather_facts: false
   tasks:
+<<<<<<< HEAD
     - name: Import ceph-defaults role
       ansible.builtin.import_role:
         name: ceph-defaults
+=======
+    # workaround to prevent mon crash https://access.redhat.com/solutions/7020523
+    - name: Disable FSMap sanity checks before starting the upgrade
+      run_once: true
+      ceph_config:
+        action: set
+        who: mon
+        option: mon_mds_skip_sanity
+        value: true
+        cluster: "{{ cluster }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}" 
+>>>>>>> d992c8a8 (Pass cluster in rolling_update call to ceph_config)
 
     - name: Upgrade ceph mon cluster
       block:
@@ -1396,7 +1411,28 @@
         path: /etc/ceph/{{ cluster }}-crushmap
         state: absent
 
+<<<<<<< HEAD
 - name: Show ceph status
+=======
+- name: Remove FSMap sanity checks after the upgrade
+  hosts: "{{ mon_group_name|default('mons') }}"
+  become: True
+  gather_facts: false
+  tasks:
+    # workaround to prevent mon crash https://access.redhat.com/solutions/7020523
+    - name: Remove FSMap sanity checks
+      run_once: true
+      ceph_config:
+        action: rm
+        who: mon
+        option: mon_mds_skip_sanity
+        cluster: "{{ cluster }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}" 
+
+- name: show ceph status
+>>>>>>> d992c8a8 (Pass cluster in rolling_update call to ceph_config)
   hosts: "{{ mon_group_name|default('mons') }}"
   tags: always
   become: true
