@@ -476,6 +476,7 @@
         - name: Set_fact admin_rbd_cmd
           ansible.builtin.set_fact:
             admin_rbd_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph:/var/lib/ceph:z -v /var/run/ceph:/var/run/ceph:z --entrypoint=rbd ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else 'ceph' }} --cluster {{ cluster }}"
+
         - name: Get mirror pool info
           ansible.builtin.command: "{{ rbd_cmd }} mirror pool info {{ ceph_rbd_mirror_pool }} --format json"
           register: mirror_pool_info
@@ -544,8 +545,6 @@
                 path: "{{ tmp_file.path }}"
                 state: absent
               delegate_to: "{{ groups.get(mon_group_name | default('mons'))[0] }}"
-
-
 - name: Adopt ceph mon daemons
   hosts: "{{ mon_group_name|default('mons') }}"
   serial: 1
@@ -1157,7 +1156,6 @@
         - /etc/systemd/system/ceph-rbd-mirror@.service.d
         - /etc/systemd/system/ceph-rbd-mirror.target
 
-
 - name: Redeploy ceph-crash daemons
   hosts:
     - "{{ mon_group_name|default('mons') }}"
@@ -1194,7 +1192,6 @@
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-
 - name: Redeploy ceph-exporter daemons
   hosts:
     - "{{ mon_group_name|default('mons') }}"
@@ -1230,8 +1227,6 @@
       delegate_to: '{{ groups[mon_group_name][0] }}'
       environment:
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
-
-
 - name: Redeploy alertmanager/grafana/prometheus daemons
   hosts: "{{ monitoring_group_name|default('monitoring') }}"
   serial: 1
@@ -1278,7 +1273,6 @@
           with_items:
             - "{{ alertmanager_data_dir }}"
             - "{{ prometheus_data_dir }}"
-
         # (workaround) cephadm adopt alertmanager only stops prometheus-alertmanager systemd service
         - name: Stop and disable alertmanager systemd unit
           ansible.builtin.service:
@@ -1444,7 +1438,6 @@
           environment:
             CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
-
 - name: Adjust placement daemons
   hosts: "{{ mon_group_name|default('mons') }}[0]"
   become: true
@@ -1506,7 +1499,7 @@
             fsid: "{{ fsid }}"
             cluster: "{{ cluster }}"
             spec: |
-              service_name: prometheus
+              service_type: prometheus
               service_id: "{{ ansible_facts['hostname'] }}"
               placement:
                 label: {{ monitoring_group_name }}
