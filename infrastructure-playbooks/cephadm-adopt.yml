@@ -1531,8 +1531,7 @@
                 label: "{{ monitoring_group_name }}"
                 count: {{ groups.get(monitoring_group_name, []) | length }}
               {% if grafana_server_addr is defined %}
-              networks:
-              - {{ grafana_server_addr }}
+              networks: {{ grafana_server_addr.split(',') | list if ',' in grafana_server_addr else grafana_server_addr | string }}
               {% endif %}
           delegate_to: "{{ groups[mon_group_name][0] }}"
           environment:
@@ -1554,6 +1553,9 @@
               placement:
                 label: {{ monitoring_group_name }}
                 count: {{ groups.get(monitoring_group_name, []) | length }}
+              {% if grafana_server_addr is defined %}
+              networks: {{ grafana_server_addr.split(',') | list if ',' in grafana_server_addr else grafana_server_addr | string }}
+              {% endif %}
               {% if prometheus_port is defined and prometheus_port != 9095 %}
               spec:
                 port: {{ prometheus_port }}
