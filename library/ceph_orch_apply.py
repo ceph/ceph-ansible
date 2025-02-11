@@ -23,9 +23,9 @@ import yaml
 
 from ansible.module_utils.basic import AnsibleModule  # type: ignore
 try:
-    from ansible.module_utils.ca_common import exit_module, build_base_cmd_orch  # type: ignore
+    from ansible.module_utils.ca_common import exit_module, build_base_cmd  # type: ignore
 except ImportError:
-    from module_utils.ca_common import exit_module, build_base_cmd_orch
+    from module_utils.ca_common import exit_module, build_base_cmd
 
 
 ANSIBLE_METADATA = {
@@ -49,6 +49,10 @@ options:
     image:
         description:
             - The Ceph container image to use.
+        required: false
+    cluster:
+        description:
+            - The Ceph cluster name. Defaults to ceph
         required: false
     spec:
         description:
@@ -81,8 +85,13 @@ def parse_spec(spec: str) -> Dict:
 def retrieve_current_spec(module: AnsibleModule, expected_spec: Dict) -> Dict:
     """ retrieve current config of the service """
     service: str = expected_spec["service_type"]
-    cmd = build_base_cmd_orch(module)
-    cmd.extend(['ls', service])
+    cmd = build_base_cmd(module)
+    cluster = module.params.get('cluster')
+    if cluster != 'ceph':
+        conf_path = f"/etc/ceph/{cluster}.conf"
+        keyring_path = f"/etc/ceph/{cluster}.client.admin.keyring"
+        cmd.extend(['--config', conf_path, '--keyring', keyring_path])
+    cmd.extend(['ceph', 'orch', 'ls', service])
     if 'service_name' in expected_spec:
         cmd.extend([expected_spec["service_name"]])
     else:
@@ -98,8 +107,13 @@ def retrieve_current_spec(module: AnsibleModule, expected_spec: Dict) -> Dict:
 
 def apply_spec(module: "AnsibleModule",
                data: str) -> Tuple[int, List[str], str, str]:
-    cmd = build_base_cmd_orch(module)
-    cmd.extend(['apply', '-i', '-'])
+    cmd = build_base_cmd(module)
+    cluster = module.params.get('cluster')
+    if cluster != 'ceph':
+        conf_path = f"/etc/ceph/{cluster}.conf"
+        keyring_path = f"/etc/ceph/{cluster}.client.admin.keyring"
+        cmd.extend(['--config', conf_path, '--keyring', keyring_path])
+    cmd.extend(['ceph', 'orch', 'apply', '-i', '-'])
     rc, out, err = module.run_command(cmd, data=data)
 
     if rc:
@@ -131,7 +145,9 @@ def run_module() -> None:
         docker=dict(type=bool,
                     required=False,
                     default=False),
-        image=dict(type='str', required=False)
+        image=dict(type='str', required=False),
+        cluster=dict(type='str', required=False,
+                     default='ceph')
     )
 
     module = AnsibleModule(
