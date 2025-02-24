@@ -180,6 +180,12 @@
   run_once: true
   with_items: '{{ groups[mgr_group_name] | default(groups[mon_group_name]) }}'
 
+- name: Config dashboard standby behavior
+  ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} mgr/dashboard/standby_behaviour {{ dashboard_standby_behavior }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  changed_when: false
+  run_once: true
+
 - name: Disable mgr dashboard module (restart)
   ceph_mgr_module:
     name: dashboard
