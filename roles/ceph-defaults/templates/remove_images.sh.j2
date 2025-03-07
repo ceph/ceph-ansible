@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Validate input
+if [ -z "$1" ]; then
+    echo "Error: No container binary provided (docker or podman)"
+    exit 1
+fi
+
+CONTAINER_BIN=$1  # First argument to script (docker or podman)
+
+# List of images to remove
+IMAGES=(
+    "{{ alertmanager_container_image }}"
+    "{{ prometheus_container_image }}"
+    "{{ grafana_container_image }}"
+)
+
+# Loop through and remove each image
+for image in "${IMAGES[@]}"; do
+    $CONTAINER_BIN rmi "$image"
+done

@@ -132,12 +132,20 @@
         - /run/prometheus.service-cid
         - /run/grafana-server.service-cid
 
-    - name: Remove ceph dashboard container images
-      ansible.builtin.command: "{{ container_binary }} rmi {{ item }}"
-      loop:
-        - "{{ alertmanager_container_image }}"
-        - "{{ prometheus_container_image }}"
-        - "{{ grafana_container_image }}"
+    #included this task changed the following task as part of fix for issue #11863.
+    #this reduces SSH & Subprocess Overhead of the previous implementation which was spawning multiple SSH sessions for each docker rmi command
+    #with this change we now transfer and execute a single script.
+    #We avoids repetitive command module calls in Ansible. These changes make it more efficient and performant
+
+    - name: Generate remove_images.sh script dynamically
+      ansible.builtin.template:
+        src: remove_images.sh.j2
+        dest: /tmp/remove_images.sh
+        mode: "0755"
+
+    - name: Execute the ceph dashboard container image removal shell script
+      ansible.builtin.command: /tmp/remove_images.sh {{ container_binary }}
+      become: true
       changed_when: false
       failed_when: false
 
