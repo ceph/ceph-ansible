@@ -14,4 +14,8 @@ example:
    $ ansible-playbook -vv -i hosts infrastructure-playbooks/rolling_update.yml
 
 .. note::
-   This playbook isn't intended to be run with the ``--limit`` ansible option.
+   You can use the ``--limit`` flag with the rolling-update playbook to target
+   a subset of OSDs or mons. For example::
+
+      ansible-playbook -vv -i hosts infrastructure-playbooks/rolling_update.yml \
+         --limit mon1 --tags=mons
