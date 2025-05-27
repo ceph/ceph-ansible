@@ -485,12 +485,6 @@
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       block:
-        - name: Get pool list
-          ansible.builtin.command: "{{ ceph_cmd }} --cluster {{ cluster }} osd pool ls detail -f json"
-          register: pool_list
-          changed_when: false
-          check_mode: false
-
         - name: Get balancer module status
           ansible.builtin.command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer status -f json"
           register: balancer_status_update
@@ -498,28 +492,10 @@
           changed_when: false
           check_mode: false
 
-        - name: Set_fact pools_pgautoscaler_mode
-          ansible.builtin.set_fact:
-            pools_pgautoscaler_mode: "{{ pools_pgautoscaler_mode | default([]) | union([{'name': item.pool_name, 'mode': item.pg_autoscale_mode}]) }}"
-          with_items: "{{ pool_list.stdout | default('{}') | from_json }}"
-
         - name: Disable balancer
           ansible.builtin.command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer off"
           changed_when: false
           when: (balancer_status_update.stdout | from_json)['active'] | bool
-
-        - name: Disable pg autoscale on pools
-          ceph_pool:
-            name: "{{ item.name }}"
-            cluster: "{{ cluster }}"
-            pg_autoscale_mode: false
-          with_items: "{{ pools_pgautoscaler_mode }}"
-          when:
-            - pools_pgautoscaler_mode is defined
-            - item.mode == 'on'
-          environment:
-            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
         - name: Set osd flags
           ceph_osd_flag:
@@ -531,6 +507,7 @@
           with_items:
             - noout
             - nodeep-scrub
+            - noautoscale
 
 - name: Upgrade ceph osds cluster
   vars:
@@ -643,19 +620,6 @@
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       block:
-        - name: Re-enable pg autoscale on pools
-          ceph_pool:
-            name: "{{ item.name }}"
-            cluster: "{{ cluster }}"
-            pg_autoscale_mode: true
-          with_items: "{{ pools_pgautoscaler_mode }}"
-          when:
-            - pools_pgautoscaler_mode is defined
-            - item.mode == 'on'
-          environment:
-            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
-            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-
         - name: Unset osd flags
           ceph_osd_flag:
             name: "{{ item }}"
@@ -667,6 +631,7 @@
           with_items:
             - noout
             - nodeep-scrub
+            - noautoscale
 
         - name: Re-enable balancer
           ansible.builtin.command: "{{ ceph_cmd }} --cluster {{ cluster }} balancer on"
