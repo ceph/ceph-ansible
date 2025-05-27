@@ -39,7 +39,7 @@ class TestCephOSDFlagModule(object):
         result = result.value.args[0]
         assert result['msg'] == ('value of name must be one of: noup, nodown, '
                                  'noout, nobackfill, norebalance, norecover, '
-                                 'noscrub, nodeep-scrub, got: {}'.format(invalid_flag))
+                                 'noscrub, nodeep-scrub, noautoscale, got: {}'.format(invalid_flag))
 
     @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
     def test_with_check_mode(self, m_exit_json):
