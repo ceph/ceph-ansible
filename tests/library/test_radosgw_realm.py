@@ -118,7 +118,8 @@ class TestRadosgwRealmModule(object):
             '--rgw-realm=' + fake_realm,
             '--url=' + fake_url,
             '--access-key=' + fake_access_key,
-            '--secret=' + fake_secret_key
+            '--secret=' + fake_secret_key,
+            '--default'
         ]
 
         assert radosgw_realm.pull_realm(fake_module) == expected_cmd
