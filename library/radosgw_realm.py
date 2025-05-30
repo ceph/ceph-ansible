@@ -233,6 +233,7 @@ def pull_realm(module, container_image=None):
     url = module.params.get('url')
     access_key = module.params.get('access_key')
     secret_key = module.params.get('secret_key')
+    default = module.params.get('default', False)
 
     args = [
         'pull',
@@ -241,6 +242,8 @@ def pull_realm(module, container_image=None):
         '--access-key=' + access_key,
         '--secret=' + secret_key
     ]
+    if default:
+        args.append('--default')
 
     cmd = generate_radosgw_cmd(cluster=cluster,
                                args=args,
