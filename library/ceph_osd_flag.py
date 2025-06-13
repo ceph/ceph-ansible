@@ -83,7 +83,7 @@ RETURN = '''#  '''
 def main():
     module = AnsibleModule(
         argument_spec=dict(
-            name=dict(type='str', required=True, choices=['noup', 'nodown', 'noout', 'nobackfill', 'norebalance', 'norecover', 'noscrub', 'nodeep-scrub']),  # noqa: E501
+            name=dict(type='str', required=True, choices=['noup', 'nodown', 'noout', 'nobackfill', 'norebalance', 'norecover', 'noscrub', 'nodeep-scrub', 'noautoscale']),  # noqa: E501
             cluster=dict(type='str', required=False, default='ceph'),
             state=dict(type='str', required=False, default='present', choices=['present', 'absent']),  # noqa: E501
         ),
