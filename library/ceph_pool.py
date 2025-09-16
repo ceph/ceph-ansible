@@ -441,13 +441,15 @@ def create_pool(cluster,
     args = ['create', user_pool_config['pool_name']['value'],
             user_pool_config['type']['value']]
 
-    if user_pool_config['pg_autoscale_mode']['value'] == 'off':
+    pg_autoscale_mode = user_pool_config['pg_autoscale_mode']['value']
+    if pg_autoscale_mode in ['off', 'warn']:
         args.extend(['--pg_num',
                      user_pool_config['pg_num']['value'],
                      '--pgp_num',
                      user_pool_config['pgp_num']['value'] or
                      user_pool_config['pg_num']['value']])
-    elif user_pool_config['target_size_ratio']['value']:
+
+    if pg_autoscale_mode in ['on', 'warn'] and user_pool_config['target_size_ratio']['value']:
         args.extend(['--target_size_ratio',
                      user_pool_config['target_size_ratio']['value']])
 
