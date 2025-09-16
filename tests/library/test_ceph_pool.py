@@ -669,6 +669,66 @@ class TestCephPoolModule(object):
 
         assert cmd == expected_command
 
+    @pytest.mark.parametrize("target_size_ratio", ['', '0.3'])
+    @pytest.mark.parametrize("pg_num", ['0', '32'])
+    @pytest.mark.parametrize("pg_autoscale_mode", ["on", "off", "warn"])
+    def test_create_pool_autoscale_pgnum_targetsize(self, pg_autoscale_mode, pg_num, target_size_ratio):
+        self.fake_user_pool_config['type']['value'] = 'erasure'
+        self.fake_user_pool_config['erasure_profile']['value'] = 'erasure-default'
+        self.fake_user_pool_config['crush_rule']['value'] = 'erasure_rule'
+        self.fake_user_pool_config['pg_autoscale_mode']['value'] = pg_autoscale_mode
+        self.fake_user_pool_config['pg_num']['value'] = pg_num
+        self.fake_user_pool_config['pgp_num']['value'] = pg_num
+        self.fake_user_pool_config['target_size_ratio']['value'] = target_size_ratio
+
+        expected_command = [
+                'podman',
+                'run',
+                '--rm',
+                '--net=host',
+                '-v',
+                '/etc/ceph:/etc/ceph:z',
+                '-v',
+                '/var/lib/ceph/:/var/lib/ceph/:z',
+                '-v',
+                '/var/log/ceph/:/var/log/ceph/:z',
+                '--entrypoint=ceph',
+                fake_container_image_name,
+                '-n',
+                fake_user,
+                '-k',
+                fake_user_key,
+                '--cluster',
+                fake_cluster_name,
+                'osd',
+                'pool',
+                'create',
+                self.fake_user_pool_config['pool_name']['value'],
+                self.fake_user_pool_config['type']['value'],
+        ]
+
+        if pg_autoscale_mode in ['off', 'warn']:
+            expected_command.extend(['--pg_num', pg_num])
+            expected_command.extend(['--pgp_num', pg_num])
+
+        if pg_autoscale_mode in ['on', 'warn'] and target_size_ratio:
+            expected_command.extend(['--target_size_ratio', target_size_ratio])
+
+        expected_command.extend([
+            self.fake_user_pool_config['erasure_profile']['value'],
+            self.fake_user_pool_config['crush_rule']['value'],
+            '--expected_num_objects',
+            self.fake_user_pool_config['expected_num_objects']['value'],
+            '--autoscale-mode',
+            self.fake_user_pool_config['pg_autoscale_mode']['value']
+        ])
+
+        cmd = ceph_pool.create_pool(fake_cluster_name,
+                                    fake_user, fake_user_key, self.fake_user_pool_config,
+                                    container_image=fake_container_image_name)
+
+        assert cmd == expected_command
+
     def test_remove_pool(self):
         expected_command = [
                 'podman',
