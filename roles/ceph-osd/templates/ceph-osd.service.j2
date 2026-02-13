@@ -26,13 +26,13 @@ ExecStart=/bin/bash /var/lib/ceph/osd/{{ cluster }}-%i/run %t %n
 {% if container_binary == 'podman' %}
 ExecStop=-/usr/bin/sh -c "/usr/bin/{{ container_binary }} rm -f `cat /%t/%n-cid`"
 {% else %}
-ExecStop=-/usr/bin/{{ container_binary }} stop ceph-osd-%i
+ExecStop=-/usr/bin/{{ container_binary }} stop --timeout 120 ceph-osd-%i
 {% endif %}
 KillMode=none
 Restart=always
 RestartSec=10s
 TimeoutStartSec=120
-TimeoutStopSec=15
+TimeoutStopSec=120
 {% if container_binary == 'podman' %}
 Type=forking
 PIDFile=/%t/%n-pid
