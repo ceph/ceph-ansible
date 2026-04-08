@@ -79,6 +79,19 @@ options:
         description:
             - name of the max_mds attribute.
         required: false
+    max_file_size:
+        description:
+            - Maximum allowed file size for the filesystem.
+        required: false
+    allow_standby_replay:
+        description:
+            - Whether this CephFS allows standby-replay daemons.
+        required: false
+    info_param:
+        description:
+            - When C(state=info), return only a single parsed field in C(value).
+        required: false
+        choices: ['allow_standby_replay', 'max_mds', 'max_file_size', 'mds_in_count', 'mds_in_ranks']
 
 
 author:
@@ -181,16 +194,14 @@ def fail_fs(module, container_image=None):
     return cmd
 
 
-def set_fs(module, container_image=None):
+def set_fs(module, param, value, container_image=None):
     '''
     Set parameter to a fs
     '''
 
     cluster = module.params.get('cluster')
     name = module.params.get('name')
-    max_mds = module.params.get('max_mds')
-
-    args = ['set', name, 'max_mds', str(max_mds)]
+    args = ['set', name, str(param), str(value)]
 
     cmd = generate_cmd(sub_cmd=['fs'],
                        args=args,
@@ -198,6 +209,32 @@ def set_fs(module, container_image=None):
                        container_image=container_image)
 
     return cmd
+
+
+def get_allow_standby_replay(fs):
+    '''
+    Return allow_standby_replay from fs json payload
+    '''
+
+    mdsmap = fs.get('mdsmap', {})
+    flags_state = mdsmap.get('flags_state', {})
+    return bool(flags_state.get('allow_standby_replay', mdsmap.get('allow_standby_replay', False)))
+
+
+def parse_fs_info(out):
+    '''
+    Parse fs info output and return useful fields for playbooks.
+    '''
+
+    fs = json.loads(out)
+    mdsmap = fs.get('mdsmap', {})
+    return {
+        'allow_standby_replay_current': get_allow_standby_replay(fs),
+        'max_mds_current': mdsmap.get('max_mds'),
+        'max_file_size_current': mdsmap.get('max_file_size'),
+        'mds_in_ranks_current': mdsmap.get('in', []),
+        'mds_in_count_current': len(mdsmap.get('in', [])),
+    }
 
 
 def run_module():
@@ -208,6 +245,9 @@ def run_module():
         data=dict(type='str', required=False),
         metadata=dict(type='str', required=False),
         max_mds=dict(type='int', required=False),
+        max_file_size=dict(type='int', required=False),
+        allow_standby_replay=dict(type='bool', required=False),
+        info_param=dict(type='str', required=False, choices=['allow_standby_replay', 'max_mds', 'max_file_size', 'mds_in_count', 'mds_in_ranks']),
     )
 
     module = AnsibleModule(
@@ -220,6 +260,9 @@ def run_module():
     name = module.params.get('name')
     state = module.params.get('state')
     max_mds = module.params.get('max_mds')
+    max_file_size = module.params.get('max_file_size')
+    allow_standby_replay = module.params.get('allow_standby_replay')
+    info_param = module.params.get('info_param')
 
     if module.check_mode:
         module.exit_json(
@@ -243,13 +286,25 @@ def run_module():
         if rc == 0:
             fs = json.loads(out)
             if max_mds and fs["mdsmap"]["max_mds"] != max_mds:
-                rc, cmd, out, err = exec_command(module, set_fs(module, container_image=container_image))  # noqa: E501
+                rc, cmd, out, err = exec_command(module, set_fs(module, 'max_mds', max_mds, container_image=container_image))  # noqa: E501
+                if rc == 0:
+                    changed = True
+            if max_file_size is not None and fs["mdsmap"]["max_file_size"] != max_file_size:
+                rc, cmd, out, err = exec_command(module, set_fs(module, 'max_file_size', max_file_size, container_image=container_image))  # noqa: E501
+                if rc == 0:
+                    changed = True
+            if allow_standby_replay is not None and get_allow_standby_replay(fs) != allow_standby_replay:
+                rc, cmd, out, err = exec_command(module, set_fs(module, 'allow_standby_replay', 'true' if allow_standby_replay else 'false', container_image=container_image))  # noqa: E501
                 if rc == 0:
                     changed = True
         else:
             rc, cmd, out, err = exec_command(module, create_fs(module, container_image=container_image))  # noqa: E501
             if max_mds and max_mds > 1:
-                exec_command(module, set_fs(module, container_image=container_image))  # noqa: E501
+                exec_command(module, set_fs(module, 'max_mds', max_mds, container_image=container_image))  # noqa: E501
+            if max_file_size is not None:
+                exec_command(module, set_fs(module, 'max_file_size', max_file_size, container_image=container_image))  # noqa: E501
+            if allow_standby_replay:
+                exec_command(module, set_fs(module, 'allow_standby_replay', 'true', container_image=container_image))  # noqa: E501
             if rc == 0:
                 changed = True
 
@@ -266,6 +321,38 @@ def run_module():
 
     elif state == "info":
         rc, cmd, out, err = exec_command(module, get_fs(module, container_image=container_image))  # noqa: E501
+        if rc == 0:
+            endd = datetime.datetime.now()
+            delta = endd - startd
+            parsed = parse_fs_info(out)
+            if info_param == 'allow_standby_replay':
+                value = parsed['allow_standby_replay_current']
+            elif info_param == 'max_mds':
+                value = parsed['max_mds_current']
+            elif info_param == 'max_file_size':
+                value = parsed['max_file_size_current']
+            elif info_param == 'mds_in_count':
+                value = parsed['mds_in_count_current']
+            elif info_param == 'mds_in_ranks':
+                value = parsed['mds_in_ranks_current']
+            else:
+                value = None
+            module.exit_json(
+                cmd=cmd,
+                start=str(startd),
+                end=str(endd),
+                delta=str(delta),
+                rc=rc,
+                stdout=out.rstrip("\r\n"),
+                stderr=err.rstrip("\r\n"),
+                changed=changed,
+                allow_standby_replay_current=parsed['allow_standby_replay_current'],
+                max_mds_current=parsed['max_mds_current'],
+                max_file_size_current=parsed['max_file_size_current'],
+                mds_in_count_current=parsed['mds_in_count_current'],
+                mds_in_ranks_current=parsed['mds_in_ranks_current'],
+                value=value,
+            )
 
     exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed)  # noqa: E501
 

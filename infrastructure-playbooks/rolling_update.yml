@@ -579,6 +579,7 @@
       environment:
         CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
       when: not containerized_deployment | bool
+        and ceph_stable_release == 'nautilus'
 
     - name: Activate scanned ceph-disk osds and migrate to ceph-volume if deploying nautilus
       ceph_volume_simple_activate:
@@ -587,6 +588,7 @@
       environment:
         CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
       when: not containerized_deployment | bool
+        and ceph_stable_release == 'nautilus'
 
     - name: Waiting for clean pgs...
       ansible.builtin.command: "{{ container_exec_cmd_update_osd | default('') }} ceph --cluster {{ cluster }} pg stat --format json"
@@ -655,6 +657,18 @@
           ansible.builtin.import_role:
             name: ceph-facts
 
+        - name: Disable allow_standby_replay during rolling mds upgrade
+          ceph_fs:
+            name: "{{ cephfs }}"
+            cluster: "{{ cluster }}"
+            data: "{{ cephfs_data_pool.name }}"
+            metadata: "{{ cephfs_metadata_pool.name }}"
+            allow_standby_replay: false
+          environment:
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+          when: _cephfs_info.value | default(false) | bool
+
         - name: Deactivate all mds rank > 0 if any
           when: groups.get(mds_group_name, []) | length > 1
           block:
@@ -674,10 +688,11 @@
                 name: "{{ cephfs }}"
                 cluster: "{{ cluster }}"
                 state: info
+                info_param: mds_in_ranks
               register: wait_rank_zero
               retries: 720
               delay: 5
-              until: (wait_rank_zero.stdout | from_json).mdsmap.in | length == 1 and (wait_rank_zero.stdout | from_json).mdsmap.in[0]  == 0
+              until: (wait_rank_zero.value | default([]) | length) == 1 and (wait_rank_zero.value | default([]) | first) == 0
               environment:
                 CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
                 CEPH_CONTAINER_BINARY: "{{ container_binary }}"
@@ -706,33 +721,6 @@
                 ansible_port: "{{ hostvars[item]['ansible_port'] | default(omit) }}"
               with_items: "{{ groups[mds_group_name] | difference(mds_active_host) }}"
 
-            - name: Stop standby ceph mds
-              ansible.builtin.systemd:
-                name: "ceph-mds@{{ hostvars[item]['ansible_facts']['hostname'] }}"
-                state: stopped
-                enabled: false
-              delegate_to: "{{ item }}"
-              with_items: "{{ groups['standby_mdss'] }}"
-              when: groups['standby_mdss'] | default([]) | length > 0
-
-            # dedicated task for masking systemd unit
-            # somehow, having a single task doesn't work in containerized context
-            - name: Mask systemd units for standby ceph mds
-              ansible.builtin.systemd:
-                name: "ceph-mds@{{ hostvars[item]['ansible_facts']['hostname'] }}"
-                masked: true
-              delegate_to: "{{ item }}"
-              with_items: "{{ groups['standby_mdss'] }}"
-              when: groups['standby_mdss'] | default([]) | length > 0
-
-            - name: Wait until all standbys mds are stopped
-              ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs dump -f json"
-              changed_when: false
-              register: wait_standbys_down
-              retries: 300
-              delay: 5
-              until: (wait_standbys_down.stdout | from_json).standbys | length == 0
-
         - name: Create active_mdss group
           ansible.builtin.add_host:
             name: "{{ mds_active_host[0] if mds_active_host is defined else groups.get(mds_group_name)[0] }}"
@@ -741,10 +729,10 @@
             ansible_port: "{{ hostvars[mds_active_host[0] if mds_active_host is defined else groups.get(mds_group_name)[0]]['ansible_port'] | default(omit) }}"
 
 
-- name: Upgrade active mds
+- name: Upgrade standby ceph mdss cluster
   vars:
     upgrade_ceph_packages: true
-  hosts: active_mdss
+  hosts: standby_mdss
   tags: mdss
   become: true
   gather_facts: false
@@ -760,9 +748,17 @@
     - name: Prevent restart from the packaging
       ansible.builtin.systemd:
         name: ceph-mds@{{ ansible_facts['hostname'] }}
+        state: stopped
         enabled: false
         masked: true
       when: not containerized_deployment | bool
+
+    - name: Stop standby mds before package upgrade (containerized)
+      ansible.builtin.systemd:
+        name: ceph-mds@{{ ansible_facts['hostname'] }}
+        state: stopped
+      changed_when: false
+      when: containerized_deployment | bool
 
     - name: Import ceph-handler role
       ansible.builtin.import_role:
@@ -786,23 +782,10 @@
       ansible.builtin.import_role:
         name: ceph-mds
 
-    - name: Restart ceph mds
-      ansible.builtin.systemd:
-        name: ceph-mds@{{ ansible_facts['hostname'] }}
-        state: restarted
-        enabled: true
-        masked: false
-      when: not containerized_deployment | bool
-
-    - name: Restart active mds
-      ansible.builtin.command: "{{ container_binary }} stop ceph-mds-{{ ansible_facts['hostname'] }}"
-      changed_when: false
-      when: containerized_deployment | bool
-
-- name: Upgrade standbys ceph mdss cluster
+- name: Upgrade active mds
   vars:
     upgrade_ceph_packages: true
-  hosts: standby_mdss
+  hosts: active_mdss
   tags: mdss
   become: true
   gather_facts: false
@@ -816,12 +799,91 @@
       ansible.builtin.import_role:
         name: ceph-facts
 
+    - name: Get CephFS status before deciding failover wait
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs status {{ cephfs }} -f json"
+      register: _mds_fs_status_initial
+      changed_when: false
+      when: groups.get('standby_mdss', []) | length > 0
+
+    - name: Set_fact mds_failover_expected
+      ansible.builtin.set_fact:
+        mds_failover_expected: >-
+          {{
+            (
+              ((_mds_fs_status_initial.stdout | default('{}') | from_json).standbys | default([]) | length) > 0
+            ) or (
+              ((_mds_fs_status_initial.stdout | default('{}') | from_json).mdsmap | default([])
+                | selectattr('state', 'in', ['standby', 'up:standby']) | list | length) > 0
+            )
+          }}
+      when: groups.get('standby_mdss', []) | length > 0
+
+    - name: Wait for CephFS standby before forcing failover
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs status {{ cephfs }} -f json"
+      register: _mds_fs_status_before_failover
+      changed_when: false
+      retries: 60
+      delay: 5
+      until: >-
+        (
+          ((_mds_fs_status_before_failover.stdout | from_json).standbys | default([]) | length) > 0
+        ) or (
+          ((_mds_fs_status_before_failover.stdout | from_json).mdsmap | default([])
+            | selectattr('state', 'in', ['standby', 'up:standby']) | list | length) > 0
+        )
+      when:
+        - groups.get('standby_mdss', []) | length > 0
+        - mds_failover_expected | default(false) | bool
+
+    - name: Set_fact mds_failover_ready
+      ansible.builtin.set_fact:
+        mds_failover_ready: "{{ mds_failover_expected | default(false) | bool }}"
+      when: groups.get('standby_mdss', []) | length > 0
+
+    - name: Skip forced failover when no standby daemon was initially available for this filesystem
+      ansible.builtin.debug:
+        msg: "No standby MDS detected for filesystem {{ cephfs }} before upgrade; skipping forced failover and continuing with in-place upgrade path."
+      when:
+        - groups.get('standby_mdss', []) | length > 0
+        - not (mds_failover_expected | default(false) | bool)
+
+    - name: Trigger MDS failover before upgrading active daemon
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} mds fail {{ ansible_facts['hostname'] }}"
+      changed_when: false
+      failed_when: false
+      when:
+        - groups.get('standby_mdss', []) | length > 0
+        - mds_failover_ready | default(false) | bool
+
+    - name: Stop active mds immediately after failover (non-containerized)
+      ansible.builtin.systemd:
+        name: ceph-mds@{{ ansible_facts['hostname'] }}
+        state: stopped
+        enabled: false
+        masked: true
+      when:
+        - not containerized_deployment | bool
+        - groups.get('standby_mdss', []) | length > 0
+        - mds_failover_ready | default(false) | bool
+
+    - name: Stop active mds immediately after failover (containerized)
+      ansible.builtin.systemd:
+        name: ceph-mds@{{ ansible_facts['hostname'] }}
+        state: stopped
+      changed_when: false
+      when:
+        - containerized_deployment | bool
+        - groups.get('standby_mdss', []) | length > 0
+        - mds_failover_ready | default(false) | bool
+
     - name: Prevent restarts from the packaging
       ansible.builtin.systemd:
         name: ceph-mds@{{ ansible_facts['hostname'] }}
         enabled: false
         masked: true
-      when: not containerized_deployment | bool
+      when:
+        - not containerized_deployment | bool
+        - groups.get('standby_mdss', []) | length == 0 or not (mds_failover_ready | default(false) | bool)
 
     - name: Import ceph-handler role
       ansible.builtin.import_role:
@@ -856,7 +918,7 @@
       environment:
         CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      when: inventory_hostname == groups['standby_mdss'] | last
+      when: inventory_hostname == groups['active_mdss'] | last
 
 
 - name: Upgrade ceph rgws cluster
@@ -1161,8 +1223,8 @@
         name: ceph-facts
         tasks_from: container_binary.yml
 
-    - name: Container | disallow pre-squid OSDs and enable all new squid-only functionality
-      ansible.builtin.command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] }} ceph --cluster {{ cluster }} osd require-osd-release squid"
+    - name: Container | disallow pre-{{ ceph_stable_release }} OSDs and enable new release functionality
+      ansible.builtin.command: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_facts']['hostname'] }} ceph --cluster {{ cluster }} osd require-osd-release {{ ceph_stable_release }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       changed_when: false
@@ -1170,8 +1232,8 @@
         - containerized_deployment | bool
         - groups.get(mon_group_name, []) | length > 0
 
-    - name: Non container | disallow pre-squid OSDs and enable all new squid-only functionality
-      ansible.builtin.command: "ceph --cluster {{ cluster }} osd require-osd-release squid"
+    - name: Non container | disallow pre-{{ ceph_stable_release }} OSDs and enable new release functionality
+      ansible.builtin.command: "ceph --cluster {{ cluster }} osd require-osd-release {{ ceph_stable_release }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       run_once: true
       changed_when: false
@@ -1348,12 +1410,24 @@
 
     - name: Show ceph status
       ansible.builtin.command: "{{ container_exec_cmd_status | default('') }} ceph --cluster {{ cluster }} -s"
+      register: _rolling_update_ceph_status
       changed_when: false
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
 
+    - name: Print ceph status
+      ansible.builtin.debug:
+        msg: "{{ _rolling_update_ceph_status.stdout }}"
+      run_once: true
+
     - name: Show all daemons version
       ansible.builtin.command: "{{ container_exec_cmd_status | default('') }} ceph --cluster {{ cluster }} versions"
+      register: _rolling_update_ceph_versions
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       changed_when: false
+
+    - name: Print all daemons version
+      ansible.builtin.debug:
+        msg: "{{ _rolling_update_ceph_versions.stdout }}"
+      run_once: true
