@@ -1,0 +1,138 @@
+---
+# This playbook removes a CephFS mirror daemon from your cluster on the given
+# node.
+#
+# Use it like this:
+# ansible-playbook shrink-cephfsmirror.yml -e cephfsmirror_to_kill=cephfs-mirror01
+#     Prompts for confirmation to shrink, defaults to no and
+#     doesn't shrink the cluster. yes shrinks the cluster.
+#
+# ansible-playbook -e ireallymeanit=yes|no shrink-cephfsmirror.yml
+#     Overrides the prompt using -e option. Can be used in
+#     automation scripts to avoid interactive prompt.
+
+- name: Gather facts and check the init system
+  hosts:
+    - mons
+    - cephfsmirrors
+  become: true
+  tasks:
+    - name: Gather facts on MONs and CephFS mirrors
+      ansible.builtin.debug:
+        msg: gather facts on MONs and CephFS mirrors
+
+- name: Confirm whether user really meant to remove cephfs mirror from the ceph cluster
+  hosts: mons[0]
+  become: true
+  vars_prompt:
+    - name: ireallymeanit  # noqa: name[casing]
+      prompt: Are you sure you want to shrink the cluster?
+      default: 'no'
+      private: false
+  pre_tasks:
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
+        name: ceph-defaults
+
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
+        name: ceph-facts
+        tasks_from: container_binary
+
+    - name: Exit playbook, if no cephfsmirror was given
+      ansible.builtin.fail:
+        msg: "cephfsmirror_to_kill must be declared.
+          Exiting shrink-cephfsmirror playbook, no cephfs-mirror was removed.
+          On the command line when invoking the playbook, you can use
+          -e cephfsmirror_to_kill=cephfs-mirror01 argument. You can only remove
+          a single cephfs-mirror each time the playbook runs."
+      when: cephfsmirror_to_kill is not defined
+
+    - name: Exit playbook, if the cephfsmirror is not part of the inventory
+      ansible.builtin.fail:
+        msg: >
+          It seems that the host given is not part of your inventory,
+          please make sure it is.
+      when: cephfsmirror_to_kill not in groups[cephfsmirror_group_name]
+
+    - name: Exit playbook, if user did not mean to shrink cluster
+      ansible.builtin.fail:
+        msg: "Exiting shrink-cephfsmirror playbook, no cephfs-mirror was removed.
+          To shrink the cluster, either say 'yes' on the prompt or
+          use `-e ireallymeanit=yes` on the command line when
+          invoking the playbook"
+      when: ireallymeanit != 'yes'
+
+    - name: Set_fact container_exec_cmd for mon0
+      when: containerized_deployment | bool
+      ansible.builtin.set_fact:
+        container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ ansible_facts['hostname'] }}"
+
+    - name: Exit playbook, if can not connect to the cluster
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} timeout 5 ceph --cluster {{ cluster }} fs snapshot mirror daemon status -f json"
+      register: cephfs_mirror_status
+      changed_when: false
+      failed_when: false
+      until: cephfs_mirror_status is succeeded
+      retries: 5
+      delay: 2
+
+    - name: Set_fact cephfsmirror_to_kill_hostname
+      ansible.builtin.set_fact:
+        cephfsmirror_to_kill_hostname: "{{ hostvars[cephfsmirror_to_kill]['ansible_facts']['hostname'] }}"
+
+    - name: Set_fact cephfs_mirror_daemon_id
+      ansible.builtin.set_fact:
+        cephfs_mirror_daemon_id: "{{ hostvars[cephfsmirror_to_kill]['ceph_cephfs_mirror_daemon_id'] | default('mirror') }}"
+
+  tasks:
+    - name: Stop cephfs-mirror service (non-containerized)
+      ansible.builtin.service:
+        name: "cephfs-mirror@{{ cephfs_mirror_daemon_id }}"
+        state: stopped
+        enabled: false
+      delegate_to: "{{ cephfsmirror_to_kill }}"
+      failed_when: false
+      when: not containerized_deployment | bool
+
+    - name: Stop ceph cephfs-mirror service (containerized)
+      ansible.builtin.service:
+        name: "ceph-cephfs-mirror@{{ cephfs_mirror_daemon_id }}"
+        state: stopped
+        enabled: false
+      delegate_to: "{{ cephfsmirror_to_kill }}"
+      failed_when: false
+      when: containerized_deployment | bool
+
+    - name: Ensure cephfs-mirror service is masked (non-containerized)
+      ansible.builtin.systemd:
+        name: "cephfs-mirror@{{ cephfs_mirror_daemon_id }}"
+        masked: true
+      delegate_to: "{{ cephfsmirror_to_kill }}"
+      failed_when: false
+      when: not containerized_deployment | bool
+
+    - name: Ensure ceph cephfs-mirror service is masked (containerized)
+      ansible.builtin.systemd:
+        name: "ceph-cephfs-mirror@{{ cephfs_mirror_daemon_id }}"
+        masked: true
+      delegate_to: "{{ cephfsmirror_to_kill }}"
+      failed_when: false
+      when: containerized_deployment | bool
+
+  post_tasks:
+    - name: Check cephfs-mirror process on removed host
+      ansible.builtin.command: pgrep -af cephfs-mirror
+      delegate_to: "{{ cephfsmirror_to_kill }}"
+      register: cephfsmirror_process
+      changed_when: false
+      failed_when: false
+
+    - name: Fail if cephfs-mirror process is still running
+      ansible.builtin.fail:
+        msg: "cephfs-mirror process is still running on {{ cephfsmirror_to_kill }}"
+      when: cephfsmirror_process.rc == 0
+
+    - name: Show cephfs-mirror daemon status from cluster
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} fs snapshot mirror daemon status"
+      changed_when: false

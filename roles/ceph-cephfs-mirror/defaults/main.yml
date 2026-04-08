@@ -1,0 +1,48 @@
+---
+#########
+# SETUP #
+#########
+
+# Even though cephfs-mirror nodes should not have the admin key
+# at their disposal, some people might want to have it
+# distributed on cephfs-mirror nodes. Setting 'copy_admin_key' to 'true'
+# will copy the admin key to the /etc/ceph/ directory.
+copy_admin_key: false
+
+#################
+# CONFIGURATION #
+#################
+
+# Automatically enable mgr mirroring module before starting daemon(s).
+ceph_cephfs_mirror_enable_mgr_module: true
+
+# Daemon ID used by cephfs-mirror (--id).
+ceph_cephfs_mirror_daemon_id: "mirror"
+
+# CephX identity for local cephfs-mirror daemon.
+ceph_cephfs_mirror_local_user: "client.{{ ceph_cephfs_mirror_daemon_id }}"
+
+# Caps for cephfs-mirror daemon user. Keep broad by default for compatibility.
+ceph_cephfs_mirror_local_user_caps:
+  mon: "profile cephfs-mirror"
+  mds: "allow r"
+  osd: "allow rw tag cephfs metadata=*, allow r tag cephfs data=*"
+  mgr: "allow r"
+
+##########
+# DOCKER #
+##########
+
+ceph_cephfs_mirror_docker_memory_limit: "{{ ansible_facts['memtotal_mb'] }}m"
+ceph_cephfs_mirror_docker_cpu_limit: 1
+ceph_cephfs_mirror_docker_extra_env:
+
+###########
+# SYSTEMD #
+###########
+# ceph_cephfs_mirror_systemd_overrides will override the systemd settings
+# for the ceph-cephfs-mirror services.
+# For example,to set "PrivateDevices=false" you can specify:
+# ceph_cephfs_mirror_systemd_overrides:
+#   Service:
+#     PrivateDevices: false

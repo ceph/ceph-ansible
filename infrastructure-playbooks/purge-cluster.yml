@@ -352,6 +352,36 @@
         - '@.service'
         - '.target'
 
+- name: Purge ceph cephfs-mirror cluster
+  hosts: cephfsmirrors
+  gather_facts: false # Already gathered previously
+  become: true
+  tasks:
+    - name: Stop ceph cephfs-mirror (non-containerized)
+      ansible.builtin.service:
+        name: "cephfs-mirror@{{ ceph_cephfs_mirror_daemon_id | default('mirror') }}"
+        state: stopped
+        enabled: false
+      failed_when: false
+      when: not containerized_deployment | bool
+
+    - name: Stop ceph cephfs-mirror (containerized)
+      ansible.builtin.service:
+        name: "ceph-cephfs-mirror@{{ ceph_cephfs_mirror_daemon_id | default('mirror') }}"
+        state: stopped
+        enabled: false
+      failed_when: false
+      when: containerized_deployment | bool
+
+    - name: Remove ceph cephfs-mirror service files
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ item }}"
+        state: absent
+      loop:
+        - "cephfs-mirror@.service"
+        - "ceph-cephfs-mirror@.service"
+        - "ceph-cephfs-mirror.target"
+
 
 - name: Purge ceph osd cluster
   vars:
@@ -825,6 +855,7 @@
       - ceph-radosgw
       - ceph-grafana-dashboards
       - rbd-mirror
+      - cephfs-mirror
     ceph_remaining_packages:
       - libcephfs2
       - librados2
@@ -846,6 +877,7 @@
     - mdss
     - rgws
     - rbdmirrors
+    - cephfsmirrors
     - nfss
     - clients
     - mgrs

@@ -1,0 +1,107 @@
+---
+- name: Install dependencies
+  ansible.builtin.package:
+    name: cephfs-mirror
+    state: present
+  register: result
+  until: result is succeeded
+  when: not containerized_deployment | bool
+  tags: package-install
+
+- name: Enable mgr mirroring module
+  ansible.builtin.command: "{{ hostvars[groups[mon_group_name][0]]['container_exec_cmd'] | default('') }} ceph --cluster {{ cluster }} mgr module enable mirroring"
+  changed_when: false
+  failed_when: false
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  when:
+    - ceph_cephfs_mirror_enable_mgr_module | bool
+    - groups.get(mon_group_name, []) | length > 0
+
+- name: Cephx tasks
+  when: cephx | bool
+  block:
+    - name: Create cephfs-mirror daemon keyring
+      ceph_key:
+        name: "{{ ceph_cephfs_mirror_local_user }}"
+        cluster: "{{ cluster }}"
+        user: client.admin
+        user_key: "/etc/ceph/{{ cluster }}.client.admin.keyring"
+        caps: "{{ ceph_cephfs_mirror_local_user_caps }}"
+        dest: "/etc/ceph/{{ cluster }}.{{ ceph_cephfs_mirror_local_user }}.keyring"
+        import_key: true
+        owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        mode: "{{ ceph_keyring_permissions }}"
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      delegate_to: "{{ groups.get(mon_group_name)[0] }}"
+
+    - name: Get cephfs-mirror keyring from ceph monitor
+      ceph_key_info:
+        name: "{{ ceph_cephfs_mirror_local_user }}"
+        cluster: "{{ cluster }}"
+        output_format: plain
+        state: info
+      environment:
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      register: _cephfs_mirror_key
+      delegate_to: "{{ groups.get(mon_group_name)[0] }}"
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
+
+    - name: Copy ceph key
+      ansible.builtin.copy:
+        dest: "/etc/ceph/{{ cluster }}.{{ ceph_cephfs_mirror_local_user }}.keyring"
+        content: "{{ _cephfs_mirror_key.stdout + '\n' }}"
+        owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
+        mode: "{{ ceph_keyring_permissions }}"
+      no_log: "{{ no_log_on_ceph_key_tasks }}"
+
+- name: Ensure systemd service override directory exists
+  ansible.builtin.file:
+    state: directory
+    path: "/etc/systemd/system/ceph-cephfs-mirror@.service.d/"
+    mode: "0755"
+  when:
+    - ceph_cephfs_mirror_systemd_overrides is defined
+    - ansible_facts['service_mgr'] == 'systemd'
+
+- name: Add ceph-cephfs-mirror systemd service overrides
+  openstack.config_template.config_template:
+    src: "ceph-cephfs-mirror.service.d-overrides.j2"
+    dest: "/etc/systemd/system/ceph-cephfs-mirror@.service.d/ceph-cephfs-mirror-systemd-overrides.conf"
+    config_overrides: "{{ ceph_cephfs_mirror_systemd_overrides | default({}) }}"
+    config_type: "ini"
+  when:
+    - ceph_cephfs_mirror_systemd_overrides is defined
+    - ansible_facts['service_mgr'] == 'systemd'
+
+- name: Include_tasks start_container_cephfs_mirror.yml
+  ansible.builtin.include_tasks: start_container_cephfs_mirror.yml
+  when: containerized_deployment | bool
+
+- name: Include_tasks systemd.yml
+  ansible.builtin.include_tasks: systemd.yml
+  when: containerized_deployment | bool
+
+- name: Start and add cephfs-mirror service instance (containerized)
+  ansible.builtin.service:
+    name: "ceph-cephfs-mirror@{{ ceph_cephfs_mirror_daemon_id }}"
+    state: started
+    enabled: true
+    masked: false
+  changed_when: false
+  when: containerized_deployment | bool
+
+- name: Start and add cephfs-mirror service instance (packaged non-containerized)
+  ansible.builtin.service:
+    name: "cephfs-mirror@{{ ceph_cephfs_mirror_daemon_id }}"
+    state: started
+    enabled: true
+    masked: false
+  changed_when: false
+  when: not containerized_deployment | bool

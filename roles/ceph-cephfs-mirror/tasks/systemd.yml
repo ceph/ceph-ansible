@@ -1,0 +1,23 @@
+---
+- name: Generate systemd unit file
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/ceph-cephfs-mirror.service.j2"
+    dest: /etc/systemd/system/ceph-cephfs-mirror@.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  when: containerized_deployment | bool
+
+- name: Generate systemd ceph-cephfs-mirror target file
+  ansible.builtin.copy:
+    src: ceph-cephfs-mirror.target
+    dest: /etc/systemd/system/ceph-cephfs-mirror.target
+    mode: "0644"
+  when: containerized_deployment | bool
+
+- name: Enable ceph-cephfs-mirror.target
+  ansible.builtin.service:
+    name: ceph-cephfs-mirror.target
+    enabled: true
+    daemon_reload: true
+  when: containerized_deployment | bool

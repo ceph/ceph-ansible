@@ -46,6 +46,7 @@
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ cephfsmirror_group_name|default('cephfsmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ client_group_name|default('clients') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
@@ -967,6 +968,63 @@
       ansible.builtin.import_role:
         name: ceph-rbd-mirror
 
+- name: Upgrade ceph cephfs mirror node
+  vars:
+    upgrade_ceph_packages: true
+  hosts: "{{ cephfsmirror_group_name|default('cephfsmirrors') }}"
+  tags: cephfsmirrors
+  serial: 1
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stop ceph cephfs mirror (containerized)
+      ansible.builtin.systemd:
+        name: "ceph-cephfs-mirror@{{ ceph_cephfs_mirror_daemon_id }}"
+        state: stopped
+        enabled: false
+        masked: true
+      failed_when: false
+      when: containerized_deployment | bool
+
+    - name: Stop ceph cephfs mirror (non-containerized)
+      ansible.builtin.systemd:
+        name: "cephfs-mirror@{{ ceph_cephfs_mirror_daemon_id }}"
+        state: stopped
+        enabled: false
+        masked: true
+      failed_when: false
+      when: not containerized_deployment | bool
+
+    - name: Import ceph-defaults role
+      ansible.builtin.import_role:
+        name: ceph-defaults
+
+    - name: Import ceph-facts role
+      ansible.builtin.import_role:
+        name: ceph-facts
+
+    - name: Import ceph-handler role
+      ansible.builtin.import_role:
+        name: ceph-handler
+
+    - name: Import ceph-common role
+      ansible.builtin.import_role:
+        name: ceph-common
+      when: not containerized_deployment | bool
+
+    - name: Import ceph-container-common role
+      ansible.builtin.import_role:
+        name: ceph-container-common
+      when: containerized_deployment | bool
+
+    - name: Import ceph-config role
+      ansible.builtin.import_role:
+        name: ceph-config
+
+    - name: Import ceph-cephfs-mirror role
+      ansible.builtin.import_role:
+        name: ceph-cephfs-mirror
+
 
 - name: Upgrade ceph nfs node
   vars:
@@ -1069,6 +1127,7 @@
     - "{{ mds_group_name | default('mdss') }}"
     - "{{ rgw_group_name | default('rgws') }}"
     - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ cephfsmirror_group_name | default('cephfsmirrors') }}"
     - "{{ mgr_group_name | default('mgrs') }}"
   tags:
     - post_upgrade
@@ -1109,6 +1168,7 @@
     - "{{ mds_group_name | default('mdss') }}"
     - "{{ rgw_group_name | default('rgws') }}"
     - "{{ rbdmirror_group_name | default('rbdmirrors') }}"
+    - "{{ cephfsmirror_group_name | default('cephfsmirrors') }}"
     - "{{ mgr_group_name | default('mgrs') }}"
   tags:
     - post_upgrade
@@ -1187,6 +1247,7 @@
     - "{{ rgw_group_name|default('rgws') }}"
     - "{{ mgr_group_name|default('mgrs') }}"
     - "{{ rbdmirror_group_name|default('rbdmirrors') }}"
+    - "{{ cephfsmirror_group_name|default('cephfsmirrors') }}"
     - "{{ nfs_group_name|default('nfss') }}"
     - "{{ monitoring_group_name|default('monitoring') }}"
   tags: monitoring
