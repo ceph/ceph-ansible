@@ -110,7 +110,7 @@
         cluster: "{{ cluster }}"
         action: list
       environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       register: _lvm_list_data
       delegate_to: "{{ item }}"
@@ -247,7 +247,7 @@
         cluster: "{{ cluster }}"
         state: out
       environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       run_once: true
 
@@ -317,7 +317,7 @@
         destroy: true
         data: "{{ ceph_osd_data_json[item.2]['pkname_data'] if item.3 == 'data' else ceph_osd_data_json[item.2][item.3]['path'] }}"
       environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       with_nested:
         - "{{ _osd_hosts }}"
@@ -335,7 +335,7 @@
         osd_fsid: "{{ item.1 }}"
       environment:
         CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       delegate_to: "{{ item.0 }}"
       loop: "{{ _osd_hosts }}"
@@ -347,7 +347,7 @@
         cluster: "{{ cluster }}"
         state: down
       environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -358,7 +358,7 @@
         cluster: "{{ cluster }}"
         state: purge
       environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       run_once: true
       with_items: "{{ osd_to_kill.split(',') }}"

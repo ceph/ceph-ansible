@@ -32,8 +32,9 @@
     value: "{{ item.1.value }}"
   run_once: true
   when:
+    - item.1.value is defined
     - item.1.value != omit
   loop: "{{ ceph_cluster_conf | dict2dict }}"
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"

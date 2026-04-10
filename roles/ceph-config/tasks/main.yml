@@ -34,7 +34,7 @@
           register: rejected_devices
           environment:
             CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
             CEPH_CONTAINER_BINARY: "{{ container_binary }}"
             PYTHONIOENCODING: utf-8
 
@@ -60,7 +60,7 @@
           register: lvm_batch_report
           environment:
             CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
             CEPH_CONTAINER_BINARY: "{{ container_binary }}"
             PYTHONIOENCODING: utf-8
           when: _devices | default([]) | length > 0
@@ -85,7 +85,7 @@
       register: lvm_list
       environment:
         CEPH_VOLUME_DEBUG: "{{ ceph_volume_debug }}"
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
         PYTHONIOENCODING: utf-8
       changed_when: false
@@ -117,9 +117,9 @@
         - _osd_memory_target is defined
         - running_mon is defined
       environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      delegate_to: "{{ running_mon }}"
+      delegate_to: "{{ running_mon | default(omit) }}"
 
 - name: Set rgw configs
   when: inventory_hostname in groups.get(rgw_group_name, [])
@@ -150,9 +150,9 @@
         - rgw_conf_to_cluster | default(true) | bool
         - running_mon is defined
       environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
-      delegate_to: "{{ running_mon }}"
+      delegate_to: "{{ running_mon | default(omit) }}"
 
     - name: Set rgw configs to file
       ansible.builtin.set_fact:
