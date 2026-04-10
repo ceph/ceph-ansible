@@ -11,11 +11,11 @@
         output_format: json
         state: info
       environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       register: initial_mon_key
       run_once: true
-      delegate_to: "{{ running_mon }}"
+      delegate_to: "{{ running_mon | default(omit) }}"
       failed_when: initial_mon_key.rc not in [0, 2]
       no_log: "{{ no_log_on_ceph_key_tasks }}"
       when: running_mon is defined
@@ -57,7 +57,7 @@
         mode: "0400"
       no_log: "{{ no_log_on_ceph_key_tasks }}"
       environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
     - name: Copy the initial key in /etc/ceph (for containers)
@@ -107,7 +107,7 @@
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   no_log: "{{ no_log_on_ceph_key_tasks }}"
   when:
@@ -140,7 +140,7 @@
     mode: "0400"
     import_keyring: "/etc/ceph/{{ cluster }}.client.admin.keyring"
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   no_log: "{{ no_log_on_ceph_key_tasks }}"
   when:
