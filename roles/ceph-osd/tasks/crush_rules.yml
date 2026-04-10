@@ -29,7 +29,7 @@
     crush_device_class: "{{ item.value.crush_device_class | default(omit) }}"
     force: "{{ item.value.force | default(false) }}"
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   loop: "{{ ceph_ec_profiles | dict2items }}"
   delegate_to: '{{ groups[mon_group_name][0] }}'
@@ -45,7 +45,7 @@
     bucket_type: "{{ item.type | default(omit) }}"
     device_class: "{{ item.class | default(omit) }}"
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   with_items: "{{ hostvars[groups[mon_group_name][0]]['crush_rules'] | default(crush_rules) | unique }}"
   delegate_to: '{{ groups[mon_group_name][0] }}'
@@ -56,7 +56,7 @@
     name: "{{ item.name }}"
     cluster: "{{ cluster }}"
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   register: info_ceph_default_crush_rule
   with_items: "{{ hostvars[groups[mon_group_name][0]]['crush_rules'] | default(crush_rules) | unique }}"

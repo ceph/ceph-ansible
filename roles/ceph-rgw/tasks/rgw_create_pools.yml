@@ -12,7 +12,7 @@
     - item.value.create_profile | default(true)
     - item.value.type | default('') == 'ec'
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
 - name: Set crush rule
@@ -22,7 +22,7 @@
     rule_type: erasure
     profile: "{{ item.value.ec_profile }}"
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
   loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
@@ -48,5 +48,5 @@
   loop: "{{ rgw_create_pools | dict2items }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+    CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"

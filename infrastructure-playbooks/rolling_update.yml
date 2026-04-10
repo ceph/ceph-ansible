@@ -232,7 +232,7 @@
             - ['bootstrap-rbd', 'bootstrap-rbd-mirror']
             - "{{ groups[mon_group_name] }}" # so the key goes on all the nodes
           environment:
-            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
             CEPH_CONTAINER_BINARY: "{{ container_binary }}"
           when:
             - cephx | bool
@@ -502,7 +502,7 @@
             name: "{{ item }}"
             cluster: "{{ cluster }}"
           environment:
-            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
             CEPH_CONTAINER_BINARY: "{{ container_binary }}"
           with_items:
             - noout
@@ -626,7 +626,7 @@
             cluster: "{{ cluster }}"
             state: absent
           environment:
-            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+            CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
             CEPH_CONTAINER_BINARY: "{{ container_binary }}"
           with_items:
             - noout
@@ -666,7 +666,7 @@
                 metadata: "{{ cephfs_metadata_pool.name }}"
                 max_mds: 1
               environment:
-                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
                 CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
             - name: Wait until only rank 0 is up
@@ -679,7 +679,7 @@
               delay: 5
               until: (wait_rank_zero.stdout | from_json).mdsmap.in | length == 1 and (wait_rank_zero.stdout | from_json).mdsmap.in[0]  == 0
               environment:
-                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+                CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
                 CEPH_CONTAINER_BINARY: "{{ container_binary }}"
 
             - name: Get name of remaining active mds
@@ -854,7 +854,7 @@
         metadata: "{{ cephfs_metadata_pool.name }}"
       delegate_to: "{{ groups[mon_group_name][0] }}"
       environment:
-        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else None }}"
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       when: inventory_hostname == groups['standby_mdss'] | last
 
