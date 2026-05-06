@@ -133,7 +133,7 @@ def is_containerized():
     Check if we are running on a containerized cluster
     '''
 
-    if 'CEPH_CONTAINER_IMAGE' in os.environ:
+    if os.environ.get('CEPH_CONTAINER_IMAGE'):
         container_image = os.getenv('CEPH_CONTAINER_IMAGE')
     else:
         container_image = None
