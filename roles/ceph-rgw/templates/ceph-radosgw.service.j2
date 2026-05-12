@@ -42,6 +42,8 @@ ExecStart=/usr/bin/{{ container_binary }} run --rm --net=host \
 {% endfor %}
 {% if ansible_facts['os_family'] == 'RedHat' -%}
   -v /etc/pki/ca-trust/extracted:/etc/pki/ca-trust/extracted \
+{% elif ansible_facts['os_family'] == 'Debian' -%}
+  -v /etc/ssl/certs/ca-certificates.crt:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro \
 {% endif -%}
 {% if radosgw_frontend_ssl_certificate -%}
   -v {{ radosgw_frontend_ssl_certificate }}:{{ radosgw_frontend_ssl_certificate }} \
