@@ -12,16 +12,16 @@
   register: result
   until: result is succeeded
 
-- name: Add docker's gpg key
-  ansible.builtin.apt_key:
-    url: "https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}/gpg"
-  register: result
-  until: result is succeeded
-  when: container_package_name == 'docker-ce'
-
 - name: Add docker repository
-  ansible.builtin.apt_repository:
-    repo: "deb https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }} stable"
+  ansible.builtin.deb822_repository:
+    architectures: "{{ ceph_architecture_mapping.get(ansible_facts['architecture']) }}"
+    name: docker-ce
+    components: stable
+    enabled: true
+    signed_by: "https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}/gpg"
+    state: present
+    suites: "{{ ansible_facts['distribution_release'] }}"
+    uris: "https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}"
   when: container_package_name == 'docker-ce'
 
 - name: Add podman ppa repository
