@@ -5,7 +5,6 @@
       - apt-transport-https
       - ca-certificates
       - gnupg
-      - software-properties-common
       - python3-debian
     state: present
   register: result
@@ -13,7 +12,7 @@
 
 - name: Fetch ceph debian development repository
   ansible.builtin.uri:
-    url: "https://shaman.ceph.com/api/repos/ceph/{{ ceph_dev_branch }}/{{ ceph_dev_sha1 }}/{{ ansible_facts['distribution'] | lower }}/{{ ansible_facts['distribution_release'] }}/repo?arch={{ ansible_facts['architecture'] }}" # noqa: yaml[line-length]
+    url: https://shaman.ceph.com/api/search/?status=ready&project=ceph&flavor=default&distros={{ ansible_facts['distribution'] | lower }}%2F{{ ansible_facts['distribution_release'] }}%2F{{ ansible_facts['architecture'] }}&sha1={{ ceph_dev_sha1 }}&ref={{ ceph_dev_branch }} # noqa: yaml[line-length]
     return_content: true
   register: ceph_dev_deb_repo
   when:
@@ -24,15 +23,15 @@
     _ceph_apt_repo_mapping:
       dev:
         trusted: true
-        uri: "{{ (ceph_dev_deb_repo.content | from_json | first)['url'] }}"
+        uri: "{{ (ceph_dev_deb_repo.get('content', '[{}]') | from_json | first).get('url', '') }}"
         suites: "{{ ansible_facts['distribution_release'] }}"
       uca:
         key: "{{ lookup('file', role_path + '/files/uca.asc') }}"
         uri: "{{ ceph_stable_repo_uca }}"
         suites: "{{ ceph_stable_release_uca }}"
       custom:
-        key: "{{ ceph_custom_key }}"
-        uri: "{{ ceph_custom_repo }}"
+        key: "{{ ceph_custom_key | default('') }}"
+        uri: "{{ ceph_custom_repo | default('') }}"
         suites: "{{ ansible_facts['distribution_release'] }}"
       community:
         key: "{{ lookup('file', role_path + '/files/cephstable.asc') }}"
