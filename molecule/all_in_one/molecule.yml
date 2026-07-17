@@ -1,0 +1,77 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: osd0
+    <<: &host_config
+      groups:
+        - mdss
+        - mgrs
+        - mons
+        - osds
+        - rgws
+      image: "${DOCKER_REGISTRY:-quay.io/gotmax23}/${DOCKER_IMAGE_TAG:-debian-systemd:bookworm}"
+      command: ${DOCKER_COMMAND:-""}
+      privileged: true
+      cgroupns_mode: host
+      pre_build_image: true
+      networks:
+        - name: public
+        - name: cluster
+      docker_networks:
+        - name: public
+          ipam_config:
+            - subnet: "192.168.17.0/24"
+        - name: cluster
+          ipam_config:
+            - subnet: "192.168.18.0/24"
+      security_opts:
+        - apparmor=unconfined
+      volumes:
+        - /sys/fs/cgroup:/sys/fs/cgroup:rw
+        - /lib/modules:/lib/modules:ro
+        - /run/udev:/run/udev:ro
+  - name: osd1
+    <<: *host_config
+  - name: osd2
+    <<: *host_config
+
+provisioner:
+  name: ansible
+  lint:
+    name: ansible-lint
+  inventory:
+    links:
+      group_vars: ../../tests/functional/all-in-one/group_vars/
+  config_options:
+    defaults:
+      inject_facts_as_vars: false
+      library: ${MOLECULE_EPHEMERAL_DIRECTORY}/library:${MOLECULE_PROJECT_DIRECTORY}/library
+      module_utils: ${MOLECULE_EPHEMERAL_DIRECTORY}/module_utils:${MOLECULE_PROJECT_DIRECTORY}/module_utils
+      action_plugins: ${MOLECULE_EPHEMERAL_DIRECTORY}/plugins/actions:${MOLECULE_PROJECT_DIRECTORY}/plugins/actions
+      callback_plugins: ${MOLECULE_EPHEMERAL_DIRECTORY}/plugins/callbacks:${MOLECULE_PROJECT_DIRECTORY}/plugins/callback
+      filter_plugins: ${MOLECULE_EPHEMERAL_DIRECTORY}/plugins/filters:${MOLECULE_PROJECT_DIRECTORY}/plugins/filter
+      roles_path: ${MOLECULE_EPHEMERAL_DIRECTORY}/roles:${MOLECULE_PROJECT_DIRECTORY}/roles
+    connection:
+      pipelining: true
+
+scenario:
+  name: all_in_one
+  test_sequence:
+    - dependency
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - verify
+    - side_effect
+    - cleanup
+    - destroy
