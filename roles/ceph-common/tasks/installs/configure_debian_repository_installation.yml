@@ -1,16 +1,61 @@
 ---
-- name: Include debian_community_repository.yml
-  ansible.builtin.include_tasks: debian_community_repository.yml
-  when: ceph_repository == 'community'
+- name: Install dependencies for apt modules
+  ansible.builtin.package:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - python3-debian
+    state: present
+  register: result
+  until: result is succeeded
 
-- name: Include debian_dev_repository.yml
-  ansible.builtin.include_tasks: debian_dev_repository.yml
-  when: ceph_repository == 'dev'
+- name: Fetch ceph debian development repository
+  ansible.builtin.uri:
+    url: https://shaman.ceph.com/api/search/?status=ready&project=ceph&flavor=default&distros={{ ansible_facts['distribution'] | lower }}%2F{{ ansible_facts['distribution_release'] }}%2F{{ ansible_facts['architecture'] }}&sha1={{ ceph_dev_sha1 }}&ref={{ ceph_dev_branch }} # noqa: yaml[line-length]
+    return_content: true
+  register: ceph_dev_deb_repo
+  when:
+    - ceph_repository == 'dev'
 
-- name: Include debian_custom_repository.yml
-  ansible.builtin.include_tasks: debian_custom_repository.yml
-  when: ceph_repository == 'custom'
+- name: Manage apt repositories
+  vars:
+    _ceph_apt_repo_mapping:
+      dev:
+        trusted: true
+        uri: "{{ (ceph_dev_deb_repo.get('content', '[{}]') | from_json | first).get('url', '') }}"
+        suites: "{{ ansible_facts['distribution_release'] }}"
+      uca:
+        key: "{{ lookup('file', role_path + '/files/uca.asc') }}"
+        uri: "{{ ceph_stable_repo_uca }}"
+        suites: "{{ ceph_stable_release_uca }}"
+      custom:
+        key: "{{ ceph_custom_key | default('') }}"
+        uri: "{{ ceph_custom_repo | default('') }}"
+        suites: "{{ ansible_facts['distribution_release'] }}"
+      community:
+        key: "{{ lookup('file', role_path + '/files/cephstable.asc') }}"
+        uri: "{{ ceph_stable_repo }}"
+        suites: "{{ ansible_facts['distribution_release'] }}"
+    _ceph_apt_repo: "{{ _ceph_apt_repo_mapping[ceph_repository] }}"
+  ansible.builtin.deb822_repository:
+    architectures: "{{ ceph_architecture_mapping.get(ansible_facts['architecture']) }}"
+    components: main
+    enabled: true
+    name: "ceph"
+    signed_by: "{{ _ceph_apt_repo['key'] | default(omit) }}"
+    state: present
+    suites: "{{ _ceph_apt_repo['suites'] }}"
+    trusted: "{{ _ceph_apt_repo['trusted'] | default(omit) }}"
+    uris: "{{ _ceph_apt_repo['uri'] }}"
+  register: _deb822_repos
 
-- name: Include debian_uca_repository.yml
-  ansible.builtin.include_tasks: debian_uca_repository.yml
-  when: ceph_repository == 'uca'
+- name: Update Apt cache
+  ansible.builtin.apt:
+    update_cache: true
+  when:
+    - _deb822_repos is changed  # noqa: no-handler
+  register: update_apt_cache
+  until: update_apt_cache is success
+  retries: 5
+  delay: 2
