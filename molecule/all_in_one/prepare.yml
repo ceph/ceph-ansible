@@ -1,0 +1,137 @@
+---
+
+- name: Prepare LVMs on OSDs
+  hosts: osds
+  handlers:
+    - name: Load loop devices
+      ansible.builtin.systemd_service:
+        name: "{{ item.device }}.service"
+        state: restarted
+        daemon_reload: true
+      loop: "{{ _loop_devices }}"
+      loop_control:
+        label: "{{ item.device }}.service"
+  tasks:
+    - name: Install required packages
+      vars:
+        _package_names_mapping:
+          debian:
+            - lvm2
+            - iproute2
+          redhat:
+            - lvm2
+            - iproute
+      ansible.builtin.package:
+        name: "{{ _package_names_mapping[ansible_facts['os_family'] | lower] }}"
+        state: present
+        update_cache: "{{ (ansible_facts['pkg_mgr'] == 'apt') | ternary('yes', omit) }}"
+      register: result
+      until: result is succeeded
+
+    - name: Configure LVM parameters in lvm.conf
+      ansible.builtin.lineinfile:
+        path: /etc/lvm/lvm.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+      loop:
+        - regexp: '^\s*#?\s*udev_sync\s*='
+          line: '    udev_sync = 0'
+        - regexp: '^\s*#?\s*udev_rules\s*='
+          line: '    udev_rules = 0'
+        - regexp: '^\s*#?\s*obtain_device_list_from_udev\s*='
+          line: '    obtain_device_list_from_udev = 0'
+        - regexp: '^\s*#?\s*filter\s*='
+          line: '    filter = [ "a|/dev/{{ inventory_hostname }}.*|", "a|/dev/mapper/.*|", "r|.*|" ]'
+        - regexp: '^\s*#?\s*global_filter\s*='
+          line: '    global_filter = [ "a|/dev/{{ inventory_hostname }}.*|", "a|/dev/mapper/.*|", "r|.*|" ]'
+
+    - name: Create sparse files
+      ansible.builtin.command: "truncate -s 100G {{ item.path }}"
+      args:
+        creates: "{{ item.path }}"
+      loop: "{{ _loop_devices }}"
+
+    - name: Find next unused loop device ID
+      ansible.builtin.command: losetup -f
+      changed_when: false
+      register: _last_lo_dev
+
+    - name: Create loop devices
+      ansible.builtin.command:
+        argv:
+          - mknod
+          - "/dev/{{ item.device }}"
+          - b
+          - 7
+          - "{{ ansible_play_hosts_all.index(inventory_hostname) * _loop_devices | length + idx + 1 + _last_lo_dev.stdout | regex_search('/dev/loop(\\d+).*', '\\1') | first | int }}"
+      args:
+        creates: "/dev/{{ item.device }}"
+      loop: "{{ _loop_devices }}"
+      loop_control:
+        index_var: idx
+
+    - name: Place service content for loop devices
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/{{ item.device }}.service"
+        content: |-
+          [Unit]
+          Description = Loop device for /dev/{{ item.device }}
+          After = systemd-udev-settle.service
+          Before = lvm2-activation-early.service
+          Wants = systemd-udev-settle.service
+
+          [Service]
+          Type = oneshot
+          User = root
+          Group = root
+          ExecStart = /bin/bash -c "losetup -P /dev/{{ item.device }} {{ item.path }}"
+          ExecStart = /sbin/pvscan
+          ExecStop = /bin/bash -c "losetup -d /dev/{{ item.device }}"
+          RemainAfterExit = yes
+          TimeoutSec = 120
+          Slice = system.slice
+
+          [Install]
+          WantedBy = multi-user.target
+        mode: "0644"
+        owner: root
+      loop: "{{ _loop_devices }}"
+      loop_control:
+        label: "{{ item.device }}"
+      notify:
+        - Load loop devices
+
+    - name: Restart services if needed
+      ansible.builtin.meta: flush_handlers
+
+    - name: Create volume group
+      community.general.lvg:
+        vg: "{{ inventory_hostname }}_test_group"
+        pvs: "/dev/{{ _loop_devices[0].device }}"
+
+    - name: Create logical volume 1
+      community.general.lvol:
+        vg: "{{ inventory_hostname }}_test_group"
+        lv: data-lv1
+        size: 50%FREE
+        shrink: false
+
+    - name: Create logical volume 2
+      community.general.lvol:
+        vg: "{{ inventory_hostname }}_test_group"
+        lv: data-lv2
+        size: 100%FREE
+        shrink: false
+
+    - name: Create journals vg from "{{ _loop_devices[1].device }}"
+      community.general.lvg:
+        vg: "{{ inventory_hostname }}_journals"
+        pvs: "/dev/{{ _loop_devices[1].device }}"
+
+    - name: Create journal1 lv
+      community.general.lvol:
+        vg: "{{ inventory_hostname }}_journals"
+        lv: journal1
+        size: 100%FREE
+        shrink: false

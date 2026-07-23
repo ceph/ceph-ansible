@@ -1,0 +1,54 @@
+---
+
+- name: Clean-up loop devices and LVM
+  hosts: osds
+  gather_facts: false
+  tasks:
+    - name: Remove volume groups
+      community.general.lvg:
+        vg: "{{ item }}"
+        state: absent
+        force: true
+      loop:
+        - "{{ inventory_hostname }}_test_group"
+        - "{{ inventory_hostname }}_journals"
+      failed_when: false
+
+    - name: Remove physical volumes
+      ansible.builtin.command: "pvremove -ff -y /dev/{{ item.device }}"
+      loop: "{{ _loop_devices }}"
+      failed_when: false
+      changed_when: false
+
+    - name: Stop loop device systemd services
+      ansible.builtin.systemd_service:
+        name: "{{ item.device }}.service"
+        state: stopped
+        enabled: false
+      loop: "{{ _loop_devices }}"
+      failed_when: false
+
+    - name: Detach loop devices
+      ansible.builtin.command: "losetup -d /dev/{{ item.device }}"
+      loop: "{{ _loop_devices }}"
+      failed_when: false
+      changed_when: false
+
+    - name: Remove loop device service files
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ item.device }}.service"
+        state: absent
+      loop: "{{ _loop_devices }}"
+      failed_when: false
+
+    - name: Reload systemd daemon
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+      failed_when: false
+
+    - name: Remove loop device nodes
+      ansible.builtin.file:
+        path: "/dev/{{ item.device }}"
+        state: absent
+      loop: "{{ _loop_devices }}"
+      failed_when: false

@@ -1,8 +1,10 @@
 ---
 containerized_deployment: False
 ceph_origin: repository
-ceph_repository: community
-radosgw_interface: "{{ 'eth1' if ansible_facts['distribution'] == 'CentOS' else 'ens6' }}"
+ceph_repository: "{{ lookup('ansible.builtin.env', 'CEPH_REPOSITORY', default='community') }}"
+ceph_stable_release: "{{ lookup('ansible.builtin.env', 'CEPH_STABLE_RELEASE', default='squid') }}"
+ntp_service_enabled: false
+radosgw_interface: eth1
 ceph_mon_docker_subnet: "{{ public_network }}"
 dashboard_enabled: False
 public_network: "192.168.17.0/24"
@@ -11,6 +13,7 @@ rgw_override_bucket_index_max_shards: 16
 rgw_bucket_default_quota_max_objects: 1638400
 ceph_conf_overrides:
   global:
+    auth_allow_insecure_global_id_reclaim: false
     osd_pool_default_pg_num: 8
     mon_allow_pool_size_one: true
     mon_warn_on_pool_no_redundancy: false
@@ -19,13 +22,36 @@ ceph_conf_overrides:
 handler_health_mon_check_delay: 10
 handler_health_osd_check_delay: 10
 osd_objectstore: "bluestore"
+ceph_mon_docker_memory_limit: 2g
+radosgw_num_instances: 2
+cephfs_pools:
+  - name: cephfs_data
+    pg_num: 8
+    pgp_num: 8
+    rule_name: replicated_rule
+    type: 1
+    erasure_profile: ""
+    expected_num_objects: ""
+    application: cephfs
+    size: 2
+    min_size: 0
+  - name: cephfs_metadata
+    pg_num: 8
+    pgp_num: 8
+    rule_name: replicated_rule
+    type: 1
+    erasure_profile: ""
+    expected_num_objects: ""
+    application: cephfs
+    size: 2
+    min_size: 0
 lvm_volumes:
   - data: data-lv1
-    data_vg: test_group
+    data_vg: "{{ inventory_hostname }}_test_group"
   - data: data-lv2
-    data_vg: test_group
+    data_vg: "{{ inventory_hostname }}_test_group"
     db: journal1
-    db_vg: journals
+    db_vg: "{{ inventory_hostname }}_journals"
 rgw_create_pools:
   foo:
     pg_num: 16
@@ -38,3 +64,9 @@ rgw_create_pools:
     ec_profile: myecprofile
     ec_k: 2
     ec_m: 1
+
+_loop_devices:
+  - path: /opt/{{ inventory_hostname }}.data
+    device: "{{ inventory_hostname }}-data"
+  - path: /opt/{{ inventory_hostname }}.journal
+    device: "{{ inventory_hostname }}-journal"
