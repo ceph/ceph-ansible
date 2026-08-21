@@ -279,20 +279,26 @@ def create_key(module,
     '''
 
     cmd_list = []
-    if not secret:
+
+    talks_to_cluster = import_key or user != 'client.admin'
+
+    mon_generates = not secret and talks_to_cluster
+
+    if not mon_generates and not secret:
         secret = generate_secret()
 
-    if user == 'client.admin':
+    if secret:
+        cmd_list.append(generate_ceph_authtool_cmd(
+            cluster, name, secret, caps, dest, container_image))
+
+    if user == 'client.admin' and not mon_generates:
         args = ['import', '-i', dest]
     else:
         args = ['get-or-create', name]
         args.extend(generate_caps(None, caps))
         args.extend(['-o', dest])
 
-    cmd_list.append(generate_ceph_authtool_cmd(
-        cluster, name, secret, caps, dest, container_image))
-
-    if import_key or user != 'client.admin':
+    if talks_to_cluster:
         cmd_list.append(generate_cmd(sub_cmd=['auth'],
                                      args=args,
                                      cluster=cluster,
