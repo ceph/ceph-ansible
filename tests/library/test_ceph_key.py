@@ -325,6 +325,144 @@ class TestCephKeyModule(object):
                                      fake_container_image)
         assert result == expected_command_list
 
+    def test_create_key_non_container_no_secret(self):
+        fake_module = "fake"
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
+        fake_cluster = "fake"
+        fake_name = "client.fake"
+        fake_secret = None
+        fake_caps = {
+            'mon': 'allow *',
+            'osd': 'allow rwx',
+        }
+        fake_import_key = True
+        fake_dest = "/fake/ceph"
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
+        expected_command_list = [
+            ['ceph', '-n', fake_user, '-k', fake_user_key, '--cluster', fake_cluster, 'auth',
+                'get-or-create', fake_name, 'mon', 'allow *', 'osd', 'allow rwx',
+                '-o', fake_file_destination],
+        ]
+        result = ceph_key.create_key(fake_module, fake_cluster, fake_user, fake_user_key,
+                                     fake_name, fake_secret, fake_caps, fake_import_key,
+                                     fake_file_destination)
+        assert result == expected_command_list
+
+    def test_create_key_non_container_empty_secret(self):
+        fake_module = "fake"
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
+        fake_cluster = "fake"
+        fake_name = "client.fake"
+        fake_secret = ''
+        fake_caps = {
+            'mon': 'allow *',
+            'osd': 'allow rwx',
+        }
+        fake_import_key = True
+        fake_dest = "/fake/ceph"
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
+        # an empty secret must behave like an omitted one
+        expected_command_list = [
+            ['ceph', '-n', fake_user, '-k', fake_user_key, '--cluster', fake_cluster, 'auth',
+                'get-or-create', fake_name, 'mon', 'allow *', 'osd', 'allow rwx',
+                '-o', fake_file_destination],
+        ]
+        result = ceph_key.create_key(fake_module, fake_cluster, fake_user, fake_user_key,
+                                     fake_name, fake_secret, fake_caps, fake_import_key,
+                                     fake_file_destination)
+        assert result == expected_command_list
+
+    def test_create_key_container_no_secret(self):
+        fake_module = "fake"
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
+        fake_cluster = "fake"
+        fake_name = "client.fake"
+        fake_secret = None
+        fake_caps = {
+            'mon': 'allow *',
+            'osd': 'allow rwx',
+        }
+        fake_import_key = True
+        fake_dest = "/fake/ceph"
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
+        fake_container_image = "quay.io/ceph/daemon:latest-luminous"
+        expected_command_list = [
+            ['docker',
+             'run',
+             '--rm',
+             '--net=host',
+             '-v', '/etc/ceph:/etc/ceph:z',
+             '-v', '/var/lib/ceph/:/var/lib/ceph/:z',
+             '-v', '/var/log/ceph/:/var/log/ceph/:z',
+             '--entrypoint=ceph',
+             'quay.io/ceph/daemon:latest-luminous',
+             '-n', 'client.admin',
+             '-k', '/etc/ceph/fake.client.admin.keyring',
+             '--cluster', fake_cluster,
+             'auth', 'get-or-create', fake_name,
+             'mon', 'allow *', 'osd', 'allow rwx',
+             '-o', fake_file_destination]]
+        result = ceph_key.create_key(fake_module, fake_cluster, fake_user, fake_user_key, fake_name,
+                                     fake_secret, fake_caps, fake_import_key,
+                                     fake_file_destination, fake_container_image)
+        assert result == expected_command_list
+
+    def test_create_key_non_container_no_secret_no_import(self):
+        fake_module = "fake"
+        fake_user = 'client.admin'
+        fake_user_key = '/etc/ceph/fake.client.admin.keyring'
+        fake_cluster = "fake"
+        fake_name = "client.fake"
+        fake_secret = None
+        fake_caps = {
+            'mon': 'allow *',
+            'osd': 'allow rwx',
+        }
+        fake_import_key = False
+        fake_dest = "/fake/ceph"
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
+        # the cluster can't be reached, so the key must still be generated
+        # locally with ceph-authtool and no auth command is emitted.
+        result = ceph_key.create_key(fake_module, fake_cluster, fake_user, fake_user_key,
+                                     fake_name, fake_secret, fake_caps, fake_import_key,
+                                     fake_file_destination)
+        assert len(result) == 1
+        assert result[0][0] == 'ceph-authtool'
+        assert result[0][1:6] == ['--create-keyring', fake_file_destination,
+                                  '--name', fake_name, '--add-key']
+
+    def test_create_key_non_container_no_secret_bootstrap_user(self):
+        fake_module = "fake"
+        fake_user = 'client.bootstrap-mds'
+        fake_user_key = '/var/lib/ceph/bootstrap-mds/fake.keyring'
+        fake_cluster = "fake"
+        fake_name = "mds.fake"
+        fake_secret = None
+        fake_caps = {
+            'mon': 'allow profile mds',
+            'osd': 'allow rwx',
+        }
+        fake_import_key = False
+        fake_dest = "/fake/ceph"
+        fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
+        fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
+        expected_command_list = [
+            ['ceph', '-n', fake_user, '-k', fake_user_key, '--cluster', fake_cluster, 'auth',
+                'get-or-create', fake_name, 'mon', 'allow profile mds', 'osd', 'allow rwx',
+                '-o', fake_file_destination],
+        ]
+        result = ceph_key.create_key(fake_module, fake_cluster, fake_user, fake_user_key,
+                                     fake_name, fake_secret, fake_caps, fake_import_key,
+                                     fake_file_destination)
+        assert result == expected_command_list
+
     def test_delete_key_non_container(self):
         fake_user = 'client.admin'
         fake_user_key = '/etc/ceph/fake.client.admin.keyring'
