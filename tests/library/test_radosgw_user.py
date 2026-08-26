@@ -25,6 +25,7 @@ fake_user = 'foo'
 fake_realm = 'canada'
 fake_zonegroup = 'quebec'
 fake_zone = 'montreal'
+fake_account_id = 'RGW93485238593854'
 fake_params = {'cluster': fake_cluster,
                'name': fake_user,
                'display_name': fake_user,
@@ -36,6 +37,9 @@ fake_params = {'cluster': fake_cluster,
                'zone': fake_zone,
                'system': True,
                'admin': True}
+fake_params_with_account = dict(fake_params,
+                                account_id=fake_account_id,
+                                account_root=True)
 
 
 class TestRadosgwUserModule(object):
@@ -98,6 +102,53 @@ class TestRadosgwUserModule(object):
 
         assert radosgw_user.create_user(fake_module) == expected_cmd
 
+    def test_create_user_with_account_id(self):
+        fake_module = MagicMock()
+        fake_module.params = fake_params_with_account
+        expected_cmd = [
+            fake_binary,
+            '--cluster', fake_cluster,
+            'user', 'create',
+            '--uid=' + fake_user,
+            '--display_name=' + fake_user,
+            '--email=' + fake_user,
+            '--access-key=PC7NPg87QWhOzXTkXIhX',
+            '--secret-key=jV64v39lVTjEx1ZJN6ocopnhvwMp1mXCD4kzBiPz',
+            '--rgw-realm=' + fake_realm,
+            '--rgw-zonegroup=' + fake_zonegroup,
+            '--rgw-zone=' + fake_zone,
+            '--system',
+            '--admin',
+            '--account-id=' + fake_account_id,
+            '--account-root'
+        ]
+
+        assert radosgw_user.create_user(fake_module) == expected_cmd
+
+    def test_create_user_with_account_id_only(self):
+        fake_module = MagicMock()
+        fake_module.params = dict(fake_params,
+                                  account_id=fake_account_id,
+                                  account_root=False)
+        expected_cmd = [
+            fake_binary,
+            '--cluster', fake_cluster,
+            'user', 'create',
+            '--uid=' + fake_user,
+            '--display_name=' + fake_user,
+            '--email=' + fake_user,
+            '--access-key=PC7NPg87QWhOzXTkXIhX',
+            '--secret-key=jV64v39lVTjEx1ZJN6ocopnhvwMp1mXCD4kzBiPz',
+            '--rgw-realm=' + fake_realm,
+            '--rgw-zonegroup=' + fake_zonegroup,
+            '--rgw-zone=' + fake_zone,
+            '--system',
+            '--admin',
+            '--account-id=' + fake_account_id
+        ]
+
+        assert radosgw_user.create_user(fake_module) == expected_cmd
+
     def test_modify_user(self):
         fake_module = MagicMock()
         fake_module.params = fake_params
@@ -115,6 +166,53 @@ class TestRadosgwUserModule(object):
             '--rgw-zone=' + fake_zone,
             '--system',
             '--admin'
+        ]
+
+        assert radosgw_user.modify_user(fake_module) == expected_cmd
+
+    def test_modify_user_with_account_id(self):
+        fake_module = MagicMock()
+        fake_module.params = fake_params_with_account
+        expected_cmd = [
+            fake_binary,
+            '--cluster', fake_cluster,
+            'user', 'modify',
+            '--uid=' + fake_user,
+            '--display_name=' + fake_user,
+            '--email=' + fake_user,
+            '--access-key=PC7NPg87QWhOzXTkXIhX',
+            '--secret-key=jV64v39lVTjEx1ZJN6ocopnhvwMp1mXCD4kzBiPz',
+            '--rgw-realm=' + fake_realm,
+            '--rgw-zonegroup=' + fake_zonegroup,
+            '--rgw-zone=' + fake_zone,
+            '--system',
+            '--admin',
+            '--account-id=' + fake_account_id,
+            '--account-root'
+        ]
+
+        assert radosgw_user.modify_user(fake_module) == expected_cmd
+
+    def test_modify_user_with_account_id_only(self):
+        fake_module = MagicMock()
+        fake_module.params = dict(fake_params,
+                                  account_id=fake_account_id,
+                                  account_root=False)
+        expected_cmd = [
+            fake_binary,
+            '--cluster', fake_cluster,
+            'user', 'modify',
+            '--uid=' + fake_user,
+            '--display_name=' + fake_user,
+            '--email=' + fake_user,
+            '--access-key=PC7NPg87QWhOzXTkXIhX',
+            '--secret-key=jV64v39lVTjEx1ZJN6ocopnhvwMp1mXCD4kzBiPz',
+            '--rgw-realm=' + fake_realm,
+            '--rgw-zonegroup=' + fake_zonegroup,
+            '--rgw-zone=' + fake_zone,
+            '--system',
+            '--admin',
+            '--account-id=' + fake_account_id
         ]
 
         assert radosgw_user.modify_user(fake_module) == expected_cmd

@@ -102,6 +102,16 @@ options:
             - set the admin flag on the user.
         required: false
         default: false
+    account_id:
+        description:
+            - account-id the user is associated with.
+        required: false
+        default: None
+    account_root:
+        description:
+            - set the account-root flag of the user.
+        required: false
+        default: false
 
 author:
     - Dimitri Savineau <dsavinea@redhat.com>
@@ -242,6 +252,8 @@ def create_user(module, container_image=None):
     system = module.params.get('system', False)
     admin = module.params.get('admin', False)
     caps = module.params.get('caps')
+    account_id = module.params.get('account_id')
+    account_root = module.params.get('account_root')
 
     args = ['create', '--uid=' + name, '--display_name=' + display_name]
 
@@ -268,6 +280,12 @@ def create_user(module, container_image=None):
 
     if admin:
         args.append('--admin')
+
+    if account_id:
+        args.extend(['--account-id=' + account_id])
+
+    if account_root:
+        args.append('--account-root')
 
     if caps:
         caps_args = [f"{cap['type']}={cap['perm']}" for cap in caps]
@@ -360,6 +378,8 @@ def modify_user(module, container_image=None):
     zone = module.params.get('zone', None)
     system = module.params.get('system', False)
     admin = module.params.get('admin', False)
+    account_id = module.params.get('account_id')
+    account_root = module.params.get('account_root')
 
     args = ['modify', '--uid=' + name]
 
@@ -389,6 +409,12 @@ def modify_user(module, container_image=None):
 
     if admin:
         args.append('--admin')
+
+    if account_id:
+        args.extend(['--account-id=' + account_id])
+
+    if account_root:
+        args.append('--account-root')
 
     cmd = generate_radosgw_cmd(cluster=cluster,
                                args=args,
@@ -487,6 +513,8 @@ def run_module():
         system=dict(type='bool', required=False, default=False),
         admin=dict(type='bool', required=False, default=False),
         caps=dict(type='list', required=False),
+        account_id=dict(type='str', required=False),
+        account_root=dict(type='bool', required=False, default=False)
     )
 
     module = AnsibleModule(
