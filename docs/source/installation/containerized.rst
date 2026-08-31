@@ -30,8 +30,8 @@ You can configure your own container register, image and tag by using the ``ceph
 .. code-block:: yaml
 
    ceph_docker_registry: quay.io
-   ceph_docker_image: ceph/daemon
-   ceph_docker_image_tag: latest
+   ceph_docker_image: ceph/ceph
+   ceph_docker_image_tag: v20
 
 .. note::
 
