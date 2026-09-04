@@ -125,6 +125,13 @@ options:
             entity.
         required: false
         default: json
+    key_type:
+        description:
+            - CephX cipher type used when generating a secret, e.g.
+            'aes256k'. Only honoured with state 'generate_secret'.
+            When unset the legacy cipher is used.
+        required: false
+        default: None
 '''
 
 EXAMPLES = '''
@@ -215,6 +222,21 @@ def generate_secret():
     secret = base64.b64encode(header + key)
 
     return secret
+
+
+def generate_secret_cmd(key_type, container_image=None):
+    '''
+    Generate 'ceph-authtool' command line printing a new secret
+    '''
+
+    if container_image:
+        cmd = container_exec('ceph-authtool', container_image)
+    else:
+        cmd = ['ceph-authtool']
+
+    cmd.extend(['--gen-print-key', '--key-type', key_type])
+
+    return cmd
 
 
 def generate_caps(_type, caps):
@@ -482,6 +504,7 @@ def run_module():
         dest=dict(type='str', required=False, default='/etc/ceph/'),
         user=dict(type='str', required=False, default='client.admin'),
         user_key=dict(type='str', required=False, default=None),
+        key_type=dict(type='str', required=False, default=None),
         output_format=dict(type='str', required=False, default='json', choices=['json', 'plain', 'xml', 'yaml'])  # noqa: E501
     )
 
@@ -503,6 +526,7 @@ def run_module():
     dest = module.params.get('dest')
     user = module.params.get('user')
     user_key = module.params.get('user_key')
+    key_type = module.params.get('key_type')
     output_format = module.params.get('output_format')
 
     # Can't use required_if with 'name' for some reason...
@@ -655,10 +679,17 @@ def run_module():
             file_args['path'] = key_path
             module.set_fs_attributes_if_different(file_args, False)
     elif state == "generate_secret":
-        out = generate_secret().decode()
         cmd = ''
         rc = 0
         err = ''
+        if key_type:
+            cmd = generate_secret_cmd(key_type, container_image)
+            rc, out, err = module.run_command(cmd)
+            if rc != 0:
+                fatal("Couldn't generate a {0} secret: {1}".format(key_type, err), module)  # noqa: E501
+            out = out.strip()
+        else:
+            out = generate_secret().decode()
         changed = True
 
     endd = datetime.datetime.now()
