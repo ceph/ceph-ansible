@@ -261,7 +261,7 @@ class TestCephKeyModule(object):
         fake_import_key = False
         fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
-        # create_key passes (one for ceph-authtool and one for itself) itw own array so the expected result is an array within an array # noqa E501
+        # create_key passes (one for ceph-authtool and one for itself) its own array so the expected result is an array within an array # noqa E501
         expected_command_list = [[
             'ceph-authtool',
             '--create-keyring',
@@ -297,7 +297,7 @@ class TestCephKeyModule(object):
         fake_import_key = False
         fake_keyring_filename = fake_cluster + "." + fake_name + ".keyring"
         fake_file_destination = os.path.join(fake_dest, fake_keyring_filename)
-        # create_key passes (one for ceph-authtool and one for itself) itw own array so the expected result is an array within an array # noqa E501
+        # create_key passes (one for ceph-authtool and one for itself) its own array so the expected result is an array within an array # noqa E501
         fake_container_image = "quay.io/ceph/daemon:latest-luminous"
         expected_command_list = [['docker',   # noqa E128
                                   'run',

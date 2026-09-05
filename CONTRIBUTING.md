@@ -14,7 +14,7 @@
   or the name of a logical grouping of code. Examples:
   - library: add a placeholder module for the validate action plugin
   - site.yml: combine validate play with fact gathering play
-- Commits linked with an issue should trace them with :
+- Commits linked to an issue should reference it with:
   - Fixes: #2653
 
 [Suggested reading.](https://chris.beams.io/posts/git-commit/)
@@ -26,11 +26,11 @@
 We use Jenkins to run several tests on each pull request.
 
 If you don't want to run a build for a particular pull request, because all you are changing is the
-README for example, add the text `[skip ci]` to the PR title.
+README, for example, add the text `[skip ci]` to the PR title.
 
 ### Merging strategy
 
-Merging PR is controlled by [mergify](https://mergify.io/) by the following rules:
+Merging PRs is controlled by [mergify](https://mergify.io/) by the following rules:
 
 - at least one approval from a maintainer
 - a SUCCESS from the CI pipeline "ceph-ansible PR Pipeline"
@@ -75,12 +75,12 @@ You must run `./generate_group_vars_sample.sh` before you commit your changes so
 ### Keep your branch up-to-date
 
 Sometimes, a pull request can be subject to long discussion, reviews and comments, meantime, `main`
-moves forward so let's try to keep your branch rebased on main regularly to avoid huge conflict merge.
+moves forward so let's try to keep your branch rebased on main regularly to avoid huge merge conflicts.
 A rebased branch is more likely to be merged easily & shorter.
 
 ### Organize your commits
 
-Do not split your commits unnecessarily. We are used to see pull request with useless additional commits like
+Do not split your commits unnecessarily. We are used to seeing pull requests with useless additional commits like
 "I'm addressing reviewer's comments". So, please, squash and/or amend them as much as possible.
 
 Similarly, split them when needed, if you are modifying several parts in ceph-ansible or pushing a large
@@ -91,7 +91,7 @@ Some recommendations:
 - do not mix multiple topics in a single commit,
 - if your PR contains a large number of commits that are each other totally unrelated, it should probably even be split in several PRs.
 
-If you've broken your work up into a set of sequential changes and each commit passes the tests on their own then that's fine.
+If you've broken your work up into a set of sequential changes and each commit passes the tests on its own then that's fine.
 If you've got commits fixing typos or other problems introduced by previous commits in the same PR, then those should be squashed before merging.
 
 If you are new to Git, these links might help:

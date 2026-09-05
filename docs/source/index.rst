@@ -4,7 +4,6 @@ ceph-ansible
 
 Ansible playbooks for Ceph, the distributed filesystem.
 
-
 Installation
 ============
 
@@ -153,7 +152,7 @@ Configuration Validation
 ------------------------
 
 The ``ceph-ansible`` project provides config validation through the ``ceph-validate`` role. If you are using one of the provided playbooks this role will
-be run early in the deployment as to ensure you've given ``ceph-ansible`` the correct config. This check is only making sure that you've provided the
+be run early in the deployment to ensure you've given ``ceph-ansible`` the correct config. This check is only making sure that you've provided the
 proper config settings for your cluster, not that the values in them will produce a healthy cluster. For example, if you give an incorrect address for
 ``monitor_address`` then the mon will still fail to join the cluster.
 
@@ -192,7 +191,6 @@ The following install options are also validated by the ``ceph-validate`` role:
 - ``ceph_repository`` set to ``dev``
 - ``ceph_repository`` set to ``community``
 
-
 Installation methods
 --------------------
 
@@ -206,7 +204,7 @@ Ceph can be installed through several methods.
 Configuration
 -------------
 
-The configuration for your Ceph cluster will be set by the use of ansible variables that ``ceph-ansible`` provides. All of these options and their default
+The configuration for your Ceph cluster will be set using the Ansible variables that ``ceph-ansible`` provides. All of these options and their default
 values are defined in the ``group_vars/`` directory at the root of the ``ceph-ansible`` project. Ansible will use configuration in a ``group_vars/`` directory
 that is relative to your inventory file or your playbook. Inside of the ``group_vars/`` directory there are many sample Ansible configuration files that relate
 to each of the Ceph daemon groups by their filename. For example, the ``osds.yml.sample`` contains all the default configuration for the OSD daemons. The ``all.yml.sample``
@@ -216,7 +214,7 @@ file is a special ``group_vars`` file that applies to all hosts in your cluster.
 
    For more information on setting group or host specific configuration refer to the Ansible documentation: http://docs.ansible.com/ansible/latest/intro_inventory.html#splitting-out-host-and-group-specific-data
 
-At the most basic level you must tell ``ceph-ansible`` what version of Ceph you wish to install, the method of installation, your clusters network settings and
+At the most basic level you must tell ``ceph-ansible`` what version of Ceph you wish to install, the method of installation, your cluster's network settings and
 how you want your OSDs configured. To begin your configuration rename each file in ``group_vars/`` you wish to use so that it does not include the ``.sample``
 at the end of the filename, uncomment the options you wish to change and provide your own value.
 
@@ -232,12 +230,11 @@ An example configuration that deploys the upstream ``octopus`` version of Ceph w
      - '/dev/sda'
      - '/dev/sdb'
 
-The following config options are required to be changed on all installations but there could be other required options depending on your OSD scenario
+The following configuration options must be changed on all installations but there could be other required options depending on your OSD scenario
 selection or other aspects of your cluster.
 
 - ``ceph_origin``
 - ``public_network``
-
 
 When deploying RGW instance(s) you are required to set the ``radosgw_interface`` or ``radosgw_address`` config option.
 
@@ -272,13 +269,13 @@ An example:
    We will no longer accept pull requests that modify the ``ceph.conf`` template unless it helps the deployment. For simple configuration tweaks
    please use the ``ceph_conf_overrides`` variable.
 
-Full documentation for configuring each of the Ceph daemon types are in the following sections.
+Full documentation for configuring each of the Ceph daemon types is in the following sections.
 
 OSD Configuration
 -----------------
 
-OSD configuration was used to be set by selecting an OSD scenario and providing the configuration needed for
-that scenario. As of nautilus in stable-4.0, the only scenarios available is ``lvm``.
+OSD configuration used to be set by selecting an OSD scenario and providing the configuration needed for
+that scenario. As of nautilus in stable-4.0, the only scenario available is ``lvm``.
 
 .. toctree::
    :maxdepth: 1
@@ -288,7 +285,7 @@ that scenario. As of nautilus in stable-4.0, the only scenarios available is ``l
 Day-2 Operations
 ----------------
 
-ceph-ansible provides a set of playbook in ``infrastructure-playbooks`` directory in order to perform some basic day-2 operations.
+ceph-ansible provides a set of playbook in the ``infrastructure-playbooks`` directory in order to perform some basic day-2 operations.
 
 .. toctree::
    :maxdepth: 1
@@ -300,7 +297,7 @@ ceph-ansible provides a set of playbook in ``infrastructure-playbooks`` director
 RBD Mirroring
 -------------
 
-Ceph-ansible provides the role ``ceph-rbd-mirror`` that can setup an RBD mirror replication.
+Ceph-ansible provides the role ``ceph-rbd-mirror`` that can set up an RBD mirror replication.
 
 .. toctree::
    :maxdepth: 1

@@ -27,7 +27,6 @@ There are just a handful of required files, these sections will cover the
 required (most basic) ones. Alternatively, other ``ceph-ansible`` files can be
 added to customize the behavior of a scenario deployment.
 
-
 .. _vagrant_variables:
 
 ``vagrant_variables.yml``
@@ -38,7 +37,7 @@ to follow (most of them are 1 line settings).
 
 * **docker**: (bool) Indicates if the scenario will deploy Docker daemons
 
-* **VMS**: (int) These integer values are just a count of how  many machines will be
+* **VMS**: (int) These integer values are just a count of how many machines will be
   needed. Each supported type is listed, defaulting to 0:
 
   .. code-block:: yaml
@@ -59,7 +58,7 @@ to follow (most of them are 1 line settings).
      mon_vms: 1
      osd_vms: 1
 
-* **CEPH SOURCE**: (string) indicate whether a ``dev`` or ``stable`` release is
+* **CEPH SOURCE**: (string) Indicates whether a ``dev`` or ``stable`` release is
   needed. A ``stable`` release will use the latest stable release of Ceph,
   a ``dev`` will use ``shaman`` (https://shaman.ceph.com)
 
@@ -75,7 +74,7 @@ to follow (most of them are 1 line settings).
 * **MEMORY**: Memory requirements (in megabytes) for each server, e.g.
   ``memory: 512``
 
-* **interfaces**: some vagrant boxes (and linux distros) set specific
+* **interfaces**: Some Vagrant boxes (and Linux distributions) set specific
   interfaces. For Ubuntu releases older than Xenial it was common to have
   ``eth1``, for CentOS and some Xenial boxes ``enp0s8`` is used. **However**
   the public Vagrant boxes normalize the interface to ``eth1`` for all boxes,
@@ -87,8 +86,9 @@ to follow (most of them are 1 line settings).
    certain that is needed for a box. Some tests that depend on that
    naming will fail.
 
-* **disks**: The disks that will be created for each machine, for most
-  environments ``/dev/sd*`` style of disks will work, like: ``[ '/dev/sda', '/dev/sdb' ]``
+* **disks**: The disks that will be created for each machine.
+  For most environments, ``/dev/sd*`` style of disks will work,
+  like: ``[ '/dev/sda', '/dev/sdb' ]``
 
 * **vagrant_box**: We have published our own boxes to normalize what we test
   against. These boxes are published in Atlas
@@ -111,7 +111,6 @@ are needed:
 * **os_tuning_params**: These are passed onto ``ceph-ansible`` as part of the
   variables for "system tuning". These shouldn't be changed.
 
-
 .. _vagrant_file:
 
 ``Vagrantfile``
@@ -120,7 +119,6 @@ are needed:
 The ``Vagrantfile`` should not need to change, and it is symlinked back to the
 ``Vagrantfile`` that exists in the root of the project. It is linked in this
 way so that a vagrant environment can be isolated to the given scenario.
-
 
 .. _hosts_file:
 
@@ -146,13 +144,12 @@ defining different public_network values between monitors) which can help catch 
 --------------
 
 This directory holds any configuration change that will affect ``ceph-ansible``
-deployments in the same way as if ansible was executed from the root of the
+deployments in the same way as if Ansible were executed from the root of the
 project.
 
-The file that will need to be defined always is ``all`` where (again) certain
+The file that always needs to be defined is ``all`` where (again) certain
 values like ``public_network`` and ``cluster_network`` will need to be defined
 along with any customizations that ``ceph-ansible`` supports.
-
 
 .. _scenario_wiring:
 
@@ -161,7 +158,7 @@ Scenario Wiring
 
 Scenarios are just meant to provide the Ceph environment for testing, but they
 do need to be defined in the ``tox.ini`` so that they are available to the test
-framework. To see a list of available scenarios, the following command (ran
+framework. To see a list of available scenarios, the following command (run
 from the root of the project) will list them, shortened for brevity:
 
 .. code-block:: console
@@ -171,15 +168,15 @@ from the root of the project) will list them, shortened for brevity:
    luminous-ansible2.4-centos7_cluster
    ...
 
-These scenarios are made from different variables, in the above command there
-are 3:
+These scenarios are made up of different variables. In the above command,
+there are three:
 
 * ``jewel``: the Ceph version to test
 * ``ansible2.4``: the Ansible version to install
 * ``centos7_cluster``: the name of the scenario
 
 The last one is important in the *wiring up* of the scenario. It is a variable
-that will define in what path the scenario lives. For example, the
+that will define the path in which the scenario lives. For example, the
 ``changedir`` section for ``centos7_cluster`` that looks like:
 
 .. code-block:: ini
@@ -193,7 +190,6 @@ and :ref:`test_files`.
 
 As long as a test scenario defines OSDs and MONs, the OSD tests and MON tests
 will run.
-
 
 .. _scenario_conventions:
 

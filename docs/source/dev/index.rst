@@ -3,7 +3,7 @@ Contribution Guidelines
 
 The repository centralises all the Ansible roles. The roles are all part of the Ansible Galaxy.
 
-We love contribution and we love giving visibility to our contributors, this is why all the **commits must be signed-off**.
+We love contributions and we love giving visibility to our contributors, this is why all the **commits must be signed-off**.
 
 Mailing list
 ------------
@@ -55,9 +55,9 @@ Worked on a change and you don't want to resend a commit for a syntax fix?
 Pull Request Testing
 --------------------
 
-Pull request testing is handled by Jenkins. All test must pass before your pull request will be merged.
+Pull request testing is handled by Jenkins. All tests must pass before your pull request will be merged.
 
-All of tests that are running are listed in the GitHub UI and will list their current status.
+All tests that are running are listed in the GitHub UI and will list their current status.
 
 If a test fails and you'd like to rerun it, comment on your pull request in the following format:
 

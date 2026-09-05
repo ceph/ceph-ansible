@@ -23,8 +23,6 @@ remote execution.
 Test Files
 ----------
 
-
-
 .. _test_fixtures:
 
 Test Fixtures
@@ -53,9 +51,8 @@ many fixtures as needed) like ``File``:
 
 .. code-block:: python
 
-   def test_ceph_config_has_inital_members_line(self, node, File):
+   def test_ceph_config_has_initial_members_line(self, node, File):
        assert File(node["conf_path"]).contains("^mon initial members = .*$")
-
 
 .. _node:
 
@@ -67,7 +64,7 @@ where the test is being executed, this is captured once, before tests run:
 
 * ``address``: The IP for the ``eth1`` interface
 * ``subnet``: The subnet that ``address`` belongs to
-* ``vars``: all the Ansible vars set for the current run
+* ``vars``: all the Ansible variables set for the current run
 * ``osd_ids``: a list of all the OSD IDs
 * ``num_mons``: the total number of monitors for the current environment
 * ``num_devices``: the number of devices for the current node
@@ -87,12 +84,12 @@ Other Fixtures
 --------------
 
 There are a lot of other fixtures provided by :ref:`testinfra` as well as
-``py.test``. The full list of ``testinfra`` fixtures are available in
+``py.test``. The full list of ``testinfra`` fixtures is available in
 `testinfra_fixtures`_
 
 ``py.test`` builtin fixtures can be listed with ``pytest -q --fixtures`` and
 they are described in `pytest builtin fixtures`_
 
-.. _pytest fixtures: https://docs.pytest.org/en/latest/fixture.html
+.. _pytest fixtures: https://docs.pytest.org/en/latest/explanation/fixtures.html
 .. _pytest builtin fixtures: https://docs.pytest.org/en/latest/builtin.html#builtin-fixtures-function-arguments
 .. _testinfra_fixtures: https://testinfra.readthedocs.io/en/latest/modules.html#modules

@@ -1,17 +1,16 @@
-Adding/Removing OSD(s) after a cluster is deployed is a common operation that should be straightforward to achieve.
-
+Adding or removing OSDs after a cluster has been deployed is a common operation that should be straightforward to achieve.
 
 Adding osd(s)
 -------------
 
-Adding new OSD(s) on an existing host or adding a new OSD node can be achieved by running the main playbook with the ``--limit`` ansible option.
+Adding new OSD(s) on an existing host or adding a new OSD node can be achieved by running the main playbook with the Ansible ``--limit`` option.
 You basically need to update your host_vars/group_vars with the new hardware and/or the inventory host file with the new osd nodes being added.
 
-The command used would be like following:
+The command would be as follows:
 
 ``ansible-playbook -vv -i <your-inventory> site-container.yml --limit <node>``
 
-example:
+Example:
 
 .. code-block:: shell
 
@@ -33,7 +32,6 @@ example:
    osd-node-99
    
    $ ansible-playbook -vv -i hosts site-container.yml --limit osd-node-99
-
 
 Shrinking osd(s)
 ----------------
