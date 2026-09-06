@@ -56,7 +56,7 @@ Container registry behind a proxy
 ---------------------------------
 
 When using a container registry reachable via a http(s) proxy then you need to set the ``ceph_docker_http_proxy`` and/or ``ceph_docker_https_proxy`` variables. If you need
-to exclude some host for the proxy configuration to can use the ``ceph_docker_no_proxy`` variable.
+to exclude some host for the proxy configuration you can use the ``ceph_docker_no_proxy`` variable.
 
 .. code-block:: yaml
 

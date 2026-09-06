@@ -22,27 +22,27 @@ If ``ceph_origin`` is set to ``repository``, you now have the choice between a c
 Community repository
 ~~~~~~~~~~~~~~~~~~~~
 
-If ``ceph_repository`` is set to ``community``, packages you will be by default installed from http://download.ceph.com, this can be changed by tweaking ``ceph_mirror``.
+If ``ceph_repository`` is set to ``community``, packages will be installed by default from http://download.ceph.com, this can be changed by tweaking ``ceph_mirror``.
 
 
 UCA repository
 ~~~~~~~~~~~~~~
 
-If ``ceph_repository`` is set to ``uca``, packages you will be by default installed from http://ubuntu-cloud.archive.canonical.com/ubuntu, this can be changed by tweaking ``ceph_stable_repo_uca``.
+If ``ceph_repository`` is set to ``uca``, packages will be installed by default from http://ubuntu-cloud.archive.canonical.com/ubuntu, this can be changed by tweaking ``ceph_stable_repo_uca``.
 You can also decide which OpenStack version the Ceph packages should come from by tweaking ``ceph_stable_openstack_release_uca``.
 For example, ``ceph_stable_openstack_release_uca: queens``.
 
 Dev repository
 ~~~~~~~~~~~~~~
 
-If ``ceph_repository`` is set to ``dev``, packages you will be by default installed from https://shaman.ceph.com/, this can not be tweaked.
+If ``ceph_repository`` is set to ``dev``, packages will be installed by default from https://shaman.ceph.com/, this can not be tweaked.
 You can obviously decide which branch to install with the help of  ``ceph_dev_branch`` (defaults to 'main').
 Additionally, you can specify a SHA1 with ``ceph_dev_sha1``, defaults to 'latest' (as in latest built).
 
 Custom repository
 ~~~~~~~~~~~~~~~~~
 
-If ``ceph_repository`` is set to ``custom``, packages you will be by default installed from a desired repository.
+If ``ceph_repository`` is set to ``custom``, packages  will be installed by default from a desired repository.
 This repository is specified with ``ceph_custom_repo``, e.g: ``ceph_custom_repo: https://server.domain.com/ceph-custom-repo``.
 
 

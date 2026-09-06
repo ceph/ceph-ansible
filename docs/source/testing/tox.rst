@@ -25,7 +25,7 @@ The following environment variables are available for use:
 
 * ``CEPH_DOCKER_IMAGE``: (default: ``ceph/daemon``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image``.
 
-* ``CEPH_DOCKER_IMAGE_TAG``: (default: ``latest``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image_name``.
+* ``CEPH_DOCKER_IMAGE_TAG``: (default: ``latest``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image_tag``.
 
 * ``CEPH_DEV_BRANCH``: (default: ``main``) This would configure the ``ceph-ansible`` variable ``ceph_dev_branch`` which defines which branch we'd
   like to install from shaman.ceph.com.
@@ -53,7 +53,7 @@ on all subsections inside of a tox section please refer to the tox documentation
 * ``purge`` : This section contains commands that only run for scenarios that purge the cluster and redeploy. You'll see this section being reused in ``testenv``
   with the following syntax: ``{[purge]commands}``
 
-* ``update`` : This section contains commands taht only run for scenarios that deploy a cluster and then upgrade it to another Ceph version.
+* ``update`` : This section contains commands that only run for scenarios that deploy a cluster and then upgrade it to another Ceph version.
 
 * ``testenv`` : This is the main section of the ``tox.ini`` file and is run on every scenario. This section contains many *factors* that define conditional
   settings depending on the scenarios defined in the ``envlist``. For example, the factor ``centos7_cluster`` in the ``changedir`` subsection of ``testenv`` sets

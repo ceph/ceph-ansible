@@ -51,7 +51,7 @@ On RHEL:
 
    $ subscription-manager repos --enable=rhel-7-server-ansible-2-rpms
 
-On CentOS Stream, Rocky Linux or AlmaLinux need install EPEL repository:
+On CentOS Stream, Rocky Linux or AlmaLinux you need to install EPEL repository:
 
 .. code-block:: console
 
