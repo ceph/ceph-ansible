@@ -11,9 +11,18 @@ import ceph_key_info
 class TestCephKeyModule(object):
 
     def test_generate_secret(self):
-        expected_length = 40
+        expected_length = 60
         result = len(ceph_key.generate_secret())
         assert result == expected_length
+
+    def test_generate_secret_aes(self):
+        expected_length = 40
+        result = len(ceph_key.generate_secret(key_type='aes'))
+        assert result == expected_length
+
+    def test_generate_secret_invalid(self):
+        with pytest.raises(ValueError, match="Invalid key_type: invalid"):
+            ceph_key.generate_secret(key_type='invalid')
 
     def test_generate_caps_ceph_authtool(self):
         fake_caps = {
@@ -725,3 +734,73 @@ class TestCephKeyModule(object):
         with pytest.raises(ca_test_common.AnsibleExitJson) as result:
             ceph_key.run_module()
         assert result.value.args[0]['stdout'] == fake_secret.decode()
+
+    @mock.patch('ceph_key.exec_commands')
+    @mock.patch('ansible.module_utils.basic.AnsibleModule.fail_json')
+    def test_create_key_failure(self, m_fail_json, m_exec_commands):
+        ca_test_common.set_module_args({
+            "name": "client.rgw.test",
+            "cluster": "ceph",
+            "user": "client.bootstrap-rgw",
+            "user_key": "/var/lib/ceph/bootstrap-rgw/ceph.keyring",
+            "dest": "/var/lib/ceph/radosgw/ceph-rgw.test/keyring",
+            "caps": {"mon": "allow rw", "osd": "allow rwx"},
+            "import_key": True,
+            "state": "present"
+        })
+        m_fail_json.side_effect = ca_test_common.fail_json
+        m_exec_commands.side_effect = [
+            (2, ['ceph', 'auth', 'get', 'client.rgw.test'], '', 'Error ENOENT'),
+            (2, ['ceph', 'auth', 'get-or-create', 'client.rgw.test'], '', 'failed to open keyring')
+        ]
+
+        with pytest.raises(ca_test_common.AnsibleFailJson) as result:
+            ceph_key.run_module()
+
+        res = result.value.args[0]
+        assert res['rc'] == 2
+        assert "Couldn't create or update client.rgw.test" in res['msg']
+        assert res['stderr'] == 'failed to open keyring'
+
+    @mock.patch('os.path.isfile')
+    @mock.patch('ceph_key.exec_commands')
+    @mock.patch('ansible.module_utils.basic.AnsibleModule.fail_json')
+    def test_get_key_failure(self, m_fail_json, m_exec_commands, m_isfile):
+        ca_test_common.set_module_args({
+            "name": "client.admin",
+            "cluster": "ceph",
+            "dest": "/etc/ceph/ceph.client.admin.keyring",
+            "caps": {"mon": "allow *", "osd": "allow *"},
+            "state": "present"
+        })
+        m_fail_json.side_effect = ca_test_common.fail_json
+        m_isfile.return_value = False
+        m_exec_commands.side_effect = [
+            (0, ['ceph', 'auth', 'get', 'client.admin'],
+             '[{"entity":"client.admin","key":"AQDaLb1fAAAAABAAsIMKdGEKu+lGOyXnRfT0Hg==","caps":{"mon":"allow *","osd":"allow *"}}]', ''),
+            (1, ['ceph', 'auth', 'get', 'client.admin', '-o', '/etc/ceph/ceph.client.admin.keyring'], '', 'permission denied')
+        ]
+
+        with pytest.raises(ca_test_common.AnsibleFailJson) as result:
+            ceph_key.run_module()
+
+        res = result.value.args[0]
+        assert res['rc'] == 1
+        assert "Couldn't fetch the key client.admin" in res['msg']
+        assert res['stderr'] == 'permission denied'
+
+    @mock.patch('ansible.module_utils.basic.AnsibleModule.fail_json')
+    def test_state_invalid_key_type(self, m_fail_json):
+        invalid_type = 'rsa'
+        ca_test_common.set_module_args({
+            "state": "present",
+            "name": "client.admin",
+            "key_type": invalid_type
+        })
+        m_fail_json.side_effect = ca_test_common.fail_json
+
+        with pytest.raises(ca_test_common.AnsibleFailJson) as result:
+            ceph_key.run_module()
+
+        res = result.value.args[0]
+        assert res['msg'] == 'value of key_type must be one of: aes, aes256k, got: {}'.format(invalid_type)
