@@ -89,6 +89,12 @@ options:
         required: false
         choices: ['present', 'update', 'absent', 'fetch_initial_keys', 'generate_secret']
         default: present
+    key_type:
+        description:
+            - Cryptographic cipher to use for generated key (aes or aes256k).
+        required: false
+        choices: ['aes', 'aes256k']
+        default: aes256k
     caps:
         description:
             - CephX key capabilities
@@ -205,13 +211,21 @@ def str_to_bool(val):
         raise ValueError("Invalid input value: %s" % val)
 
 
-def generate_secret():
+def generate_secret(key_type='aes256k'):
     '''
     Generate a CephX secret
     '''
 
-    key = os.urandom(16)
-    header = struct.pack('<hiih', 1, int(time.time()), 0, len(key))
+    if key_type == 'aes':
+        key = os.urandom(16)
+        type_code = 1
+    elif key_type == 'aes256k':
+        key = os.urandom(32)
+        type_code = 2
+    else:
+        raise ValueError("Invalid key_type: %s" % key_type)
+
+    header = struct.pack('<hiih', type_code, int(time.time()), 0, len(key))
     secret = base64.b64encode(header + key)
 
     return secret
@@ -273,7 +287,8 @@ def create_key(module,
                caps,
                import_key,
                dest,
-               container_image=None):
+               container_image=None,
+               key_type='aes256k'):
     '''
     Create a CephX key
     '''
@@ -285,7 +300,7 @@ def create_key(module,
     mon_generates = not secret and talks_to_cluster
 
     if not mon_generates and not secret:
-        secret = generate_secret()
+        secret = generate_secret(key_type=key_type)
 
     if secret:
         cmd_list.append(generate_ceph_authtool_cmd(
@@ -476,6 +491,7 @@ def run_module():
         name=dict(type='str', required=False),
         state=dict(type='str', required=False, default='present', choices=['present', 'update', 'absent',  # noqa: E501
                                                                            'fetch_initial_keys', 'generate_secret']),  # noqa: E501
+        key_type=dict(type='str', required=False, default='aes256k', choices=['aes', 'aes256k']),
         caps=dict(type='dict', required=False, default=None),
         secret=dict(type='str', required=False, default=None, no_log=True),
         import_key=dict(type='bool', required=False, default=True),
@@ -495,6 +511,7 @@ def run_module():
 
     # Gather module parameters in variables
     state = module.params['state']
+    key_type = module.params.get('key_type', 'aes256k')
     name = module.params.get('name')
     cluster = module.params.get('cluster')
     caps = module.params.get('caps')
@@ -582,7 +599,9 @@ def run_module():
                         result["rc"] = rc
                         if rc != 0:
                             result["stdout"] = "Couldn't fetch the key {0} at {1}.".format(name, file_path)  # noqa: E501
-                            module.exit_json(**result)
+                            result["stderr"] = err
+                            result["rc"] = rc
+                            module.fail_json(msg="Couldn't fetch the key {0} at {1}.".format(name, file_path), **result)
                         result["stdout"] = "fetched the key {0} at {1}.".format(name, file_path)  # noqa: E501
 
                     result["stdout"] = "{0} already exists and doesn't need to be updated.".format(name)  # noqa: E501
@@ -596,11 +615,12 @@ def run_module():
                 module.exit_json(**result)
         if (key_exist == 0 and (secret != _secret or caps != _caps)) or key_exist != 0:  # noqa: E501
             rc, cmd, out, err = exec_commands(module, create_key(
-                module, cluster, user, user_key_path, name, secret, caps, import_key, file_path, container_image))  # noqa: E501
+                module, cluster, user, user_key_path, name, secret, caps, import_key, file_path, container_image, key_type))  # noqa: E501
             if rc != 0:
                 result["stdout"] = "Couldn't create or update {0}".format(name)
                 result["stderr"] = err
-                module.exit_json(**result)
+                result["rc"] = rc
+                module.fail_json(msg="Couldn't create or update {0}".format(name), **result)
             module.set_fs_attributes_if_different(file_args, False)
             changed = True
 
@@ -655,7 +675,7 @@ def run_module():
             file_args['path'] = key_path
             module.set_fs_attributes_if_different(file_args, False)
     elif state == "generate_secret":
-        out = generate_secret().decode()
+        out = generate_secret(key_type=key_type).decode()
         cmd = ''
         rc = 0
         err = ''
