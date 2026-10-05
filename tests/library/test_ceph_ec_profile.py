@@ -101,7 +101,7 @@ class TestCephEcProfile(object):
             ceph_ec_profile.run_module()
 
         result = r.value.args[0]
-        assert result['changed']
+        assert not result['changed']
         assert result['cmd'] == ['ceph', 'osd', 'erasure-code-profile', 'get', 'foo', '--format', 'json']
         assert result['stdout'] == '{"crush-device-class":"","crush-failure-domain":"host","crush-root":"default","jerasure-per-chunk-alignment":"false","k":"2","m":"4","plugin":"isa","stripe_unit":"32","technique":"reed_sol_van","w":"8"}'  # noqa: E501
         assert not result['stderr']

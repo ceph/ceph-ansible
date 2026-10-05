@@ -134,9 +134,15 @@ def get_config_dump(module, container_image=None):
 
 
 def get_current_value(who, option, config_dump):
+    if '/' in who:
+        section, mask = who.split('/', 1)
+    else:
+        section, mask = who, ''
+
     for config in config_dump:
-        if config['section'] == who and config['name'] == option:
-            return config['value']
+        config_mask = config.get('mask', '') or ''
+        if config.get('section') == section and config_mask == mask and config.get('name') == option:
+            return str(config.get('value'))
     return None
 
 
@@ -183,10 +189,15 @@ def main() -> None:
     current_value = get_current_value(who, option, config_dump)
 
     if action == 'set':
-        if current_value and value.lower() == current_value.lower():
+        if current_value is not None and str(value).lower() == current_value.lower():
             out = 'who={} option={} value={} already set. Skipping.'.format(who, option, value)
         else:
             rc, cmd, out, err = set_option(module, who, option, value, container_image=container_image)
+            if rc != 0:
+                fatal(
+                    message=f"Can't set configuration {who} {option}={value}. Error:\n{err}",
+                    module=module
+                )
             changed = True
     elif action == 'get':
         if current_value is None:

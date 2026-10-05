@@ -11,7 +11,7 @@
       failed_when: false
 
     - name: Deactivate volume groups
-      ansible.builtin.command: "vgchange -an {{ item }}"
+      ansible.builtin.command: "vgchange --noudevsync -an {{ item }}"
       loop:
         - "{{ inventory_hostname }}_test_group"
         - "{{ inventory_hostname }}_journals"
@@ -31,7 +31,7 @@
     - name: Remove device-mapper devices
       ansible.builtin.shell: |
         for dev in $(dmsetup ls | awk -v prefix="{{ inventory_hostname }}_" '$1 ~ "^"prefix {print $1}'); do
-          dmsetup remove "$dev" || true
+          dmsetup remove --noudevsync -f "$dev" || true
         done
       changed_when: false
       failed_when: false

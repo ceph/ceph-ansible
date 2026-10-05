@@ -223,8 +223,10 @@ def run_module():
         current_profile = {}
         if rc == 0:
             current_profile = json.loads(out)
+            changed = not all(str(current_profile.get(k)) == str(v) for k, v in user_profile.items())
+        else:
+            changed = True
 
-        changed = current_profile != user_profile
         if changed:
             diff['before'] = json.dumps(current_profile)
             diff['after'] = json.dumps(user_profile)

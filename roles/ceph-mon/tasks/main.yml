@@ -8,7 +8,12 @@
   ansible.builtin.include_tasks: deploy_monitors.yml
   when:
     # we test for both container and non-container
-    - (mon_socket is defined and mon_socket.get('rc') != 0) or (ceph_mon_container_stat is defined and ceph_mon_container_stat.get('stdout_lines', [])|length == 0)
+    - >-
+      (mon_socket is defined and
+       (mon_socket.results is not defined or
+        0 not in (mon_socket.results | map(attribute='rc') | list))) or
+      (ceph_mon_container_stat is defined and
+       ceph_mon_container_stat.get('stdout_lines', []) | length == 0)
     - not switch_to_containers | default(False) | bool
 
 - name: Include start_monitor.yml
