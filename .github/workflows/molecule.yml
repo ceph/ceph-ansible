@@ -12,17 +12,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
-        fail-fast: false
-        matrix:
-          repository:
-            # - dev
-            - community
-          distro:
-            - debian-systemd:bookworm
-            - ubuntu-systemd:jammy
-            # - centos-systemd:stream10
-          scenario:
-            - molecule-all-in-one
+      fail-fast: false
+      matrix:
+        include:
+          - repository: community
+            scenario: molecule-all-in-one
+            release: squid
+            distro: debian-systemd:bookworm
+          - repository: community
+            scenario: molecule-all-in-one
+            release: squid
+            distro: ubuntu-systemd:jammy
+          - repository: community
+            scenario: molecule-all-in-one
+            release: tentacle
+            distro: centos-systemd:stream10
+          - repository: community
+            scenario: molecule-all-in-one
+            release: tentacle
+            distro: ubuntu-systemd:noble
+          - repository: community
+            scenario: molecule-all-in-one
+            release: umbrella
+            distro: centos-systemd:stream10
     steps:
       - name: Checkout project
         uses: actions/checkout@v3
@@ -42,3 +54,4 @@ jobs:
         env:
           DOCKER_IMAGE_TAG: ${{ matrix.distro }}
           CEPH_REPOSITORY: ${{ matrix.repository }}
+          CEPH_STABLE_RELEASE: ${{ matrix.release }}

@@ -29,6 +29,14 @@
   ansible.builtin.set_fact:
     vm_min_free_kbytes: "{{ 4194303 if ansible_facts['memtotal_mb'] >= 49152 else default_vm_min_free_kbytes.content | b64decode | trim }}"
 
+- name: Ensure sysctl.d directory exists
+  ansible.builtin.file:
+    path: "/etc/sysctl.d"
+    state: "directory"
+    owner: "root"
+    group: "root"
+    mode: "0755"
+
 - name: Apply operating system tuning
   ansible.posix.sysctl:
     name: "{{ item.name }}"

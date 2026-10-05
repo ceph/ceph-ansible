@@ -10,10 +10,19 @@
     - ceph_origin == 'repository'
     - ceph_repository not in ['community', 'obs', 'dev', 'custom', 'uca']
 
-- name: Validate ceph_repository_community
+- name: Validate ceph_repository_community per distribution
+  vars:
+    _distro_key: "{{ (ansible_facts['os_family'] == 'RedHat') | ternary(ansible_facts['distribution_major_version'], ansible_facts['distribution_release']) }}"
+    _ceph_community_supported_releases: "{{ ceph_community_support_matrix.get(ansible_facts['os_family'] | lower, {}).get(_distro_key, []) }}"
   ansible.builtin.fail:
-    msg: "ceph_stable_release must be 'squid'"
+    msg: >-
+      {% if _ceph_community_supported_releases | length > 0 %}
+      ceph_stable_release '{{ ceph_stable_release }}' is not supported on {{ ansible_facts['distribution'] }} {{ _distro_key }}.
+      Supported releases: {{ _ceph_community_supported_releases | join(', ') }}
+      {% else %}
+      {{ ansible_facts['distribution'] }} {{ _distro_key }} ({{ ansible_facts['os_family'] }}) is not supported by the community repository
+      {% endif %}
   when:
     - ceph_origin == 'repository'
     - ceph_repository == 'community'
-    - ceph_stable_release not in ['squid']
+    - ceph_stable_release not in _ceph_community_supported_releases
