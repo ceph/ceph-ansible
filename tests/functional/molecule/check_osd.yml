@@ -1,0 +1,83 @@
+---
+- name: Assert ceph-osd package is installed
+  ansible.builtin.assert:
+    that:
+      - "'ceph-osd' in ansible_facts.packages"
+    fail_msg: "ceph-osd package is not installed"
+  when: not containerized_deployment | default(false) | bool
+
+- name: Check ceph-volume command exists in PATH
+  ansible.builtin.command: which ceph-volume
+  changed_when: false
+  when: not containerized_deployment | default(false) | bool
+
+- name: Find OSD data directories
+  ansible.builtin.find:
+    paths: /var/lib/ceph/osd
+    patterns: "{{ cluster | default('ceph') }}-*"
+    file_type: directory
+  register: osd_dirs
+
+- name: Assert at least one OSD directory exists
+  ansible.builtin.assert:
+    that:
+      - osd_dirs.matched > 0
+    fail_msg: "No OSD directories found in /var/lib/ceph/osd"
+
+- name: Assert ceph-osd services are running
+  vars:
+    osd_id: "{{ item.path | basename | regex_replace('^' ~ (cluster | default('ceph')) ~ '-', '') }}"
+  ansible.builtin.assert:
+    that:
+      - "ansible_facts.services['ceph-osd@' ~ osd_id ~ '.service'] is defined"
+      - "ansible_facts.services['ceph-osd@' ~ osd_id ~ '.service'].state == 'running'"
+    fail_msg: "ceph-osd@{{ osd_id }}.service is not running"
+  loop: "{{ osd_dirs.files }}"
+
+- name: Assert ceph cluster osdmap and pgmap status
+  vars:
+    osdmap: "{{ ceph_status['osdmap'] }}"
+    pgmap: "{{ ceph_status['pgmap'] }}"
+    expected_min_pools: >-
+      {{ (cephfs_pools | default([]) | length) +
+         (rgw_create_pools | default({}) | length) +
+         (pools | default([]) | length) +
+         (openstack_pools | default([]) | length) +
+         1 }}
+    unclean_pgs: >-
+      {{ pgmap['pgs_by_state'] | default([])
+         | rejectattr('state_name', 'search', 'active') | list }}
+  ansible.builtin.assert:
+    that:
+      - osdmap['num_osds'] > 0
+      - osdmap['num_up_osds'] == osdmap['num_osds']
+      - osdmap['num_in_osds'] == osdmap['num_osds']
+      - pgmap['num_pools'] | int >= expected_min_pools | int
+      - pgmap['num_pgs'] > 0
+      - unclean_pgs | length == 0
+    fail_msg: >-
+      OSD/PG map status check failed:
+      osds={{ osdmap['num_up_osds'] }}/{{ osdmap['num_osds'] }} up, {{ osdmap['num_in_osds'] }} in,
+      num_pools={{ pgmap['num_pools'] }} (expected at least {{ expected_min_pools }}),
+      num_pgs={{ pgmap['num_pgs'] }},
+      unclean_pgs={{ unclean_pgs }}
+  run_once: true
+
+- name: Assert all local OSDs are up and in the CRUSH tree
+  vars:
+    tree_nodes: "{{ ceph_osd_tree['nodes'] }}"
+    host_node: >-
+      {{ tree_nodes | selectattr('type', 'equalto', 'host')
+         | selectattr('name', 'equalto', inventory_hostname)
+         | list | first | default({}) }}
+    local_osd_ids: "{{ host_node.children | default([]) }}"
+    local_osds: >-
+      {{ tree_nodes | selectattr('type', 'equalto', 'osd')
+         | selectattr('id', 'in', local_osd_ids) | list }}
+  ansible.builtin.assert:
+    that:
+      - local_osds | length > 0
+      - local_osds | rejectattr('status', 'equalto', 'up') | list | length == 0
+      - local_osds | rejectattr('reweight', 'gt', 0) | list | length == 0
+    fail_msg: >-
+      Not all OSDs for host {{ inventory_hostname }} are up and in: {{ local_osds }}

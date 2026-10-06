@@ -1,0 +1,53 @@
+---
+- name: Assert ceph-mgr package is installed
+  ansible.builtin.assert:
+    that:
+      - "'ceph-mgr' in ansible_facts.packages"
+    fail_msg: "ceph-mgr package is not installed"
+  when: not containerized_deployment | default(false) | bool
+
+- name: Assert ceph-mgr service is running
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.services['ceph-mgr@' ~ inventory_hostname ~ '.service'] is defined
+      - ansible_facts.services['ceph-mgr@' ~ inventory_hostname ~ '.service'].state == 'running'
+    fail_msg: "ceph-mgr@{{ inventory_hostname }}.service is not running"
+
+- name: Check mgr dashboard package and ports when enabled
+  when: dashboard_enabled | default(false) | bool
+  block:
+    - name: Assert ceph-mgr-dashboard package is installed
+      ansible.builtin.assert:
+        that:
+          - "'ceph-mgr-dashboard' in ansible_facts.packages"
+        fail_msg: "ceph-mgr-dashboard package is not installed"
+      when: not containerized_deployment | default(false) | bool
+
+    - name: Assert dashboard ports are listening
+      ansible.builtin.assert:
+        that:
+          - item in (ansible_facts.tcp_listen | map(attribute='port') | list)
+        fail_msg: "Dashboard port {{ item }} is not listening"
+      loop:
+        - 8443
+        - 9283
+
+- name: Assert ceph manager availability and enabled modules
+  vars:
+    expected_modules: >-
+      {{ (ceph_mgr_modules | default([]))
+         | union(['dashboard', 'prometheus'] if (dashboard_enabled | default(false) | bool) else []) }}
+    active_modules: "{{ ceph_status['mgrmap']['modules'] | default([]) }}"
+  ansible.builtin.assert:
+    that:
+      - ceph_status['mgrmap']['available'] | bool
+      - expected_modules | difference(active_modules) | length == 0
+      - (ceph_status['mgrmap']['num_standbys'] | default(0) | int) + 1 == groups['mgrs'] | length
+    fail_msg: >-
+      MGR status assertions failed:
+      available={{ ceph_status['mgrmap']['available'] }},
+      missing_modules={{ expected_modules | difference(active_modules) }},
+      active_modules={{ active_modules }},
+      expected_mgrs={{ groups['mgrs'] | length }},
+      actual_mgrs={{ (ceph_status['mgrmap']['num_standbys'] | default(0) | int) + 1 }}
+  run_once: true

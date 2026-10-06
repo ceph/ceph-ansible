@@ -1,0 +1,24 @@
+---
+- name: Assert ceph-mds package is installed
+  ansible.builtin.assert:
+    that:
+      - "'ceph-mds' in ansible_facts.packages"
+    fail_msg: "ceph-mds package is not installed"
+  when: not containerized_deployment | default(false) | bool
+
+- name: Assert ceph-mds service is running
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.services['ceph-mds@' ~ inventory_hostname ~ '.service'] is defined
+      - ansible_facts.services['ceph-mds@' ~ inventory_hostname ~ '.service'].state == 'running'
+    fail_msg: "ceph-mds@{{ inventory_hostname }}.service is not running"
+
+- name: Assert MDS daemons are active or standby in fsmap
+  vars:
+    fsmap: "{{ ceph_status['fsmap'] }}"
+    total_mds: "{{ (fsmap['up'] | default(0) | int) + (fsmap['up:standby'] | default(0) | int) }}"
+  ansible.builtin.assert:
+    that:
+      - total_mds | int >= groups['mdss'] | length
+    fail_msg: "Total active/standby MDS daemons ({{ total_mds }}) is less than mdss group count ({{ groups['mdss'] | length }})"
+  run_once: true

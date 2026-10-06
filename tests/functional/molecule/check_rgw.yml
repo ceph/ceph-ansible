@@ -1,0 +1,40 @@
+---
+- name: Assert ceph-radosgw package is installed
+  ansible.builtin.assert:
+    that:
+      - "'ceph-radosgw' in ansible_facts.packages or 'radosgw' in ansible_facts.packages"
+    fail_msg: "ceph-radosgw or radosgw package is not installed"
+  when: not containerized_deployment | default(false) | bool
+
+- name: Assert ceph-radosgw services are running
+  vars:
+    service_name: "ceph-radosgw@rgw.{{ rgw_zone | default('default') }}.{{ inventory_hostname }}.rgw{{ item }}.service"
+  ansible.builtin.assert:
+    that:
+      - "ansible_facts.services[service_name] is defined"
+      - "ansible_facts.services[service_name].state == 'running'"
+    fail_msg: "{{ service_name }} is not running"
+  loop: "{{ range(0, radosgw_num_instances | default(1) | int) | list }}"
+
+- name: Assert RGW endpoints are listening on expected address and port
+  vars:
+    rgw_ip: "{{ ansible_facts[radosgw_interface]['ipv4']['address'] }}"
+    matching_listeners: >-
+      {{ ansible_facts.tcp_listen
+         | selectattr('port', 'equalto', 8080 + item)
+         | selectattr('address', 'eq', rgw_ip)
+         | list }}
+  ansible.builtin.assert:
+    that:
+      - matching_listeners | length > 0
+    fail_msg: "RGW endpoint {{ rgw_ip }}:{{ 8080 + item }} is not listening"
+  loop: "{{ range(0, radosgw_num_instances | default(1) | int) | list }}"
+
+- name: Assert RGW daemons are registered in servicemap
+  vars:
+    rgw_daemons: "{{ ceph_status['servicemap']['services']['rgw']['daemons'] }}"
+    daemon_hostnames: "{{ rgw_daemons | dict2items | rejectattr('key', 'equalto', 'summary') | map(attribute='value.metadata.hostname') | list }}"
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname in daemon_hostnames
+    fail_msg: "Hostname {{ inventory_hostname }} is not found in RGW daemons servicemap: {{ daemon_hostnames }}"

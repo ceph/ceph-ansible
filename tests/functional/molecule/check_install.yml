@@ -1,0 +1,33 @@
+---
+- name: Stat Ceph configuration file
+  ansible.builtin.stat:
+    path: "/etc/ceph/{{ cluster | default('ceph') }}.conf"
+  register: ceph_conf_stat
+
+- name: Assert Ceph configuration file exists and is a regular file
+  ansible.builtin.assert:
+    that:
+      - ceph_conf_stat.stat.exists
+      - ceph_conf_stat.stat.isreg
+    fail_msg: "/etc/ceph/{{ cluster | default('ceph') }}.conf does not exist or is not a regular file"
+
+- name: Check ceph command exists in PATH
+  ansible.builtin.command: which ceph
+  changed_when: false
+  when: not containerized_deployment | default(false) | bool
+
+- name: Assert ceph-crash service is running
+  vars:
+    crash_service_name: >-
+      {{ ('ceph-crash@' ~ inventory_hostname ~ '.service')
+         if (containerized_deployment | default(false) | bool)
+         else 'ceph-crash.service' }}
+    crash_service_base: "{{ crash_service_name | regex_replace('\\.service$', '') }}"
+  ansible.builtin.assert:
+    that:
+      - (ansible_facts.services[crash_service_name] is defined) or
+        (ansible_facts.services[crash_service_base] is defined)
+      - ((ansible_facts.services[crash_service_name].state | default('')) == 'running') or
+        ((ansible_facts.services[crash_service_base].state | default('')) == 'running')
+    fail_msg: "{{ crash_service_name }} is not running"
+  when: ceph_crash_enabled | default(true) | bool

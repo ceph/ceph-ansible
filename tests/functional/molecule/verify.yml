@@ -1,0 +1,35 @@
+---
+- name: Verify Ceph cluster
+  hosts:
+    - mons
+    - mgrs
+    - osds
+    - mdss
+    - rgws
+  gather_facts: false
+  tasks:
+    - name: Gather verification facts
+      ansible.builtin.import_tasks: gather_facts.yml
+
+    - name: Include general install verification
+      ansible.builtin.import_tasks: check_install.yml
+
+    - name: Include mon verification
+      ansible.builtin.include_tasks: check_mon.yml
+      when: "'mons' in group_names"
+
+    - name: Include mgr verification
+      ansible.builtin.include_tasks: check_mgr.yml
+      when: "'mgrs' in group_names"
+
+    - name: Include osd verification
+      ansible.builtin.include_tasks: check_osd.yml
+      when: "'osds' in group_names"
+
+    - name: Include mds verification
+      ansible.builtin.include_tasks: check_mds.yml
+      when: "'mdss' in group_names"
+
+    - name: Include rgw verification
+      ansible.builtin.include_tasks: check_rgw.yml
+      when: "'rgws' in group_names"

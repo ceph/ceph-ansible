@@ -1,0 +1,45 @@
+---
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: auto
+  when: not containerized_deployment | default(false) | bool
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Gather network facts
+  ansible.builtin.setup:
+    gather_subset:
+      - '!all'
+      - network
+
+- name: Gather listening ports facts
+  community.general.listen_ports_facts:
+
+- name: Query ceph cluster status
+  ansible.builtin.command: "ceph --cluster={{ cluster | default('ceph') }} -s -f json"
+  register: ceph_status_json
+  changed_when: false
+  delegate_to: "{{ groups[mon_group_name | default('mons')][0] }}"
+  run_once: true
+  retries: 30
+  delay: 5
+  until:
+    - ceph_status_json.rc == 0
+    - (ceph_status_json.stdout | from_json).health.status in ['HEALTH_OK']
+
+- name: Query ceph osd tree
+  ansible.builtin.command: "ceph --cluster={{ cluster | default('ceph') }} osd tree -f json"
+  register: ceph_osd_tree_json
+  changed_when: false
+  delegate_to: "{{ groups[mon_group_name | default('mons')][0] }}"
+  run_once: true
+
+- name: Parse ceph status output
+  ansible.builtin.set_fact:
+    ceph_status: "{{ ceph_status_json.stdout | from_json }}"
+    ceph_osd_tree: "{{ ceph_osd_tree_json.stdout | from_json }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  loop: "{{ ansible_play_hosts }}"
+  run_once: true

@@ -1,0 +1,36 @@
+---
+- name: Assert ceph-mon package is installed
+  ansible.builtin.assert:
+    that:
+      - "'ceph-mon' in ansible_facts.packages"
+    fail_msg: "ceph-mon package is not installed"
+  when: not containerized_deployment | default(false) | bool
+
+- name: Assert ceph-mon service is running
+  ansible.builtin.assert:
+    that:
+      - "ansible_facts.services['ceph-mon@' ~ inventory_hostname ~ '.service'] is defined"
+      - "ansible_facts.services['ceph-mon@' ~ inventory_hostname ~ '.service'].state == 'running'"
+    fail_msg: "ceph-mon@{{ inventory_hostname }}.service is not running"
+
+- name: Assert mon ports are listening
+  ansible.builtin.assert:
+    that:
+      - item in (ansible_facts.tcp_listen | map(attribute='port') | list)
+    fail_msg: "Port {{ item }} is not listening"
+  loop:
+    - 3300
+    - 6789
+
+- name: Assert ceph cluster health and monitor status
+  ansible.builtin.assert:
+    that:
+      - ceph_status.health.status in ['HEALTH_OK']
+      - ceph_status.monmap.num_mons | int == groups['mons'] | length
+      - ceph_status.monmap.min_mon_release_name == (ceph_stable_release | default('squid'))
+    fail_msg: >-
+      Mon status assertions failed:
+      health={{ ceph_status.health.status }},
+      num_mons={{ ceph_status.monmap.num_mons }} (expected {{ groups['mons'] | length }}),
+      min_mon_release_name={{ ceph_status.monmap.min_mon_release_name }} (expected {{ ceph_stable_release | default('squid') }})
+  run_once: true
