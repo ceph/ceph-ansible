@@ -705,7 +705,7 @@ def run_module():
     elif state == "list":
         rc, cmd, out, err = exec_command(module,
                                          list_pools(cluster,
-                                                    name, user,
+                                                    user,
                                                     user_key,
                                                     details,
                                                     container_image=container_image))  # noqa: E501
