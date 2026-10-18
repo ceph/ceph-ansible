@@ -1,5 +1,6 @@
 import os
 import sys
+import ca_test_common
 import ceph_pool
 from mock.mock import patch
 import pytest
@@ -487,6 +488,32 @@ class TestCephPoolModule(object):
         cmd = ceph_pool.list_pools(fake_cluster_name, fake_user, fake_user_key, False, 'json', container_image=fake_container_image_name)
 
         assert cmd == expected_command
+
+    @pytest.mark.parametrize('details', [True, False])
+    @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.run_command')
+    def test_state_list(self, m_run_command, m_exit_json, details):
+        ca_test_common.set_module_args({
+            'name': fake_pool_name,
+            'state': 'list',
+            'details': details
+        })
+        m_exit_json.side_effect = ca_test_common.exit_json
+        m_run_command.return_value = 0, '[]', ''
+
+        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
+            ceph_pool.main()
+
+        expected_cmd = ['ceph', '-n', fake_user, '-k', fake_user_key,
+                        '--cluster', fake_cluster_name, 'osd', 'pool', 'ls']
+        if details:
+            expected_cmd.append('detail')
+        expected_cmd.extend(['-f', 'json'])
+
+        result = result.value.args[0]
+        assert not result['changed']
+        assert result['cmd'] == expected_cmd
+        assert result['rc'] == 0
 
     def test_create_replicated_pool_pg_autoscaler_enabled(self):
         self.fake_user_pool_config['type']['value'] = 'replicated'
