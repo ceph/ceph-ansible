@@ -11,7 +11,6 @@ jobs:
   all-in-one:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    continue-on-error: ${{ matrix.experimental || false }}
     strategy:
       fail-fast: false
       matrix:
@@ -64,8 +63,17 @@ jobs:
         run: pip install tox
 
       - name: Run Tox
+        id: run_tox
         run: tox -c tox-molecule.ini -e ${{ matrix.scenario }}
+        continue-on-error: ${{ matrix.experimental || false }}
         env:
           DOCKER_IMAGE_TAG: ${{ matrix.distro }}
           CEPH_REPOSITORY: ${{ matrix.repository }}
           CEPH_STABLE_RELEASE: ${{ matrix.release }}
+
+      - name: Notify experimental failure
+        if: steps.run_tox.outcome == 'failure'
+        run: |
+          echo "::warning::Experimental scenario ${{ matrix.distro }} (${{ matrix.repository }} / ${{ matrix.release }}) failed, but is allowed to fail."
+          echo "### ⚠️ Experimental Scenario Failed" >> $GITHUB_STEP_SUMMARY
+          echo "The scenario with \`${{ matrix.distro }}\` (\`${{ matrix.repository }}\` / \`${{ matrix.release }}\`) failed, but is marked as experimental/non-voting." >> $GITHUB_STEP_SUMMARY
