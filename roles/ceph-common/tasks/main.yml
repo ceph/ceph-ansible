@@ -4,25 +4,7 @@
   tags: package-configure
 
 - name: Include installs/install_redhat_packages.yml
-  ansible.builtin.include_tasks: installs/install_redhat_packages.yml
-  when:
-    - ansible_facts['os_family'] == 'RedHat'
-    - (ceph_origin == 'repository' or ceph_origin == 'distro')
-  tags: package-install
-
-- name: Include installs/install_suse_packages.yml
-  ansible.builtin.include_tasks: installs/install_suse_packages.yml
-  when: ansible_facts['os_family'] == 'Suse'
-  tags: package-install
-
-- name: Include installs/install_on_debian.yml
-  ansible.builtin.include_tasks: installs/install_on_debian.yml
-  tags: package-install
-  when: ansible_facts['os_family'] == 'Debian'
-
-- name: Include_tasks installs/install_on_clear.yml
-  ansible.builtin.include_tasks: installs/install_on_clear.yml
-  when: ansible_facts['os_family'] == 'ClearLinux'
+  ansible.builtin.include_tasks: installs/install_{{ ansible_facts['os_family'] | lower }}_packages.yml
   tags: package-install
 
 - name: Get ceph version
