@@ -39,12 +39,21 @@ jobs:
             scenario: molecule-all-in-one
             release: umbrella
             distro: ubuntu-systemd:noble
+          - repository: dev
+            scenario: molecule-all-in-one
+            release: dev
+            distro: ubuntu-systemd:resolute
+          - repository: dev
+            scenario: molecule-all-in-one
+            release: dev
+            distro: rockylinux-systemd:10
+            experimental: true
     steps:
       - name: Checkout project
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -54,8 +63,17 @@ jobs:
         run: pip install tox
 
       - name: Run Tox
+        id: run_tox
         run: tox -c tox-molecule.ini -e ${{ matrix.scenario }}
+        continue-on-error: ${{ matrix.experimental || false }}
         env:
           DOCKER_IMAGE_TAG: ${{ matrix.distro }}
           CEPH_REPOSITORY: ${{ matrix.repository }}
           CEPH_STABLE_RELEASE: ${{ matrix.release }}
+
+      - name: Notify experimental failure
+        if: steps.run_tox.outcome == 'failure'
+        run: |
+          echo "::warning::Experimental scenario ${{ matrix.distro }} (${{ matrix.repository }} / ${{ matrix.release }}) failed, but is allowed to fail."
+          echo "### ⚠️ Experimental Scenario Failed" >> $GITHUB_STEP_SUMMARY
+          echo "The scenario with \`${{ matrix.distro }}\` (\`${{ matrix.repository }}\` / \`${{ matrix.release }}\`) failed, but is marked as experimental/non-voting." >> $GITHUB_STEP_SUMMARY

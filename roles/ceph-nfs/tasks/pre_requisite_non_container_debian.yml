@@ -7,28 +7,30 @@
         - nfs_ganesha_stable | bool
         - ceph_repository == 'community'
       block:
-        - name: Add nfs-ganesha stable repository
-          ansible.builtin.apt_repository:
-            repo: "deb {{ nfs_ganesha_stable_deb_repo }} {{ ceph_stable_distro_source | default(ansible_facts['distribution_release']) }} main"
+        - name: Add nfs-ganesha repository
+          ansible.builtin.deb822_repository:
+            architectures: "{{ ceph_architecture_mapping.get(ansible_facts['architecture']) }}"
+            name: nfs-ganesha
+            components: main
+            enabled: true
+            signed_by: "https://{{ nfs_ganesha_apt_keyserver }}/pks/lookup?op=get&search=0x{{ nfs_ganesha_apt_key_id }}"
             state: present
-            update_cache: false
+            suites: "{{ ceph_stable_distro_source | default(ansible_facts['distribution_release']) }}"
+            uris: "{{ nfs_ganesha_stable_deb_repo }}"
           register: add_ganesha_apt_repo
 
-        - name: Add libntirpc stable repository
-          ansible.builtin.apt_repository:
-            repo: "deb {{ libntirpc_stable_deb_repo }} {{ ceph_stable_distro_source | default(ansible_facts['distribution_release']) }} main"
+        - name: Add libntirpc repository
+          ansible.builtin.deb822_repository:
+            architectures: "{{ ceph_architecture_mapping.get(ansible_facts['architecture']) }}"
+            name: libntirpc
+            components: main
+            enabled: true
+            signed_by: "https://{{ nfs_ganesha_apt_keyserver }}/pks/lookup?op=get&search=0x{{ nfs_ganesha_apt_key_id }}"
             state: present
-            update_cache: false
+            suites: "{{ ceph_stable_distro_source | default(ansible_facts['distribution_release']) }}"
+            uris: "{{ libntirpc_stable_deb_repo }}"
           register: add_libntirpc_apt_repo
           when: libntirpc_stable_deb_repo is defined
-
-        - name: Add nfs-ganesha ppa apt key
-          ansible.builtin.apt_key:
-            keyserver: "{{ nfs_ganesha_apt_keyserver }}"
-            id: "{{ nfs_ganesha_apt_key_id }}"
-          when:
-            - nfs_ganesha_apt_key_id is defined
-            - nfs_ganesha_apt_keyserver is defined
 
         - name: Update apt cache
           ansible.builtin.apt:
