@@ -1,19 +1,11 @@
 ---
-- name: Install redhat dependencies
+- name: Install dependencies
   ansible.builtin.package:
-    name: "{{ redhat_package_dependencies }}"
+    name: "{{ lookup('ansible.builtin.vars', ansible_facts['distribution'] | lower + '_package_dependencies', default=[]) }}"
     state: present
+    enablerepo: "{{ (ansible_facts['distribution'] == 'Rocky') | ternary('crb', omit) }}"
   register: result
   until: result is succeeded
-  when: ansible_facts['distribution'] == 'RedHat'
-
-- name: Install centos dependencies
-  ansible.builtin.package:
-    name: "{{ centos_package_dependencies }}"
-    state: present
-  register: result
-  until: result is succeeded
-  when: ansible_facts['distribution'] == 'CentOS'
 
 - name: Install redhat ceph packages
   ansible.builtin.package:
