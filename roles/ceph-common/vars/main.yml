@@ -35,6 +35,7 @@ _ceph_rpm_repository_gpg_keys:
   community: "{{ ceph_stable_key }}"
   custom: "{{ ceph_custom_key | default('') }}"
   dev: ""
+  epel: "{{ ceph_epel_key }}"
 
 _ceph_rpm_repos:
   community:
@@ -45,26 +46,32 @@ _ceph_rpm_repos:
       priority: 2
     - name: ceph_stable_noarch
       description: Ceph Stable noarch repo
-      gpgcheck: "{{ (_ceph_rpm_repository_gpg_keys[ceph_repository] | length > 0) }}"
-      gpgkey: "{{ _ceph_rpm_repository_gpg_keys[ceph_repository] }}"
-      state: present
       baseurl: "{{ ceph_mirror }}/rpm-{{ ceph_stable_release }}/el{{ ansible_facts['distribution_major_version'] }}/noarch"
       file: ceph_stable
       priority: 2
   dev:
     - name: ceph-dev
       description: Ceph Dev $basearch repo
-      gpgcheck: "{{ (_ceph_rpm_repository_gpg_keys[ceph_repository] | length > 0) }}"
-      gpgkey: "{{ _ceph_rpm_repository_gpg_keys[ceph_repository] }}"
-      state: present
-      baseurl: "{{ (_ceph_uri_rpm_repo.get('content', '[{}]') | from_json | first).get('url', '') }}$basearch"
+      baseurl: "{{ (((_ceph_uri_rpm_repo.get('content', '[]') | from_json | first).get('url', '')) ~ '$basearch') if ceph_repository == 'dev' else '' }}"
       file: ceph-dev
       priority: 2
     - name: ceph-dev-noarch
       description: Ceph Dev noarch repo
-      gpgcheck: "{{ (_ceph_rpm_repository_gpg_keys[ceph_repository] | length > 0) }}"
-      gpgkey: "{{ _ceph_rpm_repository_gpg_keys[ceph_repository] }}"
-      state: present
-      baseurl: "{{ (_ceph_uri_rpm_repo.get('content', '[{}]') | from_json | first).get('url', '') }}noarch"
+      baseurl: "{{ (((_ceph_uri_rpm_repo.get('content', '[]') | from_json | first).get('url', '')) ~ 'noarch') if ceph_repository == 'dev' else '' }}"
       file: ceph-dev
       priority: 2
+  epel:
+    - name: epel-ceph
+      baseurl: >-
+        {{
+          ceph_epel_mirror ~
+          '/' ~ ansible_facts['distribution_major_version'] ~
+          (ansible_facts['distribution_major_version'] | int >= 10 and ansible_facts['distribution'] | lower != 'centos') | ternary('z', '') ~
+          '/Everything/' ~ ansible_facts['architecture']
+        }}
+      description: "Extra Packages for Enterprise Linux $releasever - $basearch"
+      file: ceph-epel
+      gpgkey: "{{ ceph_epel_key }}"
+      gpgcheck: true
+      enabled: true
+      state: present

@@ -1,11 +1,4 @@
 ---
-- name: Configure epel repository
-  ansible.builtin.package:
-    name: epel-release
-  register: result
-  until: result is succeeded
-  tags: with_pkg
-
 - name: Install python3-packaging
   ansible.builtin.package:
     name: python3-packaging
@@ -23,12 +16,15 @@
 
 - name: Configure gpg keys for repositories
   ansible.builtin.rpm_key:
-    key: "{{ _ceph_rpm_repository_gpg_keys[ceph_repository] }}"
+    key: "{{ item }}"
     state: present
   register: result
   until: result is succeeded
   when:
-    - _ceph_rpm_repository_gpg_keys[ceph_repository] | length > 0
+    - item | length > 0
+  loop:
+    - "{{ _ceph_rpm_repository_gpg_keys[ceph_repository] }}"
+    - "{{ _ceph_rpm_repository_gpg_keys['epel'] }}"
 
 - name: Fetch ceph redhat development repository
   vars:
@@ -48,15 +44,14 @@
     baseurl: "{{ item.baseurl }}"
     file: "{{ item.file | default(omit) }}"
     description: "{{ item.description | default(omit) }}"
-    gpgcheck: "{{ (_ceph_rpm_repository_gpg_keys[ceph_repository] | length > 0) }}"
-    gpgkey: "{{ _ceph_rpm_repository_gpg_keys[ceph_repository] }}"
+    gpgcheck: "{{ item.gpgcheck | default(_ceph_rpm_repository_gpg_keys[ceph_repository] | length > 0) }}"
+    gpgkey: "{{ item.gpgkey | default(_ceph_rpm_repository_gpg_keys[ceph_repository]) }}"
     state: present
-    priority: 2
-  loop: "{{ _ceph_rpm_repos[ceph_repository] }}"
+    priority: "{{ item.priority | default(omit) }}"
+  loop: "{{ _ceph_rpm_repos.get(ceph_repository, []) + _ceph_rpm_repos['epel'] }}"
   register: result
   until: result is succeeded
   when:
-    - ceph_repository in ['dev', 'community']
     - item.condition | default(true)
 
 - name: Configure red hat custom repository
