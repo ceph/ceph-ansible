@@ -87,6 +87,11 @@ cephadm_ssh_priv_key_path: "/home/{{ cephadm_ssh_user }}/.ssh/id_rsa"
 cephadm_ssh_pub_key_path: "{{ cephadm_ssh_priv_key_path }}.pub"
 cephadm_mgmt_network: "{{ public_network }}"
 
+# CephX capabilities for RGW daemon keyrings created with client.bootstrap-rgw
+ceph_rgw_keyring_caps:
+  mon: "{{ (ceph_release_num.get(ceph_stable_release, 0) | int > 21) | ternary('profile rgw', 'allow rw') }}"
+  osd: "{{ (ceph_release_num.get(ceph_stable_release, 0) | int > 21) | ternary('profile rgw', 'allow rwx') }}"
+
 ############
 # PACKAGES #
 ############
