@@ -1,4 +1,36 @@
 ---
+# NOTE(noonedeadpunk) We need these tasks to avoid conflicts during upgrade with
+#                     .list files that were used before.
+- name: Find legacy repository files
+  vars:
+    _ceph_repo_patterns:
+      - "{{ ceph_custom_repo | default('') }}"
+      - "{{ ceph_stable_repo }}"
+      - "{{ ceph_stable_repo_uca }}"
+    _ceph_dev_repo_patterns:
+      - ceph.list
+      - "*chacra*.list"
+      - "*shaman*.list"
+  ansible.builtin.find:
+    paths: /etc/apt/sources.list.d/
+    patterns: >-
+      {{
+        _ceph_repo_patterns
+        | select
+        | map('urlsplit', 'hostname')
+        | map('regex_replace', '[^a-zA-Z0-9]', '_')
+        | map('regex_replace', '$', '_*.list')
+        | list + _ceph_dev_repo_patterns
+      }}
+  register: _legacy_apt_repos
+
+- name: Clean up legacy repository config not in deb822 format
+  ansible.builtin.file:
+    path: "{{ item['path'] }}"
+    state: absent
+  with_items: "{{ _legacy_apt_repos['files'] }}"
+  register: apt_repo_removed
+
 - name: Install dependencies for apt modules
   ansible.builtin.package:
     name:
