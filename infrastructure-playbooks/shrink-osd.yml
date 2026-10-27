@@ -251,6 +251,15 @@
         CEPH_CONTAINER_BINARY: "{{ container_binary }}"
       run_once: true
 
+    - name: Wait for osd(s) to be safe to destroy
+      ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} osd safe-to-destroy {{ osd_to_kill.split(',') | join(' ') }}"
+      register: safe_to_destroy
+      until: safe_to_destroy is succeeded
+      retries: 60
+      delay: 5
+      changed_when: false
+      run_once: true
+
     - name: Stop osd(s) service
       ansible.builtin.service:
         name: ceph-osd@{{ item.2 }}
