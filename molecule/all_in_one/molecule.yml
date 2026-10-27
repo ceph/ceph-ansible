@@ -11,6 +11,7 @@ platforms:
   - name: osd0
     <<: &host_config
       groups:
+        - ceph_all
         - mdss
         - mgrs
         - mons
@@ -41,9 +42,17 @@ platforms:
     <<: *host_config
   - name: osd2
     <<: *host_config
+  - name: osd3
+    <<: *host_config
+    groups:
+      - ceph_all
+      - spare_nodes
 
 provisioner:
   name: ansible
+  ansible_args:
+    - --extra-vars
+    - "@../../tests/functional/all-in-one/extra_vars.yml"
   lint:
     name: ansible-lint
   inventory:

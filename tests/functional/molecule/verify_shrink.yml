@@ -1,0 +1,116 @@
+---
+- name: Verify Ceph daemons stopped on spare nodes
+  hosts: spare_nodes
+  gather_facts: false
+  tasks:
+    - name: Gather verification facts on spare nodes
+      ansible.builtin.import_tasks: gather_facts.yml
+
+    - name: Assert ceph-mon service is not running
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['ceph-mon@' ~ inventory_hostname ~ '.service'] is not defined
+            or ansible_facts.services['ceph-mon@' ~ inventory_hostname ~ '.service'].state != 'running'
+        fail_msg: "ceph-mon@{{ inventory_hostname }}.service is still running"
+
+    - name: Assert ceph-mgr service is not running
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['ceph-mgr@' ~ inventory_hostname ~ '.service'] is not defined
+            or ansible_facts.services['ceph-mgr@' ~ inventory_hostname ~ '.service'].state != 'running'
+        fail_msg: "ceph-mgr@{{ inventory_hostname }}.service is still running"
+
+    - name: Assert ceph-mds service is not running
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['ceph-mds@' ~ inventory_hostname ~ '.service'] is not defined
+            or ansible_facts.services['ceph-mds@' ~ inventory_hostname ~ '.service'].state != 'running'
+        fail_msg: "ceph-mds@{{ inventory_hostname }}.service is still running"
+
+    - name: Assert ceph-osd services are not running
+      ansible.builtin.assert:
+        that:
+          - item not in (ansible_facts.services | default({}))
+            or ansible_facts.services[item].state != 'running'
+        fail_msg: "{{ item }} is still running on {{ inventory_hostname }}"
+      loop: "{{ ansible_facts.services | default({}) | select('match', '^ceph-osd@') | list }}"
+
+    - name: Assert mon ports are not listening
+      ansible.builtin.assert:
+        that:
+          - item not in (ansible_facts.tcp_listen | map(attribute='port') | list)
+        fail_msg: "Port {{ item }} is still listening on {{ inventory_hostname }}"
+      loop:
+        - 3300
+        - 6789
+
+    - name: Assert RGW ports are not listening
+      ansible.builtin.assert:
+        that:
+          - item not in (ansible_facts.tcp_listen | map(attribute='port') | list)
+        fail_msg: "RGW port {{ item }} is still listening on {{ inventory_hostname }}"
+      loop:
+        - 8080
+        - 8081
+
+- name: Verify Ceph cluster state after shrinkage
+  hosts: mons[0]
+  gather_facts: false
+  tasks:
+    - name: Gather verification facts on monitor
+      ansible.builtin.import_tasks: gather_facts.yml
+
+    - name: Assert ceph cluster health
+      ansible.builtin.assert:
+        that:
+          - ceph_status.health.status in ['HEALTH_OK']
+        fail_msg: "Ceph cluster health is not OK: {{ ceph_status.health.status }}"
+
+    - name: Assert monitor quorum after shrinkage
+      vars:
+        spare_hostnames: "{{ groups['spare_nodes'] | default([]) }}"
+      ansible.builtin.assert:
+        that:
+          - ceph_status.monmap.num_mons | int == (groups['mons'] | difference(groups['spare_nodes'])) | length
+          - item not in ceph_status.quorum_names
+        fail_msg: "Monitor quorum check failed: num_mons={{ ceph_status.monmap.num_mons }}, quorum={{ ceph_status.quorum_names }}"
+      loop: "{{ spare_hostnames }}"
+
+    - name: Assert manager standbys after shrinkage
+      vars:
+        spare_hostnames: "{{ groups['spare_nodes'] | default([]) }}"
+        active_mgr: "{{ ceph_status['mgrmap']['active_name'] }}"
+        standby_mgrs: "{{ ceph_status['mgrmap']['standbys'] | default([]) | map(attribute='name') | list }}"
+      ansible.builtin.assert:
+        that:
+          - item != active_mgr
+          - item not in standby_mgrs
+          - (ceph_status['mgrmap']['num_standbys'] | default(0) | int) + 1 == (groups['mgrs'] | difference(groups['spare_nodes'])) | length
+        fail_msg: "Manager status check failed: active={{ active_mgr }}, standbys={{ standby_mgrs }}"
+      loop: "{{ spare_hostnames }}"
+
+    - name: Assert OSD status after shrinkage
+      vars:
+        osdmap: "{{ ceph_status['osdmap'] }}"
+        pgmap: "{{ ceph_status['pgmap'] }}"
+        unclean_pgs: >-
+          {{ pgmap['pgs_by_state'] | default([])
+             | rejectattr('state_name', 'search', 'active') | list }}
+        base_osd_count: 6
+      ansible.builtin.assert:
+        that:
+          - osdmap['num_osds'] == base_osd_count
+          - osdmap['num_up_osds'] == base_osd_count
+          - osdmap['num_in_osds'] == base_osd_count
+          - unclean_pgs | length == 0
+        fail_msg: >-
+          OSD/PG map check failed:
+          osds={{ osdmap['num_up_osds'] }}/{{ osdmap['num_osds'] }},
+          unclean_pgs={{ unclean_pgs }}
+
+    - name: Assert spare nodes have no OSDs in CRUSH tree
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster | default('ceph') }} osd ls-tree {{ item }} -f json"
+      register: _spare_osds_in_tree
+      failed_when: (_spare_osds_in_tree.stdout | from_json | length) > 0
+      changed_when: false
+      loop: "{{ groups['spare_nodes'] | default([]) }}"

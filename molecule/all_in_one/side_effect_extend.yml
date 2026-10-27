@@ -1,0 +1,21 @@
+---
+- name: Add spare_nodes to Ceph daemon groups
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Dynamically add spare_nodes into mons, osds, mdss, mgrs, rgws
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups:
+          - mons
+          - osds
+          - mdss
+          - mgrs
+          - rgws
+      loop: "{{ groups['spare_nodes'] | default([]) }}"
+
+- name: Deploy Ceph daemons to spare_nodes
+  ansible.builtin.import_playbook: ../../site.yml.sample
+  vars:
+    no_log_on_ceph_key_tasks: false
+    yes_i_know: true
