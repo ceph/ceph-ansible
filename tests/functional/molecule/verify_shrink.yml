@@ -80,7 +80,11 @@
       vars:
         spare_hostnames: "{{ groups['spare_nodes'] | default([]) }}"
         active_mgr: "{{ ceph_status['mgrmap']['active_name'] }}"
-        standby_mgrs: "{{ ceph_status['mgrmap']['standbys'] | default([]) | map(attribute='name') | list }}"
+        standby_mgrs: >-
+          {{
+            (ceph_status['mgrmap']['standbys'] | default([]) | map(attribute='name', default='') | select | list)
+            or (ceph_status['mgrmap']['standbys'] | default([]))
+          }}
       ansible.builtin.assert:
         that:
           - item != active_mgr
