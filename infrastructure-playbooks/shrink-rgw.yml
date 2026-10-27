@@ -35,9 +35,9 @@
       when: ireallymeanit != 'yes'
       ansible.builtin.fail:
         msg: >
-          Exiting shrink-mon playbook, no monitor was removed. To shrink the
+          Exiting shrink-rgw playbook, no RGW was removed. To shrink the
           cluster, either say 'yes' on the prompt or use
-          '-e ireallymeanit=yes' on the command line when  invoking the playbook
+          '-e ireallymeanit=yes' on the command line when invoking the playbook
 
 - name: Gather facts and mons and rgws
   hosts:
@@ -98,7 +98,7 @@
       ansible.builtin.set_fact:
         rgw_host: '{{ item }}'
       with_items: '{{ groups[rgw_group_name] }}'
-      when: hostvars[item]['ansible_facts']['hostname'] == rgw_to_kill.split('.')[0]
+      when: hostvars[item]['ansible_facts']['hostname'] in rgw_to_kill.split('.')
 
     - name: Stop rgw service
       ansible.builtin.service:
