@@ -68,3 +68,16 @@ commands_restrictions:
     conditions:
       - base=main
       - number<0
+queue_rules:
+  - name: default
+    batch_size: 1
+    max_checks_retries: 0
+    queue_conditions: &conditions
+      - "#approved-reviews-by>=1"
+      - "#check-failure=0"
+      - "#check-pending=0"
+      - "#check-success>=1"
+    merge_conditions: *conditions
+merge_queue:
+  max_parallel_checks: 1
+  mode: serial
