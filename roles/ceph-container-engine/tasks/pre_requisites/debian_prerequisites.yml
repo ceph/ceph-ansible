@@ -12,14 +12,27 @@
   register: result
   until: result is succeeded
 
+- name: Clean up legacy repository config not in deb822 format
+  vars:
+    _ceph_docker_apt_repo_legacy_list: >-
+      {{
+        ceph_docker_ce_repo_uri
+        | regex_replace('^https?://', '')
+        | regex_replace('[^a-zA-Z0-9]', '_')
+      }}
+  ansible.builtin.file:
+    path: "/etc/apt/sources.list.d/{{ _ceph_docker_apt_repo_legacy_list }}.list"
+    state: absent
+  when: container_package_name == 'docker-ce'
+
 - name: Add docker repository
   ansible.builtin.deb822_repository:
     architectures: "{{ ceph_architecture_mapping.get(ansible_facts['architecture']) }}"
     name: docker-ce
     components: stable
     enabled: true
-    signed_by: "https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}/gpg"
+    signed_by: "{{ ceph_docker_ce_repo_gpg }}"
     state: present
     suites: "{{ ansible_facts['distribution_release'] }}"
-    uris: "https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}"
+    uris: "{{ ceph_docker_ce_repo_uri }}"
   when: container_package_name == 'docker-ce'

@@ -97,8 +97,8 @@ dummy:
 
 # CephX capabilities for RGW daemon keyrings created with client.bootstrap-rgw
 #ceph_rgw_keyring_caps:
-#  mon: "{{ ((ceph_version | default(ceph_release_num.get(ceph_stable_release, '0'))) | string is version('22', '>=')) | ternary('profile rgw', 'allow rw') }}"
-#  osd: "{{ ((ceph_version | default(ceph_release_num.get(ceph_stable_release, '0'))) | string is version('22', '>=')) | ternary('profile rgw', 'allow rwx') }}"
+#  mon: "{{ (ceph_release_num.get(ceph_stable_release, 0) | int > 21) | ternary('profile rgw', 'allow rw') }}"
+#  osd: "{{ (ceph_release_num.get(ceph_stable_release, 0) | int > 21) | ternary('profile rgw', 'allow rwx') }}"
 
 ############
 # PACKAGES #
@@ -557,6 +557,8 @@ dummy:
 #ceph_docker_image_tag: latest-main
 #ceph_docker_registry: quay.io
 #ceph_docker_registry_auth: false
+#ceph_docker_ce_repo_uri: "https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}"
+#ceph_docker_ce_repo_gpg: "{{ ceph_docker_ce_repo_uri }}/gpg"
 # ceph_docker_registry_username:
 # ceph_docker_registry_password:
 # ceph_docker_http_proxy:
