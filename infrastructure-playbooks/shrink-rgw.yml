@@ -82,8 +82,7 @@
 
     - name: Normalize rgw_to_kill name
       ansible.builtin.set_fact:
-        rgw_to_kill: "{{ (rgw_zone | default('default')) ~ '.' ~ rgw_to_kill }}"
-      when: rgw_to_kill.split('.') | length == 2
+        _rgw_to_kill: "{{ (rgw_to_kill.split('.') | length == 2) | ternary(rgw_zone | default('default') ~ '.' ~ rgw_to_kill, rgw_to_kill) }}"
 
     - name: Get rgw instances
       ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} service dump -f json"
@@ -97,7 +96,7 @@
             (((rgw_instances.stdout | from_json).services.rgw.daemons | default({})).keys() | list) +
             (((rgw_instances.stdout | from_json).services.rgw.daemons | default({})).values() | map(attribute='metadata.id', default='') | select | list)
           }}
-      when: rgw_to_kill not in (rgw_active_daemons | default([]))
+      when: _rgw_to_kill not in (rgw_active_daemons | default([]))
       ansible.builtin.fail:
         msg: >
           It seems that the rgw instance given is not part of the ceph cluster. Please
@@ -108,18 +107,20 @@
       ansible.builtin.set_fact:
         rgw_host: '{{ item }}'
       with_items: '{{ groups[rgw_group_name] }}'
-      when: hostvars[item]['ansible_facts']['hostname'] in rgw_to_kill.split('.')
+      when: >-
+        hostvars[item]['ansible_facts']['hostname'] == _rgw_to_kill.split('.')[-2] or
+        item == _rgw_to_kill.split('.')[-2]
 
     - name: Stop rgw service
       ansible.builtin.service:
-        name: ceph-radosgw@rgw.{{ rgw_to_kill }}
+        name: ceph-radosgw@rgw.{{ _rgw_to_kill }}
         state: stopped
         enabled: false
       delegate_to: "{{ rgw_host }}"
       failed_when: false
 
     - name: Ensure that the rgw is stopped
-      ansible.builtin.command: "systemctl is-active ceph-radosgw@rgw.{{ rgw_to_kill }}"  # noqa command-instead-of-module
+      ansible.builtin.command: "systemctl is-active ceph-radosgw@rgw.{{ _rgw_to_kill }}"  # noqa command-instead-of-module
       register: rgw_to_kill_status
       failed_when: rgw_to_kill_status.rc == 0
       changed_when: false
@@ -140,16 +141,16 @@
           }}
       failed_when:
         - (ceph_status.stdout | from_json).services.rgw is defined
-        - rgw_to_kill in _active_rgws
+        - _rgw_to_kill in _active_rgws
       until:
         - (ceph_status.stdout | from_json).services.rgw is not defined or
-          rgw_to_kill not in _active_rgws
+          _rgw_to_kill not in _active_rgws
       retries: 20
       delay: 5
 
     - name: Purge directories related to rgw
       ansible.builtin.file:
-        path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_to_kill }}
+        path: /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_to_kill }}
         state: absent
       delegate_to: "{{ rgw_host }}"
   post_tasks:
