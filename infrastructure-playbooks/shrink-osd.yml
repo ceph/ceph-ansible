@@ -125,9 +125,12 @@
       ceph_volume_simple_scan:
         cluster: "{{ cluster }}"
         force: true
-      delegate_to: "{{ item }}"
-      loop: "{{ host_list }}"
-      when: not containerized_deployment | bool
+        path: "/var/lib/ceph/osd/{{ cluster }}-{{ item.2 }}"
+      delegate_to: "{{ item.0 }}"
+      loop: "{{ _osd_hosts }}"
+      when:
+        - not containerized_deployment | bool
+        - item.2 not in _lvm_list.keys()
 
     - name: Get osd unit status
       ansible.builtin.systemd:
