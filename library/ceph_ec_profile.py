@@ -173,7 +173,7 @@ def run_module():
         state=dict(type='str', required=False,
                    choices=['present', 'absent'], default='present'),
         stripe_unit=dict(type='str', required=False),
-        plugin=dict(type='str', required=False, default='isa'),
+        plugin=dict(type='str', required=False),
         k=dict(type='str', required=False),
         m=dict(type='str', required=False),
         d=dict(type='str', required=False),
@@ -228,6 +228,8 @@ def run_module():
             changed = True
 
         if changed:
+            if 'plugin' not in user_profile:
+                user_profile['plugin'] = current_profile.get('plugin', 'isa')
             diff['before'] = json.dumps(current_profile)
             diff['after'] = json.dumps(user_profile)
             rc, cmd, out, err = exec_command(module,
