@@ -1,4 +1,15 @@
 ---
+- name: Install curl for rgw health checks
+  vars:
+    _curl_package_name:
+      redhat: /usr/bin/curl
+      debian: curl
+  ansible.builtin.package:
+    name: "{{ _curl_package_name[ansible_facts['os_family'] | lower] }}"
+    state: present
+  register: result
+  until: result is succeeded
+
 - name: Create rados gateway directories
   ansible.builtin.file:
     path: "/var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ rgw_zone }}.{{ ansible_facts['hostname'] }}.{{ item.instance_name }}"

@@ -1,0 +1,50 @@
+---
+- name: Discover OSD IDs on osd3
+  hosts: mons[0]
+  gather_facts: false
+  pre_tasks:
+    - name: Get OSD IDs on spare nodes
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster | default('ceph') }} osd ls-tree {{ item }} -f json"
+      register: _spare_node_osds
+      loop: "{{ groups['spare_nodes'] | default([]) }}"
+      changed_when: false
+  tasks:
+    - name: Set spare_osds_to_kill fact
+      ansible.builtin.set_fact:
+        spare_osds_to_kill: "{{ _spare_node_osds.results | map(attribute='stdout') | map('from_json') | flatten | join(',') }}"
+
+- name: Shrink RGW instance 0 on osd3
+  ansible.builtin.import_playbook: ../../infrastructure-playbooks/shrink-rgw.yml
+  vars:
+    i_really_mean_it: true
+    rgw_to_kill: default.osd3.rgw0
+
+- name: Shrink RGW instance 1 on osd3
+  ansible.builtin.import_playbook: ../../infrastructure-playbooks/shrink-rgw.yml
+  vars:
+    i_really_mean_it: true
+    rgw_to_kill: default.osd3.rgw1
+
+- name: Shrink MDS on osd3
+  ansible.builtin.import_playbook: ../../infrastructure-playbooks/shrink-mds.yml
+  vars:
+    i_really_mean_it: true
+    mds_to_kill: osd3
+
+- name: Shrink OSDs on osd3
+  ansible.builtin.import_playbook: ../../infrastructure-playbooks/shrink-osd.yml
+  vars:
+    i_really_mean_it: true
+    osd_to_kill: "{{ hostvars[groups['mons'] | first]['spare_osds_to_kill']}}"
+
+- name: Shrink MGR on osd3
+  ansible.builtin.import_playbook: ../../infrastructure-playbooks/shrink-mgr.yml
+  vars:
+    i_really_mean_it: true
+    mgr_to_kill: osd3
+
+- name: Shrink MON on osd3
+  ansible.builtin.import_playbook: ../../infrastructure-playbooks/shrink-mon.yml
+  vars:
+    i_really_mean_it: true
+    mon_to_kill: osd3
