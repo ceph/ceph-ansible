@@ -111,7 +111,7 @@ The ``main`` branch should be considered experimental and used with caution.
 
 - ``stable-9.0`` Supports Ceph version ``squid``. This branch requires Ansible version ``2.15``, ``2.16``, ``2.17``, ``2.18`` or ``2.19``.
 
-- ``main`` Supports the main (devel) branch of Ceph. This branch requires Ansible version ``2.15``, ``2.16``, ``2.17``, ``2.18`` or ``2.19``.
+- ``main`` Supports the main (devel) branch of Ceph. This branch requires Ansible version ``2.16``, ``2.17``, ``2.18``, ``2.19``, ``2.20`` or ``2.21``.
 
 .. NOTE:: ``stable-3.0`` to ``stable-7.0`` branches of ceph-ansible are deprecated and no longer maintained.
 

@@ -19,34 +19,42 @@ jobs:
             scenario: molecule-all-in-one
             release: squid
             distro: ubuntu-systemd:jammy
+            ansible_version: "2.18"
           - repository: community
             scenario: molecule-all-in-one
             release: tentacle
             distro: debian-systemd:bookworm
+            ansible_version: "2.18"
           - repository: community
             scenario: molecule-all-in-one
             release: tentacle
             distro: centos-systemd:stream10
+            ansible_version: "2.18"
           - repository: community
             scenario: molecule-all-in-one
             release: tentacle
             distro: ubuntu-systemd:noble
+            ansible_version: "2.19"
           - repository: community
             scenario: molecule-all-in-one
             release: umbrella
             distro: centos-systemd:stream10
+            ansible_version: "2.20"
           - repository: community
             scenario: molecule-all-in-one
             release: umbrella
             distro: ubuntu-systemd:noble
+            ansible_version: "2.20"
           - repository: dev
             scenario: molecule-all-in-one
             release: dev
             distro: ubuntu-systemd:resolute
+            ansible_version: "2.21"
           - repository: dev
             scenario: molecule-all-in-one
             release: dev
             distro: rockylinux-systemd:10
+            ansible_version: "2.21"
     steps:
       - name: Checkout project
         uses: actions/checkout@v7
@@ -69,10 +77,11 @@ jobs:
           DOCKER_IMAGE_TAG: ${{ matrix.distro }}
           CEPH_REPOSITORY: ${{ matrix.repository }}
           CEPH_STABLE_RELEASE: ${{ matrix.release }}
+          ANSIBLE_VERSION: ${{ matrix.ansible_version }}
 
       - name: Notify experimental failure
         if: steps.run_tox.outcome == 'failure'
         run: |
-          echo "::warning::Experimental scenario ${{ matrix.distro }} (${{ matrix.repository }} / ${{ matrix.release }}) failed, but is allowed to fail."
+          echo "::warning::Experimental scenario ${{ matrix.distro }} (${{ matrix.repository }} / ${{ matrix.release }} / ansible ${{ matrix.ansible_version }}) failed, but is allowed to fail."
           echo "### ⚠️ Experimental Scenario Failed" >> $GITHUB_STEP_SUMMARY
-          echo "The scenario with \`${{ matrix.distro }}\` (\`${{ matrix.repository }}\` / \`${{ matrix.release }}\`) failed, but is marked as experimental/non-voting." >> $GITHUB_STEP_SUMMARY
+          echo "The scenario with \`${{ matrix.distro }}\` (\`${{ matrix.repository }}\` / \`${{ matrix.release }}\` / ansible \`${{ matrix.ansible_version }}\`) failed, but is marked as experimental/non-voting." >> $GITHUB_STEP_SUMMARY
