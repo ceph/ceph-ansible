@@ -22,7 +22,9 @@ If ``ceph_origin`` is set to ``repository``, you now have the choice between a c
 Community repository
 ~~~~~~~~~~~~~~~~~~~~
 
-If ``ceph_repository`` is set to ``community``, packages will be installed by default from http://download.ceph.com, this can be changed by tweaking ``ceph_mirror``.
+If ``ceph_repository`` is set to ``community``, packages will be installed by default from https://download.ceph.com, this can be changed by tweaking ``ceph_mirror``.
+
+The supported distribution and Ceph release combinations are defined in the :ref:`Community Support Matrix <community-support-matrix>`. The validation role ``ceph-validate`` checks your selected ``ceph_stable_release`` against this matrix and fails early if an unsupported combination is chosen.
 
 
 UCA repository

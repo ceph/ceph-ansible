@@ -49,7 +49,7 @@ On RHEL:
 
 .. code-block:: console
 
-   $ subscription-manager repos --enable=rhel-7-server-ansible-2-rpms
+   $ subscription-manager repos --enable=ansible-automation-platform-2.4-for-rhel-9-x86_64-rpms
 
 On CentOS Stream, Rocky Linux or AlmaLinux you need to install EPEL repository:
 
@@ -113,7 +113,86 @@ The ``main`` branch should be considered experimental and used with caution.
 
 - ``main`` Supports the main (devel) branch of Ceph. This branch requires Ansible version ``2.15``, ``2.16``, ``2.17``, ``2.18`` or ``2.19``.
 
-.. NOTE:: ``stable-3.0`` and ``stable-3.1`` branches of ceph-ansible are deprecated and no longer maintained.
+.. NOTE:: ``stable-3.0`` to ``stable-7.0`` branches of ceph-ansible are deprecated and no longer maintained.
+
+Support Matrix
+==============
+
+.. _community-support-matrix:
+
+Operating System and Ceph Release Support
+-----------------------------------------
+
+ceph-ansible supports the following operating system distributions and Ceph releases when using the **community** repository (``ceph_repository: community``):
+
+.. list-table:: Ceph Community Repository Support Matrix
+   :widths: 35 15 35
+   :header-rows: 1
+
+   * - Distribution
+     - Version
+     - Supported Ceph Releases
+   * - RHEL / CentOS Stream / Rocky Linux / AlmaLinux
+     - 9
+     - ``reef``, ``squid``
+   * - RHEL / CentOS Stream / Rocky Linux / AlmaLinux
+     - 10
+     - ``tentacle``, ``umbrella``
+   * - Ubuntu
+     - 22.04 LTS
+     - ``reef``, ``squid``, ``tentacle``, ``umbrella``
+   * - Ubuntu
+     - 24.04 LTS
+     - ``tentacle``, ``umbrella``
+   * - Ubuntu
+     - 26.04 LTS
+     - ``umbrella``
+   * - Debian
+     - 12
+     - ``reef``, ``squid``, ``tentacle``, ``umbrella``
+   * - Debian
+     - 13
+     - ``umbrella``
+
+Minimum Supported Operating System Versions
+-------------------------------------------
+
+ceph-ansible requires the following minimum distribution versions:
+
+- **Red Hat Enterprise Linux / derivatives**: 9 or higher.
+- **Ubuntu**: 22.04 LTS (Jammy) or higher.
+- **Debian**: 12 (Bookworm) or higher.
+
+Installation Origins and Repository Types
+-----------------------------------------
+
+The installation source is controlled via ``ceph_origin`` and ``ceph_repository``:
+
+.. list-table:: Installation Origin Matrix
+   :widths: 20 20 60
+   :header-rows: 1
+
+   * - ``ceph_origin``
+     - ``ceph_repository``
+     - Description
+   * - ``repository``
+     - ``community``
+     - Official upstream packages from https://download.ceph.com (see support matrix above).
+   * - ``repository``
+     - ``uca``
+     - Ubuntu Cloud Archive (Ubuntu only, configured with ``ceph_stable_openstack_release_uca``).
+   * - ``repository``
+     - ``dev``
+     - Shaman development builds (configured with ``ceph_dev_branch`` and ``ceph_dev_sha1``).
+   * - ``repository``
+     - ``custom``
+     - Custom repository defined by ``ceph_custom_repo``.
+   * - ``distro``
+     - *(none)*
+     - Native packages provided directly by the operating system distribution.
+   * - ``local``
+     - *(none)*
+     - Local installation from binaries (e.g., development build trees).
 
 Configuration and Usage
 =======================
