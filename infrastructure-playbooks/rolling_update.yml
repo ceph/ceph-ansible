@@ -80,7 +80,7 @@
           - '!ohai'
       delegate_to: "{{ item }}"
       delegate_facts: true
-      with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
+      with_items: "{{ groups['all'] | reject('in', groups.get('clients', [])) | list }}"
       run_once: true
       when: delegate_facts_host | bool
 
@@ -169,7 +169,7 @@
 
         - name: Select a running monitor
           ansible.builtin.set_fact:
-            mon_host: "{{ groups[mon_group_name] | difference([inventory_hostname]) | last }}"
+            mon_host: "{{ groups[mon_group_name] | reject('in', [inventory_hostname]) | last }}"
 
         - name: Import ceph-facts role
           ansible.builtin.import_role:
@@ -704,7 +704,7 @@
                 groups: standby_mdss
                 ansible_host: "{{ hostvars[item]['ansible_host'] | default(omit) }}"
                 ansible_port: "{{ hostvars[item]['ansible_port'] | default(omit) }}"
-              with_items: "{{ groups[mds_group_name] | difference(mds_active_host) }}"
+              with_items: "{{ groups[mds_group_name] | reject('in', mds_active_host) | list }}"
 
             - name: Stop standby ceph mds
               ansible.builtin.systemd:
