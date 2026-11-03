@@ -63,7 +63,7 @@
           - '!ohai'
       delegate_to: "{{ item }}"
       delegate_facts: true
-      with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
+      with_items: "{{ groups['all'] | reject('in', groups.get('clients', [])) | list }}"
       run_once: true
       when: delegate_facts_host | bool
 
@@ -359,13 +359,13 @@
         CEPHADM_IMAGE: '{{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}'
 
     - name: Manage nodes with cephadm - ipv4
-      ansible.builtin.command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(cephadm_mgmt_network.split(',')) | first }} {{ group_names | intersect(adopt_label_group_names) | join(' ') }}"
+      ansible.builtin.command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv4_addresses'] | ips_in_ranges(cephadm_mgmt_network.split(',')) | first }} {{ group_names | select('in', adopt_label_group_names) | join(' ') }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       when: cephadm_mgmt_network.split(',')[0] is ansible.utils.ipv4
 
     - name: Manage nodes with cephadm - ipv6
-      ansible.builtin.command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(cephadm_mgmt_network.split(',')) | last | ansible.utils.ipwrap }} {{ group_names | intersect(adopt_label_group_names) | join(' ') }}"
+      ansible.builtin.command: "{{ ceph_cmd }} orch host add {{ ansible_facts['nodename'] }} {{ ansible_facts['all_ipv6_addresses'] | ips_in_ranges(cephadm_mgmt_network.split(',')) | last | ansible.utils.ipwrap }} {{ group_names | select('in', adopt_label_group_names) | join(' ') }}"
       changed_when: false
       delegate_to: '{{ groups[mon_group_name][0] }}'
       when: cephadm_mgmt_network.split(',')[0] is ansible.utils.ipv6
