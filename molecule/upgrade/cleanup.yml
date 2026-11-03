@@ -1,0 +1,53 @@
+---
+- name: Clean-up host loop devices and LVM
+  ansible.builtin.import_playbook: ../all_in_one/cleanup.yml
+
+- name: Remove rolling update sentinel flag
+  hosts: ceph_all
+  gather_facts: false
+  tasks:
+    - name: Remove sentinel file
+      ansible.builtin.file:
+        path: /etc/ceph/.rolling_update_done
+        state: absent
+      failed_when: false
+
+- name: Clean-up git worktree on localhost
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    repo_dir: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY', default=playbook_dir ~ '/../..') }}"
+    worktree_dir: "{{ lookup('ansible.builtin.env', 'CEPH_ANSIBLE_N1_PATH', default='/tmp/ceph-ansible-n1') }}"
+  tasks:
+    - name: Check if worktree directory exists
+      ansible.builtin.stat:
+        path: "{{ worktree_dir }}"
+      register: _worktree_stat
+
+    - name: Remove git worktree
+      ansible.builtin.command: "git worktree remove --force {{ worktree_dir }}"
+      args:
+        chdir: "{{ repo_dir }}"
+      when: _worktree_stat.stat.exists
+      changed_when: true
+      failed_when: false
+
+    - name: Ensure worktree directory is deleted
+      ansible.builtin.file:
+        path: "{{ worktree_dir }}"
+        state: absent
+      when: _worktree_stat.stat.exists
+
+    - name: Remove N-1 deployment log if exists
+      ansible.builtin.file:
+        path: "{{ repo_dir }}/n1-deploy.log"
+        state: absent
+      failed_when: false
+
+    - name: Prune git worktree metadata
+      ansible.builtin.command: git worktree prune
+      args:
+        chdir: "{{ repo_dir }}"
+      changed_when: false
+      failed_when: false
