@@ -2,15 +2,7 @@
 - name: If selinux is not disabled
   when: ansible_facts['selinux']['status'] == 'enabled'
   block:
-    - name: Install policycoreutils-python
-      ansible.builtin.package:
-        name: policycoreutils-python
-        state: present
-      register: result
-      until: result is succeeded
-      when: ansible_facts['distribution_major_version'] == '7'
-
-    - name: Install python3-policycoreutils on RHEL 8
+    - name: Install python3-policycoreutils
       ansible.builtin.package:
         name: python3-policycoreutils
         state: present
@@ -19,4 +11,4 @@
       when:
         - inventory_hostname in groups.get(nfs_group_name, [])
           or inventory_hostname in groups.get(rgwloadbalancer_group_name, [])
-        - ansible_facts['distribution_major_version'] == '8'
+        - ansible_facts['os_family'] == 'RedHat'
