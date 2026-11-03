@@ -11,11 +11,11 @@
     - /usr/libexec/platform-python
 
 - block:
-    - name: check for dnf-3 package manager (RedHat/Fedora/CentOS)
-      raw: stat /bin/dnf-3
+    - name: check for dnf package manager (RedHat/Fedora/CentOS)
+      raw: stat /bin/dnf
       changed_when: false
       failed_when: false
-      register: stat_dnf3
+      register: stat_dnf
 
     - name: check for yum package manager (RedHat/Fedora/CentOS)
       raw: stat /bin/yum
@@ -37,15 +37,15 @@
 
     - name: install python for RedHat based OS - dnf
       raw: >
-        {{ 'dnf' if stat_dnf3.rc == 0 else 'yum' }} -y install python3;
+        {{ 'dnf' if stat_dnf.rc == 0 else 'yum' }} -y install python3;
         ln -sf /usr/bin/python3 /usr/bin/python
         creates=/usr/bin/python
       register: result
       until: (result is succeeded) and ('Failed' not in result.stdout)
-      when: stat_dnf3.rc == 0 or stat_yum.rc == 0
+      when: stat_dnf.rc == 0 or stat_yum.rc == 0
 
     - name: install python for debian based OS
-      raw: apt-get -y install python-simplejson
+      raw: apt-get update && apt-get -y install python3
       register: result
       until: result is succeeded
       when: stat_apt.rc == 0

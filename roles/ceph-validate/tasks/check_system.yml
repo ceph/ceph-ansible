@@ -6,8 +6,8 @@
 
 - name: Fail on unsupported ansible version
   ansible.builtin.fail:
-    msg: "Ansible version must be either 2.15, 2.16, 2.17, 2.18 or 2.19!"
-  when: ansible_version.minor|int not in [15, 16, 17, 18, 19]
+    msg: "Ansible version must be between 2.16 and 2.21!"
+  when: ansible_version.minor|int not in [16, 17, 18, 19, 20, 21]
 
 - name: Fail on unsupported system
   ansible.builtin.fail:
@@ -24,14 +24,26 @@
     msg: "Distribution not supported {{ ansible_facts['os_family'] }}"
   when: ansible_facts['os_family'] not in ['Debian', 'RedHat', 'ClearLinux', 'Suse']
 
-- name: Fail on unsupported CentOS release
+- name: Fail on unsupported RedHat / CentOS / Rocky / Alma release (< 9)
   ansible.builtin.fail:
-    msg: "CentOS release {{ ansible_facts['distribution_major_version'] }} not supported with dashboard"
+    msg: "{{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_major_version'] }} is not supported (minimum supported version is 9)"
   when:
-    - ansible_facts['distribution'] == 'CentOS'
-    - ansible_facts['distribution_major_version'] | int == 7
-    - not containerized_deployment | bool
-    - dashboard_enabled | bool
+    - ansible_facts['os_family'] == 'RedHat'
+    - ansible_facts['distribution_major_version'] | int < 9
+
+- name: Fail on unsupported Debian release (< 12)
+  ansible.builtin.fail:
+    msg: "Debian {{ ansible_facts['distribution_major_version'] }} is not supported (minimum supported version is 12)"
+  when:
+    - ansible_facts['distribution'] == 'Debian'
+    - ansible_facts['distribution_major_version'] | int < 12
+
+- name: Fail on unsupported Ubuntu release (< 22.04)
+  ansible.builtin.fail:
+    msg: "Ubuntu {{ ansible_facts['distribution_version'] }} is not supported (minimum supported version is 22.04)"
+  when:
+    - ansible_facts['distribution'] == 'Ubuntu'
+    - ansible_facts['distribution_version'] is version('22.04', '<')
 
 - name: Fail on unsupported distribution for ubuntu cloud archive
   ansible.builtin.fail:

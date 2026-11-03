@@ -52,7 +52,7 @@
           - '!ohai'
       delegate_to: "{{ item }}"
       delegate_facts: True
-      with_items: "{{ groups['all'] | difference(groups.get('clients', [])) }}"
+      with_items: "{{ groups['all'] | reject('in', groups.get('clients', [])) | list }}"
       run_once: true
       when: delegate_facts_host | bool
       tags: always
@@ -67,7 +67,7 @@
       add_host:
         name: "{{ item }}"
         groups: _filtered_clients
-      with_items: "{{ groups.get(client_group_name, []) | intersect(ansible_play_batch) }}"
+      with_items: "{{ groups.get(client_group_name, []) | select('in', ansible_play_batch) | list }}"
       when: (hostvars[item]['ansible_facts']['architecture'] == 'x86_64') or (not containerized_deployment | bool)
 
       tags: [with_pkg, fetch_container_image]
@@ -531,7 +531,7 @@
 
     - name: set_fact container_binary
       set_fact:
-        container_binary: "{{ 'podman' if (podman_binary.stat.exists and ansible_facts['distribution'] == 'Fedora') or (ansible_facts['os_family'] == 'RedHat' and ansible_facts['distribution_major_version'] in ['8', '9']) else 'docker' }}"
+        container_binary: "{{ (ansible_facts['os_family'] == 'RedHat') | ternary('podman', 'docker') }}"
 
     - name: get ceph status from the first monitor
       command: >
