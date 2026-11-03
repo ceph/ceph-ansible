@@ -27,6 +27,8 @@
   until:
     - ceph_status_json.rc == 0
     - (ceph_status_json.stdout | from_json).health.status in ['HEALTH_OK']
+    - ((ceph_status_json.stdout | from_json).pgmap.num_pgs | default(0) | int) > 0
+    - ((ceph_status_json.stdout | from_json).pgmap.pgs_by_state | default([]) | rejectattr('state_name', 'search', 'active') | list | length) == 0
 
 - name: Query ceph osd tree
   ansible.builtin.command: "ceph --cluster={{ cluster | default('ceph') }} osd tree -f json"
