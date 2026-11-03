@@ -63,18 +63,22 @@
       run_once: true
       when: ip_version == 'ipv6'
 
-- name: Rgw_instances
+- name: Set_fact rgw_instances
+  vars:
+    _rgw_address: "{{ hostvars[ceph_dashboard_call_item | default(inventory_hostname)]['_radosgw_address'] }}"
+  ansible.builtin.set_fact:
+    rgw_instances: |-
+      {% set insts = [] %}
+      {% for i in range(radosgw_num_instances | int) %}
+      {%   set _ = insts.append({
+             'instance_name': 'rgw' ~ i | string,
+             'radosgw_address': _rgw_address,
+             'radosgw_frontend_port': radosgw_frontend_port | int + i | int
+           }) %}
+      {% endfor %}
+      {{ insts }}
+  delegate_to: "{{ ceph_dashboard_call_item if ceph_dashboard_call_item is defined else inventory_hostname }}"
+  delegate_facts: true
   when:
     - ceph_dashboard_call_item is defined or
       inventory_hostname in groups.get(rgw_group_name, [])
-  block:
-    - name: Reset rgw_instances (workaround)
-      ansible.builtin.set_fact:
-        rgw_instances: []
-
-    - name: Set_fact rgw_instances
-      ansible.builtin.set_fact:
-        rgw_instances: "{{ rgw_instances | default([]) | union([{'instance_name': 'rgw' + item | string, 'radosgw_address': hostvars[ceph_dashboard_call_item | default(inventory_hostname)]['_radosgw_address'], 'radosgw_frontend_port': radosgw_frontend_port | int + item | int}]) }}"
-      with_sequence: start=0 end={{ radosgw_num_instances | int - 1 }}
-      delegate_to: "{{ ceph_dashboard_call_item if ceph_dashboard_call_item is defined else inventory_hostname }}"
-      delegate_facts: true
