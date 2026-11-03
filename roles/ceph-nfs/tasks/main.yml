@@ -34,7 +34,7 @@
   ansible.builtin.import_tasks: create_rgw_nfs_user.yml
   when: groups.get(mon_group_name, []) | length > 0
 
-- name: Install nfs-ganesha-selinux on RHEL 8
+- name: Install nfs-ganesha-selinux
   ansible.builtin.package:
     name: nfs-ganesha-selinux
     state: present
@@ -44,7 +44,6 @@
     - not containerized_deployment | bool
     - inventory_hostname in groups.get(nfs_group_name, [])
     - ansible_facts['os_family'] == 'RedHat'
-    - ansible_facts['distribution_major_version'] == '8'
 
 # NOTE (leseb): workaround for issues with ganesha and librgw
 - name: Add ganesha_t to permissive domain
