@@ -16,35 +16,27 @@ jobs:
       matrix:
         include:
           - repository: community
-            scenario: molecule-all-in-one
             release: squid
             distro: ubuntu-systemd:jammy
           - repository: community
-            scenario: molecule-all-in-one
             release: tentacle
             distro: debian-systemd:bookworm
           - repository: community
-            scenario: molecule-all-in-one
             release: tentacle
             distro: centos-systemd:stream10
           - repository: community
-            scenario: molecule-all-in-one
             release: tentacle
             distro: ubuntu-systemd:noble
           - repository: community
-            scenario: molecule-all-in-one
             release: umbrella
             distro: centos-systemd:stream10
           - repository: community
-            scenario: molecule-all-in-one
             release: umbrella
             distro: ubuntu-systemd:noble
           - repository: dev
-            scenario: molecule-all-in-one
             release: dev
             distro: ubuntu-systemd:resolute
           - repository: dev
-            scenario: molecule-all-in-one
             release: dev
             distro: rockylinux-systemd:10
     steps:
@@ -63,7 +55,7 @@ jobs:
 
       - name: Run Tox
         id: run_tox
-        run: tox -c tox-molecule.ini -e ${{ matrix.scenario }}
+        run: tox -c tox-molecule.ini -e molecule-all-in-one
         continue-on-error: ${{ matrix.experimental || false }}
         env:
           DOCKER_IMAGE_TAG: ${{ matrix.distro }}
@@ -76,3 +68,45 @@ jobs:
           echo "::warning::Experimental scenario ${{ matrix.distro }} (${{ matrix.repository }} / ${{ matrix.release }}) failed, but is allowed to fail."
           echo "### ⚠️ Experimental Scenario Failed" >> $GITHUB_STEP_SUMMARY
           echo "The scenario with \`${{ matrix.distro }}\` (\`${{ matrix.repository }}\` / \`${{ matrix.release }}\`) failed, but is marked as experimental/non-voting." >> $GITHUB_STEP_SUMMARY
+  upgrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repository: community
+            distro: ubuntu-systemd:jammy
+            initial_release: squid
+            target_release: tentacle
+            n1_branch: stable-9.0
+          - repository: community
+            distro: rockylinux-systemd:9
+            initial_release: squid
+            target_release: squid
+            n1_branch: stable-9.0
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: "tests/requirements.txt"
+
+      - name: Install Tox
+        run: pip install tox
+
+      - name: Run Tox
+        id: run_tox
+        run: tox -c tox-molecule.ini -e molecule-upgrade
+        env:
+          DOCKER_IMAGE_TAG: ${{ matrix.distro }}
+          CEPH_REPOSITORY: ${{ matrix.repository }}
+          CEPH_INITIAL_RELEASE: ${{ matrix.initial_release || '' }}
+          CEPH_TARGET_RELEASE: ${{ matrix.target_release || '' }}
+          CEPH_ANSIBLE_N1_BRANCH: ${{ matrix.n1_branch || '' }}

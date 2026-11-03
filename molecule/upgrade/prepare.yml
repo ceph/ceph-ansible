@@ -1,0 +1,135 @@
+---
+- name: Base host preparation
+  ansible.builtin.import_playbook: ../all_in_one/prepare.yml
+
+- name: Base upgrade host preparations
+  hosts: ceph_all
+  tasks:
+    - name: Ensure sysctl.d directory exists
+      ansible.builtin.file:
+        path: /etc/sysctl.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+- name: Deploy base cluster with N-1 ceph-ansible
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    repo_dir: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY', default=playbook_dir ~ '/../..') }}"
+    n1_branch: "{{ lookup('ansible.builtin.env', 'CEPH_ANSIBLE_N1_BRANCH', default='stable-9.0') }}"
+    worktree_dir: "{{ lookup('ansible.builtin.env', 'CEPH_ANSIBLE_N1_PATH', default='/tmp/ceph-ansible-n1') }}"
+    ceph_initial_release: "{{ lookup('ansible.builtin.env', 'CEPH_INITIAL_RELEASE', default='') }}"
+    cluster_inventory_file: >-
+      {{
+        lookup('ansible.builtin.env', 'MOLECULE_INVENTORY_FILE')
+        | default(inventory_file | default(''), true)
+        | default(hostvars[groups['all'][0]]['inventory_file'] | default(''), true)
+      }}
+  tasks:
+    - name: Ensure target directory for ansible facts exists
+      ansible.builtin.file:
+        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/ansible/facts"
+        state: directory
+        mode: '0755'
+
+    - name: Check if worktree directory exists
+      ansible.builtin.stat:
+        path: "{{ worktree_dir }}"
+      register: _worktree_stat
+
+    - name: Remove stale worktree if present  # noqa: command-instead-of-module
+      ansible.builtin.command: "git worktree remove --force {{ worktree_dir }}"
+      args:
+        chdir: "{{ repo_dir }}"
+      when: _worktree_stat.stat.exists
+      changed_when: true
+      failed_when: false
+
+    - name: Ensure worktree directory is absent
+      ansible.builtin.file:
+        path: "{{ worktree_dir }}"
+        state: absent
+      when: _worktree_stat.stat.exists
+
+    - name: Prune stale worktrees  # noqa: command-instead-of-module
+      ansible.builtin.command: git worktree prune
+      args:
+        chdir: "{{ repo_dir }}"
+      changed_when: false
+      failed_when: false
+
+    - name: Ensure N-1 branch is available locally
+      ansible.builtin.shell: |
+        if ! git rev-parse --verify "{{ n1_branch }}" >/dev/null 2>&1; then
+          git fetch origin "{{ n1_branch }}:{{ n1_branch }}" || \
+          git fetch upstream "{{ n1_branch }}:{{ n1_branch }}" || \
+          git branch --track "{{ n1_branch }}" "origin/{{ n1_branch }}" || \
+          git branch --track "{{ n1_branch }}" "upstream/{{ n1_branch }}"
+        fi
+      args:
+        chdir: "{{ repo_dir }}"
+      changed_when: false
+
+    - name: Create git worktree for N-1 ceph-ansible  # noqa: command-instead-of-module
+      ansible.builtin.command: "git worktree add --force {{ worktree_dir }} {{ n1_branch }}"
+      args:
+        chdir: "{{ repo_dir }}"
+      changed_when: true
+
+    - name: Deploy base cluster using N-1 ceph-ansible
+      ansible.builtin.command: >-
+        ansible-playbook
+        -i {{ cluster_inventory_file }}
+        site.yml.sample
+        -e yes_i_know=true
+        -e @{{ repo_dir }}/molecule/upgrade/extra_vars.yml
+        {{ ('-e ceph_stable_release=' ~ ceph_initial_release) if ceph_initial_release else '' }}
+      args:
+        chdir: "{{ worktree_dir }}"
+      changed_when: true
+      environment:
+        ANSIBLE_CONFIG: "{{ worktree_dir }}/ansible.cfg"
+        ANSIBLE_ROLES_PATH: "{{ worktree_dir }}/roles"
+        ANSIBLE_ACTION_PLUGINS: "{{ worktree_dir }}/plugins/actions"
+        ANSIBLE_CALLBACK_PLUGINS: "{{ worktree_dir }}/plugins/callback"
+        ANSIBLE_FILTER_PLUGINS: "{{ worktree_dir }}/plugins/filter"
+        ANSIBLE_LIBRARY: "{{ worktree_dir }}/library"
+        ANSIBLE_MODULE_UTILS: "{{ worktree_dir }}/module_utils"
+        ANSIBLE_NOCOLOR: "1"
+        ANSIBLE_LOG_PATH: "{{ repo_dir }}/n1-deploy.log"
+      register: _n1_deploy
+      failed_when: false
+
+    - name: Check N-1 deployment result
+      when: _n1_deploy.rc != 0
+      block:
+        - name: Show last 50 lines of N-1 deployment log
+          ansible.builtin.command: "tail -n 50 {{ repo_dir }}/n1-deploy.log"
+          register: _log_tail
+          changed_when: false
+          failed_when: false
+
+        - name: Print N-1 deployment failure log
+          ansible.builtin.debug:
+            var: _log_tail.stdout_lines
+
+        - name: Fail N-1 deployment
+          ansible.builtin.fail:
+            msg: "N-1 ceph-ansible deployment failed with return code {{ _n1_deploy.rc }}. See log above."
+
+- name: Verify initial Ceph cluster health
+  hosts: mons[0]
+  gather_facts: false
+  tasks:
+    - name: Wait for Ceph cluster to become healthy
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster | default('ceph') }} health"
+      register: _ceph_health
+      until:
+        - _ceph_health.rc == 0
+        - (_ceph_health.stdout.split() | first | default('')) in ['HEALTH_OK', 'HEALTH_WARN']
+      retries: 30
+      delay: 5
+      changed_when: false

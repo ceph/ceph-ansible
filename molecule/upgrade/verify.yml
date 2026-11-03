@@ -1,0 +1,46 @@
+---
+- name: Determine current expected ceph release
+  hosts: mons
+  gather_facts: false
+  tasks:
+    - name: Check if rolling update has occurred
+      ansible.builtin.stat:
+        path: /etc/ceph/.rolling_update_done
+      register: _upgrade_flag
+
+    - name: Set expected ceph_stable_release
+      ansible.builtin.set_fact:
+        expected_ceph_stable_release: >-
+          {{
+            lookup('ansible.builtin.env', 'CEPH_TARGET_RELEASE', default=lookup('ansible.builtin.env', 'CEPH_STABLE_RELEASE', default='squid'))
+            if _upgrade_flag.stat.exists else
+            lookup('ansible.builtin.env', 'CEPH_INITIAL_RELEASE', default=lookup('ansible.builtin.env', 'CEPH_STABLE_RELEASE', default='squid'))
+          }}
+
+- name: Verify Ceph cluster
+  ansible.builtin.import_playbook: ../../tests/functional/molecule/verify.yml
+  vars:
+    ceph_stable_release: "{{ hostvars[groups['mons'][0]]['expected_ceph_stable_release'] }}"
+
+- name: Verify Ceph daemon versions across the cluster
+  hosts: mons[0]
+  gather_facts: false
+  tasks:
+    - name: Query Ceph daemon versions
+      ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster | default('ceph') }} versions -f json"
+      register: _ceph_versions_raw
+      changed_when: false
+
+    - name: Assert all cluster daemons are on the expected release
+      vars:
+        _expected_release: "{{ hostvars[inventory_hostname]['expected_ceph_stable_release'] | default(ceph_stable_release | default('squid')) }}"
+        _ceph_versions: "{{ _ceph_versions_raw.stdout | from_json }}"
+      ansible.builtin.assert:
+        that:
+          - (_ceph_versions.overall | length) == 1
+          - >-
+            _expected_release == 'dev' or
+            (_expected_release in (_ceph_versions.overall.keys() | first))
+        fail_msg: >-
+          Daemon version check failed. Expected all daemons on '{{ _expected_release }}' without mixed versions,
+          but 'ceph versions' reported: {{ _ceph_versions.overall }}
