@@ -12,9 +12,9 @@
       ansible.builtin.set_fact:
         expected_ceph_stable_release: >-
           {{
-            lookup('ansible.builtin.env', 'CEPH_TARGET_RELEASE', default=lookup('ansible.builtin.env', 'CEPH_STABLE_RELEASE', default='squid'))
+            lookup('ansible.builtin.env', 'CEPH_TARGET_RELEASE', default=lookup('ansible.builtin.env', 'CEPH_STABLE_RELEASE', default='umbrella'))
             if _upgrade_flag.stat.exists else
-            lookup('ansible.builtin.env', 'CEPH_INITIAL_RELEASE', default=lookup('ansible.builtin.env', 'CEPH_STABLE_RELEASE', default='squid'))
+            lookup('ansible.builtin.env', 'CEPH_INITIAL_RELEASE', default=lookup('ansible.builtin.env', 'CEPH_STABLE_RELEASE', default='umbrella'))
           }}
 
 - name: Verify Ceph cluster
@@ -33,7 +33,7 @@
 
     - name: Assert all cluster daemons are on the expected release
       vars:
-        _expected_release: "{{ hostvars[inventory_hostname]['expected_ceph_stable_release'] | default(ceph_stable_release | default('squid')) }}"
+        _expected_release: "{{ hostvars[inventory_hostname]['expected_ceph_stable_release'] | default(ceph_stable_release | default('umbrella')) }}"
         _ceph_versions: "{{ _ceph_versions_raw.stdout | from_json }}"
       ansible.builtin.assert:
         that:
