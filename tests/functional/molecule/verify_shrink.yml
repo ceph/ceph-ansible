@@ -27,6 +27,18 @@
             or ansible_facts.services['ceph-mds@' ~ inventory_hostname ~ '.service'].state != 'running'
         fail_msg: "ceph-mds@{{ inventory_hostname }}.service is still running"
 
+    - name: Assert ceph-rbd-mirror service is not running
+      vars:
+        service_name: "ceph-rbd-mirror@rbd-mirror.{{ inventory_hostname }}.service"
+        service_base: "ceph-rbd-mirror@rbd-mirror.{{ inventory_hostname }}"
+      ansible.builtin.assert:
+        that:
+          - (service_name not in (ansible_facts.services | default({}))) or
+            (ansible_facts.services[service_name].state != 'running')
+          - (service_base not in (ansible_facts.services | default({}))) or
+            (ansible_facts.services[service_base].state != 'running')
+        fail_msg: "ceph-rbd-mirror@rbd-mirror.{{ inventory_hostname }}.service is still running"
+
     - name: Assert ceph-osd services are not running
       ansible.builtin.assert:
         that:
@@ -75,6 +87,7 @@
           - item not in ceph_status.quorum_names
         fail_msg: "Monitor quorum check failed: num_mons={{ ceph_status.monmap.num_mons }}, quorum={{ ceph_status.quorum_names }}"
       loop: "{{ spare_hostnames }}"
+      when: item in groups.get('mons', [])
 
     - name: Assert manager standbys after shrinkage
       vars:
@@ -92,6 +105,7 @@
           - (ceph_status['mgrmap']['num_standbys'] | default(0) | int) + 1 == (groups['mgrs'] | difference(groups['spare_nodes'])) | length
         fail_msg: "Manager status check failed: active={{ active_mgr }}, standbys={{ standby_mgrs }}"
       loop: "{{ spare_hostnames }}"
+      when: item in groups.get('mgrs', [])
 
     - name: Assert OSD status after shrinkage
       vars:
@@ -115,6 +129,49 @@
     - name: Assert spare nodes have no OSDs in CRUSH tree
       ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster | default('ceph') }} osd ls-tree {{ item }} -f json"
       register: _spare_osds_in_tree
-      failed_when: (_spare_osds_in_tree.stdout | from_json | length) > 0
+      failed_when:
+        - _spare_osds_in_tree.rc != 0 and 'does not exist' not in _spare_osds_in_tree.stderr
+        - (_spare_osds_in_tree.stdout | default('[]') | from_json | default([])) | length > 0
       changed_when: false
       loop: "{{ groups['spare_nodes'] | default([]) }}"
+      when: item in groups.get('osds', [])
+
+    - name: Assert rbd-mirror daemons removed from ceph servicemap
+      vars:
+        spare_hostnames: "{{ groups['spare_nodes'] | default([]) }}"
+        rbdmirror_services: "{{ ceph_status['servicemap']['services']['rbd-mirror'] | default({}) }}"
+        rbdmirror_daemons_dict: "{{ rbdmirror_services['daemons'] | default({}) }}"
+        rbdmirror_daemons: >-
+          {{
+            rbdmirror_daemons_dict
+            | dict2items
+            | rejectattr('key', 'equalto', 'summary')
+            | map(attribute='value.metadata.hostname', default='')
+            | list
+          }}
+      ansible.builtin.assert:
+        that:
+          - item not in rbdmirror_daemons
+        fail_msg: "rbd-mirror daemon {{ item }} is still registered in servicemap daemons: {{ rbdmirror_daemons }}"
+      loop: "{{ spare_hostnames }}"
+      when: item in groups.get('rbdmirrors', [])
+
+    - name: Assert remaining rbd-mirror daemons are still in ceph servicemap
+      vars:
+        active_rbdmirrors: "{{ groups['rbdmirrors'] | default([]) | difference(groups['spare_nodes'] | default([])) }}"
+        rbdmirror_services: "{{ ceph_status['servicemap']['services']['rbd-mirror'] | default({}) }}"
+        rbdmirror_daemons_dict: "{{ rbdmirror_services['daemons'] | default({}) }}"
+        rbdmirror_daemons: >-
+          {{
+            rbdmirror_daemons_dict
+            | dict2items
+            | rejectattr('key', 'equalto', 'summary')
+            | map(attribute='value.metadata.hostname', default='')
+            | list
+          }}
+      ansible.builtin.assert:
+        that:
+          - item in rbdmirror_daemons
+        fail_msg: "rbd-mirror daemon {{ item }} should still be registered in servicemap daemons: {{ rbdmirror_daemons }}"
+      loop: "{{ active_rbdmirrors }}"
+      when: active_rbdmirrors | length > 0
