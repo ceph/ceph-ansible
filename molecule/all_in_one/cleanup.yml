@@ -6,7 +6,7 @@
   tasks:
     - name: Stop Ceph services
       ansible.builtin.shell: |
-        systemctl stop ceph.target "ceph-osd@*.service" || true
+        systemctl stop ceph.target "ceph-osd@*.service" "ceph-rbd-mirror@*.service" || true
       changed_when: false
       failed_when: false
 
@@ -30,7 +30,7 @@
 
     - name: Remove device-mapper devices
       ansible.builtin.shell: |
-        for dev in $(dmsetup ls | awk -v prefix="{{ inventory_hostname }}_" '$1 ~ "^"prefix {print $1}'); do
+        for dev in $(dmsetup ls | awk -v prefix="{{ (inventory_hostname | replace('-', '--')) }}_" '$1 ~ "^"prefix {print $1}'); do
           dmsetup remove --noudevsync -f "$dev" || true
         done
       changed_when: false
@@ -71,6 +71,13 @@
     - name: Remove loop device nodes
       ansible.builtin.file:
         path: "/dev/{{ item.device }}"
+        state: absent
+      loop: "{{ _loop_devices }}"
+      failed_when: false
+
+    - name: Remove sparse files
+      ansible.builtin.file:
+        path: "{{ item.path }}"
         state: absent
       loop: "{{ _loop_devices }}"
       failed_when: false

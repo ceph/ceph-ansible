@@ -38,9 +38,18 @@
   vars:
     osdmap: "{{ ceph_status['osdmap'] }}"
     pgmap: "{{ ceph_status['pgmap'] }}"
+    expected_cephfs_pools: "{{ ('mdss' in groups and groups['mdss'] | length > 0) | ternary(cephfs_pools | default([]) | length, 0) }}"
+    expected_rgw_pools: "{{ ('rgws' in groups and groups['rgws'] | length > 0) | ternary(rgw_create_pools | default({}) | length, 0) }}"
+    expected_rbdmirror_pools: >-
+      {{
+        ('rbdmirrors' in groups and (groups['rbdmirrors'] | length > 0) and (ceph_rbd_mirror_configure | default(false) | bool)) | ternary(
+          ceph_rbd_mirror_pools | default([ceph_rbd_mirror_pool | default('rbd')]) | length,
+          0)
+      }}
     expected_min_pools: >-
-      {{ (cephfs_pools | default([]) | length) +
-         (rgw_create_pools | default({}) | length) +
+      {{ (expected_cephfs_pools | int) +
+         (expected_rgw_pools | int) +
+         (expected_rbdmirror_pools | int) +
          (pools | default([]) | length) +
          (openstack_pools | default([]) | length) +
          1 }}
