@@ -36,7 +36,7 @@
     fail_msg: "rbd-mirror daemon {{ inventory_hostname }} not found in servicemap daemons: {{ rbdmirror_daemons }}"
 
 - name: Query rbd mirror pool info
-  ansible.builtin.command: "rbd --cluster={{ cluster | default('ceph') }} --format=json mirror pool info {{ ceph_rbd_mirror_pool | default('rbd') }}"
+  ansible.builtin.command: "{{ _container_exec_cmd | default('') }}rbd --cluster={{ cluster | default('ceph') }} --format=json mirror pool info {{ ceph_rbd_mirror_pool | default('rbd') }}"
   register: rbd_mirror_pool_info_json
   changed_when: false
   delegate_to: "{{ groups[mon_group_name | default('mons')][0] }}"
