@@ -133,6 +133,11 @@ options:
         description:
             - List storage device inventory.
         required: false
+    container_extra_mounts:
+        description:
+            - A list of extra mounts to pass to the container when running in containerized mode.
+        required: false
+        default: []
 
 author:
     - Andrew Schoen (@andrewschoen)
@@ -170,10 +175,19 @@ def container_exec(binary, container_image, mounts=None):
     _mounts['/run/lvm'] = '/run/lvm'
     _mounts['/var/lib/ceph'] = '/var/lib/ceph:z'
     _mounts['/var/log/ceph'] = '/var/log/ceph:z'
-    if mounts is None:
-        mounts = _mounts
-    else:
+
+    if isinstance(mounts, dict):
         _mounts.update(mounts)
+    elif isinstance(mounts, (list, tuple)):
+        for m in mounts:
+            if isinstance(m, dict):
+                _mounts.update(m)
+            elif isinstance(m, (list, tuple)) and len(m) >= 2:
+                _mounts[m[0]] = ':'.join(m[1:])
+            elif isinstance(m, str):
+                parts = m.split(':', 1)
+                if len(parts) >= 2:
+                    _mounts[parts[0]] = parts[1]
 
     volumes = sum(
         [['-v', '{}:{}'.format(src_dir, dst_dir)]
@@ -264,7 +278,7 @@ def batch(module, container_image, report=None):
 
     # Build the CLI
     action = ['lvm', 'batch']
-    cmd = build_cmd(action, container_image, cluster)
+    cmd = build_cmd(action, container_image, cluster, mounts=module.params.get('container_extra_mounts'))
     cmd.extend(['--%s' % objectstore])
     if not report:
         cmd.append('--yes')
@@ -339,7 +353,7 @@ def prepare_or_create_osd(module, action, container_image):
 
     # Build the CLI
     action = ['lvm', action]
-    cmd = build_cmd(action, container_image, cluster)
+    cmd = build_cmd(action, container_image, cluster, mounts=module.params.get('container_extra_mounts'))
     cmd.extend(['--%s' % objectstore])
     cmd.append('--data')
     cmd.append(data)
@@ -374,10 +388,12 @@ def list_osd(module, container_image):
 
     # Build the CLI
     action = ['lvm', 'list']
+    mounts = [{'/var/lib/ceph': '/var/lib/ceph:ro'}]
+    mounts.extend(module.params.get('container_extra_mounts') or [])
     cmd = build_cmd(action,
                     container_image,
                     cluster,
-                    mounts={'/var/lib/ceph': '/var/lib/ceph:ro'})
+                    mounts=mounts)
     if data:
         cmd.append(data)
     cmd.append('--format=json')
@@ -391,7 +407,7 @@ def list_storage_inventory(module, container_image):
     '''
 
     action = ['inventory']
-    cmd = build_cmd(action, container_image)
+    cmd = build_cmd(action, container_image, mounts=module.params.get('container_extra_mounts'))
     cmd.append('--format=json')
 
     return cmd
@@ -418,7 +434,7 @@ def is_lv(module, vg, lv, container_image):
 
     args = ['--noheadings', '--reportformat', 'json', '--select', 'lv_name={},vg_name={}'.format(lv, vg)]  # noqa: E501
 
-    cmd = build_cmd(args, container_image, binary='lvs')
+    cmd = build_cmd(args, container_image, binary='lvs', mounts=module.params.get('container_extra_mounts'))
 
     rc, cmd, out, err = exec_command(module, cmd)
 
@@ -451,7 +467,7 @@ def zap_devices(module, container_image):
 
     # build the CLI
     action = ['lvm', 'zap']
-    cmd = build_cmd(action, container_image)
+    cmd = build_cmd(action, container_image, mounts=module.params.get('container_extra_mounts'))
     if destroy:
         cmd.append('--destroy')
 
@@ -518,6 +534,7 @@ def run_module():
         osd_fsid=dict(type='str', required=False),
         osd_id=dict(type='str', required=False),
         destroy=dict(type='bool', required=False, default=True),
+        container_extra_mounts=dict(type='list', required=False, default=[]),
     )
 
     module = AnsibleModule(
