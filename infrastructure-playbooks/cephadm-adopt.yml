@@ -769,6 +769,12 @@
         state: absent
       loop: '{{ (osd_list.stdout | from_json).keys() | list }}'
 
+    - name: Remove osd run file
+      ansible.builtin.file:
+        path: "/var/lib/ceph/osd-{{ cluster }}-{{ item }}.run"
+        state: absent
+      loop: '{{ (osd_list.stdout | from_json).keys() | list }}'
+
     - name: Remove any legacy directories in /var/lib/ceph/mon (workaround)
       ansible.builtin.file:
         path: "/var/lib/ceph/mon/{{ cluster }}-{{ ansible_facts['hostname'] }}"
