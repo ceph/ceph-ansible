@@ -25,13 +25,16 @@ The ``ceph_origin`` and ``ceph_repository`` variables aren't needed anymore in c
 Custom container image
 ----------------------
 
-You can configure your own container register, image and tag by using the ``ceph_docker_registry``, ``ceph_docker_image`` and ``ceph_docker_image_tag`` variables.
+By default, ``ceph-ansible`` uses the official ``cephadm`` container images (``quay.io/ceph/ceph``),
+with ``ceph_docker_image_tag`` automatically derived from ``ceph_stable_release`` (for example ``v19`` for ``squid`` or ``v20`` for ``tentacle``).
+You only need to override ``ceph_docker_registry``, ``ceph_docker_image`` or ``ceph_docker_image_tag`` if you want to use a custom registry,
+mirror, or pin a specific point-release tag.
 
 .. code-block:: yaml
 
    ceph_docker_registry: quay.io
-   ceph_docker_image: ceph/daemon
-   ceph_docker_image_tag: latest
+   ceph_docker_image: ceph/ceph
+   ceph_docker_image_tag: v19.2.7
 
 .. note::
 
