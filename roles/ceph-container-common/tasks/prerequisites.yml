@@ -10,12 +10,18 @@
 - name: Ensure tmpfiles.d is present
   ansible.builtin.lineinfile:
     path: /etc/tmpfiles.d/ceph-common.conf
-    line: "d /run/ceph 0755 167 167 -"
+    line: "d /run/ceph 0755 {{ ceph_uid }} {{ ceph_uid }} -"
     owner: root
     group: root
     mode: "0644"
     state: present
     create: true
+  register: _ceph_tmpfiles_conf
+
+- name: Apply tmpfiles.d configuration  # noqa: no-handler
+  ansible.builtin.command: systemd-tmpfiles --create /etc/tmpfiles.d/ceph-common.conf
+  when: _ceph_tmpfiles_conf is changed
+  changed_when: false
 
 - name: Restore certificates selinux context
   when:
