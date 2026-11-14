@@ -114,10 +114,10 @@
       register: ceph_health
       failed_when:
         - "'rbd-mirror' in (ceph_health.stdout | from_json)['services'].keys() | list"
-        - rbdmirror_to_kill_gid in (ceph_health.stdout | from_json)['services']['rbd-mirror']['daemons'].keys() | list
+        - rbdmirror_to_kill_gid | string in (ceph_health.stdout | from_json)['services']['rbd-mirror']['daemons'].keys() | list
       until:
         - "'rbd-mirror' in (ceph_health.stdout | from_json)['services'].keys() | list"
-        - rbdmirror_to_kill_gid not in (ceph_health.stdout | from_json)['services']['rbd-mirror']['daemons'].keys() | list
+        - rbdmirror_to_kill_gid | string not in (ceph_health.stdout | from_json)['services']['rbd-mirror']['daemons'].keys() | list
       changed_when: false
       when: rbdmirror_to_kill_gid is defined
       retries: 12

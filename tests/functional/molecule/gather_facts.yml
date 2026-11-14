@@ -1,4 +1,29 @@
 ---
+- name: Gather minimal facts
+  ansible.builtin.setup:
+    gather_subset:
+      - '!all'
+      - min
+
+- name: Determine container exec command
+  vars:
+    _mon0: "{{ groups[mon_group_name | default('mons')][0] }}"
+    _mon0_os_family: "{{ hostvars[_mon0]['ansible_facts']['os_family'] | default('Debian') }}"
+    _default_binary: "{{ (_mon0_os_family == 'RedHat') | ternary('podman', 'docker') }}"
+    _bin: "{{ container_binary | default(_default_binary) }}"
+    _mon0_host: "{{ hostvars[_mon0]['ansible_facts']['hostname'] | default(_mon0) }}"
+  ansible.builtin.set_fact:
+    _container_exec_cmd: >-
+      {{
+        (_bin ~ ' exec ceph-mon-' ~ _mon0_host ~ ' ')
+        if (containerized_deployment | default(false) | bool)
+        else ''
+      }}
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  loop: "{{ ansible_play_hosts }}"
+  run_once: true
+
 - name: Gather package facts
   ansible.builtin.package_facts:
     manager: auto
@@ -17,7 +42,7 @@
   community.general.listen_ports_facts:
 
 - name: Query ceph cluster status
-  ansible.builtin.command: "ceph --cluster={{ cluster | default('ceph') }} -s -f json"
+  ansible.builtin.command: "{{ _container_exec_cmd | default('') }}ceph --cluster={{ cluster | default('ceph') }} -s -f json"
   register: ceph_status_json
   changed_when: false
   delegate_to: "{{ groups[mon_group_name | default('mons')][0] }}"
@@ -31,8 +56,15 @@
     - ((ceph_status_json.stdout | from_json).pgmap.pgs_by_state | default([]) | rejectattr('state_name', 'search', 'active') | list | length) == 0
 
 - name: Query ceph osd tree
-  ansible.builtin.command: "ceph --cluster={{ cluster | default('ceph') }} osd tree -f json"
+  ansible.builtin.command: "{{ _container_exec_cmd | default('') }}ceph --cluster={{ cluster | default('ceph') }} osd tree -f json"
   register: ceph_osd_tree_json
+  changed_when: false
+  delegate_to: "{{ groups[mon_group_name | default('mons')][0] }}"
+  run_once: true
+
+- name: Query ceph versions
+  ansible.builtin.command: "{{ _container_exec_cmd | default('') }}ceph --cluster={{ cluster | default('ceph') }} versions -f json"
+  register: ceph_versions_json
   changed_when: false
   delegate_to: "{{ groups[mon_group_name | default('mons')][0] }}"
   run_once: true
@@ -41,6 +73,7 @@
   ansible.builtin.set_fact:
     ceph_status: "{{ ceph_status_json.stdout | from_json }}"
     ceph_osd_tree: "{{ ceph_osd_tree_json.stdout | from_json }}"
+    ceph_versions: "{{ ceph_versions_json.stdout | from_json }}"
   delegate_to: "{{ item }}"
   delegate_facts: true
   loop: "{{ ansible_play_hosts }}"

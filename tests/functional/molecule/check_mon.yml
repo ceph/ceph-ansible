@@ -30,9 +30,14 @@
       - >-
         (ceph_stable_release | default('squid')) == 'dev' or
         ceph_status.monmap.min_mon_release_name == (ceph_stable_release | default('squid'))
+      - (ceph_versions.overall.keys() | list | length) == 1
+      - >-
+        (ceph_stable_release | default('squid')) == 'dev' or
+        (ceph_stable_release | default('squid')) in (ceph_versions.overall.keys() | first)
     fail_msg: >-
       Mon status assertions failed:
       health={{ ceph_status.health.status }},
       num_mons={{ ceph_status.monmap.num_mons }} (expected {{ groups['mons'] | length }}),
-      min_mon_release_name={{ ceph_status.monmap.min_mon_release_name }} (expected {{ ceph_stable_release | default('squid') }})
+      min_mon_release_name={{ ceph_status.monmap.min_mon_release_name }} (expected {{ ceph_stable_release | default('squid') }}),
+      versions={{ ceph_versions.overall }}
   run_once: true

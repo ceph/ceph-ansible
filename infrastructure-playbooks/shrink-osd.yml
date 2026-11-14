@@ -382,6 +382,13 @@
       loop: "{{ _osd_hosts }}"
       delegate_to: "{{ item.0 }}"
 
+    - name: Remove osd run file
+      ansible.builtin.file:
+        path: "/var/lib/ceph/osd-{{ cluster }}-{{ item.2 }}.run"
+        state: absent
+      loop: "{{ _osd_hosts }}"
+      delegate_to: "{{ item.0 }}"
+
     - name: Show ceph health
       ansible.builtin.command: "{{ container_exec_cmd }} ceph --cluster {{ cluster }} -s"
       changed_when: false

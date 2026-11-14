@@ -23,9 +23,9 @@ The following environment variables are available for use:
 
 * ``CEPH_DOCKER_REGISTRY``: (default: ``quay.io``) This would configure the ``ceph-ansible`` variable ``ceph_docker_registry``.
 
-* ``CEPH_DOCKER_IMAGE``: (default: ``ceph/daemon``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image``.
+* ``CEPH_DOCKER_IMAGE``: (default: ``ceph/ceph``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image``.
 
-* ``CEPH_DOCKER_IMAGE_TAG``: (default: ``latest``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image_tag``.
+* ``CEPH_DOCKER_IMAGE_TAG``: (default: ``v<release>`` derived from ``ceph_stable_release``) This would configure the ``ceph-ansible`` variable ``ceph_docker_image_tag``.
 
 * ``CEPH_DEV_BRANCH``: (default: ``main``) This would configure the ``ceph-ansible`` variable ``ceph_dev_branch`` which defines which branch we'd
   like to install from shaman.ceph.com.

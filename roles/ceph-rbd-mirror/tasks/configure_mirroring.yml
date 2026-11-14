@@ -130,41 +130,57 @@
   loop: "{{ ceph_rbd_mirror_pools }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
 
-- name: Add mirroring peer
-  when: ceph_rbd_mirror_remote_user is defined
-  block:
-    - name: List mirroring peer
-      ansible.builtin.command: "{{ rbd_cmd }} --cluster {{ cluster }} mirror pool info {{ item.name }}"
-      changed_when: false
-      register: mirror_peer
-      loop: "{{ ceph_rbd_mirror_pools }}"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
+- name: List mirroring peers
+  ansible.builtin.command: "{{ rbd_cmd }} --cluster {{ cluster }} mirror pool info {{ item.name }}"
+  changed_when: false
+  register: mirror_peer
+  loop: "{{ ceph_rbd_mirror_pools }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - ceph_rbd_mirror_remote_user is defined
+    - inventory_hostname == (groups.get(rbdmirror_group_name, []) | select('in', ansible_play_hosts) | first)
 
+- name: Add mirroring peers when needed
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  when:
+    - ceph_rbd_mirror_remote_user is defined
+    - inventory_hostname == (groups.get(rbdmirror_group_name, []) | select('in', ansible_play_hosts) | first)
+    - (mirror_peer.results | rejectattr('stdout', 'search', ceph_rbd_mirror_remote_user | regex_escape) | list | length) > 0
+  block:
     - name: Create a temporary file
       ansible.builtin.tempfile:
         path: /etc/ceph
         state: file
         suffix: _ceph-ansible
       register: tmp_file
-      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: Write secret to temporary file
       ansible.builtin.copy:
         dest: "{{ tmp_file.path }}"
         content: "{{ ceph_rbd_mirror_remote_key }}"
         mode: "0644"
-      delegate_to: "{{ groups[mon_group_name][0] }}"
 
     - name: Add a mirroring peer
-      ansible.builtin.command: "{{ rbd_cmd }} --cluster {{ cluster }} mirror pool peer add {{ item.item.name }} {{ ceph_rbd_mirror_remote_user }}@{{ ceph_rbd_mirror_remote_cluster }} --remote-mon-host {{ ceph_rbd_mirror_remote_mon_hosts }} --remote-key-file {{ tmp_file.path }}"
+      ansible.builtin.command:
+        argv:
+          - "{{ rbd_cmd }}"
+          - --cluster
+          - "{{ cluster }}"
+          - mirror
+          - pool
+          - peer
+          - add
+          - "{{ item.item.name }}"
+          - "{{ ceph_rbd_mirror_remote_user }}@{{ ceph_rbd_mirror_remote_cluster }}"
+          - --remote-mon-host
+          - "{{ ceph_rbd_mirror_remote_mon_hosts }}"
+          - --remote-key-file
+          - "{{ tmp_file.path }}"
       changed_when: false
-      delegate_to: "{{ groups[mon_group_name][0] }}"
       loop: "{{ mirror_peer.results }}"
-      run_once: true
       when: ceph_rbd_mirror_remote_user not in item.stdout
 
     - name: Rm temporary file
       ansible.builtin.file:
         path: "{{ tmp_file.path }}"
         state: absent
-      delegate_to: "{{ groups[mon_group_name][0] }}"

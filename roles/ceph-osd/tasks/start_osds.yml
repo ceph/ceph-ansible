@@ -12,6 +12,7 @@
   ceph_volume:
     cluster: "{{ cluster }}"
     action: list
+    container_extra_mounts: "{{ ceph_volume_extra_container_mounts | default([]) | map('split', ':') | list }}"
   environment:
     CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment | bool else '' }}"
     CEPH_CONTAINER_BINARY: "{{ container_binary }}"
@@ -49,10 +50,10 @@
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
   with_items: "{{ ((ceph_osd_ids.stdout | default('{}', True) | from_json).keys() | list) | union(osd_ids_non_container.stdout_lines | default([])) }}"
 
-- name: Write run file in /var/lib/ceph/osd/xxxx/run
+- name: Write run file in /var/lib/ceph/osd-xxxx.run
   ansible.builtin.template:
     src: systemd-run.j2
-    dest: "/var/lib/ceph/osd/{{ cluster }}-{{ item }}/run"
+    dest: "/var/lib/ceph/osd-{{ cluster }}-{{ item }}.run"
     mode: "0700"
     owner: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
     group: "{{ ceph_uid if containerized_deployment | bool else 'ceph' }}"
