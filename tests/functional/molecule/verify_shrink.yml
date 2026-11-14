@@ -129,9 +129,9 @@
     - name: Assert spare nodes have no OSDs in CRUSH tree
       ansible.builtin.command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster | default('ceph') }} osd ls-tree {{ item }} -f json"
       register: _spare_osds_in_tree
-      failed_when:
-        - _spare_osds_in_tree.rc != 0 and 'does not exist' not in _spare_osds_in_tree.stderr
-        - (_spare_osds_in_tree.stdout | default('[]') | from_json | default([])) | length > 0
+      failed_when: >-
+        (_spare_osds_in_tree.rc != 0 and 'does not exist' not in _spare_osds_in_tree.stderr)
+        or ((_spare_osds_in_tree.stdout | default('[]', true) | from_json | default([])) | length > 0)
       changed_when: false
       loop: "{{ groups['spare_nodes'] | default([]) }}"
       when: item in groups.get('osds', [])
