@@ -161,21 +161,12 @@
         mode: "0644"
 
     - name: Add a mirroring peer
-      ansible.builtin.command:
-        argv:
-          - "{{ rbd_cmd }}"
-          - --cluster
-          - "{{ cluster }}"
-          - mirror
-          - pool
-          - peer
-          - add
-          - "{{ item.item.name }}"
-          - "{{ ceph_rbd_mirror_remote_user }}@{{ ceph_rbd_mirror_remote_cluster }}"
-          - --remote-mon-host
-          - "{{ ceph_rbd_mirror_remote_mon_hosts }}"
-          - --remote-key-file
-          - "{{ tmp_file.path }}"
+      ansible.builtin.command: >-
+        {{ rbd_cmd }} --cluster {{ cluster }}
+        mirror pool peer add {{ item.item.name }}
+        {{ ceph_rbd_mirror_remote_user }}@{{ ceph_rbd_mirror_remote_cluster }}
+        --remote-mon-host {{ ceph_rbd_mirror_remote_mon_hosts }}
+        --remote-key-file {{ tmp_file.path }}
       changed_when: false
       loop: "{{ mirror_peer.results }}"
       when: ceph_rbd_mirror_remote_user not in item.stdout
