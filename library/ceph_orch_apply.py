@@ -94,8 +94,11 @@ def retrieve_current_spec(module: AnsibleModule, expected_spec: Dict) -> Dict:
     cmd.extend(['ceph', 'orch', 'ls', service])
     if 'service_name' in expected_spec:
         cmd.extend([expected_spec["service_name"]])
-    else:
+    elif 'service_id' in expected_spec:
         cmd.extend([expected_spec["service_type"] + "." + expected_spec["service_id"]])
+    else:
+        # cephadm names a service without service_id after its type
+        cmd.extend([service])
     cmd.extend(['--format=yaml'])
     out = module.run_command(cmd)
     if isinstance(out, str):
