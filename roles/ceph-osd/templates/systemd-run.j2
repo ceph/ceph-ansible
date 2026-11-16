@@ -3,7 +3,7 @@
 OSD_ID={{ item }}
 T=$1
 N=$2
-CEPH_VOLUME_CMD="/usr/bin/{{ container_binary }} run --rm --net=host --privileged=true --pid=host --ipc=host -v /dev:/dev -v /etc/localtime:/etc/localtime:ro -v /var/lib/ceph/osd/{{ cluster }}-${OSD_ID}:/var/lib/ceph/osd/{{ cluster }}-${OSD_ID}:z -v /etc/ceph:/etc/ceph:z -v /var/run/ceph:/var/run/ceph:z -v /var/run/udev/:/var/run/udev/ -v /var/log/ceph:/var/log/ceph:z -v /run/lvm/:/run/lvm/ --entrypoint=ceph-volume {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
+CEPH_VOLUME_CMD="/usr/bin/{{ container_binary }} run --rm --net=host --privileged=true --pid=host --ipc=host -v /dev:/dev -v /etc/localtime:/etc/localtime:ro -v /var/lib/ceph/osd/{{ cluster }}-${OSD_ID}:/var/lib/ceph/osd/{{ cluster }}-${OSD_ID}:z,rshared -v /etc/ceph:/etc/ceph:z -v /var/run/ceph:/var/run/ceph:z -v /var/run/udev:/var/run/udev -v /var/log/ceph:/var/log/ceph:z -v /run/lvm:/run/lvm{% for v in ceph_volume_extra_container_mounts | default([]) %} -v {{ v }}{% endfor %} --entrypoint=ceph-volume {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}"
 PYTHON=python3
 CEPH_VOLUME_LIST_JSON="$($CEPH_VOLUME_CMD lvm list --format json)"
 
@@ -23,6 +23,9 @@ fi
 
 # activate
 $CEPH_VOLUME_CMD lvm activate --no-systemd ${OSD_OBJECTSTORE[@]} ${OSD_ID} ${OSD_FSID}
+# container images don't supply mode for mounts
+# resulting in 1777 mode, which is not what expected.
+chmod {{ ceph_directories_mode }} /var/lib/ceph/osd/{{ cluster }}-${OSD_ID}
 
 # start ceph-osd
 {% if ceph_osd_numactl_opts != "" %}

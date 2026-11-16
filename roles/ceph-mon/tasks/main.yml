@@ -11,7 +11,8 @@
     - >-
       (mon_socket is defined and
        (mon_socket.results is not defined or
-        0 not in (mon_socket.results | map(attribute='rc') | list))) or
+        0 not in (mon_socket.results | map(attribute='rc', default=1) | list)))
+      if (not containerized_deployment | bool) else
       (ceph_mon_container_stat is defined and
        ceph_mon_container_stat.get('stdout_lines', []) | length == 0)
     - not switch_to_containers | default(False) | bool
