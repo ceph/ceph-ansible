@@ -20,6 +20,10 @@
         fi
       changed_when: false
 
+    - name: Ensure root mount propagation is shared
+      ansible.builtin.command: mount --make-rshared /
+      changed_when: false
+
     - name: Install required packages
       vars:
         _package_names_mapping:
@@ -31,6 +35,7 @@
             - lvm2
             - iproute
             - procps-ng
+            - policycoreutils
       ansible.builtin.package:
         name: "{{ _package_names_mapping[ansible_facts['os_family'] | lower] }}"
         state: present

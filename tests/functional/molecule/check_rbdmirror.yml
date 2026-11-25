@@ -1,0 +1,52 @@
+---
+- name: Assert ceph-rbd-mirror package is installed
+  ansible.builtin.assert:
+    that:
+      - "'rbd-mirror' in ansible_facts.packages"
+    fail_msg: "rbd-mirror package is not installed"
+  when: not containerized_deployment | default(false) | bool
+
+- name: Assert ceph-rbd-mirror service is running
+  vars:
+    service_name: "ceph-rbd-mirror@rbd-mirror.{{ inventory_hostname }}.service"
+    service_base: "ceph-rbd-mirror@rbd-mirror.{{ inventory_hostname }}"
+  ansible.builtin.assert:
+    that:
+      - (ansible_facts.services[service_name] is defined) or
+        (ansible_facts.services[service_base] is defined)
+      - ((ansible_facts.services[service_name].state | default('')) == 'running') or
+        ((ansible_facts.services[service_base].state | default('')) == 'running')
+    fail_msg: "{{ service_name }} is not running"
+
+- name: Assert rbd-mirror daemon is registered in ceph servicemap
+  vars:
+    rbdmirror_services: "{{ ceph_status['servicemap']['services']['rbd-mirror'] | default({}) }}"
+    rbdmirror_daemons_dict: "{{ rbdmirror_services['daemons'] | default({}) }}"
+    rbdmirror_daemons: >-
+      {{
+        rbdmirror_daemons_dict
+        | dict2items
+        | rejectattr('key', 'equalto', 'summary')
+        | map(attribute='value.metadata.hostname', default='')
+        | list
+      }}
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname in rbdmirror_daemons
+    fail_msg: "rbd-mirror daemon {{ inventory_hostname }} not found in servicemap daemons: {{ rbdmirror_daemons }}"
+
+- name: Query rbd mirror pool info
+  ansible.builtin.command: "{{ _container_exec_cmd | default('') }}rbd --cluster={{ cluster | default('ceph') }} --format=json mirror pool info {{ ceph_rbd_mirror_pool | default('rbd') }}"
+  register: rbd_mirror_pool_info_json
+  changed_when: false
+  delegate_to: "{{ groups[mon_group_name | default('mons')][0] }}"
+  run_once: true
+
+- name: Assert rbd mirror mode is pool
+  vars:
+    pool_info: "{{ rbd_mirror_pool_info_json.stdout | from_json }}"
+  ansible.builtin.assert:
+    that:
+      - pool_info.mode == (ceph_rbd_mirror_mode | default('pool'))
+    fail_msg: "Mirror pool mode is {{ pool_info.mode }}, expected {{ ceph_rbd_mirror_mode | default('pool') }}"
+  run_once: true
