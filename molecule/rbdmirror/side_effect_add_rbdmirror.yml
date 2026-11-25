@@ -1,0 +1,17 @@
+---
+- name: Add spare_nodes to rbdmirrors group
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Dynamically add spare_nodes into rbdmirrors
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups:
+          - rbdmirrors
+      loop: "{{ groups['spare_nodes'] | default([]) }}"
+
+- name: Deploy Ceph daemons to rbdmirrors
+  ansible.builtin.import_playbook: ../../site.yml.sample
+  vars:
+    no_log_on_ceph_key_tasks: false
+    yes_i_know: true

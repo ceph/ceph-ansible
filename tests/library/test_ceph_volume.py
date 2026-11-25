@@ -82,6 +82,22 @@ class TestCephVolumeModule(object):
         result = ceph_volume.container_exec(fake_binary, fake_container_image)
         assert result == expected_command_list
 
+    @pytest.mark.parametrize('extra_mounts', [
+        [['/etc/lvm', '/etc/lvm', 'z'], ['/run/lvm', '/run/lvm']],
+        [['/etc/lvm', '/etc/lvm:z'], ['/run/lvm', '/run/lvm']],
+        ['/etc/lvm:/etc/lvm:z', '/run/lvm:/run/lvm'],
+        {'/etc/lvm': '/etc/lvm:z', '/run/lvm': '/run/lvm'},
+    ])
+    def test_container_exec_with_mounts(self, extra_mounts):
+        fake_binary = "ceph-volume"
+        fake_container_image = "quay.io/ceph/daemon:latest"
+        expected_command_list = get_container_cmd({
+            '/etc/lvm': '/etc/lvm:z',
+            '/run/lvm': '/run/lvm',
+        }) + [fake_container_image]
+        result = ceph_volume.container_exec(fake_binary, fake_container_image, mounts=extra_mounts)
+        assert result == expected_command_list
+
     def test_zap_osd_container(self):
         fake_module = MagicMock()
         fake_module.params = {'data': '/dev/sda'}
@@ -172,6 +188,29 @@ class TestCephVolumeModule(object):
         expected_command_list = get_container_cmd(
                                 {
                                     '/var/lib/ceph': '/var/lib/ceph:ro'
+                                }) + \
+            [fake_container_image,
+                '--cluster',
+                'ceph',
+                'lvm',
+                'list',
+                '/dev/sda',
+                '--format=json']
+        result = ceph_volume.list_osd(fake_module, fake_container_image)
+        assert result == expected_command_list
+
+    def test_list_osd_container_extra_mounts(self):
+        fake_module = MagicMock()
+        fake_module.params = {
+            'cluster': 'ceph',
+            'data': '/dev/sda',
+            'container_extra_mounts': [['/etc/lvm', '/etc/lvm', 'z']],
+        }
+        fake_container_image = "quay.io/ceph/daemon:latest"
+        expected_command_list = get_container_cmd(
+                                {
+                                    '/var/lib/ceph': '/var/lib/ceph:ro',
+                                    '/etc/lvm': '/etc/lvm:z',
                                 }) + \
             [fake_container_image,
                 '--cluster',
@@ -438,6 +477,41 @@ class TestCephVolumeModule(object):
         assert '*' * 8 in result['stderr']
         assert not result['stdout']
 
+    @mock.patch.dict(os.environ, {'CEPH_CONTAINER_IMAGE': 'quay.io/ceph/daemon:latest'})
+    @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.run_command')
+    def test_prepare_container_extra_mounts(self, m_run_command, m_exit_json):
+        ca_test_common.set_module_args({
+            'data': '/dev/sda',
+            'objectstore': 'bluestore',
+            'cluster': 'ceph',
+            'action': 'prepare',
+            'container_extra_mounts': [['/etc/lvm', '/etc/lvm', 'z']],
+        })
+        m_exit_json.side_effect = ca_test_common.exit_json
+        m_run_command.side_effect = [
+            (0, '{}', ''),
+            (0, '', ''),
+        ]
+
+        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
+            ceph_volume.main()
+
+        res = result.value.args[0]
+        assert res['changed']
+        assert res['cmd'] == get_container_cmd({'/etc/lvm': '/etc/lvm:z'}) + [
+            'quay.io/ceph/daemon:latest',
+            '--cluster', 'ceph', 'lvm', 'prepare', '--bluestore', '--data', '/dev/sda',
+        ]
+        list_call_cmd = m_run_command.call_args_list[0][0][0]
+        assert list_call_cmd == get_container_cmd({
+            '/var/lib/ceph': '/var/lib/ceph:ro',
+            '/etc/lvm': '/etc/lvm:z',
+        }) + [
+            'quay.io/ceph/daemon:latest',
+            '--cluster', 'ceph', 'lvm', 'list', '/dev/sda', '--format=json',
+        ]
+
     @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
     @patch('ansible.module_utils.basic.AnsibleModule.run_command')
     def test_batch_no_keyring_in_output(self, m_run_command, m_exit_json):
@@ -478,3 +552,35 @@ class TestCephVolumeModule(object):
         assert keyring not in result['stderr']
         assert '*' * 8 in result['stderr']
         assert not result['stdout']
+
+    @mock.patch.dict(os.environ, {'CEPH_CONTAINER_IMAGE': 'quay.io/ceph/daemon:latest'})
+    @patch('ansible.module_utils.basic.AnsibleModule.exit_json')
+    @patch('ansible.module_utils.basic.AnsibleModule.run_command')
+    def test_batch_container_extra_mounts(self, m_run_command, m_exit_json):
+        ca_test_common.set_module_args({
+            'batch_devices': ['/dev/sda'],
+            'objectstore': 'bluestore',
+            'cluster': 'ceph',
+            'action': 'batch',
+            'container_extra_mounts': [['/etc/lvm', '/etc/lvm', 'z']],
+        })
+        m_exit_json.side_effect = ca_test_common.exit_json
+        m_run_command.side_effect = [
+            (0, '[{"data": "/dev/sda", "data_size": "50.00 GB", "encryption": "None"}]', ''),
+            (0, '', ''),
+        ]
+
+        with pytest.raises(ca_test_common.AnsibleExitJson) as result:
+            ceph_volume.main()
+
+        res = result.value.args[0]
+        assert res['changed']
+        assert res['cmd'] == get_container_cmd({'/etc/lvm': '/etc/lvm:z'}) + [
+            'quay.io/ceph/daemon:latest',
+            '--cluster', 'ceph', 'lvm', 'batch', '--bluestore', '--yes', '--prepare', '/dev/sda',
+        ]
+        report_call_cmd = m_run_command.call_args_list[0][0][0]
+        assert report_call_cmd == get_container_cmd({'/etc/lvm': '/etc/lvm:z'}) + [
+            'quay.io/ceph/daemon:latest',
+            '--cluster', 'ceph', 'lvm', 'batch', '--bluestore', '--prepare', '/dev/sda', '--report', '--format=json',
+        ]

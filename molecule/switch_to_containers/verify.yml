@@ -1,0 +1,70 @@
+---
+- name: Verify containerized Ceph cluster after switch
+  ansible.builtin.import_playbook: ../../tests/functional/molecule/verify.yml
+  vars:
+    containerized_deployment: true
+
+- name: Verify no Ceph daemons run outside containers
+  hosts: ceph_all:!spare_nodes
+  gather_facts: true
+  tasks:
+    - name: Determine container binary
+      ansible.builtin.set_fact:
+        _container_bin: "{{ container_binary | default((ansible_facts['os_family'] == 'RedHat') | ternary('podman', 'docker')) }}"
+
+    - name: Check running Ceph containers
+      ansible.builtin.command: "{{ _container_bin }} ps --format '{{ '{{' }}.Names{{ '}}' }}'"
+      register: _running_ceph_containers
+      changed_when: false
+
+    - name: Assert expected daemon containers are running
+      ansible.builtin.assert:
+        that:
+          - "'ceph-mon-' ~ ansible_facts['hostname'] in _running_ceph_containers.stdout_lines"
+          - "'ceph-mgr-' ~ ansible_facts['hostname'] in _running_ceph_containers.stdout_lines"
+          - "'ceph-mds-' ~ ansible_facts['hostname'] in _running_ceph_containers.stdout_lines"
+          - "(_running_ceph_containers.stdout_lines | select('match', '^ceph-osd-[0-9]+$') | list | length) > 0"
+          - "(_running_ceph_containers.stdout_lines | select('match', '^ceph-rgw-') | list | length) > 0"
+        fail_msg: "Missing expected Ceph containers on {{ inventory_hostname }}: {{ _running_ceph_containers.stdout_lines }}"
+
+    - name: Check for Ceph daemon processes running outside containers
+      ansible.builtin.shell: |
+        set -o pipefail
+        ps -eo comm=,cgroup= | awk '$1 ~ /^(ceph-(mon|mgr|osd|mds)|radosgw)$/ && $2 !~ /(docker|libpod|containerd|crio)/'
+      args:
+        executable: /bin/bash
+      register: _bare_metal_ceph_procs
+      changed_when: false
+
+    - name: Assert no Ceph daemons are running outside containers
+      ansible.builtin.assert:
+        that:
+          - "_bare_metal_ceph_procs.stdout_lines | length == 0"
+        fail_msg: "Found bare-metal Ceph processes outside containers: {{ _bare_metal_ceph_procs.stdout_lines }}"
+
+    - name: Check that old non-containerized systemd unit files were removed
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /usr/lib/systemd/system/ceph-mon@.service
+        - /lib/systemd/system/ceph-mon@.service
+        - /usr/lib/systemd/system/ceph-mgr@.service
+        - /lib/systemd/system/ceph-mgr@.service
+        - /usr/lib/systemd/system/ceph-osd@.service
+        - /lib/systemd/system/ceph-osd@.service
+        - /usr/lib/systemd/system/ceph-volume@.service
+        - /lib/systemd/system/ceph-volume@.service
+        - /usr/lib/systemd/system/ceph-mds@.service
+        - /lib/systemd/system/ceph-mds@.service
+        - /usr/lib/systemd/system/ceph-radosgw@.service
+        - /lib/systemd/system/ceph-radosgw@.service
+      register: _old_unit_files
+
+    - name: Assert old non-containerized systemd unit files are absent
+      ansible.builtin.assert:
+        that:
+          - "not item.stat.exists"
+        fail_msg: "Old non-containerized unit file still exists: {{ item.item }}"
+      loop: "{{ _old_unit_files.results }}"
+      loop_control:
+        label: "{{ item.item }}"

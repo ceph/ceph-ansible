@@ -5,6 +5,7 @@ Glossary
    :maxdepth: 1
 
    index
+   molecule.rst
    running.rst
    development.rst
    scenarios.rst

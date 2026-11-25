@@ -3,6 +3,12 @@
 Test Scenarios
 ==============
 
+.. warning::
+
+   This page describes Vagrant test scenarios (``vagrant_variables.yml``)
+   which is **deprecated**. For current Molecule scenarios, see
+   :doc:`Testing with Molecule <molecule>` and :ref:`molecule_adding_scenario`.
+
 Scenarios are distinct environments that describe a Ceph deployment and
 configuration. Scenarios are isolated as well, and define what machines are
 needed aside from any ``ceph-ansible`` configuration.

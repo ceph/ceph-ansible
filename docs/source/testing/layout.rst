@@ -3,6 +3,13 @@
 Layout and conventions
 ----------------------
 
+.. warning::
+
+   This page describes the Vagrant / ``testinfra`` layout which is
+   **deprecated**. For the current Molecule scenario layout and Ansible-based
+   functional tests, see :ref:`molecule_layout` and
+   :ref:`molecule_verification`.
+
 Test files and directories follow a few conventions, which makes it easy to
 create (or expect) certain interactions between tests and scenarios.
 
