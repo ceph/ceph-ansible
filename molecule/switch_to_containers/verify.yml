@@ -30,7 +30,14 @@
     - name: Check for Ceph daemon processes running outside containers
       ansible.builtin.shell: |
         set -o pipefail
-        ps -eo comm=,cgroup= | awk '$1 ~ /^(ceph-(mon|mgr|osd|mds)|radosgw)$/ && $2 !~ /(docker|libpod|containerd|crio)/'
+        container_ids=$({{ _container_bin }} ps -q --no-trunc | paste -sd '|' -)
+        ps -eo comm=,cgroup= | awk -v ids="$container_ids" '
+          $1 ~ /^(ceph-(mon|mgr|osd|mds)|radosgw)$/ {
+            if (ids == "" || $2 !~ ("(" ids ")")) {
+              print
+            }
+          }
+        '
       args:
         executable: /bin/bash
       register: _bare_metal_ceph_procs

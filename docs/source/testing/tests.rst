@@ -3,6 +3,14 @@
 Tests
 =====
 
+.. warning::
+
+   Python ``testinfra`` functional tests are **deprecated** and have been
+   replaced by Ansible verification playbooks under
+   ``tests/functional/molecule/`` (see :ref:`molecule_verification`). Python
+   ``pytest`` is still used for unit tests of custom modules under
+   ``tests/library/``.
+
 Actual tests are written in Python methods that accept optional fixtures. These
 fixtures come with interesting attributes to help with remote assertions.
 

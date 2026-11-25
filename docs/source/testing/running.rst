@@ -3,6 +3,12 @@
 Running Tests
 =============
 
+.. warning::
+
+   The Vagrant / VirtualBox / libvirt test harness (``tox.ini``) documented on
+   this page is **deprecated**. Use :doc:`Testing with Molecule <molecule>`
+   (``tox-molecule.ini``) for current local and CI testing.
+
 Although tests run continuously in CI, a lot of effort was put into making it
 easy to run in any environment, as long as a couple of requirements are met.
 

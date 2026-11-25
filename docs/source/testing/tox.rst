@@ -3,6 +3,13 @@
 ``tox``
 =======
 
+.. warning::
+
+   This page documents the ``tox.ini`` Vagrant/Jenkins test matrix which
+   is **deprecated**. For the current Molecule ``tox-molecule.ini`` setup and
+   environment variables, see :doc:`Testing with Molecule <molecule>` and
+   :ref:`molecule_env_vars`.
+
 ``tox`` is an automation project we use to run our testing scenarios. It gives us
 the ability to create a dynamic matrix of many testing scenarios, isolated testing environments
 and provides a single entry point to run all tests in an automated and repeatable fashion.
@@ -48,7 +55,7 @@ Sections
 The ``tox.ini`` file has a number of top level sections defined by ``[ ]`` and subsections within those. For complete documentation
 on all subsections inside of a tox section please refer to the tox documentation.
 
-* ``tox`` : This section contains the ``envlist`` which is used to create our dynamic matrix. Refer to the `section here <http://tox.readthedocs.io/en/latest/config.html#generating-environments-conditional-settings>`_ for more information on how the ``envlist`` works. 
+* ``tox`` : This section contains the ``envlist`` which is used to create our dynamic matrix. Refer to the `section here <http://tox.readthedocs.io/en/latest/config.html#generating-environments-conditional-settings>`_ for more information on how the ``envlist`` works.
 
 * ``purge`` : This section contains commands that only run for scenarios that purge the cluster and redeploy. You'll see this section being reused in ``testenv``
   with the following syntax: ``{[purge]commands}``

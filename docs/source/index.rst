@@ -415,8 +415,10 @@ Testing
 
 Documentation for writing functional testing scenarios for ``ceph-ansible``.
 
-* :doc:`Testing with ceph-ansible <testing/index>`
-* :doc:`Glossary <testing/glossary>`
+.. toctree::
+   :maxdepth: 1
+
+   testing/index
 
 Demos
 =====
